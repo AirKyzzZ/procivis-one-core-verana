@@ -29,7 +29,7 @@ async fn test_generate_success() {
             })
         });
 
-    let provider = RemoteSecureElementKeyProvider::new(Arc::new(native_storage));
+    let provider = RemoteSecureElementKeyProvider::new("test", Arc::new(native_storage));
 
     let result = provider
         .generate(key_id.into(), KeyAlgorithmType::Eddsa)
@@ -37,19 +37,6 @@ async fn test_generate_success() {
         .unwrap();
     assert_eq!(result.public_key, b"public_key");
     assert_eq!(result.key_reference, Some(b"key_reference".into()));
-}
-
-#[tokio::test]
-async fn test_generate_invalid_key_type() {
-    let provider = RemoteSecureElementKeyProvider::new(Arc::new(MockNativeKeyStorage::default()));
-
-    let result = provider
-        .generate(Uuid::new_v4().into(), KeyAlgorithmType::MlDsa)
-        .await;
-    assert!(matches!(
-        result,
-        Err(KeyStorageError::UnsupportedKeyType { .. })
-    ));
 }
 
 #[tokio::test]
@@ -61,7 +48,7 @@ async fn test_sign_success() {
         .with(eq(b"key_reference".to_vec()), eq(b"message".to_vec()))
         .return_once(|_, _| Ok(b"signature".into()));
 
-    let provider = RemoteSecureElementKeyProvider::new(Arc::new(native_storage));
+    let provider = RemoteSecureElementKeyProvider::new("test", Arc::new(native_storage));
 
     let key_handle = provider
         .key_handle(&Key {
@@ -87,7 +74,7 @@ async fn test_import_failure() {
 
     let key_id = Uuid::new_v4();
 
-    let provider = RemoteSecureElementKeyProvider::new(Arc::new(native_storage));
+    let provider = RemoteSecureElementKeyProvider::new("test", Arc::new(native_storage));
 
     let result = provider
         .import(

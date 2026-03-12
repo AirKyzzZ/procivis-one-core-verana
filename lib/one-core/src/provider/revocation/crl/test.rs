@@ -59,7 +59,7 @@ async fn test_add_signature_new_list() {
             ))
         });
 
-        Some(Arc::new(key_storage))
+        Ok(Arc::new(key_storage))
     });
 
     let list_id: Arc<Mutex<Option<RevocationListId>>> = Arc::new(Mutex::new(None));
@@ -222,7 +222,7 @@ async fn test_revoke_signature() {
             ))
         });
 
-        Some(Arc::new(key_storage))
+        Ok(Arc::new(key_storage))
     });
 
     let refresh_interval = Duration::seconds(10);
@@ -363,7 +363,7 @@ async fn test_get_updated_list_with_update() {
             ))
         });
 
-        Some(Arc::new(key_storage))
+        Ok(Arc::new(key_storage))
     });
 
     let refresh_interval = Duration::seconds(10);

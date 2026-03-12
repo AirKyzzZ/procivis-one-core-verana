@@ -3,6 +3,7 @@
 use std::sync::Arc;
 
 use one_crypto::encryption::{decrypt_data, encrypt_data};
+use proc_macros::Provider;
 use secrecy::SecretSlice;
 use serde::Deserialize;
 use shared_types::KeyId;
@@ -18,13 +19,16 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::KeyStorage;
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::key_storage::model::{Features, KeyStorageCapabilities, StorageGeneratedKey};
+use crate::provider::provider_directory::InitializationError;
 
 #[cfg(test)]
 mod test;
 
+#[derive(Provider)]
 pub struct InternalKeyProvider {
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     encryption_key: SecretSlice<u8>,
+    name: String,
 }
 
 #[derive(Deserialize)]
@@ -35,11 +39,21 @@ pub struct Params {
 }
 
 impl InternalKeyProvider {
-    pub fn new(key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>, params: Params) -> Self {
-        Self {
+    pub fn new(
+        name: &str,
+        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+        params: serde_json::Value,
+    ) -> Result<Self, InitializationError> {
+        let params: Params =
+            serde_json::from_value(params).map_err(|err| InitializationError::InvalidParams {
+                key: name.to_string(),
+                source: err,
+            })?;
+        Ok(Self {
             key_algorithm_provider,
             encryption_key: params.encryption,
-        }
+            name: name.to_string(),
+        })
     }
 }
 
@@ -55,6 +69,9 @@ impl KeyStorage for InternalKeyProvider {
             ],
             features: vec![Features::Exportable, Features::Importable],
         }
+    }
+    fn config_name(&self) -> String {
+        self.name.clone()
     }
 
     async fn generate(
@@ -81,15 +98,6 @@ impl KeyStorage for InternalKeyProvider {
         key_type: KeyAlgorithmType,
         jwk: PrivateJwk,
     ) -> Result<StorageGeneratedKey, KeyStorageError> {
-        if !self
-            .get_capabilities()
-            .features
-            .contains(&Features::Importable)
-        {
-            return Err(KeyStorageError::UnsupportedFeature {
-                feature: Features::Importable,
-            });
-        }
         if jwk.supported_key_type() != key_type {
             return Err(KeyStorageError::InvalidKeyAlgorithm(key_type.to_string()));
         };

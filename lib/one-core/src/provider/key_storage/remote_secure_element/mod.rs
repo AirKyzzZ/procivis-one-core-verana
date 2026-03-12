@@ -4,6 +4,7 @@ use coset::iana::EnumI64;
 use coset::{CoseKey, CoseKeyBuilder, iana};
 use one_crypto::Signer;
 use one_crypto::signer::eddsa::EDDSASigner;
+use proc_macros::Provider;
 use shared_types::KeyId;
 use standardized_types::jwk::{PrivateJwk, PublicJwk};
 
@@ -22,8 +23,10 @@ use crate::provider::key_storage::KeyStorage;
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::key_storage::model::{Features, KeyStorageCapabilities, StorageGeneratedKey};
 
+#[derive(Provider)]
 pub struct RemoteSecureElementKeyProvider {
     native_storage: Arc<dyn NativeKeyStorage>,
+    name: String,
 }
 
 #[async_trait::async_trait]
@@ -35,17 +38,14 @@ impl KeyStorage for RemoteSecureElementKeyProvider {
         }
     }
 
+    fn config_name(&self) -> String {
+        self.name.clone()
+    }
     async fn generate(
         &self,
         key_id: KeyId,
-        key_type: KeyAlgorithmType,
+        _key_type: KeyAlgorithmType,
     ) -> Result<StorageGeneratedKey, KeyStorageError> {
-        if key_type != KeyAlgorithmType::Eddsa {
-            return Err(KeyStorageError::UnsupportedKeyType {
-                key_type: key_type.to_string(),
-            });
-        }
-
         self.native_storage.generate_key(key_id.to_string()).await
     }
 
@@ -106,8 +106,11 @@ impl KeyStorage for RemoteSecureElementKeyProvider {
 }
 
 impl RemoteSecureElementKeyProvider {
-    pub fn new(native_storage: Arc<dyn NativeKeyStorage>) -> Self {
-        Self { native_storage }
+    pub fn new(name: &str, native_storage: Arc<dyn NativeKeyStorage>) -> Self {
+        Self {
+            native_storage,
+            name: name.to_owned(),
+        }
     }
 }
 

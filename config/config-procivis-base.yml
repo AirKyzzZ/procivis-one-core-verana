@@ -623,12 +623,6 @@ keyStorage:
     display: "keyStorage.internal"
     type: "INTERNAL"
     order: 0
-  PKCS11:
-    display: "keyStorage.pkcs11"
-    type: "PKCS11"
-    enabled: false
-    order: 2
-    params: null
 keySecurityLevel:
   BASIC:
     display: keySecurityLevel.basic

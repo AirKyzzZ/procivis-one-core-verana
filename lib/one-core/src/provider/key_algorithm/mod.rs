@@ -1,13 +1,18 @@
+use std::fmt::{Display, Formatter};
+
 use error::KeyAlgorithmError;
 use model::GeneratedKey;
+use proc_macros::provider_mock;
 use secrecy::SecretSlice;
 use standardized_types::jwk::{JwkUse, PrivateJwk, PublicJwk};
 
 use crate::config::core_config::KeyAlgorithmType;
+use crate::provider::Provider;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::model::KeyAlgorithmCapabilities;
 
 pub mod bbs;
+mod decorators;
 pub mod ecdsa;
 pub mod eddsa;
 pub mod error;
@@ -17,10 +22,8 @@ pub mod model;
 pub mod provider;
 
 /// Find signer IDs and convert key representations.
-#[cfg_attr(any(test, feature = "mock"), mockall::automock)]
-pub trait KeyAlgorithm: Send + Sync {
-    fn algorithm_id(&self) -> String;
-
+#[provider_mock]
+pub trait KeyAlgorithm: Provider + Send + Sync {
     fn algorithm_type(&self) -> KeyAlgorithmType;
 
     fn get_capabilities(&self) -> KeyAlgorithmCapabilities;
@@ -48,6 +51,12 @@ pub trait KeyAlgorithm: Send + Sync {
     fn parse_private_jwk(&self, jwk: PrivateJwk) -> Result<GeneratedKey, KeyAlgorithmError>;
     fn parse_multibase(&self, multibase: &str) -> Result<KeyHandle, KeyAlgorithmError>;
     fn parse_der(&self, public_key_der: &[u8]) -> Result<KeyHandle, KeyAlgorithmError>;
+}
+
+impl Display for dyn KeyAlgorithm {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Key algorithm `{}`", self.algorithm_type())
+    }
 }
 
 pub(crate) fn parse_multibase_with_tag(

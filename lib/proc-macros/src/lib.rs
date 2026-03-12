@@ -8,6 +8,8 @@ mod modify_schema;
 mod modify_schema_autodetect;
 mod options_not_nullable;
 mod permission_check;
+mod provider;
+mod provider_mock;
 
 /// Marks all optional fields in the struct as `#[schema(nullable = false)]` and also adds a
 /// `#[serde_with::skip_serializing_none]` to the struct.
@@ -332,4 +334,31 @@ pub fn endpoint(args: TokenStream, input: TokenStream) -> TokenStream {
 #[proc_macro_derive(Model, attributes(model))]
 pub fn repository_model(input: TokenStream) -> TokenStream {
     model::repository_model(input)
+}
+
+/// Derives the trait `Provider` for a struct.
+/// If the provider does not provide capabilities, these can be skipped with
+/// ```ignore
+/// #[provider(skip_capabilities)]
+/// ```
+#[proc_macro_derive(Provider, attributes(provider))]
+pub fn derive_provider(input: TokenStream) -> TokenStream {
+    provider::provider_derive(input)
+}
+
+/// Derives a mock for a provider trait.
+/// This is useful because provider traits require the `Provider` trait as a supertrait, which
+/// makes the mock definition more complex.
+///
+/// Note: This macro must be placed on the provider trait first, before other attributes such as
+/// `#[async_trait::async_trait]`.
+///
+/// Example:
+/// ```ignore
+/// #[provider_mock]
+/// pub trait MyProvider: Provider + Send + Sync { }
+/// ```
+#[proc_macro_attribute]
+pub fn provider_mock(_args: TokenStream, input: TokenStream) -> TokenStream {
+    provider_mock::provider_mock(input)
 }

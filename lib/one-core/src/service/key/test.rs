@@ -11,6 +11,8 @@ use crate::model::key::{GetKeyList, Key};
 use crate::proto::csr_creator::{CsrCreationError, MockCsrCreator};
 use crate::proto::session_provider::NoSessionProvider;
 use crate::proto::session_provider::test::StaticSessionProvider;
+use crate::provider::key_algorithm::MockKeyAlgorithm;
+use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::MockKeyStorage;
 use crate::provider::key_storage::model::{KeyStorageCapabilities, StorageGeneratedKey};
 use crate::provider::key_storage::provider::MockKeyProvider;
@@ -22,13 +24,13 @@ use crate::service::key::dto::{
     KeyFilterParamsDTO, KeyGenerateCSRRequestDTO, KeyGenerateCSRRequestProfile,
     KeyGenerateCSRRequestSubjectDTO, KeyRequestDTO,
 };
-use crate::service::test_utilities::{dummy_organisation, generic_config};
+use crate::service::test_utilities::dummy_organisation;
 
 fn setup_service(
     repository: MockKeyRepository,
     organisation_repository: MockOrganisationRepository,
     key_storage: MockKeyStorage,
-    config: crate::config::core_config::CoreConfig,
+    key_algorithm: MockKeyAlgorithm,
     history_repository: MockHistoryRepository,
     mock_csr_creator: MockCsrCreator,
 ) -> KeyService {
@@ -36,13 +38,18 @@ fn setup_service(
     let mut provider = MockKeyProvider::new();
     provider
         .expect_get_key_storage()
-        .returning(move |_| Some(key_storage.clone()));
+        .returning(move |_| Ok(key_storage.clone()));
 
+    let key_algorithm = Arc::new(key_algorithm);
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_key_algorithm_from_type()
+        .returning(move |_| Some(key_algorithm.clone()));
     KeyService::new(
         Arc::new(repository),
         Arc::new(organisation_repository),
         Arc::new(provider),
-        Arc::new(config),
+        Arc::new(key_algorithm_provider),
         Arc::new(history_repository),
         Arc::new(NoSessionProvider),
         Arc::new(mock_csr_creator),
@@ -69,6 +76,8 @@ async fn test_create_key_success() {
     let mut repository = MockKeyRepository::default();
     let mut organisation_repository = MockOrganisationRepository::default();
     let mut key_storage = MockKeyStorage::default();
+    let mut key_algorithm = MockKeyAlgorithm::default();
+    key_algorithm.expect_enabled().returning(|| true);
     let history_repository = MockHistoryRepository::default();
     let csr_creator = MockCsrCreator::default();
 
@@ -108,7 +117,7 @@ async fn test_create_key_success() {
         repository,
         organisation_repository,
         key_storage,
-        generic_config().core,
+        key_algorithm,
         history_repository,
         csr_creator,
     );
@@ -150,7 +159,7 @@ async fn test_get_key_success() {
         repository,
         organisation_repository,
         key_storage,
-        generic_config().core,
+        MockKeyAlgorithm::default(),
         history_repository,
         csr_creator,
     );
@@ -184,7 +193,7 @@ async fn test_get_key_list() {
         repository,
         organisation_repository,
         key_storage,
-        generic_config().core,
+        MockKeyAlgorithm::default(),
         history_repository,
         csr_creator,
     );
@@ -264,7 +273,7 @@ async fn test_generate_csr_failed() {
         repository,
         organisation_repository,
         key_storage,
-        generic_config().core,
+        MockKeyAlgorithm::default(),
         history_repository,
         csr_creator,
     );
@@ -280,7 +289,7 @@ async fn test_create_key_session_org_mismatch() {
         Arc::new(MockKeyRepository::default()),
         Arc::new(MockOrganisationRepository::new()),
         Arc::new(MockKeyProvider::new()),
-        Arc::new(generic_config().core),
+        Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(MockHistoryRepository::new()),
         Arc::new(StaticSessionProvider::new_random()),
         Arc::new(MockCsrCreator::default()),
@@ -307,7 +316,7 @@ async fn test_list_key_session_org_mismatch() {
         Arc::new(MockKeyRepository::default()),
         Arc::new(MockOrganisationRepository::new()),
         Arc::new(MockKeyProvider::new()),
-        Arc::new(generic_config().core),
+        Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(MockHistoryRepository::new()),
         Arc::new(StaticSessionProvider::new_random()),
         Arc::new(MockCsrCreator::default()),
@@ -352,7 +361,7 @@ async fn test_key_ops_session_org_mismatch() {
         Arc::new(repository),
         Arc::new(MockOrganisationRepository::new()),
         Arc::new(MockKeyProvider::new()),
-        Arc::new(generic_config().core),
+        Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(MockHistoryRepository::new()),
         Arc::new(StaticSessionProvider::new_random()),
         Arc::new(MockCsrCreator::default()),

@@ -202,7 +202,7 @@ async fn test_register_wallet_unit() {
     let mut key_provider = MockKeyProvider::new();
     key_provider
         .expect_get_key_storage()
-        .returning(move |_| Some(key_storage.clone()));
+        .returning(move |_| Ok(key_storage.clone()));
 
     let mut history_repository = MockHistoryRepository::new();
     history_repository
@@ -315,7 +315,7 @@ async fn test_register_wallet_unit_integrity_check() {
     let mut key_provider = MockKeyProvider::new();
     key_provider
         .expect_get_key_storage()
-        .returning(move |_| Some(key_storage.clone()));
+        .returning(move |_| Ok(key_storage.clone()));
 
     let mut history_repository = MockHistoryRepository::new();
     history_repository

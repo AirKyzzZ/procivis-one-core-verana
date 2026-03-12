@@ -1,5 +1,6 @@
 //! Azure Key Vault implementation.
 
+use std::fmt::{Display, Formatter};
 use std::ops::Add;
 use std::sync::Arc;
 
@@ -13,6 +14,7 @@ use mapper::{
 };
 use one_crypto::signer::ecdsa::ECDSASigner;
 use one_crypto::{CryptoProvider, Signer, SignerError};
+use proc_macros::Provider;
 use secrecy::{ExposeSecret, SecretString};
 use serde::Deserialize;
 use shared_types::KeyId;
@@ -40,6 +42,7 @@ use crate::provider::key_storage::azure_vault::dto::{
 use crate::provider::key_storage::azure_vault::mapper::create_import_key_request;
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::key_storage::model::{Features, KeyStorageCapabilities, StorageGeneratedKey};
+use crate::provider::provider_directory::InitializationError;
 
 mod dto;
 mod mapper;
@@ -62,9 +65,17 @@ struct AzureAccessToken {
     pub valid_until: OffsetDateTime,
 }
 
+#[derive(Provider)]
 pub struct AzureVaultKeyProvider {
     crypto: Arc<dyn CryptoProvider>,
     azure_client: Arc<AzureClient>,
+    name: String,
+}
+
+impl Display for AzureVaultKeyProvider {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Key storage {}", self.name)
+    }
 }
 
 #[async_trait]
@@ -74,6 +85,10 @@ impl KeyStorage for AzureVaultKeyProvider {
             features: vec![Features::Exportable, Features::Importable],
             algorithms: vec![KeyAlgorithmType::Ecdsa],
         }
+    }
+
+    fn config_name(&self) -> String {
+        self.name.clone()
     }
 
     async fn generate(
@@ -186,18 +201,25 @@ impl KeyStorage for AzureVaultKeyProvider {
 
 impl AzureVaultKeyProvider {
     pub fn new(
-        params: Params,
+        name: &str,
+        params: serde_json::Value,
         crypto: Arc<dyn CryptoProvider>,
         client: Arc<dyn HttpClient>,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, InitializationError> {
+        let params: Params =
+            serde_json::from_value(params).map_err(|err| InitializationError::InvalidParams {
+                key: name.to_string(),
+                source: err,
+            })?;
+        Ok(Self {
             crypto,
             azure_client: Arc::new(AzureClient {
                 access_token: Arc::new(Mutex::new(None)),
                 client,
                 params,
             }),
-        }
+            name: name.to_string(),
+        })
     }
 }
 #[derive(Clone)]

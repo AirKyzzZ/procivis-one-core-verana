@@ -118,7 +118,7 @@ async fn holder_register_success() {
     let mut key_provider = MockKeyProvider::new();
     key_provider
         .expect_get_key_storage()
-        .returning(move |_| Some(key_storage.clone()));
+        .returning(move |_| Ok(key_storage.clone()));
     key_provider
         .expect_get_attestation_signature_provider()
         .returning(move |_, _, _| {
@@ -268,7 +268,7 @@ async fn holder_register_key_attestation_not_supported() {
     let mut key_provider = MockKeyProvider::new();
     key_provider
         .expect_get_key_storage()
-        .returning(move |_| Some(key_storage.clone()));
+        .returning(move |_| Ok(key_storage.clone()));
 
     let mut os_info_provider = MockOSInfoProvider::new();
     os_info_provider

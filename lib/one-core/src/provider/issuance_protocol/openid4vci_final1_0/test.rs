@@ -1049,7 +1049,7 @@ async fn test_holder_accept_credential_autogenerate_holder_binding() {
             })
         });
 
-        Some(Arc::new(storage))
+        Ok(Arc::new(storage))
     });
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();

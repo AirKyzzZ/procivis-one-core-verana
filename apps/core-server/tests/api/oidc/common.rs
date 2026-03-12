@@ -1,13 +1,12 @@
 use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
-use hex_literal::hex;
 use one_core::model::key::Key;
 use one_core::provider::key_algorithm::eddsa::Eddsa;
 use one_core::provider::key_algorithm::key::KeyHandle;
 use one_core::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use one_core::provider::key_storage::KeyStorage;
-use one_core::provider::key_storage::internal::{InternalKeyProvider, Params};
+use one_core::provider::key_storage::internal::InternalKeyProvider;
 use serde_json::json;
 use uuid::Uuid;
 
@@ -65,13 +64,14 @@ pub(super) async fn proof_jwt(use_kid: bool, nonce: Option<&str>) -> String {
         organisation: None,
     };
 
-    let encryption_key = hex!("93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e");
     let key_provider = InternalKeyProvider::new(
+        "test",
         Arc::new(key_algorithm_provider),
-        Params {
-            encryption: encryption_key.to_vec().into(),
-        },
-    );
+        json!({
+            "encryption": "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e"
+        }),
+    )
+    .unwrap();
     let key_handle = key_provider.key_handle(&key).unwrap();
 
     proof_jwt_for(

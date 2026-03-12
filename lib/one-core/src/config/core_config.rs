@@ -470,6 +470,10 @@ impl ConfigFields for KeyAlgorithmFields {
     fn enabled(&self) -> bool {
         self.enabled
     }
+
+    fn set_capabilities(&mut self, capabilities: Value) {
+        self.capabilities = Some(capabilities);
+    }
 }
 
 #[derive(
@@ -525,9 +529,6 @@ pub enum KeyStorageType {
     #[serde(rename = "AZURE_VAULT")]
     #[strum(serialize = "AZURE_VAULT")]
     AzureVault,
-    #[serde(rename = "PKCS11")]
-    #[strum(serialize = "PKCS11")]
-    PKCS11,
     #[serde(rename = "SECURE_ELEMENT")]
     #[strum(serialize = "SECURE_ELEMENT")]
     SecureElement,
@@ -589,6 +590,10 @@ impl ConfigFields for KeySecurityLevelFields {
     fn enabled(&self) -> bool {
         self.enabled
     }
+
+    fn set_capabilities(&mut self, capabilities: Value) {
+        self.capabilities = Some(capabilities);
+    }
 }
 
 pub type IdentifierConfig = Dict<IdentifierType, IdentifierFields>;
@@ -638,6 +643,10 @@ pub struct IdentifierFields {
 impl ConfigFields for IdentifierFields {
     fn enabled(&self) -> bool {
         self.enabled
+    }
+
+    fn set_capabilities(&mut self, capabilities: Value) {
+        self.capabilities = Some(capabilities);
     }
 }
 
@@ -736,11 +745,17 @@ pub struct BlobStorageFields {
     pub enabled: bool,
     #[serde(default, deserialize_with = "deserialize_params")]
     pub params: Option<Params>,
+    #[serde(skip_deserializing)]
+    pub capabilities: Option<Value>,
 }
 
 impl ConfigFields for BlobStorageFields {
     fn enabled(&self) -> bool {
         self.enabled
+    }
+
+    fn set_capabilities(&mut self, capabilities: Value) {
+        self.capabilities = Some(capabilities);
     }
 }
 
@@ -853,9 +868,9 @@ pub struct VerifierProviderFields {
 }
 
 // Alias for the collection of traits we want config keys to implement.
-pub trait ConfigKey: Debug + Display + Clone + Ord {}
+pub trait ConfigKey: Debug + Display + Clone + Ord + Hash + Eq {}
 // Blanket impl
-impl<T: Debug + Display + Clone + Ord> ConfigKey for T {}
+impl<T: Debug + Display + Clone + Ord + Hash + Eq> ConfigKey for T {}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(transparent)]
@@ -977,8 +992,10 @@ impl ConfigBlock<String, TransportType> {
     }
 }
 
-trait ConfigFields {
+pub trait ConfigFields: Clone {
     fn enabled(&self) -> bool;
+
+    fn set_capabilities(&mut self, capabilities: Value);
 }
 
 pub trait ConfigExt<K, T> {
@@ -1021,10 +1038,10 @@ where
     }
 }
 
-impl<K: ConfigKey, T> ConfigExt<K, Fields<T>> for ConfigBlock<K, T> {
+impl<K: ConfigKey, T: Clone> ConfigExt<K, Fields<T>> for ConfigBlock<K, T> {
     fn iter_enabled<'a>(&'a self) -> impl Iterator<Item = (&'a K, &'a Fields<T>)>
     where
-        T: 'a,
+        T: 'a + Clone,
     {
         self.0.iter_enabled()
     }
@@ -1094,7 +1111,7 @@ where
     }
 
     // merge public and private params with other fields
-    fn merge_fields(&self) -> Value {
+    pub fn merge_fields(&self) -> Value {
         let mut map = json!(Self {
             params: None,
             ..self.clone()
@@ -1117,9 +1134,13 @@ where
     }
 }
 
-impl<T> ConfigFields for Fields<T> {
+impl<T: Clone> ConfigFields for Fields<T> {
     fn enabled(&self) -> bool {
         self.enabled
+    }
+
+    fn set_capabilities(&mut self, capabilities: Value) {
+        self.capabilities = Some(capabilities);
     }
 }
 

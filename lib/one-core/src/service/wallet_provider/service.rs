@@ -1078,10 +1078,7 @@ impl WalletProviderService {
                 let key_handle = self
                     .key_provider
                     .get_key_storage(&issuer_key.storage_type)
-                    .ok_or(WalletProviderError::MappingError(format!(
-                        "Key storage not found: {}",
-                        issuer_key.storage_type
-                    )))?
+                    .error_while("getting key storage")?
                     .key_handle(issuer_key)
                     .map_err(|e| {
                         WalletProviderError::MappingError(format!("Failed to get key handle: {e}"))

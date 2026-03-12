@@ -36,7 +36,6 @@ use crate::provider::revocation::model::{
     CredentialDataByRole, RevocationMethodCapabilities, RevocationState,
 };
 use crate::repository::revocation_list_repository::RevocationListRepository;
-use crate::service::error::MissingProviderError;
 
 #[cfg(test)]
 mod test;
@@ -413,9 +412,6 @@ impl CRLRevocation {
         let key_storage = self
             .key_provider
             .get_key_storage(&key.storage_type)
-            .ok_or(MissingProviderError::KeyStorage(
-                key.storage_type.to_owned(),
-            ))
             .error_while("getting key storage")?;
 
         let signing_key =

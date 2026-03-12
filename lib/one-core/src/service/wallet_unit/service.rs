@@ -396,7 +396,6 @@ impl WalletUnitService {
         let key_storage = self
             .key_provider
             .get_key_storage(key_storage_id)
-            .ok_or(MissingProviderError::KeyStorage(key_storage_id.to_string()))
             .error_while("getting key storage")?;
 
         let key = self
@@ -465,7 +464,6 @@ impl WalletUnitService {
         let key_storage = self
             .key_provider
             .get_key_storage(key_storage_id)
-            .ok_or(MissingProviderError::KeyStorage(key_storage_id.to_string()))
             .error_while("getting key storage")?;
 
         let key_id = Uuid::new_v4().into();

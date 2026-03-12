@@ -3595,7 +3595,7 @@ async fn test_share_proof_created_success() {
                 algorithms: vec![],
             });
 
-        Some(Arc::new(key_storage))
+        Ok(Arc::new(key_storage))
     });
 
     let expected_url = "test_url";
@@ -3764,7 +3764,7 @@ async fn test_share_proof_pending_success() {
                 features: vec![],
                 algorithms: vec![],
             });
-        Some(Arc::new(key_storage))
+        Ok(Arc::new(key_storage))
     });
 
     let service = setup_service(Repositories {
@@ -3878,7 +3878,7 @@ async fn test_share_proof_interaction_expired_success() {
                 features: vec![],
                 algorithms: vec![],
             });
-        Some(Arc::new(key_storage))
+        Ok(Arc::new(key_storage))
     });
 
     let service = setup_service(Repositories {

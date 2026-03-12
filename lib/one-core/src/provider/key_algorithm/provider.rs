@@ -1,10 +1,8 @@
 use std::cmp::Reverse;
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use itertools::Itertools;
 use secrecy::SecretSlice;
-use serde_json::json;
 use standardized_types::jwk::{JwkUse, PublicJwk};
 
 use super::KeyAlgorithm;
@@ -15,8 +13,9 @@ use super::error::KeyAlgorithmProviderError;
 use super::key::KeyHandle;
 use super::ml_dsa::MlDsa;
 use crate::config::ConfigValidationError;
-use crate::config::core_config::{ConfigExt, CoreConfig, KeyAlgorithmConfig, KeyAlgorithmType};
+use crate::config::core_config::{CoreConfig, KeyAlgorithmFields, KeyAlgorithmType};
 use crate::error::ContextWithErrorCode;
+use crate::provider::provider_directory::{InitializationError, ProviderDirectory};
 
 #[derive(Clone)]
 pub struct ParsedKey {
@@ -54,8 +53,7 @@ pub trait KeyAlgorithmProvider: Send + Sync {
 }
 
 struct KeyAlgorithmProviderImpl {
-    algorithms: HashMap<KeyAlgorithmType, Arc<dyn KeyAlgorithm>>,
-    config: KeyAlgorithmConfig,
+    directory: ProviderDirectory<KeyAlgorithmType, KeyAlgorithmFields, dyn KeyAlgorithm>,
 }
 
 impl KeyAlgorithmProvider for KeyAlgorithmProviderImpl {
@@ -63,14 +61,14 @@ impl KeyAlgorithmProvider for KeyAlgorithmProviderImpl {
         &self,
         algorithm: KeyAlgorithmType,
     ) -> Option<Arc<dyn KeyAlgorithm>> {
-        self.algorithms.get(&algorithm).cloned()
+        self.directory.provider(&algorithm).ok()
     }
 
     fn key_algorithm_from_jose_alg(
         &self,
         jose_alg: &str,
     ) -> Option<(KeyAlgorithmType, Arc<dyn KeyAlgorithm>)> {
-        self.algorithms
+        self.directory
             .iter()
             .find(|(_, alg)| {
                 alg.verification_jose_alg_ids()
@@ -84,7 +82,7 @@ impl KeyAlgorithmProvider for KeyAlgorithmProviderImpl {
         &self,
         cose_alg: i64,
     ) -> Option<(KeyAlgorithmType, Arc<dyn KeyAlgorithm>)> {
-        self.algorithms
+        self.directory
             .iter()
             .find(|(_, alg)| alg.cose_alg_id().is_some_and(|alg| alg == cose_alg))
             .map(|(id, alg)| (id.to_owned(), alg.clone()))
@@ -92,7 +90,7 @@ impl KeyAlgorithmProvider for KeyAlgorithmProviderImpl {
 
     #[tracing::instrument(level = "debug", skip(self), err(level = "info"))]
     fn parse_jwk(&self, key: &PublicJwk) -> Result<ParsedKey, KeyAlgorithmProviderError> {
-        for algorithm in self.algorithms.values() {
+        for (_, algorithm) in self.directory.iter() {
             if let Ok(public_key) = algorithm.parse_jwk(key) {
                 return Ok(ParsedKey {
                     algorithm_type: algorithm.algorithm_type(),
@@ -108,7 +106,7 @@ impl KeyAlgorithmProvider for KeyAlgorithmProviderImpl {
 
     #[tracing::instrument(level = "debug", skip(self), err(level = "info"))]
     fn parse_multibase(&self, multibase: &str) -> Result<ParsedKey, KeyAlgorithmProviderError> {
-        for algorithm in self.algorithms.values() {
+        for (_, algorithm) in self.directory.iter() {
             if let Ok(public_key) = algorithm.parse_multibase(multibase) {
                 return Ok(ParsedKey {
                     algorithm_type: algorithm.algorithm_type(),
@@ -138,22 +136,24 @@ impl KeyAlgorithmProvider for KeyAlgorithmProviderImpl {
     }
 
     fn supported_verification_jose_alg_ids(&self) -> Vec<String> {
-        self.algorithms
-            .values()
-            .flat_map(|key_alg| key_alg.verification_jose_alg_ids())
+        self.directory
+            .iter()
+            .flat_map(|(_, key_alg)| key_alg.verification_jose_alg_ids())
             .collect()
     }
 
     fn ordered_by_holder_priority(&self) -> Vec<(KeyAlgorithmType, Arc<dyn KeyAlgorithm>)> {
         let get_holder_priority = |r#type: &KeyAlgorithmType| -> u32 {
-            self.config
-                .get_if_enabled(r#type)
+            self.directory
+                .config(r#type)
                 .ok()
-                .map(|v| v.holder_priority)
+                .iter()
+                .flat_map(|config| config.enabled.then_some(config.holder_priority))
+                .next()
                 .unwrap_or(0)
         };
 
-        self.algorithms
+        self.directory
             .iter()
             .sorted_by_key(|(k, _)| Reverse(get_holder_priority(k)))
             .map(|(k, v)| (*k, v.to_owned()))
@@ -164,30 +164,21 @@ impl KeyAlgorithmProvider for KeyAlgorithmProviderImpl {
 pub(crate) fn key_algorithm_provider_from_config(
     config: &mut CoreConfig,
 ) -> Result<Arc<dyn KeyAlgorithmProvider>, ConfigValidationError> {
-    let mut algorithms: HashMap<KeyAlgorithmType, Arc<dyn KeyAlgorithm>> = HashMap::new();
+    let directory =
+        ProviderDirectory::initialize(config.key_algorithm.iter_mut(), initialize_provider)
+            .error_while("initializing key algorithm providers")?;
+    Ok(Arc::new(KeyAlgorithmProviderImpl { directory }))
+}
 
-    for (name, fields) in config.key_algorithm.iter() {
-        if !fields.enabled {
-            continue;
-        }
-
-        let key_algorithm: Arc<dyn KeyAlgorithm> = match name {
-            KeyAlgorithmType::Eddsa => Arc::new(Eddsa),
-            KeyAlgorithmType::Ecdsa => Arc::new(Ecdsa),
-            KeyAlgorithmType::BbsPlus => Arc::new(BBS),
-            KeyAlgorithmType::MlDsa => Arc::new(MlDsa),
-        };
-        algorithms.insert(*name, key_algorithm);
-    }
-
-    for (key, value) in config.key_algorithm.iter_mut() {
-        if let Some(entity) = algorithms.get(key) {
-            value.capabilities = Some(json!(entity.get_capabilities()));
-        }
-    }
-
-    Ok(Arc::new(KeyAlgorithmProviderImpl {
-        algorithms,
-        config: config.key_algorithm.to_owned(),
-    }))
+fn initialize_provider(
+    r#type: &KeyAlgorithmType,
+    _field: &KeyAlgorithmFields,
+) -> Result<Arc<dyn KeyAlgorithm>, InitializationError> {
+    let provider: Arc<dyn KeyAlgorithm> = match r#type {
+        KeyAlgorithmType::Eddsa => Arc::new(Eddsa),
+        KeyAlgorithmType::Ecdsa => Arc::new(Ecdsa),
+        KeyAlgorithmType::BbsPlus => Arc::new(BBS),
+        KeyAlgorithmType::MlDsa => Arc::new(MlDsa),
+    };
+    Ok(provider)
 }

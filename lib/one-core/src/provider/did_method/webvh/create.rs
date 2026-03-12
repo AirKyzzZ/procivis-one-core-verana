@@ -600,7 +600,7 @@ mod test {
         let key_storage = Arc::new(key_storage);
         key_provider
             .expect_get_key_storage()
-            .returning(move |_| Some(key_storage.clone()));
+            .returning(move |_| Ok(key_storage.clone()));
 
         KeyProviderSetup {
             mock: key_provider,

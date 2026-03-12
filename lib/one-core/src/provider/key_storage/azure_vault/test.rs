@@ -13,22 +13,22 @@ use wiremock::matchers::{
 };
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
+use super::AzureVaultKeyProvider;
 use super::dto::AzureHsmGetTokenResponse;
-use super::{AzureVaultKeyProvider, Params};
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::Key;
 use crate::proto::http_client::reqwest_client::ReqwestClient;
 use crate::provider::key_storage::KeyStorage;
 use crate::provider::key_storage::error::KeyStorageError;
 
-fn get_params(mock_base_url: String) -> Params {
-    Params {
-        ad_tenant_id: Default::default(),
-        client_id: Default::default(),
-        client_secret: "secret".to_string(),
-        oauth_service_url: mock_base_url.parse().unwrap(),
-        vault_url: mock_base_url.parse().unwrap(),
-    }
+fn get_params(mock_base_url: String) -> serde_json::Value {
+    json!({
+        "clientId": "00000000-0000-0000-0000-000000000000",
+        "clientSecret": "secret",
+        "adTenantId": "00000000-0000-0000-0000-000000000000",
+        "oauthServiceUrl": mock_base_url,
+        "vaultUrl": mock_base_url,
+    })
 }
 
 async fn get_token_mock(mock_server: &MockServer, expires_in: i64, expect: u64) {
@@ -160,10 +160,12 @@ async fn test_azure_vault_generate() {
     generate_key_mock(&mock_server, 2).await;
 
     let vault = AzureVaultKeyProvider::new(
+        "azure_vault",
         get_params(mock_server.uri()),
         get_crypto(vec![]),
         Arc::new(ReqwestClient::default()),
-    );
+    )
+    .unwrap();
     vault
         .generate(Uuid::new_v4().into(), KeyAlgorithmType::Ecdsa)
         .await
@@ -182,10 +184,12 @@ async fn test_azure_vault_generate_expired_key_causes_second_token_request() {
     generate_key_mock(&mock_server, 2).await;
 
     let vault = AzureVaultKeyProvider::new(
+        "azure_vault",
         get_params(mock_server.uri()),
         get_crypto(vec![]),
         Arc::new(ReqwestClient::default()),
-    );
+    )
+    .unwrap();
     vault
         .generate(Uuid::new_v4().into(), KeyAlgorithmType::Ecdsa)
         .await
@@ -199,10 +203,12 @@ async fn test_azure_vault_generate_expired_key_causes_second_token_request() {
 #[tokio::test]
 async fn test_azure_vault_generate_failed_unsupported_key_type() {
     let vault = AzureVaultKeyProvider::new(
+        "azure_vault",
         get_params("http://127.0.0.1".to_string()),
         get_crypto(vec![]),
         Arc::new(ReqwestClient::default()),
-    );
+    )
+    .unwrap();
     let result = vault
         .generate(Uuid::new_v4().into(), KeyAlgorithmType::MlDsa)
         .await;
@@ -227,10 +233,12 @@ async fn test_azure_vault_sign() {
     let key_reference = format!("{}/keys/uuid/keyid", mock_server.uri());
 
     let vault = AzureVaultKeyProvider::new(
+        "azure_vault",
         get_params(mock_server.uri()),
         get_crypto(vec![("sha-256".to_string(), Arc::new(hasher_mock))]),
         Arc::new(ReqwestClient::default()),
-    );
+    )
+    .unwrap();
     let key_handle = vault
         .key_handle(&Key {
             id: Uuid::new_v4().into(),
@@ -257,10 +265,12 @@ async fn test_azure_vault_import() {
     import_key_mock(&mock_server, 1).await;
 
     let vault = AzureVaultKeyProvider::new(
+        "azure_vault",
         get_params(mock_server.uri()),
         get_crypto(vec![]),
         Arc::new(ReqwestClient::default()),
-    );
+    )
+    .unwrap();
 
     vault
         .import(
@@ -282,10 +292,12 @@ async fn test_azure_vault_import() {
 #[tokio::test]
 async fn test_azure_vault_import_unsupported_key_type() {
     let vault = AzureVaultKeyProvider::new(
+        "azure_vault",
         get_params("http://127.0.0.1".to_string()),
         get_crypto(vec![]),
         Arc::new(ReqwestClient::default()),
-    );
+    )
+    .unwrap();
 
     let result = vault
         .import(
@@ -310,10 +322,12 @@ async fn test_azure_vault_import_unsupported_key_type() {
 #[tokio::test]
 async fn test_azure_vault_import_jwk_invalid_key_type() {
     let vault = AzureVaultKeyProvider::new(
+        "azure_vault",
         get_params("http://127.0.0.1".to_string()),
         get_crypto(vec![]),
         Arc::new(ReqwestClient::default()),
-    );
+    )
+    .unwrap();
 
     let result = vault
         .import(

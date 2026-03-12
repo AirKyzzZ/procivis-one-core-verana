@@ -8,6 +8,7 @@ use coset::{CoseKey, iana};
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use one_crypto::Signer;
 use one_crypto::signer::ml_dsa::MlDsaSigner;
+use proc_macros::Provider;
 use secrecy::{ExposeSecret, SecretSlice};
 use standardized_types::jwk::{JwkUse, PrivateJwk, PublicJwk, PublicJwkAkp};
 
@@ -20,16 +21,13 @@ use crate::provider::key_algorithm::key::{
 };
 use crate::provider::key_algorithm::model::{GeneratedKey, KeyAlgorithmCapabilities};
 
+#[derive(Provider)]
 pub struct MlDsa;
 
 #[cfg(test)]
 mod test;
 
 impl KeyAlgorithm for MlDsa {
-    fn algorithm_id(&self) -> String {
-        "ML-DSA-65".to_string()
-    }
-
     fn algorithm_type(&self) -> KeyAlgorithmType {
         KeyAlgorithmType::MlDsa
     }

@@ -365,7 +365,7 @@ fn setup_key_agreement_mocks(
     let arc = Arc::new(key_storage);
     key_provider
         .expect_get_key_storage()
-        .returning(move |_| Some(arc.clone()));
+        .returning(move |_| Ok(arc.clone()));
 
     let mut key_algorithm = MockKeyAlgorithm::new();
     key_algorithm

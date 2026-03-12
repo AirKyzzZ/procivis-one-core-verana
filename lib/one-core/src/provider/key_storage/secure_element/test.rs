@@ -5,17 +5,17 @@ use similar_asserts::assert_eq;
 use standardized_types::jwk::{PrivateJwk, PrivateJwkEc};
 use uuid::Uuid;
 
-use super::{MockNativeKeyStorage, Params, SecureElementKeyProvider};
+use super::{MockNativeKeyStorage, SecureElementKeyProvider};
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::Key;
 use crate::provider::key_storage::KeyStorage;
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::key_storage::model::StorageGeneratedKey;
 
-fn get_params() -> Params {
-    Params {
-        alias_prefix: "prefix".to_string(),
-    }
+fn get_params() -> serde_json::Value {
+    serde_json::json!({
+        "aliasPrefix": "prefix".to_string(),
+    })
 }
 
 #[tokio::test]
@@ -34,7 +34,8 @@ async fn test_generate_success() {
             })
         });
 
-    let provider = SecureElementKeyProvider::new(Arc::new(native_storage), get_params());
+    let provider =
+        SecureElementKeyProvider::new("test", Arc::new(native_storage), get_params()).unwrap();
 
     let result = provider
         .generate(key_id.into(), KeyAlgorithmType::Ecdsa)
@@ -42,20 +43,6 @@ async fn test_generate_success() {
         .unwrap();
     assert_eq!(result.public_key, b"public_key");
     assert_eq!(result.key_reference, Some(b"key_reference".to_vec()));
-}
-
-#[tokio::test]
-async fn test_generate_invalid_key_type() {
-    let provider =
-        SecureElementKeyProvider::new(Arc::new(MockNativeKeyStorage::default()), get_params());
-
-    let result = provider
-        .generate(Uuid::new_v4().into(), KeyAlgorithmType::MlDsa)
-        .await;
-    assert!(matches!(
-        result,
-        Err(KeyStorageError::UnsupportedKeyType { .. })
-    ));
 }
 
 #[tokio::test]
@@ -67,7 +54,8 @@ async fn test_sign_success() {
         .with(eq(b"key_reference".to_vec()), eq(b"message".to_vec()))
         .return_once(|_, _| Ok(b"signature".into()));
 
-    let provider = SecureElementKeyProvider::new(Arc::new(native_storage), get_params());
+    let provider =
+        SecureElementKeyProvider::new("test", Arc::new(native_storage), get_params()).unwrap();
 
     let key_handle = provider
         .key_handle(&Key {
@@ -93,7 +81,8 @@ async fn test_import_failure() {
 
     let key_id = Uuid::new_v4();
 
-    let provider = SecureElementKeyProvider::new(Arc::new(native_storage), get_params());
+    let provider =
+        SecureElementKeyProvider::new("test", Arc::new(native_storage), get_params()).unwrap();
 
     let result = provider
         .import(

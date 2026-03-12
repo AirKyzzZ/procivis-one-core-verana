@@ -16,7 +16,6 @@ use crate::provider::caching_loader::{CachingLoader, ResolveResult, Resolver};
 use crate::provider::issuance_protocol::IssuanceProtocol;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::OpenID4VCIIssuerMetadataResponseDTO;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::provider::key_storage::error::KeyStorageProviderError;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::remote_entity_storage::db_storage::DbStorage;
 use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
@@ -173,9 +172,6 @@ impl CredentialIssuerMetadataResolver {
                 let key_handle = self
                     .key_provider
                     .get_key_storage(&key.storage_type)
-                    .ok_or(KeyStorageProviderError::InvalidKeyStorage(
-                        key.storage_type.clone(),
-                    ))
                     .error_while("getting key storage")?
                     .key_handle(key)
                     .error_while("getting key storage")?;

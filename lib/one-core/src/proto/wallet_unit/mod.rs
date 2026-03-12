@@ -153,9 +153,6 @@ impl HolderWalletUnitProtoImpl {
         let key_storage = self
             .key_provider
             .get_key_storage(&key.storage_type)
-            .ok_or(MissingProviderError::KeyStorage(
-                key.storage_type.to_string(),
-            ))
             .error_while("getting key storage")?;
 
         let key_handle = key_storage

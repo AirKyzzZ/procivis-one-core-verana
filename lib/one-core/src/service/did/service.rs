@@ -368,9 +368,7 @@ pub(crate) async fn generate_update_key(
     let key_storage_type = KeyStorageType::Internal;
     let key_storage = key_provider
         .get_key_storage(key_storage_type.as_ref())
-        .ok_or(DidServiceError::InvalidKeyStorage(
-            key_storage_type.to_string(),
-        ))?;
+        .error_while("getting key storage")?;
 
     let key_id = Uuid::new_v4().into();
     let key = key_storage

@@ -123,11 +123,10 @@ impl CsrCreator for CsrCreatorImpl {
     ) -> Result<String, CsrCreationError> {
         self.validate_key_algorithm_for_csr(&key)?;
 
-        let key_storage = self.key_provider.get_key_storage(&key.storage_type).ok_or(
-            CsrCreationError::MissingKeyStorageProvider {
-                key_storage: key.storage_type.clone(),
-            },
-        )?;
+        let key_storage = self
+            .key_provider
+            .get_key_storage(&key.storage_type)
+            .error_while("getting key storage")?;
         let signing_key =
             SigningKeyAdapter::new(key, key_storage, tokio::runtime::Handle::current())
                 .error_while("creating signing key adapter")?;

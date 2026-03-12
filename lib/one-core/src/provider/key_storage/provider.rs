@@ -1,20 +1,16 @@
 //! Key storage provider.
 
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use one_crypto::CryptoProvider;
-use serde_json::json;
 
 use super::KeyStorage;
 use super::azure_vault::AzureVaultKeyProvider;
-use super::error::KeyStorageProviderError;
 use super::internal::InternalKeyProvider;
-use super::pkcs11::PKCS11KeyProvider;
 use super::remote_secure_element::RemoteSecureElementKeyProvider;
 use super::secure_element::{NativeKeyStorage, SecureElementKeyProvider};
 use crate::config::ConfigValidationError;
-use crate::config::core_config::{CoreConfig, KeyAlgorithmType, KeyStorageType};
+use crate::config::core_config::{CoreConfig, Fields, KeyAlgorithmType, KeyStorageType};
 use crate::error::ContextWithErrorCode;
 use crate::model::key::Key;
 use crate::proto::http_client::HttpClient;
@@ -22,24 +18,27 @@ use crate::provider::credential_formatter::model::{AuthenticationFn, SignaturePr
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::provider_directory::{
+    InitializationError, ProviderDirectory, ProviderDirectoryError,
+};
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 pub trait KeyProvider: Send + Sync {
-    fn get_key_storage(&self, key_provider_id: &str) -> Option<Arc<dyn KeyStorage>>;
+    fn get_key_storage(
+        &self,
+        key_provider_id: &str,
+    ) -> Result<Arc<dyn KeyStorage>, ProviderDirectoryError>;
 
     fn get_signature_provider(
         &self,
         key: &Key,
         jwk_key_id: Option<String>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-    ) -> Result<AuthenticationFn, KeyStorageProviderError> {
+    ) -> Result<AuthenticationFn, ProviderDirectoryError> {
         let key_handle = self
-            .get_key_storage(&key.storage_type)
-            .ok_or(KeyStorageProviderError::InvalidKeyStorage(
-                key.storage_type.clone(),
-            ))?
+            .get_key_storage(&key.storage_type)?
             .key_handle(key)
-            .error_while("getting key storage")?;
+            .error_while("getting key handle")?;
 
         Ok(Box::new(SignatureProviderImpl {
             key: key.to_owned(),
@@ -54,10 +53,8 @@ pub trait KeyProvider: Send + Sync {
         key: &Key,
         jwk_key_id: Option<String>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-    ) -> Result<AuthenticationFn, KeyStorageProviderError> {
-        let key_storage = self.get_key_storage(&key.storage_type).ok_or(
-            KeyStorageProviderError::InvalidKeyStorage(key.storage_type.clone()),
-        )?;
+    ) -> Result<AuthenticationFn, ProviderDirectoryError> {
+        let key_storage = self.get_key_storage(&key.storage_type)?;
 
         Ok(Box::new(AttestationSignatureProvider {
             key: key.to_owned(),
@@ -68,13 +65,12 @@ pub trait KeyProvider: Send + Sync {
     }
 }
 
-struct KeyProviderImpl {
-    storages: HashMap<String, Arc<dyn KeyStorage>>,
-}
-
-impl KeyProvider for KeyProviderImpl {
-    fn get_key_storage(&self, format: &str) -> Option<Arc<dyn KeyStorage>> {
-        self.storages.get(format).cloned()
+impl KeyProvider for ProviderDirectory<String, Fields<KeyStorageType>, dyn KeyStorage> {
+    fn get_key_storage(
+        &self,
+        key_provider_id: &str,
+    ) -> Result<Arc<dyn KeyStorage>, ProviderDirectoryError> {
+        self.provider(key_provider_id)
     }
 }
 
@@ -160,51 +156,65 @@ pub(crate) fn key_provider_from_config(
     native_secure_element: Option<Arc<dyn NativeKeyStorage>>,
     remote_secure_element: Option<Arc<dyn NativeKeyStorage>>,
 ) -> Result<Arc<dyn KeyProvider>, ConfigValidationError> {
-    let mut storages: HashMap<String, Arc<dyn KeyStorage>> = HashMap::new();
+    let initializer = move |name: &str, field: &Fields<KeyStorageType>| {
+        initialize_provider(
+            name,
+            field,
+            key_algorithm_provider.clone(),
+            crypto.clone(),
+            client.clone(),
+            native_secure_element.clone(),
+            remote_secure_element.clone(),
+        )
+    };
+    let directory = ProviderDirectory::initialize(config.key_storage.iter_mut(), initializer)
+        .error_while("initializing key storage providers")?;
+    Ok(Arc::new(directory))
+}
 
-    for (name, field) in config.key_storage.iter() {
-        let storage: Arc<dyn KeyStorage> =
-            match field.r#type {
-                KeyStorageType::Internal => {
-                    let params = config.key_storage.get(name)?;
-                    Arc::new(InternalKeyProvider::new(
-                        key_algorithm_provider.clone(),
-                        params,
-                    ))
-                }
-                KeyStorageType::PKCS11 => Arc::new(PKCS11KeyProvider::new()),
-                KeyStorageType::AzureVault => {
-                    let params = config.key_storage.get(name)?;
-                    Arc::new(AzureVaultKeyProvider::new(
-                        params,
-                        crypto.clone(),
-                        client.clone(),
-                    ))
-                }
-                KeyStorageType::SecureElement => {
-                    let native_storage = native_secure_element.clone().ok_or(
-                        ConfigValidationError::EntryNotFound("native key provider".to_string()),
-                    )?;
-                    let params = config.key_storage.get(name)?;
-                    Arc::new(SecureElementKeyProvider::new(native_storage, params))
-                }
-                KeyStorageType::RemoteSecureElement => {
-                    let native_storage = remote_secure_element.clone().ok_or(
-                        ConfigValidationError::EntryNotFound(
-                            "native remote key provider".to_string(),
-                        ),
-                    )?;
-                    Arc::new(RemoteSecureElementKeyProvider::new(native_storage))
-                }
-            };
-        storages.insert(name.to_owned(), storage);
-    }
-
-    for (key, value) in config.key_storage.iter_mut() {
-        if let Some(entity) = storages.get(key) {
-            value.capabilities = Some(json!(entity.get_capabilities()));
+fn initialize_provider(
+    name: &str,
+    field: &Fields<KeyStorageType>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    crypto: Arc<dyn CryptoProvider>,
+    client: Arc<dyn HttpClient>,
+    native_secure_element: Option<Arc<dyn NativeKeyStorage>>,
+    remote_secure_element: Option<Arc<dyn NativeKeyStorage>>,
+) -> Result<Arc<dyn KeyStorage>, InitializationError> {
+    let provider: Arc<dyn KeyStorage> = match field.r#type {
+        KeyStorageType::Internal => Arc::new(InternalKeyProvider::new(
+            name,
+            key_algorithm_provider.clone(),
+            field.merge_fields(),
+        )?),
+        KeyStorageType::AzureVault => Arc::new(AzureVaultKeyProvider::new(
+            name,
+            field.merge_fields(),
+            crypto.clone(),
+            client.clone(),
+        )?),
+        KeyStorageType::SecureElement => {
+            let native_storage =
+                native_secure_element
+                    .clone()
+                    .ok_or(InitializationError::MissingDependency(
+                        "native key provider".to_string(),
+                    ))?;
+            Arc::new(SecureElementKeyProvider::new(
+                name,
+                native_storage,
+                field.merge_fields(),
+            )?)
         }
-    }
-
-    Ok(Arc::new(KeyProviderImpl { storages }))
+        KeyStorageType::RemoteSecureElement => {
+            let native_storage =
+                remote_secure_element
+                    .clone()
+                    .ok_or(InitializationError::MissingDependency(
+                        "native remote key provider".to_string(),
+                    ))?;
+            Arc::new(RemoteSecureElementKeyProvider::new(name, native_storage))
+        }
+    };
+    Ok(provider)
 }

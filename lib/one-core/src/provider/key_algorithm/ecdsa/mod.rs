@@ -10,6 +10,7 @@ use one_crypto::Signer;
 use one_crypto::encryption::EncryptionError;
 use one_crypto::jwe::PrivateKeyAgreementHandle;
 use one_crypto::signer::ecdsa::ECDSASigner;
+use proc_macros::Provider;
 use secrecy::{ExposeSecret, SecretSlice};
 use standardized_types::jwk::{JwkUse, PrivateJwk, PublicJwk, PublicJwkEc};
 
@@ -22,16 +23,13 @@ use crate::provider::key_algorithm::key::{
 use crate::provider::key_algorithm::model::{Features, GeneratedKey, KeyAlgorithmCapabilities};
 use crate::provider::key_algorithm::{KeyAlgorithm, parse_multibase_with_tag};
 
+#[derive(Provider)]
 pub struct Ecdsa;
 
 #[cfg(test)]
 mod test;
 
 impl KeyAlgorithm for Ecdsa {
-    fn algorithm_id(&self) -> String {
-        "ECDSA".to_string()
-    }
-
     fn algorithm_type(&self) -> KeyAlgorithmType {
         KeyAlgorithmType::Ecdsa
     }

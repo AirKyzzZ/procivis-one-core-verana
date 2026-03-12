@@ -906,6 +906,18 @@ pub enum ErrorCode {
 
     #[strum(message = "History entry has invalid metadata type")]
     BR_0427,
+
+    #[strum(message = "Missing provider dependency")]
+    BR_0428,
+
+    #[strum(message = "Invalid provider params")]
+    BR_0429,
+
+    #[strum(message = "Missing provider")]
+    BR_0430,
+
+    #[strum(message = "Provider is disabled")]
+    BR_0431,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

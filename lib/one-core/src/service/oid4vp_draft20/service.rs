@@ -506,7 +506,6 @@ impl OID4VPDraft20Service {
                 let key_storage = self
                     .key_provider
                     .get_key_storage(&key.storage_type)
-                    .ok_or_else(|| MissingProviderError::KeyStorage(key.storage_type.clone()))
                     .error_while("getting key storage")?;
 
                 let key = key_storage

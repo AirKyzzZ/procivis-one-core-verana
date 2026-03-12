@@ -58,7 +58,7 @@ impl KeyService {
     pub async fn create_key(&self, request: KeyRequestDTO) -> Result<KeyId, KeyServiceError> {
         throw_if_org_id_not_matching_session(&request.organisation_id, &*self.session_provider)
             .error_while("validating organisation")?;
-        validate_generate_request(&request.key_type, &request.storage_type, &self.config)?;
+        validate_generate_request(&request.key_type, &*self.key_algorithm_provider)?;
 
         let organisation = self
             .organisation_repository
@@ -81,9 +81,7 @@ impl KeyService {
         let provider = self
             .key_provider
             .get_key_storage(&request.storage_type)
-            .ok_or(KeyServiceError::InvalidKeyStorage(
-                request.storage_type.to_string(),
-            ))?;
+            .error_while("getting key storage")?;
 
         let key_type = KeyAlgorithmType::from_str(&request.key_type)
             .map_err(|_| KeyServiceError::InvalidKeyAlgorithm(request.key_type.to_string()))?;

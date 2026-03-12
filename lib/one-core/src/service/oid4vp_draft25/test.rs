@@ -682,7 +682,7 @@ async fn test_get_client_metadata_success() {
                 algorithms: vec![],
             });
 
-        Some(Arc::new(key_storage))
+        Ok(Arc::new(key_storage))
     });
     let service = setup_service(Mocks {
         key_algorithm_provider,

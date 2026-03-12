@@ -12,7 +12,6 @@ use crate::provider::did_method::webvh::deserialize::DidMethodVersion;
 use crate::provider::did_method::webvh::serialize::DidLogEntry;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_storage::provider::KeyProvider;
-use crate::service::error::MissingProviderError;
 
 pub(super) const CRYPTOSUITE: &str = "eddsa-jcs-2022";
 
@@ -74,9 +73,6 @@ pub(crate) fn make_keyref(
 ) -> Result<KeyRef, DidMethodError> {
     let storage = key_provider
         .get_key_storage(&key.storage_type)
-        .ok_or(MissingProviderError::KeyStorage(
-            key.storage_type.to_string(),
-        ))
         .error_while("getting key storage")?;
 
     let key_handle = storage.key_handle(key).error_while("getting key handle")?;

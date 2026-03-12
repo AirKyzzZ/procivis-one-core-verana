@@ -724,7 +724,7 @@ impl OneCore {
                 data_provider.get_key_repository(),
                 data_provider.get_organisation_repository(),
                 key_provider.clone(),
-                config.clone(),
+                key_algorithm_provider.clone(),
                 data_provider.get_history_repository(),
                 session_provider.clone(),
                 csr_creator,

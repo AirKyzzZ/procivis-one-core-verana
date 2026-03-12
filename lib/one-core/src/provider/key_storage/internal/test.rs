@@ -3,6 +3,7 @@ use std::sync::Arc;
 use mockall::predicate;
 use mockall::predicate::{always, eq};
 use secrecy::{ExposeSecret, SecretSlice};
+use serde_json::json;
 use similar_asserts::assert_eq;
 use standardized_types::jwk::{PrivateJwk, PrivateJwkEc};
 use uuid::Uuid;
@@ -18,7 +19,6 @@ use crate::provider::key_algorithm::model::GeneratedKey;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::KeyStorage;
 use crate::provider::key_storage::error::KeyStorageError;
-use crate::provider::key_storage::internal::Params;
 
 #[tokio::test]
 async fn test_internal_generate_with_encryption() {
@@ -43,11 +43,13 @@ async fn test_internal_generate_with_encryption() {
         .returning(move |_| Some(arc.clone()));
 
     let provider = InternalKeyProvider::new(
+        "Internal",
         Arc::new(mock_key_algorithm_provider),
-        Params {
-            encryption: SecretSlice::from(vec![0; 32]),
-        },
-    );
+        json!({
+            "encryption": "0000000000000000000000000000000000000000000000000000000000000000"
+        }),
+    )
+    .unwrap();
 
     let result = provider
         .generate(Uuid::new_v4().into(), KeyAlgorithmType::Eddsa)
@@ -118,11 +120,13 @@ async fn test_internal_sign_with_encryption() {
         .returning(move |_| Some(arc_key_algorithm.clone()));
 
     let provider = InternalKeyProvider::new(
+        "test",
         Arc::new(mock_key_algorithm_provider),
-        Params {
-            encryption: SecretSlice::from(vec![0; 32]),
-        },
-    );
+        json!({
+            "encryption": "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e"
+        }),
+    )
+    .unwrap();
 
     let generated_key = provider
         .generate(Uuid::new_v4().into(), KeyAlgorithmType::Eddsa)
@@ -171,11 +175,13 @@ async fn test_internal_import() {
         .returning(move |_| Some(arc.clone()));
 
     let provider = InternalKeyProvider::new(
+        "test",
         Arc::new(mock_key_algorithm_provider),
-        Params {
-            encryption: SecretSlice::from(vec![0; 32]),
-        },
-    );
+        json!({
+            "encryption": "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e"
+        }),
+    )
+    .unwrap();
 
     provider
         .import(
@@ -199,11 +205,13 @@ async fn test_internal_import_jwk_invalid_key_type() {
     let mock_key_algorithm_provider = MockKeyAlgorithmProvider::default();
 
     let provider = InternalKeyProvider::new(
+        "test",
         Arc::new(mock_key_algorithm_provider),
-        Params {
-            encryption: SecretSlice::from(vec![0; 32]),
-        },
-    );
+        json!({
+            "encryption": "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e"
+        }),
+    )
+    .unwrap();
 
     let result = provider
         .import(

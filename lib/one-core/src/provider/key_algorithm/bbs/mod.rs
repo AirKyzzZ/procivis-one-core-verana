@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use one_crypto::signer::bbs::{BBSSigner, BbsDeriveInput, BbsProofInput};
+use proc_macros::Provider;
 use secrecy::{ExposeSecret, SecretSlice, SecretString};
 use standardized_types::jwk::{JwkUse, PrivateJwk, PublicJwk, PublicJwkEc};
 
@@ -16,16 +17,13 @@ use crate::provider::key_algorithm::key::{
 use crate::provider::key_algorithm::model::{GeneratedKey, KeyAlgorithmCapabilities};
 use crate::provider::key_algorithm::{KeyAlgorithm, parse_multibase_with_tag};
 
+#[derive(Provider)]
 pub struct BBS;
 
 #[cfg(test)]
 mod test;
 
 impl KeyAlgorithm for BBS {
-    fn algorithm_id(&self) -> String {
-        "BBS".to_string()
-    }
-
     fn algorithm_type(&self) -> KeyAlgorithmType {
         KeyAlgorithmType::BbsPlus
     }

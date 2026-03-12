@@ -2,7 +2,7 @@ use shared_types::{RevocationMethodId, TaskId};
 use strum::Display;
 
 use self::validator::datatype::DatatypeValidationError;
-use crate::error::{ErrorCode, ErrorCodeMixin};
+use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 use crate::provider::data_type::model::ValueType;
 
 pub mod validator;
@@ -73,6 +73,8 @@ pub enum ConfigValidationError {
     MultipleFallbackProviders { value_type: ValueType },
     #[error("Missing base url")]
     MissingBaseUrl,
+    #[error(transparent)]
+    Nested(#[from] NestedError),
 }
 
 impl ErrorCodeMixin for ConfigValidationError {
@@ -87,6 +89,7 @@ impl ErrorCodeMixin for ConfigValidationError {
             | Self::MultipleFallbackProviders { .. }
             | Self::MissingBaseUrl => ErrorCode::BR_0051,
             Self::IncompatibleReferencedProvider { .. } => ErrorCode::BR_0328,
+            Self::Nested(nested) => nested.error_code(),
         }
     }
 }

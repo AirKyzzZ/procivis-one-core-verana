@@ -101,9 +101,9 @@ pub(super) fn signing_key_adapter(
     key: Key,
     key_provider: &dyn KeyProvider,
 ) -> Result<SigningKeyAdapter, SignerError> {
-    let key_storage = key_provider.get_key_storage(&key.storage_type).ok_or(
-        SignerError::MissingKeyStorageProvider(key.storage_type.to_owned()),
-    )?;
+    let key_storage = key_provider
+        .get_key_storage(&key.storage_type)
+        .error_while("getting key storage")?;
     SigningKeyAdapter::new(key, key_storage, tokio::runtime::Handle::current())
         .error_while("creating signing key adapter")
         .map_err(Into::into)

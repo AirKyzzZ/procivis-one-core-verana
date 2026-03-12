@@ -3,6 +3,7 @@ use std::sync::Arc;
 use coset::CoseKey;
 use one_crypto::signer::ecdsa::ECDSASigner;
 use one_crypto::{Signer, SignerError};
+use proc_macros::Provider;
 use serde::Deserialize;
 use shared_types::KeyId;
 use standardized_types::jwk::{PrivateJwk, PublicJwk};
@@ -20,6 +21,7 @@ use crate::provider::key_algorithm::key::{
 use crate::provider::key_storage::KeyStorage;
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::key_storage::model::{Features, KeyStorageCapabilities, StorageGeneratedKey};
+use crate::provider::provider_directory::InitializationError;
 
 #[cfg_attr(test, mockall::automock)]
 #[async_trait::async_trait]
@@ -44,9 +46,11 @@ pub trait NativeKeyStorage: Send + Sync {
     ) -> Result<Vec<u8>, KeyStorageError>;
 }
 
+#[derive(Provider)]
 pub struct SecureElementKeyProvider {
     native_storage: Arc<dyn NativeKeyStorage>,
     params: Params,
+    name: String,
 }
 
 #[derive(Deserialize)]
@@ -63,18 +67,15 @@ impl KeyStorage for SecureElementKeyProvider {
             features: vec![Features::Attestation],
         }
     }
+    fn config_name(&self) -> String {
+        self.name.clone()
+    }
 
     async fn generate(
         &self,
         key_id: KeyId,
-        key_type: KeyAlgorithmType,
+        _key_type: KeyAlgorithmType,
     ) -> Result<StorageGeneratedKey, KeyStorageError> {
-        if key_type != KeyAlgorithmType::Ecdsa {
-            return Err(KeyStorageError::UnsupportedKeyType {
-                key_type: key_type.to_string(),
-            });
-        }
-
         let key_alias = format!("{}.{}", self.params.alias_prefix, key_id);
         self.native_storage.generate_key(key_alias).await
     }
@@ -154,11 +155,21 @@ impl KeyStorage for SecureElementKeyProvider {
 }
 
 impl SecureElementKeyProvider {
-    pub fn new(native_storage: Arc<dyn NativeKeyStorage>, params: Params) -> Self {
-        SecureElementKeyProvider {
+    pub fn new(
+        name: &str,
+        native_storage: Arc<dyn NativeKeyStorage>,
+        params: serde_json::Value,
+    ) -> Result<Self, InitializationError> {
+        let params: Params =
+            serde_json::from_value(params).map_err(|err| InitializationError::InvalidParams {
+                key: name.to_string(),
+                source: err,
+            })?;
+        Ok(SecureElementKeyProvider {
             native_storage,
             params,
-        }
+            name: name.to_string(),
+        })
     }
 }
 
