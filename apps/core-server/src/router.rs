@@ -246,6 +246,10 @@ fn get_management_endpoints(
                 post(credential::controller::share_credential),
             )
             .route(
+                "/api/credential/v1/{id}/trust-detail",
+                get(credential::controller::get_credential_trust_detail),
+            )
+            .route(
                 "/api/credential/v1/revocation-check",
                 post(credential::controller::credential_revocation_check),
             )

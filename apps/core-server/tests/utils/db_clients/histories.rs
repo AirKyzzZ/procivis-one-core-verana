@@ -8,7 +8,7 @@ use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::list_query::ListPagination;
 use one_core::model::organisation::Organisation;
 use one_core::repository::history_repository::HistoryRepository;
-use shared_types::{EntityId, HistoryId};
+use shared_types::{BlobId, EntityId, HistoryId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -20,6 +20,7 @@ pub struct TestingHistoryParams {
     pub entity_id: Option<EntityId>,
     pub entity_type: Option<HistoryEntityType>,
     pub metadata: Option<HistoryMetadata>,
+    pub metadata_blob_id: Option<BlobId>,
     pub name: Option<String>,
     pub source: Option<HistorySource>,
     pub target: Option<String>,
@@ -55,7 +56,7 @@ impl HistoriesDB {
             source: params.source.unwrap_or(HistorySource::Core),
             target: params.target,
             user: params.user,
-            metadata_blob_id: None,
+            metadata_blob_id: params.metadata_blob_id,
         };
 
         self.repository

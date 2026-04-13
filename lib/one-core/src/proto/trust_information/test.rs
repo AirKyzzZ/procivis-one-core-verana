@@ -10,6 +10,7 @@ use crate::model::history::{
 };
 use crate::proto::trust_information::TrustInformationProvider;
 use crate::proto::trust_information::provider::TrustInformationProviderImpl;
+use crate::provider::blob_storage_provider::MockBlobStorageProvider;
 use crate::repository::history_repository::MockHistoryRepository;
 
 fn dummy_history(action: HistoryAction, metadata: Option<HistoryMetadata>) -> History {
@@ -36,6 +37,13 @@ fn rp_metadata(name: &str) -> HistoryMetadata {
     })
 }
 
+fn provider(history_repository: MockHistoryRepository) -> TrustInformationProviderImpl {
+    TrustInformationProviderImpl::new(
+        Arc::new(history_repository),
+        Arc::new(MockBlobStorageProvider::new()),
+    )
+}
+
 #[tokio::test]
 async fn test_find_trust_information_by_credential_id_success_rc() {
     let mut history_repository = MockHistoryRepository::new();
@@ -56,7 +64,7 @@ async fn test_find_trust_information_by_credential_id_success_rc() {
             })
         });
 
-    let provider = TrustInformationProviderImpl::new(Arc::new(history_repository));
+    let provider = provider(history_repository);
     let result = provider
         .get_trust_information_by_credential_id(credential_id)
         .await
@@ -87,7 +95,7 @@ async fn test_find_trust_information_by_credential_id_success_nr() {
             })
         });
 
-    let provider = TrustInformationProviderImpl::new(Arc::new(history_repository));
+    let provider = provider(history_repository);
     let result = provider
         .get_trust_information_by_credential_id(credential_id)
         .await
@@ -114,7 +122,7 @@ async fn test_find_trust_information_none_when_empty() {
             })
         });
 
-    let provider = TrustInformationProviderImpl::new(Arc::new(history_repository));
+    let provider = provider(history_repository);
     let result = provider
         .get_trust_information_by_credential_id(credential_id)
         .await
@@ -139,7 +147,7 @@ async fn test_find_trust_information_error_missing_metadata() {
             })
         });
 
-    let provider = TrustInformationProviderImpl::new(Arc::new(history_repository));
+    let provider = provider(history_repository);
     let result = provider
         .get_trust_information_by_credential_id(credential_id)
         .await;
@@ -166,7 +174,7 @@ async fn test_find_trust_information_error_invalid_metadata_type() {
             })
         });
 
-    let provider = TrustInformationProviderImpl::new(Arc::new(history_repository));
+    let provider = provider(history_repository);
     let result = provider
         .get_trust_information_by_credential_id(credential_id)
         .await;

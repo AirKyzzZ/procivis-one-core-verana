@@ -404,14 +404,15 @@ impl OneCore {
             data_provider.get_tx_manager(),
         ));
 
-        let trust_information_provider = Arc::new(TrustInformationProviderImpl::new(
-            data_provider.get_history_repository(),
-        ));
-
         let blob_storage_provider = blob_storage_provider_from_config(
             &config.blob_storage,
             data_provider.get_blob_repository(),
         );
+
+        let trust_information_provider = Arc::new(TrustInformationProviderImpl::new(
+            data_provider.get_history_repository(),
+            blob_storage_provider.clone(),
+        ));
 
         let key_security_level_provider = key_security_level_provider_from_config(&mut config)?;
 

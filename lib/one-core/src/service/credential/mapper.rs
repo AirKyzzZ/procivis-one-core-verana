@@ -8,9 +8,11 @@ use uuid::Uuid;
 use super::dto::{
     CreateCredentialRequestDTO, CredentialAttestationBlobs, CredentialDetailResponseDTO,
     CredentialFilterParamsDTO, CredentialListItemResponseDTO, CredentialRequestClaimDTO,
-    CredentialSearchTypeDTO, DetailCredentialClaimResponseDTO,
-    DetailCredentialClaimValueResponseDTO, DetailCredentialSchemaResponseDTO,
-    MdocMsoValidityResponseDTO, WalletInstanceAttestationDTO, WalletUnitAttestationDTO,
+    CredentialSearchTypeDTO, CredentialTrustInformationResponseDTO,
+    DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO,
+    DetailCredentialSchemaResponseDTO, EudiIntermediaryResponseDTO,
+    EudiTrustInformationResponseDTO, MdocMsoValidityResponseDTO, WalletInstanceAttestationDTO,
+    WalletUnitAttestationDTO,
 };
 use super::error::CredentialServiceError;
 use crate::config::core_config::{CoreConfig, DatatypeType};
@@ -32,8 +34,12 @@ use crate::model::list_filter::{
     ValueComparison,
 };
 use crate::model::validity_credential::ValidityCredential;
+use crate::proto::jwt::model::JWTPayload;
+use crate::proto::trust_information::TrustDetails;
 use crate::proto::trust_information::dto::TrustInformationDTO;
 use crate::provider::credential_formatter::mdoc_formatter;
+use crate::provider::signer::registration_certificate::model::Payload;
+use crate::util::access_cert_parser::EtsiParsedAccessCert;
 
 pub(crate) fn credential_detail_response_from_model(
     value: Credential,
@@ -732,5 +738,81 @@ impl From<CredentialFilterParamsDTO> for ListFilterCondition<CredentialFilterVal
             & issuance_date_before
             & revocation_date_after
             & revocation_date_before
+    }
+}
+
+impl TryFrom<TrustDetails> for CredentialTrustInformationResponseDTO {
+    type Error = CredentialServiceError;
+
+    fn try_from(value: TrustDetails) -> Result<Self, Self::Error> {
+        let response = match value {
+            TrustDetails::Etsi {
+                access_certificate,
+                registration_certificate,
+            } => {
+                let (intermediary, email, phone) =
+                    map_access_cert(access_certificate, &registration_certificate);
+                CredentialTrustInformationResponseDTO {
+                    eudi_ecosystem: Some(EudiTrustInformationResponseDTO {
+                        name: registration_certificate.custom.name,
+                        website: registration_certificate.custom.support_uri,
+                        email,
+                        phone,
+                        country: registration_certificate.custom.country,
+                        identifier: registration_certificate.subject.ok_or(
+                            CredentialServiceError::MappingError(
+                                "Missing registration certificate subject".to_string(),
+                            ),
+                        )?,
+                        service_description: registration_certificate
+                            .custom
+                            .service_descriptions
+                            .into_iter()
+                            .map(|langs| {
+                                langs
+                                    .into_iter()
+                                    .map(|lang| (lang.lang, lang.value))
+                                    .collect()
+                            })
+                            .collect(),
+                        supervisory_authority: registration_certificate
+                            .custom
+                            .supervisory_authority,
+                        intermediary,
+                        is_public_sector: registration_certificate
+                            .custom
+                            .public_body
+                            .unwrap_or_default(),
+                    }),
+                }
+            }
+        };
+        Ok(response)
+    }
+}
+
+fn map_access_cert(
+    access_certificate: EtsiParsedAccessCert,
+    registration_certificate: &JWTPayload<Payload>,
+) -> (
+    Option<EudiIntermediaryResponseDTO>,
+    Option<String>,
+    Option<String>,
+) {
+    if registration_certificate.custom.intermediary.is_some() {
+        (
+            Some(EudiIntermediaryResponseDTO {
+                name: access_certificate.common_name,
+                identifier: access_certificate.rp_id,
+                website: access_certificate.support_uri.clone(),
+                email: access_certificate.email,
+                phone: access_certificate.phone,
+                country: access_certificate.country,
+            }),
+            None,
+            None,
+        )
+    } else {
+        (None, access_certificate.email, access_certificate.phone)
     }
 }

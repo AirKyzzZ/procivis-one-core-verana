@@ -5,8 +5,9 @@ use uuid::Uuid;
 use super::CredentialService;
 use super::dto::{
     CreateCredentialRequestDTO, CredentialAttestationBlobs, CredentialDetailResponseDTO,
-    CredentialRevocationCheckResponseDTO, DetailCredentialClaimResponseDTO,
-    GetCredentialListResponseDTO, ShareCredentialResponseDTO, SuspendCredentialRequestDTO,
+    CredentialRevocationCheckResponseDTO, CredentialTrustInformationResponseDTO,
+    DetailCredentialClaimResponseDTO, GetCredentialListResponseDTO, ShareCredentialResponseDTO,
+    SuspendCredentialRequestDTO,
 };
 use super::error::CredentialServiceError;
 use super::mapper::{
@@ -634,6 +635,40 @@ impl CredentialService {
             expires_at,
             transaction_code,
         })
+    }
+
+    pub async fn get_trust_details(
+        &self,
+        id: CredentialId,
+    ) -> Result<CredentialTrustInformationResponseDTO, CredentialServiceError> {
+        let credential = self
+            .credential_repository
+            .get_credential(
+                &id,
+                &CredentialRelations {
+                    schema: Some(CredentialSchemaRelations {
+                        organisation: Some(OrganisationRelations::default()),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+            )
+            .await
+            .error_while("getting credential")?;
+        let credential = credential.ok_or(CredentialServiceError::NotFound(id))?;
+        throw_if_credential_schema_not_in_session_org(&credential, &*self.session_provider)
+            .error_while("checking session")?;
+        let Some(trust_details) = self
+            .trust_information_provider
+            .get_trust_detail(&id.into())
+            .await
+            .error_while("getting trust details")?
+        else {
+            return Ok(CredentialTrustInformationResponseDTO {
+                eudi_ecosystem: None,
+            });
+        };
+        trust_details.try_into()
     }
 
     // ============ Private methods

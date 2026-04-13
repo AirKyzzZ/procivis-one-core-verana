@@ -218,6 +218,11 @@ impl CredentialsApi {
         self.client.get(&url).await
     }
 
+    pub async fn get_trust_detail(&self, id: &impl Display) -> Response {
+        let url = format!("/api/credential/v1/{id}/trust-detail");
+        self.client.get(&url).await
+    }
+
     pub async fn delete(&self, id: &impl Display) -> Response {
         let url = format!("/api/credential/v1/{id}");
         self.client.delete(&url).await

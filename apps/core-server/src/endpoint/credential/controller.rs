@@ -8,7 +8,8 @@ use shared_types::{CredentialId, Permission};
 
 use super::dto::{
     CredentialDetailClaimResponseRestDTO, CredentialRevocationCheckRequestRestDTO,
-    CredentialRevocationCheckResponseRestDTO, ShareCredentialResponseRestDTO,
+    CredentialRevocationCheckResponseRestDTO, CredentialTrustInformationResponseRestDTO,
+    ShareCredentialResponseRestDTO,
 };
 use crate::dto::common::{EntityResponseRestDTO, GetCredentialsResponseDTO};
 use crate::dto::error::ErrorResponseRestDTO;
@@ -321,4 +322,33 @@ pub(crate) async fn credential_revocation_check(
         .await;
 
     OkOrErrorResponse::from_result(result, state, "checking credentials")
+}
+
+#[endpoint(
+    permissions = [Permission::CredentialDetail],
+    get,
+    path = "/api/credential/v1/{id}/trust-detail",
+    responses(OkOrErrorResponse<CredentialTrustInformationResponseRestDTO>),
+    params(
+        ("id" = CredentialId, Path, description = "Credential id")
+    ),
+    tag = "credential_management",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "Retrieve credential trust detail",
+    description = "Returns detailed trust information about a credential issuer in the system.",
+)]
+pub(crate) async fn get_credential_trust_detail(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<CredentialId>, ErrorResponseRestDTO>,
+) -> OkOrErrorResponse<CredentialTrustInformationResponseRestDTO> {
+    let result = state
+        .core
+        .credential_service
+        .get_trust_details(id)
+        .await
+        .error_while("getting credential trust information")
+        .map_err(ServiceError::from);
+    OkOrErrorResponse::from_result(result, state, "getting credential trust information")
 }
