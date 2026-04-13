@@ -88,6 +88,8 @@ pub(crate) struct CreateIdentifierRequestRestDTO {
     /// or self-signed CA configuration.
     #[try_into(with_fn = convert_inner_of_inner, infallible)]
     pub certificate_authorities: Option<Vec<CreateCertificateAuthorityRequestRestDTO>>,
+    /// Trust information associated with this identifier, establishing
+    /// its standing within a particular trust ecosystem.
     #[serde(default)]
     #[try_into(with_fn = convert_inner, infallible)]
     pub trust_information: Vec<CreateIdentifierTrustInformationRequestRestDTO>,
@@ -98,7 +100,11 @@ pub(crate) struct CreateIdentifierRequestRestDTO {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[into(CreateIdentifierTrustInformationRequestDTO)]
 pub(crate) struct CreateIdentifierTrustInformationRequestRestDTO {
+    /// The trust data payload, formatted according to the specified type.
     pub data: String,
+    /// The type of trust information. Determines how `data` is interpreted.
+    /// Use `REGISTRATION_CERTIFICATE` to attach a EUDI Registration Certificate
+    /// for use with this identifier.
     pub r#type: IdentifierTrustInformationTypeRestEnum,
 }
 
@@ -142,6 +148,11 @@ pub(crate) struct CreateCertificateRequestRestDTO {
     /// and an existing CA to sign it. Use instead of `chain`.
     #[into(with_fn = convert_inner)]
     pub content: Option<CreateCertificateContentRestDTO>,
+    /// Roles assigned to the certificate, controlling how it is used in
+    /// credential interactions. Assign `ASSERTION_METHOD` to certificates
+    /// used for issuance, and `AUTHENTICATION` to certificates used for
+    /// verification or as EU Access Certificates.
+    /// Multiple roles may be assigned to a single certificate.
     #[into(with_fn = convert_inner)]
     pub roles: Vec<CertificateRoleRestEnum>,
 }
@@ -396,16 +407,27 @@ pub(crate) struct IdentifierFilterQueryParamsRestDTO {
     #[param(rename = "keyStorages[]", nullable = false)]
     #[try_into(infallible)]
     pub key_storages: Option<Vec<String>>,
+    /// Filter by certificate role. Returns identifiers containing at least
+    /// one certificate that matches the specified roles, evaluated according
+    /// to `certificateRolesMatchMode`.
     #[param(rename = "certificateRoles[]", nullable = false)]
     #[try_into(infallible, with_fn = convert_inner_of_inner)]
     pub certificate_roles: Option<Vec<CertificateRoleRestEnum>>,
+    /// Determines how `certificateRoles` is applied at the certificate level.
+    /// `ANY` returns identifiers with a certificate holding at least one of
+    /// the specified roles. `ALL` returns identifiers with a certificate
+    /// holding all of the specified roles.
     #[param(nullable = false)]
     #[try_into(infallible)]
     #[serde(default)]
     pub certificate_roles_match_mode: CertificateRolesMatchModeRestEnum,
+    /// Return only identifiers suitable for issuing with the provided
+    /// credential schema.
     #[param(nullable = false)]
     #[try_into(infallible)]
     pub trust_issuance_schema_id: Option<CredentialSchemaId>,
+    /// Return only identifiers suitable for requesting a proof with the
+    /// provided proof schema.
     #[param(nullable = false)]
     #[try_into(infallible)]
     pub trust_verification_schema_id: Option<ProofSchemaId>,
