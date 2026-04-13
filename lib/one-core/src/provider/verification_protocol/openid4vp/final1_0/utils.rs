@@ -1,5 +1,5 @@
 use core::str;
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeSet, HashMap, HashSet};
 
 use dcql::DcqlQuery;
 use serde_json::json;
@@ -23,8 +23,8 @@ use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::DecomposedJwt;
 use crate::proto::key_verification::KeyVerification;
 use crate::proto::session_provider::SessionExt;
-use crate::proto::wrp_validator::AccessCertificateResult;
 use crate::proto::wrp_validator::error::WRPValidatorError;
+use crate::proto::wrp_validator::model::AccessCertificateResult;
 use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::credential_formatter::model::{
     CertificateDetails, IdentifierDetails, TokenVerifier,
@@ -424,17 +424,37 @@ impl OpenID4VPFinal1_0 {
                     .handle_access_certificate(access_certificate, proof_id, organisation_id)
                     .await?
             {
-                // check query against registration certificates
-                self.handle_registration_certificates(
-                    &referenced_params.verifier_info,
-                    referenced_params.dcql_query.as_ref().ok_or(
-                        VerificationProtocolError::InvalidRequest("missing dcql_query".to_string()),
-                    )?,
-                    &access_certificate_trust.rp_id,
-                    proof_id,
-                    organisation_id,
-                )
-                .await?;
+                let relying_party_id = &access_certificate_trust.relying_party_id;
+                let dcql_query = referenced_params.dcql_query.as_ref().ok_or(
+                    VerificationProtocolError::InvalidRequest("missing dcql_query".to_string()),
+                )?;
+
+                if referenced_params.verifier_info.is_empty() {
+                    let registry_url = access_certificate_trust.registry_url.as_ref().ok_or(
+                        VerificationProtocolError::InvalidRequest(
+                            "missing registry URL".to_string(),
+                        ),
+                    )?;
+
+                    self.handle_registry_info(
+                        &access_certificate_trust.relying_party_id,
+                        registry_url,
+                        dcql_query,
+                        proof_id,
+                        organisation_id,
+                    )
+                    .await?;
+                } else {
+                    // check query against registration certificates
+                    self.handle_registration_certificates(
+                        &referenced_params.verifier_info,
+                        dcql_query,
+                        relying_party_id,
+                        proof_id,
+                        organisation_id,
+                    )
+                    .await?;
+                }
             }
         }
 
@@ -543,8 +563,12 @@ impl OpenID4VPFinal1_0 {
     ) -> Result<(), VerificationProtocolError> {
         let mut allowed_credentials: HashMap<
             Option<dcql::CredentialQueryId>,
-            Vec<registration_certificate::model::Credential>,
+            Vec<(
+                registration_certificate::model::Credential,
+                &VerifierInfoAttestation,
+            )>,
         > = HashMap::new();
+
         for reg_cert in verifier_info {
             if let Ok(trusted) = self
                 .wrp_validator
@@ -557,33 +581,28 @@ impl OpenID4VPFinal1_0 {
                 .inspect_err(|err| {
                     tracing::warn!(%err, "Provided registration certificate validation failure");
                 })
+                && let Some(credentials) = trusted.payload.custom.credentials
             {
-                self.store_certificate_history_event(
-                    HistoryAction::WrpRcReceived,
-                    proof_id,
-                    organisation_id,
-                    reg_cert.data.to_owned(),
-                )
-                .await?;
+                let creds_with_reg_cert: Vec<_> =
+                    credentials.into_iter().map(|c| (c, reg_cert)).collect();
 
-                if let Some(credentials) = trusted.payload.custom.credentials {
-                    if reg_cert.credential_ids.is_empty() {
+                if reg_cert.credential_ids.is_empty() {
+                    allowed_credentials
+                        .entry(None)
+                        .or_default()
+                        .extend(creds_with_reg_cert);
+                } else {
+                    for credential_id in &reg_cert.credential_ids {
                         allowed_credentials
-                            .entry(None)
+                            .entry(Some(credential_id.to_owned()))
                             .or_default()
-                            .extend(credentials);
-                    } else {
-                        for credential_id in &reg_cert.credential_ids {
-                            allowed_credentials
-                                .entry(Some(credential_id.to_owned()))
-                                .or_default()
-                                .extend(credentials.to_owned());
-                        }
+                            .extend(creds_with_reg_cert.to_owned());
                     }
                 }
             }
         }
 
+        let mut used_reg_certs = HashSet::new();
         for credential_query in &dcql_query.credentials {
             let empty = vec![];
             let mut related_reg_cert_credentials = allowed_credentials
@@ -596,15 +615,73 @@ impl OpenID4VPFinal1_0 {
                         .unwrap_or(&empty),
                 );
 
-            let query_matched = related_reg_cert_credentials
-                .any(|c| credential_query_matches_reg_cert_credential(credential_query, c));
+            let Some((_, matching_reg_cert)) = related_reg_cert_credentials
+                .find(|(c, _)| credential_query_matches_reg_cert_credential(credential_query, c))
+            else {
+                return Err(VerificationProtocolError::DisallowedQuery(
+                    credential_query.id.to_owned(),
+                ));
+            };
 
-            if !query_matched {
+            used_reg_certs.insert(matching_reg_cert.data.to_owned());
+        }
+
+        for used_reg_cert in used_reg_certs {
+            self.store_certificate_history_event(
+                HistoryAction::WrpRcReceived,
+                proof_id,
+                organisation_id,
+                used_reg_cert,
+            )
+            .await?;
+        }
+
+        Ok(())
+    }
+
+    async fn handle_registry_info(
+        &self,
+        relying_party_id: &str,
+        registry_url: &Url,
+        dcql_query: &DcqlQuery,
+        proof_id: ProofId,
+        organisation_id: OrganisationId,
+    ) -> Result<(), VerificationProtocolError> {
+        let info = self
+            .wrp_validator
+            .fetch_from_registry(relying_party_id, registry_url, Some(organisation_id))
+            .await
+            .error_while("fetching from WRP registry")?;
+
+        for credential_query in &dcql_query.credentials {
+            if !info
+                .payload
+                .custom
+                .data
+                .intended_use
+                .iter()
+                .any(|intended_use| {
+                    intended_use.credential.iter().any(|c| {
+                        credential_query_matches_reg_cert_credential(
+                            credential_query,
+                            &c.to_owned().into(),
+                        )
+                    })
+                })
+            {
                 return Err(VerificationProtocolError::DisallowedQuery(
                     credential_query.id.to_owned(),
                 ));
             }
         }
+
+        self.store_certificate_history_event(
+            HistoryAction::WrpNrReceived,
+            proof_id,
+            organisation_id,
+            info.jwt,
+        )
+        .await?;
 
         Ok(())
     }

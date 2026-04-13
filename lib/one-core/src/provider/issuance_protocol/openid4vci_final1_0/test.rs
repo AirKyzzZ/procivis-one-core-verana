@@ -42,9 +42,8 @@ use crate::proto::identifier_creator::{
 use crate::proto::jwt::model::JWTPayload;
 use crate::proto::session_provider::NoSessionProvider;
 use crate::proto::wallet_unit::MockHolderWalletUnitProto;
-use crate::proto::wrp_validator::{
-    AccessCertificateResult, MockWRPValidator, RegistrationCertificateResult,
-};
+use crate::proto::wrp_validator::MockWRPValidator;
+use crate::proto::wrp_validator::model::{AccessCertificateResult, RegistrationCertificateResult};
 use crate::provider::blob_storage_provider::MockBlobStorageProvider;
 use crate::provider::caching_loader::openid_metadata::MockOpenIDMetadataFetcher;
 use crate::provider::credential_formatter::MockCredentialFormatter;
@@ -1615,7 +1614,7 @@ async fn test_handle_invitation_signed_metadata() {
         .return_once(|_, _| {
             Ok(AccessCertificateResult {
                 trust_entity: None,
-                rp_id: rp_id.to_string(),
+                relying_party_id: rp_id.to_string(),
                 registry_url: None,
             })
         });

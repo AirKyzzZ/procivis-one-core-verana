@@ -1,4 +1,4 @@
-use serde::{Serialize, Serializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use time::OffsetDateTime;
 
 pub(crate) fn into_timestamp<S>(dt: &OffsetDateTime, s: S) -> Result<S::Ok, S::Error>
@@ -54,4 +54,11 @@ pub mod option {
             .transpose()
             .map_err(|err| Error::custom(format!("failed to deserialize timestamp: {err}")))
     }
+}
+
+/// Deserialize an `OffsetDateTime` from its Unix timestamp
+pub fn deserialize<'a, D: Deserializer<'a>>(deserializer: D) -> Result<OffsetDateTime, D::Error> {
+    let value = f64::deserialize(deserializer)?;
+    OffsetDateTime::from_unix_timestamp(value as i64)
+        .map_err(|err| serde::de::Error::custom(format!("failed to deserialize timestamp: {err}")))
 }

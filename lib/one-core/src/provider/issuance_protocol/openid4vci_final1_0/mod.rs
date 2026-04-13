@@ -87,8 +87,9 @@ use crate::proto::jwt::model::{DecomposedJwt, JWTPayload};
 use crate::proto::key_verification::KeyVerification;
 use crate::proto::session_provider::{SessionExt, SessionProvider};
 use crate::proto::wallet_unit::{HolderWalletUnitProto, IssueWalletAttestationRequest};
+use crate::proto::wrp_validator::WRPValidator;
 use crate::proto::wrp_validator::error::WRPValidatorError;
-use crate::proto::wrp_validator::{AccessCertificateResult, WRPValidator};
+use crate::proto::wrp_validator::model::AccessCertificateResult;
 use crate::provider::blob_storage_provider::{BlobStorageProvider, BlobStorageType};
 use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
 use crate::provider::credential_formatter::mapper::credential_data_from_credential_detail_response;
@@ -1267,7 +1268,7 @@ impl OpenID4VCIFinal1_0 {
                     .validate_credential_config_trust(
                         credential_config,
                         &jwt.payload.custom.issuer_info,
-                        &access_certificate.0.rp_id,
+                        &access_certificate.0.relying_party_id,
                         organisation.id,
                     )
                     .await?;
@@ -1350,7 +1351,7 @@ impl OpenID4VCIFinal1_0 {
         &self,
         credential_config: &OpenID4VCICredentialConfigurationData,
         issuer_info: &[EtsiIssuerInfoResponseDTO],
-        expected_rp_id: &str,
+        expected_relying_party_id: &str,
         organisation_id: OrganisationId,
     ) -> Result<String, IssuanceProtocolError> {
         for reg_cert in issuer_info {
@@ -1358,7 +1359,7 @@ impl OpenID4VCIFinal1_0 {
                 .credential_config_matches_reg_cert(
                     credential_config,
                     reg_cert,
-                    expected_rp_id,
+                    expected_relying_party_id,
                     organisation_id,
                 )
                 .await
@@ -1374,14 +1375,14 @@ impl OpenID4VCIFinal1_0 {
         &self,
         credential_config: &OpenID4VCICredentialConfigurationData,
         issuer_info: &EtsiIssuerInfoResponseDTO,
-        expected_rp_id: &str,
+        expected_relying_party_id: &str,
         organisation_id: OrganisationId,
     ) -> bool {
         let Ok(reg_cert) = self
             .wrp_validator
             .validate_registration_certificate(
                 &issuer_info.data,
-                expected_rp_id,
+                expected_relying_party_id,
                 Some(organisation_id),
             )
             .await

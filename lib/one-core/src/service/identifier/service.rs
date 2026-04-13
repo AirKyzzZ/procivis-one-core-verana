@@ -379,7 +379,7 @@ impl IdentifierService {
                 .await;
             match result {
                 Ok(ac_info) => {
-                    rp_ids.insert(ac_info.rp_id);
+                    rp_ids.insert(ac_info.relying_party_id);
                 }
                 Err(err) if err.error_code() == BR_0224 => {
                     // ignore this error, as the identifier might have additional certificates that are not access certificates

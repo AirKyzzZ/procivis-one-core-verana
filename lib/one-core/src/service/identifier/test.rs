@@ -18,9 +18,8 @@ use crate::proto::identifier_creator::MockIdentifierCreator;
 use crate::proto::jwt::model::JWTPayload;
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::proto::transaction_manager::NoTransactionManager;
-use crate::proto::wrp_validator::{
-    AccessCertificateResult, MockWRPValidator, RegistrationCertificateResult,
-};
+use crate::proto::wrp_validator::MockWRPValidator;
+use crate::proto::wrp_validator::model::{AccessCertificateResult, RegistrationCertificateResult};
 use crate::provider::blob_storage_provider::{MockBlobStorage, MockBlobStorageProvider};
 use crate::provider::signer::registration_certificate::model::{
     Credential, Payload, Status, SupervisoryAuthority, WRPRegistrationCertificatePayload,
@@ -647,7 +646,7 @@ async fn test_create_identifier_with_trust_information() {
         .returning(|_, _| {
             Ok(AccessCertificateResult {
                 trust_entity: None,
-                rp_id: "test_wrp".to_string(),
+                relying_party_id: "test_wrp".to_string(),
                 registry_url: None,
             })
         });

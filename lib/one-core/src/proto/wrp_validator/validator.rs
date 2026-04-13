@@ -1,9 +1,16 @@
+use std::borrow::Cow;
 use std::sync::Arc;
 
 use shared_types::OrganisationId;
+use standardized_types::jwk::PublicJwk;
+use url::Url;
 
+use super::WRPValidator;
 use super::error::WRPValidatorError;
-use super::{AccessCertificateResult, RegistrationCertificateResult, WRPValidator};
+use super::model::{
+    AccessCertificateResult, FetchRegistryResult, RegistrationCertificateResult, RegistryKeys,
+    WRPPayload,
+};
 use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::x5c_into_pem_chain;
 use crate::model::did::KeyRole;
@@ -15,10 +22,11 @@ use crate::model::trust_list_subscription::{
     TrustListSubscriptionState,
 };
 use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::Jwt;
 use crate::proto::key_verification::KeyVerification;
 use crate::proto::wallet_provider_client::WalletProviderClient;
-use crate::provider::credential_formatter::model::VerificationFn;
+use crate::provider::credential_formatter::model::{PublicKeySource, VerificationFn};
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::signer::registration_certificate::model::Payload;
@@ -39,6 +47,7 @@ pub(crate) struct WRPValidatorImpl {
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     certificate_validator: Arc<dyn CertificateValidator>,
+    client: Arc<dyn HttpClient>,
 }
 
 #[async_trait::async_trait]
@@ -56,7 +65,10 @@ impl WRPValidator for WRPValidatorImpl {
                 .await?;
 
             if let Some(trust_entity) = self
-                .find_matching_trust_entity(subscriptions, pem_chain)
+                .find_matching_trust_entity(
+                    subscriptions,
+                    TrustEntityIdentifier::PemChain(pem_chain),
+                )
                 .await?
             {
                 Some(trust_entity)
@@ -75,7 +87,7 @@ impl WRPValidator for WRPValidatorImpl {
 
         Ok(AccessCertificateResult {
             trust_entity,
-            rp_id,
+            relying_party_id: rp_id,
             registry_url,
         })
     }
@@ -86,16 +98,10 @@ impl WRPValidator for WRPValidatorImpl {
         expected_rp_id: &str,
         validate_trust: Option<OrganisationId>,
     ) -> Result<RegistrationCertificateResult, WRPValidatorError> {
-        let key_verification: VerificationFn = Box::new(KeyVerification {
-            key_algorithm_provider: self.key_algorithm_provider.clone(),
-            did_method_provider: self.did_method_provider.clone(),
-            key_role: KeyRole::AssertionMethod,
-            certificate_validator: self.certificate_validator.clone(),
-        });
-
-        let token = Jwt::<Payload>::build_from_token(wrprc_jwt, Some(&key_verification), None)
-            .await
-            .error_while("parsing JWT")?;
+        let token =
+            Jwt::<Payload>::build_from_token(wrprc_jwt, Some(&self.verification_fn()), None)
+                .await
+                .error_while("parsing JWT")?;
 
         if token
             .payload
@@ -118,7 +124,10 @@ impl WRPValidator for WRPValidatorImpl {
                 .await?;
 
             match self
-                .find_matching_trust_entity(subscriptions, &issuer_chain)
+                .find_matching_trust_entity(
+                    subscriptions,
+                    TrustEntityIdentifier::PemChain(&issuer_chain),
+                )
                 .await?
             {
                 Some(trust_entity) => Some(trust_entity),
@@ -135,6 +144,105 @@ impl WRPValidator for WRPValidatorImpl {
             trust_entity,
         })
     }
+
+    async fn fetch_from_registry(
+        &self,
+        relying_party_id: &str,
+        registry_url: &Url,
+        validate_trust: Option<OrganisationId>,
+    ) -> Result<FetchRegistryResult, WRPValidatorError> {
+        let mut rp_url = registry_url.to_owned();
+        {
+            rp_url
+                .path_segments_mut()
+                .map_err(|_| WRPValidatorError::InvalidRegistryUrl(registry_url.to_string()))?
+                .push("wrp")
+                .push(relying_party_id);
+        }
+
+        let response = async {
+            self.client
+                .get(rp_url.as_str())
+                .header("Accept", "application/jwt")
+                .send()
+                .await?
+                .error_for_status()
+        }
+        .await
+        .error_while("fetching relying party dataset")?;
+
+        let jku_url = response
+            .header_get("x-jku-url")
+            .ok_or(WRPValidatorError::MissingRegistryKeysUrl)?
+            .to_owned();
+
+        let jwt = String::from_utf8(response.body)?;
+        let token = Jwt::<WRPPayload>::decompose_token(&jwt).error_while("parsing JWT")?;
+
+        let jwks: RegistryKeys = async {
+            self.client
+                .get(&jku_url)
+                .header("Accept", "application/json")
+                .send()
+                .await?
+                .error_for_status()?
+                .json()
+        }
+        .await
+        .error_while("fetching registry keys")?;
+
+        let registry_key = jwks
+            .keys
+            .iter()
+            .find(|key| key.kid() == token.header.key_id.as_deref())
+            .ok_or(WRPValidatorError::MissingRegistryKey(
+                token.header.key_id.to_owned(),
+            ))?;
+
+        token
+            .verify_signature(
+                PublicKeySource::Jwk {
+                    jwk: Cow::Borrowed(registry_key),
+                },
+                &self.verification_fn(),
+            )
+            .await
+            .error_while("verifying registry dataset signature")?;
+
+        let trust_entity = if let Some(organisation_id) = validate_trust {
+            self.check_trust_management_enabled(organisation_id).await?;
+
+            let subscriptions = self
+                .get_trust_subscriptions_for_role(
+                    TrustListRoleEnum::NationalRegistryRegistrar,
+                    organisation_id,
+                )
+                .await?;
+
+            match self
+                .find_matching_trust_entity(subscriptions, TrustEntityIdentifier::Jwk(registry_key))
+                .await?
+            {
+                Some(trust_entity) => Some(trust_entity),
+                None => {
+                    return Err(WRPValidatorError::RegistryNotTrusted);
+                }
+            }
+        } else {
+            None
+        };
+
+        Ok(FetchRegistryResult {
+            payload: token.payload,
+            trust_entity,
+            jwt,
+        })
+    }
+}
+
+enum TrustEntityIdentifier<'a> {
+    PemChain(&'a str),
+    Jwk(&'a PublicJwk),
 }
 
 impl WRPValidatorImpl {
@@ -148,6 +256,7 @@ impl WRPValidatorImpl {
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         certificate_validator: Arc<dyn CertificateValidator>,
+        client: Arc<dyn HttpClient>,
     ) -> Self {
         Self {
             trust_collection_repository,
@@ -158,13 +267,14 @@ impl WRPValidatorImpl {
             did_method_provider,
             key_algorithm_provider,
             certificate_validator,
+            client,
         }
     }
 
     async fn find_matching_trust_entity(
         &self,
         subscriptions: Vec<TrustListSubscription>,
-        pem_chain: &str,
+        identifier: TrustEntityIdentifier<'_>,
     ) -> Result<Option<TrustEntityResponse>, WRPValidatorError> {
         for subscription in subscriptions {
             let subscriber = self
@@ -175,12 +285,19 @@ impl WRPValidatorImpl {
                 ))
                 .error_while("getting trust list subscriber")?;
 
-            if let Some(trust_entity) = subscriber
-                .resolve_certificate(&subscription.reference.parse()?, pem_chain)
-                .await
-                .error_while("resolving access certificate trust")?
-            {
-                return Ok(Some(trust_entity));
+            let reference = subscription.reference.parse()?;
+            let trust_entity = match identifier {
+                TrustEntityIdentifier::PemChain(pem_chain) => {
+                    subscriber.resolve_certificate(&reference, pem_chain).await
+                }
+                TrustEntityIdentifier::Jwk(jwk) => {
+                    subscriber.resolve_public_key(&reference, jwk).await
+                }
+            }
+            .error_while("resolving trust")?;
+
+            if trust_entity.is_some() {
+                return Ok(trust_entity);
             }
         }
 
@@ -250,5 +367,14 @@ impl WRPValidatorImpl {
             .await
             .error_while("getting trust list subscriptions")?
             .values)
+    }
+
+    fn verification_fn(&self) -> VerificationFn {
+        Box::new(KeyVerification {
+            key_algorithm_provider: self.key_algorithm_provider.clone(),
+            did_method_provider: self.did_method_provider.clone(),
+            key_role: KeyRole::AssertionMethod,
+            certificate_validator: self.certificate_validator.clone(),
+        })
     }
 }

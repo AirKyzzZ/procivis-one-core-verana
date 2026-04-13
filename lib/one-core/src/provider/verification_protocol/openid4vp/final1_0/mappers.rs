@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use dcql::CredentialMeta;
+use one_dto_mapper::convert_inner_of_inner;
 use serde::Deserialize;
 use standardized_types::jwa::EncryptionAlgorithm;
 use standardized_types::jwk::PublicJwk;
@@ -9,6 +10,7 @@ use url::Url;
 
 use super::model::{AuthorizationRequest, AuthorizationRequestQueryParams, Params};
 use crate::model::proof::Proof;
+use crate::proto::wrp_validator;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::signer::registration_certificate;
@@ -274,6 +276,33 @@ impl TryFrom<AuthorizationRequest> for OpenID4VPHolderInteractionData {
             redirect_uri: value.redirect_uri,
             verifier_details: None,
         })
+    }
+}
+
+impl From<wrp_validator::model::Credential> for registration_certificate::model::Credential {
+    fn from(value: wrp_validator::model::Credential) -> Self {
+        Self {
+            format: value.format,
+            meta: value.meta,
+            claim: convert_inner_of_inner(value.claim),
+        }
+    }
+}
+
+impl From<wrp_validator::model::Claim> for registration_certificate::model::Claim {
+    fn from(value: wrp_validator::model::Claim) -> Self {
+        let mut segments: Vec<_> = value.path.split('.').collect();
+        if segments.first() == Some(&"$") {
+            segments.remove(0);
+        }
+        Self {
+            path: segments.into(),
+            values: if value.values.is_empty() {
+                None
+            } else {
+                Some(value.values)
+            },
+        }
     }
 }
 
