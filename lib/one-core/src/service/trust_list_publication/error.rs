@@ -56,7 +56,7 @@ impl ErrorCodeMixin for TrustListPublicationServiceError {
             Self::TrustListPublicationNotFound(_) => ErrorCode::BR_0383,
             Self::OrganisationIdMismatch => ErrorCode::BR_0285,
             Self::TrustEntryNotInList(_, _) => ErrorCode::BR_0390,
-            Self::UnsupportedAcceptType(_) => ErrorCode::BR_0419,
+            Self::UnsupportedAcceptType(_) => ErrorCode::BR_0425,
         }
     }
 }

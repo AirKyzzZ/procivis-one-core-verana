@@ -615,8 +615,9 @@ impl TryFrom<CreateOrganisationRequestBindingDTO> for CreateOrganisationRequestD
 
     fn try_from(value: CreateOrganisationRequestBindingDTO) -> Result<Self, Self::Error> {
         Ok(Self {
-            id: value.id.map(|id| into_id(&id)).transpose()?,
+            id: into_id_opt(value.id)?,
             name: value.name,
+            parent_organisation: into_id_opt(value.parent_organisation)?,
         })
     }
 }
@@ -627,11 +628,14 @@ impl TryFrom<UpsertOrganisationRequestBindingDTO> for UpsertOrganisationRequestD
     fn try_from(value: UpsertOrganisationRequestBindingDTO) -> Result<Self, Self::Error> {
         let wallet_provider_issuer = value
             .wallet_provider_issuer
-            .map(|val| {
-                Option::<String>::from(val)
-                    .map(|val| into_id(&val))
-                    .transpose()
-            })
+            .map(Option::<String>::from)
+            .map(into_id_opt)
+            .transpose()?;
+
+        let parent_organisation = value
+            .parent_organisation
+            .map(Option::<String>::from)
+            .map(into_id_opt)
             .transpose()?;
 
         Ok(Self {
@@ -640,6 +644,7 @@ impl TryFrom<UpsertOrganisationRequestBindingDTO> for UpsertOrganisationRequestD
             deactivate: value.deactivate,
             wallet_provider: convert_inner(value.wallet_provider),
             wallet_provider_issuer,
+            parent_organisation,
         })
     }
 }

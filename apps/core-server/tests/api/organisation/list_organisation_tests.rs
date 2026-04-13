@@ -24,6 +24,8 @@ async fn test_list_organisation_success() {
             created_date_before: None,
             last_modified_after: None,
             last_modified_before: None,
+            has_parent_organisation: None,
+            parent_organisations: None,
         })
         .await;
 
@@ -57,6 +59,8 @@ async fn test_list_organisation_deactivated_success() {
             created_date_before: None,
             last_modified_after: None,
             last_modified_before: None,
+            has_parent_organisation: None,
+            parent_organisations: None,
         })
         .await;
 
@@ -67,6 +71,104 @@ async fn test_list_organisation_deactivated_success() {
     assert_eq!(values.len(), 14);
     assert!(values[0]["name"].is_string());
     assert!(values[0]["deactivatedAt"].is_string());
+}
+
+#[tokio::test]
+async fn test_list_organisation_filter_has_parent_organisation() {
+    // GIVEN
+    let context = TestContext::new(None).await;
+    let parent = context.db.organisations.create().await;
+    let child = context.db.organisations.create_with_parent(parent.id).await;
+
+    // WHEN - filter for organisations that have a parent
+    let resp = context
+        .api
+        .organisations
+        .list(OrganisationFilters {
+            page: 0,
+            page_size: 1000,
+            name: None,
+            created_date_after: None,
+            created_date_before: None,
+            last_modified_after: None,
+            last_modified_before: None,
+            has_parent_organisation: Some(true),
+            parent_organisations: None,
+        })
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    let values = resp["values"].as_array().unwrap();
+    assert_eq!(values.len(), 1);
+    assert_eq!(values[0]["id"].as_str().unwrap(), child.id.to_string());
+
+    // WHEN - filter for root organisations
+    let resp = context
+        .api
+        .organisations
+        .list(OrganisationFilters {
+            page: 0,
+            page_size: 1000,
+            name: None,
+            created_date_after: None,
+            created_date_before: None,
+            last_modified_after: None,
+            last_modified_before: None,
+            has_parent_organisation: Some(false),
+            parent_organisations: None,
+        })
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    let values = resp["values"].as_array().unwrap();
+    assert_eq!(values.len(), 1);
+    assert_eq!(values[0]["id"].as_str().unwrap(), parent.id.to_string());
+}
+
+#[tokio::test]
+async fn test_list_organisation_filter_parent_organisations() {
+    // GIVEN
+    let context = TestContext::new(None).await;
+    let parent_a = context.db.organisations.create().await;
+    let parent_b = context.db.organisations.create().await;
+    let child_of_a = context
+        .db
+        .organisations
+        .create_with_parent(parent_a.id)
+        .await;
+    let _child_of_b = context
+        .db
+        .organisations
+        .create_with_parent(parent_b.id)
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .organisations
+        .list(OrganisationFilters {
+            page: 0,
+            page_size: 1000,
+            name: None,
+            created_date_after: None,
+            created_date_before: None,
+            last_modified_after: None,
+            last_modified_before: None,
+            has_parent_organisation: None,
+            parent_organisations: Some(vec![parent_a.id]),
+        })
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    let values = resp["values"].as_array().unwrap();
+    assert_eq!(values.len(), 1);
+    assert_eq!(values[0]["id"].as_str().unwrap(), child_of_a.id.to_string());
 }
 
 #[tokio::test]

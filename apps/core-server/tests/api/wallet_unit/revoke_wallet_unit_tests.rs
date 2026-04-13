@@ -49,6 +49,7 @@ async fn test_revoke_wallet_unit_success() {
             deactivate: None,
             wallet_provider: None,
             wallet_provider_issuer: Some(Some(identifier.id)),
+            parent_organisation: None,
         })
         .await;
 

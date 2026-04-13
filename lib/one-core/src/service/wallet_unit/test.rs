@@ -84,6 +84,7 @@ async fn holder_register_success() {
                 deactivated_at: None,
                 wallet_provider: None,
                 wallet_provider_issuer: None,
+                parent_organisation: None,
             }))
         });
 
@@ -251,6 +252,7 @@ async fn holder_register_key_attestation_not_supported() {
                 deactivated_at: None,
                 wallet_provider: None,
                 wallet_provider_issuer: None,
+                parent_organisation: None,
             }))
         });
 
@@ -433,6 +435,7 @@ async fn holder_wallet_unit_status_check_revocation() {
                     deactivated_at: None,
                     wallet_provider: None,
                     wallet_provider_issuer: None,
+                    parent_organisation: None,
                 }),
                 authentication_key: None,
                 wallet_unit_attestations: None,
@@ -563,6 +566,7 @@ async fn holder_register_already_exists() {
                 deactivated_at: None,
                 wallet_provider: None,
                 wallet_provider_issuer: None,
+                parent_organisation: None,
             }))
         });
 

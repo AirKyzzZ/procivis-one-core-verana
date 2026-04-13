@@ -9,7 +9,9 @@ use super::dto::{
 };
 use super::error::OrganisationServiceError;
 use super::mapper::detail_from_model;
-use super::validator::{validate_wallet_provider, validate_wallet_provider_issuer};
+use super::validator::{
+    validate_parent_organisation, validate_wallet_provider, validate_wallet_provider_issuer,
+};
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::identifier::{Identifier, IdentifierFilterValue, IdentifierListQuery};
 use crate::model::list_filter::ListFilterValue;
@@ -125,9 +127,19 @@ impl OrganisationService {
         &self,
         request: CreateOrganisationRequestDTO,
     ) -> Result<OrganisationId, OrganisationServiceError> {
+        let organisation: crate::model::organisation::Organisation = request.into();
+        if let Some(parent_id) = organisation.parent_organisation {
+            validate_parent_organisation(
+                organisation.id,
+                parent_id,
+                &*self.organisation_repository,
+            )
+            .await?;
+        }
+
         let result = self
             .organisation_repository
-            .create_organisation(request.into())
+            .create_organisation(organisation)
             .await;
 
         match result {
@@ -161,6 +173,11 @@ impl OrganisationService {
                 &*self.organisation_repository,
             )
             .await?;
+        }
+
+        if let Some(Some(parent_id)) = request.parent_organisation {
+            validate_parent_organisation(request.id, parent_id, &*self.organisation_repository)
+                .await?;
         }
 
         // TODO: improve?

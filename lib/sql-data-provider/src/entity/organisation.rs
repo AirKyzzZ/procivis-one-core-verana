@@ -19,6 +19,7 @@ pub struct Model {
     pub deactivated_at: Option<OffsetDateTime>,
     pub wallet_provider: Option<String>,
     pub wallet_provider_issuer: Option<IdentifierId>,
+    pub parent_organisation: Option<OrganisationId>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

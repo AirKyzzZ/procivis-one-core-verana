@@ -12,7 +12,7 @@ use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
 use crate::deserialize::deserialize_timestamp;
-use crate::dto::common::ListQueryParamsRest;
+use crate::dto::common::{Boolean, ListQueryParamsRest};
 use crate::endpoint::identifier::dto::GetIdentifierListItemResponseRestDTO;
 use crate::serialize::{front_time, front_time_option};
 
@@ -24,6 +24,10 @@ pub(crate) struct CreateOrganisationRequestRestDTO {
     #[into(with_fn = convert_inner)]
     pub id: Option<OrganisationId>,
     pub name: Option<String>,
+    /// Specify a parent organisation. Allows for re-use / inheritance of e.g. trust lists.
+    /// The provided organisation must not have a parent organisation.
+    #[into(with_fn = convert_inner)]
+    pub parent_organisation: Option<OrganisationId>,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, ToSchema)]
@@ -42,6 +46,10 @@ pub(crate) struct UpsertOrganisationRequestRestDTO {
     /// be any type of identifier but it must be backed by an ECDSA key.
     #[serde(default, with = "::serde_with::rust::double_option")]
     pub wallet_provider_issuer: Option<Option<IdentifierId>>,
+    /// Specify a parent organisation. Allows for re-use / inheritance of e.g. trust lists.
+    /// The provided organisation must not have a parent organisation.
+    #[serde(default, with = "::serde_with::rust::double_option")]
+    pub parent_organisation: Option<Option<OrganisationId>>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema)]
@@ -69,6 +77,8 @@ pub(crate) struct GetOrganisationDetailsResponseRestDTO {
     pub wallet_provider: Option<String>,
     #[from(with_fn = convert_inner)]
     pub wallet_provider_issuer: Option<GetIdentifierListItemResponseRestDTO>,
+    #[schema(nullable = false)]
+    pub parent_organisation: Option<OrganisationId>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
@@ -121,6 +131,15 @@ pub(crate) struct OrganisationFilterQueryParamsRest {
     #[param(nullable = false)]
     #[try_into(infallible)]
     pub last_modified_before: Option<OffsetDateTime>,
+    /// If true, return only organisations that have a parent organisation.
+    /// If false, return only root organisations.
+    #[param(inline, nullable = false)]
+    #[try_into(infallible, with_fn = convert_inner)]
+    pub has_parent_organisation: Option<Boolean>,
+    /// Return only organisations whose parent is one of the given organisation ids.
+    #[param(rename = "parentOrganisations[]", nullable = false)]
+    #[try_into(infallible)]
+    pub parent_organisations: Option<Vec<OrganisationId>>,
 }
 
 pub(crate) type GetOrganisationsQuery =

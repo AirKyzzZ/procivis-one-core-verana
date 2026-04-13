@@ -510,6 +510,7 @@ async fn test_get_trust_list_publication_with_organisation_relation() {
                 deactivated_at: None,
                 wallet_provider: None,
                 wallet_provider_issuer: None,
+                parent_organisation: None,
             }))
         });
 

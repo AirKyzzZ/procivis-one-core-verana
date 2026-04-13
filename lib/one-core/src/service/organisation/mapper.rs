@@ -24,6 +24,7 @@ impl From<CreateOrganisationRequestDTO> for Organisation {
             deactivated_at: None,
             wallet_provider: None,
             wallet_provider_issuer: None,
+            parent_organisation: request.parent_organisation,
         }
     }
 }
@@ -33,6 +34,7 @@ impl From<UpsertOrganisationRequestDTO> for CreateOrganisationRequestDTO {
         CreateOrganisationRequestDTO {
             id: Some(request.id),
             name: request.name,
+            parent_organisation: request.parent_organisation.flatten(),
         }
     }
 }
@@ -49,6 +51,7 @@ pub(super) fn detail_from_model(
         deactivated_at: organisation.deactivated_at,
         wallet_provider: organisation.wallet_provider,
         wallet_provider_issuer: wallet_provider_issuer.map(Into::into),
+        parent_organisation: organisation.parent_organisation,
     }
 }
 
@@ -96,11 +99,20 @@ impl From<OrganisationFilterParamsDTO> for ListFilterCondition<OrganisationFilte
             })
         });
 
+        let has_parent_organisation = filter
+            .has_parent_organisation
+            .map(OrganisationFilterValue::HasParentOrganisation);
+        let parent_organisations = filter
+            .parent_organisations
+            .map(OrganisationFilterValue::ParentOrganisations);
+
         ListFilterCondition::<OrganisationFilterValue>::default()
             & name
             & created_date_after
             & created_date_before
             & last_modified_after
             & last_modified_before
+            & has_parent_organisation
+            & parent_organisations
     }
 }

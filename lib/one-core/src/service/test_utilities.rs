@@ -517,6 +517,7 @@ pub fn dummy_organisation(id: Option<OrganisationId>) -> Organisation {
         deactivated_at: None,
         wallet_provider: None,
         wallet_provider_issuer: None,
+        parent_organisation: None,
     }
 }
 

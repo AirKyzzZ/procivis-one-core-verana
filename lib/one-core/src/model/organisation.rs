@@ -14,6 +14,7 @@ pub struct Organisation {
     pub deactivated_at: Option<OffsetDateTime>,
     pub wallet_provider: Option<String>,
     pub wallet_provider_issuer: Option<IdentifierId>,
+    pub parent_organisation: Option<OrganisationId>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -23,6 +24,7 @@ pub struct UpdateOrganisationRequest {
     pub deactivate: Option<bool>,
     pub wallet_provider: Option<Option<String>>,
     pub wallet_provider_issuer: Option<Option<IdentifierId>>,
+    pub parent_organisation: Option<Option<OrganisationId>>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
@@ -39,6 +41,8 @@ pub enum OrganisationFilterValue {
     Name(StringMatch),
     CreatedDate(ValueComparison<OffsetDateTime>),
     LastModified(ValueComparison<OffsetDateTime>),
+    HasParentOrganisation(bool),
+    ParentOrganisations(Vec<OrganisationId>),
 }
 
 impl ListFilterValue for OrganisationFilterValue {}

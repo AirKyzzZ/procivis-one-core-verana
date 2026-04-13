@@ -291,6 +291,7 @@ pub async fn create_organisation(db_conn: &DbConn) -> Organisation {
         deactivated_at: None,
         wallet_provider: None,
         wallet_provider_issuer: None,
+        parent_organisation: None,
     };
 
     data_layer

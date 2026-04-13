@@ -155,6 +155,7 @@ async fn test_create_trust_entity_success() {
                 deactivated_at: None,
                 wallet_provider: None,
                 wallet_provider_issuer: None,
+                parent_organisation: None,
             }))
         });
 
@@ -228,6 +229,7 @@ async fn test_create_trust_entity_failed_only_one_entity_can_be_created_for_one_
                 deactivated_at: None,
                 wallet_provider: None,
                 wallet_provider_issuer: None,
+                parent_organisation: None,
             }))
         });
 
@@ -440,6 +442,7 @@ async fn test_publisher_get_remote_trust_entity_success() {
         deactivated_at: None,
         wallet_provider: None,
         wallet_provider_issuer: None,
+        parent_organisation: None,
     });
 
     test_data
@@ -461,6 +464,7 @@ async fn test_publisher_get_remote_trust_entity_success() {
         deactivated_at: None,
         wallet_provider: None,
         wallet_provider_issuer: None,
+        parent_organisation: None,
     });
 
     test_data

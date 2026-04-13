@@ -2,12 +2,13 @@ use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::organisation::{
     Organisation, OrganisationFilterValue, SortableOrganisationColumn, UpdateOrganisationRequest,
 };
-use sea_orm::sea_query::SimpleExpr;
-use sea_orm::{IntoSimpleExpr, Set, Unchanged};
+use sea_orm::sea_query::{IntoCondition, SimpleExpr};
+use sea_orm::{ColumnTrait, IntoSimpleExpr, Set, Unchanged};
 
 use crate::entity::organisation;
 use crate::list_query_generic::{
-    IntoFilterCondition, IntoSortingColumn, get_comparison_condition, get_string_match_condition,
+    IntoFilterCondition, IntoSortingColumn, get_comparison_condition, get_nullability_condition,
+    get_string_match_condition,
 };
 
 impl From<Organisation> for organisation::ActiveModel {
@@ -20,6 +21,7 @@ impl From<Organisation> for organisation::ActiveModel {
             deactivated_at: Set(value.deactivated_at),
             wallet_provider: Set(value.wallet_provider),
             wallet_provider_issuer: Set(value.wallet_provider_issuer),
+            parent_organisation: Set(value.parent_organisation),
         }
     }
 }
@@ -44,6 +46,11 @@ impl From<UpdateOrganisationRequest> for organisation::ActiveModel {
                 Some(Some(value)) => Set(Some(value)),
             },
             wallet_provider_issuer: match value.wallet_provider_issuer {
+                None => Unchanged(Default::default()),
+                Some(None) => Set(None),
+                Some(Some(value)) => Set(Some(value)),
+            },
+            parent_organisation: match value.parent_organisation {
                 None => Unchanged(Default::default()),
                 Some(None) => Set(None),
                 Some(Some(value)) => Set(Some(value)),
@@ -75,6 +82,12 @@ impl IntoFilterCondition for OrganisationFilterValue {
             Self::LastModified(value) => {
                 get_comparison_condition(organisation::Column::LastModified, value)
             }
+            Self::HasParentOrganisation(value) => {
+                get_nullability_condition(organisation::Column::ParentOrganisation, !value)
+            }
+            Self::ParentOrganisations(value) => organisation::Column::ParentOrganisation
+                .is_in(value)
+                .into_condition(),
         }
     }
 }

@@ -56,6 +56,7 @@ async fn test_create_organisation_id_set() {
         .create_organisation(CreateOrganisationRequestDTO {
             id: Some(id),
             name: None,
+            parent_organisation: None,
         })
         .await
         .unwrap();
@@ -77,6 +78,7 @@ async fn test_create_organisation_already_exists() {
         .create_organisation(CreateOrganisationRequestDTO {
             id: Some(id),
             name: None,
+            parent_organisation: None,
         })
         .await;
 

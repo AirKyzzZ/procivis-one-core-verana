@@ -55,6 +55,7 @@ impl From<identifier::Model> for Identifier {
                 deactivated_at: None,
                 wallet_provider: None,
                 wallet_provider_issuer: None,
+                parent_organisation: None,
             }),
             did: None,
             key: None,

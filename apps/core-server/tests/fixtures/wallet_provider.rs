@@ -78,6 +78,7 @@ pub(crate) async fn create_wallet_unit_attestation_issuer_identifier(
             deactivate: None,
             wallet_provider: Some(Some("PROCIVIS_ONE".to_string())),
             wallet_provider_issuer: Some(Some(identifier.id)),
+            parent_organisation: None,
         })
         .await;
 }

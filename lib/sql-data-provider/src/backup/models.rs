@@ -48,6 +48,7 @@ pub struct UnexportableCredentialModel {
     pub organisation_deactivated_at: Option<OffsetDateTime>,
     pub organisation_wallet_provider: Option<String>,
     pub organisation_wallet_provider_issuer: Option<IdentifierId>,
+    pub organisation_parent_organisation: Option<OrganisationId>,
 
     pub credential_blob_id: Option<BlobId>,
 

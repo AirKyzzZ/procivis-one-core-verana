@@ -88,6 +88,84 @@ async fn test_create_organisation_reject_duplicate_id() {
 }
 
 #[tokio::test]
+async fn test_create_organisation_success_with_parent() {
+    // GIVEN
+    let context = TestContext::new(None).await;
+    let parent = context.db.organisations.create().await;
+
+    // WHEN
+    let child_id = Uuid::new_v4();
+    let resp = context
+        .api
+        .organisations
+        .create_with_parent(Some(child_id), None, Some(parent.id))
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+    let stored = context.db.organisations.get(&child_id.into()).await;
+    assert_eq!(stored.parent_organisation, Some(parent.id));
+}
+
+#[tokio::test]
+async fn test_create_organisation_fail_non_existing_parent() {
+    // GIVEN
+    let context = TestContext::new(None).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .organisations
+        .create_with_parent(None, None, Some(Uuid::new_v4().into()))
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 404);
+    assert_eq!(resp.error_code().await, "BR_0022");
+}
+
+#[tokio::test]
+async fn test_create_organisation_fail_parent_already_has_parent() {
+    // GIVEN
+    let context = TestContext::new(None).await;
+    let grandparent = context.db.organisations.create().await;
+    let parent = context
+        .db
+        .organisations
+        .create_with_parent(grandparent.id)
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .organisations
+        .create_with_parent(None, None, Some(parent.id))
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.error_code().await, "BR_0419");
+}
+
+#[tokio::test]
+async fn test_create_organisation_fail_self_as_parent() {
+    // GIVEN
+    let context = TestContext::new(None).await;
+
+    // WHEN - id and parent_organisation both refer to the same (not-yet-existing) organisation.
+    let id = Uuid::new_v4();
+    let resp = context
+        .api
+        .organisations
+        .create_with_parent(Some(id), None, Some(id.into()))
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.error_code().await, "BR_0419");
+}
+
+#[tokio::test]
 async fn test_create_organisation_reject_duplicate_name() {
     // GIVEN
     let context = TestContext::new(None).await;

@@ -35,6 +35,20 @@ impl OrganisationsDB {
         self.get(&organisation.id).await
     }
 
+    pub async fn create_with_parent(&self, parent_id: OrganisationId) -> Organisation {
+        let organisation = Organisation {
+            parent_organisation: Some(parent_id),
+            ..dummy_organisation(None)
+        };
+
+        self.repository
+            .create_organisation(organisation.clone())
+            .await
+            .unwrap();
+
+        self.get(&organisation.id).await
+    }
+
     pub async fn deactivate(&self, id: &OrganisationId) {
         self.repository
             .update_organisation(UpdateOrganisationRequest {
@@ -43,6 +57,7 @@ impl OrganisationsDB {
                 deactivate: Some(true),
                 wallet_provider: None,
                 wallet_provider_issuer: None,
+                parent_organisation: None,
             })
             .await
             .unwrap();

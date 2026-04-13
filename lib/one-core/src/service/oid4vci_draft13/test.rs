@@ -90,6 +90,7 @@ fn generic_organisation() -> Organisation {
         deactivated_at: None,
         wallet_provider: None,
         wallet_provider_issuer: None,
+        parent_organisation: None,
     }
 }
 

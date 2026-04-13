@@ -44,6 +44,7 @@ async fn test_create_organisation() {
         deactivated_at: None,
         wallet_provider: None,
         wallet_provider_issuer: None,
+        parent_organisation: None,
     };
 
     let result = repository.create_organisation(organisation).await;
@@ -140,6 +141,7 @@ async fn test_update_organisation() {
         deactivate: None,
         wallet_provider: None,
         wallet_provider_issuer: None,
+        parent_organisation: None,
     };
 
     let result = repository.update_organisation(request).await;

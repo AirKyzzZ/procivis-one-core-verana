@@ -3,7 +3,7 @@ use std::fmt::Display;
 use serde::Serialize;
 use serde_json::json;
 use serde_with::skip_serializing_none;
-use shared_types::IdentifierId;
+use shared_types::{IdentifierId, OrganisationId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -20,6 +20,8 @@ pub struct OrganisationFilters {
     pub created_date_before: Option<OffsetDateTime>,
     pub last_modified_after: Option<OffsetDateTime>,
     pub last_modified_before: Option<OffsetDateTime>,
+    pub has_parent_organisation: Option<bool>,
+    pub parent_organisations: Option<Vec<OrganisationId>>,
 }
 
 pub struct OrganisationsApi {
@@ -34,6 +36,7 @@ pub struct UpsertParams {
     pub name: Option<String>,
     pub wallet_provider: Option<Option<String>>,
     pub wallet_provider_issuer: Option<Option<IdentifierId>>,
+    pub parent_organisation: Option<Option<OrganisationId>>,
 }
 
 impl OrganisationsApi {
@@ -42,6 +45,15 @@ impl OrganisationsApi {
     }
 
     pub async fn create(&self, id: impl Into<Option<Uuid>>, name: Option<&str>) -> Response {
+        self.create_with_parent(id, name, None).await
+    }
+
+    pub async fn create_with_parent(
+        &self,
+        id: impl Into<Option<Uuid>>,
+        name: Option<&str>,
+        parent_organisation: Option<OrganisationId>,
+    ) -> Response {
         let mut body = match id.into() {
             Some(id) => json!({"id": id}),
             None => json!({}),
@@ -49,6 +61,9 @@ impl OrganisationsApi {
 
         if let Some(name) = name {
             body["name"] = json!(name);
+        }
+        if let Some(parent) = parent_organisation {
+            body["parentOrganisation"] = json!(parent);
         }
 
         self.client.post("/api/organisation/v1", body).await
@@ -73,6 +88,8 @@ impl OrganisationsApi {
             created_date_before,
             last_modified_after,
             last_modified_before,
+            has_parent_organisation,
+            parent_organisations,
         }: OrganisationFilters,
     ) -> Response {
         let mut url = format!("/api/organisation/v1?page={page}&pageSize={page_size}");
@@ -91,6 +108,14 @@ impl OrganisationsApi {
         }
         if let Some(date) = last_modified_before {
             url += &format!("&{}", query_time_urlencoded("lastModifiedBefore", date));
+        }
+        if let Some(value) = has_parent_organisation {
+            url += &format!("&hasParentOrganisation={value}");
+        }
+        if let Some(parent_organisations) = parent_organisations {
+            for id in parent_organisations {
+                url += &format!("&parentOrganisations[]={id}");
+            }
         }
 
         self.client.get(&url).await

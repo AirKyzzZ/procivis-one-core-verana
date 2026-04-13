@@ -80,6 +80,7 @@ impl OrganisationRepository for OrganisationHistoryDecorator {
         if request.name.is_some()
             || request.wallet_provider_issuer.is_some()
             || request.wallet_provider.is_some()
+            || request.parent_organisation.is_some()
         {
             self.write_history(
                 updated_entry.name.to_owned(),

@@ -14,12 +14,18 @@ async fn test_db_schema_organisation() {
             "deactivated_at",
             "wallet_provider",
             "wallet_provider_issuer",
+            "parent_organisation",
         ])
         .index("index-Organisation-Name-Unique", true, &["name"])
         .index(
             "index-Organisation-WalletProvider-Unique",
             true,
             &["wallet_provider"],
+        )
+        .index(
+            "index-Organisation-ParentOrganisation",
+            false,
+            &["parent_organisation"],
         );
     organisation
         .column("id")
@@ -59,4 +65,9 @@ async fn test_db_schema_organisation() {
             "identifier",
             "id",
         );
+    organisation
+        .column("parent_organisation")
+        .r#type(ColumnType::Uuid)
+        .nullable(true)
+        .foreign_key("fk-Organisation-ParentOrganisation", "organisation", "id");
 }

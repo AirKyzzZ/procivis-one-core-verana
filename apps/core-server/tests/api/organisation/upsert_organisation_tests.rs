@@ -402,6 +402,194 @@ async fn test_upsert_organisation_success_wallet_provider() {
 }
 
 #[tokio::test]
+async fn test_upsert_organisation_success_set_parent_organisation() {
+    // GIVEN
+    let context = TestContext::new(None).await;
+    let parent = context.db.organisations.create().await;
+    let child = context.db.organisations.create().await;
+
+    // WHEN
+    let resp = context
+        .api
+        .organisations
+        .upsert(
+            &child.id,
+            UpsertParams {
+                parent_organisation: Some(Some(parent.id)),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 204);
+    let updated = context.db.organisations.get(&child.id).await;
+    assert_eq!(updated.parent_organisation, Some(parent.id));
+    let history = context
+        .db
+        .histories
+        .get_by_entity_id(&child.id.into())
+        .await;
+    assert_eq!(
+        history.values.first().unwrap().action,
+        HistoryAction::Updated
+    );
+}
+
+#[tokio::test]
+async fn test_upsert_organisation_success_clear_parent_organisation() {
+    // GIVEN
+    let context = TestContext::new(None).await;
+    let parent = context.db.organisations.create().await;
+    let child = context.db.organisations.create().await;
+    context
+        .api
+        .organisations
+        .upsert(
+            &child.id,
+            UpsertParams {
+                parent_organisation: Some(Some(parent.id)),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .organisations
+        .upsert(
+            &child.id,
+            UpsertParams {
+                parent_organisation: Some(None),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 204);
+    let updated = context.db.organisations.get(&child.id).await;
+    assert_eq!(updated.parent_organisation, None);
+}
+
+#[tokio::test]
+async fn test_upsert_organisation_fail_parent_already_has_parent() {
+    // GIVEN
+    let context = TestContext::new(None).await;
+    let grandparent = context.db.organisations.create().await;
+    let parent = context.db.organisations.create().await;
+    let child = context.db.organisations.create().await;
+    // Give `parent` its own parent.
+    context
+        .api
+        .organisations
+        .upsert(
+            &parent.id,
+            UpsertParams {
+                parent_organisation: Some(Some(grandparent.id)),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN - try to nest `child` under an org that itself has a parent.
+    let resp = context
+        .api
+        .organisations
+        .upsert(
+            &child.id,
+            UpsertParams {
+                parent_organisation: Some(Some(parent.id)),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.error_code().await, "BR_0419");
+    let unchanged = context.db.organisations.get(&child.id).await;
+    assert_eq!(unchanged.parent_organisation, None);
+}
+
+#[tokio::test]
+async fn test_upsert_organisation_fail_organisation_has_children() {
+    // GIVEN
+    let context = TestContext::new(None).await;
+    let org = context.db.organisations.create().await;
+    context.db.organisations.create_with_parent(org.id).await;
+    let new_parent = context.db.organisations.create().await;
+
+    // WHEN - try to give `org` a parent while it already has children.
+    let resp = context
+        .api
+        .organisations
+        .upsert(
+            &org.id,
+            UpsertParams {
+                parent_organisation: Some(Some(new_parent.id)),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.error_code().await, "BR_0419");
+    let unchanged = context.db.organisations.get(&org.id).await;
+    assert_eq!(unchanged.parent_organisation, None);
+}
+
+#[tokio::test]
+async fn test_upsert_organisation_fail_self_as_parent() {
+    // GIVEN
+    let context = TestContext::new(None).await;
+    let organisation = context.db.organisations.create().await;
+
+    // WHEN
+    let resp = context
+        .api
+        .organisations
+        .upsert(
+            &organisation.id,
+            UpsertParams {
+                parent_organisation: Some(Some(organisation.id)),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.error_code().await, "BR_0419");
+}
+
+#[tokio::test]
+async fn test_upsert_organisation_fail_non_existing_parent_organisation() {
+    // GIVEN
+    let context = TestContext::new(None).await;
+    let organisation = context.db.organisations.create().await;
+
+    // WHEN
+    let resp = context
+        .api
+        .organisations
+        .upsert(
+            &organisation.id,
+            UpsertParams {
+                parent_organisation: Some(Some(Uuid::new_v4().into())),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 404);
+    assert_eq!(resp.error_code().await, "BR_0022");
+}
+
+#[tokio::test]
 async fn test_upsert_organisation_fail_non_existing_wallet_provider() {
     // GIVEN
     let (context, org) = TestContext::new_with_organisation(None).await;

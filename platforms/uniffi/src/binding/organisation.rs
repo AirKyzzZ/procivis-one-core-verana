@@ -40,6 +40,7 @@ pub struct CreateOrganisationRequestBindingDTO {
     pub id: Option<String>,
     /// If no name is passed, the UUID will be used.
     pub name: Option<String>,
+    pub parent_organisation: Option<String>,
 }
 
 #[derive(Clone, Debug, uniffi::Record)]
@@ -55,4 +56,5 @@ pub struct UpsertOrganisationRequestBindingDTO {
     pub wallet_provider: Option<OptionalString>,
     /// Wallet Provider use only.
     pub wallet_provider_issuer: Option<OptionalString>,
+    pub parent_organisation: Option<OptionalString>,
 }

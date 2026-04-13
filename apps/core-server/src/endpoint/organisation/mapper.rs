@@ -19,5 +19,6 @@ pub(crate) fn upsert_request_from_request(
         deactivate: request.deactivate,
         wallet_provider: request.wallet_provider,
         wallet_provider_issuer: request.wallet_provider_issuer,
+        parent_organisation: request.parent_organisation,
     }
 }

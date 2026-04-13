@@ -140,6 +140,7 @@ async fn test_register_wallet_unit() {
                 deactivated_at: None,
                 wallet_provider: Some(procivis_one_provider.to_string()),
                 wallet_provider_issuer: Some(issuer_identifier_id),
+                parent_organisation: None,
             }))
         });
 
@@ -259,6 +260,7 @@ async fn test_register_wallet_unit_integrity_check() {
                 deactivated_at: None,
                 wallet_provider: Some(procivis_one_provider.to_string()),
                 wallet_provider_issuer: Some(issuer_identifier_id),
+                parent_organisation: None,
             }))
         });
 

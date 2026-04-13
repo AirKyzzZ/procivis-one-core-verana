@@ -367,6 +367,7 @@ pub async fn insert_organisation_to_database(
         deactivated_at: NotSet,
         wallet_provider: NotSet,
         wallet_provider_issuer: NotSet,
+        parent_organisation: NotSet,
     }
     .insert(database)
     .await?;
@@ -686,6 +687,7 @@ pub fn dummy_organisation(id: Option<OrganisationId>) -> Organisation {
         deactivated_at: None,
         wallet_provider: None,
         wallet_provider_issuer: None,
+        parent_organisation: None,
     }
 }
 

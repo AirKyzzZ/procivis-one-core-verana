@@ -75,6 +75,7 @@ fn dummy_wallet_unit(id: WalletUnitId, org: OrganisationId) -> WalletUnit {
             deactivated_at: None,
             wallet_provider: None,
             wallet_provider_issuer: None,
+            parent_organisation: None,
         }),
         attested_keys: None,
     }

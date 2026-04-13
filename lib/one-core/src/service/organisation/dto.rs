@@ -10,6 +10,7 @@ use crate::service::identifier::dto::GetIdentifierListItemResponseDTO;
 pub struct CreateOrganisationRequestDTO {
     pub id: Option<OrganisationId>,
     pub name: Option<String>,
+    pub parent_organisation: Option<OrganisationId>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Into)]
@@ -20,6 +21,7 @@ pub struct UpsertOrganisationRequestDTO {
     pub deactivate: Option<bool>,
     pub wallet_provider: Option<Option<String>>,
     pub wallet_provider_issuer: Option<Option<IdentifierId>>,
+    pub parent_organisation: Option<Option<OrganisationId>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -31,6 +33,7 @@ pub struct GetOrganisationDetailsResponseDTO {
     pub deactivated_at: Option<OffsetDateTime>,
     pub wallet_provider: Option<String>,
     pub wallet_provider_issuer: Option<GetIdentifierListItemResponseDTO>,
+    pub parent_organisation: Option<OrganisationId>,
 }
 
 pub type OrganisationListItemResponseDTO = GetOrganisationDetailsResponseDTO;
@@ -44,4 +47,6 @@ pub struct OrganisationFilterParamsDTO {
     pub created_date_before: Option<OffsetDateTime>,
     pub last_modified_after: Option<OffsetDateTime>,
     pub last_modified_before: Option<OffsetDateTime>,
+    pub has_parent_organisation: Option<bool>,
+    pub parent_organisations: Option<Vec<OrganisationId>>,
 }

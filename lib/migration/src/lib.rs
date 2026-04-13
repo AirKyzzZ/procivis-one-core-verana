@@ -233,6 +233,8 @@ mod m20260410_120000_history_metadata_to_text;
 mod m20260410_130000_add_metadata_blob_to_history;
 mod m20260410_133852_openid_metadata_cache_types;
 mod m20260413_125543_delete_cert_metadata;
+mod m20260414_091938_add_parent_org_to_organisation_table;
+
 mod migrate_enum;
 mod soft_delete_unique_idx;
 
@@ -467,6 +469,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260410_130000_add_metadata_blob_to_history::Migration),
             Box::new(m20260410_133852_openid_metadata_cache_types::Migration),
             Box::new(m20260413_125543_delete_cert_metadata::Migration),
+            Box::new(m20260414_091938_add_parent_org_to_organisation_table::Migration),
         ]
     }
 }

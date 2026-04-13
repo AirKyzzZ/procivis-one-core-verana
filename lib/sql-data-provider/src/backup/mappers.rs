@@ -78,6 +78,7 @@ impl TryFrom<UnexportableCredentialModel> for Credential {
                     deactivated_at: value.organisation_deactivated_at,
                     wallet_provider: value.organisation_wallet_provider,
                     wallet_provider_issuer: value.organisation_wallet_provider_issuer,
+                    parent_organisation: value.organisation_parent_organisation,
                 }),
                 // todo: this should be fixed in another ticket
                 layout_type: LayoutType::Card,

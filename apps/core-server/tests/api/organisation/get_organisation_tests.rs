@@ -19,6 +19,23 @@ async fn test_get_organisation_success() {
     resp["name"].assert_eq(&organisation.name);
     assert!(resp["createdDate"].is_string());
     assert!(resp["lastModified"].is_string());
+    assert!(resp.get("parentOrganisation").is_none());
+}
+
+#[tokio::test]
+async fn test_get_organisation_returns_parent_organisation() {
+    // GIVEN
+    let (context, parent) = TestContext::new_with_organisation(None).await;
+    let child = context.db.organisations.create_with_parent(parent.id).await;
+
+    // WHEN
+    let resp = context.api.organisations.get(&child.id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    resp["id"].assert_eq(&child.id);
+    resp["parentOrganisation"].assert_eq(&parent.id);
 }
 
 #[tokio::test]
