@@ -1,5 +1,6 @@
 use error::WRPValidatorError;
 use shared_types::OrganisationId;
+use url::Url;
 
 use crate::proto::jwt::model::JWTPayload;
 use crate::provider::signer::registration_certificate::model::Payload;
@@ -7,14 +8,13 @@ use crate::provider::trust_list_subscriber::TrustEntityResponse;
 
 pub(crate) mod error;
 pub(crate) mod validator;
-mod x509;
 
 pub(crate) struct AccessCertificateResult {
     #[expect(unused)]
     pub trust_entity: Option<TrustEntityResponse>,
     pub rp_id: String,
     #[expect(unused)]
-    pub registry_url: Option<String>,
+    pub registry_url: Option<Url>,
 }
 
 pub(crate) struct RegistrationCertificateResult {

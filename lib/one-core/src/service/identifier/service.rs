@@ -22,7 +22,8 @@ use super::mapper::{
 };
 use super::validator::validate_identifier_type;
 use crate::config::core_config;
-use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
+use crate::error::ErrorCode::BR_0224;
+use crate::error::{ContextWithErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
 use crate::model::blob::Blob;
 use crate::model::certificate::CertificateRelations;
 use crate::model::did::DidRelations;
@@ -42,7 +43,6 @@ use crate::model::trust_list_subscription::{
 };
 use crate::proto::identifier_creator::CreateLocalIdentifierRequest;
 use crate::proto::transaction_manager::IsolationLevel;
-use crate::proto::wrp_validator::error::WRPValidatorError;
 use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::trust_list_subscriber::{
     Feature, TrustEntityResponse, TrustListSubscriber, TrustListSubscriberCapabilities,
@@ -381,7 +381,7 @@ impl IdentifierService {
                 Ok(ac_info) => {
                     rp_ids.insert(ac_info.rp_id);
                 }
-                Err(WRPValidatorError::MissingOrganisationIdentifier) => {
+                Err(err) if err.error_code() == BR_0224 => {
                     // ignore this error, as the identifier might have additional certificates that are not access certificates
                 }
                 Err(err) => return Err(err.error_while("validating access cert").into()),

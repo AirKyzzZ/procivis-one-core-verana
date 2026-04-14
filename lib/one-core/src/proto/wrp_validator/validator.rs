@@ -3,7 +3,6 @@ use std::sync::Arc;
 use shared_types::OrganisationId;
 
 use super::error::WRPValidatorError;
-use super::x509::{EtsiIdentifiers, etsi_identifiers_from_pem_chain};
 use super::{AccessCertificateResult, RegistrationCertificateResult, WRPValidator};
 use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::x5c_into_pem_chain;
@@ -29,6 +28,7 @@ use crate::repository::holder_wallet_unit_repository::HolderWalletUnitRepository
 use crate::repository::trust_collection_repository::TrustCollectionRepository;
 use crate::repository::trust_list_subscription_repository::TrustListSubscriptionRepository;
 use crate::service::error::MissingProviderError;
+use crate::util::access_cert_parser::{EtsiParsedAccessCert, etsi_access_cert_from_pem_chain};
 
 pub(crate) struct WRPValidatorImpl {
     trust_collection_repository: Arc<dyn TrustCollectionRepository>,
@@ -67,10 +67,11 @@ impl WRPValidator for WRPValidatorImpl {
             None
         };
 
-        let EtsiIdentifiers {
+        let EtsiParsedAccessCert {
             rp_id,
             registry_url,
-        } = etsi_identifiers_from_pem_chain(pem_chain)?;
+            ..
+        } = etsi_access_cert_from_pem_chain(pem_chain).error_while("parsing access certificate")?;
 
         Ok(AccessCertificateResult {
             trust_entity,

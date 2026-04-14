@@ -1,3 +1,4 @@
+pub mod access_cert_parser;
 pub mod interactions;
 pub mod key_selection;
 pub mod logging;
