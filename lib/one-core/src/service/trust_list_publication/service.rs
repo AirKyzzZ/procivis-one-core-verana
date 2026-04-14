@@ -362,7 +362,7 @@ fn validate_provider_content_type(
     let supported_content_type = capabilities.content_type;
     let requested = LoteContentType::from(requested_content_type);
 
-    if requested != supported_content_type {
+    if !supported_content_type.contains(&requested) {
         return Err(TrustListPublicationServiceError::UnsupportedAcceptType(
             requested.to_string(),
         ));
@@ -593,7 +593,7 @@ mod tests {
                 ],
                 entry_identifier_types: vec![],
                 supported_roles: vec![TrustListRoleEnum::PidProvider],
-                content_type: LoteContentType::Jwt,
+                content_type: vec![LoteContentType::Jwt],
             });
 
         trust_list_publisher
@@ -644,7 +644,7 @@ mod tests {
             key_algorithms: vec![],
             publisher_identifier_types: vec![],
             entry_identifier_types: vec![crate::config::core_config::IdentifierType::Key],
-            content_type: LoteContentType::Jwt,
+            content_type: vec![LoteContentType::Jwt],
         };
 
         // when
@@ -663,7 +663,7 @@ mod tests {
             key_algorithms: vec![],
             publisher_identifier_types: vec![],
             entry_identifier_types: vec![crate::config::core_config::IdentifierType::Did],
-            content_type: LoteContentType::Jwt,
+            content_type: vec![LoteContentType::Jwt],
         };
 
         // when
@@ -701,7 +701,7 @@ mod tests {
                 crate::config::core_config::IdentifierType::Key,
                 crate::config::core_config::IdentifierType::Did,
             ],
-            content_type: LoteContentType::Jwt,
+            content_type: vec![LoteContentType::Jwt],
         };
 
         // when
@@ -720,7 +720,7 @@ mod tests {
             key_algorithms: vec![],
             publisher_identifier_types: vec![],
             entry_identifier_types: vec![],
-            content_type: LoteContentType::Jwt,
+            content_type: vec![LoteContentType::Jwt],
         };
 
         // when
@@ -755,7 +755,7 @@ mod tests {
                 crate::config::core_config::IdentifierType::Certificate,
             ],
             entry_identifier_types: vec![],
-            content_type: LoteContentType::Jwt,
+            content_type: vec![LoteContentType::Jwt],
         };
 
         // when
@@ -779,7 +779,7 @@ mod tests {
             key_algorithms: vec![crate::config::core_config::KeyAlgorithmType::Eddsa],
             publisher_identifier_types: vec![crate::config::core_config::IdentifierType::Did],
             entry_identifier_types: vec![],
-            content_type: LoteContentType::Jwt,
+            content_type: vec![LoteContentType::Jwt],
         };
 
         // when
@@ -817,7 +817,7 @@ mod tests {
             key_algorithms: vec![crate::config::core_config::KeyAlgorithmType::Eddsa],
             publisher_identifier_types: vec![crate::config::core_config::IdentifierType::Key],
             entry_identifier_types: vec![],
-            content_type: LoteContentType::Jwt,
+            content_type: vec![LoteContentType::Jwt],
         };
 
         // when
@@ -845,7 +845,7 @@ mod tests {
                 crate::config::core_config::IdentifierType::Certificate,
             ],
             entry_identifier_types: vec![],
-            content_type: LoteContentType::Jwt,
+            content_type: vec![LoteContentType::Jwt],
         };
 
         // when
@@ -871,7 +871,7 @@ mod tests {
             key_algorithms: vec![crate::config::core_config::KeyAlgorithmType::Eddsa],
             publisher_identifier_types: vec![crate::config::core_config::IdentifierType::Key],
             entry_identifier_types: vec![],
-            content_type: LoteContentType::Jwt,
+            content_type: vec![LoteContentType::Jwt],
         };
 
         // when
@@ -903,7 +903,7 @@ mod tests {
                 crate::config::core_config::IdentifierType::Certificate,
             ],
             entry_identifier_types: vec![],
-            content_type: LoteContentType::Jwt,
+            content_type: vec![LoteContentType::Jwt],
         };
 
         // when
@@ -936,7 +936,7 @@ mod tests {
                 crate::config::core_config::IdentifierType::Certificate,
             ],
             entry_identifier_types: vec![],
-            content_type: LoteContentType::Jwt,
+            content_type: vec![LoteContentType::Jwt],
         };
 
         // when

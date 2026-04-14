@@ -98,7 +98,7 @@ impl TrustListPublisher for EtsiLotePublisher {
                 TrustListRoleEnum::PubEeaProvider,
                 TrustListRoleEnum::NationalRegistryRegistrar,
             ],
-            content_type: self.params.content_type.clone(),
+            content_type: vec![self.params.content_type.clone()],
         }
     }
 
