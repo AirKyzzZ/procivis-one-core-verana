@@ -36,7 +36,7 @@ use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::issuance_protocol::model::ShareResponse;
 use crate::provider::revocation::model::RevocationState;
 use crate::repository::error::DataLayerError;
-use crate::service::common_dto::{ListQueryDTO, TrustInformationResponseDTO};
+use crate::service::common_dto::{ListQueryDTO, TrustInformationDetailResponseDTO};
 use crate::service::credential::dto::CredentialFilterParamsDTO;
 use crate::service::credential_schema::validator::validate_key_storage_security_supported;
 use crate::service::error::{BusinessLogicError, MissingProviderError};
@@ -639,7 +639,7 @@ impl CredentialService {
     pub async fn get_trust_details(
         &self,
         id: CredentialId,
-    ) -> Result<TrustInformationResponseDTO, CredentialServiceError> {
+    ) -> Result<TrustInformationDetailResponseDTO, CredentialServiceError> {
         let credential = self
             .credential_repository
             .get_credential(
@@ -663,7 +663,7 @@ impl CredentialService {
             .await
             .error_while("getting trust details")?
         else {
-            return Ok(TrustInformationResponseDTO {
+            return Ok(TrustInformationDetailResponseDTO {
                 eudi_ecosystem: None,
             });
         };

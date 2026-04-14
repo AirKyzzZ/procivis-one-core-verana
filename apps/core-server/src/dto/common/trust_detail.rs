@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use one_core::provider::signer::registration_certificate::model::SupervisoryAuthority;
 use one_core::service::common_dto::{
-    EudiIntermediaryResponseDTO, EudiTrustInformationResponseDTO, TrustInformationResponseDTO,
+    EudiIntermediaryResponseDTO, EudiTrustInformationResponseDTO, TrustInformationDetailResponseDTO,
 };
 use one_dto_mapper::{From, convert_inner};
 use proc_macros::options_not_nullable;
@@ -12,9 +12,9 @@ use utoipa::ToSchema;
 
 #[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(TrustInformationResponseDTO)]
+#[from(TrustInformationDetailResponseDTO)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct TrustInformationResponseRestDTO {
+pub(crate) struct TrustInformationDetailResponseRestDTO {
     #[from(with_fn = convert_inner)]
     pub eudi_ecosystem: Option<EudiTrustInformationResponseRestDTO>,
 }

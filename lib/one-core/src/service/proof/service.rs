@@ -69,7 +69,7 @@ use crate::provider::verification_protocol::iso_mdl::device_engagement::{
 use crate::provider::verification_protocol::iso_mdl::nfc::create_nfc_handover_select_message;
 use crate::provider::verification_protocol::openid4vp::mapper::create_format_map;
 use crate::provider::verification_protocol::{FormatMapper, TypeToDescriptorMapper};
-use crate::service::common_dto::{ListQueryDTO, TrustInformationResponseDTO};
+use crate::service::common_dto::{ListQueryDTO, TrustInformationDetailResponseDTO};
 use crate::service::credential_schema::validator::validate_key_storage_security_supported;
 use crate::service::error::MissingProviderError;
 use crate::service::storage_proxy::StorageProxyImpl;
@@ -1048,7 +1048,7 @@ impl ProofService {
     pub async fn get_trust_details(
         &self,
         id: ProofId,
-    ) -> Result<TrustInformationResponseDTO, ProofServiceError> {
+    ) -> Result<TrustInformationDetailResponseDTO, ProofServiceError> {
         let proof = self
             .proof_repository
             .get_proof(
@@ -1074,7 +1074,7 @@ impl ProofService {
             .await
             .error_while("getting trust details")?
         else {
-            return Ok(TrustInformationResponseDTO {
+            return Ok(TrustInformationDetailResponseDTO {
                 eudi_ecosystem: None,
             });
         };

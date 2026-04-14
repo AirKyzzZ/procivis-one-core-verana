@@ -26,7 +26,7 @@ pub struct ListQueryDTO<SortColumn, Filter, Include = NoInclude> {
 }
 
 #[derive(Clone, Debug)]
-pub struct TrustInformationResponseDTO {
+pub struct TrustInformationDetailResponseDTO {
     pub eudi_ecosystem: Option<EudiTrustInformationResponseDTO>,
 }
 

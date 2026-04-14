@@ -12,7 +12,7 @@ use super::dto::{
     PresentationDefinitionV2ResponseRestDTO, ProofDetailResponseRestDTO, ShareProofRequestRestDTO,
     ShareProofResponseRestDTO,
 };
-use crate::dto::common::trust_detail::TrustInformationResponseRestDTO;
+use crate::dto::common::trust_detail::TrustInformationDetailResponseRestDTO;
 use crate::dto::common::{EntityResponseRestDTO, GetProofsResponseRestDTO};
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
@@ -293,7 +293,7 @@ pub(crate) async fn delete_proof_claims(
     permissions = [Permission::ProofDetail],
     get,
     path = "/api/proof-request/v1/{id}/trust-detail",
-    responses(OkOrErrorResponse<TrustInformationResponseRestDTO>),
+    responses(OkOrErrorResponse<TrustInformationDetailResponseRestDTO>),
     params(
         ("id" = ProofId, Path, description = "Proof id")
     ),
@@ -307,7 +307,7 @@ pub(crate) async fn delete_proof_claims(
 pub(crate) async fn get_proof_trust_detail(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<ProofId>, ErrorResponseRestDTO>,
-) -> OkOrErrorResponse<TrustInformationResponseRestDTO> {
+) -> OkOrErrorResponse<TrustInformationDetailResponseRestDTO> {
     let result = state
         .core
         .proof_service

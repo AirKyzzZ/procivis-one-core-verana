@@ -11,6 +11,7 @@ use super::common::SortDirection;
 use super::credential_schema::{CredentialClaimSchemaBindingDTO, CredentialSchemaBindingDTO};
 use super::identifier::GetIdentifierListItemBindingDTO;
 use crate::OneCore;
+use crate::binding::trust_information::TrustInformationDetailResponseBindingDTO;
 use crate::error::BindingError;
 use crate::utils::into_id;
 
@@ -28,6 +29,20 @@ impl OneCore {
             .get_credential(&into_id(&credential_id)?)
             .await?
             .into())
+    }
+
+    /// Returns detailed trust information about a credential issuer.
+    #[uniffi::method]
+    pub async fn get_credential_trust_information(
+        &self,
+        credential_id: String,
+    ) -> Result<TrustInformationDetailResponseBindingDTO, BindingError> {
+        let core = self.use_core().await?;
+        let trust_information = core
+            .credential_service
+            .get_trust_details(into_id(&credential_id)?)
+            .await?;
+        Ok(trust_information.into())
     }
 
     /// Returns a filterable list of credentials in the system.

@@ -7,7 +7,7 @@ use crate::proto::trust_information::TrustDetails;
 use crate::provider::signer::registration_certificate::model::Payload;
 use crate::service::common_dto::{
     BoundedB64Image, EudiIntermediaryResponseDTO, EudiTrustInformationResponseDTO, ListQueryDTO,
-    TrustInformationResponseDTO,
+    TrustInformationDetailResponseDTO,
 };
 use crate::service::error::{ServiceError, ValidationError};
 use crate::util::access_cert_parser::EtsiParsedAccessCert;
@@ -70,7 +70,7 @@ where
     }
 }
 
-impl TryFrom<TrustDetails> for TrustInformationResponseDTO {
+impl TryFrom<TrustDetails> for TrustInformationDetailResponseDTO {
     type Error = ServiceError;
 
     fn try_from(value: TrustDetails) -> Result<Self, Self::Error> {
@@ -81,7 +81,7 @@ impl TryFrom<TrustDetails> for TrustInformationResponseDTO {
             } => {
                 let (intermediary, email, phone) =
                     map_access_cert(access_certificate, &registration_certificate);
-                TrustInformationResponseDTO {
+                TrustInformationDetailResponseDTO {
                     eudi_ecosystem: Some(EudiTrustInformationResponseDTO {
                         name: registration_certificate.custom.name,
                         website: registration_certificate.custom.support_uri,

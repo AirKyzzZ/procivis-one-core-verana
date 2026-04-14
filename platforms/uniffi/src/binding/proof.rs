@@ -35,6 +35,7 @@ use super::identifier::{CertificateResponseBindingDTO, GetIdentifierListItemBind
 use super::mapper::{optional_identifier_id_string, optional_time};
 use super::proof_schema::{GetProofSchemaListItemBindingDTO, ProofClaimSchemaBindingDTO};
 use crate::OneCore;
+use crate::binding::trust_information::TrustInformationDetailResponseBindingDTO;
 use crate::error::BindingError;
 use crate::utils::{TimestampFormat, into_id};
 
@@ -62,6 +63,20 @@ impl OneCore {
         let core = self.use_core().await?;
         let proof = core.proof_service.get_proof(&into_id(&proof_id)?).await?;
         Ok(proof.into())
+    }
+
+    /// Returns detailed trust information about a proof request verifier.
+    #[uniffi::method]
+    pub async fn get_proof_trust_information(
+        &self,
+        proof_id: String,
+    ) -> Result<TrustInformationDetailResponseBindingDTO, BindingError> {
+        let core = self.use_core().await?;
+        let trust_information = core
+            .proof_service
+            .get_trust_details(into_id(&proof_id)?)
+            .await?;
+        Ok(trust_information.into())
     }
 
     /// Deletes an incomplete proof request. If the request is in `REQUESTED`
