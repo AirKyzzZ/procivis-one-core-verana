@@ -504,7 +504,7 @@ impl OneCore {
             session_provider.clone(),
             credential_validity_manager.clone(),
             notification_scheduler.clone(),
-            trust_information_provider,
+            trust_information_provider.clone(),
         );
 
         let trust_list_subscription_sync: Arc<dyn TrustListSubscriptionSync> =
@@ -762,6 +762,7 @@ impl OneCore {
                 data_provider.get_tx_manager(),
                 openid4vp_proof_validator,
                 notification_scheduler,
+                trust_information_provider,
             ),
             ssi_issuer_service: SSIIssuerService::new(
                 data_provider.get_credential_schema_repository(),

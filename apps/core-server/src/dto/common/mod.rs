@@ -21,6 +21,8 @@ use crate::endpoint::statistics::dto::{
 use crate::endpoint::trust_anchor::dto::ListTrustAnchorsResponseItemRestDTO;
 use crate::endpoint::trust_entity::dto::ListTrustEntitiesResponseItemRestDTO;
 
+pub(crate) mod trust_detail;
+
 #[derive(Clone, Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct GetListResponseRestDTO<T>

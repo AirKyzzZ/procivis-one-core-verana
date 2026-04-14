@@ -1,18 +1,13 @@
-use std::collections::HashMap;
-
 use one_core::model::credential::{
     CredentialListIncludeEntityTypeEnum, ExactCredentialFilterColumn, SortableCredentialColumn,
 };
 use one_core::proto::trust_information::dto::TrustInformationDTO;
-use one_core::provider::signer::registration_certificate::model::SupervisoryAuthority;
 use one_core::service::credential::dto::{
     CreateCredentialRequestDTO, CredentialFilterParamsDTO, CredentialListItemResponseDTO,
     CredentialRequestClaimDTO, CredentialRevocationCheckResponseDTO, CredentialRole,
-    CredentialSearchTypeDTO, CredentialStateEnum, CredentialTrustInformationResponseDTO,
-    DetailCredentialClaimResponseDTO, DetailCredentialSchemaResponseDTO,
-    EudiIntermediaryResponseDTO, EudiTrustInformationResponseDTO, MdocMsoValidityResponseDTO,
-    ShareCredentialResponseDTO, SuspendCredentialRequestDTO, WalletInstanceAttestationDTO,
-    WalletUnitAttestationDTO,
+    CredentialSearchTypeDTO, CredentialStateEnum, DetailCredentialClaimResponseDTO,
+    DetailCredentialSchemaResponseDTO, MdocMsoValidityResponseDTO, ShareCredentialResponseDTO,
+    SuspendCredentialRequestDTO, WalletInstanceAttestationDTO, WalletUnitAttestationDTO,
 };
 use one_core::service::error::ServiceError;
 use one_dto_mapper::{From, Into, TryInto, convert_inner, convert_inner_of_inner};
@@ -23,7 +18,6 @@ use shared_types::{
     OrganisationId, RevocationMethodId,
 };
 use time::OffsetDateTime;
-use url::Url;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
@@ -526,55 +520,4 @@ pub(crate) struct ShareCredentialResponseRestDTO {
     #[serde(serialize_with = "front_time_option")]
     #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
     pub expires_at: Option<OffsetDateTime>,
-}
-
-#[options_not_nullable]
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(CredentialTrustInformationResponseDTO)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct CredentialTrustInformationResponseRestDTO {
-    #[from(with_fn = convert_inner)]
-    pub eudi_ecosystem: Option<EudiTrustInformationResponseRestDTO>,
-}
-
-#[options_not_nullable]
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(EudiTrustInformationResponseDTO)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct EudiTrustInformationResponseRestDTO {
-    pub name: String,
-    pub website: Url,
-    pub email: Option<String>,
-    pub phone: Option<String>,
-    pub country: String,
-    pub identifier: String,
-    #[schema(example = json!([{ "de": "Demo Dienstleistung", "en": "Demo Service" }]))]
-    pub service_description: Vec<HashMap<String, String>>,
-    pub supervisory_authority: EudiSupervisoryAuthorityResponseRestDTO,
-    #[from(with_fn = convert_inner)]
-    pub intermediary: Option<EudiIntermediaryResponseRestDTO>,
-    pub is_public_sector: bool,
-}
-
-#[options_not_nullable]
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(SupervisoryAuthority)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct EudiSupervisoryAuthorityResponseRestDTO {
-    pub email: String,
-    pub phone: String,
-    pub uri: String,
-}
-
-#[options_not_nullable]
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(EudiIntermediaryResponseDTO)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct EudiIntermediaryResponseRestDTO {
-    pub name: Option<String>,
-    pub identifier: String,
-    pub website: Url,
-    pub email: Option<String>,
-    pub phone: Option<String>,
-    pub country: String,
 }

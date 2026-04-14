@@ -12,6 +12,7 @@ use super::dto::{
     PresentationDefinitionV2ResponseRestDTO, ProofDetailResponseRestDTO, ShareProofRequestRestDTO,
     ShareProofResponseRestDTO,
 };
+use crate::dto::common::trust_detail::TrustInformationResponseRestDTO;
 use crate::dto::common::{EntityResponseRestDTO, GetProofsResponseRestDTO};
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
@@ -286,4 +287,33 @@ pub(crate) async fn delete_proof_claims(
 ) -> EmptyOrErrorResponse {
     let result = state.core.proof_service.delete_proof_claims(id).await;
     EmptyOrErrorResponse::from_result(result, state, " deleting proof claims")
+}
+
+#[endpoint(
+    permissions = [Permission::ProofDetail],
+    get,
+    path = "/api/proof-request/v1/{id}/trust-detail",
+    responses(OkOrErrorResponse<TrustInformationResponseRestDTO>),
+    params(
+        ("id" = ProofId, Path, description = "Proof id")
+    ),
+    tag = "proof_management",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "Retrieve proof request trust detail",
+    description = "Returns detailed trust information about a proof request verifier in the system.",
+)]
+pub(crate) async fn get_proof_trust_detail(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<ProofId>, ErrorResponseRestDTO>,
+) -> OkOrErrorResponse<TrustInformationResponseRestDTO> {
+    let result = state
+        .core
+        .proof_service
+        .get_trust_details(id)
+        .await
+        .error_while("getting proof trust information")
+        .map_err(ServiceError::from);
+    OkOrErrorResponse::from_result(result, state, "getting proof trust information")
 }

@@ -338,6 +338,10 @@ fn get_management_endpoints(
                 delete(proof::controller::delete_proof_claims),
             )
             .route(
+                "/api/proof-request/v1/{id}/trust-detail",
+                get(proof::controller::get_proof_trust_detail),
+            )
+            .route(
                 "/api/organisation/v1",
                 get(organisation::controller::get_organisations)
                     .post(organisation::controller::post_organisation),

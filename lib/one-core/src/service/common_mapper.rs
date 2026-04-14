@@ -2,8 +2,15 @@ use ct_codecs::{Base64, Decoder};
 
 use crate::model::list_filter::ListFilterCondition;
 use crate::model::list_query::{ListPagination, ListQuery, ListSorting};
-use crate::service::common_dto::{BoundedB64Image, ListQueryDTO};
-use crate::service::error::ValidationError;
+use crate::proto::jwt::model::JWTPayload;
+use crate::proto::trust_information::TrustDetails;
+use crate::provider::signer::registration_certificate::model::Payload;
+use crate::service::common_dto::{
+    BoundedB64Image, EudiIntermediaryResponseDTO, EudiTrustInformationResponseDTO, ListQueryDTO,
+    TrustInformationResponseDTO,
+};
+use crate::service::error::{ServiceError, ValidationError};
+use crate::util::access_cert_parser::EtsiParsedAccessCert;
 
 impl<const MAX: usize> TryFrom<String> for BoundedB64Image<MAX> {
     type Error = ValidationError;
@@ -60,6 +67,82 @@ where
             filtering: Some(value.filter.into()),
             include: value.include,
         }
+    }
+}
+
+impl TryFrom<TrustDetails> for TrustInformationResponseDTO {
+    type Error = ServiceError;
+
+    fn try_from(value: TrustDetails) -> Result<Self, Self::Error> {
+        let response = match value {
+            TrustDetails::Etsi {
+                access_certificate,
+                registration_certificate,
+            } => {
+                let (intermediary, email, phone) =
+                    map_access_cert(access_certificate, &registration_certificate);
+                TrustInformationResponseDTO {
+                    eudi_ecosystem: Some(EudiTrustInformationResponseDTO {
+                        name: registration_certificate.custom.name,
+                        website: registration_certificate.custom.support_uri,
+                        email,
+                        phone,
+                        country: registration_certificate.custom.country,
+                        identifier: registration_certificate.subject.ok_or(
+                            ServiceError::MappingError(
+                                "Missing registration certificate subject".to_string(),
+                            ),
+                        )?,
+                        service_description: registration_certificate
+                            .custom
+                            .service_descriptions
+                            .into_iter()
+                            .map(|langs| {
+                                langs
+                                    .into_iter()
+                                    .map(|lang| (lang.lang, lang.value))
+                                    .collect()
+                            })
+                            .collect(),
+                        supervisory_authority: registration_certificate
+                            .custom
+                            .supervisory_authority,
+                        intermediary,
+                        is_public_sector: registration_certificate
+                            .custom
+                            .public_body
+                            .unwrap_or_default(),
+                    }),
+                }
+            }
+        };
+        Ok(response)
+    }
+}
+
+fn map_access_cert(
+    access_certificate: EtsiParsedAccessCert,
+    registration_certificate: &JWTPayload<Payload>,
+) -> (
+    Option<EudiIntermediaryResponseDTO>,
+    Option<String>,
+    Option<String>,
+) {
+    if registration_certificate.custom.intermediary.is_some() {
+        (
+            Some(EudiIntermediaryResponseDTO {
+                name: access_certificate.common_name,
+                identifier: access_certificate.rp_id,
+                website: access_certificate.support_uri.clone(),
+                email: access_certificate.email,
+                phone: access_certificate.phone,
+                country: access_certificate.country,
+            }),
+            None,
+            None,
+        )
+    } else {
+        (None, access_certificate.email, access_certificate.phone)
     }
 }
 

@@ -111,6 +111,11 @@ impl ProofsApi {
         self.client.get(&url).await
     }
 
+    pub async fn get_trust_detail(&self, id: &impl Display) -> Response {
+        let url = format!("/api/proof-request/v1/{id}/trust-detail");
+        self.client.get(&url).await
+    }
+
     pub async fn list(
         &self,
         page: u32,

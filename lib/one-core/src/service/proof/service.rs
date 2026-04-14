@@ -69,7 +69,7 @@ use crate::provider::verification_protocol::iso_mdl::device_engagement::{
 use crate::provider::verification_protocol::iso_mdl::nfc::create_nfc_handover_select_message;
 use crate::provider::verification_protocol::openid4vp::mapper::create_format_map;
 use crate::provider::verification_protocol::{FormatMapper, TypeToDescriptorMapper};
-use crate::service::common_dto::ListQueryDTO;
+use crate::service::common_dto::{ListQueryDTO, TrustInformationResponseDTO};
 use crate::service::credential_schema::validator::validate_key_storage_security_supported;
 use crate::service::error::MissingProviderError;
 use crate::service::storage_proxy::StorageProxyImpl;
@@ -1043,6 +1043,45 @@ impl ProofService {
         }
         tracing::info!("Deleted proof {}", proof.id);
         Ok(())
+    }
+
+    pub async fn get_trust_details(
+        &self,
+        id: ProofId,
+    ) -> Result<TrustInformationResponseDTO, ProofServiceError> {
+        let proof = self
+            .proof_repository
+            .get_proof(
+                &id,
+                &ProofRelations {
+                    schema: Some(ProofSchemaRelations {
+                        organisation: Some(OrganisationRelations::default()),
+                        ..Default::default()
+                    }),
+                    interaction: Some(InteractionRelations::default()),
+                    ..Default::default()
+                },
+                None,
+            )
+            .await
+            .error_while("getting credential")?;
+        let proof = proof.ok_or(ProofServiceError::NotFound(id))?;
+
+        throw_if_proof_not_in_session_org(&proof, &*self.session_provider)?;
+        let Some(trust_details) = self
+            .trust_information_provider
+            .get_trust_detail(&id.into())
+            .await
+            .error_while("getting trust details")?
+        else {
+            return Ok(TrustInformationResponseDTO {
+                eudi_ecosystem: None,
+            });
+        };
+        trust_details
+            .try_into()
+            .error_while("mapping trust information")
+            .map_err(Into::into)
     }
 
     // ============ Private methods

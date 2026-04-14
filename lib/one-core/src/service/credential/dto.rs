@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use one_dto_mapper::{From, Into};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
@@ -9,7 +7,6 @@ use shared_types::{
 };
 use strum::AsRefStr;
 use time::OffsetDateTime;
-use url::Url;
 
 use crate::model::blob::Blob;
 use crate::model::common::GetListResponse;
@@ -18,7 +15,6 @@ use crate::model::credential_schema::{
     KeyStorageSecurity, LayoutType, TransactionCode, TransactionCodeType,
 };
 use crate::proto::trust_information::dto::TrustInformationDTO;
-use crate::provider::signer::registration_certificate::model::SupervisoryAuthority;
 use crate::service::certificate::dto::CertificateResponseDTO;
 use crate::service::credential_schema::dto::{
     CredentialClaimSchemaDTO, CredentialSchemaLayoutPropertiesResponseDTO,
@@ -260,33 +256,4 @@ pub struct ShareCredentialResponseDTO {
     pub url: String,
     pub transaction_code: Option<String>,
     pub expires_at: Option<OffsetDateTime>,
-}
-
-#[derive(Clone, Debug)]
-pub struct CredentialTrustInformationResponseDTO {
-    pub eudi_ecosystem: Option<EudiTrustInformationResponseDTO>,
-}
-
-#[derive(Clone, Debug)]
-pub struct EudiTrustInformationResponseDTO {
-    pub name: String,
-    pub website: Url,
-    pub email: Option<String>,
-    pub phone: Option<String>,
-    pub country: String,
-    pub identifier: String,
-    pub service_description: Vec<HashMap<String, String>>,
-    pub supervisory_authority: SupervisoryAuthority,
-    pub intermediary: Option<EudiIntermediaryResponseDTO>,
-    pub is_public_sector: bool,
-}
-
-#[derive(Clone, Debug)]
-pub struct EudiIntermediaryResponseDTO {
-    pub name: Option<String>,
-    pub identifier: String,
-    pub website: Url,
-    pub email: Option<String>,
-    pub phone: Option<String>,
-    pub country: String,
 }

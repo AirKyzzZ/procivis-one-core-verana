@@ -8,9 +8,9 @@ use shared_types::{CredentialId, Permission};
 
 use super::dto::{
     CredentialDetailClaimResponseRestDTO, CredentialRevocationCheckRequestRestDTO,
-    CredentialRevocationCheckResponseRestDTO, CredentialTrustInformationResponseRestDTO,
-    ShareCredentialResponseRestDTO,
+    CredentialRevocationCheckResponseRestDTO, ShareCredentialResponseRestDTO,
 };
+use crate::dto::common::trust_detail::TrustInformationResponseRestDTO;
 use crate::dto::common::{EntityResponseRestDTO, GetCredentialsResponseDTO};
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{
@@ -328,7 +328,7 @@ pub(crate) async fn credential_revocation_check(
     permissions = [Permission::CredentialDetail],
     get,
     path = "/api/credential/v1/{id}/trust-detail",
-    responses(OkOrErrorResponse<CredentialTrustInformationResponseRestDTO>),
+    responses(OkOrErrorResponse<TrustInformationResponseRestDTO>),
     params(
         ("id" = CredentialId, Path, description = "Credential id")
     ),
@@ -342,7 +342,7 @@ pub(crate) async fn credential_revocation_check(
 pub(crate) async fn get_credential_trust_detail(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<CredentialId>, ErrorResponseRestDTO>,
-) -> OkOrErrorResponse<CredentialTrustInformationResponseRestDTO> {
+) -> OkOrErrorResponse<TrustInformationResponseRestDTO> {
     let result = state
         .core
         .credential_service

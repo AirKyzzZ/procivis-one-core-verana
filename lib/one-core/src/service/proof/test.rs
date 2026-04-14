@@ -55,6 +55,7 @@ use crate::proto::openid4vp_proof_validator::MockOpenId4VpProofValidator;
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::proto::session_provider::{NoSessionProvider, SessionProvider};
 use crate::proto::transaction_manager::NoTransactionManager;
+use crate::proto::trust_information::MockTrustInformationProvider;
 use crate::provider::blob_storage_provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::model::FormatterCapabilities;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
@@ -120,6 +121,7 @@ struct Repositories {
     pub identifier_creator: MockIdentifierCreator,
     pub proof_validator: MockOpenId4VpProofValidator,
     pub notification_scheduler: MockNotificationScheduler,
+    pub trust_information_provider: MockTrustInformationProvider,
 }
 
 fn setup_service(repositories: Repositories) -> ProofService {
@@ -156,6 +158,7 @@ fn setup_service(repositories: Repositories) -> ProofService {
         Arc::new(NoTransactionManager),
         Arc::new(repositories.proof_validator),
         Arc::new(repositories.notification_scheduler),
+        Arc::new(repositories.trust_information_provider),
     )
 }
 

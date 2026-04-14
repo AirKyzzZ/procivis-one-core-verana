@@ -5,9 +5,8 @@ use uuid::Uuid;
 use super::CredentialService;
 use super::dto::{
     CreateCredentialRequestDTO, CredentialAttestationBlobs, CredentialDetailResponseDTO,
-    CredentialRevocationCheckResponseDTO, CredentialTrustInformationResponseDTO,
-    DetailCredentialClaimResponseDTO, GetCredentialListResponseDTO, ShareCredentialResponseDTO,
-    SuspendCredentialRequestDTO,
+    CredentialRevocationCheckResponseDTO, DetailCredentialClaimResponseDTO,
+    GetCredentialListResponseDTO, ShareCredentialResponseDTO, SuspendCredentialRequestDTO,
 };
 use super::error::CredentialServiceError;
 use super::mapper::{
@@ -37,7 +36,7 @@ use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::issuance_protocol::model::ShareResponse;
 use crate::provider::revocation::model::RevocationState;
 use crate::repository::error::DataLayerError;
-use crate::service::common_dto::ListQueryDTO;
+use crate::service::common_dto::{ListQueryDTO, TrustInformationResponseDTO};
 use crate::service::credential::dto::CredentialFilterParamsDTO;
 use crate::service::credential_schema::validator::validate_key_storage_security_supported;
 use crate::service::error::{BusinessLogicError, MissingProviderError};
@@ -640,7 +639,7 @@ impl CredentialService {
     pub async fn get_trust_details(
         &self,
         id: CredentialId,
-    ) -> Result<CredentialTrustInformationResponseDTO, CredentialServiceError> {
+    ) -> Result<TrustInformationResponseDTO, CredentialServiceError> {
         let credential = self
             .credential_repository
             .get_credential(
@@ -664,11 +663,14 @@ impl CredentialService {
             .await
             .error_while("getting trust details")?
         else {
-            return Ok(CredentialTrustInformationResponseDTO {
+            return Ok(TrustInformationResponseDTO {
                 eudi_ecosystem: None,
             });
         };
-        trust_details.try_into()
+        trust_details
+            .try_into()
+            .error_while("mapping trust information")
+            .map_err(Into::into)
     }
 
     // ============ Private methods
