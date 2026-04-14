@@ -1074,7 +1074,7 @@ pub struct Fields<T> {
     pub params: Option<Params>,
 }
 
-fn default_true() -> bool {
+pub(crate) fn default_true() -> bool {
     true
 }
 
