@@ -1,6 +1,7 @@
 use core_server::endpoint::trust_list_publication::dto::{
     TrustEntryStateRestEnum, TrustListRoleRestEnum,
 };
+use core_server::extractor::Accept;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
@@ -20,6 +21,10 @@ trustListPublisher:
         refreshIntervalSeconds: 86400
         contentType: "application/xml"
 "#;
+
+fn xml_accept() -> Accept {
+    Accept::from("application/xml".parse::<mime::Mime>().unwrap())
+}
 
 #[tokio::test]
 async fn test_get_trust_list_publication_xml_success() {
@@ -48,7 +53,7 @@ async fn test_get_trust_list_publication_xml_success() {
     let resp = context
         .api
         .ssi
-        .get_trust_list_publication_content(publication_id)
+        .get_trust_list_publication_content(publication_id, xml_accept())
         .await;
 
     // then
@@ -128,7 +133,7 @@ async fn test_get_trust_list_publication_xml_with_entries() {
     let resp = context
         .api
         .ssi
-        .get_trust_list_publication_content(publication_id)
+        .get_trust_list_publication_content(publication_id, xml_accept())
         .await;
 
     // then
@@ -256,7 +261,7 @@ async fn test_get_trust_list_publication_xml_with_suspended_entries() {
     let resp = context
         .api
         .ssi
-        .get_trust_list_publication_content(publication_id)
+        .get_trust_list_publication_content(publication_id, xml_accept())
         .await;
 
     // then
@@ -289,4 +294,39 @@ async fn test_get_trust_list_publication_xml_with_suspended_entries() {
         })
         .unwrap();
     assert!(te_name.text().unwrap().contains("Active XML Entity"));
+}
+
+#[tokio::test]
+async fn test_get_trust_list_publication_xml_rejects_jwt_accept_header() {
+    // given
+    let (context, organisation, identifier, ..) =
+        TestContext::new_with_certificate_identifier(Some(XML_PUBLISHER_CONFIG.to_string())).await;
+
+    let create_resp = context
+        .api
+        .trust_list_publication
+        .create_trust_list_publication(CreateTrustListPublicationTestParams {
+            name: "test_xml_reject_jwt",
+            role: TrustListRoleRestEnum::PubEeaProvider,
+            r#type: "LOTE_PUBLISHER".into(),
+            identifier_id: identifier.id,
+            organisation_id: organisation.id,
+            key_id: None,
+            certificate_id: None,
+            params: None,
+        })
+        .await;
+    assert_eq!(create_resp.status(), 201);
+    let publication_id = create_resp.json_value().await["id"].parse::<Uuid>().into();
+
+    // when - request JWT but publisher is XML
+    let accept = Accept::from("application/jwt".parse::<mime::Mime>().unwrap());
+    let resp = context
+        .api
+        .ssi
+        .get_trust_list_publication_content(publication_id, accept)
+        .await;
+
+    // then
+    assert_eq!(resp.status(), 406);
 }

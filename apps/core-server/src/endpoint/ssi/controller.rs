@@ -1,16 +1,20 @@
+use std::str::FromStr;
+use std::sync::LazyLock;
+
 use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::{StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use axum_extra::extract::WithRejection;
 use axum_extra::typed_header::TypedHeader;
-use headers::Authorization;
 use headers::authorization::Bearer;
+use headers::{Authorization, Mime};
 use one_core::error::{ErrorCode, ErrorCodeMixin};
 use one_core::service::certificate::error::CertificateServiceError;
 use one_core::service::did::error::DidServiceError;
 use one_core::service::revocation_list::error::RevocationServiceError;
 use one_core::service::ssi_issuer::error::IssuerServiceError;
+use one_core::service::trust_list_publication::dto::TrustListContentTypeDTO;
 use one_core::service::trust_list_publication::error::TrustListPublicationServiceError;
 use proc_macros::endpoint;
 use shared_types::{
@@ -30,7 +34,18 @@ use crate::endpoint::credential_schema::dto::CredentialSchemaResponseRestDTO;
 use crate::endpoint::proof_schema::dto::GetProofSchemaResponseRestDTO;
 use crate::endpoint::ssi::dto::TrustCollectionResponseRestDTO;
 use crate::endpoint::trust_entity::dto::GetTrustEntityResponseRestDTO;
+use crate::extractor::Accept;
 use crate::router::AppState;
+
+#[allow(clippy::expect_used)]
+static APPLICATION_JWT: LazyLock<Mime> = LazyLock::new(|| {
+    Mime::from_str("application/jwt").expect("application/jwt is valid mime type")
+});
+
+#[allow(clippy::expect_used)]
+static APPLICATION_XML: LazyLock<Mime> = LazyLock::new(|| {
+    Mime::from_str("application/xml").expect("application/xml is valid mime type")
+});
 
 #[endpoint(
     permissions = [],
@@ -556,24 +571,44 @@ pub(crate) async fn ssi_get_certificate_authority(
         ("id" = TrustListPublicationId, Path, description = "Trust list publication id")
     ),
     responses(
-        (status = 200, description = "OK", content_type = "application/jwt"),
+        (status = 200, description = "OK", content(
+            (String = "application/jwt"),
+            (String = "application/xml")
+        )),
         (status = 404, description = "Trust list publication not found"),
+        (status = 406, description = "Unsupported Accept content type"),
         (status = 500, description = "Server error"),
     ),
     tag = "ssi",
     summary = "Retrieve Trust list publication",
     description = indoc::formatdoc! {"
         Retrieve a Trust list publication by its UUID.
+        Use the Accept header to request a specific format (application/jwt or application/xml).
     "},
 )]
 pub(crate) async fn ssi_get_trust_list_publication(
+    accept: Option<TypedHeader<Accept>>,
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<TrustListPublicationId>, ErrorResponseRestDTO>,
 ) -> Response {
+    let content_type = if let Some(TypedHeader(accept)) = accept {
+        if accept.contains(&mime::STAR_STAR) {
+            None
+        } else if accept.contains(&APPLICATION_JWT) {
+            Some(TrustListContentTypeDTO::Jwt)
+        } else if accept.contains(&APPLICATION_XML) {
+            Some(TrustListContentTypeDTO::Xml)
+        } else {
+            return StatusCode::NOT_ACCEPTABLE.into_response();
+        }
+    } else {
+        None
+    };
+
     let result = state
         .core
         .trust_list_publication_service
-        .get_trust_list_publication_content(id)
+        .get_trust_list_publication_content(id, content_type)
         .await;
 
     match result {
@@ -586,6 +621,9 @@ pub(crate) async fn ssi_get_trust_list_publication(
         Err(TrustListPublicationServiceError::TrustListPublicationNotFound(_)) => {
             tracing::warn!("Missing trust list publication");
             StatusCode::NOT_FOUND.into_response()
+        }
+        Err(TrustListPublicationServiceError::UnsupportedAcceptType(_)) => {
+            StatusCode::NOT_ACCEPTABLE.into_response()
         }
         Err(e) => {
             tracing::error!("Error: {:?}", e);

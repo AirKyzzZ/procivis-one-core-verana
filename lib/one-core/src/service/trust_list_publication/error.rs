@@ -35,6 +35,8 @@ pub enum TrustListPublicationServiceError {
     OrganisationIdMismatch,
     #[error("Trust entry `{0}` doesn't belong to the trust list publication `{1}`")]
     TrustEntryNotInList(TrustEntryId, TrustListPublicationId),
+    #[error("Unsupported Accept content type: `{0}`")]
+    UnsupportedAcceptType(String),
 }
 
 impl ErrorCodeMixin for TrustListPublicationServiceError {
@@ -54,6 +56,7 @@ impl ErrorCodeMixin for TrustListPublicationServiceError {
             Self::TrustListPublicationNotFound(_) => ErrorCode::BR_0383,
             Self::OrganisationIdMismatch => ErrorCode::BR_0285,
             Self::TrustEntryNotInList(_, _) => ErrorCode::BR_0390,
+            Self::UnsupportedAcceptType(_) => ErrorCode::BR_0419,
         }
     }
 }

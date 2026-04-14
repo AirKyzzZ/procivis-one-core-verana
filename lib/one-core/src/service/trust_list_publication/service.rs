@@ -17,6 +17,7 @@ use crate::model::trust_list_publication::{
     SortableTrustListPublicationColumn, TrustListPublication, TrustListPublicationRelations,
 };
 use crate::model::trust_list_role::TrustListRoleEnum;
+use crate::provider::trust_list_publisher::etsi_lote::LoteContentType;
 use crate::provider::trust_list_publisher::{
     CreateTrustListRequest, TrustListContent, TrustListPublisher, TrustListPublisherCapabilities,
 };
@@ -25,7 +26,8 @@ use crate::service::trust_list_publication::TrustListPublicationService;
 use crate::service::trust_list_publication::dto::{
     CreateTrustEntryRequestDTO, CreateTrustListPublicationRequestDTO, GetTrustEntryListResponseDTO,
     GetTrustListPublicationListResponseDTO, GetTrustListPublicationResponseDTO,
-    TrustEntryFilterParamsDTO, TrustListPublicationFilterParamsDTO, UpdateTrustEntryRequestDTO,
+    TrustEntryFilterParamsDTO, TrustListContentTypeDTO, TrustListPublicationFilterParamsDTO,
+    UpdateTrustEntryRequestDTO,
 };
 use crate::service::trust_list_publication::error::TrustListPublicationServiceError;
 use crate::util::key_selection::{KeySelection, SelectedKey};
@@ -217,6 +219,7 @@ impl TrustListPublicationService {
     pub async fn get_trust_list_publication_content(
         &self,
         id: TrustListPublicationId,
+        content_type: Option<TrustListContentTypeDTO>,
     ) -> Result<TrustListContent, TrustListPublicationServiceError> {
         let trust_list = self.fetch_trust_list_publication(id).await?;
         throw_if_org_relation_not_matching_session(
@@ -226,10 +229,15 @@ impl TrustListPublicationService {
         .error_while("validating organisation")?;
 
         let provider = self.fetch_trust_list_provider(&trust_list.r#type).await?;
+        if let Some(content_type) = content_type {
+            validate_provider_content_type(provider.get_capabilities(), content_type)?;
+        }
+
         let trust_list_content = provider
             .generate_trust_list_content(trust_list)
             .await
             .error_while("generating trust list content")?;
+
         Ok(trust_list_content)
     }
 
@@ -345,6 +353,22 @@ impl TrustListPublicationService {
             .error_while("fetching identifier")?
             .ok_or_else(|| TrustListPublicationServiceError::IdentifierNotFound(identifier_id))
     }
+}
+
+fn validate_provider_content_type(
+    capabilities: TrustListPublisherCapabilities,
+    requested_content_type: TrustListContentTypeDTO,
+) -> Result<(), TrustListPublicationServiceError> {
+    let supported_content_type = capabilities.content_type;
+    let requested = LoteContentType::from(requested_content_type);
+
+    if requested != supported_content_type {
+        return Err(TrustListPublicationServiceError::UnsupportedAcceptType(
+            requested.to_string(),
+        ));
+    }
+
+    Ok(())
 }
 
 fn validate_trust_entry_belongs_to_list(
@@ -568,6 +592,7 @@ mod tests {
                 ],
                 entry_identifier_types: vec![],
                 supported_roles: vec![TrustListRoleEnum::PidProvider],
+                content_type: LoteContentType::Jwt,
             });
 
         trust_list_publisher
@@ -618,6 +643,7 @@ mod tests {
             key_algorithms: vec![],
             publisher_identifier_types: vec![],
             entry_identifier_types: vec![crate::config::core_config::IdentifierType::Key],
+            content_type: LoteContentType::Jwt,
         };
 
         // when
@@ -636,6 +662,7 @@ mod tests {
             key_algorithms: vec![],
             publisher_identifier_types: vec![],
             entry_identifier_types: vec![crate::config::core_config::IdentifierType::Did],
+            content_type: LoteContentType::Jwt,
         };
 
         // when
@@ -673,6 +700,7 @@ mod tests {
                 crate::config::core_config::IdentifierType::Key,
                 crate::config::core_config::IdentifierType::Did,
             ],
+            content_type: LoteContentType::Jwt,
         };
 
         // when
@@ -691,6 +719,7 @@ mod tests {
             key_algorithms: vec![],
             publisher_identifier_types: vec![],
             entry_identifier_types: vec![],
+            content_type: LoteContentType::Jwt,
         };
 
         // when
@@ -725,6 +754,7 @@ mod tests {
                 crate::config::core_config::IdentifierType::Certificate,
             ],
             entry_identifier_types: vec![],
+            content_type: LoteContentType::Jwt,
         };
 
         // when
@@ -748,6 +778,7 @@ mod tests {
             key_algorithms: vec![crate::config::core_config::KeyAlgorithmType::Eddsa],
             publisher_identifier_types: vec![crate::config::core_config::IdentifierType::Did],
             entry_identifier_types: vec![],
+            content_type: LoteContentType::Jwt,
         };
 
         // when
@@ -785,6 +816,7 @@ mod tests {
             key_algorithms: vec![crate::config::core_config::KeyAlgorithmType::Eddsa],
             publisher_identifier_types: vec![crate::config::core_config::IdentifierType::Key],
             entry_identifier_types: vec![],
+            content_type: LoteContentType::Jwt,
         };
 
         // when
@@ -812,6 +844,7 @@ mod tests {
                 crate::config::core_config::IdentifierType::Certificate,
             ],
             entry_identifier_types: vec![],
+            content_type: LoteContentType::Jwt,
         };
 
         // when
@@ -837,6 +870,7 @@ mod tests {
             key_algorithms: vec![crate::config::core_config::KeyAlgorithmType::Eddsa],
             publisher_identifier_types: vec![crate::config::core_config::IdentifierType::Key],
             entry_identifier_types: vec![],
+            content_type: LoteContentType::Jwt,
         };
 
         // when
@@ -868,6 +902,7 @@ mod tests {
                 crate::config::core_config::IdentifierType::Certificate,
             ],
             entry_identifier_types: vec![],
+            content_type: LoteContentType::Jwt,
         };
 
         // when
@@ -900,6 +935,7 @@ mod tests {
                 crate::config::core_config::IdentifierType::Certificate,
             ],
             entry_identifier_types: vec![],
+            content_type: LoteContentType::Jwt,
         };
 
         // when

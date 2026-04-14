@@ -1,4 +1,4 @@
-use one_dto_mapper::{From, TryFrom};
+use one_dto_mapper::{From, Into, TryFrom};
 use shared_types::{
     CertificateId, IdentifierId, KeyId, OrganisationId, TrustEntryId, TrustListPublicationId,
     TrustListPublisherId,
@@ -10,8 +10,16 @@ use crate::model::identifier::Identifier;
 use crate::model::trust_entry::{TrustEntry, TrustEntryStateEnum};
 use crate::model::trust_list_publication::TrustListPublication;
 use crate::model::trust_list_role::TrustListRoleEnum;
+use crate::provider::trust_list_publisher::etsi_lote::LoteContentType;
 use crate::service::identifier::dto::GetIdentifierListItemResponseDTO;
 use crate::service::trust_list_publication::error::TrustListPublicationServiceError;
+
+#[derive(Clone, Debug, PartialEq, Into)]
+#[into(LoteContentType)]
+pub enum TrustListContentTypeDTO {
+    Xml,
+    Jwt,
+}
 
 #[derive(Clone, Debug)]
 pub struct CreateTrustListPublicationRequestDTO {

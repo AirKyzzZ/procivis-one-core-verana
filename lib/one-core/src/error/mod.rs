@@ -894,6 +894,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Certificate role not allowed")]
     BR_0418,
+
+    #[strum(message = "Unsupported Accept content type")]
+    BR_0419,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

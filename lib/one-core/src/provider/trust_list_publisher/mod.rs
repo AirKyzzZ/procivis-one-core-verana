@@ -68,4 +68,5 @@ pub struct TrustListPublisherCapabilities {
     pub publisher_identifier_types: Vec<IdentifierType>,
     pub entry_identifier_types: Vec<IdentifierType>,
     pub supported_roles: Vec<TrustListRoleEnum>,
+    pub content_type: LoteContentType,
 }

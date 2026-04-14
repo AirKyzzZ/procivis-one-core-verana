@@ -1,6 +1,7 @@
 use core_server::endpoint::trust_list_publication::dto::{
     TrustEntryStateRestEnum, TrustListRoleRestEnum,
 };
+use core_server::extractor::Accept;
 use one_core::proto::jwt::Jwt;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
@@ -9,6 +10,10 @@ use crate::fixtures::create_cert_identifier;
 use crate::utils::api_clients::trust_list_publication::CreateTrustListPublicationTestParams;
 use crate::utils::context::TestContext;
 use crate::utils::field_match::FieldHelpers;
+
+fn jwt_accept() -> Accept {
+    Accept::from("application/jwt".parse::<mime::Mime>().unwrap())
+}
 
 #[tokio::test]
 async fn test_get_trust_list_publication_success() {
@@ -37,7 +42,7 @@ async fn test_get_trust_list_publication_success() {
     let resp = context
         .api
         .ssi
-        .get_trust_list_publication_content(trust_list_publication_id)
+        .get_trust_list_publication_content(trust_list_publication_id, jwt_accept())
         .await;
 
     // THEN
@@ -65,7 +70,7 @@ async fn test_get_trust_list_publication_not_found() {
     let resp = context
         .api
         .ssi
-        .get_trust_list_publication_content(non_existent_id)
+        .get_trust_list_publication_content(non_existent_id, jwt_accept())
         .await;
 
     // THEN
@@ -130,7 +135,7 @@ async fn test_get_trust_list_publication_with_entries() {
     let resp = context
         .api
         .ssi
-        .get_trust_list_publication_content(trust_list_publication_id)
+        .get_trust_list_publication_content(trust_list_publication_id, jwt_accept())
         .await;
 
     // THEN
@@ -238,7 +243,7 @@ async fn test_get_trust_list_publication_with_suspended_entries() {
     let resp = context
         .api
         .ssi
-        .get_trust_list_publication_content(trust_list_publication_id)
+        .get_trust_list_publication_content(trust_list_publication_id, jwt_accept())
         .await;
 
     // THEN
@@ -274,4 +279,156 @@ async fn test_get_trust_list_publication_with_suspended_entries() {
         jwt.payload.custom["TrustedEntitiesList"][0]["TrustedEntityInformation"]["TEName"][0]["value"],
         serde_json::Value::String("Active Test Entity".into())
     );
+}
+
+#[tokio::test]
+async fn test_get_trust_list_publication_with_unsupported_accept_header() {
+    // GIVEN
+    let (context, organisation, identifier, ..) =
+        TestContext::new_with_certificate_identifier(None).await;
+
+    let create_resp = context
+        .api
+        .trust_list_publication
+        .create_trust_list_publication(CreateTrustListPublicationTestParams {
+            name: "test_unsupported_accept",
+            role: TrustListRoleRestEnum::PidProvider,
+            r#type: "LOTE_PUBLISHER".into(),
+            identifier_id: identifier.id,
+            organisation_id: organisation.id,
+            key_id: None,
+            certificate_id: None,
+            params: None,
+        })
+        .await;
+    assert_eq!(create_resp.status(), 201);
+    let trust_list_publication_id = create_resp.json_value().await["id"].parse::<Uuid>().into();
+
+    // WHEN - request with unsupported Accept header (publisher is JWT, requesting XML)
+    let accept = Accept::from("application/xml".parse::<mime::Mime>().unwrap());
+    let resp = context
+        .api
+        .ssi
+        .get_trust_list_publication_content(trust_list_publication_id, accept)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 406);
+}
+
+const DUAL_PUBLISHER_CONFIG: &str = r#"
+trustListPublisher:
+  JWT_PUBLISHER:
+    type: ETSI_LOTE
+    order: 1
+    display: "trustListPublisher.etsiLoteJwt"
+    params:
+      public:
+        refreshIntervalSeconds: 86400
+        contentType: "application/jwt"
+  XML_PUBLISHER:
+    type: ETSI_LOTE
+    order: 2
+    display: "trustListPublisher.etsiLoteXml"
+    params:
+      public:
+        refreshIntervalSeconds: 86400
+        contentType: "application/xml"
+"#;
+
+#[tokio::test]
+async fn test_get_trust_list_publication_dual_publishers() {
+    // GIVEN - two publishers configured: one JWT, one XML
+    let (context, organisation, identifier, ..) =
+        TestContext::new_with_certificate_identifier(Some(DUAL_PUBLISHER_CONFIG.to_string())).await;
+
+    let jwt_create_resp = context
+        .api
+        .trust_list_publication
+        .create_trust_list_publication(CreateTrustListPublicationTestParams {
+            name: "jwt_trust_list",
+            role: TrustListRoleRestEnum::PidProvider,
+            r#type: "JWT_PUBLISHER".into(),
+            identifier_id: identifier.id,
+            organisation_id: organisation.id,
+            key_id: None,
+            certificate_id: None,
+            params: None,
+        })
+        .await;
+    assert_eq!(jwt_create_resp.status(), 201);
+    let jwt_publication_id = jwt_create_resp.json_value().await["id"]
+        .parse::<Uuid>()
+        .into();
+
+    let xml_create_resp = context
+        .api
+        .trust_list_publication
+        .create_trust_list_publication(CreateTrustListPublicationTestParams {
+            name: "xml_trust_list",
+            role: TrustListRoleRestEnum::PubEeaProvider,
+            r#type: "XML_PUBLISHER".into(),
+            identifier_id: identifier.id,
+            organisation_id: organisation.id,
+            key_id: None,
+            certificate_id: None,
+            params: None,
+        })
+        .await;
+    assert_eq!(xml_create_resp.status(), 201);
+    let xml_publication_id = xml_create_resp.json_value().await["id"]
+        .parse::<Uuid>()
+        .into();
+
+    // WHEN/THEN - JWT publication with JWT accept returns 200
+    let resp = context
+        .api
+        .ssi
+        .get_trust_list_publication_content(jwt_publication_id, jwt_accept())
+        .await;
+    assert_eq!(resp.status(), 200);
+    assert_eq!(
+        resp.headers()
+            .get("content-type")
+            .unwrap()
+            .to_str()
+            .unwrap(),
+        "application/jwt"
+    );
+
+    // WHEN/THEN - XML publication with XML accept returns 200
+    let xml_accept = Accept::from("application/xml".parse::<mime::Mime>().unwrap());
+    let resp = context
+        .api
+        .ssi
+        .get_trust_list_publication_content(xml_publication_id, xml_accept)
+        .await;
+    assert_eq!(resp.status(), 200);
+    assert_eq!(
+        resp.headers()
+            .get("content-type")
+            .unwrap()
+            .to_str()
+            .unwrap(),
+        "application/xml"
+    );
+    let body = resp.text().await;
+    assert!(body.starts_with("<?xml"));
+
+    // WHEN/THEN - JWT publication with XML accept returns 406
+    let xml_accept = Accept::from("application/xml".parse::<mime::Mime>().unwrap());
+    let resp = context
+        .api
+        .ssi
+        .get_trust_list_publication_content(jwt_publication_id, xml_accept)
+        .await;
+    assert_eq!(resp.status(), 406);
+
+    // WHEN/THEN - XML publication with JWT accept returns 406
+    let resp = context
+        .api
+        .ssi
+        .get_trust_list_publication_content(xml_publication_id, jwt_accept())
+        .await;
+    assert_eq!(resp.status(), 406);
 }

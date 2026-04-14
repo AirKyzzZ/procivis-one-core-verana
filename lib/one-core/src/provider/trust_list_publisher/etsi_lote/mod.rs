@@ -67,8 +67,7 @@ pub(crate) struct EtsiLoteParams {
     pub content_type: LoteContentType,
 }
 
-#[derive(Clone, Debug, Display, Deserialize, PartialEq)]
-
+#[derive(Clone, Debug, Display, Deserialize, PartialEq, serde::Serialize)]
 pub enum LoteContentType {
     #[strum(to_string = "application/xml")]
     #[serde(rename = "application/xml")]
@@ -99,6 +98,7 @@ impl TrustListPublisher for EtsiLotePublisher {
                 TrustListRoleEnum::PubEeaProvider,
                 TrustListRoleEnum::NationalRegistryRegistrar,
             ],
+            content_type: self.params.content_type.clone(),
         }
     }
 

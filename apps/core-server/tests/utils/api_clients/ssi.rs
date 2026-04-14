@@ -303,9 +303,15 @@ impl SSIApi {
         self.client.get(&url).await
     }
 
-    pub async fn get_trust_list_publication_content(&self, id: TrustListPublicationId) -> Response {
+    pub async fn get_trust_list_publication_content(
+        &self,
+        id: TrustListPublicationId,
+        accept: Accept,
+    ) -> Response {
         let url = format!("/ssi/trust-list/v1/{}", id);
-        self.client.get(&url).await
+        let mut headers = HeaderMap::new();
+        headers.typed_insert(accept);
+        self.client.get_with_headers(&url, headers).await
     }
 
     pub async fn get_trust_collection(&self, trust_collection_id: impl Into<Uuid>) -> Response {
