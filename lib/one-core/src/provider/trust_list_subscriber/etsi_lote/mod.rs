@@ -5,6 +5,7 @@ use serde::Deserialize;
 use serde_with::DurationSeconds;
 use shared_types::IdentifierId;
 use standardized_types::etsi_119_602::TrustedEntityInformation;
+use standardized_types::jwk::PublicJwk;
 use strum::Display;
 use url::Url;
 
@@ -15,8 +16,10 @@ use crate::proto::certificate_validator::{
     CertificateValidationOptions, CertificateValidator, ParsedCertificate,
 };
 use crate::provider::caching_loader::etsi_lote::EtsiLoteCache;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::trust_list_subscriber::error::TrustListSubscriberError;
 use crate::provider::trust_list_subscriber::etsi_lote::model::PreprocessedLote;
+use crate::provider::trust_list_subscriber::etsi_lote::preprocessing::jwk_to_der_b64;
 use crate::provider::trust_list_subscriber::{
     Feature, TrustEntityResponse, TrustListSubscriber, TrustListSubscriberCapabilities,
     TrustListValidationSuccess,
@@ -51,13 +54,19 @@ pub enum LoteContentType {
 pub struct EtsiLoteSubscriber {
     cache: EtsiLoteCache,
     certificate_validator: Arc<dyn CertificateValidator>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
 }
 
 impl EtsiLoteSubscriber {
-    pub fn new(cache: EtsiLoteCache, certificate_validator: Arc<dyn CertificateValidator>) -> Self {
+    pub fn new(
+        cache: EtsiLoteCache,
+        certificate_validator: Arc<dyn CertificateValidator>,
+        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    ) -> Self {
         Self {
             cache,
             certificate_validator,
+            key_algorithm_provider,
         }
     }
 
@@ -140,6 +149,25 @@ impl TrustListSubscriber for EtsiLoteSubscriber {
             return Ok(Some(TrustEntityResponse::LOTE(result)));
         };
         Ok(None)
+    }
+
+    async fn resolve_public_key(
+        &self,
+        reference: &Url,
+        public_key: &PublicJwk,
+    ) -> Result<Option<TrustEntityResponse>, TrustListSubscriberError> {
+        let der_64 = jwk_to_der_b64(public_key, self.key_algorithm_provider.as_ref())
+            .error_while("converting JWK")?;
+        let list = self.get_list(reference).await?;
+
+        let Some(idx) = list.public_keys.get(&der_64) else {
+            return Ok(None);
+        };
+
+        Ok(Some(TrustEntityResponse::LOTE(get(
+            &list.trusted_entities,
+            *idx,
+        )?)))
     }
 }
 

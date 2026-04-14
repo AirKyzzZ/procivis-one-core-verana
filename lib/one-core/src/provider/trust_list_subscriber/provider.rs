@@ -78,6 +78,7 @@ pub(crate) fn trust_list_subscriber_provider_from_config(
                 Arc::new(EtsiLoteSubscriber::new(
                     etsi_lote_cache,
                     certificate_validator.clone(),
+                    key_algorithm_provider.clone(),
                 )) as _
             }
         };

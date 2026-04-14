@@ -13,4 +13,7 @@ pub(super) struct PreprocessedLote {
     pub trusted_entities: Vec<TrustedEntityInformation>,
     /// Map of cert fingerprints to indices into `trust_entities`
     pub certificate_fingerprints: HashMap<String, usize>,
+    /// Map of DER-encoded public keys to indices into `trust_entities`
+    #[serde(default)]
+    pub public_keys: HashMap<String, usize>,
 }

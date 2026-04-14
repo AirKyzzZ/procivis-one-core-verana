@@ -287,7 +287,7 @@ fn setup_subscriber(time: OffsetDateTime, reference: &Url) -> EtsiLoteSubscriber
         clock,
         client,
         Arc::new(MockDidMethodProvider::new()),
-        key_algorithm_provider,
+        key_algorithm_provider.clone(),
         certificate_validator.clone(),
         Arc::new(MockXAdESProto::new()),
         LoteContentType::Jwt,
@@ -301,7 +301,7 @@ fn setup_subscriber(time: OffsetDateTime, reference: &Url) -> EtsiLoteSubscriber
         Duration::seconds(60),
     );
 
-    EtsiLoteSubscriber::new(cache, certificate_validator)
+    EtsiLoteSubscriber::new(cache, certificate_validator, key_algorithm_provider)
 }
 
 // XAdES-signed XML LoTE containing the same TRUSTED_CERT entity.
@@ -381,7 +381,7 @@ fn setup_subscriber_xml(time: OffsetDateTime, reference: &Url) -> EtsiLoteSubscr
         clock,
         client,
         Arc::new(MockDidMethodProvider::new()),
-        key_algorithm_provider,
+        key_algorithm_provider.clone(),
         cert_validator,
         Arc::new(xades),
         LoteContentType::Xml,
@@ -395,7 +395,11 @@ fn setup_subscriber_xml(time: OffsetDateTime, reference: &Url) -> EtsiLoteSubscr
         Duration::seconds(60),
     );
 
-    EtsiLoteSubscriber::new(cache, Arc::new(MockCertificateValidator::new()))
+    EtsiLoteSubscriber::new(
+        cache,
+        Arc::new(MockCertificateValidator::new()),
+        key_algorithm_provider,
+    )
 }
 
 #[tokio::test]

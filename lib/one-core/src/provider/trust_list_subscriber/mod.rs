@@ -4,6 +4,7 @@ use error::TrustListSubscriberError;
 use serde::Serialize;
 use shared_types::IdentifierId;
 use standardized_types::etsi_119_602::TrustedEntityInformation;
+use standardized_types::jwk::PublicJwk;
 use url::Url;
 
 use crate::model::identifier::{Identifier, IdentifierType};
@@ -34,6 +35,12 @@ pub trait TrustListSubscriber: Send + Sync {
         &self,
         reference: &Url,
         pem_chain: &str,
+    ) -> Result<Option<TrustEntityResponse>, TrustListSubscriberError>;
+
+    async fn resolve_public_key(
+        &self,
+        reference: &Url,
+        public_key: &PublicJwk,
     ) -> Result<Option<TrustEntityResponse>, TrustListSubscriberError>;
 }
 
