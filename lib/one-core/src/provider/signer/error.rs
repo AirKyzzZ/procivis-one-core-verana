@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use shared_types::IdentifierId;
+use shared_types::{IdentifierId, RevocationMethodId};
 use thiserror::Error;
 use time::{Duration, OffsetDateTime};
 
@@ -18,6 +18,8 @@ pub enum SignerError {
     MissingKeyAlgorithmProvider(String),
     #[error("Cannot find key storage `{0}`")]
     MissingKeyStorageProvider(String),
+    #[error("Cannot find revocation method `{0}`")]
+    MissingRevocationMethod(RevocationMethodId),
     #[error("Validity boundary `{validity_boundary}` is in the past")]
     ValidityBoundaryInThePast { validity_boundary: OffsetDateTime },
     #[error("Validity start `{validity_start}` is after validity end `{validity_end}`")]
@@ -60,6 +62,7 @@ impl ErrorCodeMixin for SignerError {
             Self::MappingError(_) => ErrorCode::BR_0047,
             Self::MissingKeyStorageProvider(_) => ErrorCode::BR_0040,
             Self::MissingKeyAlgorithmProvider(_) => ErrorCode::BR_0042,
+            Self::MissingRevocationMethod(_) => ErrorCode::BR_0044,
             Self::ValidityBoundaryInThePast { .. }
             | Self::ValidityStartAfterEnd { .. }
             | Self::ValidityPeriodTooLong { .. } => ErrorCode::BR_0324,

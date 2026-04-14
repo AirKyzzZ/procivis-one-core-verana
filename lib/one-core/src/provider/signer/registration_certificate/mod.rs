@@ -40,7 +40,7 @@ use crate::validator::permissions::RequiredPermissions;
 #[serde(rename_all = "camelCase")]
 pub struct Params {
     pub payload: PayloadParams,
-    pub revocation_method: Option<RevocationMethodId>,
+    pub revocation_method: RevocationMethodId,
 }
 
 #[derive(Clone, Deserialize)]
@@ -86,25 +86,26 @@ impl RegistrationCertificate {
         &self,
         identifier: &Identifier,
         selected_key: &SelectedKey<'_>,
-    ) -> Result<Option<(Uuid, Option<Status>)>, SignerError> {
-        Ok(if let Some(revocation_method) = self.revocation_method() {
-            let (id, revocation_info) = revocation_method
-                .add_signature(
-                    self.config_key.clone(),
-                    identifier,
-                    selected_key.certificate(),
-                )
-                .await
-                .error_while("Adding signature to revocation list")?;
-            Some((
-                Uuid::from(id),
-                Some(Status {
-                    status_list: revocation_info.credential_status.additional_fields,
-                }),
-            ))
-        } else {
-            None
-        })
+    ) -> Result<(Uuid, Status), SignerError> {
+        let revocation_method =
+            self.revocation_method()
+                .ok_or(SignerError::MissingRevocationMethod(
+                    self.params.revocation_method.clone(),
+                ))?;
+        let (id, revocation_info) = revocation_method
+            .add_signature(
+                self.config_key.clone(),
+                identifier,
+                selected_key.certificate(),
+            )
+            .await
+            .error_while("Adding signature to revocation list")?;
+        Ok((
+            Uuid::from(id),
+            Status {
+                status_list: revocation_info.credential_status.additional_fields,
+            },
+        ))
     }
 }
 
@@ -161,7 +162,7 @@ impl Signer for RegistrationCertificate {
             })
             .error_while("Selecting signing key")?;
 
-        let revocation_info = self.handle_revocation(&identifier, &selected_key).await?;
+        let (jwt_id, status) = self.handle_revocation(&identifier, &selected_key).await?;
         let SelectedKey::Certificate { certificate, key } = selected_key else {
             return Err(SignerError::InvalidIssuerIdentifier(identifier.id));
         };
@@ -169,7 +170,6 @@ impl Signer for RegistrationCertificate {
             pem_chain_into_x5c(&certificate.chain).error_while("parsing PEM chain")?,
         ));
 
-        let (jwt_id, status) = revocation_info.unwrap_or((Uuid::new_v4(), None));
         let jwt_payload = WRPRegistrationCertificatePayload {
             issued_at: Some(now),
             invalid_before: Some(start),
@@ -180,7 +180,7 @@ impl Signer for RegistrationCertificate {
             jwt_id: Some(jwt_id.to_string()),
             proof_of_possession_key: None,
             custom: model::Payload {
-                status,
+                status: Some(status),
                 ..payload.into()
             },
         };
@@ -196,7 +196,7 @@ impl Signer for RegistrationCertificate {
 
     fn revocation_method(&self) -> Option<Arc<dyn RevocationMethod>> {
         self.revocation_method_provider
-            .get_revocation_method(self.params.revocation_method.as_ref()?)
+            .get_revocation_method(&self.params.revocation_method)
     }
 }
 

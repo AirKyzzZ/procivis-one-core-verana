@@ -104,14 +104,12 @@ pub(crate) fn signer_provider_from_config(
                     session_provider.clone(),
                 );
 
-                if let Some(revocation_method) = &params.revocation_method {
-                    validate_revocation_method_compatibility(
-                        name,
-                        &signer,
-                        revocation_config,
-                        revocation_method,
-                    )?;
-                }
+                validate_revocation_method_compatibility(
+                    name,
+                    &signer,
+                    revocation_config,
+                    &params.revocation_method,
+                )?;
                 Arc::new(signer)
             }
             SignerType::AccessCertificate => {
