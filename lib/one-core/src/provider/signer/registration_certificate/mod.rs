@@ -179,10 +179,7 @@ impl Signer for RegistrationCertificate {
             audience: self.params.payload.audience.clone(),
             jwt_id: Some(jwt_id.to_string()),
             proof_of_possession_key: None,
-            custom: model::Payload {
-                status: Some(status),
-                ..payload.into()
-            },
+            custom: model::Payload::from_request_data_and_status(payload, status),
         };
         let signed_jwt = self
             .create_and_sign_jwt(key.clone(), pubkey_info, jwt_payload)

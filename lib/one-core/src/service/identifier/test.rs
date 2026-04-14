@@ -23,7 +23,7 @@ use crate::proto::wrp_validator::{
 };
 use crate::provider::blob_storage_provider::{MockBlobStorage, MockBlobStorageProvider};
 use crate::provider::signer::registration_certificate::model::{
-    Credential, Payload, SupervisoryAuthority, WRPRegistrationCertificatePayload,
+    Credential, Payload, Status, SupervisoryAuthority, WRPRegistrationCertificatePayload,
 };
 use crate::provider::trust_list_subscriber::provider::MockTrustListSubscriberProvider;
 use crate::provider::trust_list_subscriber::{
@@ -719,7 +719,9 @@ fn dummy_reg_cert() -> JWTPayload<Payload> {
             },
             policy_id: vec![],
             certificate_policy: Url::parse("https://example.com").unwrap(),
-            status: None,
+            status: Status {
+                status_list: HashMap::new(),
+            },
             provides_attestations: Some(vec![Credential {
                 format: CredentialFormat::SdJwt,
                 meta: CredentialMeta::SdJwtVc {

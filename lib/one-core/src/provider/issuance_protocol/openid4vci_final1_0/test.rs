@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 
@@ -78,7 +79,7 @@ use crate::provider::key_storage::model::{KeyStorageCapabilities, StorageGenerat
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::signer::registration_certificate;
-use crate::provider::signer::registration_certificate::model::SupervisoryAuthority;
+use crate::provider::signer::registration_certificate::model::{Status, SupervisoryAuthority};
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::history_repository::MockHistoryRepository;
@@ -1652,7 +1653,9 @@ async fn test_handle_invitation_signed_metadata() {
                         },
                         policy_id: vec![],
                         certificate_policy: Url::parse("https://example.com").unwrap(),
-                        status: None,
+                        status: Status {
+                            status_list: HashMap::new(),
+                        },
                         provides_attestations: Some(vec![
                             registration_certificate::model::Credential {
                                 format: dcql::CredentialFormat::MsoMdoc,

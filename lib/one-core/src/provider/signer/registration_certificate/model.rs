@@ -26,7 +26,6 @@ pub struct RequestData {
     pub supervisory_authority: SupervisoryAuthority,
     pub policy_id: Vec<String>,
     pub certificate_policy: Url,
-    pub status: Option<Status>,
     pub provided_attestations: Option<Vec<Credential>>,
     pub credentials: Option<Vec<Credential>>,
     pub purpose: Option<Vec<MultiLangString>>,
@@ -54,7 +53,7 @@ pub struct Payload {
     pub supervisory_authority: SupervisoryAuthority,
     pub policy_id: Vec<String>,
     pub certificate_policy: Url,
-    pub status: Option<Status>,
+    pub status: Status,
     pub provides_attestations: Option<Vec<Credential>>,
     pub credentials: Option<Vec<Credential>>,
     pub purpose: Option<Vec<MultiLangString>>,
@@ -263,7 +262,6 @@ impl<'de> Deserialize<'de> for RequestData {
             public_body: proto.public_body,
             support_uri: proto.support_uri,
             intermediary: proto.intermediary,
-            status: None,
         })
     }
 }
@@ -395,9 +393,9 @@ impl<'de> Deserialize<'de> for Entitlement {
     }
 }
 
-impl From<RequestData> for Payload {
-    fn from(value: RequestData) -> Self {
-        let (sub_ln, sub_gn, sub_fn) = match value.subject {
+impl Payload {
+    pub fn from_request_data_and_status(req: RequestData, status: Status) -> Self {
+        let (sub_ln, sub_gn, sub_fn) = match req.subject {
             Subject::LegalPerson { legal_name, .. } => (Some(legal_name), None, None),
             Subject::NaturalPerson {
                 given_name,
@@ -407,27 +405,27 @@ impl From<RequestData> for Payload {
         };
 
         Self {
-            name: value.name,
+            name: req.name,
             sub_ln,
             sub_gn,
             sub_fn,
-            country: value.country,
-            registry_uri: value.registry_uri,
-            service_descriptions: vec![value.service_description],
-            entitlements: value.entitlements,
-            privacy_policy: value.privacy_policy,
-            info_uri: value.info_uri,
-            supervisory_authority: value.supervisory_authority,
-            policy_id: value.policy_id,
-            certificate_policy: value.certificate_policy,
-            status: value.status,
-            provides_attestations: value.provided_attestations,
-            credentials: value.credentials,
-            purpose: value.purpose,
-            intended_use_id: value.intended_use_id,
-            public_body: value.public_body,
-            support_uri: value.support_uri,
-            intermediary: value.intermediary,
+            country: req.country,
+            registry_uri: req.registry_uri,
+            service_descriptions: vec![req.service_description],
+            entitlements: req.entitlements,
+            privacy_policy: req.privacy_policy,
+            info_uri: req.info_uri,
+            supervisory_authority: req.supervisory_authority,
+            policy_id: req.policy_id,
+            certificate_policy: req.certificate_policy,
+            provides_attestations: req.provided_attestations,
+            credentials: req.credentials,
+            purpose: req.purpose,
+            intended_use_id: req.intended_use_id,
+            public_body: req.public_body,
+            support_uri: req.support_uri,
+            intermediary: req.intermediary,
+            status,
         }
     }
 }
