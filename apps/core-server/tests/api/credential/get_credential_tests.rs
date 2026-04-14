@@ -1,6 +1,7 @@
 use one_core::model::blob::BlobType;
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential::{CredentialRole, CredentialStateEnum};
+use one_core::model::history::{HistoryAction, HistoryMetadata, WalletRelayingPartyMetadata};
 use one_core::service::credential::dto::WalletInstanceAttestationDTO;
 use similar_asserts::assert_eq;
 use sql_data_provider::test_utilities::get_dummy_date;
@@ -10,6 +11,7 @@ use crate::fixtures::{ClaimData, TestingCredentialParams};
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::blobs::TestingBlobParams;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
+use crate::utils::db_clients::histories::TestingHistoryParams;
 use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
@@ -79,6 +81,59 @@ async fn test_get_credential_success() {
         resp["walletInstanceAttestation"]["attestation"],
         "eyJhbGciOiJFUzI1NiIsInR5cCI6Im9hdXRoLWNsaWVudC1hdHRlc3RhdGlvbitqd3QifQ.eyJpYXQiOjE3NTY3MDc1NTcsImV4cCI6MTc1Njc5Mzk1NywibmJmIjoxNzU2NzA3NTU3LCJpc3MiOiJodHRwczovL2NvcmUuZGV2LnByb2NpdmlzLW9uZS5jb20iLCJzdWIiOiJodHRwczovL2NvcmUuZGV2LnByb2NpdmlzLW9uZS5jb20vUFJPQ0lWSVNfT05FIiwiY25mIjp7Imp3ayI6eyJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwieCI6IkdtbV9IbWd3SHZPNUpWZ1lPX3k0TG9hSTRLMzVoVDlmYzByb0lkZjVpRUEifX19.0QT5ybzrQx0d0ID2xx4hzH5NUodykyju2fyo3wIu7ZSobA26gYjcMvZZstg-GcZxjguo9rEkrzdm9ZUt-44wTw"
     );
+}
+
+#[tokio::test]
+async fn test_get_credential_with_trust_information_success() {
+    // GIVEN
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, None, Default::default())
+        .await;
+
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Created,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams::default(),
+        )
+        .await;
+
+    context
+        .db
+        .histories
+        .create(
+            &organisation,
+            TestingHistoryParams {
+                action: Some(HistoryAction::WrpRcReceived),
+                entity_id: Some(credential.id.into()),
+                metadata: Some(HistoryMetadata::WalletRelayingParty(
+                    WalletRelayingPartyMetadata {
+                        name: "Test RP".to_string(),
+                        ..Default::default()
+                    },
+                )),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context.api.credentials.get(&credential.id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    resp["id"].assert_eq(&credential.id);
+    assert_eq!(resp["trustInformation"]["name"], "Test RP");
+    assert!(!resp["trustInformation"]["receivedAt"].is_null());
 }
 
 #[tokio::test]

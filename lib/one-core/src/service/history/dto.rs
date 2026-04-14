@@ -1,16 +1,19 @@
+use std::collections::HashMap;
+
 use one_dto_mapper::{From, convert_inner};
 use serde::{Deserialize, Serialize};
 use shared_types::{
     CredentialId, CredentialSchemaId, EntityId, HistoryId, IdentifierId, OrganisationId, ProofId,
     ProofSchemaId,
 };
+use standardized_types::etsi_119_602::MultiLangString;
 use time::OffsetDateTime;
 
 use crate::error::ErrorCode;
 use crate::model::common::GetListResponse;
 use crate::model::history::{
     History, HistoryAction, HistoryEntityType, HistoryErrorMetadata, HistoryMetadata,
-    HistorySearchEnum, HistorySource,
+    HistorySearchEnum, HistorySource, WalletRelayingPartyMetadata,
 };
 use crate::service::backup::dto::UnexportableEntitiesResponseDTO;
 
@@ -21,6 +24,7 @@ pub enum HistoryMetadataResponse {
     ErrorMetadata(HistoryErrorMetadataDTO),
     WalletUnitJWT(String),
     External(serde_json::Value),
+    WalletRelayingParty(WalletRelayingPartyMetadataDTO),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, From)]
@@ -28,6 +32,13 @@ pub enum HistoryMetadataResponse {
 pub struct HistoryErrorMetadataDTO {
     pub error_code: ErrorCode,
     pub message: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, From)]
+#[from(WalletRelayingPartyMetadata)]
+pub struct WalletRelayingPartyMetadataDTO {
+    pub name: String,
+    pub purpose: HashMap<ProofId, Vec<MultiLangString>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, From)]

@@ -2139,6 +2139,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             &self.config,
             None,
             CredentialAttestationBlobs::default(),
+            None,
         )
         .error_while("creating credential detail")?;
 

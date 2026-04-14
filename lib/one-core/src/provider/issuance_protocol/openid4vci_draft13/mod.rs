@@ -1265,6 +1265,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
             &self.config,
             None,
             CredentialAttestationBlobs::default(),
+            None,
         )
         .error_while("parsing credential")?;
 

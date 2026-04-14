@@ -33,6 +33,7 @@ impl<IN, OUT: From<IN>> TryFrom<CredentialDetailResponseDTO<IN>>
             wallet_instance_attestation: convert_inner(value.wallet_instance_attestation),
             wallet_unit_attestation: convert_inner(value.wallet_unit_attestation),
             webhook_destination_url: value.webhook_destination_url,
+            trust_information: value.trust_information.map(Into::into),
         })
     }
 }

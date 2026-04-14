@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use one_core::model::history::HistorySearchEnum;
 use one_core::service::error::ServiceError;
 use one_core::service::history::dto::{
@@ -13,6 +15,7 @@ use shared_types::{
     CredentialId, CredentialSchemaId, EntityId, HistoryId, IdentifierId, OrganisationId, ProofId,
     ProofSchemaId,
 };
+use standardized_types::etsi_119_602::MultiLangString;
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
@@ -103,6 +106,7 @@ pub(crate) enum HistoryMetadataRestEnum {
     ErrorMetadata(#[try_from(infallible)] HistoryErrorMetadataRestDTO),
     WalletUnitJWT(#[try_from(infallible)] String),
     External(#[try_from(infallible)] serde_json::Value),
+    WalletRelayingParty(#[try_from(infallible)] WalletRelayingPartyMetadataRestDTO),
 }
 
 #[derive(Debug, Serialize, ToSchema, TryFrom)]
@@ -120,6 +124,13 @@ pub(crate) struct UnexportableEntitiesResponseRestDTO {
     pub total_keys: u64,
     #[try_from(infallible)]
     pub total_dids: u64,
+}
+
+#[derive(Debug, Clone, Serialize, ToSchema, From)]
+#[from(one_core::service::history::dto::WalletRelayingPartyMetadataDTO)]
+pub(crate) struct WalletRelayingPartyMetadataRestDTO {
+    pub name: String,
+    pub purpose: HashMap<ProofId, Vec<MultiLangString>>,
 }
 
 #[derive(Serialize, ToSchema)]
@@ -172,6 +183,7 @@ pub enum HistoryAction {
     Delivered,
     WrpAcReceived,
     WrpRcReceived,
+    WrpNrReceived,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]

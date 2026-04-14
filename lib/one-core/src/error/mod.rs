@@ -900,6 +900,12 @@ pub enum ErrorCode {
 
     #[strum(message = "Unsupported Accept content type")]
     BR_0425,
+
+    #[strum(message = "History entry missing metadata")]
+    BR_0426,
+
+    #[strum(message = "History entry has invalid metadata type")]
+    BR_0427,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

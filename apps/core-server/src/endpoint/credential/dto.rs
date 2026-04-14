@@ -1,6 +1,7 @@
 use one_core::model::credential::{
     CredentialListIncludeEntityTypeEnum, ExactCredentialFilterColumn, SortableCredentialColumn,
 };
+use one_core::proto::trust_information::dto::TrustInformationDTO;
 use one_core::service::credential::dto::{
     CreateCredentialRequestDTO, CredentialFilterParamsDTO, CredentialListItemResponseDTO,
     CredentialRequestClaimDTO, CredentialRevocationCheckResponseDTO, CredentialRole,
@@ -152,6 +153,7 @@ pub(crate) struct GetCredentialResponseRestDTO<T> {
     /// credentials such as EU PIDs.
     pub wallet_unit_attestation: Option<WalletUnitAttestationRestDTO>,
     pub webhook_destination_url: Option<String>,
+    pub trust_information: Option<TrustInformationRestDTO>,
 }
 
 #[derive(Debug, Serialize, ToSchema, From)]
@@ -168,6 +170,14 @@ pub struct WalletInstanceAttestationRestDTO {
 #[serde(rename_all = "camelCase")]
 pub struct WalletUnitAttestationRestDTO {
     attestation: String,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(TrustInformationDTO)]
+#[serde(rename_all = "camelCase")]
+pub struct TrustInformationRestDTO {
+    received_at: OffsetDateTime,
+    name: String,
 }
 
 /// The role the system has in relation to the credential.

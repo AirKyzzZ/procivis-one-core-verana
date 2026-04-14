@@ -22,6 +22,7 @@ pub(crate) mod os_provider;
 pub mod session_provider;
 pub mod transaction_manager;
 pub(crate) mod trust_collection;
+pub mod trust_information;
 pub(crate) mod trust_list_subscription_sync;
 pub(crate) mod verifier_provider_client;
 pub(crate) mod wallet_provider_client;

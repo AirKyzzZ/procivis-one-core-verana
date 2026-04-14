@@ -273,6 +273,7 @@ pub(crate) async fn get_presentation_definition_v2(
                 config,
                 None,
                 CredentialAttestationBlobs::default(),
+                None,
             )
             .error_while("creating credential detail")?;
             applicable_credentials.push(map_to_filtered_dto(credential_detail_dto, &claims));
@@ -391,6 +392,7 @@ fn map_to_filtered_dto(
         wallet_instance_attestation: None,
         wallet_unit_attestation: None,
         webhook_destination_url: full_dto.webhook_destination_url,
+        trust_information: full_dto.trust_information,
     }
 }
 

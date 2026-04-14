@@ -129,6 +129,8 @@ pub enum HistoryAction {
     WrpAcReceived,
     #[sea_orm(string_value = "WRP_RC_RECEIVED")]
     WrpRcReceived,
+    #[sea_orm(string_value = "WRP_NR_RECEIVED")]
+    WrpNrReceived,
 }
 
 impl From<&HistoryAction> for SimpleExpr {

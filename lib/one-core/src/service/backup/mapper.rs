@@ -22,6 +22,7 @@ pub(super) fn unexportable_entities_to_response_dto(
                     config,
                     None,
                     CredentialAttestationBlobs::default(),
+                    None,
                 )
             })
             .collect::<Result<Vec<_>, _>>()

@@ -357,6 +357,12 @@ impl CredentialService {
             _ => None,
         };
 
+        let trust_information = self
+            .trust_information_provider
+            .get_trust_information_by_credential_id(*credential_id)
+            .await
+            .error_while("getting trust information")?;
+
         let attestation_blobs = self.get_wallet_attestation_blobs(&credential).await?;
 
         let response = credential_detail_response_from_model(
@@ -364,6 +370,7 @@ impl CredentialService {
             &self.config,
             mdoc_validity_credentials,
             attestation_blobs,
+            trust_information,
         )?;
 
         Ok(response)

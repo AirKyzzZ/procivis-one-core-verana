@@ -92,6 +92,7 @@ pub(crate) fn credential_model_to_credential_dto(
                 config,
                 None,
                 CredentialAttestationBlobs::default(),
+                None,
             )
         })
         .collect::<Result<Vec<CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>>, _>>()

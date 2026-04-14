@@ -30,6 +30,7 @@ use crate::proto::openid4vp_proof_validator::validator::OpenId4VpProofValidatorP
 use crate::proto::os_provider::OSInfoProviderImpl;
 use crate::proto::session_provider::SessionProvider;
 use crate::proto::trust_collection::manager::TrustCollectionManagerImpl;
+use crate::proto::trust_information::provider::TrustInformationProviderImpl;
 use crate::proto::trust_list_subscription_sync::{
     TrustListSubscriptionSync, TrustListSubscriptionSyncImpl,
 };
@@ -402,6 +403,10 @@ impl OneCore {
             data_provider.get_tx_manager(),
         ));
 
+        let trust_information_provider = Arc::new(TrustInformationProviderImpl::new(
+            data_provider.get_history_repository(),
+        ));
+
         let blob_storage_provider = blob_storage_provider_from_config(
             &config.blob_storage,
             data_provider.get_blob_repository(),
@@ -496,6 +501,7 @@ impl OneCore {
             session_provider.clone(),
             credential_validity_manager.clone(),
             notification_scheduler.clone(),
+            trust_information_provider,
         );
 
         let trust_list_subscription_sync: Arc<dyn TrustListSubscriptionSync> =

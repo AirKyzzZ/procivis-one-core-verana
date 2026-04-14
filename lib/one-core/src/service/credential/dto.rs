@@ -14,6 +14,7 @@ use crate::model::credential::ExactCredentialFilterColumn;
 use crate::model::credential_schema::{
     KeyStorageSecurity, LayoutType, TransactionCode, TransactionCodeType,
 };
+use crate::proto::trust_information::dto::TrustInformationDTO;
 use crate::service::certificate::dto::CertificateResponseDTO;
 use crate::service::credential_schema::dto::{
     CredentialClaimSchemaDTO, CredentialSchemaLayoutPropertiesResponseDTO,
@@ -68,6 +69,7 @@ pub struct CredentialDetailResponseDTO<T> {
     pub wallet_instance_attestation: Option<WalletInstanceAttestationDTO>,
     pub wallet_unit_attestation: Option<WalletUnitAttestationDTO>,
     pub webhook_destination_url: Option<String>,
+    pub trust_information: Option<TrustInformationDTO>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

@@ -64,7 +64,7 @@ use super::credential_schema::{
 use super::did::{DidListQueryBindingDTO, DidRequestBindingDTO, DidRequestKeysBindingDTO};
 use super::history::{
     HistoryErrorMetadataBindingDTO, HistoryListItemBindingDTO, HistoryListQueryBindingDTO,
-    HistoryMetadataBinding,
+    HistoryMetadataBinding, MultiLangStringBindingDTO, WalletRelayingPartyMetadataBindingDTO,
 };
 use super::identifier::{CreateIdentifierDidRequestBindingDTO, IdentifierListQueryBindingDTO};
 use super::interaction::{HandleInvitationResponseBindingEnum, InitiateIssuanceRequestBindingDTO};
@@ -326,9 +326,30 @@ fn convert_history_metadata(
             HistoryMetadataResponse::WalletUnitJWT(value) => {
                 Some(HistoryMetadataBinding::WalletUnitJWT(value))
             }
+            HistoryMetadataResponse::WalletRelayingParty(value) => {
+                Some(HistoryMetadataBinding::WalletRelayingParty {
+                    value: WalletRelayingPartyMetadataBindingDTO {
+                        name: value.name,
+                        purpose: value
+                            .purpose
+                            .into_iter()
+                            .map(|(k, v)| (k.to_string(), convert_inner(v)))
+                            .collect(),
+                    },
+                })
+            }
             // external metadata only used in REST API
             HistoryMetadataResponse::External(_) => None,
         },
+    }
+}
+
+impl From<standardized_types::etsi_119_602::MultiLangString> for MultiLangStringBindingDTO {
+    fn from(value: standardized_types::etsi_119_602::MultiLangString) -> Self {
+        Self {
+            lang: value.lang,
+            value: value.value,
+        }
     }
 }
 

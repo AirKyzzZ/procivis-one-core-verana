@@ -1,8 +1,12 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use shared_types::{
     BlobId, CredentialId, CredentialSchemaId, EntityId, HistoryId, IdentifierId, OrganisationId,
     ProofId, ProofSchemaId,
 };
+use standardized_types::etsi_119_602::MultiLangString;
+use strum::IntoStaticStr;
 use time::OffsetDateTime;
 
 use crate::error::{ErrorCode, ErrorCodeMixin};
@@ -11,18 +15,25 @@ use crate::model::list_filter::{ListFilterValue, ValueComparison};
 use crate::model::list_query::ListQuery;
 use crate::service::backup::dto::UnexportableEntitiesResponseDTO;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, IntoStaticStr)]
 pub enum HistoryMetadata {
     UnexportableEntities(UnexportableEntitiesResponseDTO),
     ErrorMetadata(HistoryErrorMetadata),
     WalletUnitJWT(String),
     External(serde_json::Value),
+    WalletRelayingParty(WalletRelayingPartyMetadata),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HistoryErrorMetadata {
     pub error_code: ErrorCode,
     pub message: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct WalletRelayingPartyMetadata {
+    pub name: String,
+    pub purpose: HashMap<ProofId, Vec<MultiLangString>>,
 }
 
 impl<T: ErrorCodeMixin> From<T> for HistoryMetadata {
@@ -98,6 +109,7 @@ pub enum HistoryAction {
     Delivered,
     WrpAcReceived,
     WrpRcReceived,
+    WrpNrReceived,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]

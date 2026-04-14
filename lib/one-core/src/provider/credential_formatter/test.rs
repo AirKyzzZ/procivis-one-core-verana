@@ -63,6 +63,7 @@ fn generate_credential_detail_response(
         wallet_instance_attestation: None,
         wallet_unit_attestation: None,
         webhook_destination_url: None,
+        trust_information: None,
     }
 }
 

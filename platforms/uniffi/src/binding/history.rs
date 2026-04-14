@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use one_core::model::history::{
     HistoryAction, HistoryEntityType, HistorySearchEnum, SortableHistoryColumn,
 };
@@ -78,6 +80,7 @@ pub enum HistoryActionBindingEnum {
     Delivered,
     WrpAcReceived,
     WrpRcReceived,
+    WrpNrReceived,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, From, Into, uniffi::Enum)]
@@ -125,6 +128,16 @@ pub enum HistoryMetadataBinding {
         value: HistoryErrorMetadataBindingDTO,
     },
     WalletUnitJWT(String),
+    WalletRelayingParty {
+        value: WalletRelayingPartyMetadataBindingDTO,
+    },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, uniffi::Record)]
+#[uniffi(name = "MultiLangString")]
+pub struct MultiLangStringBindingDTO {
+    pub lang: String,
+    pub value: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, uniffi::Record)]
@@ -132,6 +145,13 @@ pub enum HistoryMetadataBinding {
 pub struct HistoryErrorMetadataBindingDTO {
     pub error_code: String,
     pub message: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, uniffi::Record)]
+#[uniffi(name = "WalletRelayingPartyMetadata")]
+pub struct WalletRelayingPartyMetadataBindingDTO {
+    pub name: String,
+    pub purpose: HashMap<String, Vec<MultiLangStringBindingDTO>>,
 }
 
 #[derive(Clone, Debug, uniffi::Record)]

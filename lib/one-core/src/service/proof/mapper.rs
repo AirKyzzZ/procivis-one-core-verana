@@ -239,6 +239,7 @@ pub(super) async fn get_verifier_proof_detail(
             config,
             mdoc_validity_credentials,
             CredentialAttestationBlobs::default(),
+            None,
         )
         .error_while("creating credential detail")?;
 
@@ -641,6 +642,7 @@ pub(super) async fn get_holder_proof_detail(
                         config,
                         mdoc_validity_credentials,
                         CredentialAttestationBlobs::default(),
+                        None,
                     )
                     .error_while("creating credential detail")?,
                     credential_schema.clone(),
