@@ -170,6 +170,8 @@ pub(crate) struct HolderInteractionData {
     pub access_certificate: Option<String>,
     #[serde(default)]
     pub registration_certificate: Option<String>,
+    #[serde(default)]
+    pub relying_party_name: Option<String>,
 }
 
 // https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#section-12.2.4

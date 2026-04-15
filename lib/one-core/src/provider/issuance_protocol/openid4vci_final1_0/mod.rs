@@ -67,7 +67,10 @@ use crate::model::credential_schema::{
     UpdateCredentialSchemaRequest,
 };
 use crate::model::did::{DidRelations, KeyRole};
-use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
+use crate::model::history::{
+    History, HistoryAction, HistoryEntityType, HistoryMetadata, HistorySource,
+    WalletRelayingPartyMetadata,
+};
 use crate::model::holder_wallet_unit::HolderWalletUnit;
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierType};
 use crate::model::identifier_trust_information::{IdentifierTrustInformation, SchemaFormat};
@@ -951,16 +954,26 @@ impl OpenID4VCIFinal1_0 {
                 credential.id,
                 organisation.id,
                 access_certificate.to_owned(),
+                None,
             )
             .await?;
         }
 
-        if let Some(registration_certificate) = &interaction_data.registration_certificate {
+        if let (Some(registration_certificate), Some(relying_party_name)) = (
+            &interaction_data.registration_certificate,
+            &interaction_data.relying_party_name,
+        ) {
             self.store_certificate_history_event(
                 HistoryAction::WrpRcReceived,
                 credential.id,
                 organisation.id,
                 registration_certificate.to_owned(),
+                Some(HistoryMetadata::WalletRelayingParty(
+                    WalletRelayingPartyMetadata {
+                        name: relying_party_name.to_string(),
+                        ..Default::default()
+                    },
+                )),
             )
             .await?;
         }
@@ -1258,13 +1271,13 @@ impl OpenID4VCIFinal1_0 {
                 ))
             })?;
 
-        let (access_certificate, registration_certificate) =
+        let (access_certificate, registration_certificate, relying_party_name) =
             if let IssuerMetadataRepresentation::Signed(jwt, Some(access_certificate)) =
                 &issuer_metadata
                 // skip checks if no registration certificate provided
                 && !jwt.payload.custom.issuer_info.is_empty()
             {
-                let registration_certificate = self
+                let (registration_certificate, relying_party_name) = self
                     .validate_credential_config_trust(
                         credential_config,
                         &jwt.payload.custom.issuer_info,
@@ -1276,9 +1289,10 @@ impl OpenID4VCIFinal1_0 {
                 (
                     Some(access_certificate.1.to_owned()),
                     Some(registration_certificate),
+                    Some(relying_party_name),
                 )
             } else {
-                (None, None)
+                (None, None, None)
             };
 
         // https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-ID1.html#section-11.2.3-2.2
@@ -1330,6 +1344,7 @@ impl OpenID4VCIFinal1_0 {
             format: credential_config.format.to_owned(),
             access_certificate,
             registration_certificate,
+            relying_party_name,
         };
         let data = serialize_interaction_data(&holder_data)?;
 
@@ -1353,9 +1368,9 @@ impl OpenID4VCIFinal1_0 {
         issuer_info: &[EtsiIssuerInfoResponseDTO],
         expected_relying_party_id: &str,
         organisation_id: OrganisationId,
-    ) -> Result<String, IssuanceProtocolError> {
+    ) -> Result<(String, String), IssuanceProtocolError> {
         for reg_cert in issuer_info {
-            if self
+            if let Some(relying_party_name) = self
                 .credential_config_matches_reg_cert(
                     credential_config,
                     reg_cert,
@@ -1364,7 +1379,7 @@ impl OpenID4VCIFinal1_0 {
                 )
                 .await
             {
-                return Ok(reg_cert.data.to_owned());
+                return Ok((reg_cert.data.to_owned(), relying_party_name));
             }
         }
 
@@ -1377,7 +1392,7 @@ impl OpenID4VCIFinal1_0 {
         issuer_info: &EtsiIssuerInfoResponseDTO,
         expected_relying_party_id: &str,
         organisation_id: OrganisationId,
-    ) -> bool {
+    ) -> Option<String> {
         let Ok(reg_cert) = self
             .wrp_validator
             .validate_registration_certificate(
@@ -1388,16 +1403,18 @@ impl OpenID4VCIFinal1_0 {
             )
             .await
         else {
-            return false;
+            return None;
         };
 
-        let Some(provides_attestations) = reg_cert.payload.custom.provides_attestations else {
-            return false;
-        };
+        let provides_attestations = reg_cert.payload.custom.provides_attestations?;
 
-        provides_attestations.iter().any(|attestation| {
+        if provides_attestations.iter().any(|attestation| {
             credential_config_matches_reg_cert_attestation(credential_config, attestation)
-        })
+        }) {
+            Some(reg_cert.payload.custom.name)
+        } else {
+            None
+        }
     }
 
     async fn store_certificate_history_event(
@@ -1406,6 +1423,7 @@ impl OpenID4VCIFinal1_0 {
         credential_id: CredentialId,
         organisation_id: OrganisationId,
         certificate_content: String,
+        metadata: Option<HistoryMetadata>,
     ) -> Result<(), IssuanceProtocolError> {
         let blob_storage = self
             .blob_storage_provider
@@ -1432,7 +1450,7 @@ impl OpenID4VCIFinal1_0 {
                 source: HistorySource::Core,
                 entity_id: Some(credential_id.into()),
                 entity_type: HistoryEntityType::Credential,
-                metadata: None,
+                metadata,
                 metadata_blob_id: Some(blob_id),
                 organisation_id: Some(organisation_id),
                 user: self.session_provider.session().user(),

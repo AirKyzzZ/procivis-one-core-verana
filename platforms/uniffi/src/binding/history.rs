@@ -1,11 +1,10 @@
-use std::collections::HashMap;
-
 use one_core::model::history::{
     HistoryAction, HistoryEntityType, HistorySearchEnum, SortableHistoryColumn,
 };
-use one_core::service::history::dto::GetHistoryListResponseDTO;
-use one_dto_mapper::{From, Into, convert_inner};
-use serde::{Deserialize, Serialize};
+use one_core::service::history::dto::{
+    GetHistoryListResponseDTO, IntendedUseDTO, WalletRelayingPartyMetadataDTO,
+};
+use one_dto_mapper::{From, Into, convert_inner, convert_inner_of_inner};
 
 use super::backup::UnexportableEntitiesBindingDTO;
 use super::common::SortDirection;
@@ -133,25 +132,35 @@ pub enum HistoryMetadataBinding {
     },
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, uniffi::Record)]
+#[derive(Debug, Clone, uniffi::Record)]
 #[uniffi(name = "MultiLangString")]
 pub struct MultiLangStringBindingDTO {
     pub lang: String,
     pub value: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, uniffi::Record)]
+#[derive(Debug, Clone, uniffi::Record)]
 #[uniffi(name = "HistoryErrorMetadata")]
 pub struct HistoryErrorMetadataBindingDTO {
     pub error_code: String,
     pub message: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, uniffi::Record)]
+#[derive(Debug, Clone, From, uniffi::Record)]
+#[from(WalletRelayingPartyMetadataDTO)]
 #[uniffi(name = "WalletRelayingPartyMetadata")]
 pub struct WalletRelayingPartyMetadataBindingDTO {
     pub name: String,
-    pub purpose: HashMap<String, Vec<MultiLangStringBindingDTO>>,
+    #[from(with_fn = convert_inner_of_inner)]
+    pub intended_use: Option<Vec<IntendedUseBindingDTO>>,
+}
+
+#[derive(Debug, Clone, From, uniffi::Record)]
+#[from(IntendedUseDTO)]
+#[uniffi(name = "IntendedUse")]
+pub struct IntendedUseBindingDTO {
+    #[from(with_fn = convert_inner)]
+    pub purpose: Vec<MultiLangStringBindingDTO>,
 }
 
 #[derive(Clone, Debug, uniffi::Record)]

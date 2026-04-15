@@ -64,7 +64,7 @@ use super::credential_schema::{
 use super::did::{DidListQueryBindingDTO, DidRequestBindingDTO, DidRequestKeysBindingDTO};
 use super::history::{
     HistoryErrorMetadataBindingDTO, HistoryListItemBindingDTO, HistoryListQueryBindingDTO,
-    HistoryMetadataBinding, MultiLangStringBindingDTO, WalletRelayingPartyMetadataBindingDTO,
+    HistoryMetadataBinding, MultiLangStringBindingDTO,
 };
 use super::identifier::{CreateIdentifierDidRequestBindingDTO, IdentifierListQueryBindingDTO};
 use super::interaction::{HandleInvitationResponseBindingEnum, InitiateIssuanceRequestBindingDTO};
@@ -328,14 +328,7 @@ fn convert_history_metadata(
             }
             HistoryMetadataResponse::WalletRelayingParty(value) => {
                 Some(HistoryMetadataBinding::WalletRelayingParty {
-                    value: WalletRelayingPartyMetadataBindingDTO {
-                        name: value.name,
-                        purpose: value
-                            .purpose
-                            .into_iter()
-                            .map(|(k, v)| (k.to_string(), convert_inner(v)))
-                            .collect(),
-                    },
+                    value: value.into(),
                 })
             }
             // external metadata only used in REST API

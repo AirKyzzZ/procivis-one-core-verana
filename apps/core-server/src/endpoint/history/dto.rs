@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use one_core::model::history::HistorySearchEnum;
 use one_core::service::error::ServiceError;
 use one_core::service::history::dto::{
@@ -126,11 +124,21 @@ pub(crate) struct UnexportableEntitiesResponseRestDTO {
     pub total_dids: u64,
 }
 
+#[options_not_nullable]
 #[derive(Debug, Clone, Serialize, ToSchema, From)]
 #[from(one_core::service::history::dto::WalletRelayingPartyMetadataDTO)]
 pub(crate) struct WalletRelayingPartyMetadataRestDTO {
     pub name: String,
-    pub purpose: HashMap<ProofId, Vec<MultiLangString>>,
+    #[from(with_fn = convert_inner_of_inner)]
+    pub intended_use: Option<Vec<IntendedUseRestDTO>>,
+}
+
+#[derive(Debug, Clone, Serialize, ToSchema, From)]
+#[from(one_core::service::history::dto::IntendedUseDTO)]
+pub(crate) struct IntendedUseRestDTO {
+    pub format: dcql::CredentialFormat,
+    pub meta: dcql::CredentialMeta,
+    pub purpose: Vec<MultiLangString>,
 }
 
 #[derive(Serialize, ToSchema)]

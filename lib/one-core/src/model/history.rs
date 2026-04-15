@@ -1,6 +1,5 @@
-use std::collections::HashMap;
-
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use shared_types::{
     BlobId, CredentialId, CredentialSchemaId, EntityId, HistoryId, IdentifierId, OrganisationId,
     ProofId, ProofSchemaId,
@@ -30,10 +29,18 @@ pub struct HistoryErrorMetadata {
     pub message: String,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct WalletRelayingPartyMetadata {
     pub name: String,
-    pub purpose: HashMap<ProofId, Vec<MultiLangString>>,
+    pub intended_use: Option<Vec<IntendedUse>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IntendedUse {
+    pub format: dcql::CredentialFormat,
+    pub meta: dcql::CredentialMeta,
+    pub purpose: Vec<MultiLangString>,
 }
 
 impl<T: ErrorCodeMixin> From<T> for HistoryMetadata {

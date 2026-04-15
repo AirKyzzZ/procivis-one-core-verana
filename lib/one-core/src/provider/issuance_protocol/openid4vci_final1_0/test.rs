@@ -436,6 +436,7 @@ async fn test_holder_accept_credential_success() {
         format: "jwt_vc_json".to_string(),
         access_certificate: None,
         registration_certificate: None,
+        relying_party_name: None,
     };
 
     let interaction = Interaction {
@@ -666,6 +667,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         format: "jwt_vc_json".to_string(),
         access_certificate: None,
         registration_certificate: None,
+        relying_party_name: None,
     };
 
     let interaction = Interaction {
@@ -904,6 +906,7 @@ async fn test_holder_accept_credential_autogenerate_holder_binding() {
         format: "jwt_vc_json".to_string(),
         access_certificate: None,
         registration_certificate: None,
+        relying_party_name: None,
     };
 
     let interaction = Interaction {
@@ -1180,6 +1183,7 @@ async fn test_holder_reject_credential() {
             format: "jwt_vc_json".to_string(),
             access_certificate: None,
             registration_certificate: None,
+            relying_party_name: None,
         };
 
         credential.interaction = Some(Interaction {
@@ -2031,6 +2035,7 @@ async fn test_holder_accept_credential_fails_without_wallet_unit_id_when_key_att
         format: "jwt_vc_json".to_string(),
         access_certificate: None,
         registration_certificate: None,
+        relying_party_name: None,
     };
 
     let interaction = Interaction {
@@ -2155,6 +2160,7 @@ async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_att
         format: "jwt_vc_json".to_string(),
         access_certificate: None,
         registration_certificate: None,
+        relying_party_name: None,
     };
 
     let interaction = Interaction {
