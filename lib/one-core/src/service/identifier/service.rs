@@ -488,7 +488,7 @@ impl IdentifierService {
         let valid_identifiers =
             filter_resolvable_identifiers(identifiers, &trust_list_subscriber.get_capabilities());
 
-        let resolved_entries = trust_list_subscriber
+        let resolved_entries_result = trust_list_subscriber
             .resolve_entries(
                 &trust_list_subscription
                     .reference
@@ -500,8 +500,21 @@ impl IdentifierService {
                     })?,
                 valid_identifiers.as_ref(),
             )
-            .await
-            .error_while("resolving entries")?;
+            .await;
+
+        let resolved_entries = match resolved_entries_result {
+            Err(e) => {
+                warn!(
+                    error_code = %e.error_code(),
+                    cause = ?e,
+                    reference = %trust_list_subscription.reference,
+                    "Failed to resolve entries for trust list subscription {}",
+                    trust_list_subscription.reference
+                );
+                return Ok(HashMap::new());
+            }
+            Ok(resolved_entries) => resolved_entries,
+        };
 
         Ok(resolved_entries
             .into_iter()
@@ -595,10 +608,9 @@ impl IdentifierService {
             .error_while("getting trust list subscriptions")?;
 
         for trust_list_subscription in &mut trust_list_subscriptions {
-            trust_list_subscription.trust_collection =
-                trust_list_collections // TODO: This is really bad solution, fix once lazy loading is implemented
-                    .get(&trust_list_subscription.trust_collection_id)
-                    .cloned();
+            trust_list_subscription.trust_collection = trust_list_collections
+                .get(&trust_list_subscription.trust_collection_id)
+                .cloned();
         }
         Ok(trust_list_subscriptions)
     }

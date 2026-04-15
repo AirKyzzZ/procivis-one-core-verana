@@ -80,7 +80,8 @@ async fn test_get_trust_list_publication_xml_with_entries() {
     // given
     let (context, organisation, identifier, ..) =
         TestContext::new_with_certificate_identifier(Some(XML_PUBLISHER_CONFIG.to_string())).await;
-    let identifier2 = create_cert_identifier(&context, &organisation, Default::default()).await;
+    let identifier2 =
+        create_cert_identifier(&context, &organisation, Default::default(), None).await;
 
     let create_resp = context
         .api
@@ -193,7 +194,8 @@ async fn test_get_trust_list_publication_xml_with_suspended_entries() {
     // given
     let (context, organisation, identifier, ..) =
         TestContext::new_with_certificate_identifier(Some(XML_PUBLISHER_CONFIG.to_string())).await;
-    let identifier2 = create_cert_identifier(&context, &organisation, Default::default()).await;
+    let identifier2 =
+        create_cert_identifier(&context, &organisation, Default::default(), None).await;
 
     let create_resp = context
         .api

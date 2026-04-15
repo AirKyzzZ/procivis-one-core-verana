@@ -205,6 +205,7 @@ async fn test_get_credential_issuer_metadata_fails_with_certificate_invalid_role
             roles: vec![CertificateRole::AssertionMethod],
             ..Default::default()
         }),
+        None,
     )
     .await;
 

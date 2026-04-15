@@ -4413,6 +4413,7 @@ dependencies = [
  "darling 0.23.0",
  "proc-macro2",
  "quote",
+ "serde",
  "serde_with",
  "syn 2.0.111",
  "utoipa",

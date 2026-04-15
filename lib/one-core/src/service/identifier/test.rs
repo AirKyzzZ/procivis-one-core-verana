@@ -506,11 +506,13 @@ async fn test_resolve_trust_entries_subscriber_error() {
             roles: None,
             trust_collection_ids: None,
         })
-        .await;
+        .await
+        .unwrap();
 
     // then
-    assert!(result.is_err());
-    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0047);
+    assert_eq!(result.len(), 1);
+    assert_eq!(result[0].identifier.id, identifier_id);
+    assert_eq!(result[0].trust_entries.len(), 0);
 }
 
 #[tokio::test]

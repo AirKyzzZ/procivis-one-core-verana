@@ -82,7 +82,8 @@ async fn test_get_trust_list_publication_with_entries() {
     // GIVEN
     let (context, organisation, identifier, ..) =
         TestContext::new_with_certificate_identifier(None).await;
-    let identifier2 = create_cert_identifier(&context, &organisation, Default::default()).await;
+    let identifier2 =
+        create_cert_identifier(&context, &organisation, Default::default(), None).await;
 
     let create_resp = context
         .api
@@ -175,7 +176,8 @@ async fn test_get_trust_list_publication_with_suspended_entries() {
     // GIVEN
     let (context, organisation, identifier, ..) =
         TestContext::new_with_certificate_identifier(None).await;
-    let identifier2 = create_cert_identifier(&context, &organisation, Default::default()).await;
+    let identifier2 =
+        create_cert_identifier(&context, &organisation, Default::default(), None).await;
 
     let create_resp = context
         .api

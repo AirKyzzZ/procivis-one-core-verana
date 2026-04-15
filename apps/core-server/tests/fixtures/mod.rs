@@ -510,7 +510,8 @@ pub struct TestingCertIdentifierParams {
 pub async fn create_cert_identifier(
     context: &TestContext,
     organisation: &Organisation,
-    params: Option<TestingCertIdentifierParams>,
+    cert_params: Option<TestingCertIdentifierParams>,
+    identifier_params: Option<TestingIdentifierParams>,
 ) -> Identifier {
     let key = context
         .db
@@ -527,22 +528,24 @@ pub async fn create_cert_identifier(
     );
     let identifier_id = Uuid::new_v4().into();
 
-    let params = params.unwrap_or_default();
+    let cert_params = cert_params.unwrap_or_default();
     let now = one_core::clock::now_utc();
     let certificate = Certificate {
         id: Uuid::new_v4().into(),
         identifier_id,
         organisation_id: Some(organisation.id),
-        created_date: params.created_date.unwrap_or(now),
-        last_modified: params.last_modified.unwrap_or(now),
-        expiry_date: params.expiry_date.unwrap_or(now.add(Duration::minutes(10))),
-        name: params.name.unwrap_or("test cert 2".to_string()),
-        chain: params
+        created_date: cert_params.created_date.unwrap_or(now),
+        last_modified: cert_params.last_modified.unwrap_or(now),
+        expiry_date: cert_params
+            .expiry_date
+            .unwrap_or(now.add(Duration::minutes(10))),
+        name: cert_params.name.unwrap_or("test cert 2".to_string()),
+        chain: cert_params
             .chain
             .unwrap_or(format!("{}{}", cert.pem(), ca_cert.pem())),
-        fingerprint: params.fingerprint.unwrap_or("ffffaaaa22".to_string()),
-        state: params.state.unwrap_or(CertificateState::Active),
-        roles: params.roles,
+        fingerprint: cert_params.fingerprint.unwrap_or("ffffaaaa22".to_string()),
+        state: cert_params.state.unwrap_or(CertificateState::Active),
+        roles: cert_params.roles,
         key: Some(key.clone()),
     };
     let identifier = context
@@ -553,7 +556,7 @@ pub async fn create_cert_identifier(
             TestingIdentifierParams {
                 r#type: Some(IdentifierType::Certificate),
                 certificates: Some(vec![certificate.clone()]),
-                ..Default::default()
+                ..identifier_params.unwrap_or_default()
             },
         )
         .await;

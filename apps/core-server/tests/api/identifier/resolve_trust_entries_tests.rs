@@ -7,6 +7,8 @@ use shared_types::TrustListSubscriberId;
 use similar_asserts::assert_eq;
 use standardized_types::etsi_119_602::{MultiLangString, TrustedEntityInformation};
 use uuid::Uuid;
+use wiremock::matchers::method;
+use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use crate::fixtures::TestingIdentifierParams;
 use crate::utils::api_clients::Response;
@@ -56,7 +58,7 @@ async fn test_resolve_trust_entries_success_empty() {
 }
 
 #[tokio::test]
-async fn test_resolve_trust_entries_success() {
+async fn test_resolve_trust_entries_from_cache_success() {
     // GIVEN
     let additional_config = r#"
 trustListSubscriber:
@@ -299,4 +301,101 @@ async fn test_resolve_trust_entries_non_remote_identifier() {
     assert_eq!(body[0]["identifier"]["id"], identifier.id.to_string());
     // Non-remote identifiers should not be sent for resolution, so trustEntries should be empty
     assert!(body[0]["trustEntries"].as_array().unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn test_resolve_trust_entries_resolution_fails() {
+    // GIVEN
+    let additional_config = r#"
+trustListSubscriber:
+  ETSI-LOTE:
+    type: ETSI_LOTE
+    display:
+      translationId: ETSI LoTE
+    enabled: true
+    params:
+      public:
+        accepts: application/jwt
+        leeway: 0
+    "#;
+    let context = TestContext::new(Some(additional_config.to_string())).await;
+    let organisation = context.db.organisations.create().await;
+    let fingerprint = "test-fingerprint";
+
+    // 1. Mock trust list reference
+    let mock_server = MockServer::start().await;
+    mock_server
+        .register(Mock::given(method("GET")).respond_with(ResponseTemplate::new(404)))
+        .await;
+
+    // 2. Setup Identifier with certificate
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                r#type: Some(IdentifierType::Certificate),
+                is_remote: Some(true),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    context
+        .db
+        .certificates
+        .create(
+            identifier.id,
+            TestingCertificateParams {
+                fingerprint: Some(fingerprint.to_string()),
+                state: Some(CertificateState::Active),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // 3. Setup trust collection and subscription
+    let reference_uri = mock_server.uri();
+    let subscriber_id = TrustListSubscriberId::from("ETSI-LOTE");
+    let tc = context
+        .db
+        .trust_collections
+        .create(
+            organisation.clone(),
+            TestTrustCollectionParams {
+                name: Some("Trust Collection".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    context
+        .db
+        .trust_list_subscriptions
+        .create(
+            "Trust list subscription",
+            TrustListRoleEnum::Issuer,
+            subscriber_id.clone(),
+            &reference_uri,
+            TrustListSubscriptionState::Active,
+            tc.id,
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .identifiers
+        .resolve_trust_entries(&[identifier.id], None, None)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let body = resp.json_value().await;
+    assert_eq!(body.as_array().unwrap().len(), 1);
+    assert_eq!(body[0]["identifier"]["id"], identifier.id.to_string());
+
+    let trust_entries = body[0]["trustEntries"].as_array().unwrap();
+    assert_eq!(trust_entries.len(), 0);
 }

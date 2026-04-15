@@ -200,7 +200,7 @@ pub(crate) async fn resolve_trust_entity(
     post,
     path = "/api/identifier/v1/resolve-trust-entries",
     request_body = ResolveTrustEntriesRequestRestDTO,
-    responses(OkOrErrorResponse<Vec<ResolveTrustEntitiesResponseRestDTO>>),
+    responses(OkOrErrorResponse<Vec<ResolvedTrustEntriesResponseRestDTO>>),
     tag = "identifier_management",
     security(
         ("bearer" = [])
