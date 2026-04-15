@@ -111,7 +111,7 @@ pub struct ClaimQuery {
     pub intent_to_retain: Option<bool>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, EnumString)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, EnumString)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub enum CredentialFormat {
     #[serde(rename = "jwt_vc_json")]

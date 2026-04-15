@@ -1,18 +1,16 @@
-use one_dto_mapper::{From, convert_inner, convert_inner_of_inner};
+use one_dto_mapper::{From, convert_inner};
 use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
 use shared_types::{
     CredentialId, CredentialSchemaId, EntityId, HistoryId, IdentifierId, OrganisationId, ProofId,
     ProofSchemaId,
 };
-use standardized_types::etsi_119_602::MultiLangString;
 use time::OffsetDateTime;
 
 use crate::error::ErrorCode;
 use crate::model::common::GetListResponse;
 use crate::model::history::{
     History, HistoryAction, HistoryEntityType, HistoryErrorMetadata, HistoryMetadata,
-    HistorySearchEnum, HistorySource, IntendedUse, WalletRelayingPartyMetadata,
+    HistorySearchEnum, HistorySource, WalletRelayingPartyMetadata,
 };
 use crate::service::backup::dto::UnexportableEntitiesResponseDTO;
 
@@ -33,21 +31,10 @@ pub struct HistoryErrorMetadataDTO {
     pub message: String,
 }
 
-#[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize, From)]
 #[from(WalletRelayingPartyMetadata)]
 pub struct WalletRelayingPartyMetadataDTO {
     pub name: String,
-    #[from(with_fn = convert_inner_of_inner)]
-    pub intended_use: Option<Vec<IntendedUseDTO>>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, From)]
-#[from(IntendedUse)]
-pub struct IntendedUseDTO {
-    pub format: dcql::CredentialFormat,
-    pub meta: dcql::CredentialMeta,
-    pub purpose: Vec<MultiLangString>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, From)]

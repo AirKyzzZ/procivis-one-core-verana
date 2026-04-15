@@ -51,7 +51,7 @@ impl DcqlQuery {
             };
 
             let base_filter = CredentialFilter {
-                format: credential_query.format.clone(),
+                format: credential_query.format,
                 schema_ids,
                 claims: vec![],
             };

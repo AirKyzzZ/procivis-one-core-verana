@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use dcql::CredentialFormat;
+use one_dto_mapper::Into;
 use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use url::Url;
@@ -101,7 +102,8 @@ pub enum PolicyType {
     RegistrationPolicy,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Into)]
+#[into(standardized_types::etsi_119_602::json::MultiLangString)]
 #[serde(deny_unknown_fields)]
 pub struct MultiLangString {
     pub lang: String,

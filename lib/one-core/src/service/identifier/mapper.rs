@@ -489,7 +489,7 @@ impl TryFrom<Credential> for Vec<SchemaFormat> {
         Ok(schema_ids
             .into_iter()
             .map(|c| SchemaFormat {
-                format: value.format.clone(),
+                format: value.format,
                 schema_id: c,
             })
             .collect())

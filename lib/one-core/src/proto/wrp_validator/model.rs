@@ -1,3 +1,4 @@
+use one_dto_mapper::Into;
 use serde::Deserialize;
 use serde_with::{OneOrMany, serde_as};
 use standardized_types::jwk::PublicJwk;
@@ -160,10 +161,12 @@ pub(crate) struct Identifier {
 }
 
 /// B.2.6 <https://www.etsi.org/deliver/etsi_ts/119400_119499/119475/01.02.01_60/ts_119475v010201p.pdf>
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Into)]
+#[into(standardized_types::etsi_119_602::json::MultiLangString)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub(crate) struct MultiLangString {
     pub lang: String,
+    #[into(rename = "value")]
     pub content: String,
 }
 

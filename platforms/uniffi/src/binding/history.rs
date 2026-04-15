@@ -1,10 +1,8 @@
 use one_core::model::history::{
     HistoryAction, HistoryEntityType, HistorySearchEnum, SortableHistoryColumn,
 };
-use one_core::service::history::dto::{
-    GetHistoryListResponseDTO, IntendedUseDTO, WalletRelayingPartyMetadataDTO,
-};
-use one_dto_mapper::{From, Into, convert_inner, convert_inner_of_inner};
+use one_core::service::history::dto::{GetHistoryListResponseDTO, WalletRelayingPartyMetadataDTO};
+use one_dto_mapper::{From, Into, convert_inner};
 
 use super::backup::UnexportableEntitiesBindingDTO;
 use super::common::SortDirection;
@@ -151,16 +149,6 @@ pub struct HistoryErrorMetadataBindingDTO {
 #[uniffi(name = "WalletRelayingPartyMetadata")]
 pub struct WalletRelayingPartyMetadataBindingDTO {
     pub name: String,
-    #[from(with_fn = convert_inner_of_inner)]
-    pub intended_use: Option<Vec<IntendedUseBindingDTO>>,
-}
-
-#[derive(Debug, Clone, From, uniffi::Record)]
-#[from(IntendedUseDTO)]
-#[uniffi(name = "IntendedUse")]
-pub struct IntendedUseBindingDTO {
-    #[from(with_fn = convert_inner)]
-    pub purpose: Vec<MultiLangStringBindingDTO>,
 }
 
 #[derive(Clone, Debug, uniffi::Record)]

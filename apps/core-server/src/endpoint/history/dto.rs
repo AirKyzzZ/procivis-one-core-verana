@@ -13,7 +13,6 @@ use shared_types::{
     CredentialId, CredentialSchemaId, EntityId, HistoryId, IdentifierId, OrganisationId, ProofId,
     ProofSchemaId,
 };
-use standardized_types::etsi_119_602::MultiLangString;
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
@@ -124,21 +123,10 @@ pub(crate) struct UnexportableEntitiesResponseRestDTO {
     pub total_dids: u64,
 }
 
-#[options_not_nullable]
 #[derive(Debug, Clone, Serialize, ToSchema, From)]
 #[from(one_core::service::history::dto::WalletRelayingPartyMetadataDTO)]
 pub(crate) struct WalletRelayingPartyMetadataRestDTO {
     pub name: String,
-    #[from(with_fn = convert_inner_of_inner)]
-    pub intended_use: Option<Vec<IntendedUseRestDTO>>,
-}
-
-#[derive(Debug, Clone, Serialize, ToSchema, From)]
-#[from(one_core::service::history::dto::IntendedUseDTO)]
-pub(crate) struct IntendedUseRestDTO {
-    pub format: dcql::CredentialFormat,
-    pub meta: dcql::CredentialMeta,
-    pub purpose: Vec<MultiLangString>,
 }
 
 #[derive(Serialize, ToSchema)]
