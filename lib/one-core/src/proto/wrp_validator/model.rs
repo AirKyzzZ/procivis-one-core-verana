@@ -45,7 +45,6 @@ pub(crate) struct WRPPayload {
 #[serde_as]
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[expect(unused)]
 pub(crate) struct WRPPayloadData {
     pub trade_name: Option<String>,
     #[serde(rename = "supportURI")]
@@ -55,19 +54,26 @@ pub(crate) struct WRPPayloadData {
     pub intended_use: Vec<IntendedUse>,
     #[serde(default, rename = "isPSB")]
     pub is_psb: Option<bool>,
+    #[expect(unused)]
     pub entitlement: Vec<String>,
     #[serde(default)]
+    #[expect(unused)]
     pub provides_attestations: Vec<Credential>,
     pub supervisory_authority: LegalEntity,
     #[serde(rename = "registryURI")]
+    #[expect(unused)]
     pub registry_uri: Url,
     pub uses_intermediary: Option<Vec<WalletRelyingParty>>,
+    #[expect(unused)]
     pub legal_person: Option<LegalPerson>,
+    #[expect(unused)]
     pub natural_person: Option<NaturalPerson>,
     #[serde(default)]
+    #[expect(unused)]
     pub identifier: Vec<Identifier>,
     #[serde(default)]
     #[serde_as(as = "Option<OneOrMany<_>>")]
+    #[expect(unused)]
     pub postal_address: Option<Vec<String>>,
     pub country: String,
     #[serde(default)]
@@ -75,6 +81,7 @@ pub(crate) struct WRPPayloadData {
     #[serde(default)]
     pub phone: Vec<String>,
     #[serde(default, rename = "infoURI")]
+    #[expect(unused)]
     pub info_uri: Vec<Url>,
 }
 
@@ -155,7 +162,6 @@ pub(crate) struct Identifier {
 /// B.2.6 <https://www.etsi.org/deliver/etsi_ts/119400_119499/119475/01.02.01_60/ts_119475v010201p.pdf>
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
-#[expect(unused)]
 pub(crate) struct MultiLangString {
     pub lang: String,
     pub content: String,

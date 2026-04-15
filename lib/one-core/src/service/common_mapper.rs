@@ -3,8 +3,9 @@ use ct_codecs::{Base64, Decoder};
 use crate::model::list_filter::ListFilterCondition;
 use crate::model::list_query::{ListPagination, ListQuery, ListSorting};
 use crate::proto::jwt::model::JWTPayload;
-use crate::proto::trust_information::TrustDetails;
-use crate::provider::signer::registration_certificate::model::Payload;
+use crate::proto::trust_information::dto::{TrustDetails, WalletRelyingPartyDetails};
+use crate::proto::wrp_validator::model::WRPPayload;
+use crate::provider::signer::registration_certificate::model::{Payload, SupervisoryAuthority};
 use crate::service::common_dto::{
     BoundedB64Image, EudiIntermediaryResponseDTO, EudiTrustInformationResponseDTO, ListQueryDTO,
     TrustInformationDetailResponseDTO,
@@ -74,61 +75,134 @@ impl TryFrom<TrustDetails> for TrustInformationDetailResponseDTO {
     type Error = ServiceError;
 
     fn try_from(value: TrustDetails) -> Result<Self, Self::Error> {
-        let response = match value {
+        let trust_detail = match value {
             TrustDetails::Etsi {
                 access_certificate,
-                registration_certificate,
+                wrp,
             } => {
+                let (eudi_ecosystem, has_intermediary) = match wrp {
+                    WalletRelyingPartyDetails::RegistrationCertificate(reg_cert) => {
+                        map_reg_cert(reg_cert)?
+                    }
+                    WalletRelyingPartyDetails::NationalRegistryInfo(national_registry_info) => {
+                        map_national_registry_info(national_registry_info)?
+                    }
+                };
                 let (intermediary, email, phone) =
-                    map_access_cert(access_certificate, &registration_certificate);
+                    map_access_cert(access_certificate, has_intermediary);
                 TrustInformationDetailResponseDTO {
                     eudi_ecosystem: Some(EudiTrustInformationResponseDTO {
-                        name: registration_certificate.custom.name,
-                        website: registration_certificate.custom.support_uri,
+                        intermediary,
                         email,
                         phone,
-                        country: registration_certificate.custom.country,
-                        identifier: registration_certificate.subject.ok_or(
-                            ServiceError::MappingError(
-                                "Missing registration certificate subject".to_string(),
-                            ),
-                        )?,
-                        service_description: registration_certificate
-                            .custom
-                            .service_descriptions
-                            .into_iter()
-                            .map(|langs| {
-                                langs
-                                    .into_iter()
-                                    .map(|lang| (lang.lang, lang.value))
-                                    .collect()
-                            })
-                            .collect(),
-                        supervisory_authority: registration_certificate
-                            .custom
-                            .supervisory_authority,
-                        intermediary,
-                        is_public_sector: registration_certificate
-                            .custom
-                            .public_body
-                            .unwrap_or_default(),
+                        ..eudi_ecosystem
                     }),
                 }
             }
         };
-        Ok(response)
+        Ok(trust_detail)
     }
+}
+
+fn map_reg_cert(
+    reg_cert: JWTPayload<Payload>,
+) -> Result<
+    (EudiTrustInformationResponseDTO, bool),
+    <TrustInformationDetailResponseDTO as TryFrom<TrustDetails>>::Error,
+> {
+    Ok((
+        EudiTrustInformationResponseDTO {
+            name: reg_cert.custom.name,
+            website: reg_cert.custom.support_uri,
+            email: None,
+            phone: None,
+            country: reg_cert.custom.country,
+            identifier: reg_cert.subject.ok_or(ServiceError::MappingError(
+                "Missing registration certificate subject".to_string(),
+            ))?,
+            service_description: reg_cert
+                .custom
+                .service_descriptions
+                .into_iter()
+                .map(|langs| {
+                    langs
+                        .into_iter()
+                        .map(|lang| (lang.lang, lang.value))
+                        .collect()
+                })
+                .collect(),
+            supervisory_authority: reg_cert.custom.supervisory_authority,
+            intermediary: None,
+            is_public_sector: reg_cert.custom.public_body.unwrap_or_default(),
+        },
+        reg_cert.custom.intermediary.is_some(),
+    ))
+}
+
+fn map_national_registry_info(
+    national_registry_info: JWTPayload<WRPPayload>,
+) -> Result<
+    (EudiTrustInformationResponseDTO, bool),
+    <TrustInformationDetailResponseDTO as TryFrom<TrustDetails>>::Error,
+> {
+    let data = national_registry_info.custom.data;
+    Ok((
+        EudiTrustInformationResponseDTO {
+            name: data
+                .trade_name
+                .ok_or(ServiceError::MappingError("Missing trade name".to_string()))?,
+            website: data
+                .support_uri
+                .into_iter()
+                .next()
+                .ok_or(ServiceError::MappingError("Empty support uri".to_string()))?,
+            email: data.email.into_iter().next(),
+            phone: data.phone.into_iter().next(),
+            country: data.country,
+            identifier: national_registry_info
+                .subject
+                .ok_or(ServiceError::MappingError(
+                    "Missing registration certificate subject".to_string(),
+                ))?,
+            service_description: vec![
+                data.srv_description
+                    .into_iter()
+                    .map(|lang| (lang.lang, lang.content))
+                    .collect(),
+            ],
+            supervisory_authority: SupervisoryAuthority {
+                email: data.supervisory_authority.email.into_iter().next().ok_or(
+                    ServiceError::MappingError("Empty supervisor authority email".to_string()),
+                )?,
+                phone: data.supervisory_authority.phone.into_iter().next().ok_or(
+                    ServiceError::MappingError("Empty supervisor authority phone".to_string()),
+                )?,
+                uri: data
+                    .supervisory_authority
+                    .info_uri
+                    .into_iter()
+                    .next()
+                    .ok_or(ServiceError::MappingError(
+                        "Empty supervisor authority info_uri".to_string(),
+                    ))?,
+            },
+            intermediary: None,
+            is_public_sector: data.is_psb.unwrap_or_default(),
+        },
+        data.uses_intermediary
+            .is_some_and(|intermediaries| !intermediaries.is_empty()),
+    ))
 }
 
 fn map_access_cert(
     access_certificate: EtsiParsedAccessCert,
-    registration_certificate: &JWTPayload<Payload>,
+    has_intermediary: bool,
 ) -> (
     Option<EudiIntermediaryResponseDTO>,
     Option<String>,
     Option<String>,
 ) {
-    if registration_certificate.custom.intermediary.is_some() {
+    if has_intermediary {
         (
             Some(EudiIntermediaryResponseDTO {
                 name: access_certificate.common_name,

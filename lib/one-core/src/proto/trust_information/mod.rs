@@ -1,17 +1,14 @@
+use shared_types::{CredentialId, EntityId, HistoryId};
+
+use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
+use crate::model::history::HistoryAction;
+use crate::proto::trust_information::dto::{TrustDetails, TrustInformationDTO};
+
 pub mod dto;
 pub mod provider;
 
 #[cfg(test)]
 mod test;
-
-use shared_types::{CredentialId, EntityId, HistoryId};
-
-use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
-use crate::model::history::HistoryAction;
-use crate::proto::jwt::model::JWTPayload;
-use crate::proto::trust_information::dto::TrustInformationDTO;
-use crate::provider::signer::registration_certificate::model::Payload;
-use crate::util::access_cert_parser::EtsiParsedAccessCert;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
@@ -22,13 +19,6 @@ pub(crate) trait TrustInformationProvider: Send + Sync {
     ) -> Result<Option<TrustInformationDTO>, Error>;
 
     async fn get_trust_detail(&self, id: &EntityId) -> Result<Option<TrustDetails>, Error>;
-}
-
-pub enum TrustDetails {
-    Etsi {
-        registration_certificate: JWTPayload<Payload>,
-        access_certificate: EtsiParsedAccessCert,
-    },
 }
 
 #[derive(Debug, thiserror::Error)]

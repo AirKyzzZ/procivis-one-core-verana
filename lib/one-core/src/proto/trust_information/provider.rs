@@ -13,11 +13,9 @@ use crate::model::history::{
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListSorting;
 use crate::proto::jwt::Jwt;
-use crate::proto::jwt::model::JWTPayload;
-use crate::proto::trust_information::dto::TrustInformationDTO;
+use crate::proto::trust_information::dto::{TrustInformationDTO, WalletRelyingPartyDetails};
 use crate::proto::trust_information::{Error, TrustDetails, TrustInformationProvider};
 use crate::provider::blob_storage_provider::{BlobStorage, BlobStorageProvider, BlobStorageType};
-use crate::provider::signer::registration_certificate::model::Payload;
 use crate::repository::history_repository::HistoryRepository;
 use crate::service::error::MissingProviderError;
 use crate::util::access_cert_parser::{EtsiParsedAccessCert, etsi_access_cert_from_pem_chain};
@@ -96,12 +94,12 @@ impl TrustInformationProviderImpl {
         Ok(access_certificate)
     }
 
-    async fn parsed_registration_cert_from_history(
+    async fn parsed_wrp_info_from_history(
         &self,
         id: &EntityId,
         history: &GetHistoryList,
         blob_storage: &dyn BlobStorage,
-    ) -> Result<JWTPayload<Payload>, Error> {
+    ) -> Result<WalletRelyingPartyDetails, Error> {
         let reg_cert_history = history
             .values
             .iter()
@@ -109,28 +107,40 @@ impl TrustInformationProviderImpl {
             .ok_or(Error::MappingError(format!(
                 "Missing registration certificate for entity {id}"
             )))?;
-
-        let reg_cert_blob_id = reg_cert_history
+        let blob_id = reg_cert_history
             .metadata_blob_id
             .ok_or(Error::MappingError(format!(
                 "Missing blob id on history entry {}",
                 reg_cert_history.id
             )))?;
-        let reg_cert = blob_storage
-            .get(&reg_cert_blob_id)
+        let blob = blob_storage
+            .get(&blob_id)
             .await
             .error_while("loading registration certificate")?
             .ok_or(Error::MappingError(format!(
-                "Registration certificate blob {reg_cert_blob_id} not found"
+                "Registration certificate blob {blob_id} not found"
             )))?;
-        let reg_cert = str::from_utf8(&reg_cert.value).map_err(|e| {
-            Error::MappingError(format!(
-                "failed to parse registration certificate blob: {e}"
-            ))
-        })?;
-        let reg_cert_payload =
-            Jwt::decompose_token(reg_cert).error_while("parsing registration certificate")?;
-        Ok(reg_cert_payload.payload)
+        let blob_value = str::from_utf8(&blob.value)
+            .map_err(|e| Error::MappingError(format!("failed to parse blob value: {e}")))?;
+        match reg_cert_history.action {
+            WrpRcReceived => {
+                let parsed_token = Jwt::decompose_token(blob_value)
+                    .error_while("parsing registration certificate")?;
+                Ok(WalletRelyingPartyDetails::RegistrationCertificate(
+                    parsed_token.payload,
+                ))
+            }
+            WrpNrReceived => {
+                let parsed_token = Jwt::decompose_token(blob_value)
+                    .error_while("parsing national registry wrp info")?;
+                Ok(WalletRelyingPartyDetails::NationalRegistryInfo(
+                    parsed_token.payload,
+                ))
+            }
+            action => Err(Error::MappingError(format!(
+                "Unexpected history action: {action:?}"
+            ))),
+        }
     }
 }
 
@@ -149,9 +159,8 @@ impl TrustInformationProvider for TrustInformationProviderImpl {
     }
 
     async fn get_trust_detail(&self, id: &EntityId) -> Result<Option<TrustDetails>, Error> {
-        // TODO ONE-9430: Properly handle WrpNrReceived
         let history = self
-            .get_wrp_history_entries(id, vec![WrpRcReceived, WrpAcReceived])
+            .get_wrp_history_entries(id, vec![WrpRcReceived, WrpNrReceived, WrpAcReceived])
             .await?;
         if history.values.is_empty() {
             // No trust info
@@ -166,11 +175,11 @@ impl TrustInformationProvider for TrustInformationProviderImpl {
         let access_certificate = self
             .parsed_access_cert_from_history(id, &history, &*blob_storage)
             .await?;
-        let registration_certificate = self
-            .parsed_registration_cert_from_history(id, &history, &*blob_storage)
+        let wrp = self
+            .parsed_wrp_info_from_history(id, &history, &*blob_storage)
             .await?;
         Ok(Some(TrustDetails::Etsi {
-            registration_certificate,
+            wrp,
             access_certificate,
         }))
     }
