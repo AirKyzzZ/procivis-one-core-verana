@@ -4,8 +4,10 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use coset::{RegisteredLabelWithPrivate, SignatureContext, iana};
 use serde::Deserialize;
+use serde_with::{DurationSeconds, serde_as};
 use shared_types::DidValue;
 use standardized_types::jwk::PublicJwk;
+use time::Duration;
 use url::Url;
 use uuid::Uuid;
 
@@ -40,10 +42,13 @@ use crate::provider::presentation_formatter::mso_mdoc::session_transcript::openi
 
 pub(crate) mod model;
 pub(crate) mod session_transcript;
+
+#[serde_as]
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Params {
-    pub leeway: u64,
+    #[serde_as(as = "DurationSeconds<i64>")]
+    pub leeway: Duration,
 }
 
 pub struct MsoMdocPresentationFormatter {
@@ -60,7 +65,9 @@ impl MsoMdocPresentationFormatter {
         Self {
             base_url,
             certificate_validator,
-            params: Params { leeway: 60 },
+            params: Params {
+                leeway: Duration::seconds(60),
+            },
         }
     }
 }
@@ -240,7 +247,7 @@ impl PresentationFormatter for MsoMdocPresentationFormatter {
         })
     }
 
-    fn get_leeway(&self) -> u64 {
+    fn get_leeway(&self) -> Duration {
         self.params.leeway
     }
 }

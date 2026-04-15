@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use error::FormatterError;
 use model::{AuthenticationFn, CredentialPresentation, DetailCredential, TokenVerifier};
 use shared_types::CredentialSchemaId;
+use time::Duration;
 
 use crate::config::core_config::{KeyAlgorithmType, RevocationType};
 use crate::model::credential::Credential;
@@ -90,11 +91,11 @@ pub trait CredentialFormatter: Send + Sync {
 
     /// Returns the leeway time.
     ///
-    /// Leeway is a buffer time (in seconds) added to account for clock skew
+    /// Leeway is a buffer time added to account for clock skew
     /// between systems when validating issuance and expiration dates of presentations
     /// and the credentials included therein. This prevents minor discrepancies in system
     /// clocks from causing validation failures.
-    fn get_leeway(&self) -> u64;
+    fn get_leeway(&self) -> Duration;
 
     /// See the [API docs][cfc] for a complete list of credential format capabilities.
     ///

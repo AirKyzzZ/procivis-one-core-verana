@@ -1,4 +1,5 @@
 use shared_types::IdentifierId;
+use time::Duration;
 
 use super::dto::{NoncePayload, WalletProviderParams};
 use super::error::WalletProviderError;
@@ -54,7 +55,7 @@ pub(super) fn validate_revocation_method(
 
 pub(super) fn validate_proof_payload(
     proof: &DecomposedJwt<NoncePayload>,
-    leeway: u64,
+    leeway: Duration,
     base_url: Option<&str>,
     nonce: Option<&str>,
 ) -> Result<(), WalletProviderError> {

@@ -55,7 +55,8 @@ pub struct JWTFormatter {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Params {
-    pub leeway: u64,
+    #[serde_as(as = "DurationSeconds<i64>")]
+    pub leeway: Duration,
     pub embed_layout_properties: bool,
     #[serde_as(as = "DurationSeconds<i64>")]
     #[serde(default = "default_2_years")]
@@ -222,7 +223,7 @@ impl CredentialFormatter for JWTFormatter {
         Ok(credential.token)
     }
 
-    fn get_leeway(&self) -> u64 {
+    fn get_leeway(&self) -> Duration {
         self.params.leeway
     }
 

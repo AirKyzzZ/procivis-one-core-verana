@@ -45,9 +45,12 @@ pub(crate) struct OpenID4VCIFinal1Params {
 
     pub nonce: Option<OpenID4VCNonceParams>,
 
-    pub oauth_attestation_leeway: u64,
-
-    pub key_attestation_leeway: u64,
+    #[serde_as(as = "DurationSeconds<i64>")]
+    pub oauth_attestation_leeway: Duration,
+    #[serde_as(as = "DurationSeconds<i64>")]
+    pub key_attestation_leeway: Duration,
+    #[serde_as(as = "DurationSeconds<i64>")]
+    pub trust_ecosystem_leeway: Duration,
 
     #[serde(default = "default_true")]
     pub request_signed_metadata: bool,
@@ -56,6 +59,7 @@ pub(crate) struct OpenID4VCIFinal1Params {
     pub common: CommonParams,
 }
 
+#[serde_as]
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct OpenID4VCNonceParams {
@@ -63,7 +67,8 @@ pub(crate) struct OpenID4VCNonceParams {
     pub signing_key: SecretSlice<u8>,
     pub expiration: Option<u64>,
     #[serde(default)]
-    pub leeway: u64,
+    #[serde_as(as = "DurationSeconds<i64>")]
+    pub leeway: Duration,
 }
 
 /// <https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata>

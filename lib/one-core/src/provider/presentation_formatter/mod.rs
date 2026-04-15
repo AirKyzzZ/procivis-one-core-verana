@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use shared_types::DidValue;
+use time::Duration;
 
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{AuthenticationFn, VerificationFn};
@@ -45,5 +46,5 @@ pub trait PresentationFormatter: Send + Sync {
         context: ExtractPresentationCtx,
     ) -> Result<ExtractedPresentation, FormatterError>;
 
-    fn get_leeway(&self) -> u64;
+    fn get_leeway(&self) -> Duration;
 }

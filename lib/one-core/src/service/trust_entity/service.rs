@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use shared_types::{DidId, DidValue, IdentifierId, TrustAnchorId, TrustEntityId, TrustEntityKey};
+use time::Duration;
 use uuid::Uuid;
 
 use super::TrustEntityService;
@@ -597,7 +598,7 @@ impl TrustEntityService {
         &self,
         did_value: &DidValue,
         bearer_token: &str,
-        leeway: u64,
+        leeway: Duration,
     ) -> Result<(), TrustEntityServiceError> {
         let jwt = validate_bearer_token(
             bearer_token,
@@ -946,7 +947,7 @@ impl TrustEntityService {
     fn get_proof_of_possession_leeway(
         &self,
         entity: &TrustEntity,
-    ) -> Result<u64, TrustEntityServiceError> {
+    ) -> Result<Duration, TrustEntityServiceError> {
         let anchor = entity
             .trust_anchor
             .as_ref()

@@ -87,7 +87,8 @@ pub struct Params {
     pub mso_expected_update_in: Duration,
     #[serde_as(as = "DurationSeconds<i64>")]
     pub mso_minimum_refresh_time: Duration,
-    pub leeway: u64,
+    #[serde_as(as = "DurationSeconds<i64>")]
+    pub leeway: Duration,
     #[serde(default)]
     pub ecosystem_schema_ids: Vec<String>,
 }
@@ -346,7 +347,7 @@ impl CredentialFormatter for MdocFormatter {
         encode_cbor_base64(issuer_signed)
     }
 
-    fn get_leeway(&self) -> u64 {
+    fn get_leeway(&self) -> Duration {
         self.params.leeway
     }
 

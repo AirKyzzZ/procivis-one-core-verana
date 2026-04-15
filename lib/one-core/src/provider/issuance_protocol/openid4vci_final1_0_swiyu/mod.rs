@@ -71,8 +71,14 @@ pub(crate) struct OpenID4VCISwiyuParams {
     pub encryption: SecretSlice<u8>,
     pub redirect_uri: OpenID4VCRedirectUriParams,
     pub nonce: Option<OpenID4VCNonceParams>,
-    pub oauth_attestation_leeway: u64,
-    pub key_attestation_leeway: u64,
+
+    #[serde_as(as = "DurationSeconds<i64>")]
+    pub oauth_attestation_leeway: Duration,
+    #[serde_as(as = "DurationSeconds<i64>")]
+    pub key_attestation_leeway: Duration,
+    #[serde_as(as = "DurationSeconds<i64>")]
+    pub trust_ecosystem_leeway: Duration,
+
     pub request_signed_metadata: bool,
 
     #[serde(flatten)]
@@ -92,6 +98,7 @@ impl From<OpenID4VCISwiyuParams> for OpenID4VCIFinal1Params {
             nonce: value.nonce,
             oauth_attestation_leeway: value.oauth_attestation_leeway,
             key_attestation_leeway: value.key_attestation_leeway,
+            trust_ecosystem_leeway: value.trust_ecosystem_leeway,
             request_signed_metadata: value.request_signed_metadata,
             common: value.common,
         }

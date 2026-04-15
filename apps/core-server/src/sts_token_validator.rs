@@ -20,6 +20,7 @@ mod validator {
     };
     use serde::de::DeserializeOwned;
     use thiserror::Error;
+    use time::Duration;
     use tokio::sync::Mutex;
 
     use crate::StsTokenValidation;
@@ -70,7 +71,7 @@ mod validator {
                 &self.config.aud,
                 &self.config.iss,
                 payload,
-                self.config.leeway,
+                Duration::seconds(self.config.leeway as _),
             )?;
             let jwks = self.get_jwks().await;
             let matching_key = jwks.find_by_kid(kid);
@@ -114,7 +115,7 @@ mod validator {
         expected_aud: &str,
         expected_iss: &str,
         payload: &JWTPayload<V>,
-        leeway: u64,
+        leeway: Duration,
     ) -> Result<(), StsError> {
         let Some(ref p_issuer) = payload.issuer else {
             return Err(StsError::MissingIssuer);

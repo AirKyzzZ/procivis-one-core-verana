@@ -1,8 +1,7 @@
 use std::ops::{Add, Sub};
-use std::time::Duration;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime};
 
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
@@ -30,7 +29,7 @@ pub(super) fn validate_against_redirect_uris(
 
 pub(crate) fn validate_issuance_time(
     issued_at: &Option<OffsetDateTime>,
-    leeway: u64,
+    leeway: Duration,
 ) -> Result<(), OpenID4VCError> {
     if issued_at.is_none() {
         return Ok(());
@@ -41,7 +40,7 @@ pub(crate) fn validate_issuance_time(
         "Missing issuance date".to_owned(),
     ))?;
 
-    if issued > now.add(Duration::from_secs(leeway)) {
+    if issued > now.add(leeway) {
         return Err(OpenID4VCError::ValidationError(
             "Issued in future".to_owned(),
         ));
@@ -52,7 +51,7 @@ pub(crate) fn validate_issuance_time(
 
 pub(crate) fn validate_expiration_time(
     expires_at: &Option<OffsetDateTime>,
-    leeway: u64,
+    leeway: Duration,
 ) -> Result<(), OpenID4VCError> {
     if expires_at.is_none() {
         return Ok(());
@@ -63,7 +62,7 @@ pub(crate) fn validate_expiration_time(
         "Missing expiration date".to_owned(),
     ))?;
 
-    if expires < now.sub(Duration::from_secs(leeway)) {
+    if expires < now.sub(leeway) {
         return Err(OpenID4VCError::ValidationError("Expired".to_owned()));
     }
 

@@ -129,7 +129,7 @@ async fn test_format_credential() {
 
     let sd_formatter = SDJWTVCFormatter::new(
         Params {
-            leeway: 45,
+            leeway: Duration::seconds(45),
             embed_layout_properties: false,
             swiyu_mode: false,
             sd_array_elements: true,
@@ -245,7 +245,7 @@ async fn test_format_credential_swiyu() {
         .with(eq("sha-256"))
         .returning(move |_| Ok(hasher.clone()));
 
-    let leeway = 45u64;
+    let leeway = Duration::seconds(45);
 
     let mut credential_data = get_credential_data(
         CredentialStatus {
@@ -450,7 +450,7 @@ async fn test_extract_credentials() {
         .with(eq("sha-256"))
         .returning(move |_| Ok(hasher.clone()));
 
-    let leeway = 45u64;
+    let leeway = Duration::seconds(45);
 
     let sd_formatter = SDJWTVCFormatter::new(
         Params {
@@ -595,7 +595,7 @@ async fn test_extract_credentials_swiyu() {
         .with(eq("sha-256"))
         .returning(move |_| Ok(hasher.clone()));
 
-    let leeway = 45u64;
+    let leeway = Duration::seconds(45);
 
     let sd_formatter = SDJWTVCFormatter::new(
         Params {
@@ -795,7 +795,7 @@ async fn test_extract_credentials_with_cnf_no_subject() {
 
     let sd_formatter = SDJWTVCFormatter::new(
         Params {
-            leeway: 45u64,
+            leeway: Duration::seconds(45),
             embed_layout_properties: false,
             swiyu_mode: false,
             sd_array_elements: true,
@@ -912,7 +912,7 @@ async fn test_extract_credentials_example_b1() {
 
     let sd_formatter = SDJWTVCFormatter::new(
         Params {
-            leeway: 45u64,
+            leeway: Duration::seconds(45),
             embed_layout_properties: false,
             swiyu_mode: false,
             sd_array_elements: true,
@@ -1058,7 +1058,7 @@ async fn test_extract_credentials_example_b1() {
 fn test_schema_id() {
     let formatter = SDJWTVCFormatter::new(
         Params {
-            leeway: 45u64,
+            leeway: Duration::seconds(45),
             embed_layout_properties: false,
             swiyu_mode: false,
             sd_array_elements: true,
@@ -1106,7 +1106,7 @@ fn test_schema_id() {
 async fn test_format_extract_round_trip_non_sd_array_elements() {
     let now = crate::clock::now_utc();
     let params = Params {
-        leeway: 60,
+        leeway: Duration::seconds(60),
         embed_layout_properties: false,
         swiyu_mode: false,
         sd_array_elements: false,
@@ -1319,7 +1319,7 @@ fn test_auth_fn(key_pair: KeyPair, issuer_did: DidValue) -> MockSignatureProvide
 async fn test_format_extract_round_trip_sd_array_elements() {
     let now = crate::clock::now_utc();
     let params = Params {
-        leeway: 60,
+        leeway: Duration::seconds(60),
         embed_layout_properties: false,
         swiyu_mode: false,
         sd_array_elements: true,
@@ -1617,7 +1617,7 @@ async fn test_parse_credential_eudi() {
     const CREDENTIAL: &str = "eyJhbGciOiJFUzI1NiIsInR5cCI6InZjK3NkLWp3dCIsIng1YyI6WyJNSUlDK1RDQ0FxQ2dBd0lCQWdJVUQwaStTd0JnQjZ1b3QvSnFpUmc2VlMvZmprOHdDZ1lJS29aSXpqMEVBd0l3WERFZU1Cd0dBMVVFQXd3VlVFbEVJRWx6YzNWbGNpQkRRU0F0SUZWVUlEQXlNUzB3S3dZRFZRUUtEQ1JGVlVSSklGZGhiR3hsZENCU1pXWmxjbVZ1WTJVZ1NXMXdiR1Z0Wlc1MFlYUnBiMjR4Q3pBSkJnTlZCQVlUQWxWVU1CNFhEVEkxTURjeU1qRXpNemd3TjFvWERUSTNNRGN5TWpFek16Z3dObG93UlRFVU1CSUdBMVVFQXd3TFVISnZZMmwyYVhNZ1FVY3hDakFJQmdOVkJBVVRBVEF4RkRBU0JnTlZCQW9NQzFCeWIyTnBkbWx6SUVGSE1Rc3dDUVlEVlFRR0V3SlZWREJaTUJNR0J5cUdTTTQ5QWdFR0NDcUdTTTQ5QXdFSEEwSUFCTmFSWnBBTXlnNDJhUjZVWjFUMlJKaFViQTNSSTVpMEp5OVptK040Q0hPODVpZUhHTkdDOU94Y052NTBsZUxZemJibk82cjFWaWNPSXp6Ylh5T09hZHlqZ2dGVk1JSUJVVEFNQmdOVkhSTUJBZjhFQWpBQU1COEdBMVVkSXdRWU1CYUFGR0xIbEVjb3ZRK2lGaUNubXNKSmxFVHhBZFBITURrR0ExVWRFUVF5TURDQkUzTjFjSEJ2Y25SQWNISnZZMmwyYVhNdVkyaUNHV052Y21VdVpHVjJMbkJ5YjJOcGRtbHpMVzl1WlM1amIyMHdFZ1lEVlIwbEJBc3dDUVlIS0lHTVhRVUJCakJEQmdOVkhSOEVQREE2TURpZ05xQTBoakpvZEhSd2N6b3ZMM0J5WlhCeWIyUXVjR3RwTG1WMVpHbDNMbVJsZGk5amNtd3ZjR2xrWDBOQlgxVlVYekF5TG1OeWJEQWRCZ05WSFE0RUZnUVVwSktpd25LVDdTMXBEWEhabFU3TkNBTjAwcTR3RGdZRFZSMFBBUUgvQkFRREFnZUFNRjBHQTFVZEVnUldNRlNHVW1oMGRIQnpPaTh2WjJsMGFIVmlMbU52YlM5bGRTMWthV2RwZEdGc0xXbGtaVzUwYVhSNUxYZGhiR3hsZEM5aGNtTm9hWFJsWTNSMWNtVXRZVzVrTFhKbFptVnlaVzVqWlMxbWNtRnRaWGR2Y21zd0NnWUlLb1pJemowRUF3SURSd0F3UkFJZkk2RTRLcnYrcXFtMFVFajJRTFViWXljMklJTXlnelN1LzRTdTJrekhVQUloQUowd2ZOTzBjWmRXTFdleG5lOXlsV1lFRmtpRU51TGlWUUN2R3ZRdUhXZTUiXX0.eyJpYXQiOjE3NTc1NzczMjEsImV4cCI6MTgyMDY0OTMyMSwibmJmIjoxNzU3NTc3MzIxLCJpc3MiOiJodHRwczovL2NvcmUuZGV2LnByb2NpdmlzLW9uZS5jb20vc3NpL29wZW5pZDR2Y2kvZHJhZnQtMTMvMjhhZWUwNjktNDhjMC00ZmY5LTljZTktNzU2MDFhZWM4MjZkIiwic3ViIjoiZGlkOmtleTp6RG5hZWJ2eVZwd0czUjdRajF6bnJWeTlydHNpNk44VGdqV1BLWmh5QmRhMnF2NTh3IiwiY25mIjp7Imp3ayI6eyJrdHkiOiJFQyIsImNydiI6IlAtMjU2IiwieCI6InF0N3BDelJjOHhCVFlkNDh0WWNuRWRZSVFVWE9HRnRZOXZxWkxEbklTNFEiLCJ5IjoiMnRHOTZlU3JPLU5KeFVhQldzUnhXaThrampDMUZKaEZxTmtRRzM1WnR1WSJ9fSwidmN0IjoidXJuOmV1ZGk6cGlkOjEiLCJfc2QiOlsiNUx0NTVNM2J5S0JlX0p1RkFKX3Rta09JVWV0VnZ1ZjVkY1BRODlnYVdQQSIsIjdwQTNtaUlGenRIVUJsQXM1UkFwVFZIMkN3TVNmMk1MeUtOMHFjWUp2LVUiLCJSS2w4YW90eU5kcHI3NTVfN0ZXY0dzOEVtYl93NlV2ZTR1S2dhU2VNZWRZIiwiZUw5dEhnMi1JQ3hUMk9OTE5iV0VlNzVqQWJJZURRV2c4Q1JRa1JSX3F0OCIsImtZMmVaM3VrTlVjdnlnN25UQnNmZ0JBaHBja2tFR2xEQUV0a3Q1SGFrT1EiLCJ1Rk1Gb2M5aXdfOXo0NnB1akpNWER0ZUEwT1MyNHZJaFhGdUZ0SzRMemNVIiwidmJ4d212alZEcnQ5U2tHU0p4OXMxOU1Ua2tzSjN3V0NwbHdQZXhpbWdOTSJdLCJfc2RfYWxnIjoic2hhLTI1NiIsInN0YXR1cyI6eyJzdGF0dXNfbGlzdCI6eyJpZHgiOjMwLCJ1cmkiOiJodHRwczovL2NvcmUuZGV2LnByb2NpdmlzLW9uZS5jb20vc3NpL3Jldm9jYXRpb24vdjEvbGlzdC9mNWI1NGNhNS05NmVjLTQxZmQtYjRkMS0zODM0NDQ1NGNjY2EifX19.SoKrlj3ZQcDD0JpA2s50gJfPDL1eQpNg7TjchIIMERwJoNeYsm8fkk1ODzkiSLSxU3OFRa-FF-HQmoZJpryZyQ~WyJWS2Nqd1pIOFFBUVAyeUY1a1MtN0xnIiwiYmlydGhkYXRlIiwiMTk5MC0wMS0wMSJd~WyJ6Y0tDREgxcjlFSFJPVmhJQVhTN1pRIiwiZmFtaWx5X25hbWUiLCJNdXN0ZXIiXQ~WyJqOGVrVEtLWDhiLU9WYTdEcHFRZ013IiwiZ2l2ZW5fbmFtZSIsIk1heCJd~WyJ5TnplR1djT0xLY2lXNzcyR28wQjN3IiwiaXNzdWluZ19hdXRob3JpdHkiLCJUZXN0Il0~WyJzelhMdmwyUGJmTnFMdG9yNWduQTdBIiwiaXNzdWluZ19jb3VudHJ5IiwiQ0giXQ~WyJlZkQ2eGlXS2ZjQy1neTRGaEZGaVVRIiwiQ0giXQ~WyJESF9rNnVFQmhDNHJiVkNnVlFzVVlRIiwiSVQiXQ~WyI0SmNDT0tjeEEyQlJPOTZpcW9pWUl3IiwiREUiXQ~WyI3TTNvVVZ4c1ZKUlpEWWRWYnhGX0FBIiwibmF0aW9uYWxpdGllcyIsW3siLi4uIjoiZU9aTncxWEZIcERWWHZPUWcwYmJpWDFTUWJISlIwWFFfYnNjMXJMZWJsYyJ9LHsiLi4uIjoicXg0X3RaMV81XzlnRGMyMmd0TDFNdjViV3VCeWxVck5oMGRPaHhLek9VRSJ9LHsiLi4uIjoiQXA4X09NZ3ljbFhHME9jZC1HeEtJSENvMlFYOTVsdzhuTWlxTzNNVVhiQSJ9XV0~WyJ1eUxxOUFMNHkzNUoxcFpMMlZMbTF3IiwibG9jYWxpdHkiLCJDSCJd~WyJieTdYN3FmZXBiZHJhUzNGVHhkRHJnIiwicGxhY2Vfb2ZfYmlydGgiLHsiX3NkIjpbIjhzaVdNN2lmZnFSaXU3cDRvM1Z3b2ttOU1oTHFWakhJUGlSU1dlNWRjU1UiXX1d~";
 
     let params = Params {
-        leeway: 60,
+        leeway: Duration::seconds(60),
         embed_layout_properties: false,
         swiyu_mode: false,
         sd_array_elements: true,
@@ -1891,7 +1891,7 @@ async fn test_parse_credential() {
     const CREDENTIAL: &str = "eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImRjK3NkLWp3dCIsICJraWQiOiAiZG9jLXNpZ25lci0wNS0yNS0yMDIyIn0.eyJfc2QiOiBbIjA5dktySk1PbHlUV00wc2pwdV9wZE9CVkJRMk0xeTNLaHBINTE1blhrcFkiLCAiMnJzakdiYUMwa3k4bVQwcEpyUGlvV1RxMF9kYXcxc1g3NnBvVWxnQ3diSSIsICJFa084ZGhXMGRIRUpidlVIbEVfVkNldUM5dVJFTE9pZUxaaGg3WGJVVHRBIiwgIklsRHpJS2VpWmREd3BxcEs2WmZieXBoRnZ6NUZnbldhLXNONndxUVhDaXciLCAiSnpZakg0c3ZsaUgwUjNQeUVNZmVadTZKdDY5dTVxZWhabzdGN0VQWWxTRSIsICJQb3JGYnBLdVZ1Nnh5bUphZ3ZrRnNGWEFiUm9jMkpHbEFVQTJCQTRvN2NJIiwgIlRHZjRvTGJnd2Q1SlFhSHlLVlFaVTlVZEdFMHc1cnREc3JaemZVYW9tTG8iLCAiamRyVEU4WWNiWTRFaWZ1Z2loaUFlX0JQZWt4SlFaSUNlaVVRd1k5UXF4SSIsICJqc3U5eVZ1bHdRUWxoRmxNXzNKbHpNYVNGemdsaFFHMERwZmF5UXdMVUs0Il0sICJpc3MiOiAiaHR0cHM6Ly9leGFtcGxlLmNvbS9pc3N1ZXIiLCAiaWF0IjogMTY4MzAwMDAwMCwgImV4cCI6IDE4ODMwMDAwMDAsICJ2Y3QiOiAiaHR0cHM6Ly9jcmVkZW50aWFscy5leGFtcGxlLmNvbS9pZGVudGl0eV9jcmVkZW50aWFsIiwgIl9zZF9hbGciOiAic2hhLTI1NiIsICJjbmYiOiB7Imp3ayI6IHsia3R5IjogIkVDIiwgImNydiI6ICJQLTI1NiIsICJ4IjogIlRDQUVSMTladnUzT0hGNGo0VzR2ZlNWb0hJUDFJTGlsRGxzN3ZDZUdlbWMiLCAieSI6ICJaeGppV1diWk1RR0hWV0tWUTRoYlNJaXJzVmZ1ZWNDRTZ0NGpUOUYySFpRIn19fQ.UjmuruClAiGb_73ZlUFbk8D47xZBfHrFDoshHyVYev2hotn_HUe9S-lOKHIaniLO5THEK52WWT1lcpQVE4rAXw~WyJsa2x4RjVqTVlsR1RQVW92TU5JdkNBIiwgImlzX292ZXJfNjUiLCB0cnVlXQ~WyJRZ19PNjR6cUF4ZTQxMmExMDhpcm9BIiwgImFkZHJlc3MiLCB7InN0cmVldF9hZGRyZXNzIjogIjEyMyBNYWluIFN0IiwgImxvY2FsaXR5IjogIkFueXRvd24iLCAicmVnaW9uIjogIkFueXN0YXRlIiwgImNvdW50cnkiOiAiVVMifV0~eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImtiK2p3dCJ9.eyJub25jZSI6ICIxMjM0NTY3ODkwIiwgImF1ZCI6ICJodHRwczovL2V4YW1wbGUuY29tL3ZlcmlmaWVyIiwgImlhdCI6IDE3NTc5NTQ1OTMsICJzZF9oYXNoIjogImlDVDUyYTZiQ3IzU2JIS0NmVGhXM0E5QWo4LXBKdWZnTG5TVWJ1a1JFV0EifQ.u5ysVyH__ALmpsfCMigshvjoDnFqGA8eepMoway-HH3Zbie_LFqxmA0cLx_j6SBtEUtqed-FGEGmV_j-EK4Yaw";
     const ISSUER_URL: &str = "https://example.com/.well-known/jwt-vc-issuer/issuer";
     let params = Params {
-        leeway: 60,
+        leeway: Duration::seconds(60),
         embed_layout_properties: false,
         swiyu_mode: false,
         sd_array_elements: true,
@@ -2108,7 +2108,7 @@ async fn test_parse_credential() {
 #[tokio::test]
 async fn test_format_presentation_mixed_sd_array_claim() {
     let params = Params {
-        leeway: 60,
+        leeway: Duration::seconds(60),
         embed_layout_properties: false,
         swiyu_mode: false,
         sd_array_elements: true,
@@ -2157,7 +2157,7 @@ async fn test_format_presentation_complex_test_vector_sd_array_element() {
     // with added `vct` claim to make parsing work.
     let expected_presentation = "eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImV4YW1wbGUrc2Qtand0In0.eyJfc2QiOiBbIi1hU3puSWQ5bVdNOG9jdVFvbENsbHN4VmdncTEtdkhXNE90bmhVdFZtV3ciLCAiSUticllObjN2QTdXRUZyeXN2YmRCSmpERFVfRXZRSXIwVzE4dlRScFVTZyIsICJvdGt4dVQxNG5CaXd6TkozTVBhT2l0T2w5cFZuWE9hRUhhbF94a3lOZktJIl0sInZjdCI6ICJkdW1teSIsICJpc3MiOiAiaHR0cHM6Ly9pc3N1ZXIuZXhhbXBsZS5jb20iLCAiaWF0IjogMTY4MzAwMDAwMCwgImV4cCI6IDE4ODMwMDAwMDAsICJ2ZXJpZmllZF9jbGFpbXMiOiB7InZlcmlmaWNhdGlvbiI6IHsiX3NkIjogWyI3aDRVRTlxU2N2REtvZFhWQ3VvS2ZLQkpwVkJmWE1GX1RtQUdWYVplM1NjIiwgInZUd2UzcmFISUZZZ0ZBM3hhVUQyYU14Rno1b0RvOGlCdTA1cUtsT2c5THciXSwgInRydXN0X2ZyYW1ld29yayI6ICJkZV9hbWwiLCAiZXZpZGVuY2UiOiBbeyIuLi4iOiAidFlKMFREdWN5WlpDUk1iUk9HNHFSTzV2a1BTRlJ4RmhVRUxjMThDU2wzayJ9XX0sICJjbGFpbXMiOiB7Il9zZCI6IFsiUmlPaUNuNl93NVpIYWFka1FNcmNRSmYwSnRlNVJ3dXJSczU0MjMxRFRsbyIsICJTXzQ5OGJicEt6QjZFYW5mdHNzMHhjN2NPYW9uZVJyM3BLcjdOZFJtc01vIiwgIldOQS1VTks3Rl96aHNBYjlzeVdPNklJUTF1SGxUbU9VOHI4Q3ZKMGNJTWsiLCAiV3hoX3NWM2lSSDliZ3JUQkppLWFZSE5DTHQtdmpoWDFzZC1pZ09mXzlsayIsICJfTy13SmlIM2VuU0I0Uk9IbnRUb1FUOEptTHR6LW1oTzJmMWM4OVhvZXJRIiwgImh2RFhod21HY0pRc0JDQTJPdGp1TEFjd0FNcERzYVUwbmtvdmNLT3FXTkUiXX19LCAiX3NkX2FsZyI6ICJzaGEtMjU2In0.QoWYWtikm-AtjmPnNVshbGXQl5raEz15PByTmZwfTQg9W2O3oR6j2tMmysTZZawdo6mNLR_PsZSI25qrUpiNTg~WyIyR0xDNDJzS1F2ZUNmR2ZyeU5STjl3IiwgInRpbWUiLCAiMjAxMi0wNC0yM1QxODoyNVoiXQ~WyJQYzMzSk0yTGNoY1VfbEhnZ3ZfdWZRIiwgeyJfc2QiOiBbIjl3cGpWUFd1RDdQSzBuc1FETDhCMDZsbWRnVjNMVnliaEh5ZFFwVE55TEkiLCAiRzVFbmhPQU9vVTlYXzZRTU52ekZYanBFQV9SYy1BRXRtMWJHX3djYUtJayIsICJJaHdGcldVQjYzUmNacTl5dmdaMFhQYzdHb3doM08ya3FYZUJJc3dnMUI0IiwgIldweFE0SFNvRXRjVG1DQ0tPZURzbEJfZW11Y1lMejJvTzhvSE5yMWJFVlEiXX1d~WyJlSThaV205UW5LUHBOUGVOZW5IZGhRIiwgIm1ldGhvZCIsICJwaXBwIl0~WyJHMDJOU3JRZmpGWFE3SW8wOXN5YWpBIiwgImdpdmVuX25hbWUiLCAiTWF4Il0~WyJsa2x4RjVqTVlsR1RQVW92TU5JdkNBIiwgImZhbWlseV9uYW1lIiwgIk1cdTAwZmNsbGVyIl0~WyJ5MXNWVTV3ZGZKYWhWZGd3UGdTN1JRIiwgImFkZHJlc3MiLCB7ImxvY2FsaXR5IjogIk1heHN0YWR0IiwgInBvc3RhbF9jb2RlIjogIjEyMzQ0IiwgImNvdW50cnkiOiAiREUiLCAic3RyZWV0X2FkZHJlc3MiOiAiV2VpZGVuc3RyYVx1MDBkZmUgMjIifV0~";
     let params = Params {
-        leeway: 60,
+        leeway: Duration::seconds(60),
         embed_layout_properties: false,
         swiyu_mode: false,
         sd_array_elements: true,

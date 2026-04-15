@@ -1,6 +1,7 @@
 use error::WRPValidatorError;
 use model::{AccessCertificateResult, FetchRegistryResult, RegistrationCertificateResult};
 use shared_types::OrganisationId;
+use time::Duration;
 use url::Url;
 
 pub(crate) mod error;
@@ -22,6 +23,7 @@ pub(crate) trait WRPValidator: Send + Sync {
         wrprc_jwt: &str,
         expected_relying_party_id: &str,
         validate_trust: Option<OrganisationId>,
+        leeway: Duration,
     ) -> Result<RegistrationCertificateResult, WRPValidatorError>;
 
     /// Receive registration from the WRP registry
@@ -30,5 +32,6 @@ pub(crate) trait WRPValidator: Send + Sync {
         relying_party_id: &str,
         registry_url: &Url,
         validate_trust: Option<OrganisationId>,
+        leeway: Duration,
     ) -> Result<FetchRegistryResult, WRPValidatorError>;
 }

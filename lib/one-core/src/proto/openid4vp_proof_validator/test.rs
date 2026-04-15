@@ -297,7 +297,9 @@ fn base_credential_formatter() -> MockCredentialFormatter {
     formatter
         .expect_get_capabilities()
         .returning(generic_formatter_capabilities);
-    formatter.expect_get_leeway().returning(|| 10);
+    formatter
+        .expect_get_leeway()
+        .return_const(Duration::seconds(10));
     formatter
 }
 
@@ -343,7 +345,9 @@ fn setup_mocks(
 
 fn mocks_with_test_data(mock_data: MockData) -> Mocks {
     let mut presentation_formatter = MockPresentationFormatter::new();
-    presentation_formatter.expect_get_leeway().returning(|| 10);
+    presentation_formatter
+        .expect_get_leeway()
+        .return_const(Duration::seconds(10));
     if let Some(presentation_extraction) = mock_data.presentation_extraction_unverified {
         presentation_formatter
             .expect_extract_presentation_unverified()

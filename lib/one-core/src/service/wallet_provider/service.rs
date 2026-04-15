@@ -1139,7 +1139,7 @@ impl WalletProviderService {
         public_key: &KeyHandle,
         wallet_unit_os: WalletUnitOs,
         integrity_check_enabled: bool,
-        leeway: u64,
+        leeway: Duration,
         nonce: Option<&str>,
     ) -> Result<(), WalletProviderError> {
         let (msg, signature) = match (integrity_check_enabled, wallet_unit_os) {
@@ -1162,7 +1162,7 @@ impl WalletProviderService {
         &self,
         proof: &DecomposedJwt<NoncePayload>,
         public_key: &KeyHandle,
-        leeway: u64,
+        leeway: Duration,
         nonce: Option<&str>,
     ) -> Result<(), WalletProviderError> {
         public_key
@@ -1175,7 +1175,7 @@ impl WalletProviderService {
     pub async fn verify_pop(
         &self,
         pop: &str,
-        leeway: u64,
+        leeway: Duration,
     ) -> Result<PublicJwk, WalletProviderError> {
         let pop_token =
             Jwt::<NoncePayload>::decompose_token(pop).error_while("parsing pop token")?;

@@ -4,7 +4,9 @@ use async_trait::async_trait;
 use indexmap::indexset;
 use one_crypto::CryptoProvider;
 use serde::Deserialize;
+use serde_with::{DurationSeconds, serde_as};
 use shared_types::DidValue;
+use time::Duration;
 use url::Url;
 
 pub mod model;
@@ -36,10 +38,12 @@ use crate::provider::presentation_formatter::model::{
 use crate::util::rdf_canonization::json_ld_processor_options;
 use crate::util::vcdm_jsonld_contexts::is_context_list_valid;
 
+#[serde_as]
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Params {
-    pub leeway: u64,
+    #[serde_as(as = "DurationSeconds<i64>")]
+    pub leeway: Duration,
     allowed_contexts: Option<Vec<Url>>,
 }
 
@@ -59,7 +63,7 @@ impl LdpVpPresentationFormatter {
             crypto,
             caching_loader: ContextCache::new(caching_loader, client),
             params: Params {
-                leeway: 60,
+                leeway: Duration::seconds(60),
                 allowed_contexts: None,
             },
         }
@@ -185,8 +189,8 @@ impl PresentationFormatter for LdpVpPresentationFormatter {
         self.extract_presentation_internal(presentation, None).await
     }
 
-    fn get_leeway(&self) -> u64 {
-        60
+    fn get_leeway(&self) -> Duration {
+        self.params.leeway
     }
 }
 

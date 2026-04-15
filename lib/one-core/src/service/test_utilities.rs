@@ -125,6 +125,7 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                         requestSignedMetadata: false
                         oauthAttestationLeeway: 60
                         keyAttestationLeeway: 60
+                        trustEcosystemLeeway: 60
                         preAuthorizedCodeExpiresIn: 300
                         tokenExpiresIn: 86400
                         refreshExpiresIn: 886400

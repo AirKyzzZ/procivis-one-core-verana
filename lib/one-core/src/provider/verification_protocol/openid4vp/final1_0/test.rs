@@ -105,6 +105,7 @@ fn generic_params() -> Params {
                 ClientIdScheme::VerifierAttestation,
             ],
             trust_ecosystems_enabled: false,
+            trust_ecosystems_leeway: Duration::seconds(45),
         },
         verifier: PresentationVerifierParams {
             interaction_expires_in: Some(Duration::seconds(1000)),

@@ -182,7 +182,7 @@ mod test {
             .unwrap()
             .into(),
             expiration: Some(300),
-            leeway: 0,
+            leeway: Default::default(),
         }
     }
 }

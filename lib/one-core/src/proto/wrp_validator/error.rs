@@ -13,6 +13,8 @@ pub(crate) enum WRPValidatorError {
     RegistrationCertificateNotTrusted,
     #[error("Registry not trusted")]
     RegistryNotTrusted,
+    #[error("Certificate revoked")]
+    CertificateRevoked,
     #[error("Invalid organisation identifier")]
     InvalidOrganisationIdentifier,
     #[error("Invalid registry URL: `{0}`")]
@@ -39,7 +41,8 @@ impl ErrorCodeMixin for WRPValidatorError {
             Self::TrustManagementDisabled => ErrorCode::BR_0412,
             Self::AccessCertificateNotTrusted
             | Self::RegistrationCertificateNotTrusted
-            | Self::RegistryNotTrusted => ErrorCode::BR_0410,
+            | Self::RegistryNotTrusted
+            | Self::CertificateRevoked => ErrorCode::BR_0410,
             Self::InvalidOrganisationIdentifier
             | Self::MissingRegistryKeysUrl
             | Self::MissingRegistryKey(_)

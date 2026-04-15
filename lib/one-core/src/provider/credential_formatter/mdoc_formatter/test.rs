@@ -351,7 +351,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         mso_expires_in: Duration::seconds(10),
         mso_expected_update_in: Duration::days(10),
         mso_minimum_refresh_time: Duration::seconds(10),
-        leeway: 60_u64,
+        leeway: Duration::seconds(60),
         ecosystem_schema_ids: vec![],
     };
 
@@ -567,7 +567,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         mso_expires_in: Duration::seconds(10),
         mso_expected_update_in: Duration::days(10),
         mso_minimum_refresh_time: Duration::seconds(10),
-        leeway: 60_u64,
+        leeway: Duration::seconds(60),
         ecosystem_schema_ids: vec![],
     };
 
@@ -853,7 +853,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         mso_expires_in: Duration::seconds(10),
         mso_expected_update_in: Duration::days(10),
         mso_minimum_refresh_time: Duration::seconds(10),
-        leeway: 60_u64,
+        leeway: Duration::seconds(60),
         ecosystem_schema_ids: vec![],
     };
 
@@ -941,7 +941,7 @@ fn test_credential_schema_id() {
         mso_expires_in: Duration::seconds(10),
         mso_expected_update_in: Duration::days(10),
         mso_minimum_refresh_time: Duration::seconds(10),
-        leeway: 60_u64,
+        leeway: Duration::seconds(60),
         ecosystem_schema_ids: vec![],
     };
     let formatter = MdocFormatter::new(
@@ -986,7 +986,7 @@ async fn test_parse_credential() {
         mso_expires_in: Duration::seconds(10),
         mso_expected_update_in: Duration::days(10),
         mso_minimum_refresh_time: Duration::seconds(10),
-        leeway: 60_u64,
+        leeway: Duration::seconds(60),
         ecosystem_schema_ids: vec![],
     };
 

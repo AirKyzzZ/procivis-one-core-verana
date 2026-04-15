@@ -134,6 +134,7 @@ issuanceProtocol:
         requestSignedMetadata: false
         oauthAttestationLeeway: 60
         keyAttestationLeeway: 60
+        trustEcosystemLeeway: 60
         preAuthorizedCodeExpiresIn: 300
         tokenExpiresIn: 86400
         refreshExpiresIn: 7776000 # 90 days in seconds
@@ -150,6 +151,7 @@ issuanceProtocol:
         urlScheme: openid-credential-offer
         oauthAttestationLeeway: 60
         keyAttestationLeeway: 60
+        trustEcosystemLeeway: 60
         preAuthorizedCodeExpiresIn: 300
         tokenExpiresIn: 86400
         refreshExpiresIn: 7776000 # 90 days in seconds
@@ -169,6 +171,7 @@ issuanceProtocol:
         requestSignedMetadata: false
         oauthAttestationLeeway: 60
         keyAttestationLeeway: 60
+        trustEcosystemLeeway: 60
         preAuthorizedCodeExpiresIn: 300
         tokenExpiresIn: 86400
         refreshExpiresIn: 7776000 # 90 days in seconds

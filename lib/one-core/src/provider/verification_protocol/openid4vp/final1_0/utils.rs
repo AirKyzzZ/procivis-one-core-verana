@@ -576,6 +576,7 @@ impl OpenID4VPFinal1_0 {
                     &reg_cert.data,
                     expected_rp_id,
                     Some(organisation_id),
+                    self.params.holder.trust_ecosystems_leeway,
                 )
                 .await
                 .inspect_err(|err| {
@@ -649,7 +650,12 @@ impl OpenID4VPFinal1_0 {
     ) -> Result<(), VerificationProtocolError> {
         let info = self
             .wrp_validator
-            .fetch_from_registry(relying_party_id, registry_url, Some(organisation_id))
+            .fetch_from_registry(
+                relying_party_id,
+                registry_url,
+                Some(organisation_id),
+                self.params.holder.trust_ecosystems_leeway,
+            )
             .await
             .error_while("fetching from WRP registry")?;
 

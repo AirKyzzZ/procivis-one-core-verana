@@ -1384,6 +1384,7 @@ impl OpenID4VCIFinal1_0 {
                 &issuer_info.data,
                 expected_relying_party_id,
                 Some(organisation_id),
+                self.params.trust_ecosystem_leeway,
             )
             .await
         else {

@@ -25,7 +25,7 @@ async fn test_extract_presentation() {
     let jwt_token = "eyJhbGciOiJhbGdvcml0aG0iLCJ0eXAiOiJKV1QifQ.ewogICJpYXQiOiAxNjk5MzU3NTgyLAogICJleHAiOiAxNjk5MzU3ODgyLAogICJuYmYiOiAxNjk5MzU3NTM3LAogICJpc3MiOiAiZGlkOmlzc3VlcjoxMjMiLAogICJzdWIiOiAiZGlkOmhvbGRlcjoxMjMiLAogICJqdGkiOiAiNjZhYWI2YTYtZDE1Yy00M2RiLWIwOTUtMzkxYTc1YWZjNzhlIiwKICAidnAiOiB7CiAgICAiQGNvbnRleHQiOiBbCiAgICAgICJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSIKICAgIF0sCiAgICAidHlwZSI6IFsKICAgICAgIlZlcmlmaWFibGVQcmVzZW50YXRpb24iCiAgICBdLAogICAgInZlcmlmaWFibGVDcmVkZW50aWFsIjogWwogICAgICAiZXlKaGJHY2lPaUpoYkdkdmNtbDBhRzBpTENKMGVYQWlPaUpUUkVwWFZDSjkuZXlKcFlYUWlPakUyT1RreU56QXlOallzSW1WNGNDSTZNVGMyTWpNME1qSTJOaXdpYm1KbUlqb3hOams1TWpjd01qSXhMQ0pwYzNNaU9pSkpjM04xWlhJZ1JFbEVJaXdpYzNWaUlqb2lhRzlzWkdWeVgyUnBaQ0lzSW1wMGFTSTZJamxoTkRFMFlUWXdMVGxsTm1JdE5EYzFOeTA0TURFeExUbGhZVGczTUdWbU5EYzRPQ0lzSW5aaklqcDdJa0JqYjI1MFpYaDBJanBiSW1oMGRIQnpPaTh2ZDNkM0xuY3pMbTl5Wnk4eU1ERTRMMk55WldSbGJuUnBZV3h6TDNZeElpd2lRMjl1ZEdWNGRERWlYU3dpZEhsd1pTSTZXeUpXWlhKcFptbGhZbXhsUTNKbFpHVnVkR2xoYkNJc0lsUjVjR1V4SWwwc0ltTnlaV1JsYm5ScFlXeFRkV0pxWldOMElqcDdJbDl6WkNJNld5SlpWMHBxVFZSSmVpSXNJbGxYU21wTlZFbDZJbDE5TENKamNtVmtaVzUwYVdGc1UzUmhkSFZ6SWpwN0ltbGtJam9pVTFSQlZGVlRYMGxFSWl3aWRIbHdaU0k2SWxSWlVFVWlMQ0p6ZEdGMGRYTlFkWEp3YjNObElqb2lVRlZTVUU5VFJTSXNJa1pwWld4a01TSTZJbFpoYkRFaWZYMHNJbDl6WkY5aGJHY2lPaUp6YUdFdE1qVTJJbjAuUVVKRCIKICAgIF0KICB9Cn0";
     let presentation_token = format!("{jwt_token}.QUJD");
 
-    let leeway = 45u64;
+    let leeway = Duration::seconds(45);
 
     let jwt_formatter = JwtVpPresentationFormatter {
         params: Params { leeway },
@@ -109,7 +109,7 @@ async fn test_format_presentation() {
       dHlwZSI6IlRZUEUiLCJzdGF0dXNQdXJwb3NlIjoiUFVSUE9TRSIsIkZpZWxkMSI6\
       IlZhbDEifX0sIl9zZF9hbGciOiJzaGEtMjU2In0.QUJD";
 
-    let leeway = 45u64;
+    let leeway = Duration::seconds(45);
 
     let mut key_algorithm = MockKeyAlgorithm::new();
     key_algorithm
@@ -169,7 +169,7 @@ async fn test_format_presentation() {
     );
     assert_eq!(
         payload.invalid_before,
-        Some(payload.issued_at.unwrap() - Duration::seconds(leeway as i64)),
+        Some(payload.issued_at.unwrap() - leeway),
     );
 
     assert_eq!(payload.issuer, Some(String::from("did:example:123")));

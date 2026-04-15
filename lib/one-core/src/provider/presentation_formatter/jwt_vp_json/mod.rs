@@ -3,6 +3,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use serde::Deserialize;
+use serde_with::{DurationSeconds, serde_as};
 use shared_types::DidValue;
 use time::Duration;
 use uuid::Uuid;
@@ -29,10 +30,12 @@ mod model;
 #[cfg(test)]
 mod test;
 
+#[serde_as]
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Params {
-    pub leeway: u64,
+    #[serde_as(as = "DurationSeconds<i64>")]
+    pub leeway: Duration,
 }
 
 pub struct JwtVpPresentationFormatter {
@@ -43,7 +46,9 @@ pub struct JwtVpPresentationFormatter {
 impl JwtVpPresentationFormatter {
     pub fn new(key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>) -> Self {
         Self {
-            params: Params { leeway: 60 },
+            params: Params {
+                leeway: Duration::seconds(60),
+            },
             key_algorithm_provider,
         }
     }
@@ -90,7 +95,7 @@ impl PresentationFormatter for JwtVpPresentationFormatter {
         let payload = JWTPayload {
             issued_at: Some(now),
             expires_at: now.checked_add(valid_for),
-            invalid_before: now.checked_sub(Duration::seconds(self.get_leeway() as i64)),
+            invalid_before: now.checked_sub(self.get_leeway()),
             issuer: holder_did.to_owned(),
             subject: holder_did.to_owned(),
             jwt_id: Some(Uuid::new_v4().to_string()),
@@ -163,7 +168,7 @@ impl PresentationFormatter for JwtVpPresentationFormatter {
         jwt.try_into()
     }
 
-    fn get_leeway(&self) -> u64 {
+    fn get_leeway(&self) -> Duration {
         self.params.leeway
     }
 }

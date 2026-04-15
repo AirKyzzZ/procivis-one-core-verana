@@ -32,6 +32,7 @@ pub(crate) struct Params {
     pub common: CommonParams,
 }
 
+#[serde_as]
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct HolderParams {
@@ -39,6 +40,9 @@ pub(crate) struct HolderParams {
 
     #[serde(default = "default_true")]
     pub trust_ecosystems_enabled: bool,
+    #[serde(default)]
+    #[serde_as(as = "DurationSeconds<i64>")]
+    pub trust_ecosystems_leeway: Duration,
 }
 
 #[serde_as]

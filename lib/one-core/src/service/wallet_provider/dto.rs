@@ -2,10 +2,10 @@ use std::collections::HashMap;
 
 use one_dto_mapper::From;
 use serde::{Deserialize, Deserializer, Serialize};
-use serde_with::skip_serializing_none;
+use serde_with::{DurationSeconds, serde_as, skip_serializing_none};
 use shared_types::{RevocationMethodId, TrustCollectionId, WalletUnitId};
 use standardized_types::jwk::PublicJwk;
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime};
 
 use crate::model::common::GetListResponse;
 use crate::model::wallet_unit::{WalletProviderType, WalletUnit, WalletUnitOs, WalletUnitStatus};
@@ -68,6 +68,7 @@ pub struct IssueWalletUnitAttestationResponseDTO {
     pub wua: Vec<String>,
 }
 
+#[serde_as]
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct WalletProviderParams {
@@ -78,7 +79,8 @@ pub(super) struct WalletProviderParams {
     pub wallet_registration: WalletRegistrationRequirement,
     pub wallet_instance_attestation: WalletInstanceAttestationParams,
     pub wallet_unit_attestation: WalletUnitAttestationParams,
-    pub device_auth_leeway: u64,
+    #[serde_as(as = "DurationSeconds<i64>")]
+    pub device_auth_leeway: Duration,
     pub app_version: Option<AppVersionDTO>,
     pub eudi_wallet_info: Option<EudiWalletInfoConfig>,
     #[serde(default)]

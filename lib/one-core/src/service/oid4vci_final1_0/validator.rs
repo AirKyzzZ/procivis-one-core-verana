@@ -1,6 +1,7 @@
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use standardized_types::jwk::PublicJwk;
+use time::Duration;
 
 use super::error::OID4VCIFinal1_0ServiceError;
 use crate::config::ConfigValidationError;
@@ -67,7 +68,7 @@ pub(crate) fn throw_if_access_token_invalid(
 
 pub(crate) fn validate_timestamps(
     token: &DecomposedJwt<impl std::fmt::Debug>,
-    leeway: u64,
+    leeway: Duration,
 ) -> Result<(), OID4VCIFinal1_0ServiceError> {
     validate_issuance_time(&token.payload.issued_at, leeway).error_while("checking validity")?;
     validate_not_before_time(&token.payload.invalid_before, leeway)
@@ -176,7 +177,7 @@ pub(crate) async fn validate_key_attestation(
     key_attestation_jwt: &str,
     verifier: &dyn TokenVerifier,
     expected_key_storage_security_level: KeyStorageSecurityLevel,
-    leeway: u64,
+    leeway: Duration,
 ) -> Result<Vec<PublicJwk>, OID4VCIFinal1_0ServiceError> {
     let wua = Jwt::<WalletUnitAttestationClaims>::decompose_token(key_attestation_jwt)
         .error_while("parsing WUA token")?;

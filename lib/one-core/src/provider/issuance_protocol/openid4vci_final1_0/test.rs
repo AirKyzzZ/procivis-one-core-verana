@@ -501,7 +501,9 @@ async fn test_holder_accept_credential_success() {
         .await;
 
     let mut formatter = MockCredentialFormatter::new();
-    formatter.expect_get_leeway().returning(|| 1000);
+    formatter
+        .expect_get_leeway()
+        .return_const(Duration::seconds(1000));
     formatter.expect_parse_credential().returning({
         let clone = credential.clone();
         move |_, _| Ok(clone.clone())
@@ -718,7 +720,9 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         .await;
 
     let mut formatter = MockCredentialFormatter::new();
-    formatter.expect_get_leeway().returning(|| 1000);
+    formatter
+        .expect_get_leeway()
+        .return_const(Duration::seconds(1000));
     formatter.expect_parse_credential().returning({
         let clone = credential.clone();
         move |_, _| Ok(clone.clone())
@@ -965,7 +969,9 @@ async fn test_holder_accept_credential_autogenerate_holder_binding() {
         .await;
 
     let mut formatter = MockCredentialFormatter::new();
-    formatter.expect_get_leeway().returning(|| 1000);
+    formatter
+        .expect_get_leeway()
+        .return_const(Duration::seconds(1000));
     formatter.expect_parse_credential().returning({
         let clone = credential.clone();
         move |_, _| Ok(clone.clone())
@@ -1620,9 +1626,9 @@ async fn test_handle_invitation_signed_metadata() {
         });
     wrp_validator
         .expect_validate_registration_certificate()
-        .with(eq(registration_certificate), eq(rp_id), always())
+        .with(eq(registration_certificate), eq(rp_id), always(), always())
         .once()
-        .return_once(|_, _, _| {
+        .return_once(|_, _, _, _| {
             Ok(RegistrationCertificateResult {
                 trust_entity: None,
                 payload: JWTPayload {
@@ -2214,7 +2220,9 @@ async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_att
         .await;
 
     let mut formatter = MockCredentialFormatter::new();
-    formatter.expect_get_leeway().returning(|| 1000);
+    formatter
+        .expect_get_leeway()
+        .return_const(Duration::seconds(1000));
     formatter.expect_parse_credential().returning({
         let clone = credential.clone();
         move |_, _| Ok(clone.clone())
@@ -2392,8 +2400,9 @@ fn test_params(issuance_url_scheme: &str) -> OpenID4VCIFinal1Params {
             allowed_schemes: vec!["https".to_string()],
         },
         nonce: None,
-        oauth_attestation_leeway: 60,
-        key_attestation_leeway: 60,
+        oauth_attestation_leeway: Duration::seconds(60),
+        key_attestation_leeway: Duration::seconds(60),
+        trust_ecosystem_leeway: Duration::seconds(60),
         request_signed_metadata: false,
         common: CommonParams { webhook_task: None },
     }

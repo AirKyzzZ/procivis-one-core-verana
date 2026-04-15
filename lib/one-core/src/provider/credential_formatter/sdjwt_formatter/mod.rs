@@ -62,7 +62,8 @@ pub struct SDJWTFormatter {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Params {
-    pub leeway: u64,
+    #[serde_as(as = "DurationSeconds<i64>")]
+    pub leeway: Duration,
     pub embed_layout_properties: bool,
     #[serde(default = "default_sd_array_elements")]
     pub sd_array_elements: bool,
@@ -171,7 +172,7 @@ impl CredentialFormatter for SDJWTFormatter {
         extract_credentials_internal(token, None, &*self.crypto, &*self.client).await
     }
 
-    fn get_leeway(&self) -> u64 {
+    fn get_leeway(&self) -> Duration {
         self.params.leeway
     }
 

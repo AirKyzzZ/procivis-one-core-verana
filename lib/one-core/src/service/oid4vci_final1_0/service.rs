@@ -8,6 +8,7 @@ use one_dto_mapper::convert_inner;
 use secrecy::SecretString;
 use shared_types::{CredentialId, CredentialSchemaId, IdentifierId, InteractionId};
 use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
+use time::Duration;
 use uuid::Uuid;
 
 use super::OID4VCIFinal1_0Service;
@@ -1143,7 +1144,7 @@ impl OID4VCIFinal1_0Service {
         credential_schema: &CredentialSchema,
         protocol_id: &str,
         issuer_identifier_id: Option<IdentifierId>,
-        leeway: u64,
+        leeway: Duration,
     ) -> Result<Option<WalletInstanceAttestationDTO>, OID4VCIFinal1_0ServiceError> {
         // If the credential schema does not require client attestation, no tokens are expected
         if !credential_schema.requires_wallet_instance_attestation {

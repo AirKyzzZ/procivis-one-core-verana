@@ -181,7 +181,7 @@ async fn test_format_credential() {
     let expiration_time = Duration::days(1);
     let formatter = JWTFormatter {
         params: Params {
-            leeway: 45,
+            leeway: Duration::seconds(45),
             embed_layout_properties: false,
             expiration_time,
         },
@@ -273,7 +273,7 @@ async fn test_format_credential() {
 
 #[tokio::test]
 async fn test_format_credential_with_layout_properties() {
-    let leeway = 45u64;
+    let leeway = Duration::seconds(45);
 
     let formatter = JWTFormatter {
         params: Params {
@@ -366,7 +366,7 @@ async fn test_format_credential_with_layout_properties() {
 
 #[tokio::test]
 async fn test_format_credential_nested_array() {
-    let leeway = 45u64;
+    let leeway = Duration::seconds(45);
 
     let sd_formatter = JWTFormatter {
         params: Params {
@@ -449,7 +449,7 @@ async fn test_extract_credentials() {
 
     let token = format!("{jwt_token}.QUJD");
 
-    let leeway = 45u64;
+    let leeway = Duration::seconds(45);
 
     let jwt_formatter = JWTFormatter {
         params: Params {
@@ -557,7 +557,7 @@ async fn test_extract_credentials_nested_array() {
 
     let token = format!("{jwt_token}.QUJD");
 
-    let leeway = 45u64;
+    let leeway = Duration::seconds(45);
 
     let jwt_formatter = JWTFormatter {
         params: Params {
@@ -664,7 +664,7 @@ async fn test_format_credential_presentation() {
 
     let jwt_formatter = JWTFormatter {
         params: Params {
-            leeway: 45,
+            leeway: Duration::seconds(45),
             embed_layout_properties: false,
             expiration_time: Duration::days(1),
         },
@@ -701,7 +701,7 @@ async fn test_format_credential_presentation() {
 fn test_get_capabilities() {
     let jwt_formatter = JWTFormatter {
         params: Params {
-            leeway: 123u64,
+            leeway: Duration::seconds(123),
             embed_layout_properties: false,
             expiration_time: Duration::days(1),
         },
@@ -723,7 +723,7 @@ fn test_get_capabilities() {
 fn test_schema_id() {
     let formatter = JWTFormatter {
         params: Params {
-            leeway: 123u64,
+            leeway: Duration::seconds(123),
             embed_layout_properties: false,
             expiration_time: Duration::days(1),
         },
@@ -770,7 +770,7 @@ async fn test_parse_credential() {
 
     let jwt_formatter = JWTFormatter {
         params: Params {
-            leeway: 45,
+            leeway: Duration::seconds(45),
             embed_layout_properties: false,
             expiration_time: Duration::days(1),
         },

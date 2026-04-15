@@ -653,7 +653,7 @@ async fn test_create_identifier_with_trust_information() {
     wrp_validator
         .expect_validate_registration_certificate()
         .once()
-        .returning(|_, rp_id, _| {
+        .returning(|_, rp_id, _, _| {
             assert_eq!(rp_id, "test_wrp");
             Ok(RegistrationCertificateResult {
                 trust_entity: None,

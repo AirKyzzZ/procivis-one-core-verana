@@ -675,7 +675,9 @@ async fn test_holder_accept_credential_success() {
         .with(eq(CredentialFormat::from("JWT")))
         .returning(move |_| {
             let mut formatter = MockCredentialFormatter::new();
-            formatter.expect_get_leeway().returning(|| 1000);
+            formatter
+                .expect_get_leeway()
+                .return_const(Duration::seconds(1000));
 
             formatter
                 .expect_extract_credentials()
@@ -893,7 +895,9 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
             let jwk = jwk.clone();
             move |_| {
                 let mut formatter = MockCredentialFormatter::new();
-                formatter.expect_get_leeway().returning(|| 1000);
+                formatter
+                    .expect_get_leeway()
+                    .return_const(Duration::seconds(1000));
 
                 formatter.expect_extract_credentials().returning({
                     let jwk = jwk.clone();
@@ -1126,7 +1130,9 @@ async fn test_holder_accept_expired_credential_fails() {
         .with(eq(CredentialFormat::from("JWT")))
         .returning(move |_| {
             let mut formatter = MockCredentialFormatter::new();
-            formatter.expect_get_leeway().returning(|| 1000);
+            formatter
+                .expect_get_leeway()
+                .return_const(Duration::seconds(1000));
 
             formatter
                 .expect_extract_credentials()

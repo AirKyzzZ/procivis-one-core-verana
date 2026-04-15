@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime};
 
 use super::certificate_validator::CertificateValidator;
 use super::jwt::Jwt;
@@ -146,7 +146,7 @@ pub(crate) async fn validate_bearer_token(
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     certificate_validator: Arc<dyn CertificateValidator>,
-    leeway: u64,
+    leeway: Duration,
 ) -> Result<Jwt<BearerTokenPayload>, Error> {
     let token_signature_verification: VerificationFn = Box::new(KeyVerification {
         key_algorithm_provider,

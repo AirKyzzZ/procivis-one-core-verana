@@ -2,8 +2,7 @@ use asn1_rs::{FromDer, Oid, Tag, TaggedExplicit, oid};
 use url::Url;
 use x509_parser::extensions::GeneralName;
 use x509_parser::oid_registry::{
-    OID_X509_COMMON_NAME, OID_X509_COUNTRY_NAME, OID_X509_EXT_CERTIFICATE_POLICIES,
-    OID_X509_EXT_SUBJECT_ALT_NAME, OID_X509_SERIALNUMBER,
+    OID_X509_EXT_CERTIFICATE_POLICIES, OID_X509_EXT_SUBJECT_ALT_NAME, OID_X509_SERIALNUMBER,
 };
 use x509_parser::pem::Pem;
 use x509_parser::prelude::ParsedExtension;
@@ -109,14 +108,14 @@ pub(crate) fn etsi_access_cert_from_pem_chain(
     .to_string();
 
     let country = subject
-        .iter_by_oid(&OID_X509_COUNTRY_NAME)
+        .iter_country()
         .next()
         .ok_or(AccessCertParsingError::MissingCountry)?
         .as_str()?
         .to_string();
 
     let common_name = subject
-        .iter_by_oid(&OID_X509_COMMON_NAME)
+        .iter_common_name()
         .next()
         .map(|cn| cn.as_str())
         .transpose()?

@@ -325,6 +325,7 @@ impl IdentifierService {
                         )
                     })?,
                     None,
+                    self.config.certificate_validation.leeway,
                 )
                 .await
                 .error_while("validating registration certificate")?;

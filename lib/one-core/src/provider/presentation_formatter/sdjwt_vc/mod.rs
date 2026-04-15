@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use one_crypto::CryptoProvider;
 use serde::Deserialize;
 use serde_json::Value;
+use serde_with::{DurationSeconds, serde_as};
 use shared_types::DidValue;
 use time::Duration;
 
@@ -31,10 +32,12 @@ use crate::provider::presentation_formatter::model::{
 #[cfg(test)]
 mod test;
 
+#[serde_as]
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Params {
-    pub leeway: u64,
+    #[serde_as(as = "DurationSeconds<i64>")]
+    pub leeway: Duration,
 
     // Toggles SWIYU quirks, specifically the malformed `cnf` claim
     #[serde(default)]
@@ -60,7 +63,7 @@ impl SdjwtVCPresentationFormatter {
             crypto,
             certificate_validator,
             params: Params {
-                leeway: 60,
+                leeway: Duration::seconds(60),
                 swiyu_mode,
             },
         }
@@ -163,7 +166,7 @@ impl PresentationFormatter for SdjwtVCPresentationFormatter {
         })
     }
 
-    fn get_leeway(&self) -> u64 {
+    fn get_leeway(&self) -> Duration {
         self.params.leeway
     }
 }
@@ -202,7 +205,7 @@ impl SdjwtVCPresentationFormatter {
         let hasher = crypto.get_hasher(hash_alg)?;
         let params = SdJwtHolderBindingParams {
             holder_binding_context: holder_binding_ctx,
-            leeway: Duration::seconds(self.get_leeway() as i64),
+            leeway: self.get_leeway(),
         };
         let proof_of_key_possession = Jwt::<SdJwtVc>::verify_holder_binding(
             cnf,

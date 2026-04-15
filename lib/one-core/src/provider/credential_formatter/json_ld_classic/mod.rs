@@ -180,8 +180,8 @@ impl CredentialFormatter for JsonLdClassic {
         Ok(credential.token)
     }
 
-    fn get_leeway(&self) -> u64 {
-        self.params.leeway.whole_seconds() as u64
+    fn get_leeway(&self) -> Duration {
+        self.params.leeway
     }
 
     fn get_capabilities(&self) -> FormatterCapabilities {

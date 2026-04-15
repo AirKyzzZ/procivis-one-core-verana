@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
 use serde::Deserialize;
+use serde_with::{DurationSeconds, serde_as};
+use time::Duration;
 mod model;
 
 use std::sync::Arc;
@@ -17,11 +19,13 @@ use crate::provider::trust_management::error::TrustManagementError;
 use crate::provider::trust_management::model::TrustEntityByEntityKey;
 use crate::provider::trust_management::simple_list::model::GetTrustAnchorResponseRestDTO;
 
+#[serde_as]
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Params {
     pub enable_publishing: bool,
-    pub proof_of_possession_leeway: u64,
+    #[serde_as(as = "DurationSeconds<i64>")]
+    pub proof_of_possession_leeway: Duration,
 }
 
 pub struct SimpleList {

@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use one_crypto::CryptoProvider;
 use serde::Deserialize;
 use serde_json::Value;
+use serde_with::{DurationSeconds, serde_as};
 use shared_types::DidValue;
 use time::Duration;
 
@@ -35,10 +36,12 @@ mod model;
 #[cfg(test)]
 mod test;
 
+#[serde_as]
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Params {
-    pub leeway: u64,
+    #[serde_as(as = "DurationSeconds<i64>")]
+    pub leeway: Duration,
 }
 
 // TODO ONE-6774: Remove once productive holders have been updated to release v1.57+
@@ -59,7 +62,9 @@ impl SdjwtPresentationFormatter {
             client,
             crypto,
             key_algorithm_provider,
-            params: Params { leeway: 60 },
+            params: Params {
+                leeway: Duration::seconds(60),
+            },
         }
     }
 }
@@ -166,7 +171,7 @@ impl PresentationFormatter for SdjwtPresentationFormatter {
             .await
     }
 
-    fn get_leeway(&self) -> u64 {
+    fn get_leeway(&self) -> Duration {
         self.params.leeway
     }
 }
@@ -217,7 +222,7 @@ impl SdjwtPresentationFormatter {
         let hasher = self.crypto.get_hasher(hash_alg)?;
         let params = SdJwtHolderBindingParams {
             holder_binding_context: holder_binding_ctx,
-            leeway: Duration::seconds(self.get_leeway() as i64),
+            leeway: self.get_leeway(),
         };
         let proof_of_key_possesion = Jwt::<VcClaim>::verify_holder_binding(
             cnf,

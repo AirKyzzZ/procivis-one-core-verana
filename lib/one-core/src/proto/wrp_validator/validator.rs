@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use shared_types::OrganisationId;
 use standardized_types::jwk::PublicJwk;
+use time::Duration;
 use url::Url;
 
 use super::WRPValidator;
@@ -21,15 +22,22 @@ use crate::model::trust_list_subscription::{
     TrustListSubscription, TrustListSubscriptionFilterValue, TrustListSubscriptionListQuery,
     TrustListSubscriptionState,
 };
-use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::certificate_validator::{
+    CertificateValidationOptions, CertificateValidator, ParsedCertificate,
+};
 use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::Jwt;
+use crate::proto::jwt::model::JWTPayload;
 use crate::proto::key_verification::KeyVerification;
 use crate::proto::wallet_provider_client::WalletProviderClient;
-use crate::provider::credential_formatter::model::{PublicKeySource, VerificationFn};
+use crate::provider::credential_formatter::model::{
+    CertificateDetails, CredentialStatus, IdentifierDetails, PublicKeySource, VerificationFn,
+};
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::provider::signer::registration_certificate::model::Payload;
+use crate::provider::revocation::model::RevocationState;
+use crate::provider::revocation::provider::RevocationMethodProvider;
+use crate::provider::signer::registration_certificate::model::{Payload, Status};
 use crate::provider::trust_list_subscriber::TrustEntityResponse;
 use crate::provider::trust_list_subscriber::provider::TrustListSubscriberProvider;
 use crate::repository::holder_wallet_unit_repository::HolderWalletUnitRepository;
@@ -37,6 +45,7 @@ use crate::repository::trust_collection_repository::TrustCollectionRepository;
 use crate::repository::trust_list_subscription_repository::TrustListSubscriptionRepository;
 use crate::service::error::MissingProviderError;
 use crate::util::access_cert_parser::{EtsiParsedAccessCert, etsi_access_cert_from_pem_chain};
+use crate::validator::{validate_expiration_time, validate_not_before_time};
 
 pub(crate) struct WRPValidatorImpl {
     trust_collection_repository: Arc<dyn TrustCollectionRepository>,
@@ -48,6 +57,7 @@ pub(crate) struct WRPValidatorImpl {
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     certificate_validator: Arc<dyn CertificateValidator>,
     client: Arc<dyn HttpClient>,
+    revocation_method_provider: Arc<dyn RevocationMethodProvider>,
 }
 
 #[async_trait::async_trait]
@@ -58,23 +68,15 @@ impl WRPValidator for WRPValidatorImpl {
         validate_trust: Option<OrganisationId>,
     ) -> Result<AccessCertificateResult, WRPValidatorError> {
         let trust_entity = if let Some(organisation_id) = validate_trust {
-            self.check_trust_management_enabled(organisation_id).await?;
-
-            let subscriptions = self
-                .get_trust_subscriptions_for_role(TrustListRoleEnum::WrpAcProvider, organisation_id)
-                .await?;
-
-            if let Some(trust_entity) = self
-                .find_matching_trust_entity(
-                    subscriptions,
+            Some(
+                self.perform_trust_validation(
                     TrustEntityIdentifier::PemChain(pem_chain),
+                    TrustListRoleEnum::WrpAcProvider,
+                    organisation_id,
                 )
                 .await?
-            {
-                Some(trust_entity)
-            } else {
-                return Err(WRPValidatorError::AccessCertificateNotTrusted);
-            }
+                .ok_or(WRPValidatorError::AccessCertificateNotTrusted)?,
+            )
         } else {
             None
         };
@@ -97,6 +99,7 @@ impl WRPValidator for WRPValidatorImpl {
         wrprc_jwt: &str,
         expected_rp_id: &str,
         validate_trust: Option<OrganisationId>,
+        leeway: Duration,
     ) -> Result<RegistrationCertificateResult, WRPValidatorError> {
         let token =
             Jwt::<Payload>::build_from_token(wrprc_jwt, Some(&self.verification_fn()), None)
@@ -113,28 +116,22 @@ impl WRPValidator for WRPValidatorImpl {
         }
 
         let issuer = token.header.x5c.ok_or(WRPValidatorError::MissingIssuer)?;
+        let issuer_chain = x5c_into_pem_chain(&issuer).error_while("converting chain")?;
+
+        validate_jwt_timestamps(&token.payload, leeway)?;
+        self.check_jwt_status(&token.payload.custom.status, &issuer_chain)
+            .await?;
 
         let trust_entity = if let Some(organisation_id) = validate_trust {
-            self.check_trust_management_enabled(organisation_id).await?;
-
-            let issuer_chain = x5c_into_pem_chain(&issuer).error_while("converting chain")?;
-
-            let subscriptions = self
-                .get_trust_subscriptions_for_role(TrustListRoleEnum::WrpRcProvider, organisation_id)
-                .await?;
-
-            match self
-                .find_matching_trust_entity(
-                    subscriptions,
+            Some(
+                self.perform_trust_validation(
                     TrustEntityIdentifier::PemChain(&issuer_chain),
+                    TrustListRoleEnum::WrpRcProvider,
+                    organisation_id,
                 )
                 .await?
-            {
-                Some(trust_entity) => Some(trust_entity),
-                None => {
-                    return Err(WRPValidatorError::RegistrationCertificateNotTrusted);
-                }
-            }
+                .ok_or(WRPValidatorError::RegistrationCertificateNotTrusted)?,
+            )
         } else {
             None
         };
@@ -150,6 +147,7 @@ impl WRPValidator for WRPValidatorImpl {
         relying_party_id: &str,
         registry_url: &Url,
         validate_trust: Option<OrganisationId>,
+        leeway: Duration,
     ) -> Result<FetchRegistryResult, WRPValidatorError> {
         let mut rp_url = registry_url.to_owned();
         {
@@ -178,6 +176,7 @@ impl WRPValidator for WRPValidatorImpl {
 
         let jwt = String::from_utf8(response.body)?;
         let token = Jwt::<WRPPayload>::decompose_token(&jwt).error_while("parsing JWT")?;
+        validate_jwt_timestamps(&token.payload, leeway)?;
 
         let jwks: RegistryKeys = async {
             self.client
@@ -210,24 +209,15 @@ impl WRPValidator for WRPValidatorImpl {
             .error_while("verifying registry dataset signature")?;
 
         let trust_entity = if let Some(organisation_id) = validate_trust {
-            self.check_trust_management_enabled(organisation_id).await?;
-
-            let subscriptions = self
-                .get_trust_subscriptions_for_role(
+            Some(
+                self.perform_trust_validation(
+                    TrustEntityIdentifier::Jwk(registry_key),
                     TrustListRoleEnum::NationalRegistryRegistrar,
                     organisation_id,
                 )
-                .await?;
-
-            match self
-                .find_matching_trust_entity(subscriptions, TrustEntityIdentifier::Jwk(registry_key))
                 .await?
-            {
-                Some(trust_entity) => Some(trust_entity),
-                None => {
-                    return Err(WRPValidatorError::RegistryNotTrusted);
-                }
-            }
+                .ok_or(WRPValidatorError::RegistryNotTrusted)?,
+            )
         } else {
             None
         };
@@ -257,6 +247,7 @@ impl WRPValidatorImpl {
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         certificate_validator: Arc<dyn CertificateValidator>,
         client: Arc<dyn HttpClient>,
+        revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     ) -> Self {
         Self {
             trust_collection_repository,
@@ -268,7 +259,24 @@ impl WRPValidatorImpl {
             key_algorithm_provider,
             certificate_validator,
             client,
+            revocation_method_provider,
         }
+    }
+
+    async fn perform_trust_validation(
+        &self,
+        identifier: TrustEntityIdentifier<'_>,
+        role: TrustListRoleEnum,
+        organisation_id: OrganisationId,
+    ) -> Result<Option<TrustEntityResponse>, WRPValidatorError> {
+        self.check_trust_management_enabled(organisation_id).await?;
+
+        let subscriptions = self
+            .get_trust_subscriptions_for_role(role, organisation_id)
+            .await?;
+
+        self.find_matching_trust_entity(subscriptions, identifier)
+            .await
     }
 
     async fn find_matching_trust_entity(
@@ -369,6 +377,64 @@ impl WRPValidatorImpl {
             .values)
     }
 
+    async fn check_jwt_status(
+        &self,
+        status: &Status,
+        issuer_pem_chain: &str,
+    ) -> Result<(), WRPValidatorError> {
+        const TOKENSTATUSLIST_ENTRY_TYPE: &str = "TokenStatusListEntry";
+
+        let ParsedCertificate {
+            attributes,
+            subject_common_name,
+            ..
+        } = self
+            .certificate_validator
+            .parse_pem_chain(
+                issuer_pem_chain,
+                CertificateValidationOptions::signature_and_revocation(None),
+            )
+            .await
+            .error_while("parsing issuer certificate")?;
+
+        let (revocation_provider, _) = self
+            .revocation_method_provider
+            .get_revocation_method_by_status_type(TOKENSTATUSLIST_ENTRY_TYPE)
+            .ok_or(
+                MissingProviderError::RevocationMethodByCredentialStatusType(
+                    TOKENSTATUSLIST_ENTRY_TYPE.to_string(),
+                ),
+            )
+            .error_while("getting revocation provider")?;
+
+        let revocation_status = revocation_provider
+            .check_credential_revocation_status(
+                &CredentialStatus {
+                    id: None,
+                    r#type: TOKENSTATUSLIST_ENTRY_TYPE.to_string(),
+                    status_purpose: None,
+                    additional_fields: status.status_list.to_owned(),
+                },
+                &IdentifierDetails::Certificate(CertificateDetails {
+                    chain: issuer_pem_chain.to_owned(),
+                    fingerprint: attributes.fingerprint,
+                    expiry: attributes.not_after,
+                    subject_common_name,
+                }),
+                None,
+                false,
+            )
+            .await
+            .error_while("checking registration certificate status")?;
+
+        match revocation_status {
+            RevocationState::Valid => Ok(()),
+            RevocationState::Revoked | RevocationState::Suspended { .. } => {
+                Err(WRPValidatorError::CertificateRevoked)
+            }
+        }
+    }
+
     fn verification_fn(&self) -> VerificationFn {
         Box::new(KeyVerification {
             key_algorithm_provider: self.key_algorithm_provider.clone(),
@@ -377,4 +443,13 @@ impl WRPValidatorImpl {
             certificate_validator: self.certificate_validator.clone(),
         })
     }
+}
+
+fn validate_jwt_timestamps<T>(
+    token: &JWTPayload<T>,
+    leeway: Duration,
+) -> Result<(), WRPValidatorError> {
+    validate_not_before_time(&token.invalid_before, leeway).error_while("checking validity")?;
+    validate_expiration_time(&token.expires_at, leeway).error_while("checking validity")?;
+    Ok(())
 }

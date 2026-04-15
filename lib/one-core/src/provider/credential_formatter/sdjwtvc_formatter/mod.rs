@@ -77,7 +77,8 @@ pub struct SDJWTVCFormatter {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Params {
-    pub leeway: u64,
+    #[serde_as(as = "DurationSeconds<i64>")]
+    pub leeway: Duration,
     pub embed_layout_properties: bool,
     // Toggles SWIYU quirks, specifically the malformed `cnf` claim
     #[serde(default)]
@@ -326,7 +327,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             .await
     }
 
-    fn get_leeway(&self) -> u64 {
+    fn get_leeway(&self) -> Duration {
         self.params.leeway
     }
 
