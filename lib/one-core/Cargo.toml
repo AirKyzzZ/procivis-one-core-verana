@@ -9,8 +9,7 @@ rust-version.workspace = true
 version                = "0.1.0"
 
 [dependencies]
-aes-gcm                      = { version = "0.10.3", features = ["std"] }
-quick-xml.workspace          = true
+aes-gcm                      = { workspace = true, features = ["std"] }
 anyhow.workspace             = true
 asn1-rs.workspace            = true
 async-trait.workspace        = true
@@ -39,17 +38,15 @@ json-ld                      = { version = "0.21" }
 json-syntax                  = { version = "0.12", features = ["serde", "serde_json"] }
 jsonptr                      = { version = "0.7" }
 maplit.workspace             = true
-mime                         = { version = "0.3" }
+mime.workspace               = true
 mockall                      = { workspace = true, optional = true }
-mrtd                         = { version = "0.5.2" }
 multihash.workspace          = true
 ndef-rs                      = { version = "0.2" }
 num-traits                   = "0.2"
-one-crypto                   = { version = "0.1.0", path = "../one-crypto" }
+one-crypto.workspace         = true
 one-dto-mapper.workspace     = true
-ouroboros                    = { version = "0.18" }
 pem                          = { version = "3" }
-rand.workspace               = true
+quick-xml.workspace          = true
 rcgen.workspace              = true
 regex.workspace              = true
 reqwest.workspace            = true
@@ -66,9 +63,9 @@ serde_repr                   = { version = "0.1" }
 serde_urlencoded.workspace   = true
 serde_with.workspace         = true
 serde_yaml                   = { version = "0.9" }
-sha2                         = { version = "0.10" }
+sha2.workspace               = true
 shadow-rs.workspace          = true
-shared-types                 = { version = "0.1.0", path = "../shared-types" }
+shared-types.workspace       = true
 sophia_api                   = { version = "0.9" }
 sophia_c14n                  = { version = "0.9" }
 standardized-types.workspace = true
@@ -88,16 +85,15 @@ yasna                        = { version = "0.5" }
 zip                          = { version = "7.0", default-features = false, features = ["lzma", "deflate"] }
 
 [dev-dependencies]
-assert2                   = { version = "0.3" }
-jsonschema                = { version = "0.38", default-features = false }
+assert2.workspace         = true
 mockall.workspace         = true
-one-crypto                = { version = "0.1.0", path = "../one-crypto", features = ["mock"] }
+one-crypto                = { workspace = true, features = ["mock"] }
 rstest                    = { version = "0.26" }
 rusty-fork                = { version = "0.3" }
 serde_json_path.workspace = true
 similar-asserts.workspace = true
 tokio                     = { workspace = true, features = ["rt-multi-thread", "macros"] }
-wiremock                  = { version = "0.6" }
+wiremock.workspace        = true
 
 [build-dependencies]
 shadow-rs.workspace = true

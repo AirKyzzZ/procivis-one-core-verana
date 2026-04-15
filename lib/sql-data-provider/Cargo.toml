@@ -8,20 +8,21 @@ rust-version.workspace = true
 version.workspace      = true
 
 [features]
-# Treat build warnings as error
 mysql      = ["migration/mysql", "sea-orm/sqlx-mysql"]
-strict     = []
 test_utils = ["dep:similar-asserts"]
+# Treat build warnings as error
+strict = []
 
 [dependencies]
 anyhow.workspace             = true
 async-trait.workspace        = true
 autometrics.workspace        = true
+dcql.workspace               = true
 futures                      = { version = "0.3" }
 hex.workspace                = true
 itertools.workspace          = true
-migration                    = { version = "0.1.0", path = "../migration", default-features = false }
-one-core                     = { version = "0.1.0", path = "../one-core" }
+migration.workspace          = true
+one-core.workspace           = true
 one-dto-mapper.workspace     = true
 sea-orm                      = { workspace = true, features = ["sqlx-sqlite", "runtime-tokio", "macros", "with-time", "with-json"] }
 serde.workspace              = true
@@ -29,7 +30,6 @@ serde_json.workspace         = true
 shared-types.workspace       = true
 similar-asserts              = { workspace = true, optional = true }
 standardized-types.workspace = true
-dcql.workspace               = true
 time.workspace               = true
 tokio                        = { workspace = true, features = ["macros"] }
 tracing.workspace            = true
@@ -39,7 +39,7 @@ uuid                         = { workspace = true, features = ["serde"] }
 [dev-dependencies]
 futures.workspace         = true
 mockall.workspace         = true
-one-core                  = { version = "0.1.0", path = "../one-core", features = ["mock"] }
+one-core                  = { workspace = true, features = ["mock"] }
 similar-asserts.workspace = true
 tempfile.workspace        = true
 

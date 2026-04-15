@@ -10,16 +10,16 @@ version.workspace      = true
 anyhow.workspace         = true
 ct-codecs.workspace      = true
 one-dto-mapper.workspace = true
+proc-macros.workspace    = true
 quick-xml.workspace      = true
-proc-macros          = { version = "0.1.0", path = "../../lib/proc-macros" }
-secrecy.workspace    = true
-serde                = { workspace = true, features = ["derive"] }
-serde_json.workspace = true
-serde_with.workspace = true
-strum.workspace      = true
-time.workspace       = true
-utoipa               = { workspace = true, optional = true }
-uuid.workspace       = true
+secrecy.workspace        = true
+serde                    = { workspace = true, features = ["derive"] }
+serde_json.workspace     = true
+serde_with.workspace     = true
+strum.workspace          = true
+time.workspace           = true
+utoipa                   = { workspace = true, optional = true }
+uuid.workspace           = true
 
 [dev-dependencies]
 similar-asserts.workspace = true

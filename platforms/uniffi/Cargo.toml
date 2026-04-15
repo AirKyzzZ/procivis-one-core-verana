@@ -14,27 +14,27 @@ crate-type = ["cdylib", "staticlib"]
 strict = []
 
 [dependencies]
-async-trait.workspace    = true
-one-core                 = { version = "0.1.0", path = "../../lib/one-core", features = ["config_json"] }
-one-crypto               = { version = "0.1.0", path = "../../lib/one-crypto" }
+async-trait.workspace        = true
+one-core                     = { workspace = true, features = ["config_json"] }
+one-crypto.workspace         = true
+one-dto-mapper.workspace     = true
+reqwest.workspace            = true
+rustls-platform-verifier     = { workspace = true }
+secrecy.workspace            = true
+serde.workspace              = true
+serde_json.workspace         = true
+shared-types.workspace       = true
+sql-data-provider.workspace  = true
 standardized-types.workspace = true
-one-dto-mapper.workspace = true
-reqwest.workspace        = true
-rustls-platform-verifier = { workspace = true }
-secrecy.workspace        = true
-serde.workspace          = true
-serde_json.workspace     = true
-shared-types             = { version = "0.1.0", path = "../../lib/shared-types" }
-sql-data-provider        = { version = "0.1.0", path = "../../lib/sql-data-provider" }
-strum.workspace          = true
-thiserror.workspace      = true
-time.workspace           = true
-tokio                    = { workspace = true, features = ['rt-multi-thread'] }
-tracing                  = { workspace = true }
-tracing-subscriber       = { workspace = true }
-uniffi                   = { workspace = true, features = ["tokio"] }
-url.workspace            = true
-uuid.workspace           = true
+strum.workspace              = true
+thiserror.workspace          = true
+time.workspace               = true
+tokio                        = { workspace = true, features = ['rt-multi-thread'] }
+tracing                      = { workspace = true }
+tracing-subscriber           = { workspace = true }
+uniffi                       = { workspace = true, features = ["tokio"] }
+url.workspace                = true
+uuid.workspace               = true
 
 [dev-dependencies]
 mockall.workspace         = true

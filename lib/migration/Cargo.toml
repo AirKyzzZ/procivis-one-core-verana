@@ -8,18 +8,17 @@ rust-version.workspace = true
 version                = "0.1.0"
 
 [dependencies]
-sea-orm                = { workspace = true, features = ["with-time", "with-uuid"] }
-sea-orm-migration      = { version = "1.1", default-features = false, features = ["runtime-tokio", "sqlx-sqlite"] }
-shared-types.workspace = true
-time.workspace         = true
-tokio                  = { workspace = true, features = ["macros", "rt-multi-thread"] }
-tracing.workspace      = true
-urlencoding.workspace  = true
-uuid                   = { workspace = true, features = ["v4"] }
+sea-orm               = { workspace = true, features = ["with-time", "with-uuid"] }
+sea-orm-migration     = { version = "1.1", default-features = false, features = ["runtime-tokio", "sqlx-sqlite"] }
+shared-types          = { workspace = true, features = ["sea-orm"] }
+time.workspace        = true
+tokio                 = { workspace = true, features = ["macros", "rt-multi-thread"] }
+tracing.workspace     = true
+urlencoding.workspace = true
+uuid                  = { workspace = true, features = ["v4"] }
 
 [features]
-default = ["mysql"]
-mysql   = ["sea-orm-migration/sqlx-mysql"]
+mysql = ["sea-orm-migration/sqlx-mysql"]
 
 [dev-dependencies]
 sea-schema = { version = "0.17.0-rc.16", default-features = false, features = [
