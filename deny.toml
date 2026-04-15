@@ -30,6 +30,7 @@ ignore = [
     { id = "RUSTSEC-2024-0370", reason = "proc-macro-error crate unmaintained, indirect dependency of a few libs" },
     { id = "RUSTSEC-2025-0141", reason = "`bincode` crate discontinued" },
     { id = "RUSTSEC-2026-0097", reason = "`rand` unsound with custom logger, v0.8.x as indirect dependency" },
+    { crate = "core2@0.4.0", reason = "multihash dependency, waiting for multihash update" },
 ]
 
 # This section is considered when running `cargo deny check licenses`
