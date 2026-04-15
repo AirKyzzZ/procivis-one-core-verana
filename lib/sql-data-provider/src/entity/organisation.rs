@@ -34,6 +34,14 @@ pub enum Relation {
     Interaction,
     #[sea_orm(has_many = "super::wallet_unit::Entity")]
     WalletUnit,
+    #[sea_orm(
+        belongs_to = "Entity",
+        from = "Column::Id",
+        to = "Column::ParentOrganisation",
+        on_update = "Restrict",
+        on_delete = "Restrict"
+    )]
+    ChildOrganisation,
 }
 
 impl Related<super::credential_schema::Entity> for Entity {
@@ -63,6 +71,12 @@ impl Related<super::interaction::Entity> for Entity {
 impl Related<super::wallet_unit::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::WalletUnit.def()
+    }
+}
+
+impl Related<Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::ChildOrganisation.def()
     }
 }
 

@@ -43,8 +43,8 @@ use crate::service::error::{BusinessLogicError, MissingProviderError};
 use crate::util::interactions::{add_new_interaction, clear_previous_interaction};
 use crate::util::key_selection::{CertificateFilter, KeyFilter, KeySelection, SelectedKey};
 use crate::validator::{
-    throw_if_credential_schema_not_in_session_org, throw_if_org_not_matching_session,
-    throw_if_org_relation_not_matching_session,
+    throw_if_credential_schema_not_in_session_org, throw_if_org_id_not_matching_session,
+    throw_if_org_not_matching_session,
 };
 
 impl CredentialService {
@@ -116,11 +116,8 @@ impl CredentialService {
                 request.credential_schema_id,
             ));
         };
-        throw_if_org_relation_not_matching_session(
-            schema.organisation.as_ref(),
-            &*self.session_provider,
-        )
-        .error_while("checking session")?;
+        throw_if_org_not_matching_session(schema.organisation.as_ref(), &*self.session_provider)
+            .error_while("checking session")?;
 
         validate_key_storage_security_supported(schema.key_storage_security, &self.config)
             .error_while("validating key storage security")?;
@@ -278,11 +275,8 @@ impl CredentialService {
             .ok_or(CredentialServiceError::MappingError(
                 "credential_schema is None".to_string(),
             ))?;
-        throw_if_org_relation_not_matching_session(
-            schema.organisation.as_ref(),
-            &*self.session_provider,
-        )
-        .error_while("checking session")?;
+        throw_if_org_not_matching_session(schema.organisation.as_ref(), &*self.session_provider)
+            .error_while("checking session")?;
 
         let is_issuer = credential.role == CredentialRole::Issuer;
         if is_issuer && let Some(method_id) = &schema.revocation_method {
@@ -447,7 +441,7 @@ impl CredentialService {
                 .into());
         }
 
-        throw_if_org_not_matching_session(
+        throw_if_org_id_not_matching_session(
             &filter_params.filter.organisation_id,
             &*self.session_provider,
         )
@@ -550,7 +544,7 @@ impl CredentialService {
                 "Missing credential schema".to_string(),
             ));
         };
-        throw_if_org_relation_not_matching_session(
+        throw_if_org_not_matching_session(
             credential_schema.organisation.as_ref(),
             &*self.session_provider,
         )

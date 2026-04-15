@@ -31,16 +31,14 @@ use crate::service::trust_list_publication::dto::{
 };
 use crate::service::trust_list_publication::error::TrustListPublicationServiceError;
 use crate::util::key_selection::{KeySelection, SelectedKey};
-use crate::validator::{
-    throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
-};
+use crate::validator::{throw_if_org_id_not_matching_session, throw_if_org_not_matching_session};
 
 impl TrustListPublicationService {
     pub async fn create_trust_list_publication(
         &self,
         request: CreateTrustListPublicationRequestDTO,
     ) -> Result<TrustListPublicationId, TrustListPublicationServiceError> {
-        throw_if_org_not_matching_session(&request.organisation_id, &*self.session_provider)
+        throw_if_org_id_not_matching_session(&request.organisation_id, &*self.session_provider)
             .error_while("validating organisation")?;
 
         let trust_list_publisher = self.fetch_trust_list_provider(&request.r#type).await?;
@@ -82,7 +80,7 @@ impl TrustListPublicationService {
         id: TrustListPublicationId,
     ) -> Result<(), TrustListPublicationServiceError> {
         let trust_list = self.fetch_trust_list_publication(id).await?;
-        throw_if_org_relation_not_matching_session(
+        throw_if_org_not_matching_session(
             trust_list.organisation.as_ref(),
             &*self.session_provider,
         )
@@ -105,7 +103,7 @@ impl TrustListPublicationService {
         request: CreateTrustEntryRequestDTO,
     ) -> Result<TrustEntryId, TrustListPublicationServiceError> {
         let trust_list_publication = self.fetch_trust_list_publication(list_id).await?;
-        throw_if_org_not_matching_session(
+        throw_if_org_id_not_matching_session(
             &trust_list_publication.organisation_id,
             &*self.session_provider,
         )
@@ -146,7 +144,7 @@ impl TrustListPublicationService {
         validate_trust_entry_belongs_to_list(&trust_entry, list_id)?;
 
         let trust_list_publication = trust_entry.trust_list_publication()?;
-        throw_if_org_not_matching_session(
+        throw_if_org_id_not_matching_session(
             &trust_list_publication.organisation_id,
             &*self.session_provider,
         )
@@ -179,7 +177,7 @@ impl TrustListPublicationService {
         validate_trust_entry_belongs_to_list(&trust_entry, list_id)?;
 
         let trust_list_publication = trust_entry.trust_list_publication()?;
-        throw_if_org_relation_not_matching_session(
+        throw_if_org_not_matching_session(
             trust_list_publication.organisation.as_ref(),
             &*self.session_provider,
         )
@@ -208,7 +206,7 @@ impl TrustListPublicationService {
         id: TrustListPublicationId,
     ) -> Result<GetTrustListPublicationResponseDTO, TrustListPublicationServiceError> {
         let trust_list = self.fetch_trust_list_publication(id).await?;
-        throw_if_org_relation_not_matching_session(
+        throw_if_org_not_matching_session(
             trust_list.organisation.as_ref(),
             &*self.session_provider,
         )
@@ -222,7 +220,7 @@ impl TrustListPublicationService {
         content_type: Option<TrustListContentTypeDTO>,
     ) -> Result<TrustListContent, TrustListPublicationServiceError> {
         let trust_list = self.fetch_trust_list_publication(id).await?;
-        throw_if_org_relation_not_matching_session(
+        throw_if_org_not_matching_session(
             trust_list.organisation.as_ref(),
             &*self.session_provider,
         )
@@ -248,8 +246,11 @@ impl TrustListPublicationService {
             TrustListPublicationFilterParamsDTO,
         >,
     ) -> Result<GetTrustListPublicationListResponseDTO, TrustListPublicationServiceError> {
-        throw_if_org_not_matching_session(&query.filter.organisation_id, &*self.session_provider)
-            .error_while("checking session")?;
+        throw_if_org_id_not_matching_session(
+            &query.filter.organisation_id,
+            &*self.session_provider,
+        )
+        .error_while("checking session")?;
 
         let trust_list_publication_list = self
             .trust_list_publication_repository
@@ -267,7 +268,7 @@ impl TrustListPublicationService {
         let trust_list_publication = self
             .fetch_trust_list_publication(trust_list_publication_id)
             .await?;
-        throw_if_org_not_matching_session(
+        throw_if_org_id_not_matching_session(
             &trust_list_publication.organisation_id,
             &*self.session_provider,
         )

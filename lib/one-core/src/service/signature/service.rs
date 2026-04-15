@@ -20,9 +20,7 @@ use crate::service::error::MissingProviderError;
 use crate::service::signature::dto::{CreateSignatureRequestDTO, SignatureStatusInfo};
 use crate::service::signature::error::SignatureServiceError;
 use crate::validator::permissions::RequiredPermissions;
-use crate::validator::{
-    throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
-};
+use crate::validator::{throw_if_org_id_not_matching_session, throw_if_org_not_matching_session};
 
 impl SignatureService {
     pub async fn sign(
@@ -61,7 +59,7 @@ impl SignatureService {
                 "organisation is None".to_string(),
             ))?
             .id;
-        throw_if_org_not_matching_session(&organisation_id, &*self.session_provider)
+        throw_if_org_id_not_matching_session(&organisation_id, &*self.session_provider)
             .error_while("validating organisation")?;
 
         if !signer
@@ -139,11 +137,8 @@ impl SignatureService {
             .ok_or(SignatureServiceError::MappingError(
                 "Missing revocation list issuer".to_string(),
             ))?;
-        throw_if_org_relation_not_matching_session(
-            issuer.organisation.as_ref(),
-            &*self.session_provider,
-        )
-        .error_while("validating organisation")?;
+        throw_if_org_not_matching_session(issuer.organisation.as_ref(), &*self.session_provider)
+            .error_while("validating organisation")?;
 
         revocation_method
             .revoke_signature(id.into())

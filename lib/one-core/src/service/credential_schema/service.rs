@@ -20,9 +20,7 @@ use crate::model::organisation::OrganisationRelations;
 use crate::repository::error::DataLayerError;
 use crate::service::common_dto::ListQueryDTO;
 use crate::util::logging::quoted_opt_provider;
-use crate::validator::{
-    throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
-};
+use crate::validator::{throw_if_org_id_not_matching_session, throw_if_org_not_matching_session};
 
 impl CredentialSchemaService {
     /// Creates a credential schema according to request
@@ -34,7 +32,7 @@ impl CredentialSchemaService {
         &self,
         request: CreateCredentialSchemaRequestDTO,
     ) -> Result<CredentialSchemaId, CredentialSchemaServiceError> {
-        throw_if_org_not_matching_session(&request.organisation_id, &*self.session_provider)
+        throw_if_org_id_not_matching_session(&request.organisation_id, &*self.session_provider)
             .error_while("checking session")?;
         let core_base_url = self.core_base_url.as_ref().ok_or_else(|| {
             CredentialSchemaServiceError::MappingError("Missing core base_url".to_string())
@@ -160,7 +158,7 @@ impl CredentialSchemaService {
                 *credential_schema_id,
             ))?;
 
-        throw_if_org_relation_not_matching_session(
+        throw_if_org_not_matching_session(
             credential_schema.organisation.as_ref(),
             &*self.session_provider,
         )
@@ -211,11 +209,8 @@ impl CredentialSchemaService {
             ));
         };
 
-        throw_if_org_relation_not_matching_session(
-            schema.organisation.as_ref(),
-            &*self.session_provider,
-        )
-        .error_while("checking session")?;
+        throw_if_org_not_matching_session(schema.organisation.as_ref(), &*self.session_provider)
+            .error_while("checking session")?;
 
         if schema.deleted_at.is_some() {
             return Err(CredentialSchemaServiceError::NotFound(
@@ -239,7 +234,7 @@ impl CredentialSchemaService {
             CredentialSchemaListIncludeEntityTypeEnum,
         >,
     ) -> Result<GetCredentialSchemaListResponseDTO, CredentialSchemaServiceError> {
-        throw_if_org_not_matching_session(
+        throw_if_org_id_not_matching_session(
             &filter_params.filter.organisation_id,
             &*self.session_provider,
         )
@@ -262,7 +257,7 @@ impl CredentialSchemaService {
         &self,
         request: ImportCredentialSchemaRequestDTO,
     ) -> Result<CredentialSchemaId, CredentialSchemaServiceError> {
-        throw_if_org_not_matching_session(&request.organisation_id, &*self.session_provider)
+        throw_if_org_id_not_matching_session(&request.organisation_id, &*self.session_provider)
             .error_while("checking session")?;
         let organisation = self
             .organisation_repository
@@ -331,7 +326,7 @@ impl CredentialSchemaService {
                 *credential_schema_id,
             ))?;
 
-        throw_if_org_relation_not_matching_session(
+        throw_if_org_not_matching_session(
             credential_schema.organisation.as_ref(),
             &*self.session_provider,
         )

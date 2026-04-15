@@ -20,14 +20,14 @@ use crate::service::wallet_unit::dto::TrustCollectionsDetailResponseDTO;
 use crate::service::wallet_unit::mapper::{
     prepare_trust_collection_info, set_active_trust_collections,
 };
-use crate::validator::throw_if_org_not_matching_session;
+use crate::validator::throw_if_org_id_not_matching_session;
 
 impl VerifierInstanceService {
     pub async fn register_verifier_instance(
         &self,
         request: RegisterVerifierInstanceRequestDTO,
     ) -> Result<RegisterVerifierInstanceResponseDTO, VerifierInstanceServiceError> {
-        throw_if_org_not_matching_session(&request.organisation_id, &*self.session_provider)
+        throw_if_org_id_not_matching_session(&request.organisation_id, &*self.session_provider)
             .error_while("checking session")?;
 
         let organisation = self
@@ -166,7 +166,7 @@ impl VerifierInstanceService {
                     "Missing organisation".to_string(),
                 ))?;
 
-        throw_if_org_not_matching_session(&organisation.id, &*self.session_provider)
+        throw_if_org_id_not_matching_session(&organisation.id, &*self.session_provider)
             .error_while("checking session")?;
 
         let provider_metadata_url = format!(
@@ -215,7 +215,7 @@ impl VerifierInstanceService {
                     "Missing organisation".to_string(),
                 ))?;
 
-        throw_if_org_not_matching_session(&organisation.id, &*self.session_provider)
+        throw_if_org_id_not_matching_session(&organisation.id, &*self.session_provider)
             .error_while("checking session")?;
 
         self.tx_manager

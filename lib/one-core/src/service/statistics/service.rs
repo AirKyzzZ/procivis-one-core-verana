@@ -18,14 +18,14 @@ use crate::service::statistics::dto::{
     SystemStatsResponseDTO,
 };
 use crate::service::statistics::error::StatisticsError;
-use crate::validator::throw_if_org_not_matching_session;
+use crate::validator::throw_if_org_id_not_matching_session;
 
 impl StatisticsService {
     pub async fn organisation_stats(
         &self,
         request: OrganisationStatsRequestDTO,
     ) -> Result<OrganisationStatsResponseDTO, StatisticsError> {
-        throw_if_org_not_matching_session(&request.organisation_id, &*self.session_provider)
+        throw_if_org_id_not_matching_session(&request.organisation_id, &*self.session_provider)
             .error_while("validating organisation")?;
         let (from, include_previous) = match request.from {
             Some(from) => (from, true),
@@ -102,7 +102,7 @@ impl StatisticsService {
         current: IssuerStatsQuery,
         previous: Option<IssuerStatsQuery>,
     ) -> Result<GetIssuerStatsResponseDTO, StatisticsError> {
-        throw_if_org_not_matching_session(organisation_id, &*self.session_provider)
+        throw_if_org_id_not_matching_session(organisation_id, &*self.session_provider)
             .error_while("validating organisation")?;
         let stats = self
             .history_repository
@@ -118,7 +118,7 @@ impl StatisticsService {
         current: VerifierStatsQuery,
         previous: Option<VerifierStatsQuery>,
     ) -> Result<GetVerifierStatsResponseDTO, StatisticsError> {
-        throw_if_org_not_matching_session(organisation_id, &*self.session_provider)
+        throw_if_org_id_not_matching_session(organisation_id, &*self.session_provider)
             .error_while("validating organisation")?;
         let stats = self
             .history_repository

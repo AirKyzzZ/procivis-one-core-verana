@@ -47,8 +47,8 @@ use crate::validator::key_security::{
     match_key_security_level, validate_key_storage_supports_security_requirement,
 };
 use crate::validator::{
-    throw_if_credential_state_not_eq, throw_if_org_not_matching_session,
-    throw_if_org_relation_not_matching_session,
+    throw_if_credential_state_not_eq, throw_if_org_id_not_matching_session,
+    throw_if_org_not_matching_session,
 };
 
 const STATE: &str = "state";
@@ -127,7 +127,7 @@ impl SSIHolderService {
         };
 
         let holder_binding_input = if let Some(identifier) = identifier {
-            throw_if_org_relation_not_matching_session(
+            throw_if_org_not_matching_session(
                 identifier.organisation.as_ref(),
                 &*self.session_provider,
             )
@@ -695,7 +695,7 @@ impl SSIHolderService {
         &self,
         request: InitiateIssuanceRequestDTO,
     ) -> Result<InitiateIssuanceResponseDTO, HolderServiceError> {
-        throw_if_org_not_matching_session(&request.organisation_id, &*self.session_provider)
+        throw_if_org_id_not_matching_session(&request.organisation_id, &*self.session_provider)
             .error_while("checking session")?;
         validate_initiate_issuance_request(&request, &self.config)?;
 
@@ -820,7 +820,7 @@ impl SSIHolderService {
             .error_while("getting interaction")?
             .ok_or(HolderServiceError::MissingInteraction(interaction_id))?;
 
-        throw_if_org_relation_not_matching_session(
+        throw_if_org_not_matching_session(
             interaction.organisation.as_ref(),
             &*self.session_provider,
         )

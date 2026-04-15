@@ -6,7 +6,7 @@ use super::dto::HandleInvitationResultDTO;
 use super::error::HolderServiceError;
 use crate::error::ContextWithErrorCode;
 use crate::service::storage_proxy::StorageProxyImpl;
-use crate::validator::throw_if_org_not_matching_session;
+use crate::validator::throw_if_org_id_not_matching_session;
 
 impl SSIHolderService {
     pub async fn handle_invitation(
@@ -16,7 +16,7 @@ impl SSIHolderService {
         transport: Option<Vec<String>>,
         redirect_uri: Option<String>,
     ) -> Result<HandleInvitationResultDTO, HolderServiceError> {
-        throw_if_org_not_matching_session(&organisation_id, &*self.session_provider)
+        throw_if_org_id_not_matching_session(&organisation_id, &*self.session_provider)
             .error_while("checking session")?;
         let organisation = self
             .organisation_repository

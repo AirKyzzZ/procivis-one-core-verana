@@ -347,7 +347,11 @@ impl WRPValidatorImpl {
             .trust_collection_repository
             .list(TrustCollectionListQuery {
                 filtering: Some(
-                    TrustCollectionFilterValue::OrganisationId(organisation_id).condition()
+                    TrustCollectionFilterValue::OrganisationId {
+                        id: organisation_id,
+                        include_inherited_collections: true,
+                    }
+                    .condition()
                         & TrustCollectionFilterValue::Remote(true)
                         & TrustCollectionFilterValue::Empty(false),
                 ),

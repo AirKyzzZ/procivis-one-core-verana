@@ -26,9 +26,7 @@ use crate::provider::did_method::dto::DidDocumentDTO;
 use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::service::common_dto::ListQueryDTO;
-use crate::validator::{
-    throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
-};
+use crate::validator::{throw_if_org_id_not_matching_session, throw_if_org_not_matching_session};
 
 impl DidService {
     /// Returns did document for did:web
@@ -148,11 +146,8 @@ impl DidService {
         let Some(did) = did else {
             return Err(DidServiceError::NotFound(*id));
         };
-        throw_if_org_relation_not_matching_session(
-            did.organisation.as_ref(),
-            &*self.session_provider,
-        )
-        .error_while("checking session")?;
+        throw_if_org_not_matching_session(did.organisation.as_ref(), &*self.session_provider)
+            .error_while("checking session")?;
 
         did.try_into()
     }
@@ -166,7 +161,7 @@ impl DidService {
         &self,
         filter_params: ListQueryDTO<SortableDidColumn, DidFilterParamsDTO>,
     ) -> Result<GetDidListResponseDTO, DidServiceError> {
-        throw_if_org_not_matching_session(
+        throw_if_org_id_not_matching_session(
             &filter_params.filter.organisation_id,
             &*self.session_provider,
         )
@@ -185,7 +180,7 @@ impl DidService {
     ///
     /// * `request` - did data
     pub async fn create_did(&self, request: CreateDidRequestDTO) -> Result<DidId, DidServiceError> {
-        throw_if_org_not_matching_session(&request.organisation_id, &*self.session_provider)
+        throw_if_org_id_not_matching_session(&request.organisation_id, &*self.session_provider)
             .error_while("checking session")?;
         let organisation = self
             .organisation_repository
@@ -245,11 +240,8 @@ impl DidService {
         let Some(did) = did else {
             return Err(DidServiceError::NotFound(*id));
         };
-        throw_if_org_relation_not_matching_session(
-            did.organisation.as_ref(),
-            &*self.session_provider,
-        )
-        .error_while("checking session")?;
+        throw_if_org_not_matching_session(did.organisation.as_ref(), &*self.session_provider)
+            .error_while("checking session")?;
 
         let did_method_key = &did.did_method;
         let did_method = self

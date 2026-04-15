@@ -1,23 +1,28 @@
 use std::ops::{Add, Sub};
+use std::sync::Arc;
 
 use shared_types::OrganisationId;
 use time::{Duration, OffsetDateTime};
 
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, VerificationProtocolType};
+use crate::error::ContextWithErrorCode;
 use crate::model::credential::{Credential, CredentialStateEnum};
-use crate::model::organisation::Organisation;
+use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::proof::{Proof, ProofStateEnum};
 use crate::proto::session_provider::SessionProvider;
 use crate::provider::verification_protocol::VerificationProtocol;
 use crate::provider::verification_protocol::dto::PresentationDefinitionVersion;
-use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
+use crate::repository::organisation_repository::OrganisationRepository;
+use crate::service::error::{
+    BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
+};
 
 pub(crate) mod key_security;
 pub(crate) mod permissions;
 pub(crate) mod x509;
 
-pub(crate) fn throw_if_org_not_matching_session(
+pub(crate) fn throw_if_org_id_not_matching_session(
     organisation_id: &OrganisationId,
     session_provider: &dyn SessionProvider,
 ) -> Result<(), ServiceError> {
@@ -30,18 +35,54 @@ pub(crate) fn throw_if_org_not_matching_session(
     Ok(())
 }
 
-pub(crate) fn throw_if_org_relation_not_matching_session(
-    org_relation: Option<&Organisation>,
+pub(crate) fn throw_if_org_not_matching_session(
+    organisation: Option<&Organisation>,
     session_provider: &dyn SessionProvider,
 ) -> Result<(), ServiceError> {
-    throw_if_org_not_matching_session(
-        &org_relation
-            .ok_or(ServiceError::MappingError(
-                "organisation is None".to_string(),
-            ))?
-            .id,
-        session_provider,
-    )
+    let organisation = organisation.ok_or(ServiceError::MappingError(
+        "organisation is None".to_string(),
+    ))?;
+    throw_if_org_id_not_matching_session(&organisation.id, session_provider)
+}
+
+/// Whether the specified organisation is allowed to be the parent of the session organisation.
+pub(crate) enum ParentOrg {
+    /// The specified organisation must either match exactly or be the parent of the session organisation.
+    Allow(Arc<dyn OrganisationRepository>),
+    /// The specified organisation must match the session organisation.
+    #[expect(unused)]
+    // Even if unused, this enum makes the semantics of the parent check more explicit
+    Deny,
+}
+
+pub(crate) async fn throw_if_org_id_not_matching_session_with_parent_check(
+    organisation_id: OrganisationId,
+    parent_org_check: ParentOrg,
+    session_provider: &dyn SessionProvider,
+) -> Result<(), ServiceError> {
+    let Some(session) = session_provider.session() else {
+        return Ok(());
+    };
+
+    let session_org_id = session.organisation_id.ok_or(ValidationError::Forbidden)?;
+    if session_org_id == organisation_id {
+        return Ok(());
+    }
+
+    if let ParentOrg::Allow(organisations_repository) = parent_org_check {
+        let session_org = organisations_repository
+            .get_organisation(&session_org_id, &OrganisationRelations::default())
+            .await
+            .error_while("fetching organisation")?
+            .ok_or(EntityNotFoundError::Organisation(session_org_id))?;
+        if session_org
+            .parent_organisation
+            .is_some_and(|parent_organisation| parent_organisation == organisation_id)
+        {
+            return Ok(());
+        }
+    }
+    Err(ValidationError::Forbidden.into())
 }
 
 pub(crate) fn throw_if_credential_schema_not_in_session_org(
@@ -54,7 +95,7 @@ pub(crate) fn throw_if_credential_schema_not_in_session_org(
         .ok_or(ServiceError::MappingError(
             "credential_schema is None".to_string(),
         ))?;
-    throw_if_org_relation_not_matching_session(schema.organisation.as_ref(), session_provider)
+    throw_if_org_not_matching_session(schema.organisation.as_ref(), session_provider)
 }
 
 pub(crate) fn throw_if_credential_state_not_eq(

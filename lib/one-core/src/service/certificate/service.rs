@@ -8,7 +8,7 @@ use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::pem_chain_into_x5c;
 use crate::model::certificate::CertificateRelations;
 use crate::model::identifier::IdentifierType;
-use crate::validator::throw_if_org_not_matching_session;
+use crate::validator::throw_if_org_id_not_matching_session;
 
 impl CertificateService {
     pub async fn get_certificate(
@@ -28,7 +28,7 @@ impl CertificateService {
             .error_while("getting certificate")?
             .ok_or(CertificateServiceError::NotFound(id))?;
 
-        throw_if_org_not_matching_session(
+        throw_if_org_id_not_matching_session(
             certificate
                 .organisation_id
                 .as_ref()

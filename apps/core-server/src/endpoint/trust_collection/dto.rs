@@ -22,7 +22,8 @@ use time::OffsetDateTime;
 use url::Url;
 use utoipa::{IntoParams, ToSchema};
 
-use crate::dto::common::{GetListResponseRestDTO, ListQueryParamsRest};
+use crate::dto::common::{Boolean, GetListResponseRestDTO, ListQueryParamsRest};
+use crate::dto::default_true;
 use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::serialize::front_time;
 
@@ -137,6 +138,9 @@ pub(crate) struct TrustCollectionFilterQueryParamsRestDTO {
     #[param(nullable = false)]
     #[try_into(infallible)]
     pub last_modified_before: Option<OffsetDateTime>,
+    #[serde(default = "default_true")]
+    #[try_into(infallible)]
+    pub include_parent_organisation_collections: Boolean,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]

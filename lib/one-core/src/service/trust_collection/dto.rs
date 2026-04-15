@@ -90,6 +90,7 @@ pub struct TrustCollectionFilterParamsDTO {
     pub created_date_before: Option<OffsetDateTime>,
     pub last_modified_after: Option<OffsetDateTime>,
     pub last_modified_before: Option<OffsetDateTime>,
+    pub include_parent_organisation_collections: bool,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

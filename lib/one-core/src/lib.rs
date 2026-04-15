@@ -899,6 +899,7 @@ impl OneCore {
                 trust_list_publisher_provider,
             ),
             trust_collection_service: TrustCollectionService::new(
+                data_provider.get_organisation_repository(),
                 data_provider.get_trust_collection_repository(),
                 data_provider.get_trust_list_subscription_repository(),
                 trust_list_subscriber_provider,

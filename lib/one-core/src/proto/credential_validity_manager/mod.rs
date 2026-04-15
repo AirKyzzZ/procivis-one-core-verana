@@ -32,7 +32,7 @@ use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::service::error::{EntityNotFoundError, MissingProviderError};
 use crate::validator::{
-    throw_if_credential_schema_not_in_session_org, throw_if_org_relation_not_matching_session,
+    throw_if_credential_schema_not_in_session_org, throw_if_org_not_matching_session,
 };
 
 mod mdoc;
@@ -212,7 +212,7 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
             .as_ref()
             .ok_or(Error::MappingError("credential schema is None".to_string()))?;
 
-        throw_if_org_relation_not_matching_session(
+        throw_if_org_not_matching_session(
             credential_schema.organisation.as_ref(),
             &*self.session_provider,
         )

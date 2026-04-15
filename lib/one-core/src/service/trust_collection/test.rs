@@ -36,6 +36,7 @@ use crate::service::trust_collection::error::TrustCollectionServiceError;
 
 #[derive(Default)]
 struct Mocks {
+    organisation_repository: MockOrganisationRepository,
     trust_collection_repository: MockTrustCollectionRepository,
     trust_list_subscription_repository: MockTrustListSubscriptionRepository,
     trust_list_subscriber_provider: MockTrustListSubscriberProvider,
@@ -45,6 +46,7 @@ struct Mocks {
 
 fn mock_service(mocks: Mocks) -> TrustCollectionService {
     TrustCollectionService::new(
+        Arc::new(mocks.organisation_repository),
         Arc::new(mocks.trust_collection_repository),
         Arc::new(mocks.trust_list_subscription_repository),
         Arc::new(mocks.trust_list_subscriber_provider),
@@ -309,6 +311,51 @@ async fn test_get_trust_collection_success() {
 }
 
 #[tokio::test]
+async fn test_get_trust_collection_parent_org_success() {
+    // given
+    let mut trust_collection_repository = MockTrustCollectionRepository::new();
+    let mut organisation_repository = MockOrganisationRepository::new();
+
+    let session_provider = StaticSessionProvider::new_random();
+    let parent_org_id = Uuid::new_v4().into();
+    let child_org_id = session_provider.0.organisation_id.unwrap();
+
+    organisation_repository
+        .expect_get_organisation()
+        .with(eq(child_org_id), eq(OrganisationRelations::default()))
+        .returning(move |id, _| {
+            let mut child_org = dummy_organisation(Some(*id));
+            child_org.parent_organisation = Some(parent_org_id);
+            Ok(Some(child_org))
+        });
+
+    let trust_collection = dummy_trust_collection(parent_org_id);
+    let trust_collection_id = trust_collection.id;
+
+    trust_collection_repository
+        .expect_get()
+        .with(
+            eq(trust_collection_id),
+            eq(TrustCollectionRelations::default()),
+        )
+        .returning(move |_, _| Ok(Some(trust_collection.clone())));
+
+    let service = mock_service(Mocks {
+        organisation_repository,
+        trust_collection_repository,
+        session_provider,
+        ..Default::default()
+    });
+
+    // when
+    let result = service.get_trust_collection(trust_collection_id).await;
+
+    // then
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap().id, trust_collection_id);
+}
+
+#[tokio::test]
 async fn test_get_trust_collection_list_success() {
     // given
     let mut trust_collection_repository = MockTrustCollectionRepository::new();
@@ -330,6 +377,7 @@ async fn test_get_trust_collection_list_success() {
             created_date_before: None,
             last_modified_after: None,
             last_modified_before: None,
+            include_parent_organisation_collections: false,
         },
         include: None,
     };
@@ -373,6 +421,7 @@ async fn test_get_trust_collection_list_org_mismatch() {
             created_date_before: None,
             last_modified_after: None,
             last_modified_before: None,
+            include_parent_organisation_collections: false,
         },
         include: None,
     };
@@ -456,6 +505,7 @@ async fn test_create_trust_list_subscription_success() {
         trust_list_subscriber_provider,
         session_provider,
         clock,
+        ..Default::default()
     });
 
     // when

@@ -178,7 +178,11 @@ impl TrustCollectionSyncTask {
             .trust_collection_repository
             .list(TrustCollectionListQuery {
                 filtering: Some(
-                    TrustCollectionFilterValue::OrganisationId(organisation_id).condition()
+                    TrustCollectionFilterValue::OrganisationId {
+                        id: organisation_id,
+                        // Parent organisation must not be modified, hence not synced
+                        include_inherited_collections: false
+                    }.condition()
                         & TrustCollectionFilterValue::Ids(synced_collections)
                         & TrustCollectionFilterValue::Remote(true)
                         // Empty collections are not enabled and hence should not be synced

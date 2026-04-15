@@ -80,8 +80,11 @@ impl From<TrustCollectionFilterParamsDTO> for ListFilterCondition<TrustCollectio
             }
         };
 
-        let organisation_id =
-            TrustCollectionFilterValue::OrganisationId(value.organisation_id).condition();
+        let organisation_id = TrustCollectionFilterValue::OrganisationId {
+            id: value.organisation_id,
+            include_inherited_collections: value.include_parent_organisation_collections,
+        }
+        .condition();
 
         let name = value.name.map(|name| {
             TrustCollectionFilterValue::Name(StringMatch {

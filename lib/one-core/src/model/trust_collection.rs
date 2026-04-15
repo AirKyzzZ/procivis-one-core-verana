@@ -29,7 +29,10 @@ pub struct TrustCollectionRelations {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum TrustCollectionFilterValue {
     Name(StringMatch),
-    OrganisationId(OrganisationId),
+    OrganisationId {
+        id: OrganisationId,
+        include_inherited_collections: bool,
+    },
     CreatedDate(ValueComparison<OffsetDateTime>),
     LastModified(ValueComparison<OffsetDateTime>),
     Ids(Vec<TrustCollectionId>),

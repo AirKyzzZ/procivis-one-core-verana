@@ -17,7 +17,9 @@ use super::mapper::{
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::list_response_into;
 use crate::model::list_filter::ListFilterValue;
-use crate::model::trust_collection::{SortableTrustCollectionColumn, TrustCollection};
+use crate::model::trust_collection::{
+    SortableTrustCollectionColumn, TrustCollection, TrustCollectionRelations,
+};
 use crate::model::trust_list_role::TrustListRoleEnum;
 use crate::model::trust_list_subscription::{
     SortableTrustListSubscriptionColumn, TrustListSubscription, TrustListSubscriptionFilterValue,
@@ -28,14 +30,17 @@ use crate::provider::trust_list_subscriber::{
 };
 use crate::repository::error::DataLayerError;
 use crate::service::common_dto::ListQueryDTO;
-use crate::validator::throw_if_org_not_matching_session;
+use crate::validator::{
+    ParentOrg, throw_if_org_id_not_matching_session,
+    throw_if_org_id_not_matching_session_with_parent_check,
+};
 
 impl TrustCollectionService {
     pub async fn create_trust_collection(
         &self,
         request: CreateTrustCollectionRequestDTO,
     ) -> Result<TrustCollectionId, TrustCollectionServiceError> {
-        throw_if_org_not_matching_session(&request.organisation_id, &*self.session_provider)
+        throw_if_org_id_not_matching_session(&request.organisation_id, &*self.session_provider)
             .error_while("validating organisation")?;
         let trust_collection_id = self.insert_trust_collection(&request).await?;
         info!(
@@ -50,7 +55,7 @@ impl TrustCollectionService {
         trust_collection_id: TrustCollectionId,
     ) -> Result<(), TrustCollectionServiceError> {
         let trust_collection = self.fetch_trust_collection(&trust_collection_id).await?;
-        throw_if_org_not_matching_session(
+        throw_if_org_id_not_matching_session(
             &trust_collection.organisation_id,
             &*self.session_provider,
         )
@@ -75,10 +80,12 @@ impl TrustCollectionService {
         trust_collection_id: TrustCollectionId,
     ) -> Result<GetTrustCollectionResponseDTO, TrustCollectionServiceError> {
         let trust_collection = self.fetch_trust_collection(&trust_collection_id).await?;
-        throw_if_org_not_matching_session(
-            &trust_collection.organisation_id,
+        throw_if_org_id_not_matching_session_with_parent_check(
+            trust_collection.organisation_id,
+            ParentOrg::Allow(self.organisation_repository.clone()),
             &*self.session_provider,
         )
+        .await
         .error_while("validating organisation")?;
         Ok(trust_collection.into())
     }
@@ -87,8 +94,11 @@ impl TrustCollectionService {
         &self,
         query: ListQueryDTO<SortableTrustCollectionColumn, TrustCollectionFilterParamsDTO>,
     ) -> Result<GetTrustCollectionListResponseDTO, TrustCollectionServiceError> {
-        throw_if_org_not_matching_session(&query.filter.organisation_id, &*self.session_provider)
-            .error_while("validating organisation")?;
+        throw_if_org_id_not_matching_session(
+            &query.filter.organisation_id,
+            &*self.session_provider,
+        )
+        .error_while("validating organisation")?;
 
         let trust_collection_list = self
             .trust_collection_repository
@@ -129,7 +139,7 @@ impl TrustCollectionService {
         request: CreateTrustListSubscriptionRequestDTO,
     ) -> Result<TrustListSubscriptionId, TrustCollectionServiceError> {
         let trust_collection = self.fetch_trust_collection(&trust_collection_id).await?;
-        throw_if_org_not_matching_session(
+        throw_if_org_id_not_matching_session(
             &trust_collection.organisation_id,
             &*self.session_provider,
         )
@@ -160,7 +170,7 @@ impl TrustCollectionService {
         let trust_collection = trust_list_subscription.trust_collection.ok_or(
             TrustCollectionServiceError::MappingError("missing trust collection".to_string()),
         )?;
-        throw_if_org_not_matching_session(
+        throw_if_org_id_not_matching_session(
             &trust_collection.organisation_id,
             &*self.session_provider,
         )
@@ -189,10 +199,12 @@ impl TrustCollectionService {
         >,
     ) -> Result<GetTrustListSubscriptionListResponseDTO, TrustCollectionServiceError> {
         let trust_collection = self.fetch_trust_collection(&trust_collection_id).await?;
-        throw_if_org_not_matching_session(
-            &trust_collection.organisation_id,
+        throw_if_org_id_not_matching_session_with_parent_check(
+            trust_collection.organisation_id,
+            ParentOrg::Allow(self.organisation_repository.clone()),
             &*self.session_provider,
         )
+        .await
         .error_while("validating organisation")?;
 
         let list_query: TrustListSubscriptionListQuery = query.into();
@@ -308,7 +320,7 @@ impl TrustCollectionService {
         trust_collection_id: &TrustCollectionId,
     ) -> Result<TrustCollection, TrustCollectionServiceError> {
         self.trust_collection_repository
-            .get(trust_collection_id, &Default::default())
+            .get(trust_collection_id, &TrustCollectionRelations::default())
             .await
             .error_while("getting trust collection")?
             .ok_or(TrustCollectionServiceError::TrustCollectionNotFound(

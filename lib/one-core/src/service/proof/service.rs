@@ -75,9 +75,7 @@ use crate::service::error::MissingProviderError;
 use crate::service::storage_proxy::StorageProxyImpl;
 use crate::util::interactions::{add_new_interaction, clear_previous_interaction};
 use crate::util::key_selection::{KeyFilter, KeySelection, SelectedKey};
-use crate::validator::{
-    throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
-};
+use crate::validator::{throw_if_org_id_not_matching_session, throw_if_org_not_matching_session};
 
 const DEFAULT_ENGAGEMENT: &str = "QR_CODE";
 
@@ -297,7 +295,7 @@ impl ProofService {
         &self,
         filter_params: ListQueryDTO<SortableProofColumn, ProofFilterParamsDTO>,
     ) -> Result<GetProofListResponseDTO, ProofServiceError> {
-        throw_if_org_not_matching_session(
+        throw_if_org_id_not_matching_session(
             &filter_params.filter.organisation_id,
             &*self.session_provider,
         )
@@ -365,7 +363,7 @@ impl ProofService {
             .await
             .error_while("getting proof schema")?
             .ok_or(ProofServiceError::MissingProofSchema(proof_schema_id))?;
-        throw_if_org_relation_not_matching_session(
+        throw_if_org_not_matching_session(
             proof_schema.organisation.as_ref(),
             &*self.session_provider,
         )
@@ -806,7 +804,7 @@ impl ProofService {
         &self,
         request: ProposeProofRequestDTO,
     ) -> Result<ProposeProofResponseDTO, ProofServiceError> {
-        throw_if_org_not_matching_session(&request.organisation_id, &*self.session_provider)
+        throw_if_org_id_not_matching_session(&request.organisation_id, &*self.session_provider)
             .error_while("checking session")?;
         validate_protocol_type(&request.protocol, &self.config.verification_protocol)
             .error_while("validating protocol")?;

@@ -26,7 +26,7 @@ use crate::provider::verification_protocol::openid4vp::draft25::model::OpenID4Vp
 use crate::service::error::MissingProviderError;
 use crate::util::key_selection::KeyFilter;
 use crate::validator::{
-    throw_if_endpoint_version_incompatible, throw_if_org_relation_not_matching_session,
+    throw_if_endpoint_version_incompatible, throw_if_org_not_matching_session,
     throw_if_proof_state_not_eq,
 };
 
@@ -46,7 +46,7 @@ pub(super) fn throw_if_proof_not_in_session_org(
         ));
     };
     Ok(
-        throw_if_org_relation_not_matching_session(organisation, session_provider)
+        throw_if_org_not_matching_session(organisation, session_provider)
             .error_while("checking session")?,
     )
 }

@@ -40,9 +40,7 @@ use crate::service::credential_schema::dto::{
     CredentialSchemaFilterValue, ImportCredentialSchemaRequestSchemaDTO,
 };
 use crate::service::credential_schema::validator::validate_key_storage_security_supported;
-use crate::validator::{
-    throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
-};
+use crate::validator::{throw_if_org_id_not_matching_session, throw_if_org_not_matching_session};
 
 impl ProofSchemaService {
     /// Returns details of a proof schema
@@ -72,11 +70,8 @@ impl ProofSchemaService {
             .await
             .error_while("getting proof schema")?
             .ok_or(ProofSchemaServiceError::NotFound(*id))?;
-        throw_if_org_relation_not_matching_session(
-            result.organisation.as_ref(),
-            &*self.session_provider,
-        )
-        .error_while("checking session")?;
+        throw_if_org_not_matching_session(result.organisation.as_ref(), &*self.session_provider)
+            .error_while("checking session")?;
 
         if result.deleted_at.is_some() {
             return Err(ProofSchemaServiceError::NotFound(*id));
@@ -94,7 +89,7 @@ impl ProofSchemaService {
         &self,
         filter_params: ListQueryDTO<SortableProofSchemaColumn, ProofSchemaFilterParamsDTO>,
     ) -> Result<GetProofSchemaListResponseDTO, ProofSchemaServiceError> {
-        throw_if_org_not_matching_session(
+        throw_if_org_id_not_matching_session(
             &filter_params.filter.organisation_id,
             &*self.session_provider,
         )
@@ -117,7 +112,7 @@ impl ProofSchemaService {
         &self,
         request: CreateProofSchemaRequestDTO,
     ) -> Result<ProofSchemaId, ProofSchemaServiceError> {
-        throw_if_org_not_matching_session(&request.organisation_id, &*self.session_provider)
+        throw_if_org_id_not_matching_session(&request.organisation_id, &*self.session_provider)
             .error_while("checking session")?;
         validate_create_request(&request)?;
 
@@ -247,11 +242,8 @@ impl ProofSchemaService {
             .await
             .error_while("getting proof schema")?
             .ok_or(ProofSchemaServiceError::NotFound(*id))?;
-        throw_if_org_relation_not_matching_session(
-            schema.organisation.as_ref(),
-            &*self.session_provider,
-        )
-        .error_while("checking session")?;
+        throw_if_org_not_matching_session(schema.organisation.as_ref(), &*self.session_provider)
+            .error_while("checking session")?;
 
         let now = crate::clock::now_utc();
         self.proof_schema_repository
@@ -282,7 +274,7 @@ impl ProofSchemaService {
             .await
             .error_while("getting proof schema")?
             .ok_or(ProofSchemaServiceError::NotFound(id))?;
-        throw_if_org_relation_not_matching_session(
+        throw_if_org_not_matching_session(
             proof_schema.organisation.as_ref(),
             &*self.session_provider,
         )
@@ -299,7 +291,7 @@ impl ProofSchemaService {
         &self,
         request: ImportProofSchemaRequestDTO,
     ) -> Result<ImportProofSchemaResponseDTO, ProofSchemaServiceError> {
-        throw_if_org_not_matching_session(&request.organisation_id, &*self.session_provider)
+        throw_if_org_id_not_matching_session(&request.organisation_id, &*self.session_provider)
             .error_while("checking session")?;
         let organisation = self
             .organisation_repository

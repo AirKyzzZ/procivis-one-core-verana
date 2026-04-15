@@ -78,7 +78,11 @@ pub(crate) async fn prepare_trust_collection_info(
     let local_trust_collections = trust_collection_repository
         .list(TrustCollectionListQuery {
             filtering: Some(
-                TrustCollectionFilterValue::OrganisationId(organisation_id).condition(),
+                TrustCollectionFilterValue::OrganisationId {
+                    id: organisation_id,
+                    include_inherited_collections: false,
+                }
+                .condition(),
             ),
             ..Default::default()
         })
@@ -138,7 +142,11 @@ pub(crate) async fn set_active_trust_collections(
     let all_trust_collections = trust_collection_repository
         .list(TrustCollectionListQuery {
             filtering: Some(
-                TrustCollectionFilterValue::OrganisationId(organisation_id).condition(),
+                TrustCollectionFilterValue::OrganisationId {
+                    id: organisation_id,
+                    include_inherited_collections: false,
+                }
+                .condition(),
             ),
             ..Default::default()
         })

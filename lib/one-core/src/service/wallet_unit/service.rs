@@ -40,14 +40,14 @@ use crate::service::wallet_provider::dto::{
     ActivateWalletUnitRequestDTO, RegisterWalletUnitRequestDTO, RegisterWalletUnitResponseDTO,
 };
 use crate::service::wallet_unit::mapper::set_active_trust_collections;
-use crate::validator::throw_if_org_not_matching_session;
+use crate::validator::throw_if_org_id_not_matching_session;
 
 impl WalletUnitService {
     pub async fn holder_register(
         &self,
         request: HolderRegisterWalletUnitRequestDTO,
     ) -> Result<HolderWalletUnitRegisterResponseDTO, HolderWalletUnitError> {
-        throw_if_org_not_matching_session(&request.organisation_id, &*self.session_provider)
+        throw_if_org_id_not_matching_session(&request.organisation_id, &*self.session_provider)
             .error_while("checking session")?;
         let organisation = self
             .organisation_repository
@@ -256,7 +256,7 @@ impl WalletUnitService {
                     "Missing organisation".to_string(),
                 ))?;
 
-        throw_if_org_not_matching_session(&organisation.id, &*self.session_provider)
+        throw_if_org_id_not_matching_session(&organisation.id, &*self.session_provider)
             .error_while("checking session")?;
 
         let metadata = self
@@ -362,7 +362,7 @@ impl WalletUnitService {
                     "Missing organisation".to_string(),
                 ))?;
 
-        throw_if_org_not_matching_session(&organisation.id, &*self.session_provider)
+        throw_if_org_id_not_matching_session(&organisation.id, &*self.session_provider)
             .error_while("checking session")?;
 
         self.tx_manager

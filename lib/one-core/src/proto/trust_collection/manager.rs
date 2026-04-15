@@ -88,7 +88,11 @@ impl TrustCollectionManager for TrustCollectionManagerImpl {
                     .repository
                     .list(TrustCollectionListQuery {
                         filtering: Some(
-                            TrustCollectionFilterValue::OrganisationId(organisation_id).condition()
+                            TrustCollectionFilterValue::OrganisationId {
+                                id: organisation_id,
+                                include_inherited_collections: false,
+                            }
+                            .condition()
                                 & TrustCollectionFilterValue::Remote(true),
                         ),
                         ..Default::default()

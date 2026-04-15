@@ -2,14 +2,19 @@ use std::sync::Arc;
 
 use one_core::model::list_filter::{ComparisonType, ListFilterValue, ValueComparison};
 use one_core::model::list_query::ListPagination;
-use one_core::model::organisation::{Organisation, OrganisationRelations};
+use one_core::model::organisation::{
+    Organisation, OrganisationRelations, UpdateOrganisationRequest,
+};
 use one_core::model::trust_collection::{
     TrustCollection, TrustCollectionFilterValue, TrustCollectionListQuery, TrustCollectionRelations,
 };
-use one_core::repository::organisation_repository::MockOrganisationRepository;
+use one_core::repository::organisation_repository::{
+    MockOrganisationRepository, OrganisationRepository,
+};
 use one_core::repository::trust_collection_repository::TrustCollectionRepository;
 use sea_orm::DatabaseConnection;
 use shared_types::OrganisationId;
+use similar_asserts::assert_eq;
 use url::Url;
 use uuid::Uuid;
 
@@ -22,6 +27,7 @@ use crate::trust_collection::TrustCollectionProvider;
 struct TestSetup {
     pub db: DatabaseConnection,
     pub provider: TrustCollectionProvider,
+    pub organisation_repository: Arc<dyn OrganisationRepository>,
     pub org_id: OrganisationId,
 }
 
@@ -34,10 +40,11 @@ async fn setup() -> TestSetup {
     TestSetup {
         provider: TrustCollectionProvider {
             db: TransactionManagerImpl::new(db.clone()),
-            organisation_repository: Arc::new(MockOrganisationRepository::default()),
+            organisation_repository: data_layer.organisation_repository.clone(),
         },
         db,
         org_id,
+        organisation_repository: data_layer.organisation_repository,
     }
 }
 
@@ -65,7 +72,7 @@ async fn test_create_trust_collection() {
 
     let result = provider.create(collection).await;
     assert!(result.is_ok());
-    similar_asserts::assert_eq!(result.unwrap(), id);
+    assert_eq!(result.unwrap(), id);
 }
 
 #[tokio::test]
@@ -94,8 +101,8 @@ async fn test_get_trust_collection_success() {
 
     assert!(result.is_ok());
     let found = result.unwrap().unwrap();
-    similar_asserts::assert_eq!(found.id, id);
-    similar_asserts::assert_eq!(found.name, "test-collection");
+    assert_eq!(found.id, id);
+    assert_eq!(found.name, "test-collection");
 }
 
 #[tokio::test]
@@ -144,9 +151,9 @@ async fn test_list_trust_collection() {
 
     assert!(result.is_ok());
     let list = result.unwrap();
-    similar_asserts::assert_eq!(list.total_items, 2);
-    similar_asserts::assert_eq!(list.total_pages, 1);
-    similar_asserts::assert_eq!(list.values.len(), 2);
+    assert_eq!(list.total_items, 2);
+    assert_eq!(list.total_pages, 1);
+    assert_eq!(list.values.len(), 2);
 }
 
 #[tokio::test]
@@ -182,8 +189,8 @@ async fn test_list_trust_collection_with_name_filter() {
 
     assert!(result.is_ok());
     let list = result.unwrap();
-    similar_asserts::assert_eq!(list.total_items, 1);
-    similar_asserts::assert_eq!(list.values[0].name, "second-collection");
+    assert_eq!(list.total_items, 1);
+    assert_eq!(list.values[0].name, "second-collection");
 }
 
 #[tokio::test]
@@ -192,6 +199,7 @@ async fn test_list_trust_collection_with_organisation_filter() {
         db,
         provider,
         org_id,
+        ..
     } = setup().await;
 
     let other_org_id = insert_organisation_to_database(&db, None, None)
@@ -213,15 +221,76 @@ async fn test_list_trust_collection_with_organisation_filter() {
                 page: 0,
                 page_size: 10,
             }),
-            filtering: Some(TrustCollectionFilterValue::OrganisationId(org_id).condition()),
+            filtering: Some(
+                TrustCollectionFilterValue::OrganisationId {
+                    id: org_id,
+                    include_inherited_collections: false,
+                }
+                .condition(),
+            ),
             ..Default::default()
         })
         .await;
 
     assert!(result.is_ok());
     let list = result.unwrap();
-    similar_asserts::assert_eq!(list.total_items, 1);
-    similar_asserts::assert_eq!(list.values[0].organisation_id, org_id);
+    assert_eq!(list.total_items, 1);
+    assert_eq!(list.values[0].organisation_id, org_id);
+}
+
+#[tokio::test]
+async fn test_list_trust_collection_with_parent_organisation_filter() {
+    let TestSetup {
+        db,
+        provider,
+        organisation_repository,
+        org_id,
+    } = setup().await;
+
+    let parent_org = insert_organisation_to_database(&db, None, None)
+        .await
+        .unwrap();
+    organisation_repository
+        .update_organisation(UpdateOrganisationRequest {
+            id: org_id,
+            parent_organisation: Some(Some(parent_org)),
+            name: None,
+            deactivate: None,
+            wallet_provider: None,
+            wallet_provider_issuer: None,
+        })
+        .await
+        .unwrap();
+
+    let collection1 = dummy_trust_collection(org_id);
+    let collection2 = {
+        let mut c = dummy_trust_collection(parent_org);
+        c.name = "second-collection".to_string();
+        c
+    };
+    provider.create(collection1).await.unwrap();
+    provider.create(collection2).await.unwrap();
+
+    let result = provider
+        .list(TrustCollectionListQuery {
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 10,
+            }),
+            filtering: Some(
+                TrustCollectionFilterValue::OrganisationId {
+                    id: org_id,
+                    include_inherited_collections: true,
+                }
+                .condition(),
+            ),
+            ..Default::default()
+        })
+        .await;
+
+    assert!(result.is_ok());
+    let list = result.unwrap();
+    assert_eq!(list.total_items, 2);
 }
 
 #[tokio::test]
@@ -253,7 +322,7 @@ async fn test_list_trust_collection_filter_by_created_date() {
     assert!(result.is_ok());
     let list = result.unwrap();
     // dummy_date is 2005, created_date is set to dummy_date, so nothing is after it
-    similar_asserts::assert_eq!(list.total_items, 0);
+    assert_eq!(list.total_items, 0);
 }
 
 #[tokio::test]
@@ -280,9 +349,9 @@ async fn test_list_trust_collection_pagination() {
 
     assert!(result.is_ok());
     let list = result.unwrap();
-    similar_asserts::assert_eq!(list.total_items, 5);
-    similar_asserts::assert_eq!(list.total_pages, 3);
-    similar_asserts::assert_eq!(list.values.len(), 2);
+    assert_eq!(list.total_items, 5);
+    assert_eq!(list.total_pages, 3);
+    assert_eq!(list.values.len(), 2);
 }
 #[tokio::test]
 async fn test_get_trust_collection_with_organisation_relation() {
@@ -330,5 +399,5 @@ async fn test_get_trust_collection_with_organisation_relation() {
     assert!(result.is_ok());
     let found = result.unwrap().unwrap();
     assert!(found.organisation.is_some());
-    similar_asserts::assert_eq!(found.organisation.unwrap().name, "test-org");
+    assert_eq!(found.organisation.unwrap().name, "test-org");
 }

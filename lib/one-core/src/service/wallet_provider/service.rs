@@ -69,9 +69,7 @@ use crate::provider::revocation::model::{CredentialRevocationInfo, RevocationSta
 use crate::service::common_dto::ListQueryDTO;
 use crate::service::error::MissingProviderError;
 use crate::util::key_selection::KeyFilter;
-use crate::validator::{
-    throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
-};
+use crate::validator::{throw_if_org_id_not_matching_session, throw_if_org_not_matching_session};
 
 const WIA_JWT_TYPE: &str = "oauth-client-attestation+jwt";
 const WUA_JWT_TYPE: &str = "key-attestation+jwt";
@@ -98,11 +96,8 @@ impl WalletProviderService {
             .await
             .error_while("getting wallet unit")?
             .ok_or(WalletProviderError::MissingWalletUnit(*id))?;
-        throw_if_org_relation_not_matching_session(
-            result.organisation.as_ref(),
-            &*self.session_provider,
-        )
-        .error_while("checking session")?;
+        throw_if_org_not_matching_session(result.organisation.as_ref(), &*self.session_provider)
+            .error_while("checking session")?;
 
         Ok(result.into())
     }
@@ -116,7 +111,7 @@ impl WalletProviderService {
         &self,
         filter_params: ListQueryDTO<SortableWalletUnitColumn, WalletUnitFilterParamsDTO>,
     ) -> Result<GetWalletUnitListResponseDTO, WalletProviderError> {
-        throw_if_org_not_matching_session(
+        throw_if_org_id_not_matching_session(
             &filter_params.filter.organisation_id,
             &*self.session_provider,
         )

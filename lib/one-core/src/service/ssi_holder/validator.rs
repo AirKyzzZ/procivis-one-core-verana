@@ -10,7 +10,7 @@ use crate::provider::credential_formatter::model::FormatterCapabilities;
 use crate::provider::issuance_protocol::HolderBindingInput;
 use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::validator::throw_if_org_relation_not_matching_session;
+use crate::validator::throw_if_org_not_matching_session;
 
 pub(super) fn validate_credentials_match_session_organisation(
     credentials: &[Credential],
@@ -19,7 +19,7 @@ pub(super) fn validate_credentials_match_session_organisation(
     credentials
         .iter()
         .map(|cred| {
-            throw_if_org_relation_not_matching_session(
+            throw_if_org_not_matching_session(
                 cred.schema
                     .as_ref()
                     .ok_or(HolderServiceError::MappingError(format!(

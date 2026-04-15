@@ -50,9 +50,7 @@ use crate::provider::trust_list_subscriber::{
 use crate::repository::error::DataLayerError;
 use crate::service::common_dto::ListQueryDTO;
 use crate::service::error::MissingProviderError;
-use crate::validator::{
-    throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
-};
+use crate::validator::{throw_if_org_id_not_matching_session, throw_if_org_not_matching_session};
 
 impl IdentifierService {
     /// Returns details of an identifier
@@ -88,7 +86,7 @@ impl IdentifierService {
             .error_while("getting identifier")?
             .ok_or(IdentifierServiceError::NotFound(*id))?;
 
-        throw_if_org_relation_not_matching_session(
+        throw_if_org_not_matching_session(
             identifier.organisation.as_ref(),
             &*self.session_provider,
         )
@@ -106,7 +104,7 @@ impl IdentifierService {
         &self,
         filter_params: ListQueryDTO<SortableIdentifierColumn, IdentifierFilterParamsDTO>,
     ) -> Result<GetIdentifierListResponseDTO, IdentifierServiceError> {
-        throw_if_org_not_matching_session(
+        throw_if_org_id_not_matching_session(
             &filter_params.filter.organisation_id,
             &*self.session_provider,
         )
@@ -135,7 +133,7 @@ impl IdentifierService {
         &self,
         request: CreateIdentifierRequestDTO,
     ) -> Result<IdentifierId, IdentifierServiceError> {
-        throw_if_org_not_matching_session(&request.organisation_id, &*self.session_provider)
+        throw_if_org_id_not_matching_session(&request.organisation_id, &*self.session_provider)
             .error_while("checking session")?;
         let organisation = self
             .organisation_repository
@@ -417,7 +415,7 @@ impl IdentifierService {
         let Some(identifier) = identifier else {
             return Err(IdentifierServiceError::NotFound(*id));
         };
-        throw_if_org_relation_not_matching_session(
+        throw_if_org_not_matching_session(
             identifier.organisation.as_ref(),
             &*self.session_provider,
         )
