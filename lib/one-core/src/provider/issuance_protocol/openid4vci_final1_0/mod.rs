@@ -69,7 +69,7 @@ use crate::model::credential_schema::{
 use crate::model::did::{DidRelations, KeyRole};
 use crate::model::history::{
     History, HistoryAction, HistoryEntityType, HistoryMetadata, HistorySource,
-    WalletRelayingPartyMetadata,
+    WalletRelyingPartyMetadata,
 };
 use crate::model::holder_wallet_unit::HolderWalletUnit;
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierType};
@@ -968,8 +968,8 @@ impl OpenID4VCIFinal1_0 {
                 credential.id,
                 organisation.id,
                 registration_certificate.to_owned(),
-                Some(HistoryMetadata::WalletRelayingParty(
-                    WalletRelayingPartyMetadata {
+                Some(HistoryMetadata::WalletRelyingParty(
+                    WalletRelyingPartyMetadata {
                         name: relying_party_name.to_string(),
                         ..Default::default()
                     },

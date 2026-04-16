@@ -31,6 +31,7 @@ use crate::model::list_filter::{
 use crate::model::proof::{Proof, ProofClaim, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
 use crate::model::validity_credential::ValidityCredentialType;
+use crate::proto::trust_information::dto::TrustInformation;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::service::credential::dto::{
     CredentialAttestationBlobs, CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO,
@@ -175,6 +176,7 @@ pub(super) async fn get_verifier_proof_detail(
     proof: Proof,
     config: &CoreConfig,
     claims_removed_event: Option<History>,
+    trust_information: Option<TrustInformation>,
     validity_credential_repository: &dyn ValidityCredentialRepository,
 ) -> Result<ProofDetailResponseDTO, ProofServiceError> {
     let schema = proof
@@ -445,6 +447,7 @@ pub(super) async fn get_verifier_proof_detail(
         claims_removed_at: claims_removed_event.map(|event| event.created_date),
         profile: list_item_response.profile,
         webhook_destination_url: list_item_response.webhook_destination_url,
+        trust_information,
     })
 }
 
@@ -569,6 +572,7 @@ pub(super) async fn get_holder_proof_detail(
     proof: Proof,
     config: &CoreConfig,
     claims_removed_event: Option<History>,
+    trust_information: Option<TrustInformation>,
     validity_credential_repository: &dyn ValidityCredentialRepository,
 ) -> Result<ProofDetailResponseDTO, ProofServiceError> {
     let organisation_id = [
@@ -699,6 +703,7 @@ pub(super) async fn get_holder_proof_detail(
         claims_removed_at: claims_removed_event.map(|event| event.created_date),
         profile: list_item_response.profile,
         webhook_destination_url: list_item_response.webhook_destination_url,
+        trust_information,
     })
 }
 

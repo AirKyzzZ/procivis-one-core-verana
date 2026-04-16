@@ -21,7 +21,7 @@ use crate::model::blob::{Blob, BlobType};
 use crate::model::did::KeyRole;
 use crate::model::history::{
     History, HistoryAction, HistoryEntityType, HistoryMetadata, HistorySource,
-    WalletRelayingPartyMetadata,
+    WalletRelyingPartyMetadata,
 };
 use crate::proto::certificate_validator::{CertificateValidationOptions, ParsedCertificate};
 use crate::proto::jwt::Jwt;
@@ -683,8 +683,8 @@ impl OpenID4VPFinal1_0 {
                 proof_id,
                 organisation_id,
                 used_reg_cert,
-                Some(HistoryMetadata::WalletRelayingParty(
-                    WalletRelayingPartyMetadata {
+                Some(HistoryMetadata::WalletRelyingParty(
+                    WalletRelyingPartyMetadata {
                         name: relying_party_name,
                         purpose,
                     },
@@ -735,8 +735,8 @@ impl OpenID4VPFinal1_0 {
             proof_id,
             organisation_id,
             info.jwt,
-            Some(HistoryMetadata::WalletRelayingParty(
-                WalletRelayingPartyMetadata {
+            Some(HistoryMetadata::WalletRelyingParty(
+                WalletRelyingPartyMetadata {
                     name: info.payload.custom.data.trade_name.unwrap_or_default(),
                     purpose,
                 },

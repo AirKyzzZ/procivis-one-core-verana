@@ -1,7 +1,10 @@
 use std::sync::Arc;
 
 use HistoryAction::WrpAcReceived;
-use shared_types::{CredentialId, EntityId};
+use dcql::CredentialQueryId;
+use shared_types::EntityId;
+use shared_types::i18n::I18nString;
+use time::OffsetDateTime;
 
 use crate::error::ContextWithErrorCode;
 use crate::model::common::SortDirection;
@@ -13,7 +16,9 @@ use crate::model::history::{
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListSorting;
 use crate::proto::jwt::Jwt;
-use crate::proto::trust_information::dto::{TrustInformationDTO, WalletRelyingPartyDetails};
+use crate::proto::trust_information::dto::{
+    TrustInformation, TrustPurpose, WalletRelyingPartyDetails,
+};
 use crate::proto::trust_information::{Error, TrustDetails, TrustInformationProvider};
 use crate::provider::blob_storage_provider::{BlobStorage, BlobStorageProvider, BlobStorageType};
 use crate::repository::history_repository::HistoryRepository;
@@ -146,21 +151,36 @@ impl TrustInformationProviderImpl {
 
 #[async_trait::async_trait]
 impl TrustInformationProvider for TrustInformationProviderImpl {
-    async fn get_trust_information_by_credential_id(
+    async fn get_trust_information(
         &self,
-        credential_id: CredentialId,
-    ) -> Result<Option<TrustInformationDTO>, Error> {
-        self.get_wrp_history_entries(credential_id, vec![WrpRcReceived, WrpNrReceived])
+        entity_id: EntityId,
+    ) -> Result<Option<TrustInformation>, Error> {
+        self.get_wrp_history_entries(entity_id, vec![WrpRcReceived, WrpNrReceived])
             .await?
             .values
-            .first()
-            .map(History::trust_information)
+            .into_iter()
+            .nth(0)
+            .map(trust_information_from_history)
+            .transpose()
+    }
+
+    async fn get_trust_purpose(
+        &self,
+        entity_id: EntityId,
+        query_id: &CredentialQueryId,
+    ) -> Result<Option<TrustPurpose>, Error> {
+        self.get_wrp_history_entries(entity_id, vec![WrpRcReceived, WrpNrReceived])
+            .await?
+            .values
+            .into_iter()
+            .nth(0)
+            .and_then(|h| trust_purpose_from_history(h, query_id).transpose())
             .transpose()
     }
 
     async fn get_trust_detail(&self, id: &EntityId) -> Result<Option<TrustDetails>, Error> {
         let history = self
-            .get_wrp_history_entries(id, vec![WrpRcReceived, WrpNrReceived, WrpAcReceived])
+            .get_wrp_history_entries(*id, vec![WrpRcReceived, WrpNrReceived, WrpAcReceived])
             .await?;
         if history.values.is_empty() {
             // No trust info
@@ -185,25 +205,67 @@ impl TrustInformationProvider for TrustInformationProviderImpl {
     }
 }
 
-impl History {
-    fn trust_information(&self) -> Result<TrustInformationDTO, Error> {
-        self.metadata
-            .as_ref()
-            .ok_or_else(|| Error::MissingHistoryMetadata(self.id, self.action))
-            .and_then(extract_rp_name_metadata)
-            .map(|name| TrustInformationDTO {
-                received_at: self.created_date,
-                name,
-            })
+fn trust_information_from_history(history: History) -> Result<TrustInformation, Error> {
+    history
+        .metadata
+        .ok_or_else(|| {
+            Error::MissingHistoryMetadata(
+                history.id,
+                history.entity_type,
+                history.entity_id,
+                history.action,
+            )
+        })
+        .and_then(|hm| trust_information_from_history_metadata(hm, history.created_date))
+}
+
+fn trust_information_from_history_metadata(
+    history_metadata: HistoryMetadata,
+    created_date: OffsetDateTime,
+) -> Result<TrustInformation, Error> {
+    match history_metadata {
+        HistoryMetadata::WalletRelyingParty(metadata) => Ok(TrustInformation {
+            received_at: created_date,
+            name: metadata.name,
+        }),
+        _ => Err(Error::InvalidMetadataType(
+            history_metadata.into(),
+            "WalletRelyingParty",
+        )),
     }
 }
 
-fn extract_rp_name_metadata(metadata: &HistoryMetadata) -> Result<String, Error> {
-    match metadata {
-        HistoryMetadata::WalletRelayingParty(metadata) => Ok(metadata.name.clone()),
+fn trust_purpose_from_history(
+    history: History,
+    query_id: &CredentialQueryId,
+) -> Result<Option<TrustPurpose>, Error> {
+    history
+        .metadata
+        .ok_or_else(|| {
+            Error::MissingHistoryMetadata(
+                history.id,
+                history.entity_type,
+                history.entity_id,
+                history.action,
+            )
+        })
+        .and_then(|hm| trust_purpose_from_history_metadata(hm, query_id))
+}
+
+fn trust_purpose_from_history_metadata(
+    history_metadata: HistoryMetadata,
+    query_id: &CredentialQueryId,
+) -> Result<Option<TrustPurpose>, Error> {
+    match history_metadata {
+        HistoryMetadata::WalletRelyingParty(mut metadata) => Ok(metadata
+            .purpose
+            .remove(query_id)
+            .map(|purpose| TrustPurpose {
+                purpose: I18nString(purpose.into_iter().map(|p| (p.lang, p.value)).collect()),
+            })),
         _ => Err(Error::InvalidMetadataType(
-            metadata.into(),
-            "WalletRelayingParty",
+            history_metadata.into(),
+            "WalletRelyingParty",
         )),
     }
 }

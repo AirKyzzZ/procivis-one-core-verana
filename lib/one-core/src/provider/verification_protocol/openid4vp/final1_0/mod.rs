@@ -29,6 +29,7 @@ use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::http_client::HttpClient;
 use crate::proto::session_provider::SessionProvider;
+use crate::proto::trust_information::TrustInformationProvider;
 use crate::proto::wrp_validator::WRPValidator;
 use crate::provider::blob_storage_provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
@@ -95,6 +96,7 @@ pub(crate) struct OpenID4VPFinal1_0 {
     session_provider: Arc<dyn SessionProvider>,
     wrp_validator: Arc<dyn WRPValidator>,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
+    trust_information_provider: Arc<dyn TrustInformationProvider>,
     base_url: Option<String>,
     params: Params,
     config: Arc<CoreConfig>,
@@ -119,6 +121,7 @@ impl OpenID4VPFinal1_0 {
         session_provider: Arc<dyn SessionProvider>,
         wrp_validator: Arc<dyn WRPValidator>,
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
+        trust_information_provider: Arc<dyn TrustInformationProvider>,
         client: Arc<dyn HttpClient>,
         params: Params,
         config: Arc<CoreConfig>,
@@ -138,6 +141,7 @@ impl OpenID4VPFinal1_0 {
             params,
             config,
             blob_storage_provider,
+            trust_information_provider,
         }
     }
 
@@ -702,6 +706,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
             proof,
             storage_access,
             &*self.credential_formatter_provider,
+            &*self.trust_information_provider,
             &self.config,
         )
         .await

@@ -1,7 +1,7 @@
 use one_core::model::history::{
     HistoryAction, HistoryEntityType, HistorySearchEnum, SortableHistoryColumn,
 };
-use one_core::service::history::dto::{GetHistoryListResponseDTO, WalletRelayingPartyMetadataDTO};
+use one_core::service::history::dto::{GetHistoryListResponseDTO, WalletRelyingPartyMetadataDTO};
 use one_dto_mapper::{From, Into, convert_inner};
 
 use super::backup::UnexportableEntitiesBindingDTO;
@@ -125,8 +125,8 @@ pub enum HistoryMetadataBinding {
         value: HistoryErrorMetadataBindingDTO,
     },
     WalletUnitJWT(String),
-    WalletRelayingParty {
-        value: WalletRelayingPartyMetadataBindingDTO,
+    WalletRelyingParty {
+        value: WalletRelyingPartyMetadataBindingDTO,
     },
 }
 
@@ -145,9 +145,9 @@ pub struct HistoryErrorMetadataBindingDTO {
 }
 
 #[derive(Debug, Clone, From, uniffi::Record)]
-#[from(WalletRelayingPartyMetadataDTO)]
-#[uniffi(name = "WalletRelayingPartyMetadata")]
-pub struct WalletRelayingPartyMetadataBindingDTO {
+#[from(WalletRelyingPartyMetadataDTO)]
+#[uniffi(name = "WalletRelyingPartyMetadata")]
+pub struct WalletRelyingPartyMetadataBindingDTO {
     pub name: String,
 }
 

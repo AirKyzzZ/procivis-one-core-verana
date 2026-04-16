@@ -20,6 +20,7 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::proof::Proof;
 use crate::proto::openid4vp_proof_validator::validator::get_trusted_akis;
+use crate::proto::trust_information::TrustInformationProvider;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::verification_protocol::dto::{
@@ -144,6 +145,7 @@ pub(crate) async fn get_presentation_definition_v2(
     proof: &Proof,
     storage_access: &StorageAccess,
     formatter_provider: &dyn CredentialFormatterProvider,
+    trust_information_provider: &dyn TrustInformationProvider,
     config: &CoreConfig,
 ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
     let organisation = proof
@@ -291,6 +293,10 @@ pub(crate) async fn get_presentation_definition_v2(
                 )?,
             );
         } else {
+            let purpose = trust_information_provider
+                .get_trust_purpose(proof.id.into(), &query.id)
+                .await
+                .error_while("resolving trust purpose")?;
             credential_queries.insert(
                 query.id.to_string(),
                 CredentialQueryResponseDTO {
@@ -298,6 +304,7 @@ pub(crate) async fn get_presentation_definition_v2(
                     credential_or_failure_hint:
                         ApplicableCredentialOrFailureHintEnum::ApplicableCredentials {
                             applicable_credentials,
+                            purpose: purpose.map(|p| p.purpose),
                         },
                 },
             );

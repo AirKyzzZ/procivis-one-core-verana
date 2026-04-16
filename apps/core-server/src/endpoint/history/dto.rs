@@ -103,7 +103,7 @@ pub(crate) enum HistoryMetadataRestEnum {
     ErrorMetadata(#[try_from(infallible)] HistoryErrorMetadataRestDTO),
     WalletUnitJWT(#[try_from(infallible)] String),
     External(#[try_from(infallible)] serde_json::Value),
-    WalletRelayingParty(#[try_from(infallible)] WalletRelayingPartyMetadataRestDTO),
+    WalletRelyingParty(#[try_from(infallible)] WalletRelyingPartyMetadataRestDTO),
 }
 
 #[derive(Debug, Serialize, ToSchema, TryFrom)]
@@ -124,8 +124,8 @@ pub(crate) struct UnexportableEntitiesResponseRestDTO {
 }
 
 #[derive(Debug, Clone, Serialize, ToSchema, From)]
-#[from(one_core::service::history::dto::WalletRelayingPartyMetadataDTO)]
-pub(crate) struct WalletRelayingPartyMetadataRestDTO {
+#[from(one_core::service::history::dto::WalletRelyingPartyMetadataDTO)]
+pub(crate) struct WalletRelyingPartyMetadataRestDTO {
     pub name: String,
 }
 

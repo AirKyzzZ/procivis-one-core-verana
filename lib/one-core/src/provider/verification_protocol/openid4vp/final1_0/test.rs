@@ -29,6 +29,7 @@ use crate::proto::http_client::{
     Method, MockHttpClient, Request, RequestBuilder, Response, StatusCode,
 };
 use crate::proto::session_provider::NoSessionProvider;
+use crate::proto::trust_information::MockTrustInformationProvider;
 use crate::proto::wrp_validator::MockWRPValidator;
 use crate::provider::blob_storage_provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
@@ -72,6 +73,7 @@ struct TestInputs {
     pub history_repository: MockHistoryRepository,
     pub wrp_validator: MockWRPValidator,
     pub blob_storage_provider: MockBlobStorageProvider,
+    pub trust_information_provider: MockTrustInformationProvider,
     pub params: Option<Params>,
 }
 
@@ -88,6 +90,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VPFinal1_0 {
         Arc::new(NoSessionProvider),
         Arc::new(inputs.wrp_validator),
         Arc::new(inputs.blob_storage_provider),
+        Arc::new(inputs.trust_information_provider),
         Arc::new(inputs.http_client),
         inputs.params.unwrap_or(generic_params()),
         Arc::new(generic_config().core),

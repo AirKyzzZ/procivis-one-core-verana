@@ -4,7 +4,7 @@ use std::vec;
 
 use mockall::predicate::*;
 use serde_json::json;
-use shared_types::CredentialId;
+use shared_types::{CredentialId, EntityId};
 use similar_asserts::assert_eq;
 use time::Duration;
 use uuid::Uuid;
@@ -34,7 +34,7 @@ use crate::proto::notification_scheduler::MockNotificationScheduler;
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::proto::session_provider::{NoSessionProvider, SessionProvider};
 use crate::proto::trust_information::MockTrustInformationProvider;
-use crate::proto::trust_information::dto::TrustInformationDTO;
+use crate::proto::trust_information::dto::TrustInformation;
 use crate::provider::blob_storage_provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
@@ -4922,14 +4922,15 @@ async fn test_credential_ops_session_org_mismatch() {
 
 fn mock_trust_information_provider(
     credential: &Credential,
-    trust_information_dto: Option<TrustInformationDTO>,
+    trust_information_dto: Option<TrustInformation>,
 ) -> MockTrustInformationProvider {
     let mut trust_information_provider = MockTrustInformationProvider::default();
+    let entity_id: EntityId = credential.id.into();
 
     trust_information_provider
-        .expect_get_trust_information_by_credential_id()
+        .expect_get_trust_information()
         .times(1)
-        .with(eq(credential.id))
+        .with(eq(entity_id))
         .returning(move |_| Ok(trust_information_dto.clone()));
     trust_information_provider
 }

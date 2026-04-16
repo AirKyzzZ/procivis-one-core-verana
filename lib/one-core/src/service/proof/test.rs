@@ -6,7 +6,7 @@ use mockall::Sequence;
 use mockall::predicate::*;
 use rstest::rstest;
 use secrecy::SecretSlice;
-use shared_types::{InteractionId, ProofId};
+use shared_types::{EntityId, InteractionId, ProofId};
 use similar_asserts::assert_eq;
 use standardized_types::jwk::{JwkUse, PublicJwk, PublicJwkEc};
 use uuid::Uuid;
@@ -56,6 +56,7 @@ use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::proto::session_provider::{NoSessionProvider, SessionProvider};
 use crate::proto::transaction_manager::NoTransactionManager;
 use crate::proto::trust_information::MockTrustInformationProvider;
+use crate::proto::trust_information::dto::TrustInformation;
 use crate::provider::blob_storage_provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::model::FormatterCapabilities;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
@@ -546,6 +547,7 @@ async fn test_get_proof_exists() {
         proof_repository,
         history_repository,
         config: generic_config().core,
+        trust_information_provider: mock_trust_information_provider(&proof, None),
         ..Default::default()
     });
 
@@ -775,6 +777,7 @@ async fn test_get_proof_with_array_holder() {
         proof_repository,
         history_repository,
         config: generic_config().core,
+        trust_information_provider: mock_trust_information_provider(&proof, None),
         ..Default::default()
     });
 
@@ -1040,6 +1043,7 @@ async fn test_get_proof_with_array_in_object_holder() {
         proof_repository,
         history_repository,
         config: generic_config().core,
+        trust_information_provider: mock_trust_information_provider(&proof, None),
         ..Default::default()
     });
 
@@ -1320,6 +1324,7 @@ async fn test_get_proof_with_object_array_holder() {
         proof_repository,
         history_repository,
         config: generic_config().core,
+        trust_information_provider: mock_trust_information_provider(&proof, None),
         ..Default::default()
     });
 
@@ -1583,6 +1588,7 @@ async fn test_get_proof_with_array() {
         proof_repository,
         history_repository,
         config: generic_config().core,
+        trust_information_provider: mock_trust_information_provider(&proof, None),
         ..Default::default()
     });
 
@@ -1855,6 +1861,7 @@ async fn test_get_proof_with_array_in_object() {
         proof_repository,
         history_repository,
         config: generic_config().core,
+        trust_information_provider: mock_trust_information_provider(&proof, None),
         ..Default::default()
     });
 
@@ -2143,6 +2150,7 @@ async fn test_get_proof_with_object_array() {
         proof_repository,
         history_repository,
         config: generic_config().core,
+        trust_information_provider: mock_trust_information_provider(&proof, None),
         ..Default::default()
     });
 
@@ -4535,4 +4543,19 @@ async fn test_proof_ops_session_org_mismatch() {
         })
         .await;
     assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
+}
+
+fn mock_trust_information_provider(
+    proof: &Proof,
+    trust_information_dto: Option<TrustInformation>,
+) -> MockTrustInformationProvider {
+    let mut trust_information_provider = MockTrustInformationProvider::default();
+    let entity_id: EntityId = proof.id.into();
+
+    trust_information_provider
+        .expect_get_trust_information()
+        .times(1)
+        .with(eq(entity_id))
+        .returning(move |_| Ok(trust_information_dto.clone()));
+    trust_information_provider
 }

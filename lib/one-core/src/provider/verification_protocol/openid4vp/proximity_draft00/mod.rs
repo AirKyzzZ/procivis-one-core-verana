@@ -43,6 +43,7 @@ use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::key_verification::KeyVerification;
 use crate::proto::mqtt_client::MqttClient;
+use crate::proto::trust_information::TrustInformationProvider;
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -114,6 +115,7 @@ pub struct OpenID4VPProximityDraft00 {
     proof_repository: Arc<dyn ProofRepository>,
     certificate_validator: Arc<dyn CertificateValidator>,
     identifier_creator: Arc<dyn IdentifierCreator>,
+    trust_information_provider: Arc<dyn TrustInformationProvider>,
     config: Arc<CoreConfig>,
     params: OpenID4VPProximityDraft00Params,
 }
@@ -133,6 +135,7 @@ impl OpenID4VPProximityDraft00 {
         key_provider: Arc<dyn KeyProvider>,
         certificate_validator: Arc<dyn CertificateValidator>,
         identifier_creator: Arc<dyn IdentifierCreator>,
+        trust_information_provider: Arc<dyn TrustInformationProvider>,
         ble: Option<BleWaiter>,
     ) -> Self {
         let url_scheme = params.url_scheme.clone();
@@ -166,6 +169,7 @@ impl OpenID4VPProximityDraft00 {
             proof_repository,
             certificate_validator,
             identifier_creator,
+            trust_information_provider,
             config,
             params,
         }
@@ -613,6 +617,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
             proof,
             storage_access,
             &*self.credential_formatter_provider,
+            &*self.trust_information_provider,
             &self.config,
         )
         .await

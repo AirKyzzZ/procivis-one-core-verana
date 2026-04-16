@@ -1,7 +1,7 @@
 use one_core::model::credential::{
     CredentialListIncludeEntityTypeEnum, ExactCredentialFilterColumn, SortableCredentialColumn,
 };
-use one_core::proto::trust_information::dto::TrustInformationDTO;
+use one_core::proto::trust_information::dto::TrustInformation;
 use one_core::service::credential::dto::{
     CreateCredentialRequestDTO, CredentialFilterParamsDTO, CredentialListItemResponseDTO,
     CredentialRequestClaimDTO, CredentialRevocationCheckResponseDTO, CredentialRole,
@@ -172,7 +172,7 @@ pub struct WalletUnitAttestationRestDTO {
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(TrustInformationDTO)]
+#[from(TrustInformation)]
 #[serde(rename_all = "camelCase")]
 pub struct TrustInformationRestDTO {
     received_at: OffsetDateTime,

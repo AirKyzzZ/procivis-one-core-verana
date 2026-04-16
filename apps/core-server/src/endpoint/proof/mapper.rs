@@ -11,8 +11,10 @@ impl TryFrom<ApplicableCredentialOrFailureHintEnum> for ApplicableCredentialOrFa
         Ok(match value {
             ApplicableCredentialOrFailureHintEnum::ApplicableCredentials {
                 applicable_credentials,
+                purpose,
             } => Self::ApplicableCredentials {
                 applicable_credentials: try_convert_inner(applicable_credentials)?,
+                purpose,
             },
             ApplicableCredentialOrFailureHintEnum::FailureHint { failure_hint } => {
                 Self::FailureHint {

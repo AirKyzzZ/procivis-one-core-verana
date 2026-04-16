@@ -628,6 +628,7 @@ pub(crate) struct CredentialQueryResponseBindingDTO {
 pub(crate) enum ApplicableCredentialOrFailureHintBindingEnum {
     ApplicableCredentials {
         applicable_credentials: Vec<PresentationDefinitionV2CredentialDetailBindingDTO>,
+        purpose: Option<HashMap<String, String>>,
     },
     FailureHint {
         failure_hint: CredentialQueryFailureHintResponseBindingDTO,

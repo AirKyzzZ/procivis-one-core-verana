@@ -359,7 +359,7 @@ impl CredentialService {
 
         let trust_information = self
             .trust_information_provider
-            .get_trust_information_by_credential_id(*credential_id)
+            .get_trust_information((*credential_id).into())
             .await
             .error_while("getting trust information")?;
 

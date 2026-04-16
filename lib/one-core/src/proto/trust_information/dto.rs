@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use shared_types::i18n::I18nString;
 use time::OffsetDateTime;
 
 use crate::proto::jwt::model::JWTPayload;
@@ -8,9 +9,15 @@ use crate::util::access_cert_parser::EtsiParsedAccessCert;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct TrustInformationDTO {
+pub struct TrustInformation {
     pub received_at: OffsetDateTime,
     pub name: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrustPurpose {
+    pub purpose: I18nString,
 }
 
 pub(crate) enum TrustDetails {

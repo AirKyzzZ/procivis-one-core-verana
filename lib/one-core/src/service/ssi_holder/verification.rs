@@ -1,7 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use ApplicableCredentialOrFailureHintEnum::ApplicableCredentials;
 use itertools::Itertools;
 use shared_types::{ClaimId, CredentialId, InteractionId, ProofId};
 use url::Url;
@@ -36,10 +35,11 @@ use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::CredentialPresentation;
 use crate::provider::issuance_protocol::deserialize_interaction_data;
 use crate::provider::verification_protocol::VerificationProtocol;
+use crate::provider::verification_protocol::dto::ApplicableCredentialOrFailureHintEnum::ApplicableCredentials;
 use crate::provider::verification_protocol::dto::{
-    ApplicableCredentialOrFailureHintEnum, CredentialDetailClaimExtResponseDTO,
-    FormattedCredentialPresentation, InvitationResponseDTO, PresentationDefinitionV2ResponseDTO,
-    PresentationDefinitionVersion, PresentationReference, UpdateResponse,
+    CredentialDetailClaimExtResponseDTO, FormattedCredentialPresentation, InvitationResponseDTO,
+    PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion, PresentationReference,
+    UpdateResponse,
 };
 use crate::provider::verification_protocol::openid4vp::model::OpenID4VPHolderInteractionData;
 use crate::service::credential::dto::{
@@ -745,6 +745,7 @@ fn get_credential_paths_to_present(
 
     let ApplicableCredentials {
         applicable_credentials,
+        ..
     } = &possible_selections.credential_or_failure_hint
     else {
         return Err(HolderServiceError::InvalidPresentationSubmission {

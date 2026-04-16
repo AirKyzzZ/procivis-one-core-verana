@@ -472,6 +472,7 @@ impl OneCore {
             session_provider.clone(),
             wrp_validator.clone(),
             blob_storage_provider.clone(),
+            trust_information_provider.clone(),
         )?;
 
         let config = Arc::new(config);

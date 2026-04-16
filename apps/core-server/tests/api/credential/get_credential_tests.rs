@@ -1,7 +1,7 @@
 use one_core::model::blob::BlobType;
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential::{CredentialRole, CredentialStateEnum};
-use one_core::model::history::{HistoryAction, HistoryMetadata, WalletRelayingPartyMetadata};
+use one_core::model::history::{HistoryAction, HistoryMetadata, WalletRelyingPartyMetadata};
 use one_core::service::credential::dto::WalletInstanceAttestationDTO;
 use similar_asserts::assert_eq;
 use sql_data_provider::test_utilities::get_dummy_date;
@@ -113,8 +113,8 @@ async fn test_get_credential_with_trust_information_success() {
             TestingHistoryParams {
                 action: Some(HistoryAction::WrpRcReceived),
                 entity_id: Some(credential.id.into()),
-                metadata: Some(HistoryMetadata::WalletRelayingParty(
-                    WalletRelayingPartyMetadata {
+                metadata: Some(HistoryMetadata::WalletRelyingParty(
+                    WalletRelyingPartyMetadata {
                         name: "Test RP".to_string(),
                         ..Default::default()
                     },

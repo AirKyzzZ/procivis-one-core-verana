@@ -80,6 +80,96 @@ async fn test_get_presentation_definition_2_simple_credential_success() {
 }
 
 #[tokio::test]
+async fn test_get_presentation_definition_2_trust_purpose_success() {
+    // GIVEN
+    let (context, org, _, identifier, key) = TestContext::new_with_did(None).await;
+    let schema = complex_sd_jwt_vc_credential_schema(&context, &org).await;
+    let query_id: dcql::CredentialQueryId = "test_query_id".into();
+    let claims = vec![claim_data(
+        "required_claim",
+        "required_claim",
+        Some("value"),
+        true,
+        &schema,
+    )];
+    let credential = create_credential(
+        &context,
+        &identifier,
+        &schema,
+        claims,
+        CredentialStateEnum::Accepted,
+    )
+    .await;
+
+    let credential_query = CredentialQuery::sd_jwt_vc(vec![schema.schema_id.clone()])
+        .id(query_id.clone())
+        .claims(vec![
+            ClaimQuery::builder()
+                .path(vec!["required_claim".to_string()])
+                .build(),
+        ])
+        .build();
+    let dcql_query = DcqlQuery::builder()
+        .credentials(vec![credential_query])
+        .build();
+    let proof = proof_for_dcql_query(
+        &context,
+        &org,
+        &identifier,
+        key,
+        &dcql_query,
+        "OPENID4VP_FINAL1",
+    )
+    .await;
+
+    let mut purpose = std::collections::HashMap::new();
+    purpose.insert(
+        query_id,
+        vec![standardized_types::etsi_119_602::MultiLangString {
+            lang: "en".to_string(),
+            value: "Test trust purpose".to_string(),
+        }],
+    );
+
+    context
+        .db
+        .histories
+        .create(
+            &org,
+            crate::utils::db_clients::histories::TestingHistoryParams {
+                action: Some(one_core::model::history::HistoryAction::WrpRcReceived),
+                entity_id: Some(proof.id.into()),
+                entity_type: Some(one_core::model::history::HistoryEntityType::Proof),
+                metadata: Some(
+                    one_core::model::history::HistoryMetadata::WalletRelyingParty(
+                        one_core::model::history::WalletRelyingPartyMetadata {
+                            name: "Test RP".to_string(),
+                            purpose,
+                        },
+                    ),
+                ),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .proofs
+        .presentation_definition_v2(proof.id)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let body = resp.json_value().await;
+    body["credentialQueries"]["test_query_id"]["applicableCredentials"][0]["id"]
+        .assert_eq(&credential.id);
+    body["credentialQueries"]["test_query_id"]["purpose"]["en"]
+        .assert_eq(&"Test trust purpose".to_string());
+}
+
+#[tokio::test]
 async fn test_get_presentation_definition_2_claim_filtering_success() {
     // GIVEN
     let (context, org, _, identifier, key) = TestContext::new_with_did(None).await;

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use serde::Serialize;
+use shared_types::i18n::I18nString;
 use shared_types::{CredentialId, InteractionId};
 use strum::{AsRefStr, Display, EnumString};
 use time::OffsetDateTime;
@@ -162,6 +163,7 @@ pub struct CredentialQueryResponseDTO {
 #[derive(Clone, Debug)]
 pub enum ApplicableCredentialOrFailureHintEnum {
     ApplicableCredentials {
+        purpose: Option<I18nString>,
         applicable_credentials:
             Vec<CredentialDetailResponseDTO<CredentialDetailClaimExtResponseDTO>>,
     },

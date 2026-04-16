@@ -32,7 +32,7 @@ use crate::model::list_filter::{
     ValueComparison,
 };
 use crate::model::validity_credential::ValidityCredential;
-use crate::proto::trust_information::dto::TrustInformationDTO;
+use crate::proto::trust_information::dto::TrustInformation;
 use crate::provider::credential_formatter::mdoc_formatter;
 
 pub(crate) fn credential_detail_response_from_model(
@@ -40,7 +40,7 @@ pub(crate) fn credential_detail_response_from_model(
     config: &CoreConfig,
     validity_credential: Option<ValidityCredential>,
     attestation: CredentialAttestationBlobs,
-    trust_information: Option<TrustInformationDTO>,
+    trust_information: Option<TrustInformation>,
 ) -> Result<CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>, CredentialServiceError> {
     let schema = value.schema.ok_or(CredentialServiceError::MappingError(
         "credential_schema is None".to_string(),

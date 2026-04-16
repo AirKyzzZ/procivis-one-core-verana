@@ -171,11 +171,18 @@ impl ProofService {
             .into_iter()
             .next();
 
+        let trust_information = self
+            .trust_information_provider
+            .get_trust_information(proof.id.into())
+            .await
+            .error_while("getting trust information")?;
+
         if proof.schema.is_some() {
             get_verifier_proof_detail(
                 proof,
                 &self.config,
                 history_event,
+                trust_information,
                 &*self.validity_credential_repository,
             )
             .await
@@ -184,6 +191,7 @@ impl ProofService {
                 proof,
                 &self.config,
                 history_event,
+                trust_information,
                 &*self.validity_credential_repository,
             )
             .await

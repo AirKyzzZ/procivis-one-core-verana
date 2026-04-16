@@ -21,7 +21,7 @@ pub enum HistoryMetadata {
     ErrorMetadata(HistoryErrorMetadata),
     WalletUnitJWT(String),
     External(serde_json::Value),
-    WalletRelayingParty(WalletRelayingPartyMetadata),
+    WalletRelyingParty(WalletRelyingPartyMetadata),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -31,7 +31,7 @@ pub struct HistoryErrorMetadata {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct WalletRelayingPartyMetadata {
+pub struct WalletRelyingPartyMetadata {
     pub name: String,
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub purpose: HashMap<dcql::CredentialQueryId, Vec<MultiLangString>>,

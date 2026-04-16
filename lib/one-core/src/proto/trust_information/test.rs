@@ -1,12 +1,14 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use similar_asserts::assert_eq;
+use standardized_types::etsi_119_602::MultiLangString;
 use time::macros::datetime;
 use uuid::Uuid;
 
 use crate::model::history::{
     GetHistoryList, History, HistoryAction, HistoryEntityType, HistoryMetadata, HistorySource,
-    WalletRelayingPartyMetadata,
+    WalletRelyingPartyMetadata,
 };
 use crate::proto::trust_information::TrustInformationProvider;
 use crate::proto::trust_information::provider::TrustInformationProviderImpl;
@@ -30,10 +32,13 @@ fn dummy_history(action: HistoryAction, metadata: Option<HistoryMetadata>) -> Hi
     }
 }
 
-fn rp_metadata(name: &str) -> HistoryMetadata {
-    HistoryMetadata::WalletRelayingParty(WalletRelayingPartyMetadata {
+fn wrp_metadata(
+    name: &str,
+    purpose: HashMap<dcql::CredentialQueryId, Vec<MultiLangString>>,
+) -> HistoryMetadata {
+    HistoryMetadata::WalletRelyingParty(WalletRelyingPartyMetadata {
         name: name.to_string(),
-        ..Default::default()
+        purpose,
     })
 }
 
@@ -46,6 +51,7 @@ fn provider(history_repository: MockHistoryRepository) -> TrustInformationProvid
 
 #[tokio::test]
 async fn test_find_trust_information_by_credential_id_success_rc() {
+    // given
     let mut history_repository = MockHistoryRepository::new();
     let credential_id = Uuid::new_v4().into();
     let created_date = datetime!(2023-01-01 12:00 UTC);
@@ -57,7 +63,10 @@ async fn test_find_trust_information_by_credential_id_success_rc() {
             Ok(GetHistoryList {
                 values: vec![History {
                     created_date,
-                    ..dummy_history(HistoryAction::WrpRcReceived, Some(rp_metadata("Test RP")))
+                    ..dummy_history(
+                        HistoryAction::WrpRcReceived,
+                        Some(wrp_metadata("Test RP", Default::default())),
+                    )
                 }],
                 total_items: 1,
                 total_pages: 1,
@@ -65,11 +74,11 @@ async fn test_find_trust_information_by_credential_id_success_rc() {
         });
 
     let provider = provider(history_repository);
-    let result = provider
-        .get_trust_information_by_credential_id(credential_id)
-        .await
-        .unwrap();
 
+    // when
+    let result = provider.get_trust_information(credential_id).await.unwrap();
+
+    // then
     assert!(result.is_some());
     let info = result.unwrap();
     assert_eq!(info.name, "Test RP");
@@ -78,6 +87,7 @@ async fn test_find_trust_information_by_credential_id_success_rc() {
 
 #[tokio::test]
 async fn test_find_trust_information_by_credential_id_success_nr() {
+    // given
     let mut history_repository = MockHistoryRepository::new();
     let credential_id = Uuid::new_v4().into();
 
@@ -88,7 +98,7 @@ async fn test_find_trust_information_by_credential_id_success_nr() {
             Ok(GetHistoryList {
                 values: vec![dummy_history(
                     HistoryAction::WrpNrReceived,
-                    Some(rp_metadata("Test RP NR")),
+                    Some(wrp_metadata("Test RP NR", Default::default())),
                 )],
                 total_items: 1,
                 total_pages: 1,
@@ -96,11 +106,11 @@ async fn test_find_trust_information_by_credential_id_success_nr() {
         });
 
     let provider = provider(history_repository);
-    let result = provider
-        .get_trust_information_by_credential_id(credential_id)
-        .await
-        .unwrap();
 
+    // when
+    let result = provider.get_trust_information(credential_id).await.unwrap();
+
+    // then
     assert!(result.is_some());
     let info = result.unwrap();
     assert_eq!(info.name, "Test RP NR");
@@ -108,6 +118,7 @@ async fn test_find_trust_information_by_credential_id_success_nr() {
 
 #[tokio::test]
 async fn test_find_trust_information_none_when_empty() {
+    // given
     let mut history_repository = MockHistoryRepository::new();
     let credential_id = Uuid::new_v4().into();
 
@@ -123,16 +134,17 @@ async fn test_find_trust_information_none_when_empty() {
         });
 
     let provider = provider(history_repository);
-    let result = provider
-        .get_trust_information_by_credential_id(credential_id)
-        .await
-        .unwrap();
 
+    // when
+    let result = provider.get_trust_information(credential_id).await.unwrap();
+
+    // then
     assert!(result.is_none());
 }
 
 #[tokio::test]
 async fn test_find_trust_information_error_missing_metadata() {
+    // given
     let mut history_repository = MockHistoryRepository::new();
     let credential_id = Uuid::new_v4().into();
 
@@ -148,15 +160,187 @@ async fn test_find_trust_information_error_missing_metadata() {
         });
 
     let provider = provider(history_repository);
-    let result = provider
-        .get_trust_information_by_credential_id(credential_id)
-        .await;
 
+    // when
+    let result = provider.get_trust_information(credential_id).await;
+
+    // then
+    assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn test_get_trust_purpose_success() {
+    // given
+    let mut history_repository = MockHistoryRepository::new();
+    let credential_id = Uuid::new_v4().into();
+    let query_id: dcql::CredentialQueryId = "query-1".into();
+    let purpose = vec![MultiLangString {
+        lang: "en".to_string(),
+        value: "Test purpose".to_string(),
+    }];
+
+    let mut purposes = HashMap::new();
+    purposes.insert(query_id.clone(), purpose.clone());
+
+    history_repository
+        .expect_get_history_list()
+        .once()
+        .returning(move |_| {
+            Ok(GetHistoryList {
+                values: vec![dummy_history(
+                    HistoryAction::WrpRcReceived,
+                    Some(wrp_metadata("Test RP", purposes.clone())),
+                )],
+                total_items: 1,
+                total_pages: 1,
+            })
+        });
+
+    let provider = provider(history_repository);
+
+    // when
+    let result = provider
+        .get_trust_purpose(credential_id, &query_id)
+        .await
+        .unwrap();
+
+    // then
+    assert!(result.is_some());
+    let info = result.unwrap();
+    assert_eq!(info.purpose.0.get("en").unwrap(), "Test purpose");
+}
+
+#[tokio::test]
+async fn test_get_trust_purpose_none_when_query_id_missing() {
+    // given
+    let mut history_repository = MockHistoryRepository::new();
+    let credential_id = Uuid::new_v4().into();
+    let query_id: dcql::CredentialQueryId = "query-1".into();
+    let other_query_id: dcql::CredentialQueryId = "query-2".into();
+    let purpose = vec![MultiLangString {
+        lang: "en".to_string(),
+        value: "Test purpose".to_string(),
+    }];
+
+    let mut purposes = HashMap::new();
+    purposes.insert(other_query_id, purpose);
+
+    history_repository
+        .expect_get_history_list()
+        .once()
+        .returning(move |_| {
+            Ok(GetHistoryList {
+                values: vec![dummy_history(
+                    HistoryAction::WrpRcReceived,
+                    Some(wrp_metadata("Test RP", purposes.clone())),
+                )],
+                total_items: 1,
+                total_pages: 1,
+            })
+        });
+
+    let provider = provider(history_repository);
+
+    // when
+    let result = provider
+        .get_trust_purpose(credential_id, &query_id)
+        .await
+        .unwrap();
+
+    // then
+    assert!(result.is_none());
+}
+
+#[tokio::test]
+async fn test_get_trust_purpose_none_when_empty() {
+    // given
+    let mut history_repository = MockHistoryRepository::new();
+    let credential_id = Uuid::new_v4().into();
+    let query_id: dcql::CredentialQueryId = "query-1".into();
+
+    history_repository
+        .expect_get_history_list()
+        .once()
+        .returning(move |_| {
+            Ok(GetHistoryList {
+                values: vec![],
+                total_items: 0,
+                total_pages: 0,
+            })
+        });
+
+    let provider = provider(history_repository);
+
+    // when
+    let result = provider
+        .get_trust_purpose(credential_id, &query_id)
+        .await
+        .unwrap();
+
+    // then
+    assert!(result.is_none());
+}
+
+#[tokio::test]
+async fn test_get_trust_purpose_error_missing_metadata() {
+    // given
+    let mut history_repository = MockHistoryRepository::new();
+    let credential_id = Uuid::new_v4().into();
+    let query_id: dcql::CredentialQueryId = "query-1".into();
+
+    history_repository
+        .expect_get_history_list()
+        .once()
+        .returning(move |_| {
+            Ok(GetHistoryList {
+                values: vec![dummy_history(HistoryAction::WrpRcReceived, None)],
+                total_items: 1,
+                total_pages: 1,
+            })
+        });
+
+    let provider = provider(history_repository);
+
+    // when
+    let result = provider.get_trust_purpose(credential_id, &query_id).await;
+
+    // then
+    assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn test_get_trust_purpose_error_invalid_metadata_type() {
+    // given
+    let mut history_repository = MockHistoryRepository::new();
+    let credential_id = Uuid::new_v4().into();
+    let query_id: dcql::CredentialQueryId = "query-1".into();
+
+    history_repository
+        .expect_get_history_list()
+        .once()
+        .returning(move |_| {
+            Ok(GetHistoryList {
+                values: vec![dummy_history(
+                    HistoryAction::WrpRcReceived,
+                    Some(HistoryMetadata::WalletUnitJWT("jwt".to_string())),
+                )],
+                total_items: 1,
+                total_pages: 1,
+            })
+        });
+
+    let provider = provider(history_repository);
+
+    // when
+    let result = provider.get_trust_purpose(credential_id, &query_id).await;
+
+    // then
     assert!(result.is_err());
 }
 
 #[tokio::test]
 async fn test_find_trust_information_error_invalid_metadata_type() {
+    // given
     let mut history_repository = MockHistoryRepository::new();
     let credential_id = Uuid::new_v4().into();
 
@@ -175,9 +359,10 @@ async fn test_find_trust_information_error_invalid_metadata_type() {
         });
 
     let provider = provider(history_repository);
-    let result = provider
-        .get_trust_information_by_credential_id(credential_id)
-        .await;
 
+    // when
+    let result = provider.get_trust_information(credential_id).await;
+
+    // then
     assert!(result.is_err());
 }

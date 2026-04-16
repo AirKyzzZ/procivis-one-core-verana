@@ -23,6 +23,7 @@ use one_dto_mapper::{
 };
 use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
+use shared_types::i18n::I18nString;
 use shared_types::{
     CertificateId, CredentialId, DidId, IdentifierId, KeyId, OrganisationId, ProofId, ProofSchemaId,
 };
@@ -547,6 +548,8 @@ pub(crate) enum ApplicableCredentialOrFailureHintRestEnum {
         #[serde(rename = "applicableCredentials")]
         applicable_credentials:
             Vec<GetCredentialResponseRestDTO<CredentialDetailClaimExtResponseRestDTO>>,
+        #[serde(rename = "purpose")]
+        purpose: Option<I18nString>,
     },
     FailureHint {
         // options_not_nullable fails on boxed options

@@ -10,6 +10,7 @@ mod did_value;
 mod entity_id;
 mod history_id;
 mod holder_wallet_unit_id;
+pub mod i18n;
 mod identifier_id;
 mod identifier_trust_information_id;
 mod interaction_id;

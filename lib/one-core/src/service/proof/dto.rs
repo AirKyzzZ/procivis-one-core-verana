@@ -9,6 +9,7 @@ use crate::model::common::GetListResponse;
 use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use crate::model::list_query::ListQuery;
 use crate::model::proof::{ExactProofFilterColumn, ProofRole, ProofStateEnum, SortableProofColumn};
+use crate::proto::trust_information::dto::TrustInformation;
 use crate::provider::verification_protocol::openid4vp::model::ClientIdScheme;
 use crate::service::certificate::dto::CertificateResponseDTO;
 use crate::service::credential::dto::{
@@ -61,6 +62,7 @@ pub struct ProofDetailResponseDTO {
     pub claims_removed_at: Option<OffsetDateTime>,
     pub profile: Option<String>,
     pub webhook_destination_url: Option<String>,
+    pub trust_information: Option<TrustInformation>,
 }
 
 #[derive(Clone, Debug)]

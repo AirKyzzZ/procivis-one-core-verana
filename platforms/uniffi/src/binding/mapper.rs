@@ -326,8 +326,8 @@ fn convert_history_metadata(
             HistoryMetadataResponse::WalletUnitJWT(value) => {
                 Some(HistoryMetadataBinding::WalletUnitJWT(value))
             }
-            HistoryMetadataResponse::WalletRelayingParty(value) => {
-                Some(HistoryMetadataBinding::WalletRelayingParty {
+            HistoryMetadataResponse::WalletRelyingParty(value) => {
+                Some(HistoryMetadataBinding::WalletRelyingParty {
                     value: value.into(),
                 })
             }
@@ -781,8 +781,10 @@ impl From<ApplicableCredentialOrFailureHintEnum> for ApplicableCredentialOrFailu
         match value {
             ApplicableCredentialOrFailureHintEnum::ApplicableCredentials {
                 applicable_credentials,
+                purpose,
             } => Self::ApplicableCredentials {
                 applicable_credentials: convert_inner(applicable_credentials),
+                purpose: purpose.map(|p| p.0),
             },
             ApplicableCredentialOrFailureHintEnum::FailureHint { failure_hint } => {
                 Self::FailureHint {
