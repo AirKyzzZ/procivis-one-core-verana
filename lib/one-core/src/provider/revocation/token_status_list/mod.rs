@@ -2,11 +2,9 @@
 //! https://datatracker.ietf.org/doc/html/draft-ietf-oauth-status-list-03
 
 use std::collections::HashMap;
-use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 
 use futures::FutureExt;
-use itertools::Itertools;
 use rcgen::KeyUsagePurpose;
 use resolver::{StatusListCacheEntry, StatusListResolver};
 use serde::{Deserialize, Serialize};
@@ -415,38 +413,25 @@ impl RevocationMethod for TokenStatusList {
         keys: Vec<WalletUnitAttestedKeyRevocationInfo>,
         new_state: RevocationState,
     ) -> Result<(), RevocationError> {
-        struct RevocationListKey(RevocationList);
-        impl Hash for RevocationListKey {
-            fn hash<H: Hasher>(&self, state: &mut H) {
-                self.0.id.hash(state);
-            }
+        let mut revocation_lists: HashMap<RevocationListId, (RevocationList, Vec<usize>)> =
+            HashMap::new();
+        for key in keys {
+            revocation_lists
+                .entry(key.revocation_list.id)
+                .or_insert((key.revocation_list, vec![]))
+                .1
+                .push(key.revocation_list_index);
         }
-        impl PartialEq for RevocationListKey {
-            fn eq(&self, other: &Self) -> bool {
-                self.0.id == other.0.id
-            }
-        }
-        impl Eq for RevocationListKey {}
-
-        let revocation_lists = keys
-            .into_iter()
-            .map(|k| {
-                (
-                    RevocationListKey(k.revocation_list),
-                    k.revocation_list_index,
-                )
-            })
-            .into_group_map();
 
         self.transaction_manager
             .tx(async move {
-                for (RevocationListKey(list), indexes) in revocation_lists.into_iter() {
+                for (list, indexes) in revocation_lists.into_values() {
                     for index in indexes {
                         self.revocation_list_repository
                             .update_entry(
                                 UpdateRevocationListEntryId::Index(list.id, index),
                                 UpdateRevocationListEntryRequest {
-                                    state: Some(new_state.clone().into()),
+                                    state: Some(new_state.into()),
                                 },
                             )
                             .await

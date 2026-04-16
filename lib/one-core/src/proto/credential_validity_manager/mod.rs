@@ -564,7 +564,7 @@ fn validate_state_transition(
     if !valid_states.contains(&current_state) {
         return Err(Error::InvalidCredentialStateTransition {
             current_state,
-            target_state: target_state.clone().into(),
+            target_state: (*target_state).into(),
         });
     }
     Ok(())

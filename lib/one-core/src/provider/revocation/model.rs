@@ -28,7 +28,7 @@ pub struct CredentialRevocationInfo {
     pub serial: Option<CertificateSerial>,
 }
 
-#[derive(Clone, Debug, Display, PartialEq)]
+#[derive(Clone, Copy, Debug, Display, PartialEq)]
 pub enum RevocationState {
     Valid,
     Revoked,
