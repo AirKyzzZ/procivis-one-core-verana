@@ -6,7 +6,7 @@ pub mod credential_schema;
 pub mod did;
 pub mod did_resolver;
 pub mod history;
-pub mod holder_wallet_unit;
+pub mod holder_wallet_instance;
 pub mod identifier;
 pub mod interaction;
 pub mod jsonld;

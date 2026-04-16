@@ -5,7 +5,7 @@ use wiremock::http::Method;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use crate::utils::api_clients::holder_wallet_unit::TestHolderRegisterRequest;
+use crate::utils::api_clients::holder_wallet_instance::TestHolderRegisterRequest;
 use crate::utils::context::TestContext;
 use crate::utils::field_match::FieldHelpers;
 
@@ -46,7 +46,7 @@ async fn holder_register_wallet_unit_successfully() {
     // when
     let resp = context
         .api
-        .holder_wallet_units
+        .holder_wallet_instances
         .holder_register(TestHolderRegisterRequest {
             organization_id: Some(org.id),
             wallet_provider_url: Some(format!(

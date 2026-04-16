@@ -366,7 +366,7 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                 ))
                 .build(),
             Tag::builder()
-                .name("holder_wallet_unit")
+                .name("holder_wallet_instance")
                 .description(Some(indoc::formatdoc! {"
                 For wallet units, register with the Wallet Provider, check status and get trust information.
             "}))

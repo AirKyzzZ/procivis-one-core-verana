@@ -22,7 +22,7 @@ use crate::utils::db_clients::revocation_lists::TestingRevocationListParams;
 use crate::utils::db_clients::wallet_units::TestWalletUnit;
 
 #[tokio::test]
-async fn test_revoke_wallet_unit_success() {
+async fn test_revoke_wallet_instance_success() {
     // GIVEN
     let (context, org) = TestContext::new_with_organisation(None).await;
 

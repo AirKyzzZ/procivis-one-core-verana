@@ -73,7 +73,7 @@ mod api_ssi_wallet_provider_tests;
 #[path = "api/generic_api_tests.rs"]
 mod generic_api_tests;
 
-#[path = "api/wallet_unit/mod.rs"]
+#[path = "api/wallet_instance/mod.rs"]
 mod api_wallet_unit_tests;
 
 #[path = "api/verifier_instance/mod.rs"]

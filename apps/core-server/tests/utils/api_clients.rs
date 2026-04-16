@@ -29,7 +29,7 @@ use self::verifier_instance::VerifierIntanceApi;
 use self::wallet_units::WalletUnitsApi;
 use super::field_match::FieldHelpers;
 use crate::utils::api_clients::cache::CacheApi;
-use crate::utils::api_clients::holder_wallet_unit::HolderWalletUnitsApi;
+use crate::utils::api_clients::holder_wallet_instance::HolderWalletInstancesApi;
 use crate::utils::api_clients::signatures::SignaturesApi;
 use crate::utils::api_clients::trust_list_publication::TrustListPublicationApi;
 use crate::utils::api_clients::wallet_provider::WalletProviderApi;
@@ -59,7 +59,7 @@ pub mod trust_entity;
 pub mod verifier_instance;
 pub mod wallet_units;
 
-pub mod holder_wallet_unit;
+pub mod holder_wallet_instance;
 mod statistics;
 pub mod trust_list_publication;
 pub mod wallet_provider;
@@ -234,7 +234,7 @@ pub struct Client {
     pub wallet_provider: WalletProviderApi,
     pub wallet_units: WalletUnitsApi,
     pub verifier_instances: VerifierIntanceApi,
-    pub holder_wallet_units: HolderWalletUnitsApi,
+    pub holder_wallet_instances: HolderWalletInstancesApi,
     pub signatures: SignaturesApi,
     pub statistics: StatisticsApi,
     pub base_url: String,
@@ -273,7 +273,7 @@ impl Client {
             certificates: CertificatesApi::new(client.clone()),
             wallet_provider: WalletProviderApi::new(client.clone()),
             wallet_units: WalletUnitsApi::new(client.clone()),
-            holder_wallet_units: HolderWalletUnitsApi::new(client.clone()),
+            holder_wallet_instances: HolderWalletInstancesApi::new(client.clone()),
             verifier_instances: VerifierIntanceApi::new(client.clone()),
             signatures: SignaturesApi::new(client.clone()),
             statistics: StatisticsApi::new(client.clone()),

@@ -28,7 +28,7 @@ use crate::endpoint::trust_collection::controller::{
 };
 use crate::endpoint::{
     cache, certificate, config, credential, credential_schema, did, did_resolver, history,
-    holder_wallet_unit, identifier, interaction, jsonld, key, misc, organisation, proof,
+    holder_wallet_instance, identifier, interaction, jsonld, key, misc, organisation, proof,
     proof_schema, signature, ssi, statistics, task, trust_anchor, trust_collection, trust_entity,
     trust_list_publication, vc_api, verifier_instance, wallet_provider,
 };
@@ -453,16 +453,16 @@ fn get_management_endpoints(
                 post(trust_entity::controller::create_remote_trust_entity),
             )
             .route(
-                "/api/wallet-unit/v1",
+                "/api/wallet-instance/v1",
                 get(wallet_provider::controller::get_wallet_unit_list),
             )
             .route(
-                "/api/wallet-unit/v1/{id}",
+                "/api/wallet-instance/v1/{id}",
                 get(wallet_provider::controller::get_wallet_unit_details)
                     .delete(wallet_provider::controller::remove_wallet_unit),
             )
             .route(
-                "/api/wallet-unit/v1/{id}/revoke",
+                "/api/wallet-instance/v1/{id}/revoke",
                 post(wallet_provider::controller::revoke_wallet_unit),
             )
             .route(
@@ -475,21 +475,21 @@ fn get_management_endpoints(
                 get(jsonld::controller::resolve_jsonld_context),
             )
             .route(
-                "/api/holder-wallet-unit/v1/{id}",
-                get(holder_wallet_unit::controller::wallet_unit_holder_details)
-                    .patch(holder_wallet_unit::controller::edit_holder_wallet_unit),
+                "/api/holder-wallet-instance/v1/{id}",
+                get(holder_wallet_instance::controller::wallet_instance_holder_details)
+                    .patch(holder_wallet_instance::controller::edit_holder_wallet_instance),
             )
             .route(
-                "/api/holder-wallet-unit/v1/{id}/trust-collections",
-                get(holder_wallet_unit::controller::get_holder_wallet_unit_trust_collections),
+                "/api/holder-wallet-instance/v1/{id}/trust-collections",
+                get(holder_wallet_instance::controller::get_holder_wallet_instance_trust_collections),
             )
             .route(
-                "/api/holder-wallet-unit/v1/{id}/status",
-                post(holder_wallet_unit::controller::wallet_unit_holder_status),
+                "/api/holder-wallet-instance/v1/{id}/status",
+                post(holder_wallet_instance::controller::wallet_instance_holder_status),
             )
             .route(
-                "/api/holder-wallet-unit/v1",
-                post(holder_wallet_unit::controller::wallet_unit_holder_register),
+                "/api/holder-wallet-instance/v1",
+                post(holder_wallet_instance::controller::wallet_instance_holder_register),
             )
             .route(
                 "/api/statistics/v1/dashboard",

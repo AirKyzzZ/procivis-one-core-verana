@@ -48,8 +48,8 @@ async fn test_get_wallet_unit_holder_details_successfully() {
     // WHEN
     let resp = context
         .api
-        .holder_wallet_units
-        .holder_get_wallet_unit_details(&wallet_unit.id)
+        .holder_wallet_instances
+        .holder_get_wallet_instance_details(&wallet_unit.id)
         .await;
 
     // THEN
@@ -82,8 +82,8 @@ async fn test_get_wallet_unit_holder_details_not_found() {
     // WHEN
     let resp = context
         .api
-        .holder_wallet_units
-        .holder_get_wallet_unit_details(&Uuid::new_v4().into())
+        .holder_wallet_instances
+        .holder_get_wallet_instance_details(&Uuid::new_v4().into())
         .await;
 
     // THEN

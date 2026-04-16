@@ -93,8 +93,8 @@ async fn test_holder_wallet_unit_trust_collections() {
     // WHEN
     let resp = context
         .api
-        .holder_wallet_units
-        .holder_get_wallet_unit_trust_collections(&wallet_unit.id)
+        .holder_wallet_instances
+        .holder_get_wallet_instance_trust_collections(&wallet_unit.id)
         .await;
 
     // THEN

@@ -8,16 +8,16 @@ use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use standardized_types::jwk::PublicJwk;
 use time::Duration;
 
-pub mod get_wallet_unit_tests;
+pub mod get_wallet_instance_tests;
 pub mod holder_edit_wallet_unit;
 pub mod holder_get_wallet_unit;
 pub mod holder_register_wallet_unit;
 pub mod holder_wallet_unit_status_tests;
 pub mod holder_wallet_unit_trust_collections;
-pub mod list_wallet_unit_tests;
-pub mod revoke_wallet_unit_tests;
+pub mod list_wallet_instance_tests;
+pub mod revoke_wallet_instance_tests;
 
-async fn create_wallet_unit_attestation(wallet_key: PublicJwk, base_url: String) -> String {
+async fn create_wallet_instance_attestation(wallet_key: PublicJwk, base_url: String) -> String {
     let provider_key = Ecdsa.generate_key().unwrap();
     let now = one_core::clock::now_utc();
     let jwt = Jwt::<()>::new(

@@ -7,36 +7,36 @@ use proc_macros::endpoint;
 use shared_types::{HolderWalletUnitId, Permission};
 
 use super::dto::{
-    EditHolderWalletUnitRequestRestDTO, HolderRegisterWalletUnitRequestRestDTO,
-    HolderRegisterWalletUnitResponseRestDTO, HolderWalletUnitDetailRestDTO,
+    EditHolderWalletInstanceRequestRestDTO, HolderRegisterWalletInstanceRequestRestDTO,
+    HolderRegisterWalletInstanceResponseRestDTO, HolderWalletInstanceDetailRestDTO,
 };
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
-use crate::endpoint::holder_wallet_unit::dto::TrustCollectionsDetailRestDTO;
+use crate::endpoint::holder_wallet_instance::dto::TrustCollectionsDetailRestDTO;
 use crate::router::AppState;
 
 #[endpoint(
-    permissions = [Permission::HolderWalletUnitRegister],
+    permissions = [Permission::HolderWalletInstanceRegister],
     post,
-    path = "/api/holder-wallet-unit/v1",
-    request_body = HolderRegisterWalletUnitRequestRestDTO,
-    responses(CreatedOrErrorResponse<HolderRegisterWalletUnitResponseRestDTO>),
-    tag = "holder_wallet_unit",
+    path = "/api/holder-wallet-instance/v1",
+    request_body = HolderRegisterWalletInstanceRequestRestDTO,
+    responses(CreatedOrErrorResponse<HolderRegisterWalletInstanceResponseRestDTO>),
+    tag = "holder_wallet_instance",
     security(
         ("bearer" = [])
     ),
     summary = "Register with a Wallet Provider",
     description = indoc::formatdoc! {"
-        Register a wallet unit with a Wallet Provider.
+        Register a wallet instance with a Wallet Provider.
     "},
 )]
-pub(crate) async fn wallet_unit_holder_register(
+pub(crate) async fn wallet_instance_holder_register(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<
-        Json<HolderRegisterWalletUnitRequestRestDTO>,
+        Json<HolderRegisterWalletInstanceRequestRestDTO>,
         ErrorResponseRestDTO,
     >,
-) -> CreatedOrErrorResponse<HolderRegisterWalletUnitResponseRestDTO> {
+) -> CreatedOrErrorResponse<HolderRegisterWalletInstanceResponseRestDTO> {
     let result = async {
         Ok::<_, ServiceError>(
             state
@@ -44,60 +44,60 @@ pub(crate) async fn wallet_unit_holder_register(
                 .wallet_unit_service
                 .holder_register(request.try_into()?)
                 .await
-                .error_while("registering holder wallet unit")?,
+                .error_while("registering holder wallet instance")?,
         )
     }
     .await;
-    CreatedOrErrorResponse::from_result(result, state, "register wallet unit")
+    CreatedOrErrorResponse::from_result(result, state, "register wallet instance")
 }
 
 #[endpoint(
-    permissions = [Permission::HolderWalletUnitDetail],
+    permissions = [Permission::HolderWalletInstanceDetail],
     get,
-    path = "/api/holder-wallet-unit/v1/{id}",
-    responses(OkOrErrorResponse<HolderWalletUnitDetailRestDTO>),
+    path = "/api/holder-wallet-instance/v1/{id}",
+    responses(OkOrErrorResponse<HolderWalletInstanceDetailRestDTO>),
     params(
-        ("id" = HolderWalletUnitId, Path, description = "Wallet Unit ID")
+        ("id" = HolderWalletUnitId, Path, description = "Wallet Instance ID")
     ),
-    tag = "holder_wallet_unit",
+    tag = "holder_wallet_instance",
     security(
         ("bearer" = [])
     ),
     summary = "Retrieve wallet registration details",
-    description = "Retrieve details of a wallet unit's registration from the Wallet Provider.",
+    description = "Retrieve details of a wallet instance's registration from the Wallet Provider.",
 )]
-pub(crate) async fn wallet_unit_holder_details(
+pub(crate) async fn wallet_instance_holder_details(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<HolderWalletUnitId>, ErrorResponseRestDTO>,
-) -> OkOrErrorResponse<HolderWalletUnitDetailRestDTO> {
+) -> OkOrErrorResponse<HolderWalletInstanceDetailRestDTO> {
     let result = state
         .core
         .wallet_unit_service
         .holder_get_wallet_unit_details(id)
         .await
-        .error_while("getting holder wallet unit")
+        .error_while("getting holder wallet instance")
         .map_err(ServiceError::from);
 
-    OkOrErrorResponse::from_result_fallible(result, state, "getting holder wallet unit")
+    OkOrErrorResponse::from_result_fallible(result, state, "getting holder wallet instance")
 }
 
 #[endpoint(
-    permissions = [Permission::HolderWalletUnitDetail],
+    permissions = [Permission::HolderWalletInstanceDetail],
     post,
-    path = "/api/holder-wallet-unit/v1/{id}/status",
+    path = "/api/holder-wallet-instance/v1/{id}/status",
     responses(EmptyOrErrorResponse),
     params(
-        ("id" = HolderWalletUnitId, Path, description = "Wallet Unit ID")
+        ("id" = HolderWalletUnitId, Path, description = "Wallet Instance ID")
     ),
-    tag = "holder_wallet_unit",
+    tag = "holder_wallet_instance",
     security(
         ("bearer" = [])
     ),
     summary = "Check wallet status",
     description = indoc::formatdoc! {
-        "Check the status of a wallet unit. Active units return `204`. Revoked units return an error."},
+        "Check the status of a wallet instance. Active instances return `204`. Revoked instances return an error."},
 )]
-pub(crate) async fn wallet_unit_holder_status(
+pub(crate) async fn wallet_instance_holder_status(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<HolderWalletUnitId>, ErrorResponseRestDTO>,
 ) -> EmptyOrErrorResponse {
@@ -107,30 +107,30 @@ pub(crate) async fn wallet_unit_holder_status(
         .holder_wallet_unit_status(id)
         .await;
 
-    EmptyOrErrorResponse::from_result(result, state, "holder wallet unit status check")
+    EmptyOrErrorResponse::from_result(result, state, "holder wallet instance status check")
 }
 
 #[endpoint(
-    permissions = [Permission::HolderWalletUnitEdit],
+    permissions = [Permission::HolderWalletInstanceEdit],
     patch,
-    path = "/api/holder-wallet-unit/v1/{id}",
-    request_body = EditHolderWalletUnitRequestRestDTO,
+    path = "/api/holder-wallet-instance/v1/{id}",
+    request_body = EditHolderWalletInstanceRequestRestDTO,
     responses(EmptyOrErrorResponse),
     params(
-        ("id" = HolderWalletUnitId, Path, description = "Wallet Unit ID")
+        ("id" = HolderWalletUnitId, Path, description = "Wallet Instance ID")
     ),
-    tag = "holder_wallet_unit",
+    tag = "holder_wallet_instance",
     security(
         ("bearer" = [])
     ),
     summary = "Edit wallet settings",
     description = "Modify wallet settings.",
 )]
-pub(crate) async fn edit_holder_wallet_unit(
+pub(crate) async fn edit_holder_wallet_instance(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<HolderWalletUnitId>, ErrorResponseRestDTO>,
     WithRejection(Json(request), _): WithRejection<
-        Json<EditHolderWalletUnitRequestRestDTO>,
+        Json<EditHolderWalletInstanceRequestRestDTO>,
         ErrorResponseRestDTO,
     >,
 ) -> EmptyOrErrorResponse {
@@ -140,25 +140,25 @@ pub(crate) async fn edit_holder_wallet_unit(
         .edit_holder_wallet_unit(id, request.into())
         .await;
 
-    EmptyOrErrorResponse::from_result(result, state, "editing holder wallet unit")
+    EmptyOrErrorResponse::from_result(result, state, "editing holder wallet instance")
 }
 
 #[endpoint(
-    permissions = [Permission::HolderWalletUnitDetail],
+    permissions = [Permission::HolderWalletInstanceDetail],
     get,
-    path = "/api/holder-wallet-unit/v1/{id}/trust-collections",
+    path = "/api/holder-wallet-instance/v1/{id}/trust-collections",
     responses(OkOrErrorResponse<TrustCollectionsDetailRestDTO>),
     params(
-        ("id" = HolderWalletUnitId, Path, description = "Wallet Unit ID")
+        ("id" = HolderWalletUnitId, Path, description = "Wallet Instance ID")
     ),
-    tag = "holder_wallet_unit",
+    tag = "holder_wallet_instance",
     security(
         ("bearer" = [])
     ),
     summary = "Get trust collections",
-    description = "Get trust collections associated with the given holder wallet unit",
+    description = "Get trust collections associated with the given holder wallet instance",
 )]
-pub(crate) async fn get_holder_wallet_unit_trust_collections(
+pub(crate) async fn get_holder_wallet_instance_trust_collections(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<HolderWalletUnitId>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<TrustCollectionsDetailRestDTO> {
@@ -171,6 +171,6 @@ pub(crate) async fn get_holder_wallet_unit_trust_collections(
     OkOrErrorResponse::from_result(
         result,
         state,
-        "getting holder wallet unit trust collections",
+        "getting holder wallet instance trust collections",
     )
 }

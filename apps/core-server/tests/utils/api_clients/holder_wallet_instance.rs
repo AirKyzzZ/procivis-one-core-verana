@@ -3,7 +3,7 @@ use shared_types::{HolderWalletUnitId, OrganisationId, TrustCollectionId};
 
 use crate::utils::api_clients::{HttpClient, Response};
 
-pub struct HolderWalletUnitsApi {
+pub struct HolderWalletInstancesApi {
     client: HttpClient,
 }
 
@@ -15,27 +15,30 @@ pub struct TestHolderRegisterRequest {
     pub key_type: Option<String>,
 }
 
-impl HolderWalletUnitsApi {
+impl HolderWalletInstancesApi {
     pub fn new(client: HttpClient) -> Self {
         Self { client }
     }
 
-    pub async fn holder_get_wallet_unit_details(
-        &self,
-        wallet_unit_id: &HolderWalletUnitId,
-    ) -> Response {
-        self.client
-            .get(&format!("/api/holder-wallet-unit/v1/{}", wallet_unit_id))
-            .await
-    }
-
-    pub async fn holder_get_wallet_unit_trust_collections(
+    pub async fn holder_get_wallet_instance_details(
         &self,
         wallet_unit_id: &HolderWalletUnitId,
     ) -> Response {
         self.client
             .get(&format!(
-                "/api/holder-wallet-unit/v1/{}/trust-collections",
+                "/api/holder-wallet-instance/v1/{}",
+                wallet_unit_id
+            ))
+            .await
+    }
+
+    pub async fn holder_get_wallet_instance_trust_collections(
+        &self,
+        wallet_unit_id: &HolderWalletUnitId,
+    ) -> Response {
+        self.client
+            .get(&format!(
+                "/api/holder-wallet-instance/v1/{}/trust-collections",
                 wallet_unit_id
             ))
             .await
@@ -53,19 +56,24 @@ impl HolderWalletUnitsApi {
             }
         );
 
-        self.client.post("/api/holder-wallet-unit/v1", body).await
+        self.client
+            .post("/api/holder-wallet-instance/v1", body)
+            .await
     }
 
-    pub async fn holder_wallet_unit_status(&self, wallet_unit_id: &HolderWalletUnitId) -> Response {
+    pub async fn holder_wallet_instance_status(
+        &self,
+        wallet_unit_id: &HolderWalletUnitId,
+    ) -> Response {
         self.client
             .post(
-                &format!("/api/holder-wallet-unit/v1/{}/status", wallet_unit_id),
+                &format!("/api/holder-wallet-instance/v1/{}/status", wallet_unit_id),
                 None,
             )
             .await
     }
 
-    pub async fn holder_wallet_unit_edit(
+    pub async fn holder_wallet_instance_edit(
         &self,
         wallet_unit_id: &HolderWalletUnitId,
         trust_collections: &[TrustCollectionId],
@@ -78,7 +86,7 @@ impl HolderWalletUnitsApi {
 
         self.client
             .patch(
-                &format!("/api/holder-wallet-unit/v1/{wallet_unit_id}"),
+                &format!("/api/holder-wallet-instance/v1/{wallet_unit_id}"),
                 body,
             )
             .await

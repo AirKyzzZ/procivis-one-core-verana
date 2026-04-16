@@ -34,7 +34,7 @@ impl WalletUnitsApi {
         } = list_filters;
 
         let mut url =
-            format!("/api/wallet-unit/v1?organisationId={organisation_id}&page=0&pageSize=50");
+            format!("/api/wallet-instance/v1?organisationId={organisation_id}&page=0&pageSize=50");
         if let Some(attestation) = attestation {
             url += &format!("&attestation={attestation}")
         }
@@ -43,12 +43,12 @@ impl WalletUnitsApi {
     }
 
     pub async fn get(&self, id: &impl Display) -> Response {
-        let url = format!("/api/wallet-unit/v1/{id}");
+        let url = format!("/api/wallet-instance/v1/{id}");
         self.client.get(&url).await
     }
 
     pub async fn revoke(&self, id: &impl Display) -> Response {
-        let url = format!("/api/wallet-unit/v1/{id}/revoke");
+        let url = format!("/api/wallet-instance/v1/{id}/revoke");
         self.client.post(&url, None).await
     }
 }

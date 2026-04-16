@@ -10,7 +10,7 @@ use utoipa::ToSchema;
 use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::endpoint::key::dto::KeyListItemResponseRestDTO;
 use crate::endpoint::ssi::wallet_provider::dto::ProviderTrustCollectionRestDTO;
-use crate::endpoint::wallet_provider::dto::WalletUnitStatusRestEnum;
+use crate::endpoint::wallet_provider::dto::WalletInstanceStatusRestEnum;
 use crate::mapper::MapperError;
 use crate::serialize::front_time;
 
@@ -18,7 +18,7 @@ use crate::serialize::front_time;
 #[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
 #[try_into(T = dto::HolderRegisterWalletUnitRequestDTO, Error = ServiceError)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub(crate) struct HolderRegisterWalletUnitRequestRestDTO {
+pub(crate) struct HolderRegisterWalletInstanceRequestRestDTO {
     /// Required when not using STS authentication mode. Specifies the
     /// organizational context for this operation. When using STS
     /// authentication, this value is derived from the token.
@@ -34,9 +34,9 @@ pub(crate) struct HolderRegisterWalletUnitRequestRestDTO {
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(dto::HolderWalletUnitRegisterResponseDTO)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct HolderRegisterWalletUnitResponseRestDTO {
+pub(crate) struct HolderRegisterWalletInstanceResponseRestDTO {
     pub id: HolderWalletUnitId,
-    pub status: WalletUnitStatusRestEnum,
+    pub status: WalletInstanceStatusRestEnum,
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into, From)]
@@ -60,7 +60,7 @@ pub(crate) enum WalletProviderTypeRestEnum {
 #[derive(Clone, Debug, Serialize, ToSchema, TryFrom)]
 #[try_from(T = dto::HolderWalletUnitResponseDTO, Error = MapperError)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct HolderWalletUnitDetailRestDTO {
+pub(crate) struct HolderWalletInstanceDetailRestDTO {
     #[try_from(infallible)]
     pub id: HolderWalletUnitId,
     #[serde(serialize_with = "front_time")]
@@ -78,7 +78,7 @@ pub(crate) struct HolderWalletUnitDetailRestDTO {
     #[try_from(infallible)]
     pub wallet_provider_name: String,
     #[try_from(infallible)]
-    pub status: WalletUnitStatusRestEnum,
+    pub status: WalletInstanceStatusRestEnum,
     #[try_from(with_fn = try_convert_inner)]
     pub authentication_key: Option<KeyListItemResponseRestDTO>,
 }
@@ -86,7 +86,7 @@ pub(crate) struct HolderWalletUnitDetailRestDTO {
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(dto::EditHolderWalletUnitRequestDTO)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub(crate) struct EditHolderWalletUnitRequestRestDTO {
+pub(crate) struct EditHolderWalletInstanceRequestRestDTO {
     pub trust_collections: Vec<TrustCollectionId>,
 }
 

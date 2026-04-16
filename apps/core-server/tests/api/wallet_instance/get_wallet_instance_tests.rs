@@ -6,7 +6,7 @@ use crate::utils::db_clients::wallet_units::TestWalletUnit;
 use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
-async fn test_get_wallet_unit_success() {
+async fn test_get_wallet_instance_success() {
     // GIVEN
     let (context, org) = TestContext::new_with_organisation(None).await;
     let wallet_unit = context
@@ -35,7 +35,7 @@ async fn test_get_wallet_unit_success() {
 }
 
 #[tokio::test]
-async fn test_get_revoked_wallet_unit_success() {
+async fn test_get_revoked_wallet_instance_success() {
     // GIVEN
     let (context, org) = TestContext::new_with_organisation(None).await;
     let wallet_unit = context
@@ -70,7 +70,7 @@ async fn test_get_revoked_wallet_unit_success() {
 }
 
 #[tokio::test]
-async fn test_get_wallet_unit_not_found() {
+async fn test_get_wallet_instance_not_found() {
     // GIVEN
     let context = TestContext::new(None).await;
     let non_existent_id = uuid::Uuid::new_v4();

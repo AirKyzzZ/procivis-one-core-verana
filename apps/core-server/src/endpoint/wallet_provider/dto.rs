@@ -15,25 +15,26 @@ use crate::deserialize::deserialize_timestamp;
 use crate::dto::common::ListQueryParamsRest;
 use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::serialize::{front_time, front_time_option};
-pub(crate) type ListWalletUnitsQuery =
-    ListQueryParamsRest<WalletUnitFilterQueryParamsRestDTO, SortableWalletUnitColumnRest>;
+
+pub(crate) type ListWalletInstancesQuery =
+    ListQueryParamsRest<WalletInstanceFilterQueryParamsRestDTO, SortableWalletInstanceColumnRest>;
 
 #[options_not_nullable]
 #[derive(Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(dto::GetWalletUnitListResponseDTO)]
-pub(crate) struct GetWalletUnitsResponseRestDTO {
+pub(crate) struct GetWalletInstancesResponseRestDTO {
     pub total_pages: u64,
     pub total_items: u64,
     #[from(with_fn = convert_inner)]
-    pub values: Vec<WalletUnitResponseRestDTO>,
+    pub values: Vec<WalletInstanceResponseRestDTO>,
 }
 
 #[options_not_nullable]
 #[derive(Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(dto::GetWalletUnitResponseDTO)]
-pub(crate) struct WalletUnitResponseRestDTO {
+pub(crate) struct WalletInstanceResponseRestDTO {
     pub id: WalletUnitId,
     #[schema(example = "2023-06-09T14:19:57.000Z")]
     #[serde(serialize_with = "front_time")]
@@ -45,8 +46,8 @@ pub(crate) struct WalletUnitResponseRestDTO {
     #[serde(serialize_with = "front_time_option")]
     pub last_issuance: Option<OffsetDateTime>,
     pub name: String,
-    pub os: WalletUnitOsRestEnum,
-    pub status: WalletUnitStatusRestEnum,
+    pub os: WalletInstanceOsRestEnum,
+    pub status: WalletInstanceStatusRestEnum,
     pub wallet_provider_type: WalletProviderTypeRestEnum,
     pub wallet_provider_name: String,
     #[from(with_fn = convert_inner)]
@@ -57,7 +58,7 @@ pub(crate) struct WalletUnitResponseRestDTO {
 #[from(WalletUnitOs)]
 #[into(WalletUnitOs)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub(crate) enum WalletUnitOsRestEnum {
+pub(crate) enum WalletInstanceOsRestEnum {
     Ios,
     Android,
     Web,
@@ -67,7 +68,7 @@ pub(crate) enum WalletUnitOsRestEnum {
 #[from(WalletUnitStatus)]
 #[into(WalletUnitStatus)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub(crate) enum WalletUnitStatusRestEnum {
+pub(crate) enum WalletInstanceStatusRestEnum {
     Active,
     Revoked,
     Pending,
@@ -86,7 +87,7 @@ pub(crate) enum WalletProviderTypeRestEnum {
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams, TryInto)]
 #[try_into(T = WalletUnitFilterParamsDTO, Error = ServiceError)]
 #[serde(rename_all = "camelCase")] // No deny_unknown_fields because of flattening inside ListWalletUnitsQuery
-pub(crate) struct WalletUnitFilterQueryParamsRestDTO {
+pub(crate) struct WalletInstanceFilterQueryParamsRestDTO {
     /// Return only wallet units with a name starting with this string.
     #[param(nullable = false)]
     #[try_into(infallible)]
@@ -98,11 +99,11 @@ pub(crate) struct WalletUnitFilterQueryParamsRestDTO {
     /// Return only wallet units with the specified status.
     #[try_into(infallible, with_fn = convert_inner_of_inner)]
     #[param(rename = "status[]", inline, nullable = false)]
-    pub status: Option<Vec<WalletUnitStatusRestEnum>>,
+    pub status: Option<Vec<WalletInstanceStatusRestEnum>>,
     /// Return only wallet units with the specified operating systems.
     #[try_into(infallible, with_fn = convert_inner_of_inner)]
     #[param(rename = "os[]", inline, nullable = false)]
-    pub os: Option<Vec<WalletUnitOsRestEnum>>,
+    pub os: Option<Vec<WalletInstanceOsRestEnum>>,
     /// Return only wallet units with the specified wallet provider types.
     #[param(rename = "walletProviderType[]", inline, nullable = false)]
     #[try_into(infallible)]
@@ -135,7 +136,7 @@ pub(crate) struct WalletUnitFilterQueryParamsRestDTO {
 #[serde(rename_all = "camelCase")]
 #[from(SortableWalletUnitColumn)]
 #[into(SortableWalletUnitColumn)]
-pub(crate) enum SortableWalletUnitColumnRest {
+pub(crate) enum SortableWalletInstanceColumnRest {
     CreatedDate,
     LastModified,
     Name,

@@ -15,8 +15,8 @@ async fn test_holder_wallet_unit_status_not_found() {
     // WHEN
     let resp = context
         .api
-        .holder_wallet_units
-        .holder_wallet_unit_status(&non_existent_id)
+        .holder_wallet_instances
+        .holder_wallet_instance_status(&non_existent_id)
         .await;
 
     // THEN
@@ -70,8 +70,8 @@ async fn test_holder_wallet_unit_status_already_revoked() {
     // WHEN
     let resp = context
         .api
-        .holder_wallet_units
-        .holder_wallet_unit_status(&wallet_unit.id)
+        .holder_wallet_instances
+        .holder_wallet_instance_status(&wallet_unit.id)
         .await;
 
     // THEN - should succeed without making any external calls

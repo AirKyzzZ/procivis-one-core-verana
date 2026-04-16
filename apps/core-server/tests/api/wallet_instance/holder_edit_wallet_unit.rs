@@ -66,8 +66,8 @@ async fn test_edit_wallet_unit_holder_successfully() {
     // WHEN
     let resp = context
         .api
-        .holder_wallet_units
-        .holder_wallet_unit_edit(&wallet_unit.id, &[collection.id])
+        .holder_wallet_instances
+        .holder_wallet_instance_edit(&wallet_unit.id, &[collection.id])
         .await;
 
     // THEN
@@ -87,8 +87,8 @@ async fn test_edit_wallet_unit_holder_successfully() {
     // WHEN
     let resp = context
         .api
-        .holder_wallet_units
-        .holder_wallet_unit_edit(&wallet_unit.id, &[])
+        .holder_wallet_instances
+        .holder_wallet_instance_edit(&wallet_unit.id, &[])
         .await;
 
     // THEN

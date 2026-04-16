@@ -9,7 +9,7 @@ use standardized_types::jwk::PublicJwk;
 use utoipa::ToSchema;
 
 use crate::deserialize::one_or_many;
-use crate::endpoint::wallet_provider::dto::WalletUnitOsRestEnum;
+use crate::endpoint::wallet_provider::dto::WalletInstanceOsRestEnum;
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(dto::IssueWalletUnitAttestationRequestDTO)]
@@ -67,7 +67,7 @@ pub(crate) struct IssueWalletUnitAttestationResponseRestDTO {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct RegisterWalletUnitRequestRestDTO {
     pub wallet_provider: String,
-    pub os: WalletUnitOsRestEnum,
+    pub os: WalletInstanceOsRestEnum,
     pub public_key: Option<PublicJwk>,
     pub proof: Option<String>,
 }

@@ -7,14 +7,14 @@ use one_crypto::hasher::sha256::SHA256;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
-use crate::api_wallet_unit_tests::create_wallet_unit_attestation;
+use crate::api_wallet_unit_tests::create_wallet_instance_attestation;
 use crate::utils::api_clients::wallet_units::ListFilters;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::histories::TestingHistoryParams;
 use crate::utils::db_clients::wallet_units::TestWalletUnit;
 
 #[tokio::test]
-async fn test_list_wallet_unit_success() {
+async fn test_list_wallet_instance_success() {
     // GIVEN
     let (context, org) = TestContext::new_with_organisation(None).await;
 
@@ -63,7 +63,7 @@ async fn test_list_wallet_unit_success() {
 }
 
 #[tokio::test]
-async fn test_list_wallet_unit_revoked_success() {
+async fn test_list_wallet_instance_revoked_success() {
     // GIVEN
     let (context, org) = TestContext::new_with_organisation(None).await;
 
@@ -121,7 +121,7 @@ async fn test_list_wallet_unit_revoked_success() {
 }
 
 #[tokio::test]
-async fn test_list_wallet_unit_by_attestation_success() {
+async fn test_list_wallet_instance_by_attestation_success() {
     // GIVEN
     const TEST_ELEMENTS: usize = 5;
     let (context, organisation) = TestContext::new_with_organisation(None).await;
@@ -130,7 +130,7 @@ async fn test_list_wallet_unit_by_attestation_success() {
     for i in 0..TEST_ELEMENTS {
         let holder_key_pair = Ecdsa.generate_key().unwrap();
         let holder_public_jwk = holder_key_pair.key.public_key_as_jwk().unwrap();
-        let attestation = create_wallet_unit_attestation(
+        let attestation = create_wallet_instance_attestation(
             holder_key_pair.key.public_key_as_jwk().unwrap(),
             "http://127.0.0.1:12312".to_string(),
         )
@@ -198,7 +198,7 @@ async fn test_list_wallet_unit_by_attestation_success() {
 }
 
 #[tokio::test]
-async fn test_list_wallet_unit_empty_success() {
+async fn test_list_wallet_instance_empty_success() {
     // GIVEN
     let context = TestContext::new(None).await;
 
@@ -220,7 +220,7 @@ async fn test_list_wallet_unit_empty_success() {
 }
 
 #[tokio::test]
-async fn test_list_wallet_unit_org_success() {
+async fn test_list_wallet_instance_org_success() {
     // GIVEN
     let (context, org) = TestContext::new_with_organisation(None).await;
 

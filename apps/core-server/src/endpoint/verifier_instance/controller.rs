@@ -10,7 +10,7 @@ use super::dto::{
 };
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
-use crate::endpoint::holder_wallet_unit::dto::TrustCollectionsDetailRestDTO;
+use crate::endpoint::holder_wallet_instance::dto::TrustCollectionsDetailRestDTO;
 use crate::router::AppState;
 
 #[endpoint(
