@@ -229,6 +229,7 @@ async fn create_dummy_certificate_identifier(
         state: CertificateState::Active,
         roles: vec![],
         key: Some(key.clone()),
+        deleted_at: None,
     };
 
     let identifier = context

@@ -408,6 +408,7 @@ impl IdentifierService {
                 *id,
                 &IdentifierRelations {
                     organisation: Some(Default::default()),
+                    certificates: Some(Default::default()),
                     ..Default::default()
                 },
             )
@@ -421,18 +422,35 @@ impl IdentifierService {
             &*self.session_provider,
         )
         .error_while("checking session")?;
-        self.identifier_repository
-            .delete(id)
+
+        let certificates = identifier.certificates.clone().unwrap_or_default();
+        let name = identifier.name.clone();
+
+        self.transaction_manager
+            .tx(async {
+                for cert in &certificates {
+                    self.certificate_repository
+                        .delete(cert)
+                        .await
+                        .error_while("cascading certificate delete")?;
+
+                    tracing::info!("Deleted certificate `{}` ({})`", cert.name, cert.id);
+                }
+
+                self.identifier_repository
+                    .delete(id)
+                    .await
+                    .map_err(|e| match e {
+                        DataLayerError::RecordNotUpdated => IdentifierServiceError::NotFound(*id),
+                        e => e.error_while("deleting identifier").into(),
+                    })?;
+
+                Ok::<_, IdentifierServiceError>(())
+            })
             .await
-            .map_err(|e| match e {
-                DataLayerError::RecordNotUpdated => IdentifierServiceError::NotFound(*id),
-                e => e.error_while("deleting identifier").into(),
-            })?;
-        tracing::info!(
-            "Deleted identifier `{}` ({})`",
-            identifier.name,
-            identifier.id
-        );
+            .error_while("transactional identifier delete")??;
+
+        tracing::info!("Deleted identifier `{}` ({id})`", name);
         Ok(())
     }
 

@@ -262,6 +262,7 @@ async fn test_credential_formatting_ok_for_ecdsa() {
             organisation_id: None,
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
+            deleted_at: None,
             expiry_date: crate::clock::now_utc().add(Duration::days(7)),
             name: "test".to_string(),
             chain: r#"-----BEGIN CERTIFICATE-----
@@ -495,6 +496,7 @@ async fn test_unverified_credential_extraction() {
             organisation_id: None,
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
+            deleted_at: None,
             expiry_date: crate::clock::now_utc().add(Duration::days(7)),
             name: "test".to_string(),
             chain: r#"-----BEGIN CERTIFICATE-----
@@ -781,6 +783,7 @@ async fn format_and_extract_ecdsa() -> DetailCredential {
             organisation_id: Some(Uuid::new_v4().into()),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
+            deleted_at: None,
             expiry_date: crate::clock::now_utc().add(Duration::minutes(10)),
             name: "test cert".to_string(),
             chain: r#"-----BEGIN CERTIFICATE-----

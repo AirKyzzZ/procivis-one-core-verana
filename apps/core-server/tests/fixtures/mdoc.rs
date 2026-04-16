@@ -35,6 +35,7 @@ pub(crate) async fn format_mdoc_credential(
         state: CertificateState::Active,
         roles: vec![],
         key: None,
+        deleted_at: None,
     });
 
     format_mdoc(credential_data, params, ecdsa::signature_provider()).await

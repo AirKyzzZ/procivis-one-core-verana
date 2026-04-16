@@ -24,6 +24,7 @@ pub struct Model {
     pub identifier_id: IdentifierId,
     pub key_id: Option<KeyId>,
     pub organisation_id: Option<OrganisationId>,
+    pub deleted_at: Option<OffsetDateTime>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

@@ -543,6 +543,7 @@ pub async fn create_cert_identifier(
         chain: cert_params
             .chain
             .unwrap_or(format!("{}{}", cert.pem(), ca_cert.pem())),
+        deleted_at: None,
         fingerprint: cert_params.fingerprint.unwrap_or("ffffaaaa22".to_string()),
         state: cert_params.state.unwrap_or(CertificateState::Active),
         roles: cert_params.roles,

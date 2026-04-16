@@ -5,7 +5,9 @@ use one_core::model::certificate::{
 };
 use one_core::repository::certificate_repository::CertificateRepository;
 use one_core::repository::error::DataLayerError;
-use sea_orm::{ActiveModelTrait, EntityTrait, QueryOrder, Set, Unchanged};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set, Unchanged,
+};
 use shared_types::CertificateId;
 
 use super::CertificateProvider;
@@ -81,6 +83,7 @@ impl CertificateRepository for CertificateProvider {
         relations: &CertificateRelations,
     ) -> Result<Option<Certificate>, DataLayerError> {
         let certificate = certificate::Entity::find_by_id(id)
+            .filter(certificate::Column::DeletedAt.is_null())
             .one(&self.db)
             .await
             .map_err(to_data_layer_error)?;
@@ -96,6 +99,7 @@ impl CertificateRepository for CertificateProvider {
         query_params: CertificateListQuery,
     ) -> Result<GetCertificateList, DataLayerError> {
         let query = certificate::Entity::find()
+            .filter(certificate::Column::DeletedAt.is_null())
             .with_list_query(&query_params)
             .order_by_desc(certificate::Column::CreatedDate)
             .order_by_desc(certificate::Column::Id);
@@ -125,5 +129,22 @@ impl CertificateRepository for CertificateProvider {
             .map_err(to_update_data_layer_error)?;
 
         Ok(())
+    }
+
+    async fn delete(&self, certificate: &Certificate) -> Result<(), DataLayerError> {
+        let now = one_core::clock::now_utc();
+
+        let update_model = certificate::ActiveModel {
+            id: Unchanged(certificate.id),
+            deleted_at: Set(Some(now)),
+            ..Default::default()
+        };
+
+        certificate::Entity::update(update_model)
+            .filter(certificate::Column::DeletedAt.is_null())
+            .exec(&self.db)
+            .await
+            .map(|_| ())
+            .map_err(to_update_data_layer_error)
     }
 }

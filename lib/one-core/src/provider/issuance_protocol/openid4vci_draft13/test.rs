@@ -197,6 +197,7 @@ fn generic_credential_certificate() -> Credential {
             organisation_id: None,
             created_date: now,
             last_modified: now,
+            deleted_at: None,
             expiry_date: now + Duration::hours(12),
             name: "certificate 1".to_string(),
             chain: "<dummy test cert chain>".to_string(),

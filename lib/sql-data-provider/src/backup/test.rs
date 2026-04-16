@@ -167,6 +167,7 @@ async fn insert_certificate_to_database(
     identifier_id: IdentifierId,
     organisation_id: Option<OrganisationId>,
     key_id: Option<KeyId>,
+    deleted: bool,
 ) -> CertificateId {
     certificate::ActiveModel {
         id: Set(Uuid::new_v4().into()),
@@ -177,10 +178,15 @@ async fn insert_certificate_to_database(
         key_id: Set(key_id),
         state: Set(CertificateState::Active),
         chain: Set("chain".into()),
-        fingerprint: Set(format!("fingerprint:{identifier_id}").parse().unwrap()),
+        fingerprint: Set(Uuid::new_v4().to_string()),
         identifier_id: Set(identifier_id),
         organisation_id: Set(organisation_id),
         roles: Set(Some("AUTHENTICATION".to_string())),
+        deleted_at: if deleted {
+            Set(Some(get_dummy_date()))
+        } else {
+            NotSet
+        },
     }
     .insert(database)
     .await
@@ -392,6 +398,73 @@ async fn add_unexportable_dids(
     }
 }
 
+async fn add_unexportable_certificates(
+    db: &DatabaseConnection,
+    organisation_id: OrganisationId,
+    keys_setup: &UnexportableSetup,
+) -> UnexportableSetup {
+    let identifier_id = insert_identifier_to_database(
+        db,
+        organisation_id,
+        false,
+        None,
+        None,
+        IdentifierType::Certificate,
+    )
+    .await;
+
+    let exportable_ids = futures::stream::iter(keys_setup.exportable_ids.iter())
+        .chain(futures::stream::iter(keys_setup.deleted_ids.iter()))
+        .then(|key_id| {
+            insert_certificate_to_database(
+                db,
+                identifier_id,
+                Some(organisation_id),
+                Some((*key_id).into()),
+                false,
+            )
+        })
+        .map(Uuid::from)
+        .collect::<Vec<_>>()
+        .await;
+
+    let unexportable_ids = futures::stream::iter(keys_setup.unexportable_ids.iter())
+        .then(|key_id| {
+            insert_certificate_to_database(
+                db,
+                identifier_id,
+                Some(organisation_id),
+                Some((*key_id).into()),
+                false,
+            )
+        })
+        .map(Uuid::from)
+        .collect::<Vec<_>>()
+        .await;
+
+    let deleted_ids = futures::stream::iter(keys_setup.exportable_ids.iter())
+        .chain(futures::stream::iter(keys_setup.unexportable_ids.iter()))
+        .chain(futures::stream::iter(keys_setup.deleted_ids.iter()))
+        .then(|key_id| {
+            insert_certificate_to_database(
+                db,
+                identifier_id,
+                Some(organisation_id),
+                Some((*key_id).into()),
+                true,
+            )
+        })
+        .map(Uuid::from)
+        .collect::<Vec<_>>()
+        .await;
+
+    UnexportableSetup {
+        exportable_ids,
+        unexportable_ids,
+        deleted_ids,
+    }
+}
+
 async fn add_unexportable_identifiers(
     db: &DatabaseConnection,
     organisation_id: OrganisationId,
@@ -466,6 +539,7 @@ async fn add_identifier_with_type(
                 exportable_identifier,
                 Some(organisation_id),
                 Some(key_id.into()),
+                false,
             )
             .await;
             exportable_identifier
@@ -485,6 +559,7 @@ async fn add_identifier_with_type(
                 exportable_identifier,
                 Some(organisation_id),
                 Some(key_id.into()),
+                false,
             )
             .await;
             exportable_identifier
@@ -629,7 +704,7 @@ async fn test_fetch_unexportable_identifiers_certs_remote() {
         IdentifierType::Certificate,
     )
     .await;
-    insert_certificate_to_database(&setup.db, exportable_identifier, None, None).await;
+    insert_certificate_to_database(&setup.db, exportable_identifier, None, None, false).await;
 
     let unexportable = setup.provider.fetch_unexportable(None).await.unwrap();
 
@@ -908,6 +983,49 @@ async fn test_delete_unexportable_dids() {
         .filter(|did| did.deleted_at.is_none())
         .map(|did| did.id);
     assert_eq_unordered(not_deleted, unexportable_dids_setup.exportable_ids);
+}
+
+#[tokio::test]
+async fn test_delete_unexportable_certificates() {
+    let setup = setup_empty().await;
+    let unexportable_keys_setup = add_unexportable_keys(&setup.db, setup.organisation_id).await;
+    let unexportable_certificates_setup =
+        add_unexportable_certificates(&setup.db, setup.organisation_id, &unexportable_keys_setup)
+            .await;
+
+    let temp = NamedTempFile::new().unwrap();
+    setup.provider.copy_db_to(temp.path()).await.unwrap();
+    setup
+        .provider
+        .delete_unexportable(temp.path())
+        .await
+        .unwrap();
+
+    let db_dump = db_conn(
+        format!("sqlite:{}?mode=rw", temp.path().to_string_lossy()),
+        true,
+    )
+    .await
+    .unwrap();
+    let certificates = certificate::Entity::find().all(&db_dump).await.unwrap();
+
+    let all_deleted = certificates
+        .iter()
+        .filter(|certificate| certificate.deleted_at.is_some())
+        .map(|certificate| certificate.id);
+    assert_eq_unordered(
+        all_deleted,
+        unexportable_certificates_setup
+            .unexportable_ids
+            .into_iter()
+            .chain(unexportable_certificates_setup.deleted_ids),
+    );
+
+    let not_deleted = certificates
+        .iter()
+        .filter(|certificate| certificate.deleted_at.is_none())
+        .map(|certificate| certificate.id);
+    assert_eq_unordered(not_deleted, unexportable_certificates_setup.exportable_ids);
 }
 
 #[tokio::test]

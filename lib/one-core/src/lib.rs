@@ -826,6 +826,7 @@ impl OneCore {
             nfc_service: NfcService::new(config.clone(), nfc_scanner),
             identifier_service: IdentifierService::new(
                 data_provider.get_identifier_repository(),
+                data_provider.get_certificate_repository(),
                 data_provider.get_key_repository(),
                 data_provider.get_organisation_repository(),
                 data_provider.get_credential_schema_repository(),

@@ -151,4 +151,17 @@ impl CertificateRepository for CertificateHistoryDecorator {
 
         Ok(())
     }
+
+    async fn delete(&self, certificate: &Certificate) -> Result<(), DataLayerError> {
+        let id = certificate.id;
+        let name = certificate.name.clone();
+        let identifier_id = certificate.identifier_id;
+
+        self.inner.delete(certificate).await?;
+
+        self.create_history(id, name, HistoryAction::Deleted, identifier_id)
+            .await;
+
+        Ok(())
+    }
 }

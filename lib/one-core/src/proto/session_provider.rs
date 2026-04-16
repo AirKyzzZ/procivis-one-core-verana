@@ -65,6 +65,15 @@ pub mod test {
                 actor: None,
             })
         }
+
+        pub fn new_with_org(organisation_id: shared_types::OrganisationId) -> Self {
+            Self(Session {
+                organisation_id: Some(organisation_id),
+                permissions: vec![],
+                user_id: format!("test-user-{}", Uuid::new_v4()),
+                actor: None,
+            })
+        }
     }
 
     impl Default for StaticSessionProvider {

@@ -8,7 +8,8 @@ use url::Url;
 use uuid::Uuid;
 
 use crate::error::{ErrorCode, ErrorCodeMixin};
-use crate::model::identifier::{Identifier, IdentifierType};
+use crate::model::certificate::Certificate;
+use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierType};
 use crate::model::trust_collection::{GetTrustCollectionList, TrustCollection};
 use crate::model::trust_list_role::TrustListRoleEnum;
 use crate::model::trust_list_subscription::{
@@ -28,6 +29,7 @@ use crate::provider::trust_list_subscriber::provider::MockTrustListSubscriberPro
 use crate::provider::trust_list_subscriber::{
     Feature, MockTrustListSubscriber, TrustEntityResponse, TrustListSubscriberCapabilities,
 };
+use crate::repository::certificate_repository::MockCertificateRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::identifier_trust_information_repository::MockIdentifierTrustInformationRepository;
@@ -51,6 +53,7 @@ use crate::service::test_utilities::{
 #[derive(Default)]
 struct Mocks {
     identifier_repository: MockIdentifierRepository,
+    certificate_repository: MockCertificateRepository,
     key_repository: MockKeyRepository,
     organisation_repository: MockOrganisationRepository,
     credential_schema_repository: MockCredentialSchemaRepository,
@@ -68,6 +71,7 @@ struct Mocks {
 fn setup_service(mocks: Mocks) -> IdentifierService {
     IdentifierService {
         identifier_repository: Arc::new(mocks.identifier_repository),
+        certificate_repository: Arc::new(mocks.certificate_repository),
         key_repository: Arc::new(mocks.key_repository),
         organisation_repository: Arc::new(mocks.organisation_repository),
         credential_schema_repository: Arc::new(mocks.credential_schema_repository),
@@ -744,4 +748,45 @@ fn dummy_reg_cert() -> JWTPayload<Payload> {
             intermediary: None,
         },
     }
+}
+
+#[tokio::test]
+async fn test_delete_identifier_cascades_to_certificates() {
+    let identifier_id = Uuid::new_v4().into();
+    let organisation = dummy_organisation(None);
+    let cert_a: Certificate = dummy_certificate(identifier_id);
+    let cert_b: Certificate = dummy_certificate(identifier_id);
+
+    let mut identifier = dummy_identifier();
+    identifier.id = identifier_id;
+    identifier.organisation = Some(organisation.clone());
+    identifier.certificates = Some(vec![cert_a.clone(), cert_b.clone()]);
+
+    let mut identifier_repository = MockIdentifierRepository::default();
+    let returned_identifier = identifier.clone();
+    identifier_repository
+        .expect_get()
+        .withf(move |_, relations: &IdentifierRelations| {
+            relations.certificates.is_some() && relations.organisation.is_some()
+        })
+        .returning(move |_, _| Ok(Some(returned_identifier.clone())));
+    identifier_repository
+        .expect_delete()
+        .times(1)
+        .returning(|_| Ok(()));
+
+    let mut certificate_repository = MockCertificateRepository::default();
+    certificate_repository
+        .expect_delete()
+        .times(2)
+        .returning(|_| Ok(()));
+
+    let service = setup_service(Mocks {
+        identifier_repository,
+        certificate_repository,
+        session_provider: StaticSessionProvider::new_with_org(organisation.id),
+        ..Default::default()
+    });
+
+    service.delete_identifier(&identifier_id).await.unwrap();
 }

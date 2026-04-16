@@ -85,6 +85,7 @@ impl IdentifierProvider {
                 .select_only()
                 .column(certificate::Column::Id)
                 .filter(certificate::Column::IdentifierId.eq(model.id))
+                .filter(certificate::Column::DeletedAt.is_null())
                 .order_by_desc(certificate::Column::ExpiryDate)
                 .order_by_asc(certificate::Column::Name)
                 .into_tuple()

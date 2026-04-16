@@ -158,6 +158,7 @@ async fn test_get_or_create_remote_identifier_certificate_existing() {
         organisation_id: Some(organisation.id),
         created_date: now,
         last_modified: now,
+        deleted_at: None,
         expiry_date: now.add(Duration::minutes(10)),
         name: "test cert".to_string(),
         chain: "chain".to_string(),

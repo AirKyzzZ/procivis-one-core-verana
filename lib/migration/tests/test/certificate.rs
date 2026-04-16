@@ -1,29 +1,37 @@
+use sea_orm::DbBackend;
+
 use crate::fixtures::{ColumnType, get_schema};
 
 #[tokio::test]
 async fn test_db_schema_certificate() {
     let schema = get_schema().await;
 
+    let mut columns = vec![
+        "id",
+        "created_date",
+        "last_modified",
+        "expiry_date",
+        "identifier_id",
+        "name",
+        "chain",
+        "state",
+        "key_id",
+        "fingerprint",
+        "organisation_id",
+        "roles",
+        "deleted_at",
+    ];
+    if schema.backend() == DbBackend::MySql {
+        columns.extend(["deleted_at_materialized"]);
+    }
+
     let certificate = schema
         .table("certificate")
-        .columns(&[
-            "id",
-            "created_date",
-            "last_modified",
-            "expiry_date",
-            "identifier_id",
-            "name",
-            "chain",
-            "state",
-            "key_id",
-            "fingerprint",
-            "organisation_id",
-            "roles",
-        ])
+        .columns(&columns)
         .index(
             "index-Certificate-Fingerprint-OrganisationId-Unique",
             true,
-            &["fingerprint", "organisation_id"],
+            &["fingerprint", "organisation_id", "deleted_at_materialized"],
         )
         .index(
             "index-Certificate-Name-ExpiryDate-IdentifierId-Unique",
@@ -91,4 +99,8 @@ async fn test_db_schema_certificate() {
         .r#type(ColumnType::Uuid)
         .nullable(true)
         .foreign_key("fk_certificate_organisation_id", "organisation", "id");
+    certificate
+        .column("deleted_at")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(true);
 }

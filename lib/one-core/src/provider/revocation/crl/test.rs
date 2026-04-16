@@ -388,6 +388,7 @@ fn dummy_ca_certificate(issuer: &Identifier) -> Certificate {
         organisation_id: None,
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
+        deleted_at: None,
         expiry_date: crate::clock::now_utc().add(Duration::minutes(10)),
         name: "test cert".to_string(),
         chain: r#"-----BEGIN CERTIFICATE-----

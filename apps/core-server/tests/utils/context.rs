@@ -197,6 +197,7 @@ impl TestContext {
                 CertificateRole::AssertionMethod,
             ],
             key: Some(key.clone()),
+            deleted_at: None,
         };
 
         let identifier = context
@@ -250,6 +251,7 @@ impl TestContext {
                 CertificateRole::AssertionMethod,
             ],
             key: Some(key.clone()),
+            deleted_at: None,
         };
 
         let identifier = context

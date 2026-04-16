@@ -76,6 +76,7 @@ impl CertificatesDB {
             ]),
             key: params.key,
             organisation_id: params.organisation_id,
+            deleted_at: None,
         };
 
         self.repository.create(certificate.clone()).await.unwrap();

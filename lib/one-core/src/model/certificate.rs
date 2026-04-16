@@ -16,6 +16,7 @@ pub struct Certificate {
     pub organisation_id: Option<OrganisationId>,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
+    pub deleted_at: Option<OffsetDateTime>,
     pub expiry_date: OffsetDateTime,
     pub name: String,
     pub chain: String,

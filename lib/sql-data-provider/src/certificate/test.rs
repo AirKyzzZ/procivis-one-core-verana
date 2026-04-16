@@ -71,6 +71,7 @@ async fn test_create_certificate() {
         state: CertificateState::Active,
         roles: vec![],
         key: None,
+        deleted_at: None,
     };
 
     assert_eq!(id, setup.provider.create(certificate).await.unwrap());
@@ -96,6 +97,7 @@ async fn test_get_certificate() {
             CertificateRole::Authentication,
         ],
         key: None,
+        deleted_at: None,
     };
 
     setup.provider.create(certificate.clone()).await.unwrap();
@@ -143,6 +145,7 @@ async fn test_update_certificate() {
         state: CertificateState::Active,
         roles: vec![],
         key: None,
+        deleted_at: None,
     };
 
     setup.provider.create(certificate.clone()).await.unwrap();
@@ -167,4 +170,117 @@ async fn test_update_certificate() {
         .unwrap();
 
     assert_eq!(retrieved.state, CertificateState::Expired);
+}
+
+#[tokio::test]
+async fn test_delete_certificate_sets_deleted_at() {
+    let setup = setup().await;
+    let id = Uuid::new_v4().into();
+    let certificate = Certificate {
+        id,
+        identifier_id: setup.identifier_id,
+        organisation_id: Some(setup.organisation_id),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        expiry_date: get_dummy_date(),
+        name: "cert".to_string(),
+        chain: "chain".to_string(),
+        fingerprint: "fp-delete".to_string(),
+        state: CertificateState::Active,
+        roles: vec![],
+        key: None,
+        deleted_at: None,
+    };
+    setup.provider.create(certificate.clone()).await.unwrap();
+
+    setup.provider.delete(&certificate).await.unwrap();
+
+    assert!(
+        setup
+            .provider
+            .get(id, &Default::default())
+            .await
+            .unwrap()
+            .is_none()
+    );
+}
+
+#[tokio::test]
+async fn test_list_excludes_soft_deleted_certificates() {
+    use one_core::model::certificate::{CertificateListQuery, SortableCertificateColumn};
+    use one_core::model::common::SortDirection;
+    use one_core::model::list_query::{ListPagination, ListSorting};
+
+    let setup = setup().await;
+    let live_id: shared_types::CertificateId = Uuid::new_v4().into();
+    let dead_id: shared_types::CertificateId = Uuid::new_v4().into();
+
+    let mk = |id, fp: &str| Certificate {
+        id,
+        identifier_id: setup.identifier_id,
+        organisation_id: Some(setup.organisation_id),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        expiry_date: get_dummy_date(),
+        name: fp.to_string(),
+        chain: "chain".to_string(),
+        fingerprint: fp.to_string(),
+        state: CertificateState::Active,
+        roles: vec![],
+        key: None,
+        deleted_at: None,
+    };
+    let live = mk(live_id, "fp-live");
+    let dead = mk(dead_id, "fp-dead");
+    setup.provider.create(live.clone()).await.unwrap();
+    setup.provider.create(dead.clone()).await.unwrap();
+
+    setup.provider.delete(&dead).await.unwrap();
+
+    let list = setup
+        .provider
+        .list(CertificateListQuery {
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 10,
+            }),
+            sorting: Some(ListSorting {
+                column: SortableCertificateColumn::CreatedDate,
+                direction: Some(SortDirection::Descending),
+            }),
+            filtering: None,
+            include: None,
+        })
+        .await
+        .unwrap();
+
+    assert_eq!(list.total_items, 1);
+    assert_eq!(list.values[0].id, live_id);
+}
+
+#[tokio::test]
+async fn test_unique_fingerprint_allows_reuse_after_soft_delete() {
+    let setup = setup().await;
+    let mk = |name: &str, fp: &str| Certificate {
+        id: Uuid::new_v4().into(),
+        identifier_id: setup.identifier_id,
+        organisation_id: Some(setup.organisation_id),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        expiry_date: get_dummy_date(),
+        name: name.to_string(),
+        chain: "chain".to_string(),
+        fingerprint: fp.to_string(),
+        state: CertificateState::Active,
+        roles: vec![],
+        key: None,
+        deleted_at: None,
+    };
+
+    let first = mk("first", "fp-reuse");
+    setup.provider.create(first.clone()).await.unwrap();
+    setup.provider.delete(&first).await.unwrap();
+
+    let second = mk("second", "fp-reuse");
+    setup.provider.create(second).await.unwrap();
 }

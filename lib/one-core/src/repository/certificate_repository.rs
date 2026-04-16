@@ -24,6 +24,8 @@ pub trait CertificateRepository: Send + Sync {
         request: UpdateCertificateRequest,
     ) -> Result<(), DataLayerError>;
 
+    async fn delete(&self, certificate: &Certificate) -> Result<(), DataLayerError>;
+
     async fn list(
         &self,
         query_params: CertificateListQuery,

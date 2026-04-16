@@ -442,6 +442,7 @@ pub fn dummy_certificate(identifier_id: IdentifierId) -> Certificate {
         organisation_id: None,
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
+        deleted_at: None,
         expiry_date: datetime!(2042-04-02 21:37 +1),
         name: "certificate".to_string(),
         chain: "dummy chaing".to_string(),

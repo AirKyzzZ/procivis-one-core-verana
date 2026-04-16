@@ -798,6 +798,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         state: CertificateState::Active,
         roles: vec![],
         key: Some(key.clone()),
+        deleted_at: None,
     };
 
     let issuer_identifier = context

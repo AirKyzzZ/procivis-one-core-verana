@@ -233,6 +233,7 @@ pub fn prepare_identifier(
                 organisation_id: None,
                 created_date: now,
                 last_modified: now,
+                deleted_at: None,
                 expiry_date: certificate.expiry,
                 name: certificate
                     .subject_common_name

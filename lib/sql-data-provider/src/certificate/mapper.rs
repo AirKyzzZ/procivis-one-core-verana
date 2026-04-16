@@ -37,6 +37,7 @@ impl From<Certificate> for ActiveModel {
             key_id: Set(key_id),
             organisation_id: Set(certificate.organisation_id),
             roles: Set(roles),
+            deleted_at: Set(certificate.deleted_at),
         }
     }
 }
@@ -66,6 +67,7 @@ impl TryFrom<certificate::Model> for Certificate {
             state: value.state.into(),
             roles,
             key: None,
+            deleted_at: value.deleted_at,
         })
     }
 }

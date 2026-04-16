@@ -8,6 +8,7 @@ use crate::proto::transaction_manager::TransactionManager;
 use crate::proto::wrp_validator::WRPValidator;
 use crate::provider::blob_storage_provider::BlobStorageProvider;
 use crate::provider::trust_list_subscriber::provider::TrustListSubscriberProvider;
+use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::identifier_trust_information_repository::IdentifierTrustInformationRepository;
@@ -28,6 +29,7 @@ mod validator;
 #[derive(Clone)]
 pub struct IdentifierService {
     identifier_repository: Arc<dyn IdentifierRepository>,
+    certificate_repository: Arc<dyn CertificateRepository>,
     key_repository: Arc<dyn KeyRepository>,
     organisation_repository: Arc<dyn OrganisationRepository>,
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
@@ -48,6 +50,7 @@ impl IdentifierService {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
         identifier_repository: Arc<dyn IdentifierRepository>,
+        certificate_repository: Arc<dyn CertificateRepository>,
         key_repository: Arc<dyn KeyRepository>,
         organisation_repository: Arc<dyn OrganisationRepository>,
         credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
@@ -65,6 +68,7 @@ impl IdentifierService {
     ) -> Self {
         Self {
             identifier_repository,
+            certificate_repository,
             key_repository,
             organisation_repository,
             credential_schema_repository,

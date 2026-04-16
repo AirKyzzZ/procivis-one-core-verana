@@ -46,6 +46,7 @@ fn dummy_certificate(pem: String) -> Certificate {
         organisation_id: None,
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
+        deleted_at: None,
         expiry_date: crate::clock::now_utc() + time::Duration::days(365),
         name: "test-cert".into(),
         chain: pem,

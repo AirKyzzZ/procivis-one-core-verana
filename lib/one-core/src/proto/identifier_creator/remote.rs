@@ -195,6 +195,7 @@ impl IdentifierCreatorProto {
             organisation_id: organisation.as_ref().map(|o| o.id),
             created_date: now,
             last_modified: now,
+            deleted_at: None,
             expiry_date: attributes.not_after,
             name: subject_common_name.unwrap_or(name),
             chain,

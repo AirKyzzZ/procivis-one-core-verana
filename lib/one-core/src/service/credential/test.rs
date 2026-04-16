@@ -4796,6 +4796,7 @@ async fn test_create_credential_invalid_certificate_role() {
         organisation_id: Some(organisation.id),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
+        deleted_at: None,
         expiry_date: crate::clock::now_utc().add(Duration::days(1)),
         name: "test".to_string(),
         chain: "test".to_string(),

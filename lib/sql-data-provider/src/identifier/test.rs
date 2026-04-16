@@ -548,6 +548,7 @@ async fn test_list_identifier_filter_certificate_role() {
             organisation_id: Some(setup.organisation.id),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
+            deleted_at: None,
             expiry_date: get_dummy_date(),
             name: "".to_string(),
             chain: "".to_string(),

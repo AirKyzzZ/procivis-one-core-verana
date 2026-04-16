@@ -88,7 +88,10 @@ impl BackupProvider {
                 JoinType::LeftJoin,
                 certificate::Entity,
                 Expr::col((identifier::Entity, identifier::Column::Id))
-                    .equals((certificate::Entity, certificate::Column::IdentifierId)),
+                    .equals((certificate::Entity, certificate::Column::IdentifierId))
+                    .and(
+                        Expr::col((certificate::Entity, certificate::Column::DeletedAt)).is_null(),
+                    ),
             )
             .join(
                 JoinType::LeftJoin,
@@ -102,6 +105,7 @@ impl BackupProvider {
                         identifier::IdentifierType::Certificate,
                         identifier::IdentifierType::CertificateAuthority,
                     ])
+                    .and(Expr::col((certificate::Entity, certificate::Column::DeletedAt)).is_null())
                     .and(self.non_exportable_keys_filter()),
             )
             .to_owned()
@@ -478,6 +482,27 @@ impl BackupRepository for BackupProvider {
             delete_history_related_to_wallet_unit_attestations(&db),
         )
         .map_err(to_data_layer_error)?;
+
+        certificate::Entity::update_many()
+            .col_expr(certificate::Column::DeletedAt, now.into())
+            .filter(
+                certificate::Column::KeyId
+                    .in_subquery(
+                        Query::select()
+                            .column(key::Column::Id)
+                            .from(key::Entity)
+                            .and_where(
+                                key::Column::StorageType
+                                    .is_not_in(&self.exportable_storages)
+                                    .and(key::Column::DeletedAt.is_null()),
+                            )
+                            .to_owned(),
+                    )
+                    .and(certificate::Column::DeletedAt.is_null()),
+            )
+            .exec(&db)
+            .await
+            .map_err(to_data_layer_error)?;
 
         key::Entity::update_many()
             .col_expr(key::Column::DeletedAt, now.into())
