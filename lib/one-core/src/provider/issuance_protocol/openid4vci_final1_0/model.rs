@@ -171,6 +171,8 @@ pub(crate) struct HolderInteractionData {
     #[serde(default)]
     pub registration_certificate: Option<String>,
     #[serde(default)]
+    pub national_registry_data: Option<String>,
+    #[serde(default)]
     pub relying_party_name: Option<String>,
 }
 

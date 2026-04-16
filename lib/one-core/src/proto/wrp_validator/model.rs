@@ -58,7 +58,6 @@ pub(crate) struct WRPPayloadData {
     #[expect(unused)]
     pub entitlement: Vec<String>,
     #[serde(default)]
-    #[expect(unused)]
     pub provides_attestations: Vec<Credential>,
     pub supervisory_authority: LegalEntity,
     #[serde(rename = "registryURI")]

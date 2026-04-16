@@ -67,10 +67,7 @@ use crate::model::credential_schema::{
     UpdateCredentialSchemaRequest,
 };
 use crate::model::did::{DidRelations, KeyRole};
-use crate::model::history::{
-    History, HistoryAction, HistoryEntityType, HistoryMetadata, HistorySource,
-    WalletRelyingPartyMetadata,
-};
+use crate::model::history::{HistoryAction, HistoryMetadata, WalletRelyingPartyMetadata};
 use crate::model::holder_wallet_unit::HolderWalletUnit;
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierType};
 use crate::model::identifier_trust_information::{IdentifierTrustInformation, SchemaFormat};
@@ -88,7 +85,7 @@ use crate::proto::identifier_creator::{
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::{DecomposedJwt, JWTPayload};
 use crate::proto::key_verification::KeyVerification;
-use crate::proto::session_provider::{SessionExt, SessionProvider};
+use crate::proto::session_provider::SessionProvider;
 use crate::proto::wallet_unit::{HolderWalletUnitProto, IssueWalletAttestationRequest};
 use crate::proto::wrp_validator::WRPValidator;
 use crate::proto::wrp_validator::error::WRPValidatorError;
@@ -115,7 +112,6 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_security_level::provider::KeySecurityLevelProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
-use crate::provider::signer::registration_certificate;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::history_repository::HistoryRepository;
@@ -142,6 +138,7 @@ pub mod service;
 mod test;
 #[cfg(test)]
 mod test_issuance;
+mod trust;
 pub mod validator;
 
 const CREDENTIAL_OFFER_VALUE_QUERY_PARAM_KEY: &str = "credential_offer";
@@ -978,6 +975,25 @@ impl OpenID4VCIFinal1_0 {
             .await?;
         }
 
+        if let (Some(national_registry_data), Some(relying_party_name)) = (
+            &interaction_data.national_registry_data,
+            &interaction_data.relying_party_name,
+        ) {
+            self.store_certificate_history_event(
+                HistoryAction::WrpNrReceived,
+                credential.id,
+                organisation.id,
+                national_registry_data.to_owned(),
+                Some(HistoryMetadata::WalletRelyingParty(
+                    WalletRelyingPartyMetadata {
+                        name: relying_party_name.to_string(),
+                        ..Default::default()
+                    },
+                )),
+            )
+            .await?;
+        }
+
         Ok(UpdateResponse {
             result: issuer_response,
             update_credential_schema,
@@ -1271,31 +1287,38 @@ impl OpenID4VCIFinal1_0 {
                 ))
             })?;
 
-        let (access_certificate, registration_certificate, relying_party_name) =
-            if let IssuerMetadataRepresentation::Signed(jwt, Some(access_certificate)) =
-                &issuer_metadata
-                // skip checks if no registration certificate provided
-                && !jwt.payload.custom.issuer_info.is_empty()
-            {
-                let (registration_certificate, relying_party_name) = self
-                    .validate_credential_config_trust(
-                        credential_config,
-                        &jwt.payload.custom.issuer_info,
-                        &access_certificate.0.relying_party_id,
-                        organisation.id,
-                    )
-                    .await?;
-
-                (
-                    Some(access_certificate.1.to_owned()),
-                    Some(registration_certificate),
-                    Some(relying_party_name),
+        let (
+            access_certificate,
+            registration_certificate,
+            national_registry_data,
+            relying_party_name,
+        ) = if let IssuerMetadataRepresentation::Signed(jwt, Some(access_certificate)) =
+            &issuer_metadata
+        {
+            let trust::TrustInfo {
+                registration_certificate,
+                national_registry_data,
+                relying_party_name,
+            } = self
+                .validate_trust(
+                    credential_config,
+                    &jwt.payload.custom,
+                    organisation.id,
+                    &access_certificate.0,
                 )
-            } else {
-                (None, None, None)
-            };
+                .await?;
 
-        // https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-ID1.html#section-11.2.3-2.2
+            (
+                Some(access_certificate.1.to_owned()),
+                registration_certificate,
+                national_registry_data,
+                Some(relying_party_name),
+            )
+        } else {
+            (None, None, None, None)
+        };
+
+        // https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#section-12.2.4-2.2
         if let Some(authorization_server) = grants.authorization_server()
             && issuer_metadata
                 .metadata()
@@ -1344,6 +1367,7 @@ impl OpenID4VCIFinal1_0 {
             format: credential_config.format.to_owned(),
             access_certificate,
             registration_certificate,
+            national_registry_data,
             relying_party_name,
         };
         let data = serialize_interaction_data(&holder_data)?;
@@ -1360,105 +1384,6 @@ impl OpenID4VCIFinal1_0 {
             key_storage_security,
             key_algorithms,
         })
-    }
-
-    async fn validate_credential_config_trust(
-        &self,
-        credential_config: &OpenID4VCICredentialConfigurationData,
-        issuer_info: &[EtsiIssuerInfoResponseDTO],
-        expected_relying_party_id: &str,
-        organisation_id: OrganisationId,
-    ) -> Result<(String, String), IssuanceProtocolError> {
-        for reg_cert in issuer_info {
-            if let Some(relying_party_name) = self
-                .credential_config_matches_reg_cert(
-                    credential_config,
-                    reg_cert,
-                    expected_relying_party_id,
-                    organisation_id,
-                )
-                .await
-            {
-                return Ok((reg_cert.data.to_owned(), relying_party_name));
-            }
-        }
-
-        Err(IssuanceProtocolError::DisallowedCredentialConfiguration)
-    }
-
-    async fn credential_config_matches_reg_cert(
-        &self,
-        credential_config: &OpenID4VCICredentialConfigurationData,
-        issuer_info: &EtsiIssuerInfoResponseDTO,
-        expected_relying_party_id: &str,
-        organisation_id: OrganisationId,
-    ) -> Option<String> {
-        let Ok(reg_cert) = self
-            .wrp_validator
-            .validate_registration_certificate(
-                &issuer_info.data,
-                expected_relying_party_id,
-                Some(organisation_id),
-                self.params.trust_ecosystem_leeway,
-            )
-            .await
-        else {
-            return None;
-        };
-
-        let provides_attestations = reg_cert.payload.custom.provides_attestations?;
-
-        if provides_attestations.iter().any(|attestation| {
-            credential_config_matches_reg_cert_attestation(credential_config, attestation)
-        }) {
-            Some(reg_cert.payload.custom.name)
-        } else {
-            None
-        }
-    }
-
-    async fn store_certificate_history_event(
-        &self,
-        action: HistoryAction,
-        credential_id: CredentialId,
-        organisation_id: OrganisationId,
-        certificate_content: String,
-        metadata: Option<HistoryMetadata>,
-    ) -> Result<(), IssuanceProtocolError> {
-        let blob_storage = self
-            .blob_storage_provider
-            .get_blob_storage(BlobStorageType::Db)
-            .await
-            .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))
-            .error_while("getting blob storage")?;
-
-        let blob = Blob::new(certificate_content, BlobType::HistoryMetadata);
-
-        let blob_id = blob.id;
-        blob_storage
-            .create(blob)
-            .await
-            .error_while("creating history metadata blob")?;
-
-        self.history_repository
-            .create_history(History {
-                id: Uuid::new_v4().into(),
-                created_date: now_utc(),
-                action,
-                name: Default::default(),
-                target: None,
-                source: HistorySource::Core,
-                entity_id: Some(credential_id.into()),
-                entity_type: HistoryEntityType::Credential,
-                metadata,
-                metadata_blob_id: Some(blob_id),
-                organisation_id: Some(organisation_id),
-                user: self.session_provider.session().user(),
-            })
-            .await
-            .error_while("storing history")?;
-
-        Ok(())
     }
 
     pub(super) async fn get_etsi_issuer_info(
@@ -2822,37 +2747,5 @@ impl IdentifierTrustInformation {
 impl SchemaFormat {
     fn is_allowed_for(&self, schema_id: &str, format_type: &FormatType) -> bool {
         self.schema_id == schema_id && self.format == (*format_type).into()
-    }
-}
-
-fn credential_config_matches_reg_cert_attestation(
-    credential_config: &OpenID4VCICredentialConfigurationData,
-    reg_cert_attestation: &registration_certificate::model::Credential,
-) -> bool {
-    if credential_config.format != reg_cert_attestation.format.to_string() {
-        return false;
-    }
-
-    match &reg_cert_attestation.meta {
-        dcql::CredentialMeta::MsoMdoc { doctype_value } => credential_config
-            .doctype
-            .as_ref()
-            .is_some_and(|doctype| doctype == doctype_value),
-        dcql::CredentialMeta::SdJwtVc { vct_values } => credential_config
-            .vct
-            .as_ref()
-            .is_some_and(|vct| vct_values.contains(vct)),
-        dcql::CredentialMeta::W3cVc { type_values } => credential_config
-            .credential_definition
-            .as_ref()
-            .is_some_and(|credential_definition| {
-                // TODO: support context expansion
-                type_values.iter().any(|types| {
-                    credential_definition
-                        .r#type
-                        .iter()
-                        .all(|r#type| types.contains(r#type))
-                })
-            }),
     }
 }
