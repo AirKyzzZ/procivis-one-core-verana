@@ -12,7 +12,8 @@ use crate::model::common::GetListResponse;
 use crate::model::list_filter::ValueComparison;
 use crate::model::organisation::OrganisationRelations;
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct Key {
     pub id: KeyId,
     pub created_date: OffsetDateTime,

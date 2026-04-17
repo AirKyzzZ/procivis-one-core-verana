@@ -5,7 +5,8 @@ use time::OffsetDateTime;
 
 use crate::provider::remote_entity_storage::RemoteEntityType;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct RemoteEntityCacheEntry {
     pub id: RemoteEntityCacheEntryId,
 

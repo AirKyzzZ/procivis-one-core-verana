@@ -16,7 +16,8 @@ use crate::model::certificate::{Certificate, CertificateRelations};
 use crate::model::key::KeyRelations;
 use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct Credential {
     pub id: CredentialId,
     pub created_date: OffsetDateTime,
@@ -80,7 +81,8 @@ pub type GetCredentialList = GetListResponse<Credential>;
 pub type CredentialListQuery =
     ListQuery<SortableCredentialColumn, CredentialFilterValue, CredentialListIncludeEntityTypeEnum>;
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct UpdateCredentialRequest {
     pub issuer_identifier_id: Option<IdentifierId>,
     pub issuer_certificate_id: Option<CertificateId>,

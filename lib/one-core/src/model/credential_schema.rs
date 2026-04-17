@@ -16,7 +16,8 @@ use crate::service::credential_schema::dto::{
 
 pub type CredentialSchemaName = String;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct CredentialSchema {
     pub id: CredentialSchemaId,
     pub deleted_at: Option<OffsetDateTime>,
@@ -165,7 +166,8 @@ pub type CredentialSchemaListQuery = ListQuery<
     CredentialSchemaListIncludeEntityTypeEnum,
 >;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct UpdateCredentialSchemaRequest {
     pub id: CredentialSchemaId,
     pub revocation_method: Option<Option<RevocationMethodId>>,

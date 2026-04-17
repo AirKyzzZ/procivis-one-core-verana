@@ -8,6 +8,7 @@ use crate::model::common::GetListResponse;
 use crate::model::trust_list_role::TrustListRoleEnum;
 
 #[derive(Clone, Debug)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct TrustListSubscription {
     pub id: TrustListSubscriptionId,
     pub name: String,

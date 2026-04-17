@@ -7,7 +7,8 @@ use super::list_query::ListQuery;
 use super::organisation::{Organisation, OrganisationRelations};
 use crate::model::common::GetListResponse;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct TrustCollection {
     pub id: TrustCollectionId,
     pub name: String,

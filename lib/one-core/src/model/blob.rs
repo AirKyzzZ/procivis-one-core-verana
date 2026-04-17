@@ -2,7 +2,8 @@ use shared_types::BlobId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct Blob {
     pub id: BlobId,
     pub created_date: OffsetDateTime,

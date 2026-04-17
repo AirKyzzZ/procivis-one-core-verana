@@ -2,6 +2,7 @@ use shared_types::TrustAnchorId;
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct TrustAnchor {
     pub id: TrustAnchorId,
     pub name: String,

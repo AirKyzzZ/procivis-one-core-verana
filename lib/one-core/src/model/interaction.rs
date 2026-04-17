@@ -5,7 +5,8 @@ use time::OffsetDateTime;
 
 use crate::model::organisation::{Organisation, OrganisationRelations};
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct Interaction {
     pub id: InteractionId,
     pub created_date: OffsetDateTime,

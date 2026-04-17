@@ -7,6 +7,7 @@ use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::service::trust_entity::dto::TrustEntityContent;
 
 #[derive(Clone, Debug)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct TrustEntity {
     pub id: TrustEntityId,
     pub created_date: OffsetDateTime,

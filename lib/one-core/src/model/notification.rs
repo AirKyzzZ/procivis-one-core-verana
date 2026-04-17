@@ -6,6 +6,7 @@ use crate::model::list_filter::{ListFilterValue, ValueComparison};
 use crate::model::list_query::ListQuery;
 
 #[derive(Clone, Debug)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct Notification {
     pub id: NotificationId,
     pub created_date: OffsetDateTime,

@@ -30,9 +30,10 @@ pub(crate) enum IdentifierRole {
     Verifier,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub(crate) enum RemoteIdentifierRelation {
-    Did(Did),
+    Did(#[allow(unused)] Did),
     Certificate(Certificate),
     Key(Key),
 }

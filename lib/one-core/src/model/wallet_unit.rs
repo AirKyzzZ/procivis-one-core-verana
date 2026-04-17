@@ -14,7 +14,8 @@ use crate::model::wallet_unit_attested_key::{
     WalletUnitAttestedKey, WalletUnitAttestedKeyRelations,
 };
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct WalletUnit {
     pub id: WalletUnitId,
     pub name: String,
@@ -97,7 +98,8 @@ pub type WalletUnitListQuery = ListQuery<SortableWalletUnitColumn, WalletUnitFil
 
 pub type GetWalletUnitList = GetListResponse<WalletUnit>;
 
-#[derive(Clone, Debug, Eq, PartialEq, Default)]
+#[derive(Clone, Debug, Default)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct UpdateWalletUnitRequest {
     pub status: Option<WalletUnitStatus>,
     pub last_issuance: Option<OffsetDateTime>,

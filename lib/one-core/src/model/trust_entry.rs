@@ -9,6 +9,7 @@ use crate::model::list_query::ListQuery;
 use crate::model::trust_list_publication::{TrustListPublication, TrustListPublicationRelations};
 
 #[derive(Clone, Debug)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct TrustEntry {
     pub id: TrustEntryId,
     pub created_date: OffsetDateTime,

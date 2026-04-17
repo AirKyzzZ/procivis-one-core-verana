@@ -2,7 +2,8 @@ use dcql::CredentialFormat;
 use shared_types::{BlobId, IdentifierId, IdentifierTrustInformationId};
 use time::OffsetDateTime;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct IdentifierTrustInformation {
     pub id: IdentifierTrustInformationId,
     pub created_date: OffsetDateTime,

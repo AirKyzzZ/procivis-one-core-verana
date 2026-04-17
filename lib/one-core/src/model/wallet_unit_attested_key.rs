@@ -5,7 +5,8 @@ use time::OffsetDateTime;
 
 use crate::model::revocation_list::{RevocationList, RevocationListRelations};
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct WalletUnitAttestedKey {
     pub id: WalletUnitAttestedKeyId,
     pub wallet_unit_id: WalletUnitId, // cannot be a relation, because wallet unit defines a reverse relation already
@@ -23,7 +24,8 @@ pub struct WalletUnitAttestedKeyRelations {
     pub revocation: Option<RevocationListRelations>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct WalletUnitAttestedKeyRevocationInfo {
     pub revocation_list: RevocationList,
     pub revocation_list_index: usize,

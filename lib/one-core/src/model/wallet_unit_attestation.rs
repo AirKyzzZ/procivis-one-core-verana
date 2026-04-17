@@ -3,7 +3,8 @@ use time::OffsetDateTime;
 
 use crate::model::key::{Key, KeyRelations};
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct WalletUnitAttestation {
     pub id: WalletUnitAttestationId,
     pub created_date: OffsetDateTime,

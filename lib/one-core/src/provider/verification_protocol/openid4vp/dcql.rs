@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 
 use dcql::matching::{ClaimFilter, CredentialFilter};
@@ -8,7 +8,7 @@ use dcql::{
 };
 use itertools::Itertools;
 use one_dto_mapper::convert_inner;
-use shared_types::{CredentialId, OrganisationId};
+use shared_types::{ClaimId, CredentialId, OrganisationId};
 use standardized_types::x509::AuthorityKeyIdentifier;
 
 use crate::config::core_config::{CoreConfig, FormatType};
@@ -848,36 +848,38 @@ fn select_claims(
         let matching_claims =
             get_matching_claims(claims, claim_filter, &user_claim_path, select_children)?;
         if !matching_claims.is_empty() {
-            matching_claims.into_iter().try_for_each(|matching_claim| {
-                // All optional claims that were explicitly requested by the verifier
-                // should have a toggle.
-                let user_selection = matching_claim.exact && !claim_filter.required;
-                if let Some(claim) = selected.get_mut(&matching_claim.claim.path) {
-                    claim.required_by_verifier =
-                        claim.required_by_verifier || claim_filter.required;
-                    claim.user_selection = claim.user_selection || user_selection
-                } else {
-                    let claim = matching_claim.claim;
-                    selected.insert(
-                        claim.path.to_owned(),
-                        SelectedClaim {
-                            path: claim.path.to_owned(),
-                            selective_disclosure_supported: claim.selectively_disclosable,
-                            required_by_verifier: claim_filter.required,
-                            user_selection,
-                            metadata: claim
-                                .schema
-                                .as_ref()
-                                .ok_or(VerificationProtocolError::Failed(format!(
-                                    "missing claim schema for claim {}",
-                                    claim.id
-                                )))?
-                                .metadata,
-                        },
-                    );
-                };
-                Ok::<_, VerificationProtocolError>(())
-            })?;
+            matching_claims.into_iter().try_for_each(
+                |(ClaimMatchId { exact, .. }, matching_claim)| {
+                    // All optional claims that were explicitly requested by the verifier
+                    // should have a toggle.
+                    let user_selection = exact && !claim_filter.required;
+                    if let Some(claim) = selected.get_mut(&matching_claim.path) {
+                        claim.required_by_verifier =
+                            claim.required_by_verifier || claim_filter.required;
+                        claim.user_selection = claim.user_selection || user_selection
+                    } else {
+                        selected.insert(
+                            matching_claim.path.to_owned(),
+                            SelectedClaim {
+                                path: matching_claim.path.to_owned(),
+                                selective_disclosure_supported: matching_claim
+                                    .selectively_disclosable,
+                                required_by_verifier: claim_filter.required,
+                                user_selection,
+                                metadata: matching_claim
+                                    .schema
+                                    .as_ref()
+                                    .ok_or(VerificationProtocolError::Failed(format!(
+                                        "missing claim schema for claim {}",
+                                        matching_claim.id
+                                    )))?
+                                    .metadata,
+                            },
+                        );
+                    };
+                    Ok::<_, VerificationProtocolError>(())
+                },
+            )?;
         } else if claim_filter.required {
             // no match but claim is required --> add to missing claims (mark the credential as inapplicable)
             missing_claims.push(MatchedClaim::Missing {
@@ -901,8 +903,8 @@ fn select_claims(
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-struct ClaimMatch<'a> {
-    claim: &'a Claim,
+struct ClaimMatchId {
+    claim_id: ClaimId,
     // Whether it was an exact match on the DCQL path or matched transitively by other matched claims
     exact: bool,
 }
@@ -912,7 +914,7 @@ fn get_matching_claims<'a>(
     claim_filter: &ClaimFilter,
     user_claim_path: &[String],
     select_children: bool,
-) -> Result<HashSet<ClaimMatch<'a>>, VerificationProtocolError> {
+) -> Result<HashMap<ClaimMatchId, &'a Claim>, VerificationProtocolError> {
     let values_filter = claim_filter
         .values
         .iter()
@@ -943,21 +945,23 @@ fn get_matching_claims<'a>(
 
     if exactly_matching_claims.is_empty() {
         // no matches found, return empty result
-        return Ok(HashSet::new());
+        return Ok(HashMap::new());
     }
 
-    let mut child_claims = HashSet::<&Claim>::new();
+    let mut child_claims = HashMap::<ClaimId, &Claim>::new();
     if select_children {
         // Presentation definition v2: child claims of exactly matching claims are also selected
         exactly_matching_claims.iter().for_each(|claim| {
             let prefix = format!("{}/", claim.path);
-            child_claims.extend(claims.iter().filter(|c| c.path.starts_with(&prefix)));
+            for claim in claims.iter().filter(|c| c.path.starts_with(&prefix)) {
+                child_claims.insert(claim.id, claim);
+            }
         });
     }
 
     // "trunk" nodes on the path from root to the filtered_claims
     // all of these are either arrays or objects
-    let mut claims_towards_root = HashSet::<&Claim>::new();
+    let mut claims_towards_root = HashMap::<ClaimId, &Claim>::new();
     exactly_matching_claims.iter().try_for_each(|claim| {
         let mut current_path = claim.path.as_str();
         while let Some((parent_path, _)) = current_path.rsplit_once('/') {
@@ -968,7 +972,7 @@ fn get_matching_claims<'a>(
                     "Missing claim with path '{parent_path}' (parent of claim {}).",
                     claim.id
                 )))?;
-            claims_towards_root.insert(parent_claim);
+            claims_towards_root.insert(parent_claim.id, parent_claim);
             current_path = parent_path;
         }
         Ok::<_, VerificationProtocolError>(())
@@ -977,29 +981,50 @@ fn get_matching_claims<'a>(
     // branches of nodes that are not selectively disclosable
     let nonselectively_disclosable_children = get_nonselectively_disclosable_children(
         claims,
-        claims_towards_root.iter().map(|claim| claim.path.as_str()),
+        claims_towards_root
+            .values()
+            .map(|claim| claim.path.as_str()),
     );
 
-    let mut combined_set = HashSet::new();
-    combined_set.extend(
-        exactly_matching_claims
-            .into_iter()
-            .map(|claim| ClaimMatch { claim, exact: true }),
-    );
-    combined_set.extend(child_claims.into_iter().map(|claim| ClaimMatch {
-        claim,
-        exact: false,
+    let mut combined_set = HashMap::new();
+    combined_set.extend(exactly_matching_claims.into_iter().map(|claim| {
+        (
+            ClaimMatchId {
+                claim_id: claim.id,
+                exact: true,
+            },
+            claim,
+        )
     }));
-    combined_set.extend(claims_towards_root.into_iter().map(|claim| ClaimMatch {
-        claim,
-        exact: false,
+    combined_set.extend(child_claims.into_iter().map(|(claim_id, claim)| {
+        (
+            ClaimMatchId {
+                claim_id,
+                exact: false,
+            },
+            claim,
+        )
+    }));
+    combined_set.extend(claims_towards_root.into_iter().map(|(claim_id, claim)| {
+        (
+            ClaimMatchId {
+                claim_id,
+                exact: false,
+            },
+            claim,
+        )
     }));
     combined_set.extend(
         nonselectively_disclosable_children
             .into_iter()
-            .map(|claim| ClaimMatch {
-                claim,
-                exact: false,
+            .map(|claim| {
+                (
+                    ClaimMatchId {
+                        claim_id: claim.id,
+                        exact: false,
+                    },
+                    claim,
+                )
             }),
     );
     Ok(combined_set)

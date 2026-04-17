@@ -5,7 +5,8 @@ use crate::model::common::GetListResponse;
 use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use crate::model::list_query::ListQuery;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct Organisation {
     pub id: OrganisationId,
     pub name: String,

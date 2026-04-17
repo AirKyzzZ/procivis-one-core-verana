@@ -8,7 +8,8 @@ use super::list_query::ListQuery;
 use super::organisation::{Organisation, OrganisationRelations};
 use crate::service::proof_schema::dto::ProofSchemaFilterValue;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct ProofSchema {
     pub id: ProofSchemaId,
     pub created_date: OffsetDateTime,
@@ -23,14 +24,16 @@ pub struct ProofSchema {
     pub input_schemas: Option<Vec<ProofInputSchema>>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Default)]
+#[derive(Clone, Debug, Default)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct ProofInputSchema {
     // Relations
     pub claim_schemas: Option<Vec<ProofInputClaimSchema>>,
     pub credential_schema: Option<CredentialSchema>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct ProofInputClaimSchema {
     pub schema: ClaimSchema,
     pub required: bool,

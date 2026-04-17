@@ -8,7 +8,8 @@ use crate::model::wallet_unit_attestation::{
     WalletUnitAttestation, WalletUnitAttestationRelations,
 };
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct HolderWalletUnit {
     pub id: HolderWalletUnitId,
     pub created_date: OffsetDateTime,
@@ -32,7 +33,8 @@ pub struct HolderWalletUnitRelations {
     pub authentication_key: Option<KeyRelations>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct CreateHolderWalletUnitRequest {
     pub id: HolderWalletUnitId,
     pub wallet_provider_type: WalletProviderType,
@@ -44,7 +46,8 @@ pub struct CreateHolderWalletUnitRequest {
     pub authentication_key: Option<Key>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Default)]
+#[derive(Clone, Debug, Default)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct UpdateHolderWalletUnitRequest {
     pub status: Option<WalletUnitStatus>,
     pub wallet_unit_attestations: Option<Vec<WalletUnitAttestation>>,

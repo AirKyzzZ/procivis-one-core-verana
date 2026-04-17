@@ -10,7 +10,8 @@ pub struct Mdoc {
     pub linked_credential_id: CredentialId,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct ValidityCredential {
     pub id: Uuid,
     pub created_date: OffsetDateTime,

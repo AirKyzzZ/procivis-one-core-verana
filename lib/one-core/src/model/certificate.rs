@@ -9,7 +9,8 @@ use super::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use super::list_query::ListQuery;
 use super::organisation::OrganisationRelations;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct Certificate {
     pub id: CertificateId,
     pub identifier_id: IdentifierId,

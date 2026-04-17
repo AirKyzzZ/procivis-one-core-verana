@@ -14,6 +14,7 @@ use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::trust_list_role::TrustListRoleEnum;
 
 #[derive(Clone, Debug)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct TrustListPublication {
     pub id: TrustListPublicationId,
     pub created_date: OffsetDateTime,

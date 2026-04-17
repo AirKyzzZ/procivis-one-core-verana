@@ -34,14 +34,16 @@ pub enum KeyRole {
     UpdateKey,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct RelatedKey {
     pub role: KeyRole,
     pub key: Key,
     pub reference: String,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct Did {
     pub id: DidId,
     pub created_date: OffsetDateTime,

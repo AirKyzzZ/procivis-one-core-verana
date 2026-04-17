@@ -10,7 +10,8 @@ use time::OffsetDateTime;
 use crate::model::certificate::{Certificate, CertificateRelations};
 use crate::model::identifier::{Identifier, IdentifierRelations};
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct RevocationList {
     pub id: RevocationListId,
     pub created_date: OffsetDateTime,

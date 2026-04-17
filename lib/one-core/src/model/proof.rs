@@ -15,7 +15,8 @@ use super::proof_schema::{ProofSchema, ProofSchemaRelations};
 use crate::model::key::KeyRelations;
 use crate::service::proof::dto::ProofFilterValue;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct Proof {
     pub id: ProofId,
     pub created_date: OffsetDateTime,
@@ -60,7 +61,8 @@ pub enum ProofRole {
     Verifier,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct ProofClaim {
     pub claim: Claim,
 

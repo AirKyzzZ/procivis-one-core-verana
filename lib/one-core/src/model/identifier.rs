@@ -18,7 +18,8 @@ use crate::model::identifier_trust_information::{
 };
 use crate::model::list_filter::ValueComparison;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct Identifier {
     pub id: IdentifierId,
     pub created_date: OffsetDateTime,

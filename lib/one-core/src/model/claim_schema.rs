@@ -1,7 +1,8 @@
 use shared_types::ClaimSchemaId;
 use time::OffsetDateTime;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct ClaimSchema {
     pub id: ClaimSchemaId,
     pub key: String,
