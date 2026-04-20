@@ -12,7 +12,7 @@ use crate::repository::history_repository::HistoryRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
 use crate::repository::trust_collection_repository::TrustCollectionRepository;
-use crate::repository::wallet_unit_repository::WalletUnitRepository;
+use crate::repository::wallet_instance_repository::WalletInstanceRepository;
 
 pub mod dto;
 pub mod error;
@@ -27,7 +27,7 @@ mod test;
 #[derive(Clone)]
 pub struct WalletProviderService {
     organisation_repository: Arc<dyn OrganisationRepository>,
-    wallet_unit_repository: Arc<dyn WalletUnitRepository>,
+    wallet_instance_repository: Arc<dyn WalletInstanceRepository>,
     identifier_repository: Arc<dyn IdentifierRepository>,
     history_repository: Arc<dyn HistoryRepository>,
     trust_collection_repository: Arc<dyn TrustCollectionRepository>,
@@ -46,7 +46,7 @@ impl WalletProviderService {
     #[expect(clippy::too_many_arguments)]
     pub(crate) fn new(
         organisation_repository: Arc<dyn OrganisationRepository>,
-        wallet_unit_repository: Arc<dyn WalletUnitRepository>,
+        wallet_instance_repository: Arc<dyn WalletInstanceRepository>,
         identifier_repository: Arc<dyn IdentifierRepository>,
         history_repository: Arc<dyn HistoryRepository>,
         trust_collection_repository: Arc<dyn TrustCollectionRepository>,
@@ -62,7 +62,7 @@ impl WalletProviderService {
     ) -> Self {
         Self {
             organisation_repository,
-            wallet_unit_repository,
+            wallet_instance_repository,
             identifier_repository,
             history_repository,
             trust_collection_repository,

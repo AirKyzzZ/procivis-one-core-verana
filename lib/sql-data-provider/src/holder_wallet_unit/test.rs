@@ -1,18 +1,18 @@
-use one_core::model::holder_wallet_unit::{
-    HolderWalletUnit, HolderWalletUnitRelations, UpdateHolderWalletUnitRequest,
+use one_core::model::holder_wallet_instance::{
+    HolderWalletInstance, HolderWalletInstanceRelations, UpdateHolderWalletInstanceRequest,
 };
 use one_core::model::key::{Key, KeyRelations};
 use one_core::model::organisation::{Organisation, OrganisationRelations};
-use one_core::model::wallet_unit::{WalletProviderType, WalletUnitStatus};
-use one_core::model::wallet_unit_attestation::{
-    WalletUnitAttestation, WalletUnitAttestationRelations,
+use one_core::model::wallet_instance::{WalletInstanceStatus, WalletProviderType};
+use one_core::model::wallet_instance_attestation::{
+    WalletInstanceAttestation, WalletInstanceAttestationRelations,
 };
-use one_core::repository::holder_wallet_unit_repository::HolderWalletUnitRepository;
-use shared_types::HolderWalletUnitId;
+use one_core::repository::holder_wallet_instance_repository::HolderWalletInstanceRepository;
+use shared_types::HolderWalletInstanceId;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
-use crate::holder_wallet_unit::HolderWalletUnitProvider;
+use crate::holder_wallet_unit::HolderWalletInstanceProvider;
 use crate::test_utilities::{
     dummy_organisation, get_dummy_date, insert_key_to_database, insert_organisation_to_database,
     setup_test_data_layer_and_connection,
@@ -20,13 +20,13 @@ use crate::test_utilities::{
 use crate::transaction_context::TransactionManagerImpl;
 
 struct TestSetup {
-    pub provider: HolderWalletUnitProvider,
+    pub provider: HolderWalletInstanceProvider,
     pub organisation: Organisation,
     pub key: Key,
 }
 
 #[tokio::test]
-async fn create_holder_wallet_unit_success() {
+async fn create_holder_wallet_instance_success() {
     let TestSetup {
         provider,
         organisation,
@@ -36,7 +36,11 @@ async fn create_holder_wallet_unit_success() {
 
     let id = Uuid::new_v4().into();
     let result = provider
-        .create_holder_wallet_unit(test_wallet_unit(id, organisation, key).try_into().unwrap())
+        .create_holder_wallet_instance(
+            test_wallet_instance(id, organisation, key)
+                .try_into()
+                .unwrap(),
+        )
         .await;
 
     assert!(result.is_ok());
@@ -46,7 +50,7 @@ async fn create_holder_wallet_unit_success() {
 }
 
 #[tokio::test]
-async fn get_holder_wallet_unit_success() {
+async fn get_holder_wallet_instance_success() {
     let TestSetup {
         provider,
         organisation,
@@ -56,12 +60,16 @@ async fn get_holder_wallet_unit_success() {
 
     let id = Uuid::new_v4().into();
     provider
-        .create_holder_wallet_unit(test_wallet_unit(id, organisation, key).try_into().unwrap())
+        .create_holder_wallet_instance(
+            test_wallet_instance(id, organisation, key)
+                .try_into()
+                .unwrap(),
+        )
         .await
         .unwrap();
 
     let result = provider
-        .get_holder_wallet_unit(&id, &HolderWalletUnitRelations::default())
+        .get_holder_wallet_instance(&id, &HolderWalletInstanceRelations::default())
         .await
         .unwrap()
         .unwrap();
@@ -72,7 +80,7 @@ async fn get_holder_wallet_unit_success() {
 }
 
 #[tokio::test]
-async fn update_holder_wallet_unit_success() {
+async fn update_holder_wallet_instance_success() {
     let TestSetup {
         provider,
         organisation,
@@ -82,8 +90,8 @@ async fn update_holder_wallet_unit_success() {
 
     let id = Uuid::new_v4().into();
     provider
-        .create_holder_wallet_unit(
-            test_wallet_unit(id, organisation.clone(), key.clone())
+        .create_holder_wallet_instance(
+            test_wallet_instance(id, organisation.clone(), key.clone())
                 .try_into()
                 .unwrap(),
         )
@@ -91,9 +99,9 @@ async fn update_holder_wallet_unit_success() {
         .unwrap();
 
     let now = one_core::clock::now_utc();
-    let update_request = UpdateHolderWalletUnitRequest {
-        status: Some(WalletUnitStatus::Revoked),
-        wallet_unit_attestations: Some(vec![WalletUnitAttestation {
+    let update_request = UpdateHolderWalletInstanceRequest {
+        status: Some(WalletInstanceStatus::Revoked),
+        wallet_unit_attestations: Some(vec![WalletInstanceAttestation {
             id: Uuid::new_v4().into(),
             created_date: now,
             last_modified: now,
@@ -107,15 +115,15 @@ async fn update_holder_wallet_unit_success() {
     };
 
     provider
-        .update_holder_wallet_unit(&id, update_request)
+        .update_holder_wallet_instance(&id, update_request)
         .await
         .unwrap();
 
     let reloaded = provider
-        .get_holder_wallet_unit(
+        .get_holder_wallet_instance(
             &id,
-            &HolderWalletUnitRelations {
-                wallet_unit_attestations: Some(WalletUnitAttestationRelations {
+            &HolderWalletInstanceRelations {
+                wallet_unit_attestations: Some(WalletInstanceAttestationRelations {
                     attested_key: Some(KeyRelations::default()),
                 }),
                 organisation: Some(OrganisationRelations::default()),
@@ -131,17 +139,17 @@ async fn update_holder_wallet_unit_success() {
     assert_eq!(reloaded.authentication_key.unwrap().id, key.id);
 }
 
-fn test_wallet_unit(
-    id: HolderWalletUnitId,
+fn test_wallet_instance(
+    id: HolderWalletInstanceId,
     organisation: Organisation,
     key: Key,
-) -> HolderWalletUnit {
+) -> HolderWalletInstance {
     let now = one_core::clock::now_utc();
-    HolderWalletUnit {
+    HolderWalletInstance {
         id,
         created_date: now,
         last_modified: now,
-        status: WalletUnitStatus::Pending,
+        status: WalletInstanceStatus::Pending,
         wallet_provider_type: WalletProviderType::ProcivisOne,
         wallet_provider_name: "test_name".to_string(),
         wallet_provider_url: "test_url".to_string(),
@@ -171,11 +179,11 @@ async fn setup_empty() -> TestSetup {
     .await
     .unwrap();
     TestSetup {
-        provider: HolderWalletUnitProvider {
+        provider: HolderWalletInstanceProvider {
             db: TransactionManagerImpl::new(db),
             organisation_repository: data_layer.organisation_repository,
             key_repository: data_layer.key_repository,
-            wallet_unit_attestation_repository: data_layer.wallet_unit_attestation_repository,
+            wallet_unit_attestation_repository: data_layer.wallet_instance_attestation_repository,
         },
         organisation: dummy_organisation(Some(organisation_id)),
         key: Key {

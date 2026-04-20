@@ -1,25 +1,25 @@
 use async_trait::async_trait;
 use futures::FutureExt;
-use one_core::model::holder_wallet_unit::{
-    CreateHolderWalletUnitRequest, HolderWalletUnit, HolderWalletUnitRelations,
-    UpdateHolderWalletUnitRequest,
+use one_core::model::holder_wallet_instance::{
+    CreateHolderWalletInstanceRequest, HolderWalletInstance, HolderWalletInstanceRelations,
+    UpdateHolderWalletInstanceRequest,
 };
 use one_core::repository::error::DataLayerError;
-use one_core::repository::holder_wallet_unit_repository::HolderWalletUnitRepository;
+use one_core::repository::holder_wallet_instance_repository::HolderWalletInstanceRepository;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set, Unchanged};
-use shared_types::{HolderWalletUnitId, OrganisationId};
+use shared_types::{HolderWalletInstanceId, OrganisationId};
 
-use crate::entity::holder_wallet_unit;
-use crate::holder_wallet_unit::HolderWalletUnitProvider;
+use crate::entity::holder_wallet_instance;
+use crate::holder_wallet_unit::HolderWalletInstanceProvider;
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 
 #[async_trait]
-impl HolderWalletUnitRepository for HolderWalletUnitProvider {
-    async fn create_holder_wallet_unit(
+impl HolderWalletInstanceRepository for HolderWalletInstanceProvider {
+    async fn create_holder_wallet_instance(
         &self,
-        request: CreateHolderWalletUnitRequest,
-    ) -> Result<HolderWalletUnitId, DataLayerError> {
-        let model = holder_wallet_unit::ActiveModel::from(request)
+        request: CreateHolderWalletInstanceRequest,
+    ) -> Result<HolderWalletInstanceId, DataLayerError> {
+        let model = holder_wallet_instance::ActiveModel::from(request)
             .insert(&self.db)
             .await
             .map_err(to_data_layer_error)?;
@@ -27,12 +27,12 @@ impl HolderWalletUnitRepository for HolderWalletUnitProvider {
         Ok(model.id)
     }
 
-    async fn get_holder_wallet_unit(
+    async fn get_holder_wallet_instance(
         &self,
-        id: &HolderWalletUnitId,
-        relations: &HolderWalletUnitRelations,
-    ) -> Result<Option<HolderWalletUnit>, DataLayerError> {
-        let model = holder_wallet_unit::Entity::find_by_id(id)
+        id: &HolderWalletInstanceId,
+        relations: &HolderWalletInstanceRelations,
+    ) -> Result<Option<HolderWalletInstance>, DataLayerError> {
+        let model = holder_wallet_instance::Entity::find_by_id(id)
             .one(&self.db)
             .await
             .map_err(to_data_layer_error)?;
@@ -40,7 +40,7 @@ impl HolderWalletUnitRepository for HolderWalletUnitProvider {
 
         let org_id = model.organisation_id;
         let auth_key_id = model.authentication_key_id;
-        let mut holder_wallet_unit = HolderWalletUnit::from(model);
+        let mut holder_wallet_unit = HolderWalletInstance::from(model);
 
         if let Some(org_relations) = &relations.organisation {
             let org = self
@@ -71,7 +71,7 @@ impl HolderWalletUnitRepository for HolderWalletUnitProvider {
         if let Some(wallet_unit_attestation_relations) = &relations.wallet_unit_attestations {
             let attestations = self
                 .wallet_unit_attestation_repository
-                .get_wallet_unit_attestations_by_holder_wallet_unit(
+                .get_wallet_instance_attestations_by_holder_wallet_unit(
                     id,
                     wallet_unit_attestation_relations,
                 )
@@ -82,25 +82,25 @@ impl HolderWalletUnitRepository for HolderWalletUnitProvider {
         Ok(Some(holder_wallet_unit))
     }
 
-    async fn get_holder_wallet_unit_by_org_id(
+    async fn get_holder_wallet_instance_by_org_id(
         &self,
         organisation_id: &OrganisationId,
-    ) -> Result<Option<HolderWalletUnit>, DataLayerError> {
-        let model = holder_wallet_unit::Entity::find()
-            .filter(holder_wallet_unit::Column::OrganisationId.eq(organisation_id))
+    ) -> Result<Option<HolderWalletInstance>, DataLayerError> {
+        let model = holder_wallet_instance::Entity::find()
+            .filter(holder_wallet_instance::Column::OrganisationId.eq(organisation_id))
             .one(&self.db)
             .await
             .map_err(to_data_layer_error)?;
         Ok(model.map(Into::into))
     }
 
-    async fn update_holder_wallet_unit(
+    async fn update_holder_wallet_instance(
         &self,
-        id: &HolderWalletUnitId,
-        request: UpdateHolderWalletUnitRequest,
+        id: &HolderWalletInstanceId,
+        request: UpdateHolderWalletInstanceRequest,
     ) -> Result<(), DataLayerError> {
         let action = async {
-            let update_model = holder_wallet_unit::ActiveModel {
+            let update_model = holder_wallet_instance::ActiveModel {
                 id: Unchanged(*id),
                 last_modified: Set(one_core::clock::now_utc()),
                 status: request
@@ -121,7 +121,7 @@ impl HolderWalletUnitRepository for HolderWalletUnitProvider {
             for attestation in attestations {
                 let result = self
                     .wallet_unit_attestation_repository
-                    .create_wallet_unit_attestation(attestation.clone())
+                    .create_wallet_instance_attestation(attestation.clone())
                     .await;
                 if let Err(err) = result {
                     match err {

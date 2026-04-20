@@ -1,4 +1,4 @@
-use shared_types::{IdentifierId, TrustCollectionId, WalletUnitId};
+use shared_types::{IdentifierId, TrustCollectionId, WalletInstanceId};
 use thiserror::Error;
 
 use crate::config::ConfigValidationError;
@@ -8,7 +8,7 @@ use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 #[derive(Debug, Error)]
 pub enum WalletProviderError {
     #[error("Wallet unit `{0}` not found")]
-    MissingWalletUnit(WalletUnitId),
+    MissingWalletUnit(WalletInstanceId),
     #[error("Wallet provider not enabled in config: `{0}`")]
     WalletProviderDisabled(ConfigValidationError),
     #[error("Missing proof")]

@@ -10,7 +10,7 @@ pub mod credential_repository;
 pub mod credential_schema_repository;
 pub mod did_repository;
 pub mod history_repository;
-pub mod holder_wallet_unit_repository;
+pub mod holder_wallet_instance_repository;
 pub mod identifier_repository;
 pub mod identifier_trust_information_repository;
 pub mod interaction_repository;
@@ -29,9 +29,9 @@ pub mod trust_list_publication_repository;
 pub mod trust_list_subscription_repository;
 pub mod validity_credential_repository;
 pub mod verifier_instance_repository;
-pub mod wallet_unit_attestation_repository;
-pub mod wallet_unit_attested_key_repository;
-pub mod wallet_unit_repository;
+pub mod wallet_instance_attestation_repository;
+pub mod wallet_instance_attested_key_repository;
+pub mod wallet_instance_repository;
 
 use std::sync::Arc;
 
@@ -45,7 +45,7 @@ use credential_repository::CredentialRepository;
 use credential_schema_repository::CredentialSchemaRepository;
 use did_repository::DidRepository;
 use history_repository::HistoryRepository;
-use holder_wallet_unit_repository::HolderWalletUnitRepository;
+use holder_wallet_instance_repository::HolderWalletInstanceRepository;
 use identifier_repository::IdentifierRepository;
 use identifier_trust_information_repository::IdentifierTrustInformationRepository;
 use interaction_repository::InteractionRepository;
@@ -64,9 +64,9 @@ use trust_list_publication_repository::TrustListPublicationRepository;
 use trust_list_subscription_repository::TrustListSubscriptionRepository;
 use validity_credential_repository::ValidityCredentialRepository;
 use verifier_instance_repository::VerifierInstanceRepository;
-use wallet_unit_attestation_repository::WalletUnitAttestationRepository;
-use wallet_unit_attested_key_repository::WalletUnitAttestedKeyRepository;
-use wallet_unit_repository::WalletUnitRepository;
+use wallet_instance_attestation_repository::WalletInstanceAttestationRepository;
+use wallet_instance_attested_key_repository::WalletInstanceAttestedKeyRepository;
+use wallet_instance_repository::WalletInstanceRepository;
 
 use crate::proto::transaction_manager::TransactionManager;
 
@@ -98,11 +98,15 @@ pub trait DataRepository: Send + Sync {
     fn get_trust_list_publication_repository(&self) -> Arc<dyn TrustListPublicationRepository>;
     fn get_trust_list_subscription_repository(&self) -> Arc<dyn TrustListSubscriptionRepository>;
     fn get_blob_repository(&self) -> Arc<dyn BlobRepository>;
-    fn get_wallet_unit_repository(&self) -> Arc<dyn WalletUnitRepository>;
+    fn get_wallet_instance_repository(&self) -> Arc<dyn WalletInstanceRepository>;
     fn get_notification_repository(&self) -> Arc<dyn NotificationRepository>;
-    fn get_holder_wallet_unit_repository(&self) -> Arc<dyn HolderWalletUnitRepository>;
-    fn get_wallet_unit_attestation_repository(&self) -> Arc<dyn WalletUnitAttestationRepository>;
-    fn get_wallet_unit_attested_key_repository(&self) -> Arc<dyn WalletUnitAttestedKeyRepository>;
+    fn get_holder_wallet_instance_repository(&self) -> Arc<dyn HolderWalletInstanceRepository>;
+    fn get_wallet_instance_attestation_repository(
+        &self,
+    ) -> Arc<dyn WalletInstanceAttestationRepository>;
+    fn get_wallet_instance_attested_key_repository(
+        &self,
+    ) -> Arc<dyn WalletInstanceAttestedKeyRepository>;
     fn get_verifier_instance_repository(&self) -> Arc<dyn VerifierInstanceRepository>;
     fn get_tx_manager(&self) -> Arc<dyn TransactionManager>;
 }

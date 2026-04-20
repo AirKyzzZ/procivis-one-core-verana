@@ -288,7 +288,7 @@ impl OneCore {
             data_provider.get_tx_manager(),
             data_provider.get_revocation_list_repository(),
             data_provider.get_remote_entity_cache_repository(),
-            data_provider.get_wallet_unit_repository(),
+            data_provider.get_wallet_instance_repository(),
             data_provider.get_identifier_repository(),
             client.clone(),
         )?;
@@ -311,7 +311,7 @@ impl OneCore {
             key_algorithm_provider.clone(),
             wallet_unit_client.clone(),
             revocation_method_provider.clone(),
-            data_provider.get_holder_wallet_unit_repository(),
+            data_provider.get_holder_wallet_instance_repository(),
             certificate_validator.clone(),
         ));
 
@@ -391,7 +391,7 @@ impl OneCore {
             data_provider.get_trust_collection_repository(),
             data_provider.get_trust_list_subscription_repository(),
             trust_list_subscriber_provider.clone(),
-            data_provider.get_holder_wallet_unit_repository(),
+            data_provider.get_holder_wallet_instance_repository(),
             wallet_unit_client.clone(),
             did_method_provider.clone(),
             key_algorithm_provider.clone(),
@@ -444,7 +444,7 @@ impl OneCore {
             credential_schema_importer.clone(),
             credential_schema_import_parser.clone(),
             wallet_unit_proto.clone(),
-            data_provider.get_holder_wallet_unit_repository(),
+            data_provider.get_holder_wallet_instance_repository(),
             wrp_validator.clone(),
             data_provider.get_history_repository(),
             session_provider.clone(),
@@ -526,7 +526,7 @@ impl OneCore {
             data_provider.get_interaction_repository(),
             data_provider.get_notification_repository(),
             data_provider.get_trust_list_subscription_repository(),
-            data_provider.get_holder_wallet_unit_repository(),
+            data_provider.get_holder_wallet_instance_repository(),
             data_provider.get_trust_collection_repository(),
             credential_validity_manager,
             certificate_validator.clone(),
@@ -804,7 +804,7 @@ impl OneCore {
             ),
             wallet_provider_service: WalletProviderService::new(
                 data_provider.get_organisation_repository(),
-                data_provider.get_wallet_unit_repository(),
+                data_provider.get_wallet_instance_repository(),
                 data_provider.get_identifier_repository(),
                 data_provider.get_history_repository(),
                 data_provider.get_trust_collection_repository(),
@@ -844,7 +844,7 @@ impl OneCore {
             ),
             wallet_unit_service: WalletUnitService::new(
                 data_provider.get_organisation_repository(),
-                data_provider.get_holder_wallet_unit_repository(),
+                data_provider.get_holder_wallet_instance_repository(),
                 data_provider.get_history_repository(),
                 data_provider.get_key_repository(),
                 key_provider,

@@ -6,7 +6,7 @@ use std::hash::Hash;
 
 use one_core::model::credential::{Credential, CredentialStateEnum};
 use one_core::model::organisation::Organisation;
-use one_core::model::wallet_unit::WalletProviderType;
+use one_core::model::wallet_instance::WalletProviderType;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use sea_orm::ActiveValue::NotSet;
@@ -15,7 +15,7 @@ use shared_types::{
     BlobId, CertificateId, ClaimId, ClaimSchemaId, CredentialId, CredentialSchemaId, DidId,
     DidValue, EntityId, HistoryId, IdentifierId, InteractionId, KeyId, NonceId, OrganisationId,
     ProofId, ProofSchemaId, RevocationListEntryId, RevocationListId, RevocationMethodId,
-    TrustCollectionId, WalletUnitAttestedKeyId, WalletUnitId,
+    TrustCollectionId, WalletInstanceAttestedKeyId, WalletInstanceId,
 };
 use similar_asserts::assert_eq;
 use standardized_types::jwk::PublicJwk;
@@ -36,8 +36,8 @@ use crate::entity::revocation_list_entry::{RevocationListEntryState, RevocationL
 use crate::entity::{
     blob, claim, claim_schema, credential, credential_schema, did, identifier, interaction, key,
     key_did, organisation, proof, proof_claim, proof_input_claim_schema, proof_input_schema,
-    proof_schema, revocation_list, revocation_list_entry, trust_collection, wallet_unit,
-    wallet_unit_attested_key,
+    proof_schema, revocation_list, revocation_list_entry, trust_collection, wallet_instance,
+    wallet_instance_attested_key,
 };
 use crate::{DataLayer, db_conn};
 
@@ -691,22 +691,22 @@ pub fn dummy_organisation(id: Option<OrganisationId>) -> Organisation {
     }
 }
 
-pub async fn insert_wallet_unit_to_database(
+pub async fn insert_wallet_instance_to_database(
     db: &DatabaseConnection,
     organisation_id: OrganisationId,
     name: String,
-) -> WalletUnitId {
-    let id: WalletUnitId = Uuid::new_v4().into();
+) -> WalletInstanceId {
+    let id: WalletInstanceId = Uuid::new_v4().into();
     let now = get_dummy_date();
 
-    wallet_unit::ActiveModel {
+    wallet_instance::ActiveModel {
         id: Set(id),
         created_date: Set(now),
         last_modified: Set(now),
         last_issuance: Set(Some(now)),
         name: Set(name),
-        os: Set(wallet_unit::WalletUnitOs::Android),
-        status: Set(wallet_unit::WalletUnitStatus::Active),
+        os: Set(wallet_instance::WalletInstanceOs::Android),
+        status: Set(wallet_instance::WalletInstanceStatus::Active),
         wallet_provider_type: Set(WalletProviderType::ProcivisOne.into()),
         wallet_provider_name: Set("Test Provider Name".to_string()),
         // Generate unique public key to avoid constraint violations
@@ -723,18 +723,18 @@ pub async fn insert_wallet_unit_to_database(
 
 pub async fn insert_wallet_unit_attested_key_to_database(
     db: &DatabaseConnection,
-    wallet_unit_id: WalletUnitId,
+    wallet_instance_id: WalletInstanceId,
     revocation_list_entry_id: Option<Uuid>,
     expiration_date: OffsetDateTime,
-) -> WalletUnitAttestedKeyId {
+) -> WalletInstanceAttestedKeyId {
     let id = Uuid::new_v4().into();
-    wallet_unit_attested_key::ActiveModel {
+    wallet_instance_attested_key::ActiveModel {
         id: Set(id),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         expiration_date: Set(expiration_date),
         public_key_jwk: Set(random_jwk_string()),
-        wallet_unit_id: Set(wallet_unit_id),
+        wallet_instance_id: Set(wallet_instance_id),
         revocation_list_entry_id: Set(revocation_list_entry_id.map(|id| id.into())),
     }
     .insert(db)

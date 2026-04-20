@@ -1,7 +1,7 @@
 use shared_types::{OrganisationId, TrustCollectionId, VerifierInstanceId};
 
-pub use crate::model::wallet_unit::{
-    WalletProviderType, WalletUnit, WalletUnitOs, WalletUnitStatus,
+pub use crate::model::wallet_instance::{
+    WalletInstance, WalletInstanceOs, WalletInstanceStatus, WalletProviderType,
 };
 
 #[derive(Debug, Clone)]

@@ -5,7 +5,7 @@ use axum_extra::extract::WithRejection;
 use headers::Authorization;
 use headers::authorization::Bearer;
 use proc_macros::endpoint;
-use shared_types::WalletUnitId;
+use shared_types::WalletInstanceId;
 
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
@@ -48,7 +48,7 @@ pub(crate) async fn register_wallet_unit(
     post,
     path = "/ssi/wallet-unit/v1/{id}/activate",
     params(
-        ("id" = WalletUnitId, Path, description = "Wallet unit id")
+        ("id" = WalletInstanceId, Path, description = "Wallet unit id")
     ),
     request_body = WalletUnitActivationRequestRestDTO,
     responses(EmptyOrErrorResponse),
@@ -60,7 +60,7 @@ pub(crate) async fn register_wallet_unit(
 )]
 pub(crate) async fn activate_wallet_unit(
     state: State<AppState>,
-    WithRejection(Path(id), _): WithRejection<Path<WalletUnitId>, ErrorResponseRestDTO>,
+    WithRejection(Path(id), _): WithRejection<Path<WalletInstanceId>, ErrorResponseRestDTO>,
     WithRejection(Json(request), _): WithRejection<
         Json<WalletUnitActivationRequestRestDTO>,
         ErrorResponseRestDTO,
@@ -79,7 +79,7 @@ pub(crate) async fn activate_wallet_unit(
     post,
     path = "/ssi/wallet-unit/v1/{id}/issue-attestation",
     params(
-        ("id" = WalletUnitId, Path, description = "Wallet unit id")
+        ("id" = WalletInstanceId, Path, description = "Wallet unit id")
     ),
     request_body = IssueWalletUnitAttestationRequestRestDTO,
     responses(OkOrErrorResponse<IssueWalletUnitAttestationResponseRestDTO>),
@@ -94,7 +94,7 @@ pub(crate) async fn activate_wallet_unit(
 )]
 pub(crate) async fn issue_wallet_unit_attestation(
     state: State<AppState>,
-    WithRejection(Path(id), _): WithRejection<Path<WalletUnitId>, ErrorResponseRestDTO>,
+    WithRejection(Path(id), _): WithRejection<Path<WalletInstanceId>, ErrorResponseRestDTO>,
     TypedHeader(bearer): TypedHeader<Authorization<Bearer>>,
     WithRejection(Json(request), _): WithRejection<
         Json<IssueWalletUnitAttestationRequestRestDTO>,

@@ -1,4 +1,4 @@
-use one_core::model::wallet_unit::{WalletProviderType, WalletUnitStatus};
+use one_core::model::wallet_instance::{WalletInstanceStatus, WalletProviderType};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
@@ -36,7 +36,7 @@ async fn test_get_wallet_unit_holder_details_successfully() {
             org,
             Some(key.clone()),
             TestHolderWalletUnitParams {
-                status: Some(WalletUnitStatus::Active),
+                status: Some(WalletInstanceStatus::Active),
                 wallet_provider_type: Some(WalletProviderType::ProcivisOne),
                 wallet_provider_name: Some("PROCIVIS_ONE".to_string()),
                 wallet_provider_url: Some("https://wallet.provider".to_string()),

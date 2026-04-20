@@ -23,7 +23,7 @@ use crate::backup::helpers::{
 use crate::backup::models::UnexportableCredentialModel;
 use crate::entity::{
     certificate, claim, claim_schema, credential, credential_schema, did, history,
-    holder_wallet_unit, identifier, key, key_did, organisation, wallet_unit_attestation,
+    holder_wallet_instance, identifier, key, key_did, organisation, wallet_instance_attestation,
 };
 use crate::mapper::to_data_layer_error;
 use crate::transaction_context::TransactionManagerImpl;
@@ -549,14 +549,16 @@ fn update_identifiers_matching_subquery(
 async fn delete_wallet_unit_attestations(
     db: &TransactionManagerImpl,
 ) -> Result<(), sea_orm::DbErr> {
-    wallet_unit_attestation::Entity::delete_many()
+    wallet_instance_attestation::Entity::delete_many()
         .exec(db)
         .await?;
     Ok(())
 }
 
 async fn delete_holder_wallet_units(db: &TransactionManagerImpl) -> Result<(), sea_orm::DbErr> {
-    holder_wallet_unit::Entity::delete_many().exec(db).await?;
+    holder_wallet_instance::Entity::delete_many()
+        .exec(db)
+        .await?;
     Ok(())
 }
 

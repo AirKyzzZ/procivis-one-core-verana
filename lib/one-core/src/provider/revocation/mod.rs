@@ -3,8 +3,8 @@ use shared_types::{RevocationListEntryId, RevocationListId};
 use crate::model::certificate::Certificate;
 use crate::model::credential::Credential;
 use crate::model::identifier::Identifier;
-use crate::model::wallet_unit_attested_key::{
-    WalletUnitAttestedKey, WalletUnitAttestedKeyRevocationInfo,
+use crate::model::wallet_instance_attested_key::{
+    WalletInstanceAttestedKey, WalletInstanceAttestedKeyRevocationInfo,
 };
 use crate::provider::credential_formatter::model::{CredentialStatus, IdentifierDetails};
 use crate::provider::revocation::error::RevocationError;
@@ -60,19 +60,19 @@ pub trait RevocationMethod: Send + Sync {
     /// Issuer: place issued attestation on a status-list
     async fn add_issued_attestation(
         &self,
-        attestation: &WalletUnitAttestedKey,
+        attestation: &WalletInstanceAttestedKey,
     ) -> Result<CredentialRevocationInfo, RevocationError>;
 
     /// Issuer: construct status block to be included in a re-issued attestion JWT
     async fn get_attestation_revocation_info(
         &self,
-        key_info: &WalletUnitAttestedKeyRevocationInfo,
+        key_info: &WalletInstanceAttestedKeyRevocationInfo,
     ) -> Result<CredentialRevocationInfo, RevocationError>;
 
     /// Issuer: update precomputed revocation credential with latest changes considering input attestations
     async fn update_attestation_entries(
         &self,
-        keys: Vec<WalletUnitAttestedKeyRevocationInfo>,
+        keys: Vec<WalletInstanceAttestedKeyRevocationInfo>,
         new_state: RevocationState,
     ) -> Result<(), RevocationError>;
 

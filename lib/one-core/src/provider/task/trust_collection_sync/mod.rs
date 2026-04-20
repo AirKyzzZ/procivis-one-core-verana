@@ -2,10 +2,10 @@ use std::sync::Arc;
 
 use one_dto_mapper::convert_inner;
 use serde_json::{Value, json};
-use shared_types::{HolderWalletUnitId, VerifierInstanceId};
+use shared_types::{HolderWalletInstanceId, VerifierInstanceId};
 
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, NestedError};
-use crate::model::holder_wallet_unit::HolderWalletUnitRelations;
+use crate::model::holder_wallet_instance::HolderWalletInstanceRelations;
 use crate::model::list_filter::ListFilterValue;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::trust_collection::{TrustCollectionFilterValue, TrustCollectionListQuery};
@@ -16,7 +16,7 @@ use crate::proto::verifier_provider_client::VerifierProviderClient;
 use crate::proto::wallet_provider_client::WalletProviderClient;
 use crate::provider::task::Task;
 use crate::provider::task::trust_collection_sync::dto::Params;
-use crate::repository::holder_wallet_unit_repository::HolderWalletUnitRepository;
+use crate::repository::holder_wallet_instance_repository::HolderWalletInstanceRepository;
 use crate::repository::trust_collection_repository::TrustCollectionRepository;
 use crate::repository::verifier_instance_repository::VerifierInstanceRepository;
 use crate::service::error::ServiceError;
@@ -26,7 +26,7 @@ mod dto;
 mod test;
 
 pub(crate) struct TrustCollectionSyncTask {
-    wallet_unit_repository: Arc<dyn HolderWalletUnitRepository>,
+    wallet_unit_repository: Arc<dyn HolderWalletInstanceRepository>,
     wallet_unit_client: Arc<dyn WalletProviderClient>,
     verifier_instance_repository: Arc<dyn VerifierInstanceRepository>,
     verifier_client: Arc<dyn VerifierProviderClient>,
@@ -42,7 +42,7 @@ pub enum TrustCollectionSyncError {
     #[error("Invalid task params: {0}")]
     InvalidParams(#[from] serde_json::Error),
     #[error("Wallet unit not found: {0}")]
-    WalletUnitNotFound(HolderWalletUnitId),
+    WalletUnitNotFound(HolderWalletInstanceId),
     #[error("Verifier instance not found: {0}")]
     VerifierInstanceNotFound(VerifierInstanceId),
     #[error("Mapping error: {0}")]
@@ -77,7 +77,7 @@ impl Task for TrustCollectionSyncTask {
 
 impl TrustCollectionSyncTask {
     pub fn new(
-        wallet_unit_repository: Arc<dyn HolderWalletUnitRepository>,
+        wallet_unit_repository: Arc<dyn HolderWalletInstanceRepository>,
         wallet_unit_client: Arc<dyn WalletProviderClient>,
         verifier_instance_repository: Arc<dyn VerifierInstanceRepository>,
         verifier_client: Arc<dyn VerifierProviderClient>,
@@ -105,9 +105,9 @@ impl TrustCollectionSyncTask {
             Params::HolderWalletUnitId(id) => {
                 let holder_wallet_unit = self
                     .wallet_unit_repository
-                    .get_holder_wallet_unit(
+                    .get_holder_wallet_instance(
                         &id,
-                        &HolderWalletUnitRelations {
+                        &HolderWalletInstanceRelations {
                             organisation: Some(OrganisationRelations::default()),
                             ..Default::default()
                         },

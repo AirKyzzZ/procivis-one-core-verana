@@ -1,4 +1,4 @@
-use one_core::model::wallet_unit::{WalletProviderType, WalletUnitStatus};
+use one_core::model::wallet_instance::{WalletInstanceStatus, WalletProviderType};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
@@ -58,7 +58,7 @@ async fn test_holder_wallet_unit_status_already_revoked() {
             org.clone(),
             Some(authentication_key.clone()),
             TestHolderWalletUnitParams {
-                status: Some(WalletUnitStatus::Revoked),
+                status: Some(WalletInstanceStatus::Revoked),
                 wallet_provider_type: Some(WalletProviderType::ProcivisOne),
                 wallet_provider_name: Some("PROCIVIS_ONE".to_string()),
                 wallet_provider_url: Some("https://wallet.provider".to_string()),
@@ -85,5 +85,5 @@ async fn test_holder_wallet_unit_status_already_revoked() {
         .await
         .expect("wallet unit should exist");
 
-    assert_eq!(updated_wallet_unit.status, WalletUnitStatus::Revoked);
+    assert_eq!(updated_wallet_unit.status, WalletInstanceStatus::Revoked);
 }

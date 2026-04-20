@@ -3,26 +3,28 @@ use std::collections::HashMap;
 use one_dto_mapper::From;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::{DurationSeconds, serde_as, skip_serializing_none};
-use shared_types::{RevocationMethodId, TrustCollectionId, WalletUnitId};
+use shared_types::{RevocationMethodId, TrustCollectionId, WalletInstanceId};
 use standardized_types::jwk::PublicJwk;
 use time::{Duration, OffsetDateTime};
 
 use crate::model::common::GetListResponse;
-use crate::model::wallet_unit::{WalletProviderType, WalletUnit, WalletUnitOs, WalletUnitStatus};
+use crate::model::wallet_instance::{
+    WalletInstance, WalletInstanceOs, WalletInstanceStatus, WalletProviderType,
+};
 use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVcStatus;
 use crate::provider::issuance_protocol::model::KeyStorageSecurityLevel;
 
 #[derive(Clone, Debug)]
 pub struct RegisterWalletUnitRequestDTO {
     pub wallet_provider: String,
-    pub os: WalletUnitOs,
+    pub os: WalletInstanceOs,
     pub public_key: Option<PublicJwk>,
     pub proof: Option<String>,
 }
 
 #[derive(Clone, Debug)]
 pub struct RegisterWalletUnitResponseDTO {
-    pub id: WalletUnitId,
+    pub id: WalletInstanceId,
     pub nonce: Option<String>,
 }
 
@@ -225,15 +227,15 @@ pub(super) struct IOSBundle {
 }
 
 #[derive(Debug, From)]
-#[from(WalletUnit)]
+#[from(WalletInstance)]
 pub struct GetWalletUnitResponseDTO {
-    pub id: WalletUnitId,
+    pub id: WalletInstanceId,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub last_issuance: Option<OffsetDateTime>,
     pub name: String,
-    pub os: WalletUnitOs,
-    pub status: WalletUnitStatus,
+    pub os: WalletInstanceOs,
+    pub status: WalletInstanceStatus,
     pub wallet_provider_type: WalletProviderType,
     pub wallet_provider_name: String,
     pub authentication_key_jwk: Option<PublicJwk>,
@@ -244,9 +246,9 @@ pub type GetWalletUnitListResponseDTO = GetListResponse<GetWalletUnitResponseDTO
 #[derive(Clone, Debug)]
 pub struct WalletUnitFilterParamsDTO {
     pub name: Option<String>,
-    pub ids: Option<Vec<shared_types::WalletUnitId>>,
-    pub status: Option<Vec<WalletUnitStatus>>,
-    pub os: Option<Vec<WalletUnitOs>>,
+    pub ids: Option<Vec<shared_types::WalletInstanceId>>,
+    pub status: Option<Vec<WalletInstanceStatus>>,
+    pub os: Option<Vec<WalletInstanceOs>>,
     pub wallet_provider_type: Option<Vec<String>>,
     pub attestation: Option<String>,
     pub organisation_id: shared_types::OrganisationId,

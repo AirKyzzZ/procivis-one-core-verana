@@ -1,5 +1,5 @@
 use one_core::model::history::HistoryMetadata;
-use one_core::model::wallet_unit::WalletUnitStatus;
+use one_core::model::wallet_instance::WalletInstanceStatus;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use one_crypto::Hasher;
@@ -11,7 +11,7 @@ use crate::api_wallet_unit_tests::create_wallet_instance_attestation;
 use crate::utils::api_clients::wallet_units::ListFilters;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::histories::TestingHistoryParams;
-use crate::utils::db_clients::wallet_units::TestWalletUnit;
+use crate::utils::db_clients::wallet_instances::TestWalletInstance;
 
 #[tokio::test]
 async fn test_list_wallet_instance_success() {
@@ -23,10 +23,10 @@ async fn test_list_wallet_instance_success() {
         let holder_public_jwk = holder_key_pair.key.public_key_as_jwk().unwrap();
         context
             .db
-            .wallet_units
+            .wallet_instances
             .create(
                 org.clone(),
-                TestWalletUnit {
+                TestWalletInstance {
                     name: Some(format!("wallet_{i}")),
                     public_key: Some(holder_public_jwk),
                     ..Default::default()
@@ -70,10 +70,10 @@ async fn test_list_wallet_instance_revoked_success() {
     for i in 1..10 {
         context
             .db
-            .wallet_units
+            .wallet_instances
             .create(
                 org.clone(),
-                TestWalletUnit {
+                TestWalletInstance {
                     name: Some(format!("wallet_{i}")),
                     ..Default::default()
                 },
@@ -84,11 +84,11 @@ async fn test_list_wallet_instance_revoked_success() {
     for _i in 10..15 {
         context
             .db
-            .wallet_units
+            .wallet_instances
             .create(
                 org.clone(),
-                TestWalletUnit {
-                    status: Some(WalletUnitStatus::Revoked),
+                TestWalletInstance {
+                    status: Some(WalletInstanceStatus::Revoked),
                     ..Default::default()
                 },
             )
@@ -137,10 +137,10 @@ async fn test_list_wallet_instance_by_attestation_success() {
         .await;
         let wallet_unit = context
             .db
-            .wallet_units
+            .wallet_instances
             .create(
                 organisation.clone(),
-                TestWalletUnit {
+                TestWalletInstance {
                     name: Some(format!("wallet_{i}")),
                     public_key: Some(holder_public_jwk),
                     ..Default::default()
@@ -228,10 +228,10 @@ async fn test_list_wallet_instance_org_success() {
     let holder_public_jwk = holder_key_pair.key.public_key_as_jwk().unwrap();
     context
         .db
-        .wallet_units
+        .wallet_instances
         .create(
             org.clone(),
-            TestWalletUnit {
+            TestWalletInstance {
                 name: Some("wallet".to_string()),
                 public_key: Some(holder_public_jwk),
                 ..Default::default()

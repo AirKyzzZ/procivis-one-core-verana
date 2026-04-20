@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
-use crate::model::wallet_unit::WalletProviderType;
+use crate::model::wallet_instance::WalletProviderType;
 
 #[derive(Debug, Error)]
 pub enum WalletProviderClientError {

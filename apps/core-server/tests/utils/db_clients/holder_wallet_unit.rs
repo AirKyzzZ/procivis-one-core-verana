@@ -1,30 +1,30 @@
 use std::sync::Arc;
 
-use one_core::model::holder_wallet_unit::{
-    CreateHolderWalletUnitRequest, HolderWalletUnit, HolderWalletUnitRelations,
+use one_core::model::holder_wallet_instance::{
+    CreateHolderWalletInstanceRequest, HolderWalletInstance, HolderWalletInstanceRelations,
 };
 use one_core::model::key::Key;
 use one_core::model::organisation::Organisation;
-use one_core::model::wallet_unit::{WalletProviderType, WalletUnitStatus};
-use one_core::repository::holder_wallet_unit_repository::HolderWalletUnitRepository;
-use shared_types::{HolderWalletUnitId, WalletUnitId};
+use one_core::model::wallet_instance::{WalletInstanceStatus, WalletProviderType};
+use one_core::repository::holder_wallet_instance_repository::HolderWalletInstanceRepository;
+use shared_types::{HolderWalletInstanceId, WalletInstanceId};
 use uuid::Uuid;
 
 pub struct HolderWalletUnitsDB {
-    repository: Arc<dyn HolderWalletUnitRepository>,
+    repository: Arc<dyn HolderWalletInstanceRepository>,
 }
 
 #[derive(Default)]
 pub struct TestHolderWalletUnitParams {
-    pub status: Option<WalletUnitStatus>,
+    pub status: Option<WalletInstanceStatus>,
     pub wallet_provider_type: Option<WalletProviderType>,
     pub wallet_provider_name: Option<String>,
     pub wallet_provider_url: Option<String>,
-    pub provider_wallet_unit_id: Option<WalletUnitId>,
+    pub provider_wallet_unit_id: Option<WalletInstanceId>,
 }
 
 impl HolderWalletUnitsDB {
-    pub fn new(repository: Arc<dyn HolderWalletUnitRepository>) -> Self {
+    pub fn new(repository: Arc<dyn HolderWalletInstanceRepository>) -> Self {
         Self { repository }
     }
 
@@ -33,12 +33,12 @@ impl HolderWalletUnitsDB {
         organisation: Organisation,
         authentication_key: Option<Key>,
         test_holder_wallet_unit: TestHolderWalletUnitParams,
-    ) -> HolderWalletUnit {
-        let wallet_unit = CreateHolderWalletUnitRequest {
+    ) -> HolderWalletInstance {
+        let wallet_unit = CreateHolderWalletInstanceRequest {
             id: Uuid::new_v4().into(),
             status: test_holder_wallet_unit
                 .status
-                .unwrap_or(WalletUnitStatus::Active),
+                .unwrap_or(WalletInstanceStatus::Active),
             wallet_provider_type: test_holder_wallet_unit
                 .wallet_provider_type
                 .unwrap_or(WalletProviderType::ProcivisOne),
@@ -57,12 +57,12 @@ impl HolderWalletUnitsDB {
 
         let id = self
             .repository
-            .create_holder_wallet_unit(wallet_unit)
+            .create_holder_wallet_instance(wallet_unit)
             .await
             .unwrap();
 
         self.repository
-            .get_holder_wallet_unit(&id, &HolderWalletUnitRelations::default())
+            .get_holder_wallet_instance(&id, &HolderWalletInstanceRelations::default())
             .await
             .unwrap()
             .unwrap()
@@ -70,11 +70,11 @@ impl HolderWalletUnitsDB {
 
     pub async fn get(
         &self,
-        wallet_unit_id: impl Into<HolderWalletUnitId>,
-        relations: &HolderWalletUnitRelations,
-    ) -> Option<HolderWalletUnit> {
+        wallet_unit_id: impl Into<HolderWalletInstanceId>,
+        relations: &HolderWalletInstanceRelations,
+    ) -> Option<HolderWalletInstance> {
         self.repository
-            .get_holder_wallet_unit(&wallet_unit_id.into(), relations)
+            .get_holder_wallet_instance(&wallet_unit_id.into(), relations)
             .await
             .unwrap()
     }

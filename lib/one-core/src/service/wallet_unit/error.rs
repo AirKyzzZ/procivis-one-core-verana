@@ -1,4 +1,4 @@
-use shared_types::{HolderWalletUnitId, OrganisationId, TrustCollectionId};
+use shared_types::{HolderWalletInstanceId, OrganisationId, TrustCollectionId};
 use thiserror::Error;
 
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
@@ -8,7 +8,7 @@ pub enum HolderWalletUnitError {
     #[error("Wallet unit revoked")]
     WalletUnitRevoked,
     #[error("Wallet unit `{0}` already exists")]
-    WalletUnitAlreadyExists(HolderWalletUnitId),
+    WalletUnitAlreadyExists(HolderWalletInstanceId),
 
     #[error(
         "App integrity check required: proof and public key must only be provided on wallet unit activation"
@@ -19,7 +19,7 @@ pub enum HolderWalletUnitError {
     AppIntegrityCheckNotRequired,
 
     #[error("Holder wallet unit `{0}` not found")]
-    HolderWalletUnitNotFound(HolderWalletUnitId),
+    HolderWalletUnitNotFound(HolderWalletInstanceId),
     #[error("Organisation `{0}` not found")]
     MissingOrganisation(OrganisationId),
     #[error("Organisation {0} is deactivated")]

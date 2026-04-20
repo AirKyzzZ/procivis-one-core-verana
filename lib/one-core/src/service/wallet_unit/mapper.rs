@@ -6,7 +6,7 @@ use shared_types::{KeyId, OrganisationId, TrustCollectionId};
 use super::dto::{HolderWalletUnitResponseDTO, TrustCollectionInfoDTO};
 use super::error::HolderWalletUnitError;
 use crate::error::ContextWithErrorCode;
-use crate::model::holder_wallet_unit::HolderWalletUnit;
+use crate::model::holder_wallet_instance::HolderWalletInstance;
 use crate::model::key::Key;
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
@@ -44,8 +44,8 @@ pub(super) fn key_from_generated_key(
     }
 }
 
-impl From<HolderWalletUnit> for HolderWalletUnitResponseDTO {
-    fn from(value: HolderWalletUnit) -> Self {
+impl From<HolderWalletInstance> for HolderWalletUnitResponseDTO {
+    fn from(value: HolderWalletInstance) -> Self {
         Self {
             id: value.id,
             created_date: value.created_date,

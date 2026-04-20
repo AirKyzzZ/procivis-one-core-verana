@@ -18,7 +18,7 @@ use shared_types::{
 use uuid::Uuid;
 
 use crate::entity::revocation_list_entry::{RevocationListEntryState, RevocationListEntryType};
-use crate::entity::{revocation_list, revocation_list_entry, wallet_unit_attested_key};
+use crate::entity::{revocation_list, revocation_list_entry, wallet_instance_attested_key};
 use crate::mapper::{map_lock_type, to_data_layer_error, to_update_data_layer_error};
 use crate::revocation_list::RevocationListProvider;
 
@@ -298,12 +298,14 @@ impl RevocationListRepository for RevocationListProvider {
         .map_err(to_data_layer_error)?;
 
         if let RevocationListEntityId::WalletUnitAttestedKey(key_id) = entity_id {
-            wallet_unit_attested_key::Entity::update(wallet_unit_attested_key::ActiveModel {
-                id: Unchanged(key_id),
-                last_modified: Set(now),
-                revocation_list_entry_id: Set(Some(entry_id)),
-                ..Default::default()
-            })
+            wallet_instance_attested_key::Entity::update(
+                wallet_instance_attested_key::ActiveModel {
+                    id: Unchanged(key_id),
+                    last_modified: Set(now),
+                    revocation_list_entry_id: Set(Some(entry_id)),
+                    ..Default::default()
+                },
+            )
             .exec(&self.db)
             .await
             .map_err(to_update_data_layer_error)?;

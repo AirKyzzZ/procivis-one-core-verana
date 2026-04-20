@@ -1,10 +1,12 @@
-use one_core::model::holder_wallet_unit::{CreateHolderWalletUnitRequest, HolderWalletUnit};
-use one_core::model::wallet_unit::{WalletProviderType, WalletUnitStatus};
+use one_core::model::holder_wallet_instance::{
+    CreateHolderWalletInstanceRequest, HolderWalletInstance,
+};
+use one_core::model::wallet_instance::{WalletInstanceStatus, WalletProviderType};
 use sea_orm::Set;
 
-use crate::entity::holder_wallet_unit::{ActiveModel, Model};
+use crate::entity::holder_wallet_instance::{ActiveModel, Model};
 
-impl From<Model> for HolderWalletUnit {
+impl From<Model> for HolderWalletInstance {
     fn from(value: Model) -> Self {
         Self {
             id: value.id,
@@ -14,7 +16,7 @@ impl From<Model> for HolderWalletUnit {
             wallet_provider_name: value.wallet_provider_name,
             wallet_provider_url: value.wallet_provider_url,
             provider_wallet_unit_id: value.provider_wallet_unit_id,
-            status: WalletUnitStatus::from(value.status),
+            status: WalletInstanceStatus::from(value.status),
             organisation: None,
             authentication_key: None,
             wallet_unit_attestations: None,
@@ -22,8 +24,8 @@ impl From<Model> for HolderWalletUnit {
     }
 }
 
-impl From<CreateHolderWalletUnitRequest> for ActiveModel {
-    fn from(value: CreateHolderWalletUnitRequest) -> Self {
+impl From<CreateHolderWalletInstanceRequest> for ActiveModel {
+    fn from(value: CreateHolderWalletInstanceRequest) -> Self {
         let now = one_core::clock::now_utc();
         Self {
             id: Set(value.id),

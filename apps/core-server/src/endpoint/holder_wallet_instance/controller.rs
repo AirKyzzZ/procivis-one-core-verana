@@ -4,7 +4,7 @@ use axum_extra::extract::WithRejection;
 use one_core::error::ContextWithErrorCode;
 use one_core::service::error::ServiceError;
 use proc_macros::endpoint;
-use shared_types::{HolderWalletUnitId, Permission};
+use shared_types::{HolderWalletInstanceId, Permission};
 
 use super::dto::{
     EditHolderWalletInstanceRequestRestDTO, HolderRegisterWalletInstanceRequestRestDTO,
@@ -57,7 +57,7 @@ pub(crate) async fn wallet_instance_holder_register(
     path = "/api/holder-wallet-instance/v1/{id}",
     responses(OkOrErrorResponse<HolderWalletInstanceDetailRestDTO>),
     params(
-        ("id" = HolderWalletUnitId, Path, description = "Wallet Instance ID")
+        ("id" = HolderWalletInstanceId, Path, description = "Wallet Instance ID")
     ),
     tag = "holder_wallet_instance",
     security(
@@ -68,7 +68,7 @@ pub(crate) async fn wallet_instance_holder_register(
 )]
 pub(crate) async fn wallet_instance_holder_details(
     state: State<AppState>,
-    WithRejection(Path(id), _): WithRejection<Path<HolderWalletUnitId>, ErrorResponseRestDTO>,
+    WithRejection(Path(id), _): WithRejection<Path<HolderWalletInstanceId>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<HolderWalletInstanceDetailRestDTO> {
     let result = state
         .core
@@ -87,7 +87,7 @@ pub(crate) async fn wallet_instance_holder_details(
     path = "/api/holder-wallet-instance/v1/{id}/status",
     responses(EmptyOrErrorResponse),
     params(
-        ("id" = HolderWalletUnitId, Path, description = "Wallet Instance ID")
+        ("id" = HolderWalletInstanceId, Path, description = "Wallet Instance ID")
     ),
     tag = "holder_wallet_instance",
     security(
@@ -99,7 +99,7 @@ pub(crate) async fn wallet_instance_holder_details(
 )]
 pub(crate) async fn wallet_instance_holder_status(
     state: State<AppState>,
-    WithRejection(Path(id), _): WithRejection<Path<HolderWalletUnitId>, ErrorResponseRestDTO>,
+    WithRejection(Path(id), _): WithRejection<Path<HolderWalletInstanceId>, ErrorResponseRestDTO>,
 ) -> EmptyOrErrorResponse {
     let result = state
         .core
@@ -117,7 +117,7 @@ pub(crate) async fn wallet_instance_holder_status(
     request_body = EditHolderWalletInstanceRequestRestDTO,
     responses(EmptyOrErrorResponse),
     params(
-        ("id" = HolderWalletUnitId, Path, description = "Wallet Instance ID")
+        ("id" = HolderWalletInstanceId, Path, description = "Wallet Instance ID")
     ),
     tag = "holder_wallet_instance",
     security(
@@ -128,7 +128,7 @@ pub(crate) async fn wallet_instance_holder_status(
 )]
 pub(crate) async fn edit_holder_wallet_instance(
     state: State<AppState>,
-    WithRejection(Path(id), _): WithRejection<Path<HolderWalletUnitId>, ErrorResponseRestDTO>,
+    WithRejection(Path(id), _): WithRejection<Path<HolderWalletInstanceId>, ErrorResponseRestDTO>,
     WithRejection(Json(request), _): WithRejection<
         Json<EditHolderWalletInstanceRequestRestDTO>,
         ErrorResponseRestDTO,
@@ -149,7 +149,7 @@ pub(crate) async fn edit_holder_wallet_instance(
     path = "/api/holder-wallet-instance/v1/{id}/trust-collections",
     responses(OkOrErrorResponse<TrustCollectionsDetailRestDTO>),
     params(
-        ("id" = HolderWalletUnitId, Path, description = "Wallet Instance ID")
+        ("id" = HolderWalletInstanceId, Path, description = "Wallet Instance ID")
     ),
     tag = "holder_wallet_instance",
     security(
@@ -160,7 +160,7 @@ pub(crate) async fn edit_holder_wallet_instance(
 )]
 pub(crate) async fn get_holder_wallet_instance_trust_collections(
     state: State<AppState>,
-    WithRejection(Path(id), _): WithRejection<Path<HolderWalletUnitId>, ErrorResponseRestDTO>,
+    WithRejection(Path(id), _): WithRejection<Path<HolderWalletInstanceId>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<TrustCollectionsDetailRestDTO> {
     let result = state
         .core

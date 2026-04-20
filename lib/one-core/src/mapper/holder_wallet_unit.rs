@@ -1,10 +1,12 @@
-use crate::model::holder_wallet_unit::{CreateHolderWalletUnitRequest, HolderWalletUnit};
+use crate::model::holder_wallet_instance::{
+    CreateHolderWalletInstanceRequest, HolderWalletInstance,
+};
 use crate::service::error::ServiceError;
 
-impl TryFrom<HolderWalletUnit> for CreateHolderWalletUnitRequest {
+impl TryFrom<HolderWalletInstance> for CreateHolderWalletInstanceRequest {
     type Error = ServiceError;
 
-    fn try_from(value: HolderWalletUnit) -> Result<Self, Self::Error> {
+    fn try_from(value: HolderWalletInstance) -> Result<Self, Self::Error> {
         Ok(Self {
             id: value.id,
             wallet_provider_type: value.wallet_provider_type,

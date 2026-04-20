@@ -4,9 +4,10 @@ use one_core::model::revocation_list::{
     RevocationListEntityId, RevocationListEntryState, RevocationListPurpose,
     RevocationListRelations,
 };
-use one_core::model::wallet_unit::{WalletUnitRelations, WalletUnitStatus};
-use one_core::model::wallet_unit_attested_key::{
-    WalletUnitAttestedKey, WalletUnitAttestedKeyRelations, WalletUnitAttestedKeyRevocationInfo,
+use one_core::model::wallet_instance::{WalletInstanceRelations, WalletInstanceStatus};
+use one_core::model::wallet_instance_attested_key::{
+    WalletInstanceAttestedKey, WalletInstanceAttestedKeyRelations,
+    WalletInstanceAttestedKeyRevocationInfo,
 };
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
@@ -19,7 +20,7 @@ use crate::fixtures::TestingIdentifierParams;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::keys::eddsa_testing_params;
 use crate::utils::db_clients::revocation_lists::TestingRevocationListParams;
-use crate::utils::db_clients::wallet_units::TestWalletUnit;
+use crate::utils::db_clients::wallet_instances::TestWalletInstance;
 
 #[tokio::test]
 async fn test_revoke_wallet_instance_success() {
@@ -71,20 +72,20 @@ async fn test_revoke_wallet_instance_success() {
 
     let wallet_unit = context
         .db
-        .wallet_units
+        .wallet_instances
         .create(
             org,
-            TestWalletUnit {
+            TestWalletInstance {
                 id: Some(wallet_unit_id),
-                status: Some(WalletUnitStatus::Active),
-                attested_keys: Some(vec![WalletUnitAttestedKey {
+                status: Some(WalletInstanceStatus::Active),
+                attested_keys: Some(vec![WalletInstanceAttestedKey {
                     id: wallet_unit_attested_key_id,
-                    wallet_unit_id,
+                    wallet_instance_id: wallet_unit_id,
                     created_date: one_core::clock::now_utc(),
                     last_modified: one_core::clock::now_utc(),
                     expiration_date: one_core::clock::now_utc() + Duration::days(1),
                     public_key_jwk: public_key_jwk(),
-                    revocation: Some(WalletUnitAttestedKeyRevocationInfo {
+                    revocation: Some(WalletInstanceAttestedKeyRevocationInfo {
                         revocation_list: revocation_list.clone(),
                         revocation_list_index: 0,
                     }),
@@ -112,19 +113,19 @@ async fn test_revoke_wallet_instance_success() {
 
     let wallet_unit = context
         .db
-        .wallet_units
+        .wallet_instances
         .get(
             wallet_unit.id,
-            &WalletUnitRelations {
+            &WalletInstanceRelations {
                 organisation: None,
-                attested_keys: Some(WalletUnitAttestedKeyRelations {
+                attested_keys: Some(WalletInstanceAttestedKeyRelations {
                     revocation: Some(RevocationListRelations::default()),
                 }),
             },
         )
         .await
         .unwrap();
-    assert_eq!(wallet_unit.status, WalletUnitStatus::Revoked);
+    assert_eq!(wallet_unit.status, WalletInstanceStatus::Revoked);
 
     let revocation_list_entry = context
         .db

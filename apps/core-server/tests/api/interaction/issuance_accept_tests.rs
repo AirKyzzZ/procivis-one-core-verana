@@ -31,7 +31,7 @@ use crate::utils::db_clients::certificates::TestingCertificateParams;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 use crate::utils::db_clients::holder_wallet_unit::TestHolderWalletUnitParams;
 use crate::utils::db_clients::keys::ecdsa_testing_params;
-use crate::utils::db_clients::wallet_units::TestWalletUnit;
+use crate::utils::db_clients::wallet_instances::TestWalletInstance;
 use crate::utils::field_match::FieldHelpers;
 
 async fn random_document() -> String {
@@ -2712,10 +2712,10 @@ async fn test_wia_pop_iss_equals_wia_sub() {
 
     let wallet_unit = context
         .db
-        .wallet_units
+        .wallet_instances
         .create(
             organisation.clone(),
-            TestWalletUnit {
+            TestWalletInstance {
                 public_key: Some(holder_public_jwk),
                 ..Default::default()
             },

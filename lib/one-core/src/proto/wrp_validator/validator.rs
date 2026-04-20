@@ -40,7 +40,7 @@ use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::provider::signer::registration_certificate::model::{Payload, Status};
 use crate::provider::trust_list_subscriber::TrustEntityResponse;
 use crate::provider::trust_list_subscriber::provider::TrustListSubscriberProvider;
-use crate::repository::holder_wallet_unit_repository::HolderWalletUnitRepository;
+use crate::repository::holder_wallet_instance_repository::HolderWalletInstanceRepository;
 use crate::repository::trust_collection_repository::TrustCollectionRepository;
 use crate::repository::trust_list_subscription_repository::TrustListSubscriptionRepository;
 use crate::service::error::MissingProviderError;
@@ -51,7 +51,7 @@ pub(crate) struct WRPValidatorImpl {
     trust_collection_repository: Arc<dyn TrustCollectionRepository>,
     trust_list_subscription_repository: Arc<dyn TrustListSubscriptionRepository>,
     trust_list_subscriber_provider: Arc<dyn TrustListSubscriberProvider>,
-    holder_wallet_unit_repository: Arc<dyn HolderWalletUnitRepository>,
+    holder_wallet_unit_repository: Arc<dyn HolderWalletInstanceRepository>,
     wallet_provider_client: Arc<dyn WalletProviderClient>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -241,7 +241,7 @@ impl WRPValidatorImpl {
         trust_collection_repository: Arc<dyn TrustCollectionRepository>,
         trust_list_subscription_repository: Arc<dyn TrustListSubscriptionRepository>,
         trust_list_subscriber_provider: Arc<dyn TrustListSubscriberProvider>,
-        holder_wallet_unit_repository: Arc<dyn HolderWalletUnitRepository>,
+        holder_wallet_unit_repository: Arc<dyn HolderWalletInstanceRepository>,
         wallet_provider_client: Arc<dyn WalletProviderClient>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -318,7 +318,7 @@ impl WRPValidatorImpl {
     ) -> Result<(), WRPValidatorError> {
         let holder_wallet_unit = self
             .holder_wallet_unit_repository
-            .get_holder_wallet_unit_by_org_id(&organisation_id)
+            .get_holder_wallet_instance_by_org_id(&organisation_id)
             .await
             .error_while("getting holder wallet unit")?
             // if holder wallet unit not registered, it means the trust management was not setup, thus disabled

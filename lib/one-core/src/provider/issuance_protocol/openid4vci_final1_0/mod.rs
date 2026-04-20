@@ -68,14 +68,14 @@ use crate::model::credential_schema::{
 };
 use crate::model::did::{DidRelations, KeyRole};
 use crate::model::history::{HistoryAction, HistoryMetadata, WalletRelyingPartyMetadata};
-use crate::model::holder_wallet_unit::HolderWalletUnit;
+use crate::model::holder_wallet_instance::HolderWalletInstance;
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierType};
 use crate::model::identifier_trust_information::{IdentifierTrustInformation, SchemaFormat};
 use crate::model::interaction::{Interaction, UpdateInteractionRequest};
 use crate::model::key::{Key, KeyRelations};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
-use crate::model::wallet_unit::WalletUnitStatus;
+use crate::model::wallet_instance::WalletInstanceStatus;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::credential_schema::importer::CredentialSchemaImporter;
 use crate::proto::http_client::HttpClient;
@@ -115,7 +115,7 @@ use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::history_repository::HistoryRepository;
-use crate::repository::holder_wallet_unit_repository::HolderWalletUnitRepository;
+use crate::repository::holder_wallet_instance_repository::HolderWalletInstanceRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::service::credential::dto::CredentialAttestationBlobs;
@@ -166,7 +166,7 @@ pub(crate) struct OpenID4VCIFinal1_0 {
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
     config_id: String,
     holder_wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
-    holder_wallet_unit_repository: Arc<dyn HolderWalletUnitRepository>,
+    holder_wallet_unit_repository: Arc<dyn HolderWalletInstanceRepository>,
     certificate_validator: Arc<dyn CertificateValidator>,
     wrp_validator: Arc<dyn WRPValidator>,
     history_repository: Arc<dyn HistoryRepository>,
@@ -196,7 +196,7 @@ impl OpenID4VCIFinal1_0 {
         params: OpenID4VCIFinal1Params,
         config_id: String,
         holder_wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
-        holder_wallet_unit_repository: Arc<dyn HolderWalletUnitRepository>,
+        holder_wallet_unit_repository: Arc<dyn HolderWalletInstanceRepository>,
         certificate_validator: Arc<dyn CertificateValidator>,
         wrp_validator: Arc<dyn WRPValidator>,
         history_repository: Arc<dyn HistoryRepository>,
@@ -256,7 +256,7 @@ impl OpenID4VCIFinal1_0 {
         params: OpenID4VCIFinal1Params,
         config_id: String,
         holder_wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
-        holder_wallet_unit_repository: Arc<dyn HolderWalletUnitRepository>,
+        holder_wallet_unit_repository: Arc<dyn HolderWalletInstanceRepository>,
         certificate_validator: Arc<dyn CertificateValidator>,
         wrp_validator: Arc<dyn WRPValidator>,
         history_repository: Arc<dyn HistoryRepository>,
@@ -633,7 +633,7 @@ impl OpenID4VCIFinal1_0 {
         let holder_wallet_unit = self.get_current_wallet_unit(organisation_id).await?;
         let wallet_unit_provided = holder_wallet_unit
             .as_ref()
-            .is_some_and(|unit| unit.status == WalletUnitStatus::Active);
+            .is_some_and(|unit| unit.status == WalletInstanceStatus::Active);
 
         if wallet_attestation_required && !wallet_unit_provided {
             return Err(IssuanceProtocolError::Failed(
@@ -791,10 +791,10 @@ impl OpenID4VCIFinal1_0 {
     async fn get_current_wallet_unit(
         &self,
         organisation_id: OrganisationId,
-    ) -> Result<Option<HolderWalletUnit>, IssuanceProtocolError> {
+    ) -> Result<Option<HolderWalletInstance>, IssuanceProtocolError> {
         let wallet_unit = self
             .holder_wallet_unit_repository
-            .get_holder_wallet_unit_by_org_id(&organisation_id)
+            .get_holder_wallet_instance_by_org_id(&organisation_id)
             .await
             .error_while("fetching wallet unit")?;
         Ok(wallet_unit)

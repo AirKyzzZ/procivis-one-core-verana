@@ -19,7 +19,7 @@ use one_core::repository::credential_repository::CredentialRepository;
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
 use one_core::repository::did_repository::DidRepository;
 use one_core::repository::history_repository::HistoryRepository;
-use one_core::repository::holder_wallet_unit_repository::HolderWalletUnitRepository;
+use one_core::repository::holder_wallet_instance_repository::HolderWalletInstanceRepository;
 use one_core::repository::identifier_repository::IdentifierRepository;
 use one_core::repository::identifier_trust_information_repository::IdentifierTrustInformationRepository;
 use one_core::repository::interaction_repository::InteractionRepository;
@@ -38,9 +38,9 @@ use one_core::repository::trust_list_publication_repository::TrustListPublicatio
 use one_core::repository::trust_list_subscription_repository::TrustListSubscriptionRepository;
 use one_core::repository::validity_credential_repository::ValidityCredentialRepository;
 use one_core::repository::verifier_instance_repository::VerifierInstanceRepository;
-use one_core::repository::wallet_unit_attestation_repository::WalletUnitAttestationRepository;
-use one_core::repository::wallet_unit_attested_key_repository::WalletUnitAttestedKeyRepository;
-use one_core::repository::wallet_unit_repository::WalletUnitRepository;
+use one_core::repository::wallet_instance_attestation_repository::WalletInstanceAttestationRepository;
+use one_core::repository::wallet_instance_attested_key_repository::WalletInstanceAttestedKeyRepository;
+use one_core::repository::wallet_instance_repository::WalletInstanceRepository;
 use organisation::OrganisationProvider;
 use proof::ProofProvider;
 use proof_schema::ProofSchemaProvider;
@@ -52,13 +52,13 @@ use trust_entry::TrustEntryProvider;
 use trust_list_publication::TrustListPublicationProvider;
 use trust_list_subscription::TrustListSubscriptionProvider;
 use validity_credential::ValidityCredentialProvider;
-use wallet_unit::WalletUnitProvider;
+use wallet_instance::WalletInstanceProvider;
 
 use crate::blob::BlobProvider;
 use crate::credential::CredentialProvider;
 use crate::credential_schema::CredentialSchemaProvider;
 use crate::history::HistoryProvider;
-use crate::holder_wallet_unit::HolderWalletUnitProvider;
+use crate::holder_wallet_unit::HolderWalletInstanceProvider;
 use crate::identifier_trust_information::IdentifierTrustInformationProvider;
 use crate::key::KeyProvider;
 use crate::notification::NotificationProvider;
@@ -66,8 +66,8 @@ use crate::remote_entity_cache::RemoteEntityCacheProvider;
 use crate::revocation_list::RevocationListProvider;
 use crate::transaction_context::TransactionManagerImpl;
 use crate::verifier_instance::VerifierInstanceProvider;
-use crate::wallet_unit_attestation::WalletUnitAttestationProvider;
-use crate::wallet_unit_attested_key::WalletUnitAttestedKeyProvider;
+use crate::wallet_instance_attestation::WalletInstanceAttestationProvider;
+use crate::wallet_instance_attested_key::WalletInstanceAttestedKeyProvider;
 
 mod common;
 mod entity;
@@ -101,7 +101,7 @@ pub mod trust_list_publication;
 pub mod trust_list_subscription;
 pub mod validity_credential;
 pub mod verifier_instance;
-pub mod wallet_unit;
+pub mod wallet_instance;
 
 // Re-exporting the DatabaseConnection to avoid unnecessary dependency on sea_orm in cases where we only need the DB connection
 pub type DbConn = DatabaseConnection;
@@ -138,11 +138,11 @@ pub struct DataLayer {
     trust_list_subscription_repository: Arc<dyn TrustListSubscriptionRepository>,
     blob_repository: Arc<dyn BlobRepository>,
     notification_repository: Arc<dyn NotificationRepository>,
-    wallet_unit_repository: Arc<dyn WalletUnitRepository>,
-    holder_wallet_unit_repository: Arc<dyn HolderWalletUnitRepository>,
+    wallet_instance_repository: Arc<dyn WalletInstanceRepository>,
+    holder_wallet_instance_repository: Arc<dyn HolderWalletInstanceRepository>,
     verifier_instance_repository: Arc<dyn VerifierInstanceRepository>,
-    wallet_unit_attestation_repository: Arc<dyn WalletUnitAttestationRepository>,
-    wallet_unit_attested_key_repository: Arc<dyn WalletUnitAttestedKeyRepository>,
+    wallet_instance_attestation_repository: Arc<dyn WalletInstanceAttestationRepository>,
+    wallet_instance_attested_key_repository: Arc<dyn WalletInstanceAttestedKeyRepository>,
 }
 
 impl DataLayer {
@@ -294,27 +294,28 @@ impl DataLayer {
             db: transaction_manager.clone(),
         });
 
-        let wallet_unit_attested_key_repository = Arc::new(WalletUnitAttestedKeyProvider {
+        let wallet_instance_attested_key_repository = Arc::new(WalletInstanceAttestedKeyProvider {
             db: transaction_manager.clone(),
             revocation_list_repository: revocation_list_repository.clone(),
         });
 
-        let wallet_unit_repository = Arc::new(WalletUnitProvider {
+        let wallet_instance_repository = Arc::new(WalletInstanceProvider {
             db: transaction_manager.clone(),
             organisation_repository: organisation_repository.clone(),
-            wallet_unit_attested_key_repository: wallet_unit_attested_key_repository.clone(),
+            wallet_instance_attested_key_repository: wallet_instance_attested_key_repository
+                .clone(),
         });
 
-        let wallet_unit_attestation_repository = Arc::new(WalletUnitAttestationProvider {
+        let wallet_instance_attestation_repository = Arc::new(WalletInstanceAttestationProvider {
             db: transaction_manager.clone(),
             key_repository: key_repository.clone(),
         });
 
-        let holder_wallet_unit_repository = Arc::new(HolderWalletUnitProvider {
+        let holder_wallet_instance_repository = Arc::new(HolderWalletInstanceProvider {
             db: transaction_manager.clone(),
             organisation_repository: organisation_repository.clone(),
             key_repository: key_repository.clone(),
-            wallet_unit_attestation_repository: wallet_unit_attestation_repository.clone(),
+            wallet_unit_attestation_repository: wallet_instance_attestation_repository.clone(),
         });
 
         let verifier_instance_repository = Arc::new(VerifierInstanceProvider {
@@ -351,11 +352,11 @@ impl DataLayer {
             certificate_repository,
             blob_repository,
             notification_repository,
-            wallet_unit_repository,
-            holder_wallet_unit_repository,
+            wallet_instance_repository,
+            holder_wallet_instance_repository,
             verifier_instance_repository,
-            wallet_unit_attestation_repository,
-            wallet_unit_attested_key_repository,
+            wallet_instance_attestation_repository,
+            wallet_instance_attested_key_repository,
         }
     }
 }
@@ -443,24 +444,28 @@ impl DataRepository for DataLayer {
         self.notification_repository.clone()
     }
 
-    fn get_wallet_unit_repository(&self) -> Arc<dyn WalletUnitRepository> {
-        self.wallet_unit_repository.clone()
+    fn get_wallet_instance_repository(&self) -> Arc<dyn WalletInstanceRepository> {
+        self.wallet_instance_repository.clone()
     }
 
-    fn get_wallet_unit_attestation_repository(&self) -> Arc<dyn WalletUnitAttestationRepository> {
-        self.wallet_unit_attestation_repository.clone()
+    fn get_wallet_instance_attestation_repository(
+        &self,
+    ) -> Arc<dyn WalletInstanceAttestationRepository> {
+        self.wallet_instance_attestation_repository.clone()
     }
 
-    fn get_wallet_unit_attested_key_repository(&self) -> Arc<dyn WalletUnitAttestedKeyRepository> {
-        self.wallet_unit_attested_key_repository.clone()
+    fn get_wallet_instance_attested_key_repository(
+        &self,
+    ) -> Arc<dyn WalletInstanceAttestedKeyRepository> {
+        self.wallet_instance_attested_key_repository.clone()
     }
 
     fn get_tx_manager(&self) -> Arc<dyn TransactionManager> {
         Arc::new(self.transaction_manager.clone())
     }
 
-    fn get_holder_wallet_unit_repository(&self) -> Arc<dyn HolderWalletUnitRepository> {
-        self.holder_wallet_unit_repository.clone()
+    fn get_holder_wallet_instance_repository(&self) -> Arc<dyn HolderWalletInstanceRepository> {
+        self.holder_wallet_instance_repository.clone()
     }
     fn get_verifier_instance_repository(&self) -> Arc<dyn VerifierInstanceRepository> {
         self.verifier_instance_repository.clone()
@@ -487,5 +492,5 @@ mod identifier_trust_information;
 #[cfg(any(test, feature = "test_utils"))]
 pub mod test_utilities;
 mod transaction_context;
-mod wallet_unit_attestation;
-mod wallet_unit_attested_key;
+mod wallet_instance_attestation;
+mod wallet_instance_attested_key;

@@ -1,5 +1,5 @@
 use serde::Deserialize;
-use shared_types::WalletUnitId;
+use shared_types::WalletInstanceId;
 use url::Url;
 
 use super::HTTPWalletProviderClient;
@@ -9,7 +9,7 @@ use super::dto::{
     RegisterWalletUnitResponseRestDTO, WalletProviderMetadataResponseRestDTO,
 };
 use crate::error::{ContextWithErrorCode, ErrorCode};
-use crate::model::wallet_unit::WalletProviderType;
+use crate::model::wallet_instance::WalletProviderType;
 use crate::proto::wallet_provider_client::WalletProviderClient;
 use crate::proto::wallet_provider_client::dto::{IssueWalletAttestationResponse, MetadataTarget};
 use crate::proto::wallet_provider_client::error::WalletProviderClientError;
@@ -80,7 +80,7 @@ impl WalletProviderClient for HTTPWalletProviderClient {
     async fn activate(
         &self,
         wallet_provider_url: &str,
-        wallet_unit_id: WalletUnitId,
+        wallet_unit_id: WalletInstanceId,
         request: ActivateWalletUnitRequestDTO,
     ) -> Result<(), WalletProviderClientError> {
         let url = Url::parse(
@@ -104,7 +104,7 @@ impl WalletProviderClient for HTTPWalletProviderClient {
     async fn issue_attestation(
         &self,
         wallet_provider_url: &str,
-        wallet_unit_id: WalletUnitId,
+        wallet_unit_id: WalletInstanceId,
         bearer_token: &str,
         request: IssueWalletUnitAttestationRequestDTO,
     ) -> Result<IssueWalletAttestationResponse, WalletProviderClientError> {

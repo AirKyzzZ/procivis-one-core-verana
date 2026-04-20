@@ -2,12 +2,12 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use shared_types::HolderWalletUnitId;
+use shared_types::HolderWalletInstanceId;
 use time::Duration;
 
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, NestedError};
 use crate::mapper::x509::x5c_into_pem_chain;
-use crate::model::holder_wallet_unit::{HolderWalletUnit, HolderWalletUnitRelations};
+use crate::model::holder_wallet_instance::{HolderWalletInstance, HolderWalletInstanceRelations};
 use crate::model::key::{Key, KeyRelations};
 use crate::proto::certificate_validator::{
     CertificateValidationOptions, CertificateValidator, ParsedCertificate,
@@ -26,7 +26,7 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::model::RevocationState;
 use crate::provider::revocation::provider::RevocationMethodProvider;
-use crate::repository::holder_wallet_unit_repository::HolderWalletUnitRepository;
+use crate::repository::holder_wallet_instance_repository::HolderWalletInstanceRepository;
 use crate::service::error::MissingProviderError;
 use crate::service::wallet_provider::dto::{
     IssueWalletUnitAttestationRequestDTO, IssueWalletUnitAttestationResponseDTO,
@@ -49,13 +49,13 @@ pub enum WalletUnitStatusCheckResponse {
 pub(crate) trait HolderWalletUnitProto: Send + Sync {
     async fn issue_wallet_attestations<'a>(
         &self,
-        holder_wallet_unit_id: &HolderWalletUnitId,
+        holder_wallet_unit_id: &HolderWalletInstanceId,
         request: IssueWalletAttestationRequest<'a>,
     ) -> Result<IssueWalletUnitAttestationResponseDTO, Error>;
 
     async fn check_wallet_unit_status(
         &self,
-        holder_wallet_unit: &HolderWalletUnit,
+        holder_wallet_unit: &HolderWalletInstance,
     ) -> Result<WalletUnitStatusCheckResponse, Error>;
 
     async fn check_wallet_unit_attestation_status(
@@ -65,7 +65,7 @@ pub(crate) trait HolderWalletUnitProto: Send + Sync {
 
     async fn get_authentication_key(
         &self,
-        holder_wallet_unit_id: &HolderWalletUnitId,
+        holder_wallet_unit_id: &HolderWalletInstanceId,
     ) -> Result<Key, Error>;
 }
 
@@ -99,7 +99,7 @@ pub struct HolderWalletUnitProtoImpl {
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     wallet_provider_client: Arc<dyn WalletProviderClient>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
-    holder_wallet_unit_repository: Arc<dyn HolderWalletUnitRepository>,
+    holder_wallet_unit_repository: Arc<dyn HolderWalletInstanceRepository>,
     certificate_validator: Arc<dyn CertificateValidator>,
 }
 
@@ -109,7 +109,7 @@ impl HolderWalletUnitProtoImpl {
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         wallet_provider_client: Arc<dyn WalletProviderClient>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
-        holder_wallet_unit_repository: Arc<dyn HolderWalletUnitRepository>,
+        holder_wallet_unit_repository: Arc<dyn HolderWalletInstanceRepository>,
         certificate_validator: Arc<dyn CertificateValidator>,
     ) -> Self {
         Self {
@@ -300,7 +300,7 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
 
     async fn check_wallet_unit_status(
         &self,
-        holder_wallet_unit: &HolderWalletUnit,
+        holder_wallet_unit: &HolderWalletInstance,
     ) -> Result<WalletUnitStatusCheckResponse, Error> {
         let key = holder_wallet_unit
             .authentication_key
@@ -346,13 +346,13 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
 
     async fn get_authentication_key(
         &self,
-        holder_wallet_unit_id: &HolderWalletUnitId,
+        holder_wallet_unit_id: &HolderWalletInstanceId,
     ) -> Result<Key, Error> {
         let holder_wallet_unit = self
             .holder_wallet_unit_repository
-            .get_holder_wallet_unit(
+            .get_holder_wallet_instance(
                 holder_wallet_unit_id,
-                &HolderWalletUnitRelations {
+                &HolderWalletInstanceRelations {
                     authentication_key: Some(KeyRelations::default()),
                     ..Default::default()
                 },
@@ -372,14 +372,14 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
 
     async fn issue_wallet_attestations<'a>(
         &self,
-        holder_wallet_unit_id: &HolderWalletUnitId,
+        holder_wallet_unit_id: &HolderWalletInstanceId,
         request: IssueWalletAttestationRequest<'a>,
     ) -> Result<IssueWalletUnitAttestationResponseDTO, Error> {
         let holder_wallet_unit = self
             .holder_wallet_unit_repository
-            .get_holder_wallet_unit(
+            .get_holder_wallet_instance(
                 holder_wallet_unit_id,
-                &HolderWalletUnitRelations {
+                &HolderWalletInstanceRelations {
                     authentication_key: Some(KeyRelations::default()),
                     ..Default::default()
                 },

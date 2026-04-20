@@ -1,10 +1,10 @@
 use one_dto_mapper::{From, Into, convert_inner};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-use shared_types::WalletUnitId;
+use shared_types::WalletInstanceId;
 use standardized_types::jwk::PublicJwk;
 
-use crate::model::wallet_unit::WalletUnitOs;
+use crate::model::wallet_instance::WalletInstanceOs;
 use crate::provider::issuance_protocol::model::KeyStorageSecurityLevel;
 use crate::service::wallet_provider::dto::{self, FeatureFlags, ProviderTrustCollectionDTO};
 
@@ -14,7 +14,7 @@ use crate::service::wallet_provider::dto::{self, FeatureFlags, ProviderTrustColl
 #[serde(rename_all = "camelCase")]
 pub(crate) struct RegisterWalletUnitRequestRestDTO {
     pub wallet_provider: String,
-    pub os: WalletUnitOs,
+    pub os: WalletInstanceOs,
     pub public_key: Option<PublicJwk>,
     pub proof: Option<String>,
 }
@@ -24,7 +24,7 @@ pub(crate) struct RegisterWalletUnitRequestRestDTO {
 #[into(dto::RegisterWalletUnitResponseDTO)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct RegisterWalletUnitResponseRestDTO {
-    pub id: WalletUnitId,
+    pub id: WalletInstanceId,
     pub nonce: Option<String>,
 }
 

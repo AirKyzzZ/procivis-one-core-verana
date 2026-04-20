@@ -4,7 +4,7 @@ use one_dto_mapper::{From, Into, convert_inner};
 use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
 use serde_with::{OneOrMany, serde_as};
-use shared_types::{TrustCollectionId, WalletUnitId};
+use shared_types::{TrustCollectionId, WalletInstanceId};
 use standardized_types::jwk::PublicJwk;
 use utoipa::ToSchema;
 
@@ -77,7 +77,7 @@ pub(crate) struct RegisterWalletUnitRequestRestDTO {
 #[from(dto::RegisterWalletUnitResponseDTO)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct RegisterWalletUnitResponseRestDTO {
-    pub id: WalletUnitId,
+    pub id: WalletInstanceId,
     pub nonce: Option<String>,
 }
 

@@ -1,8 +1,8 @@
-use one_core::model::wallet_unit::WalletUnitStatus;
+use one_core::model::wallet_instance::WalletInstanceStatus;
 use similar_asserts::assert_eq;
 
 use crate::utils::context::TestContext;
-use crate::utils::db_clients::wallet_units::TestWalletUnit;
+use crate::utils::db_clients::wallet_instances::TestWalletInstance;
 use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
@@ -11,8 +11,8 @@ async fn test_get_wallet_instance_success() {
     let (context, org) = TestContext::new_with_organisation(None).await;
     let wallet_unit = context
         .db
-        .wallet_units
-        .create(org, TestWalletUnit::default())
+        .wallet_instances
+        .create(org, TestWalletInstance::default())
         .await;
 
     // WHEN
@@ -40,11 +40,11 @@ async fn test_get_revoked_wallet_instance_success() {
     let (context, org) = TestContext::new_with_organisation(None).await;
     let wallet_unit = context
         .db
-        .wallet_units
+        .wallet_instances
         .create(
             org.clone(),
-            TestWalletUnit {
-                status: Some(WalletUnitStatus::Revoked),
+            TestWalletInstance {
+                status: Some(WalletInstanceStatus::Revoked),
                 ..Default::default()
             },
         )

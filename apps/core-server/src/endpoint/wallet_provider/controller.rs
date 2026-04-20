@@ -3,7 +3,7 @@ use axum_extra::extract::WithRejection;
 use one_core::error::ContextWithErrorCode;
 use one_core::service::error::ServiceError;
 use proc_macros::endpoint;
-use shared_types::{Permission, WalletUnitId};
+use shared_types::{Permission, WalletInstanceId};
 
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{EmptyOrErrorResponse, OkOrErrorResponse};
@@ -51,7 +51,7 @@ pub(crate) async fn get_wallet_unit_list(
     get,
     path = "/api/wallet-instance/v1/{id}",
     params(
-        ("id" = WalletUnitId, Path, description = "Wallet instance id")
+        ("id" = WalletInstanceId, Path, description = "Wallet instance id")
     ),
     responses(OkOrErrorResponse<WalletInstanceResponseRestDTO>),
     tag = "wallet_instance",
@@ -63,7 +63,7 @@ pub(crate) async fn get_wallet_unit_list(
 )]
 pub(crate) async fn get_wallet_unit_details(
     state: State<AppState>,
-    WithRejection(Path(id), _): WithRejection<Path<WalletUnitId>, ErrorResponseRestDTO>,
+    WithRejection(Path(id), _): WithRejection<Path<WalletInstanceId>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<WalletInstanceResponseRestDTO> {
     let result = state
         .core
@@ -78,7 +78,7 @@ pub(crate) async fn get_wallet_unit_details(
     post,
     path = "/api/wallet-instance/v1/{id}/revoke",
     params(
-        ("id" = WalletUnitId, Path, description = "Wallet instance id")
+        ("id" = WalletInstanceId, Path, description = "Wallet instance id")
     ),
     responses(EmptyOrErrorResponse),
     tag = "wallet_instance",
@@ -93,7 +93,7 @@ pub(crate) async fn get_wallet_unit_details(
 )]
 pub(crate) async fn revoke_wallet_unit(
     state: State<AppState>,
-    WithRejection(Path(id), _): WithRejection<Path<WalletUnitId>, ErrorResponseRestDTO>,
+    WithRejection(Path(id), _): WithRejection<Path<WalletInstanceId>, ErrorResponseRestDTO>,
 ) -> EmptyOrErrorResponse {
     let result = state
         .core
@@ -108,7 +108,7 @@ pub(crate) async fn revoke_wallet_unit(
     delete,
     path = "/api/wallet-instance/v1/{id}",
     params(
-        ("id" = WalletUnitId, Path, description = "Wallet instance id")
+        ("id" = WalletInstanceId, Path, description = "Wallet instance id")
     ),
     responses(EmptyOrErrorResponse),
     tag = "wallet_instance",
@@ -120,7 +120,7 @@ pub(crate) async fn revoke_wallet_unit(
 )]
 pub(crate) async fn remove_wallet_unit(
     state: State<AppState>,
-    WithRejection(Path(id), _): WithRejection<Path<WalletUnitId>, ErrorResponseRestDTO>,
+    WithRejection(Path(id), _): WithRejection<Path<WalletInstanceId>, ErrorResponseRestDTO>,
 ) -> EmptyOrErrorResponse {
     let result = state
         .core

@@ -1,6 +1,6 @@
 use one_core::model::trust_list_role::TrustListRoleEnum;
 use one_core::model::trust_list_subscription::TrustListSubscriptionState;
-use one_core::model::wallet_unit::{WalletProviderType, WalletUnitStatus};
+use one_core::model::wallet_instance::{WalletInstanceStatus, WalletProviderType};
 use serde_json::json;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
@@ -25,7 +25,7 @@ async fn test_holder_wallet_unit_trust_collections() {
             org.clone(),
             None,
             TestHolderWalletUnitParams {
-                status: Some(WalletUnitStatus::Unattested),
+                status: Some(WalletInstanceStatus::Unattested),
                 wallet_provider_type: Some(WalletProviderType::ProcivisOne),
                 wallet_provider_name: Some("PROCIVIS_ONE".to_string()),
                 wallet_provider_url: Some(mock_server.uri()),

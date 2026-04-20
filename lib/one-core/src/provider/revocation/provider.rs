@@ -29,7 +29,7 @@ use crate::provider::revocation::crl::CRLRevocation;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::remote_entity_cache_repository::RemoteEntityCacheRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
-use crate::repository::wallet_unit_repository::WalletUnitRepository;
+use crate::repository::wallet_instance_repository::WalletInstanceRepository;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 pub trait RevocationMethodProvider: Send + Sync {
@@ -81,7 +81,7 @@ pub(crate) fn revocation_method_provider_from_config(
     transaction_manager: Arc<dyn TransactionManager>,
     revocation_list_repository: Arc<dyn RevocationListRepository>,
     remote_entity_cache_repository: Arc<dyn RemoteEntityCacheRepository>,
-    wallet_unit_repository: Arc<dyn WalletUnitRepository>,
+    wallet_unit_repository: Arc<dyn WalletInstanceRepository>,
     identifier_repository: Arc<dyn IdentifierRepository>,
     client: Arc<dyn HttpClient>,
 ) -> Result<Arc<dyn RevocationMethodProvider>, ConfigValidationError> {

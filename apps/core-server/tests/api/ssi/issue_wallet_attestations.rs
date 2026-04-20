@@ -1,9 +1,9 @@
 use one_core::model::history::HistoryAction;
-use one_core::model::wallet_unit::{
-    UpdateWalletUnitRequest, WalletUnitRelations, WalletUnitStatus,
+use one_core::model::wallet_instance::{
+    UpdateWalletInstanceRequest, WalletInstanceRelations, WalletInstanceStatus,
 };
-use one_core::model::wallet_unit_attested_key::{
-    WalletUnitAttestedKey, WalletUnitAttestedKeyRelations,
+use one_core::model::wallet_instance_attested_key::{
+    WalletInstanceAttestedKey, WalletInstanceAttestedKeyRelations,
 };
 use one_core::proto::jwt::Jwt;
 use one_core::provider::issuance_protocol::model::KeyStorageSecurityLevel;
@@ -19,7 +19,7 @@ use crate::fixtures::wallet_provider::{
     create_key_possession_proof, create_wallet_unit_attestation_issuer_identifier,
 };
 use crate::utils::context::TestContext;
-use crate::utils::db_clients::wallet_units::TestWalletUnit;
+use crate::utils::db_clients::wallet_instances::TestWalletInstance;
 
 #[tokio::test]
 async fn test_issue_wallet_attestations_success() {
@@ -32,10 +32,10 @@ async fn test_issue_wallet_attestations_success() {
 
     let wallet_unit = context
         .db
-        .wallet_units
+        .wallet_instances
         .create(
             org.clone(),
-            TestWalletUnit {
+            TestWalletInstance {
                 public_key: Some(holder_public_jwk),
                 ..Default::default()
             },
@@ -117,10 +117,10 @@ async fn test_issue_wallet_attestations_empty_success() {
 
     let wallet_unit = context
         .db
-        .wallet_units
+        .wallet_instances
         .create(
             org.clone(),
-            TestWalletUnit {
+            TestWalletInstance {
                 public_key: Some(holder_public_jwk),
                 ..Default::default()
             },
@@ -183,12 +183,12 @@ async fn test_issue_wallet_attestations_failed_with_revoked_wallet_unit() {
 
     let wallet_unit = context
         .db
-        .wallet_units
+        .wallet_instances
         .create(
             org.clone(),
-            TestWalletUnit {
+            TestWalletInstance {
                 public_key: Some(holder_public_jwk),
-                status: Some(WalletUnitStatus::Revoked),
+                status: Some(WalletInstanceStatus::Revoked),
                 ..Default::default()
             },
         )
@@ -223,10 +223,10 @@ async fn test_issue_wua_only_success() {
 
     let wallet_unit = context
         .db
-        .wallet_units
+        .wallet_instances
         .create(
             org.clone(),
-            TestWalletUnit {
+            TestWalletInstance {
                 public_key: Some(holder_public_jwk),
                 ..Default::default()
             },
@@ -274,11 +274,11 @@ async fn test_issue_wua_only_success() {
     assert_history_count(&context, &wallet_unit.id.into(), HistoryAction::Issued, 1).await;
     let wallet_unit = context
         .db
-        .wallet_units
+        .wallet_instances
         .get(
             wallet_unit.id,
-            &WalletUnitRelations {
-                attested_keys: Some(WalletUnitAttestedKeyRelations::default()),
+            &WalletInstanceRelations {
+                attested_keys: Some(WalletInstanceAttestedKeyRelations::default()),
                 ..Default::default()
             },
         )
@@ -298,10 +298,10 @@ async fn test_issue_wia_only_with_existing_attested_keys_success() {
 
     let wallet_unit = context
         .db
-        .wallet_units
+        .wallet_instances
         .create(
             org.clone(),
-            TestWalletUnit {
+            TestWalletInstance {
                 public_key: Some(holder_public_jwk.clone()),
                 ..Default::default()
             },
@@ -310,13 +310,13 @@ async fn test_issue_wia_only_with_existing_attested_keys_success() {
     let now = one_core::clock::now_utc();
     context
         .db
-        .wallet_units
+        .wallet_instances
         .update(
             wallet_unit.id,
-            UpdateWalletUnitRequest {
-                attested_keys: Some(vec![WalletUnitAttestedKey {
+            UpdateWalletInstanceRequest {
+                attested_keys: Some(vec![WalletInstanceAttestedKey {
                     id: Uuid::new_v4().into(),
-                    wallet_unit_id: wallet_unit.id,
+                    wallet_instance_id: wallet_unit.id,
                     created_date: now,
                     last_modified: now,
                     expiration_date: now + Duration::days(30),
@@ -365,11 +365,11 @@ async fn test_issue_wia_only_with_existing_attested_keys_success() {
     assert_history_count(&context, &wallet_unit.id.into(), HistoryAction::Updated, 1).await;
     let wallet_unit = context
         .db
-        .wallet_units
+        .wallet_instances
         .get(
             wallet_unit.id,
-            &WalletUnitRelations {
-                attested_keys: Some(WalletUnitAttestedKeyRelations::default()),
+            &WalletInstanceRelations {
+                attested_keys: Some(WalletInstanceAttestedKeyRelations::default()),
                 ..Default::default()
             },
         )

@@ -5,10 +5,10 @@ use serde_json::json;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
-use crate::model::holder_wallet_unit::HolderWalletUnit;
+use crate::model::holder_wallet_instance::HolderWalletInstance;
 use crate::model::trust_collection::{GetTrustCollectionList, TrustCollection};
 use crate::model::verifier_instance::VerifierInstance;
-use crate::model::wallet_unit::{WalletProviderType, WalletUnitStatus};
+use crate::model::wallet_instance::{WalletInstanceStatus, WalletProviderType};
 use crate::proto::transaction_manager::NoTransactionManager;
 use crate::proto::trust_collection::manager::TrustCollectionManagerImpl;
 use crate::proto::trust_list_subscription_sync::MockTrustListSubscriptionSync;
@@ -17,7 +17,7 @@ use crate::proto::wallet_provider_client::MockWalletProviderClient;
 use crate::provider::task::Task;
 use crate::provider::task::trust_collection_sync::TrustCollectionSyncTask;
 use crate::provider::verifier;
-use crate::repository::holder_wallet_unit_repository::MockHolderWalletUnitRepository;
+use crate::repository::holder_wallet_instance_repository::MockHolderWalletInstanceRepository;
 use crate::repository::trust_collection_repository::MockTrustCollectionRepository;
 use crate::repository::verifier_instance_repository::MockVerifierInstanceRepository;
 use crate::service::test_utilities::dummy_organisation;
@@ -30,9 +30,9 @@ use crate::service::wallet_provider::dto::{
 
 #[tokio::test]
 async fn test_sync_trust_collections_wallet() {
-    let mut wallet_unit_repository = MockHolderWalletUnitRepository::new();
+    let mut wallet_unit_repository = MockHolderWalletInstanceRepository::new();
     wallet_unit_repository
-        .expect_get_holder_wallet_unit()
+        .expect_get_holder_wallet_instance()
         .once()
         .returning(|_, _| Ok(Some(dummy_wallet_unit())));
     let mut wallet_unit_client = MockWalletProviderClient::new();
@@ -125,7 +125,7 @@ async fn test_sync_trust_collections_verifier() {
         Arc::new(NoTransactionManager),
     );
     let task = TrustCollectionSyncTask::new(
-        Arc::new(MockHolderWalletUnitRepository::new()),
+        Arc::new(MockHolderWalletInstanceRepository::new()),
         Arc::new(MockWalletProviderClient::new()),
         Arc::new(verifier_instance_repository),
         Arc::new(verifier_client),
@@ -221,9 +221,9 @@ fn dummy_collection(name: String) -> TrustCollection {
     }
 }
 
-fn dummy_wallet_unit() -> HolderWalletUnit {
+fn dummy_wallet_unit() -> HolderWalletInstance {
     let now = crate::clock::now_utc();
-    HolderWalletUnit {
+    HolderWalletInstance {
         id: Uuid::new_v4().into(),
         created_date: now,
         last_modified: now,
@@ -231,7 +231,7 @@ fn dummy_wallet_unit() -> HolderWalletUnit {
         wallet_provider_name: "wallet-provider".to_string(),
         wallet_provider_url: "https://wallet-provider.org".to_string(),
         provider_wallet_unit_id: Uuid::new_v4().into(),
-        status: WalletUnitStatus::Active,
+        status: WalletInstanceStatus::Active,
         organisation: Some(dummy_organisation(None)),
         authentication_key: None,
         wallet_unit_attestations: None,

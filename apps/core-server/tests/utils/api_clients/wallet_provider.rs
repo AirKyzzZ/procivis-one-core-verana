@@ -1,6 +1,6 @@
 use one_core::provider::issuance_protocol::model::KeyStorageSecurityLevel;
 use serde_json::json;
-use shared_types::WalletUnitId;
+use shared_types::WalletInstanceId;
 use standardized_types::jwk::PublicJwk;
 
 use crate::utils::api_clients::{HttpClient, Response};
@@ -37,7 +37,7 @@ impl WalletProviderApi {
 
     pub async fn activate_wallet(
         &self,
-        wallet_unit_id: WalletUnitId,
+        wallet_unit_id: WalletInstanceId,
         attestation: &str,
         proof: &str,
     ) -> Response {
@@ -56,7 +56,7 @@ impl WalletProviderApi {
 
     pub async fn issue_attestation(
         &self,
-        wallet_unit_id: WalletUnitId,
+        wallet_unit_id: WalletInstanceId,
         bearer: &str,
         wia_proofs: Vec<String>,
         wua_proofs: Vec<(String, KeyStorageSecurityLevel)>,
@@ -89,7 +89,7 @@ impl WalletProviderApi {
             .await
     }
 
-    pub async fn revoke_wallet_unit(&self, wallet_unit_id: WalletUnitId) -> Response {
+    pub async fn revoke_wallet_unit(&self, wallet_unit_id: WalletInstanceId) -> Response {
         self.client
             .post(
                 &format!("/api/wallet-instance/v1/{wallet_unit_id}/revoke"),
@@ -98,7 +98,7 @@ impl WalletProviderApi {
             .await
     }
 
-    pub async fn delete_wallet_unit(&self, wallet_unit_id: WalletUnitId) -> Response {
+    pub async fn delete_wallet_unit(&self, wallet_unit_id: WalletInstanceId) -> Response {
         self.client
             .delete(&format!("/api/wallet-instance/v1/{wallet_unit_id}"))
             .await

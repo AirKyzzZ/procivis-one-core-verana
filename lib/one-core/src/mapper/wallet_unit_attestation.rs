@@ -1,9 +1,9 @@
-use crate::model::wallet_unit_attestation::{
-    UpdateWalletUnitAttestationRequest, WalletUnitAttestation,
+use crate::model::wallet_instance_attestation::{
+    UpdateWalletInstanceAttestationRequest, WalletInstanceAttestation,
 };
 
-impl From<WalletUnitAttestation> for UpdateWalletUnitAttestationRequest {
-    fn from(value: WalletUnitAttestation) -> Self {
+impl From<WalletInstanceAttestation> for UpdateWalletInstanceAttestationRequest {
+    fn from(value: WalletInstanceAttestation) -> Self {
         Self {
             expiration_date: Some(value.expiration_date),
             attestation: Some(value.attestation),

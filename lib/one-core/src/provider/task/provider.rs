@@ -29,7 +29,7 @@ use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::claim_repository::ClaimRepository;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::history_repository::HistoryRepository;
-use crate::repository::holder_wallet_unit_repository::HolderWalletUnitRepository;
+use crate::repository::holder_wallet_instance_repository::HolderWalletInstanceRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::notification_repository::NotificationRepository;
@@ -65,7 +65,7 @@ pub(crate) fn task_provider_from_config(
     interaction_repository: Arc<dyn InteractionRepository>,
     notification_repository: Arc<dyn NotificationRepository>,
     trust_list_subscription_repository: Arc<dyn TrustListSubscriptionRepository>,
-    holder_wallet_unit_repository: Arc<dyn HolderWalletUnitRepository>,
+    holder_wallet_unit_repository: Arc<dyn HolderWalletInstanceRepository>,
     trust_collection_repository: Arc<dyn TrustCollectionRepository>,
     credential_validity_manager: Arc<dyn CredentialValidityManager>,
     certificate_validator: Arc<dyn CertificateValidator>,

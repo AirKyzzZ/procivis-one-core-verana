@@ -1,9 +1,9 @@
 use serde::Serialize;
-use shared_types::{HolderWalletUnitId, OrganisationId, TrustCollectionId, WalletUnitId};
+use shared_types::{HolderWalletInstanceId, OrganisationId, TrustCollectionId, WalletInstanceId};
 use time::OffsetDateTime;
 
-pub use crate::model::wallet_unit::{
-    WalletProviderType, WalletUnit, WalletUnitOs, WalletUnitStatus,
+pub use crate::model::wallet_instance::{
+    WalletInstance, WalletInstanceOs, WalletInstanceStatus, WalletProviderType,
 };
 use crate::service::key::dto::KeyListItemResponseDTO;
 use crate::service::wallet_provider::dto::ProviderTrustCollectionDTO;
@@ -29,21 +29,21 @@ pub(super) struct NoncePayload {
 
 #[derive(Debug, Clone)]
 pub struct HolderWalletUnitResponseDTO {
-    pub id: HolderWalletUnitId,
+    pub id: HolderWalletInstanceId,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
-    pub provider_wallet_unit_id: WalletUnitId,
+    pub provider_wallet_unit_id: WalletInstanceId,
     pub wallet_provider_url: String,
     pub wallet_provider_type: WalletProviderType,
     pub wallet_provider_name: String,
-    pub status: WalletUnitStatus,
+    pub status: WalletInstanceStatus,
     pub authentication_key: Option<KeyListItemResponseDTO>,
 }
 
 #[derive(Debug, Clone)]
 pub struct HolderWalletUnitRegisterResponseDTO {
-    pub id: HolderWalletUnitId,
-    pub status: WalletUnitStatus,
+    pub id: HolderWalletInstanceId,
+    pub status: WalletInstanceStatus,
 }
 
 #[derive(Debug, Clone)]

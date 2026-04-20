@@ -1,4 +1,4 @@
-use one_core::model::wallet_unit::{WalletProviderType, WalletUnitStatus};
+use one_core::model::wallet_instance::{WalletInstanceStatus, WalletProviderType};
 use one_core::service::wallet_provider::dto::DisplayNameDTO;
 use one_core::service::wallet_unit::dto::{
     HolderRegisterWalletUnitRequestDTO, HolderWalletUnitRegisterResponseDTO,
@@ -145,7 +145,7 @@ pub struct HolderWalletUnitResponseBindingDTO {
 }
 
 #[derive(Clone, Debug, uniffi::Enum, From)]
-#[from(WalletUnitStatus)]
+#[from(WalletInstanceStatus)]
 #[uniffi(name = "WalletUnitStatus")]
 pub enum WalletUnitStatusBindingEnum {
     Pending,

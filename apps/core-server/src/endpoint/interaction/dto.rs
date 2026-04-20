@@ -14,8 +14,8 @@ use one_dto_mapper::{From, Into, TryInto, convert_inner_of_inner};
 use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
 use shared_types::{
-    CredentialId, DidId, HolderWalletUnitId, IdentifierId, InteractionId, KeyId, OrganisationId,
-    ProofId,
+    CredentialId, DidId, HolderWalletInstanceId, IdentifierId, InteractionId, KeyId,
+    OrganisationId, ProofId,
 };
 use strum::Display;
 use url::Url;
@@ -137,7 +137,7 @@ pub(crate) struct IssuanceAcceptRequestRestDTO {
     #[schema(deprecated = true, nullable = false)]
     #[expect(unused)]
     /// Deprecated. The holder wallet unit registered for the linked organisation is used
-    pub holder_wallet_unit_id: Option<HolderWalletUnitId>,
+    pub holder_wallet_unit_id: Option<HolderWalletInstanceId>,
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema)]

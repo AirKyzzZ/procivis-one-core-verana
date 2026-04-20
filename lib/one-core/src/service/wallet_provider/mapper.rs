@@ -18,7 +18,9 @@ use crate::model::list_filter::{
     ValueComparison,
 };
 use crate::model::organisation::Organisation;
-use crate::model::wallet_unit::{WalletUnit, WalletUnitFilterValue, WalletUnitStatus};
+use crate::model::wallet_instance::{
+    WalletInstance, WalletInstanceFilterValue, WalletInstanceStatus,
+};
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::{KeyAlgorithmProvider, ParsedKey};
 use crate::repository::error::DataLayerError;
@@ -31,12 +33,12 @@ pub(crate) fn wallet_unit_from_request(
     public_key: Option<&PublicJwk>,
     now: OffsetDateTime,
     nonce: Option<String>,
-) -> Result<WalletUnit, WalletProviderError> {
+) -> Result<WalletInstance, WalletProviderError> {
     let status = match &nonce {
-        None => WalletUnitStatus::Active,
-        Some(_) => WalletUnitStatus::Pending,
+        None => WalletInstanceStatus::Active,
+        Some(_) => WalletInstanceStatus::Pending,
     };
-    Ok(WalletUnit {
+    Ok(WalletInstance {
         id: Uuid::new_v4().into(),
         name: format!(
             "{}-{}-{}",
@@ -59,7 +61,7 @@ pub(crate) fn wallet_unit_from_request(
 }
 
 pub(crate) fn public_key_from_wallet_unit(
-    wallet_unit: &WalletUnit,
+    wallet_unit: &WalletInstance,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> Result<KeyHandle, WalletProviderError> {
     let ParsedKey { key, .. } = key_algorithm_provider
@@ -102,25 +104,25 @@ pub(super) fn params_into_display_names(params: HashMap<String, String>) -> Vec<
         .collect()
 }
 
-impl TryFrom<WalletUnitFilterParamsDTO> for ListFilterCondition<WalletUnitFilterValue> {
+impl TryFrom<WalletUnitFilterParamsDTO> for ListFilterCondition<WalletInstanceFilterValue> {
     type Error = ServiceError;
 
     fn try_from(value: WalletUnitFilterParamsDTO) -> Result<Self, Self::Error> {
         let organisation_id =
-            WalletUnitFilterValue::OrganisationId(value.organisation_id).condition();
+            WalletInstanceFilterValue::OrganisationId(value.organisation_id).condition();
 
         let name = value.name.map(|name| {
-            WalletUnitFilterValue::Name(StringMatch {
+            WalletInstanceFilterValue::Name(StringMatch {
                 r#match: StringMatchType::StartsWith,
                 value: name,
             })
         });
 
-        let ids = value.ids.map(WalletUnitFilterValue::Ids);
+        let ids = value.ids.map(WalletInstanceFilterValue::Ids);
 
-        let status = value.status.map(WalletUnitFilterValue::Status);
+        let status = value.status.map(WalletInstanceFilterValue::Status);
 
-        let os = value.os.map(WalletUnitFilterValue::Os);
+        let os = value.os.map(WalletInstanceFilterValue::Os);
 
         let attestation = value
             .attestation
@@ -130,22 +132,22 @@ impl TryFrom<WalletUnitFilterParamsDTO> for ListFilterCondition<WalletUnitFilter
                         "Could not hash wallet unit attestation: {e}"
                     ))
                 })?;
-                Ok::<_, ServiceError>(WalletUnitFilterValue::AttestationHash(attestation_hash))
+                Ok::<_, ServiceError>(WalletInstanceFilterValue::AttestationHash(attestation_hash))
             })
             .transpose()?;
 
         let wallet_provider_type = value
             .wallet_provider_type
-            .map(WalletUnitFilterValue::WalletProviderType);
+            .map(WalletInstanceFilterValue::WalletProviderType);
 
         let created_date_after = value.created_date_after.map(|date| {
-            WalletUnitFilterValue::CreatedDate(ValueComparison {
+            WalletInstanceFilterValue::CreatedDate(ValueComparison {
                 comparison: ComparisonType::GreaterThanOrEqual,
                 value: date,
             })
         });
         let created_date_before = value.created_date_before.map(|date| {
-            WalletUnitFilterValue::CreatedDate(ValueComparison {
+            WalletInstanceFilterValue::CreatedDate(ValueComparison {
                 comparison: ComparisonType::LessThanOrEqual,
                 value: date,
             })

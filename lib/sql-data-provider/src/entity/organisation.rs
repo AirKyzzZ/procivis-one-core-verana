@@ -32,7 +32,7 @@ pub enum Relation {
     ProofSchema,
     #[sea_orm(has_many = "super::interaction::Entity")]
     Interaction,
-    #[sea_orm(has_many = "super::wallet_unit::Entity")]
+    #[sea_orm(has_many = "super::wallet_instance::Entity")]
     WalletUnit,
     #[sea_orm(
         belongs_to = "Entity",
@@ -68,7 +68,7 @@ impl Related<super::interaction::Entity> for Entity {
     }
 }
 
-impl Related<super::wallet_unit::Entity> for Entity {
+impl Related<super::wallet_instance::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::WalletUnit.def()
     }

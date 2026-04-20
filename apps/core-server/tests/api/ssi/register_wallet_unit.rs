@@ -1,4 +1,4 @@
-use one_core::model::wallet_unit::{WalletUnitListQuery, WalletUnitStatus};
+use one_core::model::wallet_instance::{WalletInstanceListQuery, WalletInstanceStatus};
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use similar_asserts::assert_eq;
@@ -52,12 +52,12 @@ async fn test_register_wallet_unit_successfully_integrity_check_disabled() {
 
     let wallet_units = context
         .db
-        .wallet_units
-        .list(WalletUnitListQuery::default())
+        .wallet_instances
+        .list(WalletInstanceListQuery::default())
         .await;
     assert_eq!(wallet_units.values.len(), 1);
     let wallet_unit = &wallet_units.values[0];
-    assert_eq!(wallet_unit.status, WalletUnitStatus::Active);
+    assert_eq!(wallet_unit.status, WalletInstanceStatus::Active);
 }
 
 #[tokio::test]
@@ -79,13 +79,13 @@ async fn test_register_wallet_unit_successfully_integrity_check_enabled() {
     assert!(resp_json["id"].as_str().is_some());
     let wallet_units = context
         .db
-        .wallet_units
-        .list(WalletUnitListQuery::default())
+        .wallet_instances
+        .list(WalletInstanceListQuery::default())
         .await;
     assert_eq!(wallet_units.values.len(), 1);
     let wallet_unit = &wallet_units.values[0];
     resp_json["nonce"].assert_eq(&wallet_unit.nonce);
-    assert_eq!(wallet_unit.status, WalletUnitStatus::Pending);
+    assert_eq!(wallet_unit.status, WalletInstanceStatus::Pending);
     assert_eq!(wallet_unit.last_issuance, None);
     assert_eq!(wallet_unit.authentication_key_jwk, None);
 }
@@ -151,12 +151,12 @@ async fn test_register_wallet_unit_successfully_integrity_check_enabled_web() {
     assert!(resp_json["id"].as_str().is_some());
     let wallet_units = context
         .db
-        .wallet_units
-        .list(WalletUnitListQuery::default())
+        .wallet_instances
+        .list(WalletInstanceListQuery::default())
         .await;
     assert_eq!(wallet_units.values.len(), 1);
     let wallet_unit = &wallet_units.values[0];
-    assert_eq!(wallet_unit.status, WalletUnitStatus::Active);
+    assert_eq!(wallet_unit.status, WalletInstanceStatus::Active);
 }
 
 #[tokio::test]

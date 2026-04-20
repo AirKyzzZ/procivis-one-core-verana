@@ -59,7 +59,7 @@ use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::error::DataLayerError;
 use crate::repository::history_repository::MockHistoryRepository;
-use crate::repository::holder_wallet_unit_repository::MockHolderWalletUnitRepository;
+use crate::repository::holder_wallet_instance_repository::MockHolderWalletInstanceRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::key_repository::MockKeyRepository;
@@ -127,7 +127,7 @@ pub struct ProtocolMocks {
     pub key_security_level_provider: MockKeySecurityLevelProvider,
     pub blob_storage_provider: MockBlobStorageProvider,
     pub holder_wallet_unit_proto: MockHolderWalletUnitProto,
-    pub holder_wallet_unit_repository: MockHolderWalletUnitRepository,
+    pub holder_wallet_unit_repository: MockHolderWalletInstanceRepository,
     pub certificate_validator: MockCertificateValidator,
     pub wrp_validator: MockWRPValidator,
     pub history_repository: MockHistoryRepository,

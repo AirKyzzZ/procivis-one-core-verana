@@ -1,5 +1,5 @@
 use one_core::model::history::{HistoryAction, HistoryEntityType};
-use one_core::model::wallet_unit::WalletUnitStatus;
+use one_core::model::wallet_instance::WalletInstanceStatus;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use similar_asserts::assert_eq;
@@ -9,7 +9,7 @@ use crate::fixtures::wallet_provider::{
     create_key_possession_proof, create_wallet_unit_attestation_issuer_identifier,
 };
 use crate::utils::context::TestContext;
-use crate::utils::db_clients::wallet_units::TestWalletUnit;
+use crate::utils::db_clients::wallet_instances::TestWalletInstance;
 
 #[tokio::test]
 async fn activate_wallet_unit_nonce_expired() {
@@ -23,12 +23,12 @@ async fn activate_wallet_unit_nonce_expired() {
     let nonce = "nonce-1234";
     let wallet_unit = context
         .db
-        .wallet_units
+        .wallet_instances
         .create(
             org.clone(),
-            TestWalletUnit {
+            TestWalletInstance {
                 public_key: Some(holder_public_jwk),
-                status: Some(WalletUnitStatus::Pending),
+                status: Some(WalletInstanceStatus::Pending),
                 nonce: Some(nonce.to_string()),
                 ..Default::default()
             },
@@ -47,11 +47,11 @@ async fn activate_wallet_unit_nonce_expired() {
     assert_eq!(resp.error_code().await, "BR_0153");
     let wallet_unit = context
         .db
-        .wallet_units
+        .wallet_instances
         .get(&wallet_unit.id, &Default::default())
         .await
         .unwrap();
-    assert_eq!(wallet_unit.status, WalletUnitStatus::Error);
+    assert_eq!(wallet_unit.status, WalletInstanceStatus::Error);
 }
 
 #[tokio::test]
@@ -68,12 +68,12 @@ async fn activate_wallet_unit_attestation_invalid() {
 
     let wallet_unit = context
         .db
-        .wallet_units
+        .wallet_instances
         .create(
             org.clone(),
-            TestWalletUnit {
+            TestWalletInstance {
                 public_key: None,
-                status: Some(WalletUnitStatus::Pending),
+                status: Some(WalletInstanceStatus::Pending),
                 nonce: Some("nonce-1234".to_string()),
                 last_modified: Some(one_core::clock::now_utc()),
                 ..Default::default()
@@ -93,11 +93,11 @@ async fn activate_wallet_unit_attestation_invalid() {
     assert_eq!(resp.error_code().await, "BR_0266");
     let wallet_unit = context
         .db
-        .wallet_units
+        .wallet_instances
         .get(&wallet_unit.id, &Default::default())
         .await
         .unwrap();
-    assert_eq!(wallet_unit.status, WalletUnitStatus::Error);
+    assert_eq!(wallet_unit.status, WalletInstanceStatus::Error);
 
     let history = context
         .db
@@ -122,10 +122,10 @@ async fn activate_wallet_unit_nonce_wrong_state() {
 
     let wallet_unit = context
         .db
-        .wallet_units
+        .wallet_instances
         .create(
             org.clone(),
-            TestWalletUnit {
+            TestWalletInstance {
                 public_key: Some(holder_public_jwk),
                 ..Default::default()
             },

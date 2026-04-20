@@ -23,8 +23,8 @@ use crate::model::revocation_list::{
     RevocationListPurpose, RevocationListRelations, StatusListCredentialFormat,
     UpdateRevocationListEntryId, UpdateRevocationListEntryRequest,
 };
-use crate::model::wallet_unit_attested_key::{
-    WalletUnitAttestedKey, WalletUnitAttestedKeyRevocationInfo,
+use crate::model::wallet_instance_attested_key::{
+    WalletInstanceAttestedKey, WalletInstanceAttestedKeyRevocationInfo,
 };
 use crate::proto::certificate_validator::parse::extract_leaf_pem_from_chain;
 use crate::proto::transaction_manager::TransactionManager;
@@ -117,7 +117,7 @@ impl RevocationMethod for CRLRevocation {
 
     async fn add_issued_attestation(
         &self,
-        _attestation: &WalletUnitAttestedKey,
+        _attestation: &WalletInstanceAttestedKey,
     ) -> Result<CredentialRevocationInfo, RevocationError> {
         Err(RevocationError::OperationNotSupported(
             "CRL: attestation revocation not supported".to_string(),
@@ -126,7 +126,7 @@ impl RevocationMethod for CRLRevocation {
 
     async fn get_attestation_revocation_info(
         &self,
-        _key_info: &WalletUnitAttestedKeyRevocationInfo,
+        _key_info: &WalletInstanceAttestedKeyRevocationInfo,
     ) -> Result<CredentialRevocationInfo, RevocationError> {
         Err(RevocationError::OperationNotSupported(
             "CRL: attestation revocation not supported".to_string(),
@@ -135,7 +135,7 @@ impl RevocationMethod for CRLRevocation {
 
     async fn update_attestation_entries(
         &self,
-        _keys: Vec<WalletUnitAttestedKeyRevocationInfo>,
+        _keys: Vec<WalletInstanceAttestedKeyRevocationInfo>,
         _new_state: RevocationState,
     ) -> Result<(), RevocationError> {
         Err(RevocationError::OperationNotSupported(

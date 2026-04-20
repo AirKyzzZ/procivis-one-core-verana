@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use assert2::check;
 use one_crypto::signer::ecdsa::ECDSASigner;
-use shared_types::{OrganisationId, WalletUnitId};
+use shared_types::{OrganisationId, WalletInstanceId};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
@@ -10,9 +10,11 @@ use super::WalletUnitService;
 use super::dto::{HolderRegisterWalletUnitRequestDTO, WalletProviderDTO};
 use super::error::HolderWalletUnitError;
 use crate::config::core_config::CoreConfig;
-use crate::model::holder_wallet_unit::{CreateHolderWalletUnitRequest, HolderWalletUnit};
+use crate::model::holder_wallet_instance::{
+    CreateHolderWalletInstanceRequest, HolderWalletInstance,
+};
 use crate::model::organisation::Organisation;
-use crate::model::wallet_unit::{WalletProviderType, WalletUnitStatus};
+use crate::model::wallet_instance::{WalletInstanceStatus, WalletProviderType};
 use crate::proto::clock::DefaultClock;
 use crate::proto::os_provider::MockOSInfoProvider;
 use crate::proto::os_provider::dto::OSName;
@@ -29,7 +31,7 @@ use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::key_storage::model::StorageGeneratedKey;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::repository::history_repository::MockHistoryRepository;
-use crate::repository::holder_wallet_unit_repository::MockHolderWalletUnitRepository;
+use crate::repository::holder_wallet_instance_repository::MockHolderWalletInstanceRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::repository::trust_collection_repository::MockTrustCollectionRepository;
@@ -47,7 +49,7 @@ fn mock_wallet_unit_service() -> WalletUnitService {
         organisation_repository: Arc::new(MockOrganisationRepository::default()),
         key_repository: Arc::new(MockKeyRepository::default()),
         wallet_provider_client: Arc::new(MockWalletProviderClient::default()),
-        holder_wallet_unit_repository: Arc::new(MockHolderWalletUnitRepository::default()),
+        holder_wallet_unit_repository: Arc::new(MockHolderWalletInstanceRepository::default()),
         history_repository: Arc::new(MockHistoryRepository::default()),
         key_provider: Arc::new(MockKeyProvider::default()),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::default()),
@@ -139,7 +141,7 @@ async fn holder_register_success() {
         .once()
         .return_once(|| OSName::Android);
 
-    let wallet_unit_id: WalletUnitId = Uuid::new_v4().into();
+    let wallet_unit_id: WalletInstanceId = Uuid::new_v4().into();
     let mut wallet_provider_client = MockWalletProviderClient::new();
     wallet_provider_client
         .expect_register()
@@ -178,16 +180,16 @@ async fn holder_register_success() {
             Ok(())
         });
 
-    let mut holder_wallet_unit_repository = MockHolderWalletUnitRepository::new();
+    let mut holder_wallet_unit_repository = MockHolderWalletInstanceRepository::new();
     holder_wallet_unit_repository
-        .expect_get_holder_wallet_unit_by_org_id()
+        .expect_get_holder_wallet_instance_by_org_id()
         .once()
         .return_once(|_| Ok(None));
     holder_wallet_unit_repository
-        .expect_create_holder_wallet_unit()
+        .expect_create_holder_wallet_instance()
         .once()
-        .return_once(move |att: CreateHolderWalletUnitRequest| {
-            check!(att.status == WalletUnitStatus::Active);
+        .return_once(move |att: CreateHolderWalletInstanceRequest| {
+            check!(att.status == WalletInstanceStatus::Active);
             check!(att.provider_wallet_unit_id == wallet_unit_id);
             Ok(att.id)
         });
@@ -276,7 +278,7 @@ async fn holder_register_key_attestation_not_supported() {
         .once()
         .return_once(|| OSName::Android);
 
-    let wallet_unit_id: WalletUnitId = Uuid::new_v4().into();
+    let wallet_unit_id: WalletInstanceId = Uuid::new_v4().into();
     let mut wallet_provider_client = MockWalletProviderClient::new();
     wallet_provider_client
         .expect_register()
@@ -307,16 +309,16 @@ async fn holder_register_key_attestation_not_supported() {
             })
         });
 
-    let mut holder_wallet_unit_repository = MockHolderWalletUnitRepository::new();
+    let mut holder_wallet_unit_repository = MockHolderWalletInstanceRepository::new();
     holder_wallet_unit_repository
-        .expect_get_holder_wallet_unit_by_org_id()
+        .expect_get_holder_wallet_instance_by_org_id()
         .once()
         .return_once(|_| Ok(None));
     holder_wallet_unit_repository
-        .expect_create_holder_wallet_unit()
+        .expect_create_holder_wallet_instance()
         .once()
-        .return_once(move |att: CreateHolderWalletUnitRequest| {
-            check!(att.status == WalletUnitStatus::Unattested);
+        .return_once(move |att: CreateHolderWalletInstanceRequest| {
+            check!(att.status == WalletInstanceStatus::Unattested);
             check!(att.provider_wallet_unit_id == wallet_unit_id);
             Ok(att.id)
         });
@@ -358,32 +360,34 @@ async fn holder_register_key_attestation_not_supported() {
     let result = service.holder_register(request).await.unwrap();
 
     // then
-    assert_eq!(result.status, WalletUnitStatus::Unattested);
+    assert_eq!(result.status, WalletInstanceStatus::Unattested);
 }
 
 #[tokio::test]
 async fn holder_wallet_unit_status_check_still_valid() {
     // given
-    let wallet_unit_id: shared_types::HolderWalletUnitId = Uuid::new_v4().into();
+    let wallet_unit_id: shared_types::HolderWalletInstanceId = Uuid::new_v4().into();
 
-    let mut holder_wallet_unit_repository = MockHolderWalletUnitRepository::new();
+    let mut holder_wallet_unit_repository = MockHolderWalletInstanceRepository::new();
     holder_wallet_unit_repository
-        .expect_get_holder_wallet_unit()
+        .expect_get_holder_wallet_instance()
         .once()
         .return_once(move |_, _| {
-            Ok(Some(crate::model::holder_wallet_unit::HolderWalletUnit {
-                id: wallet_unit_id,
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-                status: WalletUnitStatus::Active,
-                wallet_provider_type: WalletProviderType::ProcivisOne,
-                wallet_provider_name: "PROCIVIS_ONE".to_string(),
-                wallet_provider_url: "https://wallet.provider".to_string(),
-                provider_wallet_unit_id: Uuid::new_v4().into(),
-                organisation: None,
-                authentication_key: None,
-                wallet_unit_attestations: None,
-            }))
+            Ok(Some(
+                crate::model::holder_wallet_instance::HolderWalletInstance {
+                    id: wallet_unit_id,
+                    created_date: get_dummy_date(),
+                    last_modified: get_dummy_date(),
+                    status: WalletInstanceStatus::Active,
+                    wallet_provider_type: WalletProviderType::ProcivisOne,
+                    wallet_provider_name: "PROCIVIS_ONE".to_string(),
+                    wallet_provider_url: "https://wallet.provider".to_string(),
+                    provider_wallet_unit_id: Uuid::new_v4().into(),
+                    organisation: None,
+                    authentication_key: None,
+                    wallet_unit_attestations: None,
+                },
+            ))
         });
 
     let mut wallet_unit_proto = MockHolderWalletUnitProto::new();
@@ -411,35 +415,37 @@ async fn holder_wallet_unit_status_check_still_valid() {
 #[tokio::test]
 async fn holder_wallet_unit_status_check_revocation() {
     // given
-    let wallet_unit_id: shared_types::HolderWalletUnitId = Uuid::new_v4().into();
+    let wallet_unit_id: shared_types::HolderWalletInstanceId = Uuid::new_v4().into();
 
-    let mut holder_wallet_unit_repository = MockHolderWalletUnitRepository::new();
+    let mut holder_wallet_unit_repository = MockHolderWalletInstanceRepository::new();
     holder_wallet_unit_repository
-        .expect_get_holder_wallet_unit()
+        .expect_get_holder_wallet_instance()
         .once()
         .return_once(move |_, _| {
-            Ok(Some(crate::model::holder_wallet_unit::HolderWalletUnit {
-                id: wallet_unit_id,
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-                status: WalletUnitStatus::Active,
-                wallet_provider_type: WalletProviderType::ProcivisOne,
-                wallet_provider_name: "PROCIVIS_ONE".to_string(),
-                wallet_provider_url: "https://wallet.provider".to_string(),
-                provider_wallet_unit_id: Uuid::new_v4().into(),
-                organisation: Some(Organisation {
-                    id: Uuid::new_v4().into(),
+            Ok(Some(
+                crate::model::holder_wallet_instance::HolderWalletInstance {
+                    id: wallet_unit_id,
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
-                    name: "Test Org".to_string(),
-                    deactivated_at: None,
-                    wallet_provider: None,
-                    wallet_provider_issuer: None,
-                    parent_organisation: None,
-                }),
-                authentication_key: None,
-                wallet_unit_attestations: None,
-            }))
+                    status: WalletInstanceStatus::Active,
+                    wallet_provider_type: WalletProviderType::ProcivisOne,
+                    wallet_provider_name: "PROCIVIS_ONE".to_string(),
+                    wallet_provider_url: "https://wallet.provider".to_string(),
+                    provider_wallet_unit_id: Uuid::new_v4().into(),
+                    organisation: Some(Organisation {
+                        id: Uuid::new_v4().into(),
+                        created_date: get_dummy_date(),
+                        last_modified: get_dummy_date(),
+                        name: "Test Org".to_string(),
+                        deactivated_at: None,
+                        wallet_provider: None,
+                        wallet_provider_issuer: None,
+                        parent_organisation: None,
+                    }),
+                    authentication_key: None,
+                    wallet_unit_attestations: None,
+                },
+            ))
         });
 
     let mut wallet_unit_proto = MockHolderWalletUnitProto::new();
@@ -449,11 +455,11 @@ async fn holder_wallet_unit_status_check_revocation() {
         .return_once(|_| Ok(WalletUnitStatusCheckResponse::Revoked));
 
     holder_wallet_unit_repository
-        .expect_update_holder_wallet_unit()
+        .expect_update_holder_wallet_instance()
         .once()
         .return_once(move |id, request| {
             check!(id == &wallet_unit_id);
-            check!(request.status == Some(WalletUnitStatus::Revoked));
+            check!(request.status == Some(WalletInstanceStatus::Revoked));
             Ok(())
         });
 
@@ -483,11 +489,11 @@ async fn holder_wallet_unit_status_check_revocation() {
 #[tokio::test]
 async fn holder_wallet_unit_status_check_not_found() {
     // given
-    let wallet_unit_id: shared_types::HolderWalletUnitId = Uuid::new_v4().into();
+    let wallet_unit_id: shared_types::HolderWalletInstanceId = Uuid::new_v4().into();
 
-    let mut holder_wallet_unit_repository = MockHolderWalletUnitRepository::new();
+    let mut holder_wallet_unit_repository = MockHolderWalletInstanceRepository::new();
     holder_wallet_unit_repository
-        .expect_get_holder_wallet_unit()
+        .expect_get_holder_wallet_instance()
         .once()
         .return_once(|_, _| Ok(None));
 
@@ -506,26 +512,28 @@ async fn holder_wallet_unit_status_check_not_found() {
 #[tokio::test]
 async fn holder_wallet_unit_status_check_already_revoked() {
     // given
-    let wallet_unit_id: shared_types::HolderWalletUnitId = Uuid::new_v4().into();
+    let wallet_unit_id: shared_types::HolderWalletInstanceId = Uuid::new_v4().into();
 
-    let mut holder_wallet_unit_repository = MockHolderWalletUnitRepository::new();
+    let mut holder_wallet_unit_repository = MockHolderWalletInstanceRepository::new();
     holder_wallet_unit_repository
-        .expect_get_holder_wallet_unit()
+        .expect_get_holder_wallet_instance()
         .once()
         .return_once(move |_, _| {
-            Ok(Some(crate::model::holder_wallet_unit::HolderWalletUnit {
-                id: wallet_unit_id,
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-                status: WalletUnitStatus::Revoked,
-                wallet_provider_type: WalletProviderType::ProcivisOne,
-                wallet_provider_name: "PROCIVIS_ONE".to_string(),
-                wallet_provider_url: "https://wallet.provider".to_string(),
-                provider_wallet_unit_id: Uuid::new_v4().into(),
-                organisation: None,
-                authentication_key: None,
-                wallet_unit_attestations: None,
-            }))
+            Ok(Some(
+                crate::model::holder_wallet_instance::HolderWalletInstance {
+                    id: wallet_unit_id,
+                    created_date: get_dummy_date(),
+                    last_modified: get_dummy_date(),
+                    status: WalletInstanceStatus::Revoked,
+                    wallet_provider_type: WalletProviderType::ProcivisOne,
+                    wallet_provider_name: "PROCIVIS_ONE".to_string(),
+                    wallet_provider_url: "https://wallet.provider".to_string(),
+                    provider_wallet_unit_id: Uuid::new_v4().into(),
+                    organisation: None,
+                    authentication_key: None,
+                    wallet_unit_attestations: None,
+                },
+            ))
         });
 
     // wallet_unit_proto should NOT be called since wallet unit is already revoked
@@ -570,16 +578,16 @@ async fn holder_register_already_exists() {
             }))
         });
 
-    let mut holder_wallet_unit_repository = MockHolderWalletUnitRepository::new();
+    let mut holder_wallet_unit_repository = MockHolderWalletInstanceRepository::new();
     holder_wallet_unit_repository
-        .expect_get_holder_wallet_unit_by_org_id()
+        .expect_get_holder_wallet_instance_by_org_id()
         .once()
         .return_once(|_| {
-            Ok(Some(HolderWalletUnit {
+            Ok(Some(HolderWalletInstance {
                 id: Uuid::new_v4().into(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
-                status: WalletUnitStatus::Revoked,
+                status: WalletInstanceStatus::Revoked,
                 wallet_provider_type: WalletProviderType::ProcivisOne,
                 wallet_provider_name: "PROCIVIS_ONE".to_string(),
                 wallet_provider_url: "https://wallet.provider".to_string(),

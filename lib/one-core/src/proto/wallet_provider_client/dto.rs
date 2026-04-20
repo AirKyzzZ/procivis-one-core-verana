@@ -1,5 +1,5 @@
-use crate::model::holder_wallet_unit::HolderWalletUnit;
-use crate::model::wallet_unit::WalletProviderType;
+use crate::model::holder_wallet_instance::HolderWalletInstance;
+use crate::model::wallet_instance::WalletProviderType;
 use crate::service::wallet_provider::dto::IssueWalletUnitAttestationResponseDTO;
 use crate::service::wallet_unit::dto::WalletProviderDTO;
 
@@ -24,9 +24,9 @@ impl From<WalletProviderDTO> for MetadataTarget {
     }
 }
 
-impl From<HolderWalletUnit> for MetadataTarget {
-    fn from(value: HolderWalletUnit) -> Self {
-        let HolderWalletUnit {
+impl From<HolderWalletInstance> for MetadataTarget {
+    fn from(value: HolderWalletInstance) -> Self {
+        let HolderWalletInstance {
             wallet_provider_url,
             wallet_provider_type,
             wallet_provider_name,

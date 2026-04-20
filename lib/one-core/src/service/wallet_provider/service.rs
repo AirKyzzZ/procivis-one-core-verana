@@ -6,7 +6,7 @@ use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use one_crypto::utilities::generate_alphanumeric;
 use one_dto_mapper::convert_inner;
-use shared_types::{EntityId, IdentifierId, OrganisationId, WalletUnitId};
+use shared_types::{EntityId, IdentifierId, OrganisationId, WalletInstanceId};
 use standardized_types::jwk::PublicJwk;
 use time::Duration;
 use uuid::Uuid;
@@ -47,12 +47,13 @@ use crate::model::list_query::{ListPagination, ListSorting};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::revocation_list::RevocationListRelations;
 use crate::model::trust_collection::{TrustCollectionFilterValue, TrustCollectionListQuery};
-use crate::model::wallet_unit::{
-    SortableWalletUnitColumn, UpdateWalletUnitRequest, WalletUnit, WalletUnitListQuery,
-    WalletUnitOs, WalletUnitRelations, WalletUnitStatus,
+use crate::model::wallet_instance::{
+    SortableWalletInstanceColumn, UpdateWalletInstanceRequest, WalletInstance,
+    WalletInstanceListQuery, WalletInstanceOs, WalletInstanceRelations, WalletInstanceStatus,
 };
-use crate::model::wallet_unit_attested_key::{
-    WalletUnitAttestedKey, WalletUnitAttestedKeyRelations, WalletUnitAttestedKeyRevocationInfo,
+use crate::model::wallet_instance_attested_key::{
+    WalletInstanceAttestedKey, WalletInstanceAttestedKeyRelations,
+    WalletInstanceAttestedKeyRevocationInfo,
 };
 use crate::proto::jwt::model::{
     DecomposedJwt, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey,
@@ -82,13 +83,13 @@ impl WalletProviderService {
     /// * `id` - Wallet unit uuid
     pub async fn get_wallet_unit(
         &self,
-        id: &WalletUnitId,
+        id: &WalletInstanceId,
     ) -> Result<GetWalletUnitResponseDTO, WalletProviderError> {
         let result = self
-            .wallet_unit_repository
-            .get_wallet_unit(
+            .wallet_instance_repository
+            .get_wallet_instance(
                 id,
-                &WalletUnitRelations {
+                &WalletInstanceRelations {
                     organisation: Some(OrganisationRelations::default()),
                     ..Default::default()
                 },
@@ -109,7 +110,7 @@ impl WalletProviderService {
     /// * `query` - query parameters
     pub async fn get_wallet_unit_list(
         &self,
-        filter_params: ListQueryDTO<SortableWalletUnitColumn, WalletUnitFilterParamsDTO>,
+        filter_params: ListQueryDTO<SortableWalletInstanceColumn, WalletUnitFilterParamsDTO>,
     ) -> Result<GetWalletUnitListResponseDTO, WalletProviderError> {
         throw_if_org_id_not_matching_session(
             &filter_params.filter.organisation_id,
@@ -124,7 +125,7 @@ impl WalletProviderService {
             .try_into()
             .error_while("mapping filter query")?;
 
-        let query = WalletUnitListQuery {
+        let query = WalletInstanceListQuery {
             pagination: Some(ListPagination {
                 page: filter_params.page,
                 page_size: filter_params.page_size,
@@ -138,8 +139,8 @@ impl WalletProviderService {
         };
 
         let result = self
-            .wallet_unit_repository
-            .get_wallet_unit_list(query)
+            .wallet_instance_repository
+            .get_wallet_instance_list(query)
             .await
             .error_while("getting wallet units")?;
 
@@ -186,7 +187,7 @@ impl WalletProviderService {
             .wallet_instance_attestation
             .integrity_check
             .enabled
-            && request.os != WalletUnitOs::Web
+            && request.os != WalletInstanceOs::Web
         {
             if request.public_key.is_some() || request.proof.is_some() {
                 return Err(WalletProviderError::AppIntegrityCheckRequired
@@ -255,8 +256,8 @@ impl WalletProviderService {
         )?;
         let wallet_unit_name = wallet_unit.name.clone();
         let wallet_unit_id = self
-            .wallet_unit_repository
-            .create_wallet_unit(wallet_unit)
+            .wallet_instance_repository
+            .create_wallet_instance(wallet_unit)
             .await
             .error_while("creating wallet unit")?;
 
@@ -277,7 +278,7 @@ impl WalletProviderService {
 
     async fn create_wallet_unit_history(
         &self,
-        wallet_unit_id: &WalletUnitId,
+        wallet_unit_id: &WalletInstanceId,
         wallet_unit_name: String,
         action: HistoryAction,
         metadata: Option<HistoryMetadata>,
@@ -324,8 +325,8 @@ impl WalletProviderService {
         )?;
         let wallet_unit_name = wallet_unit.name.clone();
         let wallet_unit_id = self
-            .wallet_unit_repository
-            .create_wallet_unit(wallet_unit)
+            .wallet_instance_repository
+            .create_wallet_instance(wallet_unit)
             .await
             .map_err(map_already_exists_error)?;
         self.create_wallet_unit_history(
@@ -345,14 +346,14 @@ impl WalletProviderService {
 
     pub async fn activate_wallet_unit(
         &self,
-        wallet_unit_id: WalletUnitId,
+        wallet_unit_id: WalletInstanceId,
         request: WalletUnitActivationRequestDTO,
     ) -> Result<(), WalletProviderError> {
         let wallet_unit = self
-            .wallet_unit_repository
-            .get_wallet_unit(
+            .wallet_instance_repository
+            .get_wallet_instance(
                 &wallet_unit_id,
-                &WalletUnitRelations {
+                &WalletInstanceRelations {
                     organisation: Some(OrganisationRelations::default()),
                     ..Default::default()
                 },
@@ -362,13 +363,15 @@ impl WalletProviderService {
             .ok_or(WalletProviderError::MissingWalletUnit(wallet_unit_id))?;
 
         match wallet_unit.status {
-            WalletUnitStatus::Pending => {} // OK
-            WalletUnitStatus::Active | WalletUnitStatus::Unattested | WalletUnitStatus::Error => {
+            WalletInstanceStatus::Pending => {} // OK
+            WalletInstanceStatus::Active
+            | WalletInstanceStatus::Unattested
+            | WalletInstanceStatus::Error => {
                 return Err(WalletProviderError::InvalidWalletUnitState
                     .error_while("checking status")
                     .into());
             }
-            WalletUnitStatus::Revoked => {
+            WalletInstanceStatus::Revoked => {
                 return Err(WalletProviderError::WalletUnitRevoked
                     .error_while("checking status")
                     .into());
@@ -491,11 +494,11 @@ impl WalletProviderService {
                 .error_while("creating JWK")?
         };
 
-        self.wallet_unit_repository
-            .update_wallet_unit(
+        self.wallet_instance_repository
+            .update_wallet_instance(
                 &wallet_unit_id,
-                UpdateWalletUnitRequest {
-                    status: Some(WalletUnitStatus::Active),
+                UpdateWalletInstanceRequest {
+                    status: Some(WalletInstanceStatus::Active),
                     last_issuance: Some(self.clock.now_utc()),
                     authentication_key_jwk: Some(jwk),
                     attested_keys: None,
@@ -519,12 +522,12 @@ impl WalletProviderService {
     async fn validate_attestation(
         &self,
         attestation: &[String],
-        os: WalletUnitOs,
+        os: WalletInstanceOs,
         wallet_unit_nonce: &str,
         config_params: &WalletProviderParams,
     ) -> Result<KeyHandle, WalletProviderError> {
         match os {
-            WalletUnitOs::Ios => {
+            WalletInstanceOs::Ios => {
                 let attestation =
                     attestation
                         .first()
@@ -548,7 +551,7 @@ impl WalletProviderService {
                 .await
                 .map_err(|e| WalletProviderError::AppIntegrityValidationError(e.to_string()))
             }
-            WalletUnitOs::Android => {
+            WalletInstanceOs::Android => {
                 if attestation.is_empty() {
                     return Err(WalletProviderError::AppIntegrityValidationError(
                         "Missing attestation".to_string(),
@@ -571,7 +574,7 @@ impl WalletProviderService {
                 .await
                 .map_err(|e| WalletProviderError::AppIntegrityValidationError(e.to_string()))
             }
-            WalletUnitOs::Web => Err(WalletProviderError::AppIntegrityValidationError(
+            WalletInstanceOs::Web => Err(WalletProviderError::AppIntegrityValidationError(
                 "Cannot integrity check wallet unit with os 'WEB'".to_string(),
             )),
         }
@@ -579,14 +582,14 @@ impl WalletProviderService {
 
     async fn set_wallet_unit_to_error(
         &self,
-        wallet_unit: &WalletUnit,
+        wallet_unit: &WalletInstance,
         error_metadata: HistoryErrorMetadata,
     ) -> Result<(), WalletProviderError> {
-        self.wallet_unit_repository
-            .update_wallet_unit(
+        self.wallet_instance_repository
+            .update_wallet_instance(
                 &wallet_unit.id,
-                UpdateWalletUnitRequest {
-                    status: Some(WalletUnitStatus::Error),
+                UpdateWalletInstanceRequest {
+                    status: Some(WalletInstanceStatus::Error),
                     last_issuance: None,
                     authentication_key_jwk: None,
                     attested_keys: None,
@@ -614,17 +617,17 @@ impl WalletProviderService {
 
     pub async fn issue_attestation(
         &self,
-        wallet_unit_id: WalletUnitId,
+        wallet_unit_id: WalletInstanceId,
         bearer_token: &str,
         request: IssueWalletUnitAttestationRequestDTO,
     ) -> Result<IssueWalletUnitAttestationResponseDTO, WalletProviderError> {
         let wallet_unit = self
-            .wallet_unit_repository
-            .get_wallet_unit(
+            .wallet_instance_repository
+            .get_wallet_instance(
                 &wallet_unit_id,
-                &WalletUnitRelations {
+                &WalletInstanceRelations {
                     organisation: Some(OrganisationRelations::default()),
-                    attested_keys: Some(WalletUnitAttestedKeyRelations {
+                    attested_keys: Some(WalletInstanceAttestedKeyRelations {
                         revocation: Some(Default::default()),
                     }),
                 },
@@ -633,7 +636,7 @@ impl WalletProviderService {
             .error_while("getting wallet unit")?
             .ok_or(WalletProviderError::MissingWalletUnit(wallet_unit_id))?;
 
-        if wallet_unit.status != WalletUnitStatus::Active {
+        if wallet_unit.status != WalletInstanceStatus::Active {
             return Err(WalletProviderError::WalletUnitRevoked
                 .error_while("validating status")
                 .into());
@@ -722,9 +725,9 @@ impl WalletProviderService {
                 attested_key.expiration_date = wua_expiration_date;
                 AttestedKeyInput::Reused(attested_key.revocation.to_owned())
             } else {
-                let key = WalletUnitAttestedKey {
+                let key = WalletInstanceAttestedKey {
                     id: Uuid::new_v4().into(),
-                    wallet_unit_id,
+                    wallet_instance_id: wallet_unit_id,
                     created_date: now,
                     last_modified: now,
                     expiration_date: wua_expiration_date,
@@ -750,10 +753,10 @@ impl WalletProviderService {
         if !instance_attestations.is_empty() || updated_attested_keys.is_some() {
             self.tx_manager
                 .tx(async {
-                    self.wallet_unit_repository
-                        .update_wallet_unit(
+                    self.wallet_instance_repository
+                        .update_wallet_instance(
                             &wallet_unit_id,
-                            UpdateWalletUnitRequest {
+                            UpdateWalletInstanceRequest {
                                 last_issuance: Some(now),
                                 attested_keys: updated_attested_keys,
                                 ..Default::default()
@@ -803,7 +806,7 @@ impl WalletProviderService {
     #[expect(clippy::too_many_arguments)]
     async fn issue_key_attestation(
         &self,
-        wallet_unit: &WalletUnit,
+        wallet_unit: &WalletInstance,
         config_params: &WalletProviderParams,
         auth_fn: &AuthenticationFn,
         issuer_public_key_info: JwtPublicKeyInfo,
@@ -1132,13 +1135,13 @@ impl WalletProviderService {
         &self,
         proof: &DecomposedJwt<NoncePayload>,
         public_key: &KeyHandle,
-        wallet_unit_os: WalletUnitOs,
+        wallet_unit_os: WalletInstanceOs,
         integrity_check_enabled: bool,
         leeway: Duration,
         nonce: Option<&str>,
     ) -> Result<(), WalletProviderError> {
         let (msg, signature) = match (integrity_check_enabled, wallet_unit_os) {
-            (true, WalletUnitOs::Ios) => webauthn_signed_jwt_to_msg_and_sig(proof)
+            (true, WalletInstanceOs::Ios) => webauthn_signed_jwt_to_msg_and_sig(proof)
                 .error_while("verifying iOS attestation")?,
             _ => (
                 proof.unverified_jwt.as_bytes().to_vec(),
@@ -1193,14 +1196,17 @@ impl WalletProviderService {
         Ok(jwk)
     }
 
-    pub async fn revoke_wallet_unit(&self, id: &WalletUnitId) -> Result<(), WalletProviderError> {
+    pub async fn revoke_wallet_unit(
+        &self,
+        id: &WalletInstanceId,
+    ) -> Result<(), WalletProviderError> {
         let wallet_unit = self
-            .wallet_unit_repository
-            .get_wallet_unit(
+            .wallet_instance_repository
+            .get_wallet_instance(
                 id,
-                &WalletUnitRelations {
+                &WalletInstanceRelations {
                     organisation: Some(OrganisationRelations::default()),
-                    attested_keys: Some(WalletUnitAttestedKeyRelations {
+                    attested_keys: Some(WalletInstanceAttestedKeyRelations {
                         revocation: Some(RevocationListRelations {
                             issuer_identifier: Some(IdentifierRelations {
                                 did: Some(DidRelations {
@@ -1223,7 +1229,7 @@ impl WalletProviderService {
             .error_while("getting wallet unit")?
             .ok_or(WalletProviderError::MissingWalletUnit(*id))?;
 
-        if wallet_unit.status != WalletUnitStatus::Active {
+        if wallet_unit.status != WalletInstanceStatus::Active {
             return Err(WalletProviderError::WalletUnitMustBeActive
                 .error_while("checking status")
                 .into());
@@ -1239,11 +1245,11 @@ impl WalletProviderService {
         let (_, config_params) =
             self.get_wallet_provider_config_params(&wallet_unit.wallet_provider_name)?;
 
-        self.wallet_unit_repository
-            .update_wallet_unit(
+        self.wallet_instance_repository
+            .update_wallet_instance(
                 id,
-                UpdateWalletUnitRequest {
-                    status: Some(WalletUnitStatus::Revoked),
+                UpdateWalletInstanceRequest {
+                    status: Some(WalletInstanceStatus::Revoked),
                     ..Default::default()
                 },
             )
@@ -1291,22 +1297,25 @@ impl WalletProviderService {
         Ok(())
     }
 
-    pub async fn delete_wallet_unit(&self, id: &WalletUnitId) -> Result<(), WalletProviderError> {
+    pub async fn delete_wallet_unit(
+        &self,
+        id: &WalletInstanceId,
+    ) -> Result<(), WalletProviderError> {
         let wallet_unit = self
-            .wallet_unit_repository
-            .get_wallet_unit(id, &WalletUnitRelations::default())
+            .wallet_instance_repository
+            .get_wallet_instance(id, &WalletInstanceRelations::default())
             .await
             .error_while("getting wallet unit")?
             .ok_or(WalletProviderError::MissingWalletUnit(*id))?;
 
-        if wallet_unit.status != WalletUnitStatus::Pending {
+        if wallet_unit.status != WalletInstanceStatus::Pending {
             return Err(WalletProviderError::WalletUnitMustBePending
                 .error_while("checking status")
                 .into());
         }
 
-        self.wallet_unit_repository
-            .delete_wallet_unit(id)
+        self.wallet_instance_repository
+            .delete_wallet_instance(id)
             .await
             .error_while("deleting wallet unit")?;
         let _unused = self
@@ -1394,6 +1403,6 @@ struct KeyAttestationInput {
 
 #[expect(clippy::large_enum_variant)]
 enum AttestedKeyInput {
-    NewlyCreated(WalletUnitAttestedKey),
-    Reused(Option<WalletUnitAttestedKeyRevocationInfo>),
+    NewlyCreated(WalletInstanceAttestedKey),
+    Reused(Option<WalletInstanceAttestedKeyRevocationInfo>),
 }

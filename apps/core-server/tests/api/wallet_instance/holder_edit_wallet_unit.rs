@@ -1,4 +1,4 @@
-use one_core::model::wallet_unit::{WalletProviderType, WalletUnitStatus};
+use one_core::model::wallet_instance::{WalletInstanceStatus, WalletProviderType};
 use serde_json::json;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
@@ -22,7 +22,7 @@ async fn test_edit_wallet_unit_holder_successfully() {
             org.clone(),
             None,
             TestHolderWalletUnitParams {
-                status: Some(WalletUnitStatus::Unattested),
+                status: Some(WalletInstanceStatus::Unattested),
                 wallet_provider_type: Some(WalletProviderType::ProcivisOne),
                 wallet_provider_name: Some("PROCIVIS_ONE".to_string()),
                 wallet_provider_url: Some("https://wallet.provider".to_string()),

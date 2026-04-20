@@ -27,11 +27,11 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, LayoutType};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
-use crate::model::holder_wallet_unit::HolderWalletUnit;
+use crate::model::holder_wallet_instance::HolderWalletInstance;
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::Key;
-use crate::model::wallet_unit::{WalletProviderType, WalletUnitStatus};
+use crate::model::wallet_instance::{WalletInstanceStatus, WalletProviderType};
 use crate::proto::certificate_validator::{MockCertificateValidator, ParsedCertificate};
 use crate::proto::credential_schema::importer::MockCredentialSchemaImporter;
 use crate::proto::http_client::reqwest_client::ReqwestClient;
@@ -82,7 +82,7 @@ use crate::provider::signer::registration_certificate::model::{Status, Superviso
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::history_repository::MockHistoryRepository;
-use crate::repository::holder_wallet_unit_repository::MockHolderWalletUnitRepository;
+use crate::repository::holder_wallet_instance_repository::MockHolderWalletInstanceRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
@@ -109,7 +109,7 @@ struct TestInputs {
     pub key_security_level_provider: MockKeySecurityLevelProvider,
     pub certificate_validator: MockCertificateValidator,
     pub holder_wallet_unit_proto: MockHolderWalletUnitProto,
-    pub holder_wallet_unit_repository: MockHolderWalletUnitRepository,
+    pub holder_wallet_unit_repository: MockHolderWalletInstanceRepository,
     pub wrp_validator: MockWRPValidator,
     pub history_repository: MockHistoryRepository,
     pub config: CoreConfig,
@@ -583,9 +583,9 @@ async fn test_holder_accept_credential_success() {
             move |_, _, _| Ok((identifier, RemoteIdentifierRelation::Key(dummy_key())))
         });
 
-    let mut holder_wallet_unit_repository = MockHolderWalletUnitRepository::new();
+    let mut holder_wallet_unit_repository = MockHolderWalletInstanceRepository::new();
     holder_wallet_unit_repository
-        .expect_get_holder_wallet_unit_by_org_id()
+        .expect_get_holder_wallet_instance_by_org_id()
         .once()
         .return_once(|_| Ok(None));
 
@@ -817,9 +817,9 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
             ))
         });
 
-    let mut holder_wallet_unit_repository = MockHolderWalletUnitRepository::new();
+    let mut holder_wallet_unit_repository = MockHolderWalletInstanceRepository::new();
     holder_wallet_unit_repository
-        .expect_get_holder_wallet_unit_by_org_id()
+        .expect_get_holder_wallet_instance_by_org_id()
         .once()
         .return_once(|_| Ok(None));
 
@@ -1106,9 +1106,9 @@ async fn test_holder_accept_credential_autogenerate_holder_binding() {
             move |_, _, _| Ok((identifier, RemoteIdentifierRelation::Key(dummy_key())))
         });
 
-    let mut holder_wallet_unit_repository = MockHolderWalletUnitRepository::new();
+    let mut holder_wallet_unit_repository = MockHolderWalletInstanceRepository::new();
     holder_wallet_unit_repository
-        .expect_get_holder_wallet_unit_by_org_id()
+        .expect_get_holder_wallet_instance_by_org_id()
         .once()
         .return_once(|_| Ok(None));
 
@@ -2073,9 +2073,9 @@ async fn test_holder_accept_credential_fails_without_wallet_unit_id_when_key_att
             Some(Arc::new(security))
         });
 
-    let mut holder_wallet_unit_repository = MockHolderWalletUnitRepository::new();
+    let mut holder_wallet_unit_repository = MockHolderWalletInstanceRepository::new();
     holder_wallet_unit_repository
-        .expect_get_holder_wallet_unit_by_org_id()
+        .expect_get_holder_wallet_instance_by_org_id()
         .once()
         .return_once(|_| Ok(None));
 
@@ -2318,12 +2318,12 @@ async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_att
             Some(Arc::new(security))
         });
 
-    let mut holder_wallet_unit_repository = MockHolderWalletUnitRepository::new();
+    let mut holder_wallet_unit_repository = MockHolderWalletInstanceRepository::new();
     holder_wallet_unit_repository
-        .expect_get_holder_wallet_unit_by_org_id()
+        .expect_get_holder_wallet_instance_by_org_id()
         .once()
         .return_once(|_| {
-            Ok(Some(HolderWalletUnit {
+            Ok(Some(HolderWalletInstance {
                 id: Uuid::new_v4().into(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
@@ -2331,7 +2331,7 @@ async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_att
                 wallet_provider_name: "provider".to_string(),
                 wallet_provider_url: "provider.url".to_string(),
                 provider_wallet_unit_id: Uuid::new_v4().into(),
-                status: WalletUnitStatus::Active,
+                status: WalletInstanceStatus::Active,
                 organisation: None,
                 authentication_key: None,
                 wallet_unit_attestations: None,

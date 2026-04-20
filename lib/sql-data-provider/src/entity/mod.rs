@@ -8,7 +8,7 @@ pub mod credential;
 pub mod credential_schema;
 pub mod did;
 pub mod history;
-pub mod holder_wallet_unit;
+pub mod holder_wallet_instance;
 pub mod identifier;
 pub mod identifier_trust_information;
 pub mod interaction;
@@ -32,9 +32,9 @@ pub mod trust_list_publication;
 pub mod trust_list_subscription;
 pub mod validity_credential;
 pub mod verifier_instance;
-pub mod wallet_unit;
-pub mod wallet_unit_attestation;
-pub mod wallet_unit_attested_key;
+pub mod wallet_instance;
+pub mod wallet_instance_attestation;
+pub mod wallet_instance_attested_key;
 
 pub use identifier::{
     ActiveModel as IdentifierActiveModel, Column as IdentifierColumn, Entity as IdentifierEntity,

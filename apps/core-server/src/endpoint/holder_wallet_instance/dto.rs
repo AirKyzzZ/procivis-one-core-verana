@@ -3,7 +3,7 @@ use one_core::service::wallet_unit::dto;
 use one_dto_mapper::{From, Into, TryFrom, TryInto, convert_inner, try_convert_inner};
 use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
-use shared_types::{HolderWalletUnitId, OrganisationId, TrustCollectionId, WalletUnitId};
+use shared_types::{HolderWalletInstanceId, OrganisationId, TrustCollectionId, WalletInstanceId};
 use time::OffsetDateTime;
 use utoipa::ToSchema;
 
@@ -35,7 +35,7 @@ pub(crate) struct HolderRegisterWalletInstanceRequestRestDTO {
 #[from(dto::HolderWalletUnitRegisterResponseDTO)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct HolderRegisterWalletInstanceResponseRestDTO {
-    pub id: HolderWalletUnitId,
+    pub id: HolderWalletInstanceId,
     pub status: WalletInstanceStatusRestEnum,
 }
 
@@ -62,7 +62,7 @@ pub(crate) enum WalletProviderTypeRestEnum {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct HolderWalletInstanceDetailRestDTO {
     #[try_from(infallible)]
-    pub id: HolderWalletUnitId,
+    pub id: HolderWalletInstanceId,
     #[serde(serialize_with = "front_time")]
     #[try_from(infallible)]
     pub created_date: OffsetDateTime,
@@ -70,7 +70,7 @@ pub(crate) struct HolderWalletInstanceDetailRestDTO {
     #[try_from(infallible)]
     pub last_modified: OffsetDateTime,
     #[try_from(infallible)]
-    pub provider_wallet_unit_id: WalletUnitId,
+    pub provider_wallet_unit_id: WalletInstanceId,
     #[try_from(infallible)]
     pub wallet_provider_url: String,
     #[try_from(infallible)]

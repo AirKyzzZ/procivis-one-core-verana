@@ -1,5 +1,5 @@
 use serde_json::json;
-use shared_types::{HolderWalletUnitId, OrganisationId, TrustCollectionId};
+use shared_types::{HolderWalletInstanceId, OrganisationId, TrustCollectionId};
 
 use crate::utils::api_clients::{HttpClient, Response};
 
@@ -22,7 +22,7 @@ impl HolderWalletInstancesApi {
 
     pub async fn holder_get_wallet_instance_details(
         &self,
-        wallet_unit_id: &HolderWalletUnitId,
+        wallet_unit_id: &HolderWalletInstanceId,
     ) -> Response {
         self.client
             .get(&format!(
@@ -34,7 +34,7 @@ impl HolderWalletInstancesApi {
 
     pub async fn holder_get_wallet_instance_trust_collections(
         &self,
-        wallet_unit_id: &HolderWalletUnitId,
+        wallet_unit_id: &HolderWalletInstanceId,
     ) -> Response {
         self.client
             .get(&format!(
@@ -63,7 +63,7 @@ impl HolderWalletInstancesApi {
 
     pub async fn holder_wallet_instance_status(
         &self,
-        wallet_unit_id: &HolderWalletUnitId,
+        wallet_unit_id: &HolderWalletInstanceId,
     ) -> Response {
         self.client
             .post(
@@ -75,7 +75,7 @@ impl HolderWalletInstancesApi {
 
     pub async fn holder_wallet_instance_edit(
         &self,
-        wallet_unit_id: &HolderWalletUnitId,
+        wallet_unit_id: &HolderWalletInstanceId,
         trust_collections: &[TrustCollectionId],
     ) -> Response {
         let body = json!(

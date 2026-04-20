@@ -3,10 +3,10 @@ use uuid::Uuid;
 
 use crate::macros::impls_for_uuid_newtype;
 use crate::{
-    CertificateId, CredentialId, CredentialSchemaId, DidId, HolderWalletUnitId, IdentifierId,
+    CertificateId, CredentialId, CredentialSchemaId, DidId, HolderWalletInstanceId, IdentifierId,
     KeyId, NotificationId, OrganisationId, ProofId, ProofSchemaId, TrustAnchorId, TrustEntityId,
-    TrustListPublicationId, TrustListSubscriptionId, VerifierInstanceId, WalletUnitAttestationId,
-    WalletUnitId,
+    TrustListPublicationId, TrustListSubscriptionId, VerifierInstanceId,
+    WalletInstanceAttestationId, WalletInstanceId,
 };
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Serialize, Deserialize)]
@@ -45,9 +45,9 @@ impl_from_other_type!(TrustAnchorId);
 impl_from_other_type!(TrustEntityId);
 impl_from_other_type!(ProofSchemaId);
 impl_from_other_type!(ProofId);
-impl_from_other_type!(WalletUnitId);
-impl_from_other_type!(WalletUnitAttestationId);
-impl_from_other_type!(HolderWalletUnitId);
+impl_from_other_type!(WalletInstanceId);
+impl_from_other_type!(WalletInstanceAttestationId);
+impl_from_other_type!(HolderWalletInstanceId);
 impl_from_other_type!(NotificationId);
 impl_from_other_type!(TrustListPublicationId);
 impl_from_other_type!(TrustCollectionId);

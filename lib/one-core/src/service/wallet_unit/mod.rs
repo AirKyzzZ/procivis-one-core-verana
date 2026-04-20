@@ -12,7 +12,7 @@ use crate::proto::wallet_unit::HolderWalletUnitProto;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::repository::history_repository::HistoryRepository;
-use crate::repository::holder_wallet_unit_repository::HolderWalletUnitRepository;
+use crate::repository::holder_wallet_instance_repository::HolderWalletInstanceRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
 use crate::repository::trust_collection_repository::TrustCollectionRepository;
@@ -29,7 +29,7 @@ mod test;
 pub struct WalletUnitService {
     key_repository: Arc<dyn KeyRepository>,
     organisation_repository: Arc<dyn OrganisationRepository>,
-    holder_wallet_unit_repository: Arc<dyn HolderWalletUnitRepository>,
+    holder_wallet_unit_repository: Arc<dyn HolderWalletInstanceRepository>,
     history_repository: Arc<dyn HistoryRepository>,
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -51,7 +51,7 @@ impl WalletUnitService {
     #[expect(clippy::too_many_arguments)]
     pub(crate) fn new(
         organisation_repository: Arc<dyn OrganisationRepository>,
-        holder_wallet_unit_repository: Arc<dyn HolderWalletUnitRepository>,
+        holder_wallet_unit_repository: Arc<dyn HolderWalletInstanceRepository>,
         history_repository: Arc<dyn HistoryRepository>,
         key_repository: Arc<dyn KeyRepository>,
         key_provider: Arc<dyn KeyProvider>,

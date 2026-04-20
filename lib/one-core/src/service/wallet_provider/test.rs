@@ -17,7 +17,9 @@ use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
-use crate::model::wallet_unit::{WalletProviderType, WalletUnit, WalletUnitOs, WalletUnitStatus};
+use crate::model::wallet_instance::{
+    WalletInstance, WalletInstanceOs, WalletInstanceStatus, WalletProviderType,
+};
 use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::clock::DefaultClock;
 use crate::proto::jwt::Jwt;
@@ -38,7 +40,7 @@ use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::repository::trust_collection_repository::MockTrustCollectionRepository;
-use crate::repository::wallet_unit_repository::MockWalletUnitRepository;
+use crate::repository::wallet_instance_repository::MockWalletInstanceRepository;
 use crate::service::common_dto::ListQueryDTO;
 use crate::service::test_utilities::{dummy_organisation, generic_config, get_dummy_date};
 use crate::service::wallet_provider::WalletProviderService;
@@ -51,7 +53,7 @@ const BASE_URL: &str = "https://localhost";
 fn mock_wallet_provider_service() -> WalletProviderService {
     WalletProviderService {
         organisation_repository: Arc::new(MockOrganisationRepository::default()),
-        wallet_unit_repository: Arc::new(MockWalletUnitRepository::default()),
+        wallet_instance_repository: Arc::new(MockWalletInstanceRepository::default()),
         identifier_repository: Arc::new(MockIdentifierRepository::default()),
         history_repository: Arc::new(MockHistoryRepository::default()),
         trust_collection_repository: Arc::new(MockTrustCollectionRepository::default()),
@@ -150,9 +152,9 @@ async fn test_register_wallet_unit() {
         .once()
         .return_once(|_| Some((KeyAlgorithmType::Ecdsa, Arc::new(Ecdsa))));
 
-    let mut wallet_unit_repository = MockWalletUnitRepository::new();
+    let mut wallet_unit_repository = MockWalletInstanceRepository::new();
     wallet_unit_repository
-        .expect_create_wallet_unit()
+        .expect_create_wallet_instance()
         .return_once(|wu| Ok(wu.id));
 
     let (issuer_private, issuer_public) = ECDSASigner::generate_key_pair();
@@ -211,7 +213,7 @@ async fn test_register_wallet_unit() {
     let ssi_wallet_provider_service = WalletProviderService {
         organisation_repository: Arc::new(organisation_repository),
         key_algorithm_provider: Arc::new(key_algorithm_provider),
-        wallet_unit_repository: Arc::new(wallet_unit_repository),
+        wallet_instance_repository: Arc::new(wallet_unit_repository),
         identifier_repository: Arc::new(identifier_repository),
         history_repository: Arc::new(history_repository),
         key_provider: Arc::new(key_provider),
@@ -222,7 +224,7 @@ async fn test_register_wallet_unit() {
     let (proof, holder_jwk) = create_proof().await;
     let request = RegisterWalletUnitRequestDTO {
         wallet_provider: procivis_one_provider.to_string(),
-        os: WalletUnitOs::Android,
+        os: WalletInstanceOs::Android,
         public_key: Some(holder_jwk.public_key_as_jwk().unwrap()),
         proof: Some(proof),
     };
@@ -264,9 +266,9 @@ async fn test_register_wallet_unit_integrity_check() {
             }))
         });
 
-    let mut wallet_unit_repository = MockWalletUnitRepository::new();
+    let mut wallet_unit_repository = MockWalletInstanceRepository::new();
     wallet_unit_repository
-        .expect_create_wallet_unit()
+        .expect_create_wallet_instance()
         .return_once(|wu| Ok(wu.id));
 
     let (issuer_private, issuer_public) = ECDSASigner::generate_key_pair();
@@ -325,7 +327,7 @@ async fn test_register_wallet_unit_integrity_check() {
     let ssi_wallet_provider_service = WalletProviderService {
         organisation_repository: Arc::new(organisation_repository),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
-        wallet_unit_repository: Arc::new(wallet_unit_repository),
+        wallet_instance_repository: Arc::new(wallet_unit_repository),
         identifier_repository: Arc::new(identifier_repository),
         history_repository: Arc::new(history_repository),
         key_provider: Arc::new(key_provider),
@@ -335,7 +337,7 @@ async fn test_register_wallet_unit_integrity_check() {
 
     let request = RegisterWalletUnitRequestDTO {
         wallet_provider: "PROCIVIS_ONE".to_string(),
-        os: WalletUnitOs::Android,
+        os: WalletInstanceOs::Android,
         public_key: None,
         proof: None,
     };
@@ -387,13 +389,13 @@ async fn provider_wallet_unit_ops_session_org_mismatch() {
 
 #[tokio::test]
 async fn provider_get_wallet_unit_session_org_mismatch() {
-    let wallet_unit = WalletUnit {
+    let wallet_unit = WalletInstance {
         id: Uuid::new_v4().into(),
         name: "".to_string(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
-        os: WalletUnitOs::Ios,
-        status: WalletUnitStatus::Active,
+        os: WalletInstanceOs::Ios,
+        status: WalletInstanceStatus::Active,
         wallet_provider_type: WalletProviderType::ProcivisOne,
         wallet_provider_name: "test provider".to_string(),
         authentication_key_jwk: None,
@@ -402,14 +404,14 @@ async fn provider_get_wallet_unit_session_org_mismatch() {
         organisation: Some(dummy_organisation(None)),
         attested_keys: None,
     };
-    let mut wallet_unit_repository = MockWalletUnitRepository::new();
+    let mut wallet_unit_repository = MockWalletInstanceRepository::new();
     wallet_unit_repository
-        .expect_get_wallet_unit()
+        .expect_get_wallet_instance()
         .returning(move |_, _| Ok(Some(wallet_unit.clone())));
 
     // given
     let service = WalletProviderService {
-        wallet_unit_repository: Arc::new(wallet_unit_repository),
+        wallet_instance_repository: Arc::new(wallet_unit_repository),
         session_provider: Arc::new(StaticSessionProvider::new_random()),
         config: Arc::new(generic_config().core),
         ..mock_wallet_provider_service()

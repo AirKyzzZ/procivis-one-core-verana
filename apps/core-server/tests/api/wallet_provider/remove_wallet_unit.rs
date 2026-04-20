@@ -1,10 +1,10 @@
-use one_core::model::wallet_unit::WalletUnitStatus;
+use one_core::model::wallet_instance::WalletInstanceStatus;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 
 use crate::fixtures::wallet_provider::create_wallet_unit_attestation_issuer_identifier;
 use crate::utils::context::TestContext;
-use crate::utils::db_clients::wallet_units::TestWalletUnit;
+use crate::utils::db_clients::wallet_instances::TestWalletInstance;
 
 #[tokio::test]
 async fn test_remove_wallet_unit_successfully() {
@@ -17,12 +17,12 @@ async fn test_remove_wallet_unit_successfully() {
 
     let wallet_unit = context
         .db
-        .wallet_units
+        .wallet_instances
         .create(
             org.clone(),
-            TestWalletUnit {
+            TestWalletInstance {
                 public_key: Some(holder_public_jwk),
-                status: Some(WalletUnitStatus::Pending),
+                status: Some(WalletInstanceStatus::Pending),
                 ..Default::default()
             },
         )
@@ -40,7 +40,7 @@ async fn test_remove_wallet_unit_successfully() {
 
     let updated_wallet_unit = context
         .db
-        .wallet_units
+        .wallet_instances
         .get(wallet_unit.id, &Default::default())
         .await;
     similar_asserts::assert_eq!(updated_wallet_unit, None);
@@ -64,12 +64,12 @@ async fn test_remove_wallet_fails_when_status_is_not_pending() {
 
     let wallet_unit = context
         .db
-        .wallet_units
+        .wallet_instances
         .create(
             org.clone(),
-            TestWalletUnit {
+            TestWalletInstance {
                 public_key: Some(holder_public_jwk),
-                status: Some(WalletUnitStatus::Active),
+                status: Some(WalletInstanceStatus::Active),
                 ..Default::default()
             },
         )

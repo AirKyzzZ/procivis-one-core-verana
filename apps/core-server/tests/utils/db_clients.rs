@@ -26,8 +26,8 @@ use crate::utils::db_clients::remote_entity_cache::RemoteEntityCacheDB;
 use crate::utils::db_clients::trust_collections::TrustCollectionDB;
 use crate::utils::db_clients::validity_credentials::ValidityCredentialsDB;
 use crate::utils::db_clients::verifier_instances::VerifierInstancesDB;
-use crate::utils::db_clients::wallet_unit_attestations::WalletUnitAttestationsDB;
-use crate::utils::db_clients::wallet_units::WalletUnitsDB;
+use crate::utils::db_clients::wallet_instance_attestations::WalletInstanceAttestationsDB;
+use crate::utils::db_clients::wallet_instances::WalletInstancesDB;
 
 pub mod blobs;
 pub mod certificates;
@@ -54,8 +54,8 @@ pub mod trust_list_publication;
 pub mod trust_list_subscription;
 pub mod validity_credentials;
 pub mod verifier_instances;
-pub mod wallet_unit_attestations;
-pub mod wallet_units;
+pub mod wallet_instance_attestations;
+pub mod wallet_instances;
 
 pub struct DbClient {
     pub organisations: OrganisationsDB,
@@ -81,11 +81,11 @@ pub struct DbClient {
     pub trust_collections: TrustCollectionDB,
     pub trust_entries: TrustEntryDB,
     pub blobs: BlobsDB,
-    pub wallet_units: WalletUnitsDB,
+    pub wallet_instances: WalletInstancesDB,
     pub holder_wallet_units: HolderWalletUnitsDB,
     pub verifier_instances: VerifierInstancesDB,
     #[expect(unused)]
-    pub wallet_unit_attestations: WalletUnitAttestationsDB,
+    pub wallet_instance_attestations: WalletInstanceAttestationsDB,
     pub db_conn: DbConn,
 }
 
@@ -125,13 +125,13 @@ impl DbClient {
             trust_entries: TrustEntryDB::new(layer.get_trust_entry_repository()),
             trust_collections: TrustCollectionDB::new(layer.get_trust_collection_repository()),
             blobs: BlobsDB::new(layer.get_blob_repository()),
-            wallet_units: WalletUnitsDB::new(layer.get_wallet_unit_repository()),
+            wallet_instances: WalletInstancesDB::new(layer.get_wallet_instance_repository()),
             holder_wallet_units: HolderWalletUnitsDB::new(
-                layer.get_holder_wallet_unit_repository(),
+                layer.get_holder_wallet_instance_repository(),
             ),
             verifier_instances: VerifierInstancesDB::new(layer.get_verifier_instance_repository()),
-            wallet_unit_attestations: WalletUnitAttestationsDB::new(
-                layer.get_wallet_unit_attestation_repository(),
+            wallet_instance_attestations: WalletInstanceAttestationsDB::new(
+                layer.get_wallet_instance_attestation_repository(),
             ),
         }
     }
