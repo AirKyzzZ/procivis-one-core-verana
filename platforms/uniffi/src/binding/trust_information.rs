@@ -10,6 +10,8 @@ use one_dto_mapper::{From, convert_inner};
 #[from(TrustInformationDetailResponseDTO)]
 #[uniffi(name = "TrustInformationDetail")]
 pub struct TrustInformationDetailResponseBindingDTO {
+    /// EUDI trust information received from Access Certificates, Registration
+    /// Certificates, or National Registry public APIs.
     #[from(with_fn = convert_inner)]
     pub eudi_ecosystem: Option<EudiTrustInformationResponseBindingDTO>,
 }

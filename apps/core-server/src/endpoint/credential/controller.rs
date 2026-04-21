@@ -68,7 +68,7 @@ pub(crate) async fn delete_credential(
         ("bearer" = [])
     ),
     summary = "Retrieve a credential",
-    description = "Returns detailed information about a credential in the system.",
+    description = "Returns detailed information about a credential.",
 )]
 pub(crate) async fn get_credential(
     state: State<AppState>,
@@ -294,8 +294,8 @@ pub(crate) async fn share_credential(
         Issuers and verifiers cannot check the status of credentials with this
         endpoint.
 
-        For list-based revocation methods, the signed lists and DID documents
-        containing the public keys used to verify the lists are cached. Use the
+        For list-based revocation methods, the signed lists and any DID documents
+        containing public keys used to verify the lists are cached. Use the
         `forceRefresh` parameter to force the system to retrieve these entities
         from the external resource.
 
@@ -337,7 +337,7 @@ pub(crate) async fn credential_revocation_check(
         ("bearer" = [])
     ),
     summary = "Retrieve credential trust detail",
-    description = "Returns detailed trust information about a credential issuer in the system.",
+    description = "Returns detailed trust information about a credential issuer.",
 )]
 pub(crate) async fn get_credential_trust_detail(
     state: State<AppState>,

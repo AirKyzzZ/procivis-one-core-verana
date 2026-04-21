@@ -65,7 +65,8 @@ impl OneCore {
         Ok(proof.into())
     }
 
-    /// Returns detailed trust information about a proof request verifier.
+    /// Returns detailed trust information about the requesting entity for a
+    /// proof request.
     #[uniffi::method]
     pub async fn get_proof_trust_information(
         &self,

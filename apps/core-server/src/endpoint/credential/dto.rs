@@ -152,6 +152,7 @@ pub(crate) struct GetCredentialResponseRestDTO<T> {
     /// credentials such as EU PIDs.
     pub wallet_unit_attestation: Option<WalletUnitAttestationRestDTO>,
     pub webhook_destination_url: Option<String>,
+    /// Trust information of the issuer, if any received.
     pub trust_information: Option<TrustInformationRestDTO>,
 }
 
@@ -210,7 +211,7 @@ pub(crate) struct CredentialDetailSchemaResponseRestDTO {
     pub format: CredentialFormat,
     pub revocation_method: Option<RevocationMethodId>,
     pub organisation_id: OrganisationId,
-    /// Storage security requirements the key storage of the wallet must meet.
+    /// Storage security requirements the wallet's key storage must meet.
     #[from(with_fn = convert_inner)]
     pub key_storage_security: Option<KeyStorageSecurityRestEnum>,
     /// Part of the `credentialSchema` property.

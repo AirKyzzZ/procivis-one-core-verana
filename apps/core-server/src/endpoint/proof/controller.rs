@@ -302,7 +302,7 @@ pub(crate) async fn delete_proof_claims(
         ("bearer" = [])
     ),
     summary = "Retrieve proof request trust detail",
-    description = "Returns detailed trust information about a proof request verifier in the system.",
+    description = "Returns detailed trust information about the requesting entity for a proof request.",
 )]
 pub(crate) async fn get_proof_trust_detail(
     state: State<AppState>,

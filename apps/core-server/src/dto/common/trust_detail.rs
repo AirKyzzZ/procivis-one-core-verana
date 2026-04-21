@@ -15,6 +15,8 @@ use utoipa::ToSchema;
 #[from(TrustInformationDetailResponseDTO)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct TrustInformationDetailResponseRestDTO {
+    /// EUDI trust information received from Access Certificates,
+    /// Registration Certificates, or National Registry public APIs.
     #[from(with_fn = convert_inner)]
     pub eudi_ecosystem: Option<EudiTrustInformationResponseRestDTO>,
 }

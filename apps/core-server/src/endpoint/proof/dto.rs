@@ -313,6 +313,7 @@ pub(crate) struct PresentationDefinitionResponseRestDTO {
 pub(crate) struct PresentationDefinitionRequestGroupResponseRestDTO {
     pub id: String,
     pub name: Option<String>,
+    /// Stated purpose of the request.
     pub purpose: Option<String>,
     pub rule: PresentationDefinitionRuleRestDTO,
     #[from(with_fn = convert_inner)]
@@ -328,6 +329,7 @@ pub(crate) struct PresentationDefinitionRequestGroupResponseRestDTO {
 pub(crate) struct PresentationDefinitionRequestedCredentialResponseRestDTO {
     pub id: String,
     pub name: Option<String>,
+    /// Stated purpose of the request.
     pub purpose: Option<String>,
     #[from(with_fn = convert_inner)]
     pub fields: Vec<PresentationDefinitionFieldRestDTO>,
@@ -344,6 +346,7 @@ pub(crate) struct PresentationDefinitionRequestedCredentialResponseRestDTO {
 pub struct PresentationDefinitionFieldRestDTO {
     pub id: String,
     pub name: Option<String>,
+    /// Stated purpose of the request.
     pub purpose: Option<String>,
     pub required: Option<bool>,
     pub key_map: HashMap<CredentialId, String>,
