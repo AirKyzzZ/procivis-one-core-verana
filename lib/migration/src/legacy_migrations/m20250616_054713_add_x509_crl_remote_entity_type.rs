@@ -1,7 +1,7 @@
 use sea_orm::EnumIter;
 use sea_orm_migration::prelude::*;
 
-use crate::migrate_enum::add_enum_variant;
+use crate::legacy_migrations::migrate_enum::add_enum_variant;
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;

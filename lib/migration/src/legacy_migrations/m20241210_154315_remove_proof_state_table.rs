@@ -2,9 +2,9 @@ use sea_orm::{ColumnTrait, DbBackend, EntityTrait, QueryFilter, Set, Unchanged};
 use sea_orm_migration::prelude::*;
 
 use crate::datatype::ColumnDefExt;
+use crate::legacy_migrations::models_20241210::proof_state::ProofRequestState;
+use crate::legacy_migrations::models_20241210::{proof, proof_state};
 use crate::m20240110_000001_initial::ProofRequestStateEnum;
-use crate::models_20241210::proof_state::ProofRequestState;
-use crate::models_20241210::{proof, proof_state};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;

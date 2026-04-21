@@ -8,7 +8,7 @@ use crate::m20260316_143109_trust_collection_subscription::{
     UNIQUE_TRUST_LIST_SUBSCRIPTION_NAME_DEACTIVATED_AT_INDEX,
     UNIQUE_TRUST_LIST_SUBSCRIPTION_REFERENCE_DEACTIVATED_AT_INDEX,
 };
-use crate::soft_delete_unique_idx::{Params, add_soft_delete_unique_idx};
+use crate::nullable_unique_idx::{NullableIdxOpts, add_nullable_unique_idx};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -70,57 +70,55 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-        add_soft_delete_unique_idx(
-            Params {
-                table: TrustCollection::Table.to_string(),
-                columns: vec![
-                    TrustCollection::Name.to_string(),
-                    TrustCollection::OrganisationId.to_string(),
-                ],
-                soft_delete_column: TrustCollection::DeactivatedAt.to_string(),
-                index_name: UNIQUE_TRUST_COLLECTION_NAME_ORG_DEACTIVATED_AT_INDEX.to_owned(),
+        add_nullable_unique_idx(
+            TrustCollection::Table,
+            TrustCollection::DeactivatedAt,
+            UNIQUE_TRUST_COLLECTION_NAME_ORG_DEACTIVATED_AT_INDEX,
+            NullableIdxOpts {
+                non_nullable_columns: vec![TrustCollection::Name, TrustCollection::OrganisationId],
+                ..Default::default()
             },
             manager,
         )
         .await?;
-        add_soft_delete_unique_idx(
-            Params {
-                table: TrustListSubscription::Table.to_string(),
-                columns: vec![
-                    TrustListSubscription::Name.to_string(),
-                    TrustListSubscription::TrustCollectionId.to_string(),
+        add_nullable_unique_idx(
+            TrustListSubscription::Table,
+            TrustListSubscription::DeactivatedAt,
+            UNIQUE_TRUST_LIST_SUBSCRIPTION_NAME_COLLECTION_DEACTIVATED_AT_INDEX,
+            NullableIdxOpts {
+                non_nullable_columns: vec![
+                    TrustListSubscription::Name,
+                    TrustListSubscription::TrustCollectionId,
                 ],
-                soft_delete_column: TrustListSubscription::DeactivatedAt.to_string(),
-                index_name: UNIQUE_TRUST_LIST_SUBSCRIPTION_NAME_COLLECTION_DEACTIVATED_AT_INDEX
-                    .to_owned(),
+                ..Default::default()
             },
             manager,
         )
         .await?;
-        add_soft_delete_unique_idx(
-            Params {
-                table: TrustListSubscription::Table.to_string(),
-                columns: vec![
-                    TrustListSubscription::Reference.to_string(),
-                    TrustListSubscription::TrustCollectionId.to_string(),
+        add_nullable_unique_idx(
+            TrustListSubscription::Table,
+            TrustListSubscription::DeactivatedAt,
+            UNIQUE_TRUST_LIST_SUBSCRIPTION_REFERENCE_COLLECTION_DEACTIVATED_AT_INDEX,
+            NullableIdxOpts {
+                non_nullable_columns: vec![
+                    TrustListSubscription::Reference,
+                    TrustListSubscription::TrustCollectionId,
                 ],
-                soft_delete_column: TrustListSubscription::DeactivatedAt.to_string(),
-                index_name:
-                    UNIQUE_TRUST_LIST_SUBSCRIPTION_REFERENCE_COLLECTION_DEACTIVATED_AT_INDEX
-                        .to_owned(),
+                ..Default::default()
             },
             manager,
         )
         .await?;
-        add_soft_delete_unique_idx(
-            Params {
-                table: TrustListPublication::Table.to_string(),
-                columns: vec![
-                    TrustListPublication::Name.to_string(),
-                    TrustListPublication::OrganisationId.to_string(),
+        add_nullable_unique_idx(
+            TrustListPublication::Table,
+            TrustListPublication::DeactivatedAt,
+            UNIQUE_TRUST_PUBLICATION_NAME_ORG_DEACTIVATED_AT_INDEX,
+            NullableIdxOpts {
+                non_nullable_columns: vec![
+                    TrustListPublication::Name,
+                    TrustListPublication::OrganisationId,
                 ],
-                soft_delete_column: TrustListPublication::DeactivatedAt.to_string(),
-                index_name: UNIQUE_TRUST_PUBLICATION_NAME_ORG_DEACTIVATED_AT_INDEX.to_owned(),
+                ..Default::default()
             },
             manager,
         )

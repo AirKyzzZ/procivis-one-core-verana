@@ -97,7 +97,7 @@ script = [
 install_crate = { crate_name = "sea-orm-cli", version = "1.1.0", binary = "sea-orm-cli", test_arg = "--version" }
 
 [tasks.generate_migration]
-args         = ["migrate", "generate", "${@}", "-d", "./lib/migration/"]
+args         = ["migrate", "generate", "${@}", "-d", "./lib/migration/src/migrations"]
 command      = "sea-orm-cli"
 dependencies = ["seaormcli"]
 

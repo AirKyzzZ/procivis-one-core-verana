@@ -1,7 +1,7 @@
 use sea_orm::EnumIter;
 use sea_orm_migration::prelude::*;
 
-use crate::migrate_enum::add_enum_variant;
+use crate::legacy_migrations::migrate_enum::add_enum_variant;
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -17,6 +17,7 @@ impl MigrationTrait for Migration {
         add_enum_variant::<UpdatedHistoryAction>(manager, "history", "action").await
     }
 }
+
 #[derive(Iden, EnumIter)]
 pub enum UpdatedHistoryAction {
     #[iden = "ACCEPTED"]
@@ -63,6 +64,4 @@ pub enum UpdatedHistoryAction {
     Updated,
     #[iden = "CSR_GENERATED"]
     CsrGenerated,
-    #[iden = "REACTIVATED"]
-    Reactivated,
 }

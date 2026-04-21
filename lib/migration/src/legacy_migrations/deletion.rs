@@ -2,7 +2,7 @@ use sea_orm::DbErr;
 use sea_orm::sea_query::{Query, SimpleExpr};
 use sea_orm_migration::SchemaManager;
 
-use crate::batch_utils::{delete, get_ids, get_ids_batched};
+use crate::legacy_migrations::batch_utils::{delete, get_ids, get_ids_batched};
 use crate::m20240110_000001_initial::{
     Claim, CredentialSchema, Interaction, Proof, ProofClaim, ProofSchema,
 };

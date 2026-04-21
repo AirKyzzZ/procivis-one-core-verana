@@ -4,7 +4,7 @@ use sea_orm_migration::schema::*;
 
 use crate::datatype::uuid_char;
 use crate::m20240110_000001_initial::Organisation;
-use crate::soft_delete_unique_idx::{Params, add_soft_delete_unique_idx};
+use crate::nullable_unique_idx::{NullableIdxOpts, add_nullable_unique_idx};
 
 pub(crate) const UNIQUE_TRUST_COLLECTION_NAME_DEACTIVATED_AT_INDEX: &str =
     "index-TrustCollection-Name-DeactivatedAt-Unique";
@@ -54,12 +54,13 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-        add_soft_delete_unique_idx(
-            Params {
-                table: TrustCollection::Table.to_string(),
-                columns: vec![TrustCollection::Name.to_string()],
-                soft_delete_column: TrustCollection::DeactivatedAt.to_string(),
-                index_name: UNIQUE_TRUST_COLLECTION_NAME_DEACTIVATED_AT_INDEX.to_owned(),
+        add_nullable_unique_idx(
+            TrustCollection::Table,
+            TrustCollection::DeactivatedAt,
+            UNIQUE_TRUST_COLLECTION_NAME_DEACTIVATED_AT_INDEX,
+            NullableIdxOpts {
+                non_nullable_columns: vec![TrustCollection::Name],
+                ..Default::default()
             },
             manager,
         )
@@ -100,23 +101,24 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-        add_soft_delete_unique_idx(
-            Params {
-                table: TrustListSubscription::Table.to_string(),
-                columns: vec![TrustListSubscription::Name.to_string()],
-                soft_delete_column: TrustListSubscription::DeactivatedAt.to_string(),
-                index_name: UNIQUE_TRUST_LIST_SUBSCRIPTION_NAME_DEACTIVATED_AT_INDEX.to_owned(),
+        add_nullable_unique_idx(
+            TrustListSubscription::Table,
+            TrustListSubscription::DeactivatedAt,
+            UNIQUE_TRUST_LIST_SUBSCRIPTION_NAME_DEACTIVATED_AT_INDEX,
+            NullableIdxOpts {
+                non_nullable_columns: vec![TrustListSubscription::Name],
+                ..Default::default()
             },
             manager,
         )
         .await?;
-        add_soft_delete_unique_idx(
-            Params {
-                table: TrustListSubscription::Table.to_string(),
-                columns: vec![TrustListSubscription::Reference.to_string()],
-                soft_delete_column: TrustListSubscription::DeactivatedAt.to_string(),
-                index_name: UNIQUE_TRUST_LIST_SUBSCRIPTION_REFERENCE_DEACTIVATED_AT_INDEX
-                    .to_owned(),
+        add_nullable_unique_idx(
+            TrustListSubscription::Table,
+            TrustListSubscription::DeactivatedAt,
+            UNIQUE_TRUST_LIST_SUBSCRIPTION_REFERENCE_DEACTIVATED_AT_INDEX,
+            NullableIdxOpts {
+                non_nullable_columns: vec![TrustListSubscription::Reference],
+                ..Default::default()
             },
             manager,
         )

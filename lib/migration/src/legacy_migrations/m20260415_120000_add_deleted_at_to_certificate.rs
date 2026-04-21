@@ -1,7 +1,7 @@
 use sea_orm_migration::prelude::*;
 
 use crate::datatype::ColumnDefExt;
-use crate::soft_delete_unique_idx::{Params, add_soft_delete_unique_idx};
+use crate::nullable_unique_idx::{NullableIdxOpts, add_nullable_unique_idx};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -37,12 +37,13 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-        add_soft_delete_unique_idx(
-            Params {
-                table: "certificate".to_string(),
-                columns: vec!["fingerprint".to_string(), "organisation_id".to_string()],
-                soft_delete_column: "deleted_at".to_string(),
-                index_name: UNIQUE_INDEX_NAME.to_string(),
+        add_nullable_unique_idx(
+            Certificate::Table,
+            Certificate::DeletedAt,
+            UNIQUE_INDEX_NAME,
+            NullableIdxOpts {
+                non_nullable_columns: vec![Certificate::Fingerprint, Certificate::OrganisationId],
+                ..Default::default()
             },
             manager,
         )
@@ -54,4 +55,6 @@ impl MigrationTrait for Migration {
 pub enum Certificate {
     Table,
     DeletedAt,
+    Fingerprint,
+    OrganisationId,
 }

@@ -2,12 +2,12 @@ use sea_orm::{DbBackend, EntityTrait, FromQueryResult};
 use sea_orm_migration::prelude::*;
 
 use crate::datatype::ColumnDefExt;
+use crate::legacy_migrations::models_20240209::old_proof;
 use crate::m20240110_000001_initial::{
     Claim, Did, Interaction, Key, KeyDid, Proof, ProofClaim, ProofRequestStateEnum, ProofSchema,
     ProofState,
 };
 use crate::m20240123_124653_proof_state_enum_rename_offered_to_requested::ProofRequestState;
-use crate::models_20240209::old_proof;
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
