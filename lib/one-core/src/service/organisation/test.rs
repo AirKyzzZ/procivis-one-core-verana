@@ -13,15 +13,27 @@ use crate::model::organisation::{
     GetOrganisationList, OrganisationListQuery, OrganisationRelations,
 };
 use crate::repository::error::DataLayerError;
+use crate::repository::holder_wallet_instance_repository::MockHolderWalletInstanceRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::service::common_dto::ListQueryDTO;
 use crate::service::test_utilities::dummy_organisation;
 
 fn setup_service(organisation_repository: MockOrganisationRepository) -> OrganisationService {
+    setup_service_with_mocks(
+        organisation_repository,
+        MockHolderWalletInstanceRepository::new(),
+    )
+}
+
+fn setup_service_with_mocks(
+    organisation_repository: MockOrganisationRepository,
+    holder_wallet_instance_repository: MockHolderWalletInstanceRepository,
+) -> OrganisationService {
     OrganisationService {
         organisation_repository: Arc::new(organisation_repository),
         identifier_repository: Arc::new(MockIdentifierRepository::new()),
+        holder_wallet_instance_repository: Arc::new(holder_wallet_instance_repository),
         core_config: Arc::new(Default::default()),
     }
 }
@@ -101,7 +113,14 @@ async fn test_get_organisation_success() {
         )
         .returning(move |_, _| Ok(Some(org_clone.clone())));
 
-    let service = setup_service(organisation_repository);
+    let mut holder_wallet_instance_repository = MockHolderWalletInstanceRepository::new();
+    holder_wallet_instance_repository
+        .expect_get_holder_wallet_instance_by_org_id()
+        .times(1)
+        .returning(|_| Ok(None));
+
+    let service =
+        setup_service_with_mocks(organisation_repository, holder_wallet_instance_repository);
     let result = service.get_organisation(&organisation.id).await;
 
     assert!(result.is_ok());
@@ -109,6 +128,7 @@ async fn test_get_organisation_success() {
     assert_eq!(result.id, organisation.id);
     assert_eq!(result.created_date, organisation.created_date);
     assert_eq!(result.last_modified, organisation.last_modified);
+    assert!(result.wallet_instance.is_none());
 }
 
 #[tokio::test]

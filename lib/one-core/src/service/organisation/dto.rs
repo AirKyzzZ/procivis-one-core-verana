@@ -31,6 +31,14 @@ pub struct GetOrganisationDetailsResponseDTO {
     pub wallet_provider: Option<String>,
     pub wallet_provider_issuer: Option<GetIdentifierListItemResponseDTO>,
     pub parent_organisation: Option<OrganisationId>,
+    pub wallet_instance: Option<WalletInstanceDetailResponseDTO>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct WalletInstanceDetailResponseDTO {
+    pub wallet_provider_url: String,
+    pub wallet_provider_name: String,
+    pub authentication_key_type: String,
 }
 
 pub type OrganisationListItemResponseDTO = GetOrganisationDetailsResponseDTO;

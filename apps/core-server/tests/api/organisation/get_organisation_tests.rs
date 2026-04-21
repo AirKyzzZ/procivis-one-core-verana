@@ -1,6 +1,10 @@
+use one_core::model::wallet_instance::{WalletInstanceStatus, WalletProviderType};
 use similar_asserts::assert_eq;
+use uuid::Uuid;
 
+use crate::fixtures::TestingKeyParams;
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::holder_wallet_unit::TestHolderWalletUnitParams;
 use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
@@ -35,6 +39,76 @@ async fn test_get_organisation_returns_parent_organisation() {
     let resp = resp.json_value().await;
     resp["id"].assert_eq(&child.id);
     resp["parentOrganisation"].assert_eq(&parent.id);
+}
+
+#[tokio::test]
+async fn test_get_organisation_returns_wallet_instance() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let now = one_core::clock::now_utc();
+    let key = context
+        .db
+        .keys
+        .create(
+            &organisation,
+            TestingKeyParams {
+                id: Some(Uuid::new_v4().into()),
+                created_date: Some(now),
+                last_modified: Some(now),
+                name: Some("auth-key".to_string()),
+                key_type: Some("ECDSA".to_string()),
+                storage_type: Some("INTERNAL".to_string()),
+                public_key: Some(vec![0; 32]),
+                key_reference: Some(vec![0; 32]),
+            },
+        )
+        .await;
+    context
+        .db
+        .holder_wallet_units
+        .create(
+            organisation.clone(),
+            Some(key.clone()),
+            TestHolderWalletUnitParams {
+                status: Some(WalletInstanceStatus::Active),
+                wallet_provider_type: Some(WalletProviderType::ProcivisOne),
+                wallet_provider_name: Some("PROCIVIS_ONE".to_string()),
+                wallet_provider_url: Some("https://wallet.provider".to_string()),
+                provider_wallet_unit_id: Some(Uuid::new_v4().into()),
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context.api.organisations.get(&organisation.id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    resp["id"].assert_eq(&organisation.id);
+
+    let wallet_instance = resp["walletInstance"].as_object().unwrap();
+    assert_eq!(
+        wallet_instance["walletProviderUrl"],
+        "https://wallet.provider"
+    );
+    assert_eq!(wallet_instance["walletProviderName"], "PROCIVIS_ONE");
+    assert_eq!(wallet_instance["authenticationKeyType"], "ECDSA");
+}
+
+#[tokio::test]
+async fn test_get_organisation_without_wallet_instance_omits_field() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    // WHEN
+    let resp = context.api.organisations.get(&organisation.id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    resp["id"].assert_eq(&organisation.id);
+    assert!(resp.get("walletInstance").is_none());
 }
 
 #[tokio::test]

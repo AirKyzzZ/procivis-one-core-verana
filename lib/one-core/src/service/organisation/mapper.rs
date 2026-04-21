@@ -5,7 +5,7 @@ use crate::model::list_filter::{ComparisonType, ListFilterCondition, ValueCompar
 use crate::model::organisation::{Organisation, OrganisationFilterValue};
 use crate::service::organisation::dto::{
     CreateOrganisationRequestDTO, GetOrganisationDetailsResponseDTO, OrganisationFilterParamsDTO,
-    UpsertOrganisationRequestDTO,
+    UpsertOrganisationRequestDTO, WalletInstanceDetailResponseDTO,
 };
 
 impl From<CreateOrganisationRequestDTO> for Organisation {
@@ -36,6 +36,7 @@ impl From<UpsertOrganisationRequestDTO> for CreateOrganisationRequestDTO {
 pub(super) fn detail_from_model(
     organisation: Organisation,
     wallet_provider_issuer: Option<Identifier>,
+    wallet_instance: Option<WalletInstanceDetailResponseDTO>,
 ) -> GetOrganisationDetailsResponseDTO {
     GetOrganisationDetailsResponseDTO {
         id: organisation.id,
@@ -45,6 +46,7 @@ pub(super) fn detail_from_model(
         wallet_provider: organisation.wallet_provider,
         wallet_provider_issuer: wallet_provider_issuer.map(Into::into),
         parent_organisation: organisation.parent_organisation,
+        wallet_instance,
     }
 }
 

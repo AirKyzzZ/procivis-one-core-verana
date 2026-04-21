@@ -592,6 +592,7 @@ impl OneCore {
             organisation_service: OrganisationService::new(
                 data_provider.get_organisation_repository(),
                 data_provider.get_identifier_repository(),
+                data_provider.get_holder_wallet_instance_repository(),
                 config.clone(),
             ),
             credential_service,

@@ -6,6 +6,7 @@ use super::OrganisationService;
 use super::dto::{
     CreateOrganisationRequestDTO, GetOrganisationDetailsResponseDTO,
     GetOrganisationListResponseDTO, OrganisationFilterParamsDTO, UpsertOrganisationRequestDTO,
+    WalletInstanceDetailResponseDTO,
 };
 use super::error::OrganisationServiceError;
 use super::mapper::detail_from_model;
@@ -13,7 +14,9 @@ use super::validator::{
     validate_parent_organisation, validate_wallet_provider, validate_wallet_provider_issuer,
 };
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
+use crate::model::holder_wallet_instance::HolderWalletInstanceRelations;
 use crate::model::identifier::{Identifier, IdentifierFilterValue, IdentifierListQuery};
+use crate::model::key::KeyRelations;
 use crate::model::list_filter::ListFilterValue;
 use crate::model::organisation::{OrganisationRelations, SortableOrganisationColumn};
 use crate::repository::error::DataLayerError;
@@ -70,7 +73,7 @@ impl OrganisationService {
                     .and_then(|issuer| identifiers.get(issuer))
                     .map(ToOwned::to_owned);
 
-                detail_from_model(organisation, wallet_provider_issuer)
+                detail_from_model(organisation, wallet_provider_issuer, None)
             })
             .collect();
 
@@ -113,7 +116,50 @@ impl OrganisationService {
                 None
             };
 
-        Ok(detail_from_model(organisation, wallet_provider_issuer))
+        let wallet_instance = self.load_wallet_instance_details(id).await?;
+
+        Ok(detail_from_model(
+            organisation,
+            wallet_provider_issuer,
+            wallet_instance,
+        ))
+    }
+
+    async fn load_wallet_instance_details(
+        &self,
+        organisation_id: &OrganisationId,
+    ) -> Result<Option<WalletInstanceDetailResponseDTO>, OrganisationServiceError> {
+        let Some(instance) = self
+            .holder_wallet_instance_repository
+            .get_holder_wallet_instance_by_org_id(organisation_id)
+            .await
+            .error_while("getting holder wallet instance")?
+        else {
+            return Ok(None);
+        };
+
+        let relations = HolderWalletInstanceRelations {
+            authentication_key: Some(KeyRelations::default()),
+            ..Default::default()
+        };
+        let Some(with_key) = self
+            .holder_wallet_instance_repository
+            .get_holder_wallet_instance(&instance.id, &relations)
+            .await
+            .error_while("getting holder wallet instance with authentication key")?
+        else {
+            return Ok(None);
+        };
+
+        let Some(authentication_key) = with_key.authentication_key else {
+            return Ok(None);
+        };
+
+        Ok(Some(WalletInstanceDetailResponseDTO {
+            wallet_provider_url: with_key.wallet_provider_url,
+            wallet_provider_name: with_key.wallet_provider_name,
+            authentication_key_type: authentication_key.key_type,
+        }))
     }
 
     /// Accepts optional Uuid and optional name of new organisation

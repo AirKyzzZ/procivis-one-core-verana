@@ -1,6 +1,7 @@
 use one_core::service::error::ServiceError;
 use one_core::service::organisation::dto::{
     CreateOrganisationRequestDTO, GetOrganisationDetailsResponseDTO, OrganisationFilterParamsDTO,
+    WalletInstanceDetailResponseDTO,
 };
 use one_dto_mapper::{From, Into, TryInto, convert_inner};
 use proc_macros::options_not_nullable;
@@ -74,6 +75,18 @@ pub(crate) struct GetOrganisationDetailsResponseRestDTO {
     pub wallet_provider_issuer: Option<GetIdentifierListItemResponseRestDTO>,
     #[schema(nullable = false)]
     pub parent_organisation: Option<OrganisationId>,
+    #[schema(nullable = false)]
+    #[from(with_fn = convert_inner)]
+    pub wallet_instance: Option<WalletInstanceResponseRestDTO>,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[serde(rename_all = "camelCase")]
+#[from(WalletInstanceDetailResponseDTO)]
+pub(crate) struct WalletInstanceResponseRestDTO {
+    pub wallet_provider_url: String,
+    pub wallet_provider_name: String,
+    pub authentication_key_type: String,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
