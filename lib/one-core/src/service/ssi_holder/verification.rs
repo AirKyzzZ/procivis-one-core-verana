@@ -198,11 +198,7 @@ impl SSIHolderService {
             .map_err(|err| HolderServiceError::MappingError(err.to_string()))?;
 
         let presentation_definition = verification_protocol
-            .holder_get_presentation_definition(
-                &proof,
-                interaction_data.clone(),
-                &self.storage_proxy(),
-            )
+            .holder_get_presentation_definition(&proof, interaction_data.clone())
             .await
             .error_while("getting presentation definition")?;
 
@@ -462,7 +458,7 @@ impl SSIHolderService {
             .ok_or_else(|| HolderServiceError::MappingError("missing interaction".into()))?
             .map_err(|err| HolderServiceError::MappingError(err.to_string()))?;
         let presentation_definition = verification_protocol
-            .holder_get_presentation_definition_v2(&proof, interaction_data, &self.storage_proxy())
+            .holder_get_presentation_definition_v2(&proof, interaction_data)
             .await
             .error_while("getting presentation definition V2")?;
 
@@ -566,7 +562,7 @@ impl SSIHolderService {
             mut proof,
             interaction_id,
         } = verification_protocol
-            .holder_handle_invitation(url, organisation, &self.storage_proxy(), transport)
+            .holder_handle_invitation(url, organisation, transport)
             .await
             .error_while("handling invitation")?;
 

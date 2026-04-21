@@ -8,7 +8,7 @@ use mapper::{get_claim_name_by_json_path, presentation_definition_from_interacti
 use one_dto_mapper::convert_inner;
 
 use super::dto::{CredentialGroup, CredentialGroupItem, PresentationDefinitionResponseDTO};
-use super::{FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocolError};
+use super::{FormatMapper, TypeToDescriptorMapper, VerificationProtocolError};
 use crate::config::core_config::CoreConfig;
 use crate::error::ContextWithErrorCode;
 use crate::mapper::oidc::map_from_openid4vp_format;
@@ -25,6 +25,7 @@ use crate::provider::verification_protocol::mapper::{
 use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, OpenID4VPClientMetadata, OpenID4VPPresentationDefinition,
 };
+use crate::repository::credential_repository::CredentialRepository;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 pub(crate) mod dcql;
 pub mod draft20;
@@ -114,7 +115,7 @@ pub(crate) async fn get_presentation_definition_with_local_credentials(
     verifier_presentation_definition: OpenID4VPPresentationDefinition,
     proof: &Proof,
     client_metadata: Option<OpenID4VPClientMetadata>,
-    storage_access: &StorageAccess,
+    credential_repository: &dyn CredentialRepository,
     config: &CoreConfig,
 ) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError> {
     let mut credential_groups: Vec<CredentialGroup> = vec![];
@@ -193,7 +194,7 @@ pub(crate) async fn get_presentation_definition_with_local_credentials(
         ))?;
 
     let (credentials, credential_groups) = get_relevant_credentials_to_credential_schemas(
-        storage_access,
+        credential_repository,
         credential_groups,
         group_id_to_schema_id,
         &allowed_schema_formats,

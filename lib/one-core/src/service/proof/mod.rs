@@ -18,7 +18,6 @@ use crate::provider::presentation_formatter::provider::PresentationFormatterProv
 use crate::provider::verification_protocol::provider::VerificationProtocolProvider;
 use crate::repository::claim_repository::ClaimRepository;
 use crate::repository::credential_repository::CredentialRepository;
-use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::interaction_repository::InteractionRepository;
@@ -42,7 +41,6 @@ pub struct ProofService {
     identifier_repository: Arc<dyn IdentifierRepository>,
     claim_repository: Arc<dyn ClaimRepository>,
     credential_repository: Arc<dyn CredentialRepository>,
-    credential_schema: Arc<dyn CredentialSchemaRepository>,
     history_repository: Arc<dyn HistoryRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
@@ -73,7 +71,6 @@ impl ProofService {
         identifier_repository: Arc<dyn IdentifierRepository>,
         claim_repository: Arc<dyn ClaimRepository>,
         credential_repository: Arc<dyn CredentialRepository>,
-        credential_schema: Arc<dyn CredentialSchemaRepository>,
         history_repository: Arc<dyn HistoryRepository>,
         interaction_repository: Arc<dyn InteractionRepository>,
         credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
@@ -101,7 +98,6 @@ impl ProofService {
             identifier_repository,
             claim_repository,
             credential_repository,
-            credential_schema,
             history_repository,
             interaction_repository,
             credential_formatter_provider,

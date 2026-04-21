@@ -16,8 +16,14 @@ use crate::error::ContextWithErrorCode;
 use crate::mapper::credential_schema_claim::claim_schema_from_metadata_claim_schema;
 use crate::mapper::x509::pem_chain_to_authority_key_identifiers;
 use crate::model::claim::Claim;
-use crate::model::claim_schema::ClaimSchema;
+use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
+use crate::model::credential_schema::{
+    CredentialSchema, CredentialSchemaListQuery, CredentialSchemaRelations,
+};
+use crate::model::list_filter::{ListFilterCondition, ListFilterValue, StringMatch};
+use crate::model::list_query::ListPagination;
+use crate::model::organisation::OrganisationRelations;
 use crate::model::proof::Proof;
 use crate::proto::openid4vp_proof_validator::validator::get_trusted_akis;
 use crate::proto::trust_information::TrustInformationProvider;
@@ -33,15 +39,22 @@ use crate::provider::verification_protocol::dto::{
     PresentationDefinitionV2ResponseDTO,
 };
 use crate::provider::verification_protocol::error::VerificationProtocolError;
-use crate::provider::verification_protocol::mapper::credential_model_to_credential_dto;
+use crate::provider::verification_protocol::mapper::{
+    credential_model_to_credential_dto, get_presentation_credentials_by_schema_id,
+};
+use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::credential_schema_repository::CredentialSchemaRepository;
+use crate::repository::error::DataLayerError;
 use crate::service::credential::dto::{
     CredentialAttestationBlobs, CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO,
     DetailCredentialClaimValueResponseDTO,
 };
 use crate::service::credential::mapper::credential_detail_response_from_model;
-use crate::service::credential_schema::dto::CredentialSchemaDetailResponseDTO;
+use crate::service::credential_schema::dto::{
+    CredentialSchemaDetailResponseDTO, CredentialSchemaFilterValue,
+    CredentialSchemaListIncludeEntityTypeEnum,
+};
 use crate::service::credential_schema::mapper::schema_to_detail_response_dto;
-use crate::service::storage_proxy::StorageAccess;
 
 /// Retrieve the "presentation definition" for the given DCQL query.
 ///
@@ -59,7 +72,7 @@ use crate::service::storage_proxy::StorageAccess;
 pub(crate) async fn get_presentation_definition_for_dcql_query(
     dcql_query: DcqlQuery,
     proof: &Proof,
-    storage_access: &StorageAccess,
+    credential_repository: &dyn CredentialRepository,
     credential_formatter_provider: &dyn CredentialFormatterProvider,
     config: &CoreConfig,
 ) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError> {
@@ -86,9 +99,12 @@ pub(crate) async fn get_presentation_definition_for_dcql_query(
 
         // This is very inefficient. We would have the information here to also filter by the claims
         // required, etc. but so far this was not a problem so it is not optimized.
-        let mut credential_candidates =
-            fetch_credentials_for_schema_ids(storage_access, organisation.id, credential_filters)
-                .await?;
+        let mut credential_candidates = fetch_credentials_for_schema_ids(
+            organisation.id,
+            credential_filters,
+            credential_repository,
+        )
+        .await?;
 
         credential_candidates.retain(|credential| {
             let Some(schema) = &credential.schema else {
@@ -143,7 +159,8 @@ pub(crate) async fn get_presentation_definition_for_dcql_query(
 pub(crate) async fn get_presentation_definition_v2(
     dcql_query: DcqlQuery,
     proof: &Proof,
-    storage_access: &StorageAccess,
+    credential_repository: &dyn CredentialRepository,
+    credential_schema_repository: &dyn CredentialSchemaRepository,
     formatter_provider: &dyn CredentialFormatterProvider,
     trust_information_provider: &dyn TrustInformationProvider,
     config: &CoreConfig,
@@ -183,9 +200,12 @@ pub(crate) async fn get_presentation_definition_v2(
 
         // This is very inefficient. We would have the information here to also filter by the claims
         // required, etc. but so far this was not a problem so it is not optimized.
-        let mut credential_candidates =
-            fetch_credentials_for_schema_ids(storage_access, organisation.id, credential_filters)
-                .await?;
+        let mut credential_candidates = fetch_credentials_for_schema_ids(
+            organisation.id,
+            credential_filters,
+            credential_repository,
+        )
+        .await?;
 
         credential_candidates.retain(|credential| {
             let Some(schema) = &credential.schema else {
@@ -205,10 +225,13 @@ pub(crate) async fn get_presentation_definition_v2(
                         .map(|schema_id| map_schema_id(filter, schema_id))
                 })
                 .collect::<Vec<_>>();
-            let credential_schema = storage_access
-                .find_schema_by_schema_ids(&schema_ids, organisation.id)
-                .await
-                .map_err(VerificationProtocolError::StorageAccessError)?;
+            let credential_schema = find_schema_by_schema_ids(
+                &schema_ids,
+                organisation.id,
+                credential_schema_repository,
+            )
+            .await
+            .error_while("getting credential schemas")?;
             let credential_schema = credential_schema
                 .map(|schema| schema_to_detail_response_dto(schema, config))
                 .transpose()
@@ -1062,9 +1085,9 @@ fn get_nonselectively_disclosable_children<'a, 'b>(
 }
 
 async fn fetch_credentials_for_schema_ids(
-    storage_access: &StorageAccess,
     organisation_id: OrganisationId,
     credential_filters: &[CredentialFilter],
+    credential_repository: &dyn CredentialRepository,
 ) -> Result<Vec<Credential>, VerificationProtocolError> {
     let mut credentials = vec![];
 
@@ -1080,10 +1103,13 @@ async fn fetch_credentials_for_schema_ids(
         let schema_id = map_schema_id(filter, schema_id);
 
         credentials.append(
-            &mut storage_access
-                .get_presentation_credentials_by_schema_id(schema_id, organisation_id)
-                .await
-                .map_err(VerificationProtocolError::StorageAccessError)?,
+            &mut get_presentation_credentials_by_schema_id(
+                credential_repository,
+                schema_id,
+                organisation_id,
+            )
+            .await
+            .error_while("getting presentation credentials for schema")?,
         );
     }
     Ok(credentials)
@@ -1297,4 +1323,38 @@ impl From<FormatType> for CredentialFormat {
             FormatType::Mdoc => CredentialFormat::MsoMdoc,
         }
     }
+}
+
+async fn find_schema_by_schema_ids(
+    schema_ids: &[String],
+    organisation_id: OrganisationId,
+    credential_schema_repository: &dyn CredentialSchemaRepository,
+) -> Result<Option<CredentialSchema>, DataLayerError> {
+    let schema_ids_filter_cond = schema_ids
+        .iter()
+        .map(|id| CredentialSchemaFilterValue::SchemaId(StringMatch::equals(id)))
+        .fold(ListFilterCondition::default(), |acc, cond| acc | cond);
+    let candidates = credential_schema_repository
+        .get_credential_schema_list(
+            CredentialSchemaListQuery {
+                pagination: Some(ListPagination {
+                    page: 0,
+                    page_size: 1,
+                }),
+                sorting: None,
+                filtering: Some(
+                    CredentialSchemaFilterValue::OrganisationId(organisation_id).condition()
+                        & schema_ids_filter_cond,
+                ),
+                include: Some(vec![
+                    CredentialSchemaListIncludeEntityTypeEnum::LayoutProperties,
+                ]),
+            },
+            &CredentialSchemaRelations {
+                claim_schemas: Some(ClaimSchemaRelations {}),
+                organisation: Some(OrganisationRelations::default()),
+            },
+        )
+        .await?;
+    Ok(candidates.values.into_iter().next())
 }

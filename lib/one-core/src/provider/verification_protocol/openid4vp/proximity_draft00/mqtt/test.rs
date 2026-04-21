@@ -34,7 +34,7 @@ use crate::provider::verification_protocol::openid4vp::proximity_draft00::holder
     ProximityHolderTransport, handle_invitation_with_transport,
 };
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::peer_encryption::PeerEncryption;
-use crate::service::storage_proxy::MockStorageProxy;
+use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::service::test_utilities::{dummy_organisation, generic_config};
 
 #[derive(Default)]
@@ -175,13 +175,14 @@ async fn test_handle_invitation_success() {
                 }),
             ))
         });
+
     let interaction_id = Uuid::new_v4().into();
-    let mut mock_storage_access = MockStorageProxy::default();
-    mock_storage_access
+    let mut interaction_repository = MockInteractionRepository::new();
+    interaction_repository
         .expect_create_interaction()
         .once()
         .returning(move |_| Ok(interaction_id));
-    mock_storage_access
+    interaction_repository
         .expect_update_interaction()
         .once()
         .returning(|_, _| Ok(()));
@@ -310,7 +311,7 @@ async fn test_handle_invitation_success() {
     let response = handle_invitation_with_transport(
         valid,
         dummy_organisation(None),
-        &mock_storage_access,
+        &interaction_repository,
         &identifier_creator,
         &setup_holder_transport(None, Some(Arc::new(mqtt_client))),
         Box::new(verifier),

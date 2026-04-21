@@ -36,6 +36,8 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
+use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
@@ -82,6 +84,8 @@ impl VerificationProtocolProvider for VerificationProtocolProviderImpl {
 pub(crate) fn verification_protocol_provider_from_config(
     config: &mut CoreConfig,
     core_base_url: Option<String>,
+    credential_repository: Arc<dyn CredentialRepository>,
+    credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
     proof_repository: Arc<dyn ProofRepository>,
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
@@ -127,7 +131,10 @@ pub(crate) fn verification_protocol_provider_from_config(
                     key_algorithm_provider.clone(),
                     key_provider.clone(),
                     certificate_validator.clone(),
+                    credential_repository.clone(),
+                    credential_schema_repository.clone(),
                     history_repository.clone(),
+                    interaction_repository.clone(),
                     session_provider.clone(),
                     wrp_validator.clone(),
                     blob_storage_provider.clone(),
@@ -153,6 +160,8 @@ pub(crate) fn verification_protocol_provider_from_config(
                     key_algorithm_provider.clone(),
                     key_provider.clone(),
                     certificate_validator.clone(),
+                    credential_repository.clone(),
+                    interaction_repository.clone(),
                     client.clone(),
                     params.clone(),
                     core_config.clone(),
@@ -179,6 +188,8 @@ pub(crate) fn verification_protocol_provider_from_config(
                     key_algorithm_provider.clone(),
                     key_provider.clone(),
                     certificate_validator.clone(),
+                    credential_repository.clone(),
+                    interaction_repository.clone(),
                     client.clone(),
                     openid_metadata_cache.clone(),
                     params.clone(),
@@ -209,6 +220,8 @@ pub(crate) fn verification_protocol_provider_from_config(
                     key_algorithm_provider.clone(),
                     key_provider.clone(),
                     certificate_validator.clone(),
+                    credential_repository.clone(),
+                    interaction_repository.clone(),
                     client.clone(),
                     openid_metadata_cache.clone(),
                     params,
@@ -232,6 +245,8 @@ pub(crate) fn verification_protocol_provider_from_config(
                     mqtt_client.clone(),
                     core_config.clone(),
                     params.clone(),
+                    credential_repository.clone(),
+                    credential_schema_repository.clone(),
                     interaction_repository.clone(),
                     proof_repository.clone(),
                     key_algorithm_provider.clone(),
@@ -247,6 +262,7 @@ pub(crate) fn verification_protocol_provider_from_config(
             }
             VerificationProtocolType::IsoMdl => Arc::new(IsoMdl::new(
                 core_config.clone(),
+                credential_repository.clone(),
                 presentation_formatter_provider.clone(),
                 key_provider.clone(),
                 key_algorithm_provider.clone(),
@@ -274,6 +290,8 @@ fn openid4vp_draft20_from_params(
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     key_provider: Arc<dyn KeyProvider>,
     certificate_validator: Arc<dyn CertificateValidator>,
+    credential_repository: Arc<dyn CredentialRepository>,
+    interaction_repository: Arc<dyn InteractionRepository>,
     client: Arc<dyn HttpClient>,
     openid_metadata_cache: Arc<dyn OpenIDMetadataFetcher>,
     params: OpenID4Vp20Params,
@@ -287,6 +305,8 @@ fn openid4vp_draft20_from_params(
         key_algorithm_provider,
         key_provider,
         certificate_validator,
+        credential_repository,
+        interaction_repository,
         client,
         openid_metadata_cache,
         params,

@@ -49,8 +49,8 @@ use super::openid4vci_final1_0::service::{
     get_protocol_base_url,
 };
 use super::{
-    HolderBindingInput, IssuanceProtocol, IssuanceProtocolError, StorageAccess,
-    deserialize_interaction_data, serialize_interaction_data,
+    HolderBindingInput, IssuanceProtocol, IssuanceProtocolError, deserialize_interaction_data,
+    serialize_interaction_data,
 };
 use crate::clock::now_utc;
 use crate::config::core_config::{CoreConfig, DidType as ConfigDidType, FormatType};
@@ -116,6 +116,7 @@ use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::holder_wallet_instance_repository::HolderWalletInstanceRepository;
+use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::service::credential::dto::CredentialAttestationBlobs;
@@ -171,6 +172,7 @@ pub(crate) struct OpenID4VCIFinal1_0 {
     wrp_validator: Arc<dyn WRPValidator>,
     history_repository: Arc<dyn HistoryRepository>,
     session_provider: Arc<dyn SessionProvider>,
+    interaction_repository: Arc<dyn InteractionRepository>,
 }
 
 impl OpenID4VCIFinal1_0 {
@@ -201,6 +203,7 @@ impl OpenID4VCIFinal1_0 {
         wrp_validator: Arc<dyn WRPValidator>,
         history_repository: Arc<dyn HistoryRepository>,
         session_provider: Arc<dyn SessionProvider>,
+        interaction_repository: Arc<dyn InteractionRepository>,
     ) -> Self {
         let protocol_base_url = base_url.as_ref().map(|url| get_protocol_base_url(url));
         Self {
@@ -230,6 +233,7 @@ impl OpenID4VCIFinal1_0 {
             wrp_validator,
             history_repository,
             session_provider,
+            interaction_repository,
         }
     }
 
@@ -261,6 +265,7 @@ impl OpenID4VCIFinal1_0 {
         wrp_validator: Arc<dyn WRPValidator>,
         history_repository: Arc<dyn HistoryRepository>,
         session_provider: Arc<dyn SessionProvider>,
+        interaction_repository: Arc<dyn InteractionRepository>,
     ) -> Self {
         Self {
             client,
@@ -289,6 +294,7 @@ impl OpenID4VCIFinal1_0 {
             wrp_validator,
             history_repository,
             session_provider,
+            interaction_repository,
         }
     }
 
@@ -466,7 +472,6 @@ impl OpenID4VCIFinal1_0 {
         &self,
         interaction_id: InteractionId,
         interaction_data: &mut HolderInteractionData,
-        storage_access: &StorageAccess,
     ) -> Result<SecretString, IssuanceProtocolError> {
         let now = crate::clock::now_utc();
         if let Some(encrypted_token) = &interaction_data.access_token {
@@ -550,7 +555,7 @@ impl OpenID4VCIFinal1_0 {
                 .and_then(|expires_in| OffsetDateTime::from_unix_timestamp(expires_in.0).ok());
         }
 
-        storage_access
+        self.interaction_repository
             .update_interaction(
                 interaction_id,
                 UpdateInteractionRequest {
@@ -558,7 +563,7 @@ impl OpenID4VCIFinal1_0 {
                 },
             )
             .await
-            .map_err(IssuanceProtocolError::StorageAccessError)?;
+            .error_while("updating interaction")?;
 
         Ok(token_response.access_token)
     }
@@ -805,7 +810,6 @@ impl OpenID4VCIFinal1_0 {
         issuer_response: SubmitIssuerResponse,
         interaction_data: &HolderInteractionData,
         holder_binding: HolderBindingInput,
-        storage_access: &StorageAccess,
         organisation: &Organisation,
         interaction: &Interaction,
     ) -> Result<UpdateResponse, IssuanceProtocolError> {
@@ -938,9 +942,9 @@ impl OpenID4VCIFinal1_0 {
 
         let update_credential_schema = prepare_credential_schema(
             self.credential_schema_importer.as_ref(),
+            self.credential_schema_repository.as_ref(),
             schema.to_owned(),
             organisation,
-            storage_access,
             &mut credential,
         )
         .await?;
@@ -1269,7 +1273,6 @@ impl OpenID4VCIFinal1_0 {
         oauth_authorization_server_metadata: Option<OAuthAuthorizationServerMetadataResponseDTO>,
         grants: OpenID4VCIGrants,
         configuration_ids: &[String],
-        storage_access: &StorageAccess,
         continue_issuance: Option<ContinueIssuanceDTO>,
     ) -> Result<PrepareIssuanceSuccess, IssuanceProtocolError> {
         // We only support one credential at a time currently
@@ -1372,8 +1375,12 @@ impl OpenID4VCIFinal1_0 {
         };
         let data = serialize_interaction_data(&holder_data)?;
 
-        let interaction =
-            create_and_store_interaction(storage_access, data, Some(organisation)).await?;
+        let interaction = create_and_store_interaction(
+            self.interaction_repository.as_ref(),
+            data,
+            Some(organisation),
+        )
+        .await?;
         let (key_algorithms, key_storage_security) =
             credential_config_to_holder_signing_algs_and_key_storage_security(
                 self.key_algorithm_provider.as_ref(),
@@ -1550,7 +1557,6 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         &self,
         url: Url,
         organisation: Organisation,
-        storage_access: &StorageAccess,
         redirect_uri: Option<String>,
     ) -> Result<InvitationResponseEnum, IssuanceProtocolError> {
         let credential_offer = resolve_credential_offer(self.client.as_ref(), url).await?;
@@ -1643,7 +1649,6 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 Some(oauth_metadata),
                 credential_offer.grants,
                 &credential_offer.credential_configuration_ids,
-                storage_access,
                 None,
             )
             .await?;
@@ -1661,7 +1666,6 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         &self,
         interaction: Interaction,
         holder_binding: Option<HolderBindingInput>,
-        storage_access: &StorageAccess,
         tx_code: Option<String>,
     ) -> Result<UpdateResponse, IssuanceProtocolError> {
         let organisation =
@@ -1778,7 +1782,6 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 credential_response,
                 &interaction_data,
                 holder_binding,
-                storage_access,
                 organisation,
                 &interaction,
             )
@@ -1786,7 +1789,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
 
         interaction_data.credential_metadata = None;
         interaction_data.notification_id = notification_id.clone();
-        storage_access
+        self.interaction_repository
             .update_interaction(
                 interaction.id,
                 UpdateInteractionRequest {
@@ -1794,7 +1797,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 },
             )
             .await
-            .map_err(IssuanceProtocolError::StorageAccessError)?;
+            .error_while("updating interaction")?;
 
         if let (Some(notification_id), Some(notification_endpoint)) =
             (notification_id, interaction_data.notification_endpoint)
@@ -1830,7 +1833,6 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
     async fn holder_reject_credential(
         &self,
         credential: Credential,
-        storage_access: &StorageAccess,
     ) -> Result<(), IssuanceProtocolError> {
         let interaction = credential
             .interaction
@@ -1860,7 +1862,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         };
 
         let access_token = self
-            .holder_reuse_or_refresh_token(interaction.id, &mut interaction_data, storage_access)
+            .holder_reuse_or_refresh_token(interaction.id, &mut interaction_data)
             .await?;
 
         self.send_notification(
@@ -2191,7 +2193,6 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         &self,
         continue_issuance_dto: ContinueIssuanceDTO,
         organisation: Organisation,
-        storage_access: &StorageAccess,
     ) -> Result<ContinueIssuanceResponseDTO, IssuanceProtocolError> {
         let issuer_metadata = self
             .fetch_issuer_metadata(
@@ -2256,7 +2257,6 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                     authorization_server: continue_issuance_dto.authorization_server.to_owned(),
                 }),
                 &all_credential_configuration_ids,
-                storage_access,
                 Some(continue_issuance_dto),
             )
             .await?;
@@ -2547,7 +2547,7 @@ fn append_well_known(credential_issuer: &Url, path: &str) -> Result<String, Issu
 }
 
 async fn create_and_store_interaction(
-    storage_access: &StorageAccess,
+    interaction_repository: &dyn InteractionRepository,
     data: Vec<u8>,
     organisation: Option<Organisation>,
 ) -> Result<Interaction, IssuanceProtocolError> {
@@ -2555,25 +2555,32 @@ async fn create_and_store_interaction(
 
     let interaction = interaction_from_handle_invitation(Some(data), now, organisation);
 
-    storage_access
+    interaction_repository
         .create_interaction(interaction.clone())
         .await
-        .map_err(IssuanceProtocolError::StorageAccessError)?;
+        .error_while("creating interaction")?;
 
     Ok(interaction)
 }
 
 async fn prepare_credential_schema(
     credential_schema_importer: &dyn CredentialSchemaImporter,
+    credential_schema_repository: &dyn CredentialSchemaRepository,
     credential_schema: CredentialSchema,
     organisation: &Organisation,
-    storage_access: &StorageAccess,
     credential: &mut Credential,
 ) -> Result<Option<UpdateCredentialSchemaRequest>, IssuanceProtocolError> {
-    let stored_schema = storage_access
-        .get_schema(&credential_schema.schema_id, organisation.id)
+    let stored_schema = credential_schema_repository
+        .get_by_schema_id_and_organisation(
+            &credential_schema.schema_id,
+            organisation.id,
+            &CredentialSchemaRelations {
+                claim_schemas: Some(Default::default()),
+                organisation: Some(Default::default()),
+            },
+        )
         .await
-        .map_err(IssuanceProtocolError::StorageAccessError)?;
+        .error_while("getting credential schema")?;
 
     if let Some(stored_schema) = stored_schema {
         prepare_credential_schema_updates(credential_schema, stored_schema, credential)
@@ -2595,10 +2602,17 @@ async fn prepare_credential_schema(
         };
 
         // refetch and try again
-        let stored_schema = storage_access
-            .get_schema(&credential_schema.schema_id, organisation.id)
+        let stored_schema = credential_schema_repository
+            .get_by_schema_id_and_organisation(
+                &credential_schema.schema_id,
+                organisation.id,
+                &CredentialSchemaRelations {
+                    claim_schemas: Some(Default::default()),
+                    organisation: Some(Default::default()),
+                },
+            )
             .await
-            .map_err(IssuanceProtocolError::StorageAccessError)?
+            .error_while("getting credential schema")?
             .ok_or(IssuanceProtocolError::Failed(
                 "Credential schema not found".to_string(),
             ))?;

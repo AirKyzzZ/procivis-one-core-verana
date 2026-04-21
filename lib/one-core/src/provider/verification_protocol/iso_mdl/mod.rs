@@ -22,8 +22,7 @@ use super::dto::{
     UpdateResponse, VerificationProtocolCapabilities,
 };
 use super::{
-    FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocol,
-    VerificationProtocolError,
+    FormatMapper, TypeToDescriptorMapper, VerificationProtocol, VerificationProtocolError,
 };
 use crate::config::core_config::{
     CoreConfig, DidType, IdentifierType, TransportType, VerificationEngagement,
@@ -47,6 +46,7 @@ use crate::provider::presentation_formatter::mso_mdoc::model::{
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::SessionTranscript;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::verification_protocol::deserialize_interaction_data;
+use crate::repository::credential_repository::CredentialRepository;
 use crate::service::credential::dto::CredentialAttestationBlobs;
 use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
@@ -65,6 +65,7 @@ mod verify_proof;
 
 pub(crate) struct IsoMdl {
     config: Arc<CoreConfig>,
+    credential_repository: Arc<dyn CredentialRepository>,
     presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -75,6 +76,7 @@ pub(crate) struct IsoMdl {
 impl IsoMdl {
     pub(crate) fn new(
         config: Arc<CoreConfig>,
+        credential_repository: Arc<dyn CredentialRepository>,
         presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
         key_provider: Arc<dyn KeyProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -83,6 +85,7 @@ impl IsoMdl {
     ) -> Self {
         Self {
             config,
+            credential_repository,
             presentation_formatter_provider,
             key_provider,
             key_algorithm_provider,
@@ -102,7 +105,6 @@ impl VerificationProtocol for IsoMdl {
         &self,
         _url: Url,
         _organisation: Organisation,
-        _storage_access: &StorageAccess,
         _transport: String,
     ) -> Result<InvitationResponseDTO, VerificationProtocolError> {
         unimplemented!()
@@ -293,7 +295,6 @@ impl VerificationProtocol for IsoMdl {
         &self,
         proof: &Proof,
         interaction_data: serde_json::Value,
-        storage_access: &StorageAccess,
     ) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError> {
         let interaction_data: MdocBleHolderInteractionData =
             serde_json::from_value(interaction_data)?;
@@ -317,10 +318,13 @@ impl VerificationProtocol for IsoMdl {
             let schema_id = items_request.doc_type;
             let namespaces = items_request.name_spaces;
 
-            let credentials: Vec<_> = storage_access
-                .get_presentation_credentials_by_schema_id(schema_id.to_owned(), organisation_id)
-                .await
-                .map_err(VerificationProtocolError::StorageAccessError)?;
+            let credentials: Vec<_> = super::mapper::get_presentation_credentials_by_schema_id(
+                self.credential_repository.as_ref(),
+                schema_id.to_owned(),
+                organisation_id,
+            )
+            .await
+            .error_while("getting presentation credentials")?;
 
             let mut fields: Vec<PresentationDefinitionFieldDTO> = namespaces
                 .into_iter()
@@ -419,7 +423,6 @@ impl VerificationProtocol for IsoMdl {
         &self,
         _proof: &Proof,
         _context: Value,
-        _storage_access: &StorageAccess,
     ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
         Err(VerificationProtocolError::OperationNotSupported)
     }

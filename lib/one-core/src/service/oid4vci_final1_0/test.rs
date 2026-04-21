@@ -132,6 +132,7 @@ pub struct ProtocolMocks {
     pub wrp_validator: MockWRPValidator,
     pub history_repository: MockHistoryRepository,
     pub session_provider: MockSessionProvider,
+    pub interaction_repository: MockInteractionRepository,
 }
 
 fn setup_protocol(protocol_mocks: ProtocolMocks) -> OpenID4VCIFinal1_0 {
@@ -178,6 +179,7 @@ fn setup_protocol(protocol_mocks: ProtocolMocks) -> OpenID4VCIFinal1_0 {
         Arc::new(protocol_mocks.wrp_validator),
         Arc::new(protocol_mocks.history_repository),
         Arc::new(protocol_mocks.session_provider),
+        Arc::new(protocol_mocks.interaction_repository),
     )
 }
 

@@ -32,6 +32,7 @@ use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::holder_wallet_instance_repository::HolderWalletInstanceRepository;
+use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 
@@ -103,6 +104,7 @@ pub(crate) fn issuance_protocol_provider_from_config(
     history_repository: Arc<dyn HistoryRepository>,
     session_provider: Arc<dyn SessionProvider>,
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
+    interaction_repository: Arc<dyn InteractionRepository>,
 ) -> Result<Arc<dyn IssuanceProtocolProvider>, ConfigValidationError> {
     let mut protocols: HashMap<String, Arc<dyn IssuanceProtocol>> = HashMap::new();
 
@@ -144,6 +146,7 @@ pub(crate) fn issuance_protocol_provider_from_config(
                     wrp_validator.clone(),
                     history_repository.clone(),
                     session_provider.clone(),
+                    interaction_repository.clone(),
                 ))
             }
             IssuanceProtocolType::OpenId4VciDraft13 => {
@@ -166,6 +169,8 @@ pub(crate) fn issuance_protocol_provider_from_config(
                     client.clone(),
                     openid_metadata_cache.clone(),
                     credential_repository.clone(),
+                    credential_schema_repository.clone(),
+                    interaction_repository.clone(),
                     key_repository.clone(),
                     validity_credential_repository.clone(),
                     formatter_provider.clone(),
@@ -216,6 +221,7 @@ pub(crate) fn issuance_protocol_provider_from_config(
                     wrp_validator.clone(),
                     history_repository.clone(),
                     session_provider.clone(),
+                    interaction_repository.clone(),
                 ))
             }
         };

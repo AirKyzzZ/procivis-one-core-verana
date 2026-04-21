@@ -67,10 +67,11 @@ use crate::provider::verification_protocol::openid4vp::model::OpenID4VPPresentat
 use crate::provider::verification_protocol::{
     FormatMapper, TypeToDescriptorMapper, VerificationProtocol, serialize_interaction_data,
 };
+use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::service::proof::dto::{CreateProofInteractionData, ShareProofRequestParamsDTO};
-use crate::service::storage_proxy::StorageAccess;
 use crate::util::key_selection::KeyFilter;
 
 mod async_verifier_flow;
@@ -111,6 +112,8 @@ pub struct OpenID4VPProximityDraft00 {
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
     presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
     key_provider: Arc<dyn KeyProvider>,
+    credential_repository: Arc<dyn CredentialRepository>,
+    credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
     proof_repository: Arc<dyn ProofRepository>,
     certificate_validator: Arc<dyn CertificateValidator>,
@@ -126,6 +129,8 @@ impl OpenID4VPProximityDraft00 {
         mqtt_client: Option<Arc<dyn MqttClient>>,
         config: Arc<CoreConfig>,
         params: OpenID4VPProximityDraft00Params,
+        credential_repository: Arc<dyn CredentialRepository>,
+        credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
         interaction_repository: Arc<dyn InteractionRepository>,
         proof_repository: Arc<dyn ProofRepository>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -165,6 +170,8 @@ impl OpenID4VPProximityDraft00 {
             key_provider,
             credential_formatter_provider,
             presentation_formatter_provider,
+            credential_repository,
+            credential_schema_repository,
             interaction_repository,
             proof_repository,
             certificate_validator,
@@ -179,7 +186,6 @@ impl OpenID4VPProximityDraft00 {
         &self,
         url: Url,
         organisation: Organisation,
-        storage_access: &StorageAccess,
         holder_transport: &dyn ProximityHolderTransport<Context = T>,
     ) -> Result<InvitationResponseDTO, VerificationProtocolError> {
         if !holder_transport.can_handle(&url) {
@@ -196,7 +202,7 @@ impl OpenID4VPProximityDraft00 {
         handle_invitation_with_transport(
             url,
             organisation,
-            storage_access,
+            self.interaction_repository.as_ref(),
             self.identifier_creator.as_ref(),
             holder_transport,
             verification_fn,
@@ -247,7 +253,6 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
         &self,
         url: Url,
         organisation: Organisation,
-        storage_access: &StorageAccess,
         transport: String,
     ) -> Result<InvitationResponseDTO, VerificationProtocolError> {
         let transport = TransportType::try_from(transport.as_str()).map_err(|err| {
@@ -269,13 +274,8 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
                 let holder_transport = self.ble_holder_transport.as_ref().ok_or_else(|| {
                     VerificationProtocolError::Failed("BLE not available".to_string())
                 })?;
-                self.holder_handle_invitation_inner(
-                    url,
-                    organisation,
-                    storage_access,
-                    holder_transport,
-                )
-                .await
+                self.holder_handle_invitation_inner(url, organisation, holder_transport)
+                    .await
             }
             TransportType::Mqtt => {
                 if !self
@@ -290,13 +290,8 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
                 let holder_transport = self.mqtt_holder_transport.as_ref().ok_or_else(|| {
                     VerificationProtocolError::Failed("MQTT client not configured".to_string())
                 })?;
-                self.holder_handle_invitation_inner(
-                    url,
-                    organisation,
-                    storage_access,
-                    holder_transport,
-                )
-                .await
+                self.holder_handle_invitation_inner(url, organisation, holder_transport)
+                    .await
             }
             _ => Err(VerificationProtocolError::Failed(
                 "Unsupported transport type".to_string(),
@@ -375,7 +370,6 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
         &self,
         _proof: &Proof,
         _context: serde_json::Value,
-        _storage_access: &StorageAccess,
     ) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError> {
         Err(VerificationProtocolError::OperationNotSupported)
     }
@@ -599,7 +593,6 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
         &self,
         proof: &Proof,
         context: Value,
-        storage_access: &StorageAccess,
     ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
         let transport = TransportType::try_from(proof.transport.as_str()).map_err(|err| {
             VerificationProtocolError::Failed(format!("Invalid transport type: {err}"))
@@ -615,7 +608,8 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
         get_presentation_definition_v2(
             dcql_query,
             proof,
-            storage_access,
+            &*self.credential_repository,
+            &*self.credential_schema_repository,
             &*self.credential_formatter_provider,
             &*self.trust_information_provider,
             &self.config,
@@ -686,7 +680,7 @@ pub(super) async fn create_interaction_and_proof(
     verifier_identifier: Option<Identifier>,
     verification_protocol_type: VerificationProtocolType,
     transport_type: TransportType,
-    storage_access: &StorageAccess,
+    interaction_repository: &dyn InteractionRepository,
 ) -> Result<(InteractionId, Proof), VerificationProtocolError> {
     let now = crate::clock::now_utc();
     let interaction = Interaction {
@@ -700,10 +694,10 @@ pub(super) async fn create_interaction_and_proof(
         expires_at: None,
     };
 
-    let interaction_id = storage_access
+    let interaction_id = interaction_repository
         .create_interaction(interaction.clone())
         .await
-        .map_err(VerificationProtocolError::StorageAccessError)?;
+        .error_while("creating interaction")?;
 
     let proof_id: ProofId = Uuid::new_v4().into();
     Ok((

@@ -16,7 +16,6 @@ use crate::provider::issuance_protocol::dto::{
     ContinueIssuanceDTO, OpenID4VCIIssuerMetadataResponseDTO,
 };
 use crate::provider::issuance_protocol::model::InvitationResponseEnum;
-use crate::service::storage_proxy::StorageAccess;
 
 pub mod dto;
 pub mod error;
@@ -69,7 +68,6 @@ pub(crate) trait IssuanceProtocol: Send + Sync {
         &self,
         url: Url,
         organisation: Organisation,
-        storage_access: &StorageAccess,
         redirect_uri: Option<String>,
     ) -> Result<InvitationResponseEnum, IssuanceProtocolError>;
 
@@ -78,7 +76,6 @@ pub(crate) trait IssuanceProtocol: Send + Sync {
         &self,
         interaction: Interaction,
         holder_binding: Option<HolderBindingInput>,
-        storage_access: &StorageAccess,
         tx_code: Option<String>,
     ) -> Result<UpdateResponse, IssuanceProtocolError>;
 
@@ -86,14 +83,12 @@ pub(crate) trait IssuanceProtocol: Send + Sync {
     async fn holder_reject_credential(
         &self,
         credential: Credential,
-        storage_access: &StorageAccess,
     ) -> Result<(), IssuanceProtocolError>;
 
     async fn holder_continue_issuance(
         &self,
         continue_issuance_dto: ContinueIssuanceDTO,
         organisation: Organisation,
-        storage_access: &StorageAccess,
     ) -> Result<ContinueIssuanceResponseDTO, IssuanceProtocolError>;
 
     /// Generates QR-code content to start the credential issuance flow.

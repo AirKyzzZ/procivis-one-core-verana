@@ -365,12 +365,12 @@ async fn test_submit_proof_succeeds() {
     let mut verification_protocol = MockVerificationProtocol::default();
     verification_protocol
         .expect_holder_get_presentation_definition()
-        .withf(move |proof, _, _| {
+        .withf(move |proof, _| {
             assert_eq!(Uuid::from(proof.id), Uuid::from(proof_id));
             true
         })
         .once()
-        .returning(|_, _, _| {
+        .returning(|_, _| {
             Ok(PresentationDefinitionResponseDTO {
                 request_groups: vec![PresentationDefinitionRequestGroupResponseDTO {
                     id: "random".to_string(),
@@ -566,12 +566,12 @@ async fn test_submit_proof_multiple_credentials_succeeds() {
     let mut verification_protocol = MockVerificationProtocol::default();
     verification_protocol
         .expect_holder_get_presentation_definition()
-        .withf(move |proof, _, _| {
+        .withf(move |proof, _| {
             assert_eq!(Uuid::from(proof.id), Uuid::from(proof_id));
             true
         })
         .once()
-        .returning(|_, _, _| {
+        .returning(|_, _| {
             Ok(PresentationDefinitionResponseDTO {
                 request_groups: vec![PresentationDefinitionRequestGroupResponseDTO {
                     id: "random".to_string(),
@@ -778,12 +778,12 @@ async fn test_submit_proof_repeating_claims() {
     let mut verification_protocol = MockVerificationProtocol::default();
     verification_protocol
         .expect_holder_get_presentation_definition()
-        .withf(move |proof, _, _| {
+        .withf(move |proof, _| {
             assert_eq!(Uuid::from(proof.id), Uuid::from(proof_id));
             true
         })
         .once()
-        .returning(move |_, _, _| {
+        .returning(move |_, _| {
             Ok(PresentationDefinitionResponseDTO {
                 request_groups: vec![PresentationDefinitionRequestGroupResponseDTO {
                     id: "random".to_string(),
@@ -962,7 +962,7 @@ async fn test_accept_credential() {
     exchange_protocol_mock
         .expect_holder_accept_credential()
         .once()
-        .returning(|_, _, _, _| {
+        .returning(|_, _, _| {
             Ok(UpdateResponse {
                 result: SubmitIssuerResponse {
                     credential: "credential".to_string(),
@@ -1113,7 +1113,7 @@ async fn test_accept_credential_with_did() {
     exchange_protocol_mock
         .expect_holder_accept_credential()
         .once()
-        .returning(|_, _, _, _| {
+        .returning(|_, _, _| {
             Ok(UpdateResponse {
                 result: SubmitIssuerResponse {
                     credential: "credential".to_string(),
@@ -1261,7 +1261,7 @@ async fn test_accept_credential_wrong_tx_code() {
     exchange_protocol_mock
         .expect_holder_accept_credential()
         .once()
-        .return_once(|_, _, _, _| Err(TxCodeError::IncorrectCode.error_while("").into()));
+        .return_once(|_, _, _| Err(TxCodeError::IncorrectCode.error_while("").into()));
 
     let mut issuance_protocol_provider = MockIssuanceProtocolProvider::new();
     issuance_protocol_provider
@@ -1339,7 +1339,7 @@ async fn test_reject_credential() {
     exchange_protocol_mock
         .expect_holder_reject_credential()
         .once()
-        .returning(|_, _| Ok(()));
+        .returning(|_| Ok(()));
 
     let mut issuance_protocol_provider = MockIssuanceProtocolProvider::new();
     issuance_protocol_provider
@@ -1479,7 +1479,7 @@ async fn test_continue_issuance() {
     issuance_protocol
         .expect_holder_continue_issuance()
         .once()
-        .returning(move |_, _, _| {
+        .returning(move |_, _| {
             Ok(ContinueIssuanceResponseDTO {
                 interaction_id,
                 key_storage_security_levels: None,

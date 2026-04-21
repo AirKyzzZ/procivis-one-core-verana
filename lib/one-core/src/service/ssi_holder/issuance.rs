@@ -42,7 +42,6 @@ use crate::provider::issuance_protocol::{
     serialize_interaction_data,
 };
 use crate::service::error::MissingProviderError;
-use crate::service::storage_proxy::StorageAccess;
 use crate::validator::key_security::{
     match_key_security_level, validate_key_storage_supports_security_requirement,
 };
@@ -246,7 +245,7 @@ impl SSIHolderService {
             .error_while("getting protocol")?;
 
         let issuer_response = protocol
-            .holder_accept_credential(interaction, holder_binding, &self.storage_proxy(), tx_code)
+            .holder_accept_credential(interaction, holder_binding, tx_code)
             .await
             .error_while("accepting credential")?;
 
@@ -397,7 +396,7 @@ impl SSIHolderService {
                 credential.protocol.clone(),
             ))
             .error_while("getting protocol")?
-            .holder_accept_credential(interaction, holder_binding, &self.storage_proxy(), tx_code)
+            .holder_accept_credential(interaction, holder_binding, tx_code)
             .await
             .error_while("accepting credential")?;
 
@@ -567,13 +566,9 @@ impl SSIHolderService {
             })
             .collect::<Result<Vec<_>, HolderServiceError>>()?;
 
-        let storage_proxy = self.storage_proxy();
         let mut result: Result<(), HolderServiceError> = Ok(());
         for (credential, protocol) in credential_protocol_pairs {
-            if let Err(err) = self
-                .reject_single_credential(credential, &*protocol, &storage_proxy)
-                .await
-            {
+            if let Err(err) = self.reject_single_credential(credential, &*protocol).await {
                 result = Err(err);
             };
         }
@@ -585,11 +580,10 @@ impl SSIHolderService {
         &self,
         credential: Credential,
         protocol: &dyn IssuanceProtocol,
-        storage_access: &StorageAccess,
     ) -> Result<(), HolderServiceError> {
         let credential_id = credential.id;
         protocol
-            .holder_reject_credential(credential, storage_access)
+            .holder_reject_credential(credential)
             .await
             .error_while("rejecting credential")?;
 
@@ -616,7 +610,7 @@ impl SSIHolderService {
         redirect_uri: Option<String>,
     ) -> Result<HandleInvitationResultDTO, HolderServiceError> {
         let result = issuance_protocol
-            .holder_handle_invitation(url, organisation, &self.storage_proxy(), redirect_uri)
+            .holder_handle_invitation(url, organisation, redirect_uri)
             .await
             .error_while("handling invitation")?;
 
@@ -873,7 +867,6 @@ impl SSIHolderService {
                     authorization_server: issuance.request.authorization_server,
                 },
                 organisation,
-                &self.storage_proxy(),
             )
             .await
             .error_while("continuing issuance")?;

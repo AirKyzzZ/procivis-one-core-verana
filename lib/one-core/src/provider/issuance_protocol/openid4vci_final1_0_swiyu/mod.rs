@@ -51,9 +51,9 @@ use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::holder_wallet_instance_repository::HolderWalletInstanceRepository;
+use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
-use crate::service::storage_proxy::StorageAccess;
 
 pub(crate) const OID4VCI_FINAL1_0_SWIYU_VERSION: &str = "final-1.0-swiyu";
 
@@ -138,6 +138,7 @@ impl OpenID4VCISwiyu {
         wrp_validator: Arc<dyn WRPValidator>,
         history_repository: Arc<dyn HistoryRepository>,
         session_provider: Arc<dyn SessionProvider>,
+        interaction_repository: Arc<dyn InteractionRepository>,
     ) -> Self {
         let protocol_base_url = base_url
             .as_ref()
@@ -171,6 +172,7 @@ impl OpenID4VCISwiyu {
                 wrp_validator,
                 history_repository,
                 session_provider,
+                interaction_repository,
             ),
             config,
         }
@@ -187,11 +189,10 @@ impl IssuanceProtocol for OpenID4VCISwiyu {
         &self,
         url: Url,
         organisation: Organisation,
-        storage_access: &StorageAccess,
         redirect_uri: Option<String>,
     ) -> Result<InvitationResponseEnum, IssuanceProtocolError> {
         self.inner
-            .holder_handle_invitation(url, organisation, storage_access, redirect_uri)
+            .holder_handle_invitation(url, organisation, redirect_uri)
             .await
     }
 
@@ -199,22 +200,18 @@ impl IssuanceProtocol for OpenID4VCISwiyu {
         &self,
         interaction: Interaction,
         holder_binding: Option<HolderBindingInput>,
-        storage_access: &StorageAccess,
         tx_code: Option<String>,
     ) -> Result<UpdateResponse, IssuanceProtocolError> {
         self.inner
-            .holder_accept_credential(interaction, holder_binding, storage_access, tx_code)
+            .holder_accept_credential(interaction, holder_binding, tx_code)
             .await
     }
 
     async fn holder_reject_credential(
         &self,
         credential: Credential,
-        storage_access: &StorageAccess,
     ) -> Result<(), IssuanceProtocolError> {
-        self.inner
-            .holder_reject_credential(credential, storage_access)
-            .await
+        self.inner.holder_reject_credential(credential).await
     }
 
     async fn issuer_share_credential(
@@ -239,10 +236,9 @@ impl IssuanceProtocol for OpenID4VCISwiyu {
         &self,
         continue_issuance_dto: ContinueIssuanceDTO,
         organisation: Organisation,
-        storage_access: &StorageAccess,
     ) -> Result<ContinueIssuanceResponseDTO, IssuanceProtocolError> {
         self.inner
-            .holder_continue_issuance(continue_issuance_dto, organisation, storage_access)
+            .holder_continue_issuance(continue_issuance_dto, organisation)
             .await
     }
 

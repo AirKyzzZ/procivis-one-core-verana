@@ -59,13 +59,15 @@ use crate::provider::verification_protocol::openid4vp::model::{
     OpenID4VPVerifierInteractionContent, VpSubmissionData,
 };
 use crate::provider::verification_protocol::openid4vp::{
-    FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocolError,
-    get_client_id_scheme,
+    FormatMapper, TypeToDescriptorMapper, VerificationProtocolError, get_client_id_scheme,
 };
 use crate::provider::verification_protocol::{
     VerificationProtocol, deserialize_interaction_data, serialize_interaction_data,
 };
+use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::history_repository::HistoryRepository;
+use crate::repository::interaction_repository::InteractionRepository;
 use crate::service::oid4vp_final1_0::proof_request::{
     generate_authorization_request_params_final1_0, select_key_agreement_key_from_proof,
 };
@@ -92,7 +94,10 @@ pub(crate) struct OpenID4VPFinal1_0 {
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     key_provider: Arc<dyn KeyProvider>,
     certificate_validator: Arc<dyn CertificateValidator>,
+    credential_repository: Arc<dyn CredentialRepository>,
+    credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     history_repository: Arc<dyn HistoryRepository>,
+    interaction_repository: Arc<dyn InteractionRepository>,
     session_provider: Arc<dyn SessionProvider>,
     wrp_validator: Arc<dyn WRPValidator>,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
@@ -117,7 +122,10 @@ impl OpenID4VPFinal1_0 {
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         key_provider: Arc<dyn KeyProvider>,
         certificate_validator: Arc<dyn CertificateValidator>,
+        credential_repository: Arc<dyn CredentialRepository>,
+        credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
         history_repository: Arc<dyn HistoryRepository>,
+        interaction_repository: Arc<dyn InteractionRepository>,
         session_provider: Arc<dyn SessionProvider>,
         wrp_validator: Arc<dyn WRPValidator>,
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
@@ -134,7 +142,10 @@ impl OpenID4VPFinal1_0 {
             key_algorithm_provider,
             key_provider,
             certificate_validator,
+            credential_repository,
+            credential_schema_repository,
             history_repository,
+            interaction_repository,
             session_provider,
             wrp_validator,
             client,
@@ -307,7 +318,6 @@ impl OpenID4VPFinal1_0 {
         &self,
         url: Url,
         organisation: Organisation,
-        storage_access: &StorageAccess,
     ) -> Result<InvitationResponseDTO, VerificationProtocolError> {
         let query = url
             .query()
@@ -337,8 +347,12 @@ impl OpenID4VPFinal1_0 {
         };
 
         let now = crate::clock::now_utc();
-        let interaction =
-            create_and_store_interaction(storage_access, data, Some(organisation)).await?;
+        let interaction = create_and_store_interaction(
+            self.interaction_repository.as_ref(),
+            data,
+            Some(organisation),
+        )
+        .await?;
         let interaction_id = interaction.id;
 
         let proof = proof_from_handle_invitation(
@@ -380,7 +394,6 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
         &self,
         proof: &Proof,
         context: Value,
-        storage_access: &StorageAccess,
     ) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError> {
         let interaction_data: OpenID4VPHolderInteractionData = serde_json::from_value(context)?;
 
@@ -393,7 +406,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
         get_presentation_definition_for_dcql_query(
             dcql_query,
             proof,
-            storage_access,
+            &*self.credential_repository,
             &*self.credential_formatter_provider,
             &self.config,
         )
@@ -440,7 +453,6 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
         &self,
         url: Url,
         organisation: Organisation,
-        storage_access: &StorageAccess,
         _transport: String,
     ) -> Result<InvitationResponseDTO, VerificationProtocolError> {
         if !self.holder_can_handle(&url) {
@@ -449,8 +461,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
             ));
         }
 
-        self.handle_proof_invitation(url, organisation, storage_access)
-            .await
+        self.handle_proof_invitation(url, organisation).await
     }
 
     async fn holder_reject_proof(&self, _proof: &Proof) -> Result<(), VerificationProtocolError> {
@@ -691,7 +702,6 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
         &self,
         proof: &Proof,
         context: Value,
-        storage_access: &StorageAccess,
     ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
         let interaction_data: OpenID4VPHolderInteractionData = serde_json::from_value(context)?;
 
@@ -704,7 +714,8 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
         get_presentation_definition_v2(
             dcql_query,
             proof,
-            storage_access,
+            &*self.credential_repository,
+            &*self.credential_schema_repository,
             &*self.credential_formatter_provider,
             &*self.trust_information_provider,
             &self.config,
@@ -824,7 +835,7 @@ async fn encrypted_params(
 }
 
 async fn create_and_store_interaction(
-    storage_access: &StorageAccess,
+    interaction_repository: &dyn InteractionRepository,
     data: Vec<u8>,
     organisation: Option<Organisation>,
 ) -> Result<Interaction, VerificationProtocolError> {
@@ -832,10 +843,10 @@ async fn create_and_store_interaction(
 
     let interaction = interaction_from_handle_invitation(Some(data), now, organisation);
 
-    storage_access
+    interaction_repository
         .create_interaction(interaction.clone())
         .await
-        .map_err(VerificationProtocolError::StorageAccessError)?;
+        .error_while("creating interaction")?;
 
     Ok(interaction)
 }

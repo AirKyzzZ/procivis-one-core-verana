@@ -2,14 +2,20 @@ use std::sync::Arc;
 
 use indexmap::IndexMap;
 use one_crypto::utilities::{generate_alphanumeric, generate_numeric};
-use shared_types::{BlobId, IdentifierId};
+use shared_types::{BlobId, IdentifierId, InteractionId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::credential::{Clearable, CredentialStateEnum, UpdateCredentialRequest};
-use crate::model::credential_schema::{TransactionCode, TransactionCodeType};
-use crate::model::interaction::{Interaction, InteractionType};
+use crate::model::claim::ClaimRelations;
+use crate::model::credential::{
+    Clearable, Credential, CredentialRelations, CredentialStateEnum, UpdateCredentialRequest,
+};
+use crate::model::credential_schema::{
+    CredentialSchemaRelations, TransactionCode, TransactionCodeType,
+};
+use crate::model::identifier::IdentifierRelations;
+use crate::model::interaction::{Interaction, InteractionRelations, InteractionType};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::proto::identifier_creator::{CreateLocalIdentifierRequest, IdentifierCreator};
@@ -23,6 +29,8 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_security_level::provider::KeySecurityLevelProvider;
 use crate::provider::key_storage::KeyStorage;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::error::DataLayerError;
 use crate::repository::key_repository::KeyRepository;
 use crate::service::did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO};
 
@@ -283,4 +291,41 @@ pub(crate) fn generate_transaction_code(prescription: &TransactionCode) -> Strin
         TransactionCodeType::Numeric => generate_numeric(prescription.length as _),
         TransactionCodeType::Alphanumeric => generate_alphanumeric(prescription.length as _),
     }
+}
+
+// TODO: Moved out of StorageProxyImpl, look at callers and determine
+//       if this wrapper is actually needed or could just be inlined
+pub(crate) async fn get_credential_by_interaction_id(
+    credential_repository: &dyn CredentialRepository,
+    interaction_id: &InteractionId,
+) -> Result<Option<Credential>, DataLayerError> {
+    Ok(credential_repository
+        .get_credentials_by_interaction_id(
+            interaction_id,
+            &CredentialRelations {
+                holder_identifier: Some(IdentifierRelations {
+                    ..Default::default()
+                }),
+                issuer_identifier: Some(IdentifierRelations {
+                    did: Some(Default::default()),
+                    certificates: Some(Default::default()),
+                    ..Default::default()
+                }),
+                issuer_certificate: Some(Default::default()),
+                claims: Some(ClaimRelations {
+                    schema: Some(Default::default()),
+                }),
+                schema: Some(CredentialSchemaRelations {
+                    claim_schemas: Some(Default::default()),
+                    organisation: Some(Default::default()),
+                }),
+                interaction: Some(InteractionRelations {
+                    organisation: Some(Default::default()),
+                }),
+                ..Default::default()
+            },
+        )
+        .await?
+        .into_iter()
+        .next())
 }

@@ -73,10 +73,11 @@ use crate::provider::key_security_level::provider::MockKeySecurityLevelProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
+use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
+use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::oid4vci_draft13::service::credentials_format;
-use crate::service::storage_proxy::MockStorageProxy;
 use crate::service::test_utilities::{
     dummy_did, dummy_identifier, dummy_key, dummy_organisation, get_dummy_date,
 };
@@ -84,6 +85,8 @@ use crate::service::test_utilities::{
 #[derive(Default)]
 struct TestInputs {
     pub credential_repository: MockCredentialRepository,
+    pub credential_schema_repository: MockCredentialSchemaRepository,
+    pub interaction_repository: MockInteractionRepository,
     pub metadata_cache: MockOpenIDMetadataFetcher,
     pub validity_credential_repository: MockValidityCredentialRepository,
     pub formatter_provider: MockCredentialFormatterProvider,
@@ -104,6 +107,8 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCI13 {
         Arc::new(ReqwestClient::default()),
         Arc::new(inputs.metadata_cache),
         Arc::new(inputs.credential_repository),
+        Arc::new(inputs.credential_schema_repository),
+        Arc::new(inputs.interaction_repository),
         Arc::new(MockKeyRepository::new()),
         Arc::new(inputs.validity_credential_repository),
         Arc::new(inputs.formatter_provider),
@@ -577,7 +582,6 @@ async fn test_handle_invitation_credential_by_ref_with_did_success() {
 
     inner_test_handle_invitation_credential_by_ref_success(
         identifier_creator,
-        MockStorageProxy::default(),
         credential,
         Some("did:example:123".to_string()),
         true,
@@ -589,8 +593,9 @@ async fn test_handle_invitation_credential_by_ref_with_did_success() {
 async fn test_holder_accept_credential_success() {
     let mock_server = MockServer::start().await;
     let mut formatter_provider = MockCredentialFormatterProvider::default();
-    let mut storage_access = MockStorageProxy::default();
     let mut key_provider = MockKeyProvider::default();
+    let mut credential_repository = MockCredentialRepository::default();
+    let mut interaction_repository = MockInteractionRepository::default();
 
     let interaction_data = HolderInteractionData {
         issuer_url: mock_server.uri(),
@@ -704,14 +709,14 @@ async fn test_holder_accept_credential_success() {
             Some(Arc::new(formatter))
         });
 
-    storage_access
-        .expect_get_credential_by_interaction_id()
+    credential_repository
+        .expect_get_credentials_by_interaction_id()
         .returning({
             let clone = credential.clone();
-            move |_| Ok(clone.clone())
+            move |_, _| Ok(vec![clone.clone()])
         });
 
-    storage_access
+    interaction_repository
         .expect_update_interaction()
         .returning(|_, _| Ok(()));
 
@@ -771,6 +776,8 @@ async fn test_holder_accept_credential_success() {
         key_provider,
         key_algorithm_provider,
         identifier_creator,
+        credential_repository,
+        interaction_repository,
         config: dummy_config(),
         ..Default::default()
     });
@@ -787,7 +794,6 @@ async fn test_holder_accept_credential_success() {
                 },
                 key,
             }),
-            &storage_access,
             None,
         )
         .await
@@ -809,8 +815,9 @@ async fn test_holder_accept_credential_success() {
 async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
     let mock_server = MockServer::start().await;
     let mut formatter_provider = MockCredentialFormatterProvider::default();
-    let mut storage_access = MockStorageProxy::default();
     let mut key_provider = MockKeyProvider::default();
+    let mut credential_repository = MockCredentialRepository::default();
+    let mut interaction_repository = MockInteractionRepository::default();
 
     let interaction_data = HolderInteractionData {
         issuer_url: mock_server.uri(),
@@ -926,14 +933,14 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
             }
         });
 
-    storage_access
-        .expect_get_credential_by_interaction_id()
+    credential_repository
+        .expect_get_credentials_by_interaction_id()
         .returning({
             let clone = credential.clone();
-            move |_| Ok(clone.clone())
+            move |_, _| Ok(vec![clone.clone()])
         });
 
-    storage_access
+    interaction_repository
         .expect_update_interaction()
         .returning(|_, _| Ok(()));
 
@@ -999,6 +1006,8 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         key_provider,
         key_algorithm_provider,
         identifier_creator,
+        credential_repository,
+        interaction_repository,
         config: dummy_config(),
         ..Default::default()
     });
@@ -1025,7 +1034,6 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
                 },
                 key,
             }),
-            &storage_access,
             None,
         )
         .await
@@ -1043,8 +1051,9 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
 async fn test_holder_accept_expired_credential_fails() {
     let mock_server = MockServer::start().await;
     let mut formatter_provider = MockCredentialFormatterProvider::default();
-    let mut storage_access = MockStorageProxy::default();
     let mut key_provider = MockKeyProvider::default();
+    let mut credential_repository = MockCredentialRepository::default();
+    let mut interaction_repository = MockInteractionRepository::default();
 
     let interaction_data = HolderInteractionData {
         issuer_url: mock_server.uri(),
@@ -1159,14 +1168,14 @@ async fn test_holder_accept_expired_credential_fails() {
             Some(Arc::new(formatter))
         });
 
-    storage_access
-        .expect_get_credential_by_interaction_id()
+    credential_repository
+        .expect_get_credentials_by_interaction_id()
         .returning({
             let clone = credential.clone();
-            move |_| Ok(clone.clone())
+            move |_, _| Ok(vec![clone.clone()])
         });
 
-    storage_access
+    interaction_repository
         .expect_update_interaction()
         .returning(|_, _| Ok(()));
 
@@ -1214,6 +1223,8 @@ async fn test_holder_accept_expired_credential_fails() {
         formatter_provider,
         key_provider,
         key_algorithm_provider,
+        credential_repository,
+        interaction_repository,
         config: dummy_config(),
         ..Default::default()
     });
@@ -1230,7 +1241,6 @@ async fn test_holder_accept_expired_credential_fails() {
                 },
                 key,
             }),
-            &storage_access,
             None,
         )
         .await;
@@ -1248,7 +1258,7 @@ async fn test_holder_accept_expired_credential_fails() {
 #[tokio::test]
 async fn test_holder_accept_tx_code_invalid() {
     let mock_server = MockServer::start().await;
-    let mut storage_access = MockStorageProxy::default();
+    let mut credential_repository = MockCredentialRepository::default();
 
     let interaction_data = HolderInteractionData {
         issuer_url: mock_server.uri(),
@@ -1305,13 +1315,14 @@ async fn test_holder_accept_tx_code_invalid() {
         .mount(&mock_server)
         .await;
 
-    storage_access
-        .expect_get_credential_by_interaction_id()
+    credential_repository
+        .expect_get_credentials_by_interaction_id()
         .once()
-        .return_once(move |_| Ok(credential));
+        .return_once(move |_, _| Ok(vec![credential]));
 
     let openid_provider = setup_protocol(TestInputs {
         config: dummy_config(),
+        credential_repository,
         ..Default::default()
     });
 
@@ -1327,7 +1338,6 @@ async fn test_holder_accept_tx_code_invalid() {
                 },
                 key,
             }),
-            &storage_access,
             Some("code".to_string()),
         )
         .await;
@@ -1338,7 +1348,7 @@ async fn test_holder_accept_tx_code_invalid() {
 #[tokio::test]
 async fn test_holder_reject_credential() {
     let mock_server = MockServer::start().await;
-    let mut storage_access = MockStorageProxy::default();
+    let mut interaction_repository = MockInteractionRepository::default();
     let mut did_method_provider = MockDidMethodProvider::default();
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
 
@@ -1471,7 +1481,7 @@ async fn test_holder_reject_credential() {
         Some(Arc::new(method))
     });
 
-    storage_access
+    interaction_repository
         .expect_update_interaction()
         .once()
         .returning(move |_, _| Ok(()));
@@ -1479,6 +1489,7 @@ async fn test_holder_reject_credential() {
     let openid_provider = setup_protocol(TestInputs {
         did_method_provider,
         key_algorithm_provider,
+        interaction_repository,
         config: dummy_config(),
         params: Some(OpenID4VCIDraft13Params {
             pre_authorized_code_expires_in: Duration::seconds(10),
@@ -1498,7 +1509,7 @@ async fn test_holder_reject_credential() {
     });
 
     openid_provider
-        .holder_reject_credential(credential, &storage_access)
+        .holder_reject_credential(credential)
         .await
         .unwrap();
 }
@@ -1507,7 +1518,6 @@ async fn test_holder_reject_credential() {
 async fn test_handle_invitation_credential_by_ref_without_did_success() {
     inner_test_handle_invitation_credential_by_ref_success(
         MockIdentifierCreator::default(),
-        MockStorageProxy::default(),
         generic_credential_did(),
         None,
         true,
@@ -1519,7 +1529,6 @@ async fn test_handle_invitation_credential_by_ref_without_did_success() {
 async fn test_handle_invitation_credential_no_openid_configuration_success() {
     inner_test_handle_invitation_credential_by_ref_success(
         MockIdentifierCreator::default(),
-        MockStorageProxy::default(),
         generic_credential_did(),
         None,
         false,
@@ -1529,7 +1538,6 @@ async fn test_handle_invitation_credential_no_openid_configuration_success() {
 
 async fn inner_test_handle_invitation_credential_by_ref_success(
     identifier_creator: MockIdentifierCreator,
-    mut storage_proxy: MockStorageProxy,
     credential: Credential,
     issuer_did: Option<String>,
     openid_configuration_enabled: bool,
@@ -1539,6 +1547,10 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
 
     let credential_schema_id = credential.schema.clone().unwrap().id;
     let credential_issuer = format!("{issuer_url}/ssi/openid4vci/draft-13/{credential_schema_id}",);
+
+    let mut credential_repository = MockCredentialRepository::default();
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+    let mut interaction_repository = MockInteractionRepository::default();
 
     let mut credential_offer = json!({
         "credential_issuer": credential_issuer,
@@ -1660,7 +1672,7 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
         });
 
     let capture_integration_id = Arc::new(Mutex::new(None));
-    storage_proxy
+    interaction_repository
         .expect_create_interaction()
         .times(1)
         .returning({
@@ -1671,11 +1683,11 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
                 Ok(i.id)
             }
         });
-    storage_proxy
-        .expect_get_schema()
+    credential_schema_repository
+        .expect_get_by_schema_id_and_organisation()
         .times(1)
-        .returning(|_, _| Ok(None));
-    storage_proxy
+        .returning(|_, _, _| Ok(None));
+    credential_repository
         .expect_create_credential()
         .times(1)
         .returning(|c| Ok(c.id));
@@ -1695,12 +1707,15 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
 
     let protocol = setup_protocol(TestInputs {
         handle_invitation_operations: operations,
+        credential_repository,
+        credential_schema_repository,
+        interaction_repository,
         metadata_cache,
         identifier_creator,
         ..Default::default()
     });
     let result = protocol
-        .holder_handle_invitation(url, dummy_organisation(None), &storage_proxy, None)
+        .holder_handle_invitation(url, dummy_organisation(None), None)
         .await
         .unwrap();
 
@@ -1735,11 +1750,13 @@ async fn inner_continue_issuance_test(
     with_scope: bool,
     with_credential_configuration_ids: bool,
 ) {
-    let mut storage_proxy = MockStorageProxy::default();
     let credential = generic_credential_did();
-
     let credential_schema_id = credential.schema.clone().unwrap().id;
     let credential_issuer = format!("http://issuer/ssi/openid4vci/draft-13/{credential_schema_id}");
+
+    let mut credential_repository = MockCredentialRepository::default();
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+    let mut interaction_repository = MockInteractionRepository::default();
 
     let mut metadata_cache = MockOpenIDMetadataFetcher::new();
 
@@ -1822,19 +1839,18 @@ async fn inner_continue_issuance_test(
             }
         });
 
-    storage_proxy
+    credential_repository
         .expect_create_credential()
         .times(1)
         .returning(|_| Ok(Uuid::new_v4().into()));
-
-    storage_proxy
+    interaction_repository
         .expect_create_interaction()
         .times(1)
         .returning(|_| Ok(Uuid::new_v4().into()));
-    storage_proxy
-        .expect_get_schema()
+    credential_schema_repository
+        .expect_get_by_schema_id_and_organisation()
         .times(1)
-        .returning(|_, _| Ok(None));
+        .returning(|_, _, _| Ok(None));
 
     let mut operations = MockHandleInvitationOperations::default();
     operations
@@ -1849,6 +1865,9 @@ async fn inner_continue_issuance_test(
 
     let protocol = setup_protocol(TestInputs {
         handle_invitation_operations: operations,
+        credential_repository,
+        credential_schema_repository,
+        interaction_repository,
         metadata_cache,
         ..Default::default()
     });
@@ -1880,7 +1899,6 @@ async fn inner_continue_issuance_test(
                 authorization_server: None,
             },
             dummy_organisation(None),
-            &storage_proxy,
         )
         .await;
     let_assert!(Ok(_) = result);

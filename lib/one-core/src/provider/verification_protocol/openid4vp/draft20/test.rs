@@ -52,8 +52,9 @@ use crate::provider::verification_protocol::openid4vp::model::{
 use crate::provider::verification_protocol::{
     FormatMapper, TypeToDescriptorMapper, VerificationProtocol, deserialize_interaction_data,
 };
+use crate::repository::credential_repository::MockCredentialRepository;
+use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
-use crate::service::storage_proxy::MockStorageProxy;
 use crate::service::test_utilities::{dummy_identifier, dummy_organisation};
 
 #[derive(Default)]
@@ -65,6 +66,7 @@ struct TestInputs {
     pub did_method_provider: MockDidMethodProvider,
     pub certificate_validator: MockCertificateValidator,
     pub metadata_cache: MockOpenIDMetadataFetcher,
+    pub interaction_repository: MockInteractionRepository,
     pub params: Option<OpenID4Vp20Params>,
 }
 
@@ -77,6 +79,8 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VP20HTTP {
         Arc::new(inputs.key_algorithm_provider),
         Arc::new(inputs.key_provider),
         Arc::new(inputs.certificate_validator),
+        Arc::new(MockCredentialRepository::default()),
+        Arc::new(inputs.interaction_repository),
         Arc::new(ReqwestClient::default()),
         Arc::new(inputs.metadata_cache),
         inputs.params.unwrap_or(generic_params()),
@@ -563,21 +567,19 @@ async fn test_handle_invitation_proof_success() {
 
     let url = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={nonce}&client_id_scheme=redirect_uri&client_id={callback_url}&client_metadata={client_metadata}&response_mode=direct_post&response_uri={callback_url}&presentation_definition={presentation_definition}")).unwrap();
 
-    let mut storage_proxy = MockStorageProxy::default();
-    storage_proxy
+    let mut interaction_repository = MockInteractionRepository::new();
+    interaction_repository
         .expect_create_interaction()
-        .times(2)
+        .times(1)
         .returning(move |request| Ok(request.id));
 
-    setup_protocol(Default::default())
-        .holder_handle_invitation(
-            url,
-            dummy_organisation(None),
-            &storage_proxy,
-            "HTTP".to_string(),
-        )
-        .await
-        .unwrap();
+    setup_protocol(TestInputs {
+        interaction_repository,
+        ..Default::default()
+    })
+    .holder_handle_invitation(url, dummy_organisation(None), "HTTP".to_string())
+    .await
+    .unwrap();
 
     let mock_server = MockServer::start().await;
     let client_metadata_uri = format!("{}/client_metadata_uri", mock_server.uri());
@@ -602,14 +604,20 @@ async fn test_handle_invitation_proof_success() {
 
     let url_using_uri_instead_of_values = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={nonce}&client_id_scheme=redirect_uri&client_id={callback_url}&client_metadata_uri={client_metadata_uri}&response_mode=direct_post&response_uri={callback_url}&presentation_definition_uri={presentation_definition_uri}")).unwrap();
 
+    let mut interaction_repository = MockInteractionRepository::new();
+    interaction_repository
+        .expect_create_interaction()
+        .times(1)
+        .returning(move |request| Ok(request.id));
+
     setup_protocol(TestInputs {
+        interaction_repository,
         metadata_cache,
         ..Default::default()
     })
     .holder_handle_invitation(
         url_using_uri_instead_of_values,
         dummy_organisation(None),
-        &storage_proxy,
         "HTTP".to_string(),
     )
     .await
@@ -618,11 +626,6 @@ async fn test_handle_invitation_proof_success() {
 
 #[tokio::test]
 async fn test_handle_invitation_proof_with_client_request_ok() {
-    let protocol = setup_protocol(TestInputs {
-        params: Some(generic_params()),
-        ..Default::default()
-    });
-
     let mock_server = MockServer::start().await;
 
     let client_id = format!("{}/client-id", mock_server.uri());
@@ -640,19 +643,20 @@ async fn test_handle_invitation_proof_with_client_request_ok() {
         .parse()
         .unwrap();
 
-    let mut storage_proxy = MockStorageProxy::default();
-    storage_proxy
+    let mut interaction_repository = MockInteractionRepository::new();
+    interaction_repository
         .expect_create_interaction()
         .times(1)
         .returning(move |request| Ok(request.id));
 
+    let protocol = setup_protocol(TestInputs {
+        params: Some(generic_params()),
+        interaction_repository,
+        ..Default::default()
+    });
+
     protocol
-        .holder_handle_invitation(
-            url,
-            dummy_organisation(None),
-            &storage_proxy,
-            "HTTP".to_string(),
-        )
+        .holder_handle_invitation(url, dummy_organisation(None), "HTTP".to_string())
         .await
         .unwrap();
 }
@@ -683,13 +687,6 @@ async fn test_handle_invitation_proof_with_client_id_scheme_in_client_request_to
         .expect_key_algorithm_from_jose_alg()
         .return_once(|_| Some((KeyAlgorithmType::Ecdsa, Arc::new(key_alg))));
 
-    let protocol = setup_protocol(TestInputs {
-        params: Some(generic_params()),
-        did_method_provider,
-        key_algorithm_provider,
-        ..Default::default()
-    });
-
     let mock_server = MockServer::start().await;
 
     let client_request_uri = format!("{}/client-request", mock_server.uri());
@@ -716,8 +713,8 @@ async fn test_handle_invitation_proof_with_client_id_scheme_in_client_request_to
     .parse()
     .unwrap();
 
-    let mut storage_proxy = MockStorageProxy::default();
-    storage_proxy
+    let mut interaction_repository = MockInteractionRepository::new();
+    interaction_repository
         .expect_create_interaction()
         .times(1)
         .withf(move |interaction| {
@@ -731,13 +728,16 @@ async fn test_handle_invitation_proof_with_client_id_scheme_in_client_request_to
         })
         .returning(move |request| Ok(request.id));
 
+    let protocol = setup_protocol(TestInputs {
+        params: Some(generic_params()),
+        did_method_provider,
+        key_algorithm_provider,
+        interaction_repository,
+        ..Default::default()
+    });
+
     protocol
-        .holder_handle_invitation(
-            url,
-            dummy_organisation(None),
-            &storage_proxy,
-            "HTTP".to_string(),
-        )
+        .holder_handle_invitation(url, dummy_organisation(None), "HTTP".to_string())
         .await
         .unwrap();
 }
@@ -768,14 +768,11 @@ async fn test_handle_invitation_proof_failed() {
     let nonce = Uuid::new_v4().to_string();
     let callback_url = "http://127.0.0.1/callback";
 
-    let storage_proxy = MockStorageProxy::default();
-
     let incorrect_response_type = Url::parse(&format!("openid4vp://?response_type=some_token&nonce={nonce}&client_id_scheme=redirect_uri&client_id={callback_url}&client_metadata={client_metadata}&response_mode=direct_post&response_uri={callback_url}&presentation_definition={presentation_definition}")).unwrap();
     let result = protocol
         .holder_handle_invitation(
             incorrect_response_type,
             dummy_organisation(None),
-            &storage_proxy,
             "HTTP".to_string(),
         )
         .await
@@ -787,12 +784,7 @@ async fn test_handle_invitation_proof_failed() {
 
     let missing_nonce = Url::parse(&format!("openid4vp://?response_type=vp_token&client_id_scheme=redirect_uri&client_id={callback_url}&client_metadata={client_metadata}&response_mode=direct_post&response_uri={callback_url}&presentation_definition={presentation_definition}")).unwrap();
     let result = protocol
-        .holder_handle_invitation(
-            missing_nonce,
-            dummy_organisation(None),
-            &storage_proxy,
-            "HTTP".to_string(),
-        )
+        .holder_handle_invitation(missing_nonce, dummy_organisation(None), "HTTP".to_string())
         .await
         .unwrap_err();
     assert!(matches!(
@@ -805,7 +797,6 @@ async fn test_handle_invitation_proof_failed() {
         .holder_handle_invitation(
             incorrect_client_id_scheme,
             dummy_organisation(None),
-            &storage_proxy,
             "HTTP".to_string(),
         )
         .await
@@ -820,7 +811,6 @@ async fn test_handle_invitation_proof_failed() {
         .holder_handle_invitation(
             incorrect_response_mode,
             dummy_organisation(None),
-            &storage_proxy,
             "HTTP".to_string(),
         )
         .await
@@ -835,7 +825,6 @@ async fn test_handle_invitation_proof_failed() {
         .holder_handle_invitation(
             incorrect_client_id_scheme,
             dummy_organisation(None),
-            &storage_proxy,
             "HTTP".to_string(),
         )
         .await
@@ -852,7 +841,6 @@ async fn test_handle_invitation_proof_failed() {
         .holder_handle_invitation(
             missing_metadata_field,
             dummy_organisation(None),
-            &storage_proxy,
             "HTTP".to_string(),
         )
         .await
@@ -867,7 +855,6 @@ async fn test_handle_invitation_proof_failed() {
         .holder_handle_invitation(
             both_client_metadata_and_uri_specified,
             dummy_organisation(None),
-            &storage_proxy,
             "HTTP".to_string(),
         )
         .await
@@ -882,7 +869,6 @@ async fn test_handle_invitation_proof_failed() {
         .holder_handle_invitation(
             both_presentation_definition_and_uri_specified,
             dummy_organisation(None),
-            &storage_proxy,
             "HTTP".to_string(),
         )
         .await
@@ -906,7 +892,6 @@ async fn test_handle_invitation_proof_failed() {
         .holder_handle_invitation(
             client_metadata_uri_is_not_https,
             dummy_organisation(None),
-            &storage_proxy,
             "HTTP".to_string(),
         )
         .await
@@ -922,7 +907,6 @@ async fn test_handle_invitation_proof_failed() {
         .holder_handle_invitation(
             presentation_definition_uri_is_not_https,
             dummy_organisation(None),
-            &storage_proxy,
             "HTTP".to_string(),
         )
         .await

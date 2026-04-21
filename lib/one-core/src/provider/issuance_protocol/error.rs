@@ -16,8 +16,6 @@ pub enum IssuanceProtocolError {
     BindingAutogenerationFailure(String),
     #[error("Incorrect credential schema type")]
     IncorrectCredentialSchemaType,
-    #[error(transparent)]
-    StorageAccessError(anyhow::Error),
     #[error("Credential offer issuer did does not match credential issuer did")]
     DidMismatch,
     #[error("Credential offer issuer certificate does not match credential issuer certificate")]
@@ -56,10 +54,7 @@ impl ErrorCodeMixin for IssuanceProtocolError {
         match self {
             Self::IncorrectCredentialSchemaType => ErrorCode::BR_0087,
             Self::InvalidRequest(_) => ErrorCode::BR_0085,
-            Self::Failed(_)
-            | Self::Json(_)
-            | Self::StorageAccessError(_)
-            | Self::OpenIDIssuanceError(_) => ErrorCode::BR_0062,
+            Self::Failed(_) | Self::Json(_) | Self::OpenIDIssuanceError(_) => ErrorCode::BR_0062,
             Self::DidMismatch
             | Self::KeyMismatch
             | Self::CertificateMismatch

@@ -18,7 +18,7 @@ use crate::provider::verification_protocol::openid4vp::model::{ClientIdScheme, D
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::{
     CreatePresentationParams, create_interaction_and_proof, create_presentation,
 };
-use crate::service::storage_proxy::StorageAccess;
+use crate::repository::interaction_repository::InteractionRepository;
 
 #[async_trait]
 pub(crate) trait ProximityHolderTransport: Send + Sync {
@@ -61,7 +61,7 @@ pub(crate) trait ProximityHolderTransport: Send + Sync {
 pub(crate) async fn handle_invitation_with_transport<T: Send + Sync + 'static>(
     url: Url,
     organisation: Organisation,
-    storage_access: &StorageAccess,
+    interaction_repository: &dyn InteractionRepository,
     identifier_creator: &dyn IdentifierCreator,
     transport: &dyn ProximityHolderTransport<Context = T>,
     verification_fn: VerificationFn,
@@ -72,7 +72,7 @@ pub(crate) async fn handle_invitation_with_transport<T: Send + Sync + 'static>(
         None,
         VerificationProtocolType::OpenId4VpProximityDraft00,
         transport.transport_type(),
-        storage_access,
+        interaction_repository,
     )
     .await?;
 
@@ -111,7 +111,7 @@ pub(crate) async fn handle_invitation_with_transport<T: Send + Sync + 'static>(
     let interaction_data = transport
         .interaction_data_from_authz_request(presentation_request.payload.custom, context)?;
 
-    storage_access
+    interaction_repository
         .update_interaction(
             interaction_id,
             UpdateInteractionRequest {
@@ -119,7 +119,7 @@ pub(crate) async fn handle_invitation_with_transport<T: Send + Sync + 'static>(
             },
         )
         .await
-        .map_err(VerificationProtocolError::StorageAccessError)?;
+        .error_while("updating interaction")?;
 
     Ok(InvitationResponseDTO {
         interaction_id,

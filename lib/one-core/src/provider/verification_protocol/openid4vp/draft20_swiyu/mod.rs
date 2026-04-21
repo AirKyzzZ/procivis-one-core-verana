@@ -32,7 +32,7 @@ use crate::provider::verification_protocol::openid4vp::model::{
     OpenID4VPDraftClientMetadata, OpenID4VPVerifierInteractionContent,
 };
 use crate::provider::verification_protocol::openid4vp::{
-    FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocolError,
+    FormatMapper, TypeToDescriptorMapper, VerificationProtocolError,
 };
 use crate::provider::verification_protocol::{
     VerificationProtocol, deserialize_interaction_data, serialize_interaction_data,
@@ -132,10 +132,9 @@ impl VerificationProtocol for OpenID4VP20Swiyu {
         &self,
         proof: &Proof,
         context: serde_json::Value,
-        storage_access: &StorageAccess,
     ) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError> {
         self.inner
-            .holder_get_presentation_definition(proof, context, storage_access)
+            .holder_get_presentation_definition(proof, context)
             .await
     }
 
@@ -164,7 +163,6 @@ impl VerificationProtocol for OpenID4VP20Swiyu {
         &self,
         url: Url,
         organisation: Organisation,
-        storage_access: &StorageAccess,
         transport: String,
     ) -> Result<InvitationResponseDTO, VerificationProtocolError> {
         if !self.holder_can_handle(&url) {
@@ -176,7 +174,7 @@ impl VerificationProtocol for OpenID4VP20Swiyu {
         if url.scheme() == "swiyu-verify" {
             return self
                 .inner
-                .holder_handle_invitation(url, organisation, storage_access, transport)
+                .holder_handle_invitation(url, organisation, transport)
                 .await;
         }
 
@@ -213,7 +211,7 @@ impl VerificationProtocol for OpenID4VP20Swiyu {
         })?;
 
         self.inner
-            .holder_handle_invitation(expected_url, organisation, storage_access, transport)
+            .holder_handle_invitation(expected_url, organisation, transport)
             .await
     }
 
@@ -277,7 +275,6 @@ impl VerificationProtocol for OpenID4VP20Swiyu {
         &self,
         _proof: &Proof,
         _context: Value,
-        _storage_access: &StorageAccess,
     ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
         Err(VerificationProtocolError::OperationNotSupported)
     }

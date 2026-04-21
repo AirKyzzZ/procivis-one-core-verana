@@ -47,6 +47,7 @@ use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::holder_wallet_instance_repository::MockHolderWalletInstanceRepository;
+use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::test_utilities::{dummy_identifier, dummy_organisation, generic_config};
@@ -212,6 +213,7 @@ async fn test_issuer_submit_succeeds() {
         Arc::new(MockWRPValidator::new()),
         Arc::new(MockHistoryRepository::new()),
         Arc::new(NoSessionProvider),
+        Arc::new(MockInteractionRepository::new()),
     );
 
     let result = provider
@@ -370,6 +372,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         Arc::new(MockWRPValidator::new()),
         Arc::new(MockHistoryRepository::new()),
         Arc::new(NoSessionProvider),
+        Arc::new(MockInteractionRepository::new()),
     );
 
     service
@@ -517,6 +520,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         Arc::new(MockWRPValidator::new()),
         Arc::new(MockHistoryRepository::new()),
         Arc::new(NoSessionProvider),
+        Arc::new(MockInteractionRepository::new()),
     );
 
     service
@@ -626,6 +630,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
         Arc::new(MockWRPValidator::new()),
         Arc::new(MockHistoryRepository::new()),
         Arc::new(NoSessionProvider),
+        Arc::new(MockInteractionRepository::new()),
     );
 
     assert!(matches!(

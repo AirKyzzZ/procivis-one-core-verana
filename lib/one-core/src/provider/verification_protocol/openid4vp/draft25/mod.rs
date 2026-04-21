@@ -50,12 +50,13 @@ use crate::provider::verification_protocol::openid4vp::model::{
 use crate::provider::verification_protocol::openid4vp::presentation_exchange::pex_submission_data;
 use crate::provider::verification_protocol::openid4vp::service::encryption_info_from_metadata;
 use crate::provider::verification_protocol::openid4vp::{
-    FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocolError,
-    get_client_id_scheme,
+    FormatMapper, TypeToDescriptorMapper, VerificationProtocolError, get_client_id_scheme,
 };
 use crate::provider::verification_protocol::{
     VerificationProtocol, deserialize_interaction_data, serialize_interaction_data,
 };
+use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::interaction_repository::InteractionRepository;
 use crate::service::oid4vp_draft25::proof_request::generate_authorization_request_params_draft25;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 
@@ -80,6 +81,8 @@ pub(crate) struct OpenID4VP25HTTP {
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     key_provider: Arc<dyn KeyProvider>,
     certificate_validator: Arc<dyn CertificateValidator>,
+    credential_repository: Arc<dyn CredentialRepository>,
+    interaction_repository: Arc<dyn InteractionRepository>,
     base_url: Option<String>,
     params: OpenID4Vp25Params,
     config: Arc<CoreConfig>,
@@ -95,6 +98,8 @@ impl OpenID4VP25HTTP {
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         key_provider: Arc<dyn KeyProvider>,
         certificate_validator: Arc<dyn CertificateValidator>,
+        credential_repository: Arc<dyn CredentialRepository>,
+        interaction_repository: Arc<dyn InteractionRepository>,
         client: Arc<dyn HttpClient>,
         params: OpenID4Vp25Params,
         config: Arc<CoreConfig>,
@@ -107,6 +112,8 @@ impl OpenID4VP25HTTP {
             key_algorithm_provider,
             key_provider,
             certificate_validator,
+            credential_repository,
+            interaction_repository,
             client,
             params,
             config,
@@ -231,7 +238,6 @@ impl VerificationProtocol for OpenID4VP25HTTP {
         &self,
         proof: &Proof,
         context: Value,
-        storage_access: &StorageAccess,
     ) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError> {
         let interaction_data: OpenID4VPHolderInteractionData = serde_json::from_value(context)?;
 
@@ -239,7 +245,7 @@ impl VerificationProtocol for OpenID4VP25HTTP {
             return get_presentation_definition_for_dcql_query(
                 dcql_query,
                 proof,
-                storage_access,
+                &*self.credential_repository,
                 &*self.credential_formatter_provider,
                 &self.config,
             )
@@ -257,7 +263,7 @@ impl VerificationProtocol for OpenID4VP25HTTP {
             presentation_definition,
             proof,
             interaction_data.client_metadata,
-            storage_access,
+            &*self.credential_repository,
             &self.config,
         )
         .await
@@ -303,7 +309,6 @@ impl VerificationProtocol for OpenID4VP25HTTP {
         &self,
         url: Url,
         organisation: Organisation,
-        storage_access: &StorageAccess,
         _transport: String,
     ) -> Result<InvitationResponseDTO, VerificationProtocolError> {
         if !self.holder_can_handle(&url) {
@@ -316,8 +321,8 @@ impl VerificationProtocol for OpenID4VP25HTTP {
             url,
             self.params.allow_insecure_http_transport,
             &self.client,
-            storage_access,
             Some(organisation),
+            &*self.interaction_repository,
             &self.key_algorithm_provider,
             &self.did_method_provider,
             &self.certificate_validator,
@@ -593,7 +598,6 @@ impl VerificationProtocol for OpenID4VP25HTTP {
         &self,
         _proof: &Proof,
         _context: Value,
-        _storage_access: &StorageAccess,
     ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
         Err(VerificationProtocolError::OperationNotSupported)
     }
@@ -646,8 +650,8 @@ async fn handle_proof_invitation(
     url: Url,
     allow_insecure_http_transport: bool,
     client: &Arc<dyn HttpClient>,
-    storage_access: &StorageAccess,
     organisation: Option<Organisation>,
+    interaction_repository: &dyn InteractionRepository,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: &Arc<dyn DidMethodProvider>,
     certificate_validator: &Arc<dyn CertificateValidator>,
@@ -680,7 +684,8 @@ async fn handle_proof_invitation(
     let data = serialize_interaction_data(&holder_interaction_data)?;
 
     let now = crate::clock::now_utc();
-    let interaction = create_and_store_interaction(storage_access, data, organisation).await?;
+    let interaction =
+        create_and_store_interaction(interaction_repository, data, organisation).await?;
 
     let interaction_id = interaction.id.to_owned();
 
@@ -703,7 +708,7 @@ async fn handle_proof_invitation(
 }
 
 async fn create_and_store_interaction(
-    storage_access: &StorageAccess,
+    interaction_repository: &dyn InteractionRepository,
     data: Vec<u8>,
     organisation: Option<Organisation>,
 ) -> Result<Interaction, VerificationProtocolError> {
@@ -711,10 +716,10 @@ async fn create_and_store_interaction(
 
     let interaction = interaction_from_handle_invitation(Some(data), now, organisation);
 
-    storage_access
+    interaction_repository
         .create_interaction(interaction.clone())
         .await
-        .map_err(VerificationProtocolError::StorageAccessError)?;
+        .error_while("creating interaction")?;
 
     Ok(interaction)
 }

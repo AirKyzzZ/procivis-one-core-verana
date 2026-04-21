@@ -19,8 +19,6 @@ pub enum VerificationProtocolError {
     DisallowedQuery(CredentialQueryId),
     #[error(transparent)]
     Other(anyhow::Error),
-    #[error(transparent)]
-    StorageAccessError(anyhow::Error),
 
     #[error("DCQL error: `{0}`")]
     DcqlError(#[from] DcqlError),
@@ -49,8 +47,7 @@ impl ErrorCodeMixin for VerificationProtocolError {
             | Self::Other(_)
             | Self::CBORSerialization(_)
             | Self::CBORParsing(_)
-            | Self::Encoding(_)
-            | Self::StorageAccessError(_) => ErrorCode::BR_0062,
+            | Self::Encoding(_) => ErrorCode::BR_0062,
             Self::InvalidDcqlQueryOrPresentationDefinition(_) => ErrorCode::BR_0083,
             Self::DisallowedQuery(_) => ErrorCode::BR_0411,
             Self::InvalidRequest(_) | Self::Disabled(_) | Self::DcqlError(_) => ErrorCode::BR_0085,

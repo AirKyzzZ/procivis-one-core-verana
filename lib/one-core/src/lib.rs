@@ -449,11 +449,14 @@ impl OneCore {
             data_provider.get_history_repository(),
             session_provider.clone(),
             data_provider.get_credential_schema_repository(),
+            data_provider.get_interaction_repository(),
         )?;
 
         let verification_provider = verification_protocol_provider_from_config(
             &mut config,
             core_base_url.clone(),
+            data_provider.get_credential_repository(),
+            data_provider.get_credential_schema_repository(),
             data_provider.get_interaction_repository(),
             data_provider.get_proof_repository(),
             credential_formatter_provider.clone(),
@@ -744,7 +747,6 @@ impl OneCore {
                 data_provider.get_identifier_repository(),
                 data_provider.get_claim_repository(),
                 data_provider.get_credential_repository(),
-                data_provider.get_credential_schema_repository(),
                 data_provider.get_history_repository(),
                 data_provider.get_interaction_repository(),
                 credential_formatter_provider.clone(),

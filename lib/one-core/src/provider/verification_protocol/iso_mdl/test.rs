@@ -2,7 +2,6 @@ use std::collections::HashSet;
 use std::sync::Arc;
 
 use maplit::{hashmap, hashset};
-use mockall::predicate::eq;
 use secrecy::SecretSlice;
 use shared_types::CredentialId;
 use similar_asserts::assert_eq;
@@ -12,7 +11,9 @@ use super::IsoMdl;
 use crate::config::core_config::VerificationEngagement;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
+use crate::model::credential::{
+    Credential, CredentialRole, CredentialStateEnum, GetCredentialList,
+};
 use crate::model::credential_schema::{CredentialSchema, LayoutType};
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
@@ -33,7 +34,7 @@ use crate::provider::verification_protocol::iso_mdl::ble_holder::{
 use crate::provider::verification_protocol::iso_mdl::common::{
     DeviceRequest, DocRequest, ItemsRequest, SkDevice, SkReader, to_cbor,
 };
-use crate::service::storage_proxy::MockStorageProxy;
+use crate::repository::credential_repository::MockCredentialRepository;
 use crate::service::test_utilities::{dummy_organisation, generic_config};
 
 #[tokio::test]
@@ -77,6 +78,7 @@ async fn test_presentation_reject_ok() {
 
     let provider = IsoMdl::new(
         Arc::new(core_config),
+        Arc::new(MockCredentialRepository::new()),
         Arc::new(MockPresentationFormatterProvider::new()),
         Arc::new(MockKeyProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
@@ -189,16 +191,6 @@ async fn test_presentation_reject_ok() {
 
 #[tokio::test]
 async fn test_get_presentation_definition_ok() {
-    let core_config = generic_config().core;
-    let service = IsoMdl::new(
-        Arc::new(core_config),
-        Arc::new(MockPresentationFormatterProvider::new()),
-        Arc::new(MockKeyProvider::new()),
-        Arc::new(MockKeyAlgorithmProvider::new()),
-        None,
-        None,
-    );
-
     let organisation_id = Uuid::new_v4().into();
     let schema_id = "org.iso.18013.5.1".to_string();
     let device_request_bytes = to_cbor(&DeviceRequest {
@@ -408,39 +400,60 @@ async fn test_get_presentation_definition_ok() {
         },
     ];
 
-    let mut storage_access = MockStorageProxy::new();
-    storage_access
-        .expect_get_presentation_credentials_by_schema_id()
-        .with(eq(schema_id), eq(organisation_id))
-        .return_once(move |_, _| {
-            Ok(vec![Credential {
-                id: credential_id,
-                created_date: crate::clock::now_utc(),
-                issuance_date: None,
-                last_modified: crate::clock::now_utc(),
-                protocol: "ISO_MDL".to_string(),
-                schema: Some(credential_schema),
-                role: CredentialRole::Holder,
-                deleted_at: None,
-                redirect_uri: None,
-                state: CredentialStateEnum::Accepted,
-                suspend_end_date: None,
-                claims: Some(claims),
-                issuer_identifier: None,
-                issuer_certificate: None,
-                holder_identifier: None,
-                key: None,
-                interaction: None,
-                profile: None,
-                credential_blob_id: None,
-                wallet_unit_attestation_blob_id: None,
-                wallet_instance_attestation_blob_id: None,
-                webhook_url: None,
-            }])
+    let credential = Credential {
+        id: credential_id,
+        created_date: crate::clock::now_utc(),
+        issuance_date: None,
+        last_modified: crate::clock::now_utc(),
+        protocol: "ISO_MDL".to_string(),
+        schema: Some(credential_schema),
+        role: CredentialRole::Holder,
+        deleted_at: None,
+        redirect_uri: None,
+        state: CredentialStateEnum::Accepted,
+        suspend_end_date: None,
+        claims: Some(claims),
+        issuer_identifier: None,
+        issuer_certificate: None,
+        holder_identifier: None,
+        key: None,
+        interaction: None,
+        profile: None,
+        credential_blob_id: None,
+        wallet_unit_attestation_blob_id: None,
+        wallet_instance_attestation_blob_id: None,
+        webhook_url: None,
+    };
+
+    let mut credential_repository = MockCredentialRepository::new();
+    credential_repository
+        .expect_get_credential_list()
+        .return_once({
+            let credential = credential.clone();
+            move |_| {
+                Ok(GetCredentialList {
+                    values: vec![credential],
+                    total_items: 1,
+                    total_pages: 1,
+                })
+            }
         });
+    credential_repository
+        .expect_get_credential()
+        .return_once(move |_, _| Ok(Some(credential)));
+
+    let service = IsoMdl::new(
+        Arc::new(generic_config().core),
+        Arc::new(credential_repository),
+        Arc::new(MockPresentationFormatterProvider::new()),
+        Arc::new(MockKeyProvider::new()),
+        Arc::new(MockKeyAlgorithmProvider::new()),
+        None,
+        None,
+    );
 
     let mut presentation_definition = service
-        .holder_get_presentation_definition(&proof, interaction_data, &storage_access)
+        .holder_get_presentation_definition(&proof, interaction_data)
         .await
         .unwrap();
 

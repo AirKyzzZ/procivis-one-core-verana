@@ -17,7 +17,6 @@ use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
 use crate::provider::verification_protocol::dto::PresentationDefinitionV2ResponseDTO;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
-use crate::service::storage_proxy::StorageAccess;
 
 pub mod dto;
 pub mod error;
@@ -67,7 +66,6 @@ pub(crate) trait VerificationProtocol: Send + Sync {
         &self,
         url: Url,
         organisation: Organisation,
-        storage_access: &StorageAccess,
         transport: String,
     ) -> Result<InvitationResponseDTO, VerificationProtocolError>;
 
@@ -89,7 +87,6 @@ pub(crate) trait VerificationProtocol: Send + Sync {
         &self,
         proof: &Proof,
         context: serde_json::Value,
-        storage_access: &StorageAccess,
     ) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError>;
 
     /// Takes a proof request and filters held credentials,
@@ -102,7 +99,6 @@ pub(crate) trait VerificationProtocol: Send + Sync {
         &self,
         proof: &Proof,
         context: serde_json::Value,
-        storage_access: &StorageAccess,
     ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError>;
 
     /// Generates QR-code content to start the proof request flow.

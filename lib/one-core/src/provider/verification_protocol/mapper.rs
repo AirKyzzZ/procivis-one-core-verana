@@ -1,24 +1,34 @@
 use std::collections::{HashMap, HashSet};
 
 use dcql::CredentialSet;
+use futures::future::join_all;
 use one_dto_mapper::convert_inner_of_inner;
 use shared_types::{CredentialId, OrganisationId, ProofId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use super::VerificationProtocolError;
 use super::dto::{
     CredentialGroup, CredentialGroupItem, CredentialSetResponseDTO, PresentationDefinitionFieldDTO,
 };
-use super::{StorageAccess, VerificationProtocolError};
 use crate::config::core_config::{CoreConfig, DatatypeConfig, DatatypeType};
 use crate::error::ContextWithErrorCode;
 use crate::mapper::NESTED_CLAIM_MARKER;
+use crate::model::certificate::CertificateRelations;
+use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential::{Credential, CredentialStateEnum};
-use crate::model::identifier::Identifier;
+use crate::model::credential::{
+    Credential, CredentialFilterValue, CredentialListQuery, CredentialRelations, CredentialRole,
+    CredentialStateEnum,
+};
+use crate::model::credential_schema::CredentialSchemaRelations;
+use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::interaction::{Interaction, InteractionType};
+use crate::model::list_filter::ListFilterValue;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
+use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::error::DataLayerError;
 use crate::service::credential::dto::{
     CredentialAttestationBlobs, CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO,
 };
@@ -100,7 +110,7 @@ pub(crate) fn credential_model_to_credential_dto(
 }
 
 pub(crate) async fn get_relevant_credentials_to_credential_schemas(
-    storage_access: &StorageAccess,
+    credential_repository: &dyn CredentialRepository,
     mut credential_groups: Vec<CredentialGroup>,
     group_id_to_schema_id_mapping: HashMap<String, String>,
     allowed_schema_formats: &HashSet<String>,
@@ -115,13 +125,13 @@ pub(crate) async fn get_relevant_credentials_to_credential_schemas(
             ),
         )?;
 
-        let relevant_credentials_inner = storage_access
-            .get_presentation_credentials_by_schema_id(
-                credential_schema_id.to_string(),
-                organisation_id,
-            )
-            .await
-            .map_err(VerificationProtocolError::StorageAccessError)?;
+        let relevant_credentials_inner = get_presentation_credentials_by_schema_id(
+            credential_repository,
+            credential_schema_id.to_string(),
+            organisation_id,
+        )
+        .await
+        .error_while("getting presentation credentials")?;
 
         for credential in &relevant_credentials_inner {
             let schema = credential
@@ -324,4 +334,65 @@ impl From<CredentialSet> for CredentialSetResponseDTO {
             options: convert_inner_of_inner(value.options),
         }
     }
+}
+
+// TODO: Moved out of StorageProxyImpl, look at callers and determine
+//       if this wrapper is actually needed or could just be inlined
+pub(crate) async fn get_presentation_credentials_by_schema_id(
+    credential_repository: &dyn CredentialRepository,
+    schema_id: String,
+    organisation_id: OrganisationId,
+) -> Result<Vec<Credential>, DataLayerError> {
+    let credentials = credential_repository
+        .get_credential_list(CredentialListQuery {
+            filtering: Some(
+                CredentialFilterValue::SchemaId(schema_id).condition()
+                    & CredentialFilterValue::OrganisationId(organisation_id)
+                    & CredentialFilterValue::States(vec![
+                        CredentialStateEnum::Accepted,
+                        CredentialStateEnum::Suspended,
+                        CredentialStateEnum::Revoked,
+                    ])
+                    & CredentialFilterValue::Roles(vec![CredentialRole::Holder]),
+            ),
+            ..Default::default()
+        })
+        .await?
+        .values;
+
+    Ok(
+        join_all(credentials.into_iter().map(|credential| async move {
+            credential_repository
+                .get_credential(
+                    &credential.id,
+                    &CredentialRelations {
+                        holder_identifier: Some(IdentifierRelations {
+                            ..Default::default()
+                        }),
+                        issuer_identifier: Some(IdentifierRelations {
+                            did: Some(Default::default()),
+                            ..Default::default()
+                        }),
+                        claims: Some(ClaimRelations {
+                            schema: Some(Default::default()),
+                        }),
+                        schema: Some(CredentialSchemaRelations {
+                            claim_schemas: Some(Default::default()),
+                            organisation: Some(Default::default()),
+                        }),
+                        issuer_certificate: Some(CertificateRelations {
+                            ..Default::default()
+                        }),
+                        ..Default::default()
+                    },
+                )
+                .await
+        }))
+        .await
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()?
+        .into_iter()
+        .flatten()
+        .collect(),
+    )
 }

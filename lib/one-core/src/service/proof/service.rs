@@ -72,7 +72,6 @@ use crate::provider::verification_protocol::{FormatMapper, TypeToDescriptorMappe
 use crate::service::common_dto::{ListQueryDTO, TrustInformationDetailResponseDTO};
 use crate::service::credential_schema::validator::validate_key_storage_security_supported;
 use crate::service::error::MissingProviderError;
-use crate::service::storage_proxy::StorageProxyImpl;
 use crate::util::interactions::{add_new_interaction, clear_previous_interaction};
 use crate::util::key_selection::{KeyFilter, KeySelection, SelectedKey};
 use crate::validator::{throw_if_org_id_not_matching_session, throw_if_org_not_matching_session};
@@ -220,11 +219,7 @@ impl ProofService {
             &PresentationDefinitionVersion::V1,
         )?;
         Ok(exchange
-            .holder_get_presentation_definition(
-                &proof,
-                interaction_data_from_proof(&proof)?,
-                &self.storage_access(),
-            )
+            .holder_get_presentation_definition(&proof, interaction_data_from_proof(&proof)?)
             .await
             .error_while("getting presentation definition V1")?)
     }
@@ -248,11 +243,7 @@ impl ProofService {
             &PresentationDefinitionVersion::V2,
         )?;
         Ok(exchange
-            .holder_get_presentation_definition_v2(
-                &proof,
-                interaction_data_from_proof(&proof)?,
-                &self.storage_access(),
-            )
+            .holder_get_presentation_definition_v2(&proof, interaction_data_from_proof(&proof)?)
             .await
             .error_while("getting presentation definition V2")?)
     }
@@ -276,14 +267,6 @@ impl ProofService {
             .await
             .error_while("getting proof")?
             .ok_or(ProofServiceError::NotFound(*id))
-    }
-
-    fn storage_access(&self) -> StorageProxyImpl {
-        StorageProxyImpl::new(
-            self.interaction_repository.clone(),
-            self.credential_schema.clone(),
-            self.credential_repository.clone(),
-        )
     }
 
     /// Returns list of proofs according to query

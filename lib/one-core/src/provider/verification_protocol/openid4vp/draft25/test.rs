@@ -36,6 +36,8 @@ use crate::provider::verification_protocol::openid4vp::model::{
 use crate::provider::verification_protocol::{
     FormatMapper, TypeToDescriptorMapper, VerificationProtocol,
 };
+use crate::repository::credential_repository::MockCredentialRepository;
+use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 use crate::service::test_utilities::dummy_identifier;
 
@@ -59,6 +61,8 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VP25HTTP {
         Arc::new(inputs.key_algorithm_provider),
         Arc::new(inputs.key_provider),
         Arc::new(inputs.certificate_validator),
+        Arc::new(MockCredentialRepository::default()),
+        Arc::new(MockInteractionRepository::default()),
         Arc::new(ReqwestClient::default()),
         inputs.params.unwrap_or(generic_params()),
         Arc::new(CoreConfig::default()),

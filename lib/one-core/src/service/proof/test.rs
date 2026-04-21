@@ -83,7 +83,6 @@ use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::m
 use crate::provider::verification_protocol::provider::MockVerificationProtocolProvider;
 use crate::repository::claim_repository::MockClaimRepository;
 use crate::repository::credential_repository::MockCredentialRepository;
-use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
@@ -104,7 +103,6 @@ struct Repositories {
     pub identifier_repository: MockIdentifierRepository,
     pub claim_repository: MockClaimRepository,
     pub credential_repository: MockCredentialRepository,
-    pub credential_schema_repository: MockCredentialSchemaRepository,
     pub history_repository: MockHistoryRepository,
     pub interaction_repository: MockInteractionRepository,
     pub credential_formatter_provider: MockCredentialFormatterProvider,
@@ -133,7 +131,6 @@ fn setup_service(repositories: Repositories) -> ProofService {
         Arc::new(repositories.identifier_repository),
         Arc::new(repositories.claim_repository),
         Arc::new(repositories.credential_repository),
-        Arc::new(repositories.credential_schema_repository),
         Arc::new(repositories.history_repository),
         Arc::new(repositories.interaction_repository),
         Arc::new(repositories.credential_formatter_provider),

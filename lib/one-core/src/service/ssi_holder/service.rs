@@ -5,7 +5,6 @@ use super::SSIHolderService;
 use super::dto::HandleInvitationResultDTO;
 use super::error::HolderServiceError;
 use crate::error::ContextWithErrorCode;
-use crate::service::storage_proxy::StorageProxyImpl;
 use crate::validator::throw_if_org_id_not_matching_session;
 
 impl SSIHolderService {
@@ -49,14 +48,6 @@ impl SSIHolderService {
 
         success_log(&result);
         Ok(result)
-    }
-
-    pub(super) fn storage_proxy(&self) -> StorageProxyImpl {
-        StorageProxyImpl::new(
-            self.interaction_repository.clone(),
-            self.credential_schema_repository.clone(),
-            self.credential_repository.clone(),
-        )
     }
 }
 
