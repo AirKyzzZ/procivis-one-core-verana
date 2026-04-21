@@ -237,6 +237,7 @@ mod m20260414_091938_add_parent_org_to_organisation_table;
 mod m20260415_120000_add_deleted_at_to_certificate;
 mod m20260417_120000_backfill_certificate_deleted_at;
 mod m20260417_142500_rename_wallet_unit_tables;
+mod m20260420_091805_delete_org_name;
 
 mod migrate_enum;
 mod soft_delete_unique_idx;
@@ -476,6 +477,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260415_120000_add_deleted_at_to_certificate::Migration),
             Box::new(m20260417_120000_backfill_certificate_deleted_at::Migration),
             Box::new(m20260417_142500_rename_wallet_unit_tables::Migration),
+            Box::new(m20260420_091805_delete_org_name::Migration),
         ]
     }
 }

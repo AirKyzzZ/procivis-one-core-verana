@@ -42,7 +42,6 @@ pub struct UnexportableCredentialModel {
     pub credential_schema_transaction_code_description: Option<String>,
 
     pub organisation_id: OrganisationId,
-    pub organisation_name: String,
     pub organisation_created_date: OffsetDateTime,
     pub organisation_last_modified: OffsetDateTime,
     pub organisation_deactivated_at: Option<OffsetDateTime>,

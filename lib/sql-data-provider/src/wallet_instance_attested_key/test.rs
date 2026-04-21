@@ -117,9 +117,7 @@ async fn setup(n: usize) -> TestSetup {
     let data_layer = setup_test_data_layer_and_connection().await;
     let db = data_layer.db;
 
-    let organisation_id = insert_organisation_to_database(&db, None, None)
-        .await
-        .unwrap();
+    let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
     let mut wallet_unit_ids = vec![];
     for i in 0..n {
         let wallet_unit_id =

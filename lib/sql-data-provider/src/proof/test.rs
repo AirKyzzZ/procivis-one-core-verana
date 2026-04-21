@@ -72,7 +72,7 @@ async fn setup(
     let db = data_layer.db;
 
     let organisation_id = Uuid::new_v4().into();
-    insert_organisation_to_database(&db, Some(organisation_id), None)
+    insert_organisation_to_database(&db, Some(organisation_id))
         .await
         .unwrap();
 

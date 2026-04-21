@@ -47,9 +47,7 @@ async fn setup_empty() -> TestSetup {
     let data_layer = setup_test_data_layer_and_connection().await;
     let db = data_layer.db;
 
-    let organisation_id = insert_organisation_to_database(&db, None, None)
-        .await
-        .unwrap();
+    let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
 
     let credential_schema_id = insert_credential_schema_to_database(
         &db,
@@ -178,7 +176,7 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
         organisation.id.into(),
         HistoryEntityType::Organisation.into(),
         organisation.id,
-        organisation.name.clone(),
+        organisation.id.to_string(),
     )
     .await
     .unwrap();
@@ -463,7 +461,7 @@ async fn test_get_history_list_simple() {
             Uuid::new_v4().into(),
             HistoryEntityType::Organisation.into(),
             organisation.id,
-            organisation.name.clone(),
+            organisation.id.to_string(),
         )
         .await
         .unwrap();
@@ -502,7 +500,7 @@ async fn test_get_history_list_schema_joins_credentials() {
         organisation.id.into(),
         HistoryEntityType::Organisation.into(),
         organisation.id,
-        organisation.name.clone(),
+        organisation.id.to_string(),
     )
     .await
     .unwrap();
@@ -524,7 +522,7 @@ async fn test_get_history_list_schema_joins_credentials() {
         credential_schema_id.into(),
         HistoryEntityType::CredentialSchema.into(),
         organisation.id,
-        organisation.name.clone(),
+        organisation.id.to_string(),
     )
     .await
     .unwrap();
@@ -556,7 +554,7 @@ async fn test_get_history_list_schema_joins_credentials() {
         did_id.into(),
         HistoryEntityType::Did.into(),
         organisation.id,
-        organisation.name.clone(),
+        organisation.id.to_string(),
     )
     .await
     .unwrap();
@@ -582,7 +580,7 @@ async fn test_get_history_list_schema_joins_credentials() {
             credential.id.into(),
             HistoryEntityType::Credential.into(),
             organisation.id,
-            organisation.name.clone(),
+            organisation.id.to_string(),
         )
         .await
         .unwrap();
@@ -996,9 +994,7 @@ async fn test_history_org_stats_ignore_irrelevant() {
     )
     .await
     .unwrap();
-    let org2_id = insert_organisation_to_database(&db, None, None)
-        .await
-        .unwrap();
+    let org2_id = insert_organisation_to_database(&db, None).await.unwrap();
 
     let org_id = organisation.id;
     let now = one_core::clock::now_utc();
@@ -1396,9 +1392,7 @@ async fn test_system_history_stats_dummy_data_multiple_orgs() {
         ..
     } = setup_empty().await;
     let org_id = organisation.id;
-    let org2_id = insert_organisation_to_database(&db, None, None)
-        .await
-        .unwrap();
+    let org2_id = insert_organisation_to_database(&db, None).await.unwrap();
     let now = one_core::clock::now_utc();
     multi_org_test_data(org_id, org2_id, credential_id, proof_id, now, &db).await;
 
@@ -1597,9 +1591,7 @@ async fn test_system_interaction_history_stats() {
         ..
     } = setup_empty().await;
     let org_id = organisation.id;
-    let org2_id = insert_organisation_to_database(&db, None, None)
-        .await
-        .unwrap();
+    let org2_id = insert_organisation_to_database(&db, None).await.unwrap();
     let now = one_core::clock::now_utc();
     multi_org_test_data(org_id, org2_id, credential_id, proof_id, now, &db).await;
 
@@ -1650,9 +1642,7 @@ async fn test_system_interaction_pagination() {
     } = setup_empty().await;
     let now = one_core::clock::now_utc();
     for i in 0..10 {
-        let org = insert_organisation_to_database(&db, None, None)
-            .await
-            .unwrap();
+        let org = insert_organisation_to_database(&db, None).await.unwrap();
         for _ in 0..=i {
             add_history(
                 &db,

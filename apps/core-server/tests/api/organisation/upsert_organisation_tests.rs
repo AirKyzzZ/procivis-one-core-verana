@@ -22,7 +22,6 @@ async fn test_upsert_organisation_success_not_existing() {
         .upsert(
             &organisation_id,
             UpsertParams {
-                name: Some("name".to_string()),
                 ..Default::default()
             },
         )
@@ -31,7 +30,6 @@ async fn test_upsert_organisation_success_not_existing() {
     // THEN
     assert_eq!(resp.status(), 204);
     let organisation = context.db.organisations.get(&organisation_id.into()).await;
-    assert_eq!(organisation.name, "name");
     let history = context
         .db
         .histories
@@ -50,8 +48,7 @@ async fn test_upsert_organisation_success_not_existing_parallel_test() {
 
     // WHEN
     let mut requests = vec![];
-    for i in 0..10 {
-        let name = format!("name-{}", i);
+    for _ in 0..10 {
         requests.push(async {
             let org_id = Uuid::new_v4();
             context
@@ -60,7 +57,6 @@ async fn test_upsert_organisation_success_not_existing_parallel_test() {
                 .upsert(
                     &org_id,
                     UpsertParams {
-                        name: Some(name),
                         ..Default::default()
                     },
                 )
@@ -86,7 +82,7 @@ async fn test_upsert_organisation_success_existing() {
         .upsert(
             &organisation.id,
             UpsertParams {
-                name: Some("name".to_string()),
+                wallet_provider: Some(Some("PROCIVIS_ONE".to_string())),
                 ..Default::default()
             },
         )
@@ -95,7 +91,6 @@ async fn test_upsert_organisation_success_existing() {
     // THEN
     assert_eq!(resp.status(), 204);
     let organisation = context.db.organisations.get(&organisation.id).await;
-    assert_eq!(organisation.name, "name");
     let history = context
         .db
         .histories
@@ -105,101 +100,6 @@ async fn test_upsert_organisation_success_existing() {
         history.values.first().unwrap().action,
         HistoryAction::Updated
     )
-}
-
-#[tokio::test]
-async fn test_upsert_new_organisation_reject_duplicate_name() {
-    // GIVEN
-    let context = TestContext::new(None).await;
-    let existing_org = context.db.organisations.create().await;
-
-    // WHEN
-    let new_org_id = Uuid::new_v4();
-    let resp = context
-        .api
-        .organisations
-        .upsert(
-            &new_org_id,
-            UpsertParams {
-                name: Some(existing_org.name.clone()),
-                ..Default::default()
-            },
-        )
-        .await;
-
-    // THEN
-    assert_eq!(resp.status(), 400);
-    assert_eq!(resp.error_code().await, "BR_0023");
-}
-
-#[tokio::test]
-async fn test_upsert_existing_organisation_reject_duplicate_name() {
-    // GIVEN
-    let context = TestContext::new(None).await;
-    let existing_org = context.db.organisations.create().await;
-    let existing_org2 = context.db.organisations.create().await;
-
-    // WHEN
-    let resp = context
-        .api
-        .organisations
-        .upsert(
-            &existing_org2.id,
-            UpsertParams {
-                name: Some(existing_org.name.clone()),
-                ..Default::default()
-            },
-        )
-        .await;
-
-    // THEN
-    assert_eq!(resp.status(), 400);
-    assert_eq!(resp.error_code().await, "BR_0023");
-}
-
-#[tokio::test]
-async fn test_upsert_organisation_no_name_does_not_change_name() {
-    // GIVEN
-    let context = TestContext::new(None).await;
-    // WHEN
-    let organisation_id = Uuid::new_v4();
-    context
-        .api
-        .organisations
-        .upsert(
-            &organisation_id,
-            UpsertParams {
-                name: Some("name".to_string()),
-                ..Default::default()
-            },
-        )
-        .await;
-
-    // THEN
-    context
-        .api
-        .organisations
-        .upsert(
-            &organisation_id,
-            UpsertParams {
-                ..Default::default()
-            },
-        )
-        .await;
-
-    // THEN
-    let organisation = context.db.organisations.get(&organisation_id.into()).await;
-    assert_eq!(organisation.name, "name");
-    assert_eq!(organisation.deactivated_at, None);
-    let history = context
-        .db
-        .histories
-        .get_by_entity_id(&organisation_id.into())
-        .await;
-    assert_eq!(
-        history.values.first().unwrap().action,
-        HistoryAction::Created
-    );
 }
 
 #[tokio::test]
@@ -224,7 +124,6 @@ async fn test_upsert_organisation_with_delete() {
     // THEN
     assert_eq!(resp.status(), 204);
     let updated_organisation = context.db.organisations.get(&organisation.id).await;
-    assert_eq!(updated_organisation.name, organisation.id.to_string());
     assert!(updated_organisation.deactivated_at.is_some());
     let history = context
         .db
@@ -250,8 +149,8 @@ async fn test_upsert_organisation_reactivate_deactivated() {
         .upsert(
             &organisation.id,
             UpsertParams {
-                name: Some("deactivated_name".to_string()),
                 deactivate: Some(true),
+                wallet_provider: Some(Some("PROCIVIS_ONE".to_string())),
                 ..Default::default()
             },
         )
@@ -264,8 +163,8 @@ async fn test_upsert_organisation_reactivate_deactivated() {
         .upsert(
             &organisation.id,
             UpsertParams {
-                name: Some("reactivated_name".to_string()),
                 deactivate: Some(false),
+                wallet_provider: Some(None),
                 ..Default::default()
             },
         )
@@ -274,7 +173,6 @@ async fn test_upsert_organisation_reactivate_deactivated() {
     // THEN
     assert_eq!(resp.status(), 204);
     let reactivated_organisation = context.db.organisations.get(&organisation.id).await;
-    assert_eq!(reactivated_organisation.name, "reactivated_name");
     assert!(reactivated_organisation.deactivated_at.is_none());
     let history = context
         .db

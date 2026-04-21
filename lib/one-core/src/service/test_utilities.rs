@@ -510,10 +510,8 @@ pub fn dummy_key() -> Key {
 }
 
 pub fn dummy_organisation(id: Option<OrganisationId>) -> Organisation {
-    let id = id.unwrap_or(Uuid::new_v4().into());
     Organisation {
-        name: format!("{id}"),
-        id,
+        id: id.unwrap_or(Uuid::new_v4().into()),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         deactivated_at: None,

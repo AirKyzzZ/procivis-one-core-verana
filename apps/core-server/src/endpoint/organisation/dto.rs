@@ -1,9 +1,8 @@
-use one_core::model::organisation::ExactOrganisationFilterColumn;
 use one_core::service::error::ServiceError;
 use one_core::service::organisation::dto::{
     CreateOrganisationRequestDTO, GetOrganisationDetailsResponseDTO, OrganisationFilterParamsDTO,
 };
-use one_dto_mapper::{From, Into, TryInto, convert_inner, convert_inner_of_inner};
+use one_dto_mapper::{From, Into, TryInto, convert_inner};
 use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
 use shared_types::{IdentifierId, OrganisationId};
@@ -23,7 +22,6 @@ use crate::serialize::{front_time, front_time_option};
 pub(crate) struct CreateOrganisationRequestRestDTO {
     #[into(with_fn = convert_inner)]
     pub id: Option<OrganisationId>,
-    pub name: Option<String>,
     /// Specify a parent organisation. Allows for re-use / inheritance of e.g. trust lists.
     /// The provided organisation must not have a parent organisation.
     #[into(with_fn = convert_inner)]
@@ -33,8 +31,6 @@ pub(crate) struct CreateOrganisationRequestRestDTO {
 #[derive(Clone, Debug, Default, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct UpsertOrganisationRequestRestDTO {
-    #[schema(value_type = String, example = "My Organization")]
-    pub name: Option<String>,
     #[schema(value_type = bool, example = true)]
     pub deactivate: Option<bool>,
     /// Specify which configured wallet provider this organization will use
@@ -64,7 +60,6 @@ pub(crate) struct CreateOrganisationResponseRestDTO {
 #[from(GetOrganisationDetailsResponseDTO)]
 pub(crate) struct GetOrganisationDetailsResponseRestDTO {
     pub id: Uuid,
-    pub name: String,
     #[serde(serialize_with = "front_time")]
     #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
@@ -83,16 +78,8 @@ pub(crate) struct GetOrganisationDetailsResponseRestDTO {
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
 #[serde(rename_all = "camelCase")]
-#[into(ExactOrganisationFilterColumn)]
-pub(crate) enum ExactOrganisationFilterColumnRestEnum {
-    Name,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
-#[serde(rename_all = "camelCase")]
 #[into("one_core::model::organisation::SortableOrganisationColumn")]
 pub(crate) enum SortableOrganisationColumnRestDTO {
-    Name,
     CreatedDate,
 }
 
@@ -100,13 +87,6 @@ pub(crate) enum SortableOrganisationColumnRestDTO {
 #[try_into(T = OrganisationFilterParamsDTO, Error = ServiceError)]
 #[serde(rename_all = "camelCase")] // No deny_unknown_fields because of flattening inside GetOrganisationQuery
 pub(crate) struct OrganisationFilterQueryParamsRest {
-    /// Return all organisations with a name starting with this string. Not case-sensitive.
-    #[param(nullable = false)]
-    #[try_into(infallible)]
-    pub name: Option<String>,
-    #[try_into(infallible, with_fn = convert_inner_of_inner)]
-    #[param(rename = "exact[]", inline, nullable = false)]
-    pub exact: Option<Vec<ExactOrganisationFilterColumnRestEnum>>,
     /// Return only organisations created after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]

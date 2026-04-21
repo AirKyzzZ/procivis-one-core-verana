@@ -15,7 +15,7 @@ async fn test_create_organisation_success_id_set() {
     let resp = context
         .api
         .organisations
-        .create(Some(organisation_id), None)
+        .create(Some(organisation_id))
         .await;
 
     // THEN
@@ -35,27 +35,12 @@ async fn test_create_organisation_success_id_set() {
 }
 
 #[tokio::test]
-async fn test_create_organisation_success_name_set() {
-    // GIVEN
-    let context = TestContext::new(None).await;
-
-    // WHEN
-    let resp = context.api.organisations.create(None, Some("name")).await;
-
-    // THEN
-    assert_eq!(resp.status(), 201);
-    let id = resp.json_value().await["id"].parse();
-    let org = context.db.organisations.get(&id).await;
-    assert_eq!(org.name, "name");
-}
-
-#[tokio::test]
 async fn test_create_organisation_success_id_not_set() {
     // GIVEN
     let context = TestContext::new(None).await;
 
     // WHEN
-    let resp = context.api.organisations.create(None, None).await;
+    let resp = context.api.organisations.create(None).await;
 
     // THEN
     assert_eq!(resp.status(), 201);
@@ -73,12 +58,12 @@ async fn test_create_organisation_reject_duplicate_id() {
     let resp = context
         .api
         .organisations
-        .create(Some(organisation_id), None)
+        .create(Some(organisation_id))
         .await;
     let resp2 = context
         .api
         .organisations
-        .create(Some(organisation_id), None)
+        .create(Some(organisation_id))
         .await;
 
     // THEN
@@ -98,7 +83,7 @@ async fn test_create_organisation_success_with_parent() {
     let resp = context
         .api
         .organisations
-        .create_with_parent(Some(child_id), None, Some(parent.id))
+        .create_with_parent(Some(child_id), Some(parent.id))
         .await;
 
     // THEN
@@ -116,7 +101,7 @@ async fn test_create_organisation_fail_non_existing_parent() {
     let resp = context
         .api
         .organisations
-        .create_with_parent(None, None, Some(Uuid::new_v4().into()))
+        .create_with_parent(None, Some(Uuid::new_v4().into()))
         .await;
 
     // THEN
@@ -139,7 +124,7 @@ async fn test_create_organisation_fail_parent_already_has_parent() {
     let resp = context
         .api
         .organisations
-        .create_with_parent(None, None, Some(parent.id))
+        .create_with_parent(None, Some(parent.id))
         .await;
 
     // THEN
@@ -157,25 +142,10 @@ async fn test_create_organisation_fail_self_as_parent() {
     let resp = context
         .api
         .organisations
-        .create_with_parent(Some(id), None, Some(id.into()))
+        .create_with_parent(Some(id), Some(id.into()))
         .await;
 
     // THEN
     assert_eq!(resp.status(), 400);
     assert_eq!(resp.error_code().await, "BR_0419");
-}
-
-#[tokio::test]
-async fn test_create_organisation_reject_duplicate_name() {
-    // GIVEN
-    let context = TestContext::new(None).await;
-
-    // WHEN
-    let resp = context.api.organisations.create(None, Some("name")).await;
-    let resp2 = context.api.organisations.create(None, Some("name")).await;
-
-    // THEN
-    assert_eq!(resp.status(), 201);
-    assert_eq!(resp2.status(), 400);
-    assert_eq!(resp2.error_code().await, "BR_0023");
 }

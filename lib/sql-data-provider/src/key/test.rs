@@ -29,9 +29,7 @@ async fn setup() -> TestSetup {
     let data_layer = setup_test_data_layer_and_connection().await;
     let db = data_layer.db;
 
-    let organisation_id = insert_organisation_to_database(&db, None, None)
-        .await
-        .unwrap();
+    let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
 
     let now = one_core::clock::now_utc();
     let organisation = dummy_organisation(Some(organisation_id));

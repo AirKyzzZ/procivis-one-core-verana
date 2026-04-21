@@ -307,9 +307,9 @@ impl EtsiLotePublisher {
         publication_id: TrustListPublicationId,
     ) -> Result<Vec<u8>, TrustListPublisherError> {
         let relations = TrustListPublicationRelations {
-            organisation: Some(Default::default()),
             key: Some(KeyRelations::default()),
             certificate: Some(CertificateRelations::default()),
+            identifier: Some(IdentifierRelations::default()),
             ..Default::default()
         };
 
@@ -324,12 +324,12 @@ impl EtsiLotePublisher {
                 ))
             })?;
 
-        let organisation_name = publication
-            .organisation
+        let identifier_name = publication
+            .identifier
             .as_ref()
             .ok_or_else(|| {
                 TrustListPublisherError::MissingRelation(
-                    "publication missing organisation".to_string(),
+                    "publication missing identifier".to_string(),
                 )
             })?
             .name
@@ -379,7 +379,7 @@ impl EtsiLotePublisher {
         let content = self
             .format_trust_list(
                 &publication_for_build,
-                &organisation_name,
+                &identifier_name,
                 &entries_with_identifiers,
             )
             .await?;

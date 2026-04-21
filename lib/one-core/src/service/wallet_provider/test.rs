@@ -136,7 +136,6 @@ async fn test_register_wallet_unit() {
         .returning(move |_| {
             Ok(Some(Organisation {
                 id: Uuid::new_v4().into(),
-                name: "test org".to_string(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 deactivated_at: None,
@@ -256,7 +255,6 @@ async fn test_register_wallet_unit_integrity_check() {
         .returning(move |_| {
             Ok(Some(Organisation {
                 id: Uuid::new_v4().into(),
-                name: "test org".to_string(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 deactivated_at: None,

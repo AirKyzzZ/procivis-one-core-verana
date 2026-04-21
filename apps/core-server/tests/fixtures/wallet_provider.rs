@@ -74,7 +74,6 @@ pub(crate) async fn create_wallet_unit_attestation_issuer_identifier(
         .organisations
         .update(UpdateOrganisationRequest {
             id: org.id,
-            name: None,
             deactivate: None,
             wallet_provider: Some(Some("PROCIVIS_ONE".to_string())),
             wallet_provider_issuer: Some(Some(identifier.id)),

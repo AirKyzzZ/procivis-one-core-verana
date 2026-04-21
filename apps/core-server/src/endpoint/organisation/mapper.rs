@@ -15,7 +15,6 @@ pub(crate) fn upsert_request_from_request(
 ) -> UpsertOrganisationRequestDTO {
     UpsertOrganisationRequestDTO {
         id,
-        name: request.name,
         deactivate: request.deactivate,
         wallet_provider: request.wallet_provider,
         wallet_provider_issuer: request.wallet_provider_issuer,

@@ -53,9 +53,7 @@ async fn setup_empty() -> TestSetup {
     let data_layer = setup_test_data_layer_and_connection().await;
     let db = data_layer.db;
 
-    let organisation_id = insert_organisation_to_database(&db, None, None)
-        .await
-        .unwrap();
+    let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
 
     let credential_schema_id = insert_credential_schema_to_database(
         &db,
@@ -1073,7 +1071,7 @@ async fn test_update_credential_success() {
         credential_before_update.credential_blob_id.unwrap()
     );
 
-    let organisation_id = test_utilities::insert_organisation_to_database(&db, None, None)
+    let organisation_id = test_utilities::insert_organisation_to_database(&db, None)
         .await
         .unwrap();
 
@@ -1191,7 +1189,7 @@ async fn test_update_credential_success_no_claims() {
         credential_before_update.credential_blob_id.unwrap()
     );
 
-    let organisation_id = test_utilities::insert_organisation_to_database(&db, None, None)
+    let organisation_id = test_utilities::insert_organisation_to_database(&db, None)
         .await
         .unwrap();
 

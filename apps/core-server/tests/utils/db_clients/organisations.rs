@@ -53,7 +53,6 @@ impl OrganisationsDB {
         self.repository
             .update_organisation(UpdateOrganisationRequest {
                 id: *id,
-                name: None,
                 deactivate: Some(true),
                 wallet_provider: None,
                 wallet_provider_issuer: None,

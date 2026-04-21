@@ -82,7 +82,6 @@ async fn holder_register_success() {
                 id: *id,
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
-                name: "Org".to_string(),
                 deactivated_at: None,
                 wallet_provider: None,
                 wallet_provider_issuer: None,
@@ -250,7 +249,6 @@ async fn holder_register_key_attestation_not_supported() {
                 id: *id,
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
-                name: "Org".to_string(),
                 deactivated_at: None,
                 wallet_provider: None,
                 wallet_provider_issuer: None,
@@ -422,30 +420,27 @@ async fn holder_wallet_unit_status_check_revocation() {
         .expect_get_holder_wallet_instance()
         .once()
         .return_once(move |_, _| {
-            Ok(Some(
-                crate::model::holder_wallet_instance::HolderWalletInstance {
-                    id: wallet_unit_id,
+            Ok(Some(HolderWalletInstance {
+                id: wallet_unit_id,
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                status: WalletInstanceStatus::Active,
+                wallet_provider_type: WalletProviderType::ProcivisOne,
+                wallet_provider_name: "PROCIVIS_ONE".to_string(),
+                wallet_provider_url: "https://wallet.provider".to_string(),
+                provider_wallet_unit_id: Uuid::new_v4().into(),
+                organisation: Some(Organisation {
+                    id: Uuid::new_v4().into(),
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
-                    status: WalletInstanceStatus::Active,
-                    wallet_provider_type: WalletProviderType::ProcivisOne,
-                    wallet_provider_name: "PROCIVIS_ONE".to_string(),
-                    wallet_provider_url: "https://wallet.provider".to_string(),
-                    provider_wallet_unit_id: Uuid::new_v4().into(),
-                    organisation: Some(Organisation {
-                        id: Uuid::new_v4().into(),
-                        created_date: get_dummy_date(),
-                        last_modified: get_dummy_date(),
-                        name: "Test Org".to_string(),
-                        deactivated_at: None,
-                        wallet_provider: None,
-                        wallet_provider_issuer: None,
-                        parent_organisation: None,
-                    }),
-                    authentication_key: None,
-                    wallet_unit_attestations: None,
-                },
-            ))
+                    deactivated_at: None,
+                    wallet_provider: None,
+                    wallet_provider_issuer: None,
+                    parent_organisation: None,
+                }),
+                authentication_key: None,
+                wallet_unit_attestations: None,
+            }))
         });
 
     let mut wallet_unit_proto = MockHolderWalletUnitProto::new();
@@ -570,7 +565,6 @@ async fn holder_register_already_exists() {
                 id: *id,
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
-                name: "Org".to_string(),
                 deactivated_at: None,
                 wallet_provider: None,
                 wallet_provider_issuer: None,

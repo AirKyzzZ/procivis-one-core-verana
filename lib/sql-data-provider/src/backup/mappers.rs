@@ -72,7 +72,6 @@ impl TryFrom<UnexportableCredentialModel> for Credential {
                 claim_schemas: Some(claim_schemas),
                 organisation: Some(Organisation {
                     id: value.organisation_id,
-                    name: value.organisation_name,
                     created_date: value.organisation_created_date,
                     last_modified: value.organisation_last_modified,
                     deactivated_at: value.organisation_deactivated_at,

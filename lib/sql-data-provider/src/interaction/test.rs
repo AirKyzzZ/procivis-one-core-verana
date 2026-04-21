@@ -54,7 +54,7 @@ async fn setup_with_interaction() -> TestSetupWithInteraction {
 
     let data = vec![1, 2, 3];
 
-    let organisation_id = insert_organisation_to_database(&setup.db, None, None)
+    let organisation_id = insert_organisation_to_database(&setup.db, None)
         .await
         .unwrap();
 
@@ -79,7 +79,7 @@ async fn setup_with_interaction() -> TestSetupWithInteraction {
 #[tokio::test]
 async fn test_create_interaction() {
     let setup = setup(Repositories::default()).await;
-    let organisation_id = insert_organisation_to_database(&setup.db, None, None)
+    let organisation_id = insert_organisation_to_database(&setup.db, None)
         .await
         .unwrap();
 
@@ -131,7 +131,7 @@ async fn test_get_interaction() {
 async fn test_mark_nonce_as_used() {
     let setup = setup(Repositories::default()).await;
 
-    let organisation_id = insert_organisation_to_database(&setup.db, None, None)
+    let organisation_id = insert_organisation_to_database(&setup.db, None)
         .await
         .unwrap();
     let interaction_id = insert_interaction(
@@ -164,7 +164,7 @@ async fn test_mark_nonce_as_used() {
 async fn test_mark_nonce_as_used_already_used() {
     let setup = setup(Repositories::default()).await;
 
-    let organisation_id = insert_organisation_to_database(&setup.db, None, None)
+    let organisation_id = insert_organisation_to_database(&setup.db, None)
         .await
         .unwrap();
     let nonce_id = Uuid::new_v4().into();
@@ -189,7 +189,7 @@ async fn test_mark_nonce_as_used_already_used() {
 async fn test_mark_nonce_as_used_already_used_different_interaction() {
     let setup = setup(Repositories::default()).await;
 
-    let organisation_id = insert_organisation_to_database(&setup.db, None, None)
+    let organisation_id = insert_organisation_to_database(&setup.db, None)
         .await
         .unwrap();
     let nonce_id = Uuid::new_v4().into();

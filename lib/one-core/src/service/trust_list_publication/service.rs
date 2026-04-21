@@ -543,7 +543,6 @@ mod tests {
             deleted_at: None,
             organisation: Some(Organisation {
                 id: organisation_id,
-                name: "TestOrganisation".to_string(),
                 created_date: now,
                 last_modified: now,
                 deactivated_at: None,

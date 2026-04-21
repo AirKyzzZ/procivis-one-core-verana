@@ -19,7 +19,6 @@ async fn test_list_organisation_success() {
         .list(OrganisationFilters {
             page: 0,
             page_size: 1000,
-            name: None,
             created_date_after: None,
             created_date_before: None,
             last_modified_after: None,
@@ -34,7 +33,6 @@ async fn test_list_organisation_success() {
     let resp = resp.json_value().await;
     let values = resp["values"].as_array().unwrap();
     assert_eq!(values.len(), 14);
-    assert!(values[0]["name"].is_string());
 }
 
 #[tokio::test]
@@ -54,7 +52,6 @@ async fn test_list_organisation_deactivated_success() {
         .list(OrganisationFilters {
             page: 0,
             page_size: 1000,
-            name: None,
             created_date_after: None,
             created_date_before: None,
             last_modified_after: None,
@@ -69,7 +66,6 @@ async fn test_list_organisation_deactivated_success() {
     let resp = resp.json_value().await;
     let values = resp["values"].as_array().unwrap();
     assert_eq!(values.len(), 14);
-    assert!(values[0]["name"].is_string());
     assert!(values[0]["deactivatedAt"].is_string());
 }
 
@@ -87,7 +83,6 @@ async fn test_list_organisation_filter_has_parent_organisation() {
         .list(OrganisationFilters {
             page: 0,
             page_size: 1000,
-            name: None,
             created_date_after: None,
             created_date_before: None,
             last_modified_after: None,
@@ -111,7 +106,6 @@ async fn test_list_organisation_filter_has_parent_organisation() {
         .list(OrganisationFilters {
             page: 0,
             page_size: 1000,
-            name: None,
             created_date_after: None,
             created_date_before: None,
             last_modified_after: None,
@@ -153,7 +147,6 @@ async fn test_list_organisation_filter_parent_organisations() {
         .list(OrganisationFilters {
             page: 0,
             page_size: 1000,
-            name: None,
             created_date_after: None,
             created_date_before: None,
             last_modified_after: None,

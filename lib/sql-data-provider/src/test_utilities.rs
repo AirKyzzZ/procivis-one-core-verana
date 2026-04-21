@@ -356,12 +356,10 @@ pub async fn insert_many_proof_claim_to_database(
 pub async fn insert_organisation_to_database(
     database: &DatabaseConnection,
     id: Option<OrganisationId>,
-    name: Option<String>,
 ) -> Result<OrganisationId, DbErr> {
     let id = id.unwrap_or(Uuid::new_v4().into());
     let organisation = organisation::ActiveModel {
         id: Set(id),
-        name: Set(name.unwrap_or(id.to_string())),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         deactivated_at: NotSet,
@@ -680,7 +678,6 @@ pub fn assert_eq_unordered<T: Hash + Eq + Debug, K: Into<T>>(
 pub fn dummy_organisation(id: Option<OrganisationId>) -> Organisation {
     let id = id.unwrap_or(Uuid::new_v4().into());
     Organisation {
-        name: format!("{id}"),
         id,
         created_date: one_core::clock::now_utc(),
         last_modified: one_core::clock::now_utc(),

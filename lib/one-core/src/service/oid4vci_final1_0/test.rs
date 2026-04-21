@@ -187,7 +187,6 @@ fn generic_organisation() -> Organisation {
     let now = crate::clock::now_utc();
     Organisation {
         id: Uuid::new_v4().into(),
-        name: "organisation name".to_string(),
         created_date: now,
         last_modified: now,
         deactivated_at: None,

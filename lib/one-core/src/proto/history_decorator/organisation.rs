@@ -21,19 +21,14 @@ pub struct OrganisationHistoryDecorator {
 }
 
 impl OrganisationHistoryDecorator {
-    async fn write_history(
-        &self,
-        name: String,
-        action: HistoryAction,
-        organisation_id: OrganisationId,
-    ) {
+    async fn write_history(&self, action: HistoryAction, organisation_id: OrganisationId) {
         let result = self
             .history_repository
             .create_history(History {
                 id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 action,
-                name,
+                name: organisation_id.to_string(),
                 source: HistorySource::Core,
                 target: None,
                 entity_id: Some(organisation_id.into()),
@@ -59,7 +54,7 @@ impl OrganisationRepository for OrganisationHistoryDecorator {
     ) -> Result<OrganisationId, DataLayerError> {
         let organisation_id = self.inner.create_organisation(request.clone()).await?;
 
-        self.write_history(request.name, HistoryAction::Created, organisation_id)
+        self.write_history(HistoryAction::Created, organisation_id)
             .await;
 
         Ok(organisation_id)
@@ -77,22 +72,16 @@ impl OrganisationRepository for OrganisationHistoryDecorator {
             .await?
             .context("organisation missing")?;
 
-        if request.name.is_some()
-            || request.wallet_provider_issuer.is_some()
+        if request.wallet_provider_issuer.is_some()
             || request.wallet_provider.is_some()
             || request.parent_organisation.is_some()
         {
-            self.write_history(
-                updated_entry.name.to_owned(),
-                HistoryAction::Updated,
-                updated_entry.id,
-            )
-            .await;
+            self.write_history(HistoryAction::Updated, updated_entry.id)
+                .await;
         }
 
         if let Some(deactivate) = request.deactivate {
             self.write_history(
-                updated_entry.name,
                 if deactivate {
                     HistoryAction::Deactivated
                 } else {

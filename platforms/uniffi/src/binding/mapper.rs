@@ -630,7 +630,6 @@ impl TryFrom<CreateOrganisationRequestBindingDTO> for CreateOrganisationRequestD
     fn try_from(value: CreateOrganisationRequestBindingDTO) -> Result<Self, Self::Error> {
         Ok(Self {
             id: into_id_opt(value.id)?,
-            name: value.name,
             parent_organisation: into_id_opt(value.parent_organisation)?,
         })
     }
@@ -654,7 +653,6 @@ impl TryFrom<UpsertOrganisationRequestBindingDTO> for UpsertOrganisationRequestD
 
         Ok(Self {
             id: into_id(&value.id)?,
-            name: value.name,
             deactivate: value.deactivate,
             wallet_provider: convert_inner(value.wallet_provider),
             wallet_provider_issuer,

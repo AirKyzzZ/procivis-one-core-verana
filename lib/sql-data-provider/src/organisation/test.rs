@@ -38,7 +38,6 @@ async fn test_create_organisation() {
 
     let organisation = Organisation {
         id: org_id,
-        name: org_id.to_string(),
         created_date: now,
         last_modified: now,
         deactivated_at: None,
@@ -76,7 +75,7 @@ async fn test_get_organisation_success() {
     let TestSetup { repository, db } = setup().await;
 
     let org_id = Uuid::new_v4().into();
-    insert_organisation_to_database(&db, Some(org_id), None)
+    insert_organisation_to_database(&db, Some(org_id))
         .await
         .unwrap();
 
@@ -94,12 +93,12 @@ async fn test_get_organisation_list() {
     let TestSetup { repository, db } = setup().await;
 
     let org_id = Uuid::new_v4().into();
-    insert_organisation_to_database(&db, Some(org_id), None)
+    insert_organisation_to_database(&db, Some(org_id))
         .await
         .unwrap();
 
     let org2_id = Uuid::new_v4().into();
-    insert_organisation_to_database(&db, Some(org2_id), None)
+    insert_organisation_to_database(&db, Some(org2_id))
         .await
         .unwrap();
 
@@ -131,15 +130,14 @@ async fn test_update_organisation() {
     let TestSetup { db, repository } = setup().await;
 
     let org_id = Uuid::new_v4().into();
-    insert_organisation_to_database(&db, Some(org_id), None)
+    insert_organisation_to_database(&db, Some(org_id))
         .await
         .unwrap();
 
     let request = UpdateOrganisationRequest {
         id: org_id,
-        name: Some("name".to_string()),
         deactivate: None,
-        wallet_provider: None,
+        wallet_provider: Some(Some("TEST".to_string())),
         wallet_provider_issuer: None,
         parent_organisation: None,
     };
@@ -152,7 +150,7 @@ async fn test_update_organisation() {
         .await
         .unwrap();
     assert_eq!(organisations.len(), 1);
-    assert_eq!(organisations[0].name, "name");
+    assert_eq!(organisations[0].wallet_provider, Some("TEST".to_string()));
     // last_modified has been updated
     assert!(organisations[0].last_modified > organisations[0].created_date);
 }

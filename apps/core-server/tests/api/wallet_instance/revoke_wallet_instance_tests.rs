@@ -46,7 +46,6 @@ async fn test_revoke_wallet_instance_success() {
         .organisations
         .update(UpdateOrganisationRequest {
             id: org.id,
-            name: None,
             deactivate: None,
             wallet_provider: None,
             wallet_provider_issuer: Some(Some(identifier.id)),

@@ -14,7 +14,6 @@ use crate::utils::serialization::query_time_urlencoded;
 pub struct OrganisationFilters {
     pub page: u64,
     pub page_size: u64,
-    pub name: Option<String>,
 
     pub created_date_after: Option<OffsetDateTime>,
     pub created_date_before: Option<OffsetDateTime>,
@@ -33,7 +32,6 @@ pub struct OrganisationsApi {
 #[serde(rename_all = "camelCase")]
 pub struct UpsertParams {
     pub deactivate: Option<bool>,
-    pub name: Option<String>,
     pub wallet_provider: Option<Option<String>>,
     pub wallet_provider_issuer: Option<Option<IdentifierId>>,
     pub parent_organisation: Option<Option<OrganisationId>>,
@@ -44,14 +42,13 @@ impl OrganisationsApi {
         Self { client }
     }
 
-    pub async fn create(&self, id: impl Into<Option<Uuid>>, name: Option<&str>) -> Response {
-        self.create_with_parent(id, name, None).await
+    pub async fn create(&self, id: impl Into<Option<Uuid>>) -> Response {
+        self.create_with_parent(id, None).await
     }
 
     pub async fn create_with_parent(
         &self,
         id: impl Into<Option<Uuid>>,
-        name: Option<&str>,
         parent_organisation: Option<OrganisationId>,
     ) -> Response {
         let mut body = match id.into() {
@@ -59,9 +56,6 @@ impl OrganisationsApi {
             None => json!({}),
         };
 
-        if let Some(name) = name {
-            body["name"] = json!(name);
-        }
         if let Some(parent) = parent_organisation {
             body["parentOrganisation"] = json!(parent);
         }
@@ -83,7 +77,6 @@ impl OrganisationsApi {
         OrganisationFilters {
             page,
             page_size,
-            name,
             created_date_after,
             created_date_before,
             last_modified_after,
@@ -94,9 +87,6 @@ impl OrganisationsApi {
     ) -> Response {
         let mut url = format!("/api/organisation/v1?page={page}&pageSize={page_size}");
 
-        if let Some(name) = name {
-            url += &format!("&name={name}");
-        }
         if let Some(date) = created_date_after {
             url += &format!("&{}", query_time_urlencoded("createdDateAfter", date));
         }

@@ -36,9 +36,7 @@ async fn setup() -> TestSetup {
     let data_layer = setup_test_data_layer_and_connection().await;
     let db = data_layer.db;
 
-    let org_id = insert_organisation_to_database(&db, None, None)
-        .await
-        .unwrap();
+    let org_id = insert_organisation_to_database(&db, None).await.unwrap();
 
     let identifier_id: shared_types::IdentifierId =
         insert_identifier(&db, "test identifier", Uuid::new_v4(), None, org_id, false)
@@ -483,9 +481,7 @@ async fn test_get_trust_entry_with_publication_relation() {
     let data_layer = setup_test_data_layer_and_connection().await;
     let db = data_layer.db;
 
-    let org_id = insert_organisation_to_database(&db, None, None)
-        .await
-        .unwrap();
+    let org_id = insert_organisation_to_database(&db, None).await.unwrap();
 
     let identifier_id: shared_types::IdentifierId =
         insert_identifier(&db, "test identifier", Uuid::new_v4(), None, org_id, false)

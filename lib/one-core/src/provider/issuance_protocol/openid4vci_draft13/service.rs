@@ -60,8 +60,8 @@ pub(crate) fn create_issuer_metadata_response(
                 .ok_or(OpenID4VCIError::RuntimeError(
                     "missing organisation".to_string(),
                 ))?
-                .name
-                .clone(),
+                .id
+                .to_string(),
             locale: "en".to_string(),
         }]),
     })

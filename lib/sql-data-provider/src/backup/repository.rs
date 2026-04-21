@@ -246,7 +246,6 @@ impl BackupRepository for BackupProvider {
                 "credential_schema_transaction_code_description",
             )
             .column_as(organisation::Column::Id, "organisation_id")
-            .column_as(organisation::Column::Name, "organisation_name")
             .column_as(
                 organisation::Column::CreatedDate,
                 "organisation_created_date",

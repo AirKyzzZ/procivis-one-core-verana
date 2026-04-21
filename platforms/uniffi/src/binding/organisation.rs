@@ -38,8 +38,6 @@ impl OneCore {
 pub struct CreateOrganisationRequestBindingDTO {
     /// If no UUID is passed, one will be created.
     pub id: Option<String>,
-    /// If no name is passed, the UUID will be used.
-    pub name: Option<String>,
     pub parent_organisation: Option<String>,
 }
 
@@ -48,8 +46,6 @@ pub struct CreateOrganisationRequestBindingDTO {
 pub struct UpsertOrganisationRequestBindingDTO {
     /// Unique identifier of the organization to create or update.
     pub id: String,
-    /// Organization's display name.
-    pub name: Option<String>,
     /// Set to `true` to deactivate the organization.
     pub deactivate: Option<bool>,
     /// Wallet Provider use only.

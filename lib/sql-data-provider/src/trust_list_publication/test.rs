@@ -32,9 +32,7 @@ struct TestSetup {
 async fn setup() -> TestSetup {
     let data_layer = setup_test_data_layer_and_connection().await;
     let db = data_layer.db;
-    let org_id = insert_organisation_to_database(&db, None, None)
-        .await
-        .unwrap();
+    let org_id = insert_organisation_to_database(&db, None).await.unwrap();
     let identifier_id =
         insert_identifier(&db, "testIdentifier", Uuid::new_v4(), None, org_id, false)
             .await
@@ -242,9 +240,7 @@ async fn test_list_trust_list_publications_with_organisation_filter() {
         identifier_id,
     } = setup().await;
 
-    let other_org_id = insert_organisation_to_database(&db, None, None)
-        .await
-        .unwrap();
+    let other_org_id = insert_organisation_to_database(&db, None).await.unwrap();
 
     let pub1 = dummy_trust_list_publication(org_id, identifier_id);
     let pub2 = dummy_trust_list_publication(other_org_id, identifier_id);
@@ -489,9 +485,7 @@ async fn test_get_trust_list_publication_with_organisation_relation() {
     let data_layer = setup_test_data_layer_and_connection().await;
     let db = data_layer.db;
 
-    let org_id = insert_organisation_to_database(&db, None, None)
-        .await
-        .unwrap();
+    let org_id = insert_organisation_to_database(&db, None).await.unwrap();
 
     let identifier_id =
         insert_identifier(&db, "test identifier", Uuid::new_v4(), None, org_id, false)
@@ -504,7 +498,6 @@ async fn test_get_trust_list_publication_with_organisation_relation() {
         .returning(move |id, _relations| {
             Ok(Some(Organisation {
                 id: *id,
-                name: "test-org".to_string(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 deactivated_at: None,
@@ -539,7 +532,7 @@ async fn test_get_trust_list_publication_with_organisation_relation() {
     assert!(result.is_ok());
     let found = result.unwrap().unwrap();
     assert!(found.organisation.is_some());
-    assert_eq!(found.organisation.unwrap().name, "test-org");
+    assert_eq!(found.organisation.unwrap().id, org_id);
 }
 
 #[tokio::test]

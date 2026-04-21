@@ -31,9 +31,7 @@ struct TestSetup {
 async fn setup() -> TestSetup {
     let data_layer = setup_test_data_layer_and_connection().await;
     let db = data_layer.db;
-    let org_id = insert_organisation_to_database(&db, None, None)
-        .await
-        .unwrap();
+    let org_id = insert_organisation_to_database(&db, None).await.unwrap();
     let trust_collection_id = insert_trust_collection_to_database(&db, org_id)
         .await
         .unwrap();
@@ -245,9 +243,7 @@ async fn test_list_trust_list_subscription_with_trust_collection_filter() {
         trust_collection_id,
     } = setup().await;
 
-    let org_id = insert_organisation_to_database(&db, None, None)
-        .await
-        .unwrap();
+    let org_id = insert_organisation_to_database(&db, None).await.unwrap();
     let other_trust_collection_id = insert_trust_collection_to_database(&db, org_id)
         .await
         .unwrap();
@@ -506,9 +502,7 @@ async fn test_get_trust_list_subscription_with_trust_collection_relation() {
     let data_layer = setup_test_data_layer_and_connection().await;
     let db = data_layer.db;
 
-    let org_id = insert_organisation_to_database(&db, None, None)
-        .await
-        .unwrap();
+    let org_id = insert_organisation_to_database(&db, None).await.unwrap();
     let trust_collection_id = insert_trust_collection_to_database(&db, org_id)
         .await
         .unwrap();

@@ -185,6 +185,13 @@ fn mock_publication_repo(
         publication.key = Some(key.clone());
         publication.certificate = Some(certificate.clone());
         publication.organisation = Some(dummy_organisation(Some(publication.organisation_id)));
+        publication.identifier = Some(Identifier {
+            id: publication.identifier_id,
+            name: "Test Entity".into(),
+            r#type: IdentifierType::Certificate,
+            certificates: Some(vec![certificate.clone()]),
+            ..dummy_identifier()
+        });
         Ok(Some(publication))
     });
 
@@ -697,6 +704,7 @@ async fn test_add_entry_includes_certificate_in_digital_identity() {
     let mut pub_repo = MockTrustListPublicationRepository::new();
     let key_for_get = key;
     let cert_for_get = signing_cert;
+    let ident_clone = identifier.clone();
     pub_repo.expect_get().returning(move |id, _relations| {
         Ok(Some(TrustListPublication {
             id,
@@ -706,6 +714,7 @@ async fn test_add_entry_includes_certificate_in_digital_identity() {
             key: Some(key_for_get.clone()),
             certificate: Some(cert_for_get.clone()),
             organisation: Some(dummy_organisation(Some(org_id))),
+            identifier: Some(ident_clone.clone()),
             ..dummy_publication(TrustListRoleEnum::PidProvider, vec![])
         }))
     });

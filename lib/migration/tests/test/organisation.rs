@@ -10,13 +10,11 @@ async fn test_db_schema_organisation() {
             "id",
             "created_date",
             "last_modified",
-            "name",
             "deactivated_at",
             "wallet_provider",
             "wallet_provider_issuer",
             "parent_organisation",
         ])
-        .index("index-Organisation-Name-Unique", true, &["name"])
         .index(
             "index-Organisation-WalletProvider-Unique",
             true,
@@ -41,11 +39,6 @@ async fn test_db_schema_organisation() {
     organisation
         .column("last_modified")
         .r#type(ColumnType::TimestampMilliseconds)
-        .nullable(false)
-        .default(None);
-    organisation
-        .column("name")
-        .r#type(ColumnType::Text)
         .nullable(false)
         .default(None);
     organisation

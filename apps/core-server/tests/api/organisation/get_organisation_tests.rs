@@ -16,7 +16,6 @@ async fn test_get_organisation_success() {
     let resp = resp.json_value().await;
 
     resp["id"].assert_eq(&organisation.id);
-    resp["name"].assert_eq(&organisation.name);
     assert!(resp["createdDate"].is_string());
     assert!(resp["lastModified"].is_string());
     assert!(resp.get("parentOrganisation").is_none());
@@ -52,7 +51,6 @@ async fn get_deactivated_organisation_success() {
     let resp = resp.json_value().await;
 
     resp["id"].assert_eq(&organisation.id);
-    resp["name"].assert_eq(&organisation.name);
     assert!(resp["createdDate"].is_string());
     assert!(resp["lastModified"].is_string());
     assert!(resp["deactivatedAt"].is_string());

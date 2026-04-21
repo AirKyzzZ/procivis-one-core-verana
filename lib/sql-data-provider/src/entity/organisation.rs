@@ -13,7 +13,6 @@ use time::OffsetDateTime;
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: OrganisationId,
-    pub name: String,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub deactivated_at: Option<OffsetDateTime>,

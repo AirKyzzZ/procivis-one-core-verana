@@ -246,9 +246,7 @@ async fn setup_empty() -> TestSetup {
     .await
     .unwrap();
 
-    let organisation_id = insert_organisation_to_database(&db, None, None)
-        .await
-        .unwrap();
+    let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
 
     TestSetup {
         db: db.clone(),

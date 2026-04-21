@@ -149,7 +149,6 @@ async fn test_create_trust_entity_success() {
         .returning(move |_, _| {
             Ok(Some(Organisation {
                 id: organisation_id,
-                name: "test".to_string(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 deactivated_at: None,
@@ -223,7 +222,6 @@ async fn test_create_trust_entity_failed_only_one_entity_can_be_created_for_one_
         .returning(move |_, _| {
             Ok(Some(Organisation {
                 id: organisation_id,
-                name: "test".to_string(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 deactivated_at: None,
@@ -436,7 +434,6 @@ async fn test_publisher_get_remote_trust_entity_success() {
     did.did = did_value.clone();
     did.organisation = Some(Organisation {
         id: Uuid::new_v4().into(),
-        name: "test organisation".to_string(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         deactivated_at: None,
@@ -458,7 +455,6 @@ async fn test_publisher_get_remote_trust_entity_success() {
     trust_entity.trust_anchor = Some(generic_trust_anchor(trust_anchor_id));
     trust_entity.organisation = Some(Organisation {
         id: Uuid::new_v4().into(),
-        name: "test organisation".to_string(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         deactivated_at: None,

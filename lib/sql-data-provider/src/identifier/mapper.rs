@@ -49,7 +49,6 @@ impl From<identifier::Model> for Identifier {
             deleted_at: value.deleted_at,
             organisation: value.organisation_id.map(|id| Organisation {
                 id,
-                name: "".to_string(),
                 created_date: one_core::clock::now_utc(),
                 last_modified: one_core::clock::now_utc(),
                 deactivated_at: None,

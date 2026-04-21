@@ -143,7 +143,6 @@ impl TestContextWithOrganisation {
         let organisation_id = core
             .create_organisation(CreateOrganisationRequestBindingDTO {
                 id: None,
-                name: None,
                 parent_organisation: None,
             })
             .await
