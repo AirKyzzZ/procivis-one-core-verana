@@ -89,7 +89,7 @@ pub(crate) async fn get_organisations(
     path = "/api/organisation/v1",
     request_body(
         content((Option<CreateOrganisationRequestRestDTO>)),
-        example = json!({ "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "name": "default organisation" }),
+        example = json!({ "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6" }),
     ),
     responses(CreatedOrErrorResponse<CreateOrganisationResponseRestDTO>),
     tag = "organisation_management",
