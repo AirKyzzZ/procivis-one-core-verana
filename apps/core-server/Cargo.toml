@@ -48,7 +48,7 @@ serde_qs.workspace = true
 serde_with.workspace = true
 shadow-rs.workspace = true
 shared-types = { workspace = true, features = ["utoipa"] }
-sql-data-provider = { workspace = true, features = ["mysql"] }
+sql-data-provider = { workspace = true, features = ["mysql", "postgres"] }
 standardized-types = { workspace = true, features = ["utoipa"] }
 strum.workspace = true
 thiserror.workspace = true

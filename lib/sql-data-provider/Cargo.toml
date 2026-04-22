@@ -9,6 +9,7 @@ version.workspace      = true
 
 [features]
 mysql      = ["migration/mysql", "sea-orm/sqlx-mysql"]
+postgres   = ["migration/postgres", "sea-orm/sqlx-postgres"]
 test_utils = ["dep:similar-asserts"]
 # Treat build warnings as error
 strict = []

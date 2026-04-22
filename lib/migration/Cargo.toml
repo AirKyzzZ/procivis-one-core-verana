@@ -19,6 +19,7 @@ uuid                  = { workspace = true, features = ["v4"] }
 
 [features]
 mysql = ["sea-orm-migration/sqlx-mysql"]
+postgres = ["sea-orm-migration/sqlx-postgres"]
 
 [dev-dependencies]
 sea-schema = { version = "0.17.0-rc.16", default-features = false, features = [
