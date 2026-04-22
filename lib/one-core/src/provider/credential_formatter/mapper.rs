@@ -108,6 +108,14 @@ fn issuer_for_credential(
     {
         return Ok(Issuer::Url(issuer_did.did.clone().into_url()));
     }
+    let issuer_identifier_id = credential
+        .issuer_identifier
+        .as_ref()
+        .ok_or(FormatterError::CouldNotFormat(
+            "missing credential issuer identifier".to_string(),
+        ))?
+        .id;
+
     let credential_schema_id = credential
         .schema
         .as_ref()
@@ -115,8 +123,12 @@ fn issuer_for_credential(
             "missing credential schema".to_string(),
         ))?
         .id;
-    let url: Url =
-        format!("{core_base_url}/ssi/openid4vci/draft-13/{credential_schema_id}",).parse()?;
+
+    let url: Url = format!(
+        "{core_base_url}/ssi/openid4vci/{}/{issuer_identifier_id}/{credential_schema_id}",
+        credential.protocol
+    )
+    .parse()?;
     Ok(Issuer::Url(url))
 }
 

@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use serde_with::skip_serializing_none;
 use shared_types::CredentialId;
+use standardized_types::jwk::PublicJwk;
 use url::Url;
 
 use crate::service::credential::dto::DetailCredentialClaimResponseDTO;
@@ -155,4 +156,16 @@ pub enum SdJwtVcClaimSd {
 pub struct SdJwtVcClaimDisplayDTO {
     pub lang: String,
     pub label: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct SdJwtVcIssuerMetadata {
+    pub issuer: String,
+    pub jwks: SdJwtVcIssuerMetadataJwks,
+}
+
+#[derive(Clone, Debug)]
+pub enum SdJwtVcIssuerMetadataJwks {
+    Jwks(Vec<PublicJwk>),
+    JwksUri(String),
 }

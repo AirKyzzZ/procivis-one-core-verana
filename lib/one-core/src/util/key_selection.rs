@@ -249,6 +249,19 @@ impl Did {
             .iter()
             .find(|entry| filter.matches_related_key(entry)))
     }
+
+    pub fn find_matching_keys(
+        &self,
+        filter: &KeyFilter,
+    ) -> Result<Vec<&RelatedKey>, KeySelectionError> {
+        Ok(self
+            .keys
+            .as_ref()
+            .ok_or_else(|| KeySelectionError::MappingError("keys is None".to_string()))?
+            .iter()
+            .filter(|entry| filter.matches_related_key(entry))
+            .collect())
+    }
 }
 
 impl Certificate {
@@ -431,6 +444,89 @@ impl Identifier {
                 }
 
                 Ok(SelectedKey::Certificate { certificate, key })
+            }
+        }
+    }
+
+    pub(crate) fn list_keys(
+        &self,
+        key_filter: Option<KeyFilter>,
+        certificate_filter: Option<CertificateFilter>,
+    ) -> Result<Vec<SelectedKey<'_>>, KeySelectionError> {
+        if self.is_remote {
+            return Err(KeySelectionError::RemoteIdentifier);
+        }
+        let filter = key_filter.unwrap_or_default();
+        match self.r#type {
+            IdentifierType::Key => {
+                let key = self.key.as_ref().ok_or(KeySelectionError::MappingError(
+                    "Missing identifier key".to_owned(),
+                ))?;
+
+                if !filter.matches_key(key) {
+                    return Err(KeySelectionError::NoKeyMatchingFilter {
+                        identifier_id: self.id,
+                        key_filter: filter,
+                    });
+                }
+                Ok(vec![SelectedKey::Key(key)])
+            }
+            IdentifierType::Did => {
+                let did = self.did.as_ref().ok_or(KeySelectionError::MappingError(
+                    "Missing identifier did".to_owned(),
+                ))?;
+
+                if did.deactivated {
+                    return Err(KeySelectionError::DidDeactivated { did_id: did.id });
+                }
+
+                let matching_keys = did.find_matching_keys(&filter)?;
+                if matching_keys.is_empty() {
+                    return Err(KeySelectionError::NoKeyMatchingFilter {
+                        identifier_id: self.id,
+                        key_filter: filter,
+                    });
+                }
+                Ok(matching_keys
+                    .into_iter()
+                    .map(|key| SelectedKey::Did { did, key })
+                    .collect())
+            }
+            IdentifierType::Certificate | IdentifierType::CertificateAuthority => {
+                let certificate_filter = certificate_filter.unwrap_or_default();
+                let certs = self
+                    .certificates
+                    .as_ref()
+                    .ok_or(KeySelectionError::MappingError(
+                        "Missing identifier certificates".to_owned(),
+                    ))?;
+                let certificates = certs
+                    .iter()
+                    .filter(|c| {
+                        c.state == CertificateState::Active
+                            && certificate_filter.matches_certificate(c)
+                            && c.has_matching_key(&filter)
+                    })
+                    .map(|certificate| {
+                        let key =
+                            certificate
+                                .key
+                                .as_ref()
+                                .ok_or(KeySelectionError::MappingError(
+                                    "Missing certificate key".to_owned(),
+                                ))?;
+                        Ok(SelectedKey::Certificate { certificate, key })
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+
+                if certificates.is_empty() {
+                    return Err(KeySelectionError::NoActiveMatchingCertificate {
+                        identifier_id: self.id,
+                        key_filter: filter.clone(),
+                        certificate_filter: certificate_filter.clone(),
+                    });
+                }
+                Ok(certificates)
             }
         }
     }

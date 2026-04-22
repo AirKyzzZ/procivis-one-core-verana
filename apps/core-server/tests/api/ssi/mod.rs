@@ -5,6 +5,7 @@ mod get_ca_tests;
 mod get_credential_schema_tests;
 mod get_did_web_document_tests;
 mod get_json_ld_context;
+mod get_jwt_vc_issuer_metadata;
 mod get_proof_schema;
 mod get_revocation_list_tests;
 mod get_sd_jwt_vc_metadata;

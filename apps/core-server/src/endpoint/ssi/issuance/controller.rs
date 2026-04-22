@@ -1,0 +1,67 @@
+use axum::Json;
+use axum::extract::{Path, State};
+use axum::http::StatusCode;
+use axum::response::{IntoResponse, Response};
+use axum_extra::extract::WithRejection;
+use one_core::service::ssi_issuer::error::IssuerServiceError;
+use proc_macros::endpoint;
+use shared_types::{CredentialSchemaId, IdentifierId};
+
+use crate::dto::error::ErrorResponseRestDTO;
+use crate::endpoint::ssi::issuance::dto::SdJwtVcIssuerMetadataRestDTO;
+use crate::router::AppState;
+
+#[endpoint(
+    permissions = [],
+    get,
+    path = "/.well-known/jwt-vc-issuer/ssi/openid4vci/{protocol_id}/{identifier_id}/{credential_schema_id}",
+    params(
+        ("protocol_id" = String, Path, description = "Issuance protocol id"),
+        ("identifier_id" = IdentifierId, Path, description = "Identifier id"),
+        ("credential_schema_id" = CredentialSchemaId, Path, description = "Credential schema id")
+    ),
+    responses(
+        (status = 200, description = "OK", content(
+            (SdJwtVcIssuerMetadataRestDTO = "application/json"),
+            (String = "application/jwt")
+        )),
+        (status = 404, description = "Issuer not found"),
+        (status = 500, description = "Server error"),
+    ),
+    tag = "openid4vci",
+    summary = "OID4VC - Retrieve sd jwt vc issuer metadata",
+    description = indoc::formatdoc! {"
+        This endpoint handles low-level mechanisms in interactions between agents.
+        Deep understanding of the involved protocols is recommended.
+    "},
+)]
+pub(crate) async fn oid4vci_get_jwt_vc_issuer_metadata(
+    state: State<AppState>,
+    WithRejection(Path((protocol_id, identifier_id, credential_schema_id)), _): WithRejection<
+        Path<(String, IdentifierId, CredentialSchemaId)>,
+        ErrorResponseRestDTO,
+    >,
+) -> Response {
+    let result = state
+        .core
+        .ssi_issuer_service
+        .get_sd_jwt_vc_issuer_metadata(&protocol_id, &identifier_id, &credential_schema_id)
+        .await;
+
+    match result {
+        Ok(value) => {
+            let response_body: SdJwtVcIssuerMetadataRestDTO = value.into();
+            (StatusCode::OK, Json(response_body)).into_response()
+        }
+        Err(error @ IssuerServiceError::MissingProtocol(_))
+        | Err(error @ IssuerServiceError::MissingCredentialSchema(_))
+        | Err(error @ IssuerServiceError::MissingIdentifier(_)) => {
+            tracing::error!("Not found error: {error}");
+            StatusCode::NOT_FOUND.into_response()
+        }
+        Err(e) => {
+            tracing::error!("Error: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
+}

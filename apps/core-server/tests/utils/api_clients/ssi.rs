@@ -227,6 +227,20 @@ impl SSIApi {
         self.client.get(&url).await
     }
 
+    pub async fn get_sd_jwt_vc_issuer_metadata(
+        &self,
+        protocol_id: &str,
+        identifier_id: impl Into<Uuid>,
+        credential_schema_id: impl Into<Uuid>,
+    ) -> Response {
+        let url = format!(
+            "/.well-known/jwt-vc-issuer/ssi/openid4vci/{protocol_id}/{}/{}",
+            identifier_id.into(),
+            credential_schema_id.into()
+        );
+        self.client.get(&url).await
+    }
+
     pub async fn create_token(
         &self,
         id: CredentialSchemaId,

@@ -611,6 +611,10 @@ fn get_external_endpoints(
     if config.enable_external_endpoints {
         Router::new()
             .route(
+                "/.well-known/jwt-vc-issuer/ssi/openid4vci/{protocol_id}/{identifier_id}/{credential_schema_id}",
+                get(ssi::issuance::controller::oid4vci_get_jwt_vc_issuer_metadata)
+            )
+            .route(
                 "/ssi/openid4vci/draft-13/{id}/.well-known/openid-credential-issuer",
                 get(ssi::issuance::draft13::controller::oid4vci_draft13_get_issuer_metadata),
             )

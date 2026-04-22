@@ -770,6 +770,9 @@ impl OneCore {
             ),
             ssi_issuer_service: SSIIssuerService::new(
                 data_provider.get_credential_schema_repository(),
+                data_provider.get_identifier_repository(),
+                issuance_provider.clone(),
+                key_algorithm_provider.clone(),
                 config.clone(),
                 core_base_url.clone(),
             ),

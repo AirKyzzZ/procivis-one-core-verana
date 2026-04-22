@@ -1,14 +1,16 @@
 use std::collections::HashMap;
 use std::str::FromStr;
+use std::sync::Arc;
 
 use convert_case::{Case, Casing};
-use shared_types::{CredentialSchemaId, OrganisationId};
+use shared_types::{CredentialSchemaId, IdentifierId, OrganisationId};
+use standardized_types::jwk::{JwkUse, PublicJwk};
 use url::Url;
 
 use super::SSIIssuerService;
 use super::dto::{
     JsonLDContextDTO, JsonLDContextResponseDTO, JsonLDEntityDTO, JsonLDInlineEntityDTO,
-    SdJwtVcTypeMetadataResponseDTO,
+    SdJwtVcIssuerMetadata, SdJwtVcIssuerMetadataJwks, SdJwtVcTypeMetadataResponseDTO,
 };
 use super::error::IssuerServiceError;
 use super::mapper::{
@@ -16,11 +18,19 @@ use super::mapper::{
     get_url_with_fragment,
 };
 use crate::config::ConfigValidationError;
-use crate::config::core_config::{FormatType, Params};
+use crate::config::core_config::{FormatType, KeyStorageType, Params};
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
+use crate::model::certificate::CertificateRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
-use crate::model::credential_schema::{CredentialSchemaListQuery, CredentialSchemaRelations};
+use crate::model::credential_schema::{
+    CredentialSchema, CredentialSchemaListQuery, CredentialSchemaRelations,
+};
+use crate::model::did::DidRelations;
+use crate::model::identifier::{Identifier, IdentifierRelations};
+use crate::model::key::Key;
 use crate::model::list_filter::{ListFilterValue, StringMatch};
+use crate::provider::issuance_protocol::IssuanceProtocol;
+use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::service::credential_schema::dto::{
     CredentialSchemaFilterValue, CredentialSchemaListIncludeEntityTypeEnum,
 };
@@ -201,5 +211,139 @@ impl SSIIssuerService {
             return Err(IssuerServiceError::MissingSdJwtVcTypeMetadata(vct));
         };
         credential_schema_to_sd_jwt_vc_metadata(vct_type, credential_schema)
+    }
+
+    pub async fn get_sd_jwt_vc_issuer_metadata(
+        &self,
+        protocol_id: &String,
+        identifier_id: &IdentifierId,
+        credential_schema_id: &CredentialSchemaId,
+    ) -> Result<SdJwtVcIssuerMetadata, IssuerServiceError> {
+        let core_base_url = self
+            .core_base_url
+            .as_ref()
+            .ok_or(IssuerServiceError::MappingError(
+                "Missing core_base_url for jwt vc issuer metadata".to_string(),
+            ))?;
+        let _protocol = self.fetch_protocol(protocol_id).await?;
+        let identifier = self.fetch_identifier(identifier_id).await?;
+        let credential_schema = self.fetch_credential_schema(credential_schema_id).await?;
+
+        let issuer = if let Some(issuer_did) = identifier.did.as_ref() {
+            issuer_did.did.as_str().to_string()
+        } else {
+            format!(
+                "{core_base_url}/ssi/openid4vci/{protocol_id}/{}/{}",
+                identifier.id, credential_schema.id
+            )
+        };
+
+        let jwks = self.collect_identifier_jwks(&identifier).await?;
+        Ok(SdJwtVcIssuerMetadata {
+            issuer,
+            jwks: SdJwtVcIssuerMetadataJwks::Jwks(jwks),
+        })
+    }
+
+    async fn collect_identifier_jwks(
+        &self,
+        identifier: &Identifier,
+    ) -> Result<Vec<PublicJwk>, IssuerServiceError> {
+        let keys = identifier
+            .list_keys(None, None)
+            .error_while("selecting identifier keys")?;
+        let mut result = Vec::with_capacity(keys.len());
+        for key in keys {
+            if let Some(key) = self.calculate_jwk_for_key(key.key()).await? {
+                result.push(key);
+            }
+        }
+        Ok(result)
+    }
+
+    async fn calculate_jwk_for_key(
+        &self,
+        key: &Key,
+    ) -> Result<Option<PublicJwk>, IssuerServiceError> {
+        let key_algorithm = key
+            .key_algorithm_type()
+            .and_then(|key_type| {
+                self.key_algorithm_provider
+                    .key_algorithm_from_type(key_type)
+            })
+            .ok_or(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
+                key.key_type.to_owned(),
+            ))
+            .error_while("getting key algorithm")?;
+
+        /*
+         * TODO(ONE-5428): Azure vault doesn't work directly with encrypted JWE params
+         * This needs more investigation and a refactor to support creating shared secret
+         * through key storage
+         */
+        let r#use = if self
+            .config
+            .key_storage
+            .get_type(&key.storage_type)
+            .error_while("getting key storage type")?
+            != KeyStorageType::AzureVault
+        {
+            Some(JwkUse::Encryption)
+        } else {
+            return Ok(None);
+        };
+
+        let mut jwk = key_algorithm
+            .reconstruct_key(&key.public_key, None, r#use)
+            .error_while("reconstructing encryption key")?
+            .public_key_as_jwk()
+            .error_while("creating JWK")?;
+        jwk.set_kid(key.id.to_string());
+        Ok(Some(jwk))
+    }
+
+    async fn fetch_protocol(
+        &self,
+        protocol_id: &str,
+    ) -> Result<Arc<dyn IssuanceProtocol>, IssuerServiceError> {
+        self.issuance_protocol_provider
+            .get_protocol(protocol_id)
+            .ok_or_else(|| IssuerServiceError::MissingProtocol(protocol_id.to_string()))
+    }
+
+    async fn fetch_credential_schema(
+        &self,
+        credential_schema_id: &CredentialSchemaId,
+    ) -> Result<CredentialSchema, IssuerServiceError> {
+        self.credential_schema_repository
+            .get_credential_schema(credential_schema_id, &Default::default())
+            .await
+            .error_while("fetching credential schema")?
+            .ok_or_else(|| IssuerServiceError::MissingCredentialSchema(*credential_schema_id))
+    }
+
+    async fn fetch_identifier(
+        &self,
+        identifier_id: &IdentifierId,
+    ) -> Result<Identifier, IssuerServiceError> {
+        self.identifier_repository
+            .get(
+                *identifier_id,
+                &IdentifierRelations {
+                    did: Some(DidRelations {
+                        keys: Some(Default::default()),
+                        ..Default::default()
+                    }),
+                    key: Some(Default::default()),
+                    certificates: Some(CertificateRelations {
+                        key: Some(Default::default()),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+            )
+            .await
+            .error_while("fetching identifier")?
+            .ok_or_else(|| IssuerServiceError::MissingIdentifier(*identifier_id))
     }
 }
