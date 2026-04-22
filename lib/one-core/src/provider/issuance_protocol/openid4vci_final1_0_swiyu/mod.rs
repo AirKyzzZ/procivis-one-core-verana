@@ -246,7 +246,7 @@ impl IssuanceProtocol for OpenID4VCISwiyu {
         &self,
         protocol_id: &str,
         credential_schema_id: &CredentialSchemaId,
-        _issuer_identifier: Option<Arc<Identifier>>,
+        issuer_identifier: &Identifier,
     ) -> Result<OpenID4VCIIssuerMetadataResponseDTO, IssuanceProtocolError> {
         let mut prepared_metadata = self
             .inner
@@ -296,10 +296,19 @@ impl IssuanceProtocol for OpenID4VCISwiyu {
                 );
             }
         }
+        let issuer_info = self
+            .inner
+            .get_etsi_issuer_info(issuer_identifier, &prepared_metadata.schema)
+            .await?;
 
-        create_issuer_metadata_response(protocol_id, prepared_metadata, None, None)
-            .map_err(OpenIDIssuanceError::OpenID4VCI)
-            .map_err(Into::into)
+        create_issuer_metadata_response(
+            protocol_id,
+            issuer_identifier,
+            prepared_metadata,
+            issuer_info,
+        )
+        .map_err(OpenIDIssuanceError::OpenID4VCI)
+        .map_err(Into::into)
     }
 
     fn get_capabilities(&self) -> IssuanceProtocolCapabilities {

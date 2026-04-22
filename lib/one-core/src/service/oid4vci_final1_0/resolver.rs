@@ -119,7 +119,7 @@ impl Resolver for CredentialIssuerMetadataResolver {
             .issuer_metadata(
                 &self.protocol_id,
                 &self.credential_schema_id,
-                Some(self.identifier.clone()),
+                &self.identifier,
             )
             .await
             .error_while("getting issuer metadata")?;

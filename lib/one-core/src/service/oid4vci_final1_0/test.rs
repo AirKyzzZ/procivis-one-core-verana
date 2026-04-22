@@ -414,6 +414,8 @@ async fn test_get_issuer_metadata_jwt() {
         panic!("assertion failed: Expected an IssuerMetadataResponseEnum::Model")
     };
 
+    assert_eq!(model.display.unwrap().first().unwrap().name, "identifier");
+
     let credential_configuration = model.credential_configurations_supported[0].to_owned();
     assert_eq!("jwt_vc_json".to_string(), credential_configuration.format);
     assert_eq!(

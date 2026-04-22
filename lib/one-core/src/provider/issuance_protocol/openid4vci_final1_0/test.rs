@@ -352,7 +352,7 @@ async fn test_generate_offer() {
         &credential.protocol,
         &interaction_id.to_string(),
         credential.schema.as_ref().unwrap(),
-        Some(issuer_identifier_id),
+        issuer_identifier_id,
     )
     .unwrap();
 

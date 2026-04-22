@@ -8,7 +8,7 @@ use headers::authorization::Bearer;
 use one_core::error::{ErrorCode, ErrorCodeMixin};
 use one_core::service::oid4vci_final1_0::error::OID4VCIFinal1_0ServiceError;
 use proc_macros::endpoint;
-use shared_types::{CredentialId, CredentialSchemaId};
+use shared_types::{CredentialId, CredentialSchemaId, IdentifierId};
 
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::endpoint::ssi::issuance::final1_0::dto::{
@@ -25,9 +25,10 @@ use crate::router::AppState;
 #[endpoint(
     permissions = [],
     get,
-    path = "/.well-known/openid-credential-issuer/ssi/openid4vci/final-1.0-swiyu/{protocol_id}/{credential_schema_id}",
+    path = "/.well-known/openid-credential-issuer/ssi/openid4vci/final-1.0-swiyu/{protocol_id}/{identifier_id}/{credential_schema_id}",
     params(
         ("protocol_id" = String, Path, description = "Issuance protocol id"),
+        ("identifier_id" = IdentifierId, Path, description = "Issuer identifier id"),
         ("credential_schema_id" = CredentialSchemaId, Path, description = "Credential schema id")
     ),
     responses(
@@ -44,15 +45,15 @@ use crate::router::AppState;
 )]
 pub(crate) async fn oid4vci_final1_0_swiyu_get_issuer_metadata(
     state: State<AppState>,
-    WithRejection(Path((protocol_id, credential_schema_id)), _): WithRejection<
-        Path<(String, CredentialSchemaId)>,
+    WithRejection(Path((protocol_id, identifier_id, credential_schema_id)), _): WithRejection<
+        Path<(String, IdentifierId, CredentialSchemaId)>,
         ErrorResponseRestDTO,
     >,
 ) -> Response {
     let result = state
         .core
         .oid4vci_final1_0_swiyu_service
-        .get_issuer_metadata(&protocol_id, &credential_schema_id)
+        .get_issuer_metadata(&protocol_id, &identifier_id, &credential_schema_id)
         .await;
 
     match result {
@@ -75,9 +76,10 @@ pub(crate) async fn oid4vci_final1_0_swiyu_get_issuer_metadata(
 #[endpoint(
     permissions = [],
     get,
-    path = "/ssi/openid4vci/final-1.0-swiyu/{protocol_id}/{credential_schema_id}/.well-known/openid-credential-issuer",
+    path = "/ssi/openid4vci/final-1.0-swiyu/{protocol_id}/{identifier_id}/{credential_schema_id}/.well-known/openid-credential-issuer",
     params(
         ("protocol_id" = String, Path, description = "Issuance protocol id"),
+        ("identifier_id" = IdentifierId, Path, description = "Issuer identifier id"),
         ("credential_schema_id" = CredentialSchemaId, Path, description = "Credential schema id")
     ),
     responses(
@@ -94,16 +96,20 @@ pub(crate) async fn oid4vci_final1_0_swiyu_get_issuer_metadata(
 )]
 pub(crate) async fn oid4vci_final1_0_swiyu_get_issuer_metadata_legacy(
     state: State<AppState>,
-    path_args: WithRejection<Path<(String, CredentialSchemaId)>, ErrorResponseRestDTO>,
+    path_args: WithRejection<
+        Path<(String, IdentifierId, CredentialSchemaId)>,
+        ErrorResponseRestDTO,
+    >,
 ) -> Response {
     oid4vci_final1_0_swiyu_get_issuer_metadata(state, path_args).await
 }
 
 #[utoipa::path(
     get,
-    path = "/.well-known/oauth-authorization-server/ssi/openid4vci/final-1.0-swiyu/{protocol_id}/{credential_schema_id}",
+    path = "/.well-known/oauth-authorization-server/ssi/openid4vci/final-1.0-swiyu/{protocol_id}/{identifier_id}/{credential_schema_id}",
     params(
         ("protocol_id" = String, Path, description = "Issuance protocol id"),
+        ("identifier_id" = IdentifierId, Path, description = "Issuer identifier id"),
         ("credential_schema_id" = CredentialSchemaId, Path, description = "Credential schema id")
     ),
     responses(
@@ -120,15 +126,15 @@ pub(crate) async fn oid4vci_final1_0_swiyu_get_issuer_metadata_legacy(
 )]
 pub(crate) async fn oid4vci_final1_0_swiyu_oauth_authorization_server(
     state: State<AppState>,
-    WithRejection(Path((protocol_id, credential_schema_id)), _): WithRejection<
-        Path<(String, CredentialSchemaId)>,
+    WithRejection(Path((protocol_id, identifier_id, credential_schema_id)), _): WithRejection<
+        Path<(String, IdentifierId, CredentialSchemaId)>,
         ErrorResponseRestDTO,
     >,
 ) -> Response {
     let result = state
         .core
         .oid4vci_final1_0_swiyu_service
-        .oauth_authorization_server(&protocol_id, &credential_schema_id)
+        .oauth_authorization_server(&protocol_id, &identifier_id, &credential_schema_id)
         .await;
 
     match result {
@@ -151,9 +157,10 @@ pub(crate) async fn oid4vci_final1_0_swiyu_oauth_authorization_server(
 #[endpoint(
     permissions = [],
     get,
-    path = "/ssi/openid4vci/final-1.0-swiyu/{protocol_id}/{credential_schema_id}/.well-known/oauth-authorization-server",
+    path = "/ssi/openid4vci/final-1.0-swiyu/{protocol_id}/{identifier_id}/{credential_schema_id}/.well-known/oauth-authorization-server",
     params(
         ("protocol_id" = String, Path, description = "Issuance protocol id"),
+         ("identifier_id" = IdentifierId, Path, description = "Issuer identifier id"),
         ("credential_schema_id" = CredentialSchemaId, Path, description = "Credential schema id")
     ),
     responses(
@@ -170,7 +177,10 @@ pub(crate) async fn oid4vci_final1_0_swiyu_oauth_authorization_server(
 )]
 pub(crate) async fn oid4vci_final1_0_swiyu_oauth_authorization_server_legacy(
     state: State<AppState>,
-    path_args: WithRejection<Path<(String, CredentialSchemaId)>, ErrorResponseRestDTO>,
+    path_args: WithRejection<
+        Path<(String, IdentifierId, CredentialSchemaId)>,
+        ErrorResponseRestDTO,
+    >,
 ) -> Response {
     oid4vci_final1_0_swiyu_oauth_authorization_server(state, path_args).await
 }

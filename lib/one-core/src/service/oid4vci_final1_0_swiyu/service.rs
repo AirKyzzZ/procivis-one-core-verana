@@ -1,4 +1,4 @@
-use shared_types::{CredentialId, CredentialSchemaId};
+use shared_types::{CredentialId, CredentialSchemaId, IdentifierId};
 
 use super::OID4VCIFinal1_0SwiyuService;
 use crate::error::ContextWithErrorCode;
@@ -16,23 +16,27 @@ impl OID4VCIFinal1_0SwiyuService {
     pub async fn oauth_authorization_server(
         &self,
         protocol_id: &str,
+        identifier_id: &IdentifierId,
         credential_schema_id: &CredentialSchemaId,
     ) -> Result<OAuthAuthorizationServerMetadataResponseDTO, OID4VCIFinal1_0ServiceError> {
         self.inner
-            .oauth_authorization_server(protocol_id, credential_schema_id, None)
+            .oauth_authorization_server(protocol_id, identifier_id, credential_schema_id)
             .await
     }
     pub async fn get_issuer_metadata(
         &self,
         protocol_id: &str,
+        identifier_id: &IdentifierId,
         credential_schema_id: &CredentialSchemaId,
     ) -> Result<OpenID4VCIIssuerMetadataResponseDTO, OID4VCIFinal1_0ServiceError> {
         let issuance_protocol = self.protocol_provider.get_protocol(protocol_id).ok_or(
             OID4VCIFinal1_0ServiceError::MappingError("issuance protocol not found".to_string()),
         )?;
 
+        let issuer_identifier = self.inner.get_issuer_identifier(identifier_id).await?;
+
         issuance_protocol
-            .issuer_metadata(protocol_id, credential_schema_id, None)
+            .issuer_metadata(protocol_id, credential_schema_id, &issuer_identifier)
             .await
             .error_while("getting issuer metadata")
             .map_err(Into::into)

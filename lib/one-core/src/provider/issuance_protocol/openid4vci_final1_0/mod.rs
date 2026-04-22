@@ -1900,19 +1900,13 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             .ok_or(IssuanceProtocolError::Failed("Missing base_url".to_owned()))?;
 
         if self.params.credential_offer_by_value {
-            let identifier_id = if self.params.url_scheme != "swiyu" {
-                Some(
-                    credential
-                        .issuer_identifier
-                        .as_ref()
-                        .ok_or(IssuanceProtocolError::Failed(
-                            "issuer_identifier missing".to_string(),
-                        ))?
-                        .id,
-                )
-            } else {
-                None
-            };
+            let identifier_id = credential
+                .issuer_identifier
+                .as_ref()
+                .ok_or(IssuanceProtocolError::Failed(
+                    "issuer_identifier missing".to_string(),
+                ))?
+                .id;
 
             let offer = create_credential_offer(
                 protocol_base_url,
@@ -2291,21 +2285,18 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         &self,
         protocol_id: &str,
         credential_schema_id: &CredentialSchemaId,
-        issuer_identifier: Option<Arc<Identifier>>,
+        issuer_identifier: &Identifier,
     ) -> Result<OpenID4VCIIssuerMetadataResponseDTO, IssuanceProtocolError> {
         let prepared_metadata = self.prepare_issuer_metadata(credential_schema_id).await?;
-        let issuer_info = if let Some(ref identifier) = issuer_identifier {
-            self.get_etsi_issuer_info(identifier, &prepared_metadata.schema)
-                .await?
-        } else {
-            None
-        };
+        let issuer_info = self
+            .get_etsi_issuer_info(issuer_identifier, &prepared_metadata.schema)
+            .await?;
 
         create_issuer_metadata_response(
             protocol_id,
+            issuer_identifier,
             prepared_metadata,
             issuer_info,
-            issuer_identifier.as_deref().map(|i| &i.id),
         )
         .map_err(OpenIDIssuanceError::OpenID4VCI)
         .map_err(Into::into)

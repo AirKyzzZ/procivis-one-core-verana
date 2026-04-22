@@ -148,7 +148,7 @@ pub(crate) async fn oid4vci_final1_0_oauth_authorization_server(
     let result = state
         .core
         .oid4vci_final1_0_service
-        .oauth_authorization_server(&protocol_id, &credential_schema_id, Some(&identifier_id))
+        .oauth_authorization_server(&protocol_id, &identifier_id, &credential_schema_id)
         .await;
 
     match result {

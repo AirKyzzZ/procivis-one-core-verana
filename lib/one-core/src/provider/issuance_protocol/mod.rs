@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use dto::IssuanceProtocolCapabilities;
 use error::IssuanceProtocolError;
 use serde::Serialize;
@@ -109,7 +107,7 @@ pub(crate) trait IssuanceProtocol: Send + Sync {
         &self,
         protocol_id: &str,
         credential_schema_id: &CredentialSchemaId,
-        issuer_identifier: Option<Arc<Identifier>>,
+        issuer_identifier: &Identifier,
     ) -> Result<OpenID4VCIIssuerMetadataResponseDTO, IssuanceProtocolError>;
 
     fn get_capabilities(&self) -> IssuanceProtocolCapabilities;

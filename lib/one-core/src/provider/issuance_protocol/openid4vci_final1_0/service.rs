@@ -19,6 +19,7 @@ use super::validator::throw_if_credential_state_not_eq;
 use crate::config::core_config::FormatType;
 use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::credential_schema::CredentialSchema;
+use crate::model::identifier::Identifier;
 use crate::model::interaction::Interaction;
 use crate::provider::issuance_protocol::error::{OpenID4VCIError, OpenIDIssuanceError};
 use crate::provider::issuance_protocol::model::{OpenID4VCIProofTypeSupported, OpenID4VCITxCode};
@@ -36,20 +37,19 @@ use crate::provider::issuance_protocol::openid4vci_final1_0::validator::{
 
 pub(crate) fn create_issuer_metadata_response(
     protocol_id: &str,
+    identifier: &Identifier,
     PreparedMetadata {
         protocol_base_url,
         schema,
         credential_configurations_supported,
     }: PreparedMetadata,
     issuer_info: Option<Vec<EtsiIssuerInfoResponseDTO>>,
-    identifier_id: Option<&IdentifierId>,
 ) -> Result<OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCIError> {
     let credential_schema_id = schema.id;
-    let credential_issuer = if let Some(identifier_id) = identifier_id {
-        format!("{protocol_base_url}/{protocol_id}/{identifier_id}/{credential_schema_id}")
-    } else {
-        format!("{protocol_base_url}/{protocol_id}/{credential_schema_id}")
-    };
+    let credential_issuer = format!(
+        "{protocol_base_url}/{protocol_id}/{}/{credential_schema_id}",
+        identifier.id
+    );
 
     Ok(OpenID4VCIIssuerMetadataResponseDTO {
         credential_issuer,
@@ -61,14 +61,7 @@ pub(crate) fn create_issuer_metadata_response(
         )),
         credential_configurations_supported,
         display: Some(vec![OpenID4VCIIssuerMetadataDisplayResponseDTO {
-            name: schema
-                .organisation
-                .as_ref()
-                .ok_or(OpenID4VCIError::RuntimeError(
-                    "missing organisation".to_string(),
-                ))?
-                .id
-                .to_string(),
+            name: identifier.name.clone(),
             locale: Some("en".to_string()),
             logo: None,
         }]),
@@ -305,7 +298,7 @@ pub(crate) fn create_credential_offer(
     protocol_id: &str,
     pre_authorized_code: &str,
     credential_schema: &CredentialSchema,
-    identifier_id: Option<IdentifierId>,
+    identifier_id: IdentifierId,
 ) -> Result<OpenID4VCIFinal1CredentialOfferDTO, OpenIDIssuanceError> {
     let tx_code = credential_schema
         .transaction_code
@@ -316,14 +309,10 @@ pub(crate) fn create_credential_offer(
             description: code.description.to_owned(),
         });
 
-    let credential_issuer = if let Some(identifier_id) = identifier_id {
-        format!(
-            "{protocol_base_url}/{protocol_id}/{identifier_id}/{}",
-            credential_schema.id
-        )
-    } else {
-        format!("{protocol_base_url}/{protocol_id}/{}", credential_schema.id)
-    };
+    let credential_issuer = format!(
+        "{protocol_base_url}/{protocol_id}/{identifier_id}/{}",
+        credential_schema.id
+    );
 
     Ok(OpenID4VCIFinal1CredentialOfferDTO {
         credential_issuer,

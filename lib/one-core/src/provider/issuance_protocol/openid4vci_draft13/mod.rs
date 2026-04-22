@@ -1382,7 +1382,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
         &self,
         _protocol_id: &str,
         _credential_schema_id: &CredentialSchemaId,
-        _issuer_identifier: Option<Arc<Identifier>>,
+        _issuer_identifier: &Identifier,
     ) -> Result<issuance_protocol::dto::OpenID4VCIIssuerMetadataResponseDTO, IssuanceProtocolError>
     {
         unimplemented!(

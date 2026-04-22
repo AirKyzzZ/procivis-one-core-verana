@@ -1,5 +1,4 @@
 use std::str::FromStr;
-use std::sync::Arc;
 
 use futures::FutureExt;
 use futures::future::BoxFuture;
@@ -93,11 +92,7 @@ impl OID4VCIFinal1_0Service {
 
         match response_type {
             IssuerMetadataResponseTypeEnum::Model => issuance_protocol
-                .issuer_metadata(
-                    protocol_id,
-                    credential_schema_id,
-                    Some(Arc::new(issuer_identifier)),
-                )
+                .issuer_metadata(protocol_id, credential_schema_id, &issuer_identifier)
                 .await
                 .map(Box::new)
                 .map(IssuerMetadataResponseEnum::Model)
@@ -116,7 +111,7 @@ impl OID4VCIFinal1_0Service {
         }
     }
 
-    pub(super) async fn get_issuer_identifier(
+    pub(crate) async fn get_issuer_identifier(
         &self,
         identifier_id: &IdentifierId,
     ) -> Result<Identifier, OID4VCIFinal1_0ServiceError> {
@@ -147,8 +142,8 @@ impl OID4VCIFinal1_0Service {
     pub async fn oauth_authorization_server(
         &self,
         protocol_id: &str,
+        identifier_id: &IdentifierId,
         credential_schema_id: &CredentialSchemaId,
-        identifier_id: Option<&IdentifierId>,
     ) -> Result<OAuthAuthorizationServerMetadataResponseDTO, OID4VCIFinal1_0ServiceError> {
         validate_issuance_protocol_type(self.protocol_type, &self.config, protocol_id)
             .error_while("validating protocol type")?;
@@ -199,12 +194,8 @@ impl OID4VCIFinal1_0Service {
             (None, None)
         };
 
-        let credential_issuer = if let Some(identifier_id) = identifier_id {
-            format!("{protocol_base_url}/{protocol_id}/{identifier_id}/{credential_schema_id}")
-        } else {
-            format!("{protocol_base_url}/{protocol_id}/{credential_schema_id}")
-        };
-
+        let credential_issuer =
+            format!("{protocol_base_url}/{protocol_id}/{identifier_id}/{credential_schema_id}");
         Ok(OAuthAuthorizationServerMetadata {
             issuer: credential_issuer.parse().map_err(|e| {
                 OID4VCIFinal1_0ServiceError::MappingError(format!("Invalid issuer URL: {e}"))
@@ -317,19 +308,13 @@ impl OID4VCIFinal1_0Service {
                     "Missing base_url".to_owned(),
                 ))?;
 
-        let identifier_id = if issuance_protocol_type == IssuanceProtocolType::OpenId4VciFinal1_0 {
-            Some(
-                credential
-                    .issuer_identifier
-                    .as_ref()
-                    .ok_or(OID4VCIFinal1_0ServiceError::MappingError(
-                        "Missing issuer_identifier".to_owned(),
-                    ))?
-                    .id,
-            )
-        } else {
-            None
-        };
+        let identifier_id = credential
+            .issuer_identifier
+            .as_ref()
+            .ok_or(OID4VCIFinal1_0ServiceError::MappingError(
+                "Missing issuer_identifier".to_owned(),
+            ))?
+            .id;
 
         Ok(create_credential_offer(
             protocol_base_url,
