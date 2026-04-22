@@ -16,7 +16,7 @@ use super::model::{
 };
 use super::{OpenID4VPFinal1_0, encode_client_id_with_scheme};
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
-use crate::mapper::x509::{pem_chain_into_x5c, x5c_into_pem_chain};
+use crate::mapper::x509::x5c_into_pem_chain;
 use crate::model::blob::{Blob, BlobType};
 use crate::model::did::KeyRole;
 use crate::model::history::{
@@ -542,17 +542,11 @@ impl OpenID4VPFinal1_0 {
             }
         };
 
-        let certificate = pem_chain_into_x5c(&certificate.chain)
-            .error_while("PEM chain conversion")?
-            .into_iter()
-            .next()
-            .ok_or(VerificationProtocolError::Failed("Empty x5c".to_string()))?;
-
         self.store_certificate_history_event(
             HistoryAction::WrpAcReceived,
             proof_id,
             organisation_id,
-            certificate,
+            certificate.chain.to_owned(),
             None,
         )
         .await?;

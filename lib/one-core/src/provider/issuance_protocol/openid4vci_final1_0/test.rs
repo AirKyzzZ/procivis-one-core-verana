@@ -19,9 +19,16 @@ use wiremock::http::Method;
 use wiremock::matchers::{body_json, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
+use super::OpenID4VCIFinal1_0;
+use super::model::{
+    HolderInteractionData, OpenID4VCIFinal1Params, OpenID4VCIGrants,
+    OpenID4VCIPreAuthorizedCodeGrant,
+};
+use super::service::create_credential_offer;
 use crate::config::core_config::{
     CoreConfig, Fields, FormatType, KeyAlgorithmType, KeySecurityLevelType,
 };
+use crate::mapper::x509::x5c_into_pem_chain;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
@@ -56,12 +63,6 @@ use crate::provider::issuance_protocol::model::{
     CommonParams, InvitationResponseEnum, KeyStorageSecurityLevel,
     OpenID4VCIKeyAttestationsRequired, OpenID4VCIProofTypeSupported, OpenID4VCRedirectUriParams,
 };
-use crate::provider::issuance_protocol::openid4vci_final1_0::OpenID4VCIFinal1_0;
-use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
-    HolderInteractionData, OpenID4VCIFinal1Params, OpenID4VCIGrants,
-    OpenID4VCIPreAuthorizedCodeGrant,
-};
-use crate::provider::issuance_protocol::openid4vci_final1_0::service::create_credential_offer;
 use crate::provider::issuance_protocol::{HolderBindingInput, IssuanceProtocol};
 use crate::provider::key_algorithm::ecdsa::Ecdsa;
 use crate::provider::key_algorithm::key::{
@@ -1704,7 +1705,9 @@ async fn test_handle_invitation_signed_metadata() {
             let data: HolderInteractionData =
                 serde_json::from_slice(interaction.data.as_ref().unwrap()).unwrap();
 
-            assert_eq!(data.access_certificate.unwrap(), access_certificate);
+            let pem_chain = x5c_into_pem_chain(&[access_certificate.to_string()]).unwrap();
+
+            assert_eq!(data.access_certificate.unwrap(), pem_chain);
             assert_eq!(
                 data.registration_certificate.unwrap(),
                 registration_certificate

@@ -1217,12 +1217,7 @@ impl OpenID4VCIFinal1_0 {
                 .validate_access_certificate_trust(&pem_chain, Some(organsation_id))
                 .await
             {
-                Ok(result) => Some((
-                    result,
-                    x5c.first()
-                        .ok_or(IssuanceProtocolError::Failed("empty x5c".to_string()))?
-                        .to_owned(),
-                )),
+                Ok(result) => Some((result, pem_chain)),
                 Err(WRPValidatorError::TrustManagementDisabled) => {
                     // trust management disabled, skipping other checks
                     None
