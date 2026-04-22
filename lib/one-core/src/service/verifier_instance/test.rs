@@ -63,7 +63,7 @@ async fn test_register_verifier_instance_success() {
     organisation_repository
         .expect_get_organisation()
         .once()
-        .return_once(move |id, _| {
+        .return_once(move |id| {
             check!(id == &organisation_id);
             Ok(Some(dummy_organisation(Some(*id))))
         });

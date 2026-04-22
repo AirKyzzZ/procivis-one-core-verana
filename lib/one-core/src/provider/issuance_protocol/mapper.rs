@@ -316,7 +316,6 @@ pub(crate) async fn get_credential_by_interaction_id(
                     schema: Some(Default::default()),
                 }),
                 schema: Some(CredentialSchemaRelations {
-                    claim_schemas: Some(Default::default()),
                     organisation: Some(Default::default()),
                 }),
                 interaction: Some(InteractionRelations {

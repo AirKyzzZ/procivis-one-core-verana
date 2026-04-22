@@ -20,7 +20,6 @@ use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin};
 use crate::mapper::value_to_model_claims;
 use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
 use crate::model::claim::Claim;
-use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{
     Credential, CredentialRelations, CredentialStateEnum, UpdateCredentialRequest,
 };
@@ -72,7 +71,6 @@ impl SSIHolderService {
                     }),
                     schema: Some(CredentialSchemaRelations {
                         organisation: Some(OrganisationRelations::default()),
-                        claim_schemas: Some(ClaimSchemaRelations::default()),
                     }),
                     ..Default::default()
                 },
@@ -473,13 +471,11 @@ impl SSIHolderService {
 
         let mut collected_claims: Vec<Claim> = Vec::new();
 
-        let claim_schemas =
-            schema
-                .claim_schemas
-                .as_ref()
-                .ok_or(HolderServiceError::MappingError(
-                    "missing clam_schemas".to_string(),
-                ))?;
+        let claim_schemas = schema
+            .claim_schemas
+            .get()
+            .await
+            .error_while("getting claim schemas")?;
         let now = crate::clock::now_utc();
 
         for (key, value) in credential.claims.claims {
@@ -500,7 +496,7 @@ impl SSIHolderService {
             collected_claims.extend(
                 value_to_model_claims(
                     *credential_id,
-                    claim_schemas,
+                    &claim_schemas,
                     value,
                     now,
                     claim_schema,
@@ -525,7 +521,6 @@ impl SSIHolderService {
                     interaction: Some(InteractionRelations::default()),
                     schema: Some(CredentialSchemaRelations {
                         organisation: Some(OrganisationRelations::default()),
-                        ..Default::default()
                     }),
                     ..Default::default()
                 },
@@ -695,7 +690,7 @@ impl SSIHolderService {
 
         let Some(organisation) = self
             .organisation_repository
-            .get_organisation(&request.organisation_id, &Default::default())
+            .get_organisation(&request.organisation_id)
             .await
             .error_while("getting organisation")?
         else {

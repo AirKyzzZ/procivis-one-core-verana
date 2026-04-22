@@ -9,9 +9,7 @@ use crate::model::identifier::IdentifierRelations;
 use crate::model::key::KeyRelations;
 use crate::model::list_filter::ListFilterCondition;
 use crate::model::list_query::ListPagination;
-use crate::model::organisation::{
-    OrganisationFilterValue, OrganisationListQuery, OrganisationRelations,
-};
+use crate::model::organisation::{OrganisationFilterValue, OrganisationListQuery};
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
 use crate::service::wallet_provider::error::WalletProviderError;
@@ -80,7 +78,7 @@ pub(super) async fn validate_parent_organisation(
     }
 
     let parent = organisation_repository
-        .get_organisation(&parent_organisation_id, &OrganisationRelations::default())
+        .get_organisation(&parent_organisation_id)
         .await
         .error_while("getting parent organisation")?
         .ok_or(OrganisationServiceError::ParentOrganisationNotFound(

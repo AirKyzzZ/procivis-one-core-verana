@@ -1,6 +1,6 @@
 use autometrics::autometrics;
 use futures::FutureExt;
-use one_core::model::trust_entity::{TrustEntity, TrustEntityRelations, UpdateTrustEntityRequest};
+use one_core::model::trust_entity::{TrustEntity, UpdateTrustEntityRequest};
 use one_core::proto::transaction_manager::IsolationLevel;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::trust_entity_repository::TrustEntityRepository;
@@ -16,19 +16,18 @@ use sea_orm::{
 use shared_types::{TrustAnchorId, TrustEntityId, TrustEntityKey};
 
 use super::TrustEntityProvider;
+use super::mapper::from_model;
+use super::model::TrustEntityListItemEntityModel;
 use crate::common::calculate_pages_count;
 use crate::entity::trust_entity::{TrustEntityRole, TrustEntityState};
-use crate::entity::{did, organisation, trust_anchor, trust_entity};
+use crate::entity::{did, trust_anchor, trust_entity};
 use crate::list_query_generic::SelectWithListQuery;
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
-use crate::trust_entity::model::TrustEntityListItemEntityModel;
 
 #[autometrics]
 #[async_trait::async_trait]
 impl TrustEntityRepository for TrustEntityProvider {
     async fn create(&self, entity: TrustEntity) -> Result<TrustEntityId, DataLayerError> {
-        let trust_anchor = entity.trust_anchor.ok_or(DataLayerError::MappingError)?;
-
         let model = trust_entity::ActiveModel {
             id: Set(entity.id),
             created_date: Set(entity.created_date),
@@ -42,10 +41,10 @@ impl TrustEntityRepository for TrustEntityProvider {
             role: Set(entity.role.into()),
             state: Set(entity.state.into()),
             r#type: Set(entity.r#type.into()),
-            trust_anchor_id: Set(trust_anchor.id),
+            trust_anchor_id: Set(entity.trust_anchor.id()),
             entity_key: Set(entity.entity_key.into()),
             content: Set(entity.content.map(|s| s.as_bytes().to_vec())),
-            organisation_id: Set(entity.organisation.map(|org| org.id)),
+            organisation_id: Set(entity.organisation.map(|org| org.id())),
         };
 
         let result = self
@@ -67,9 +66,8 @@ impl TrustEntityRepository for TrustEntityProvider {
         &self,
         entity_key: &TrustEntityKey,
     ) -> Result<Option<TrustEntity>, DataLayerError> {
-        let Some((entity_model, trust_anchor)) = trust_entity::Entity::find()
+        let Some(entity_model) = trust_entity::Entity::find()
             .filter(trust_entity::Column::EntityKey.eq(entity_key))
-            .find_also_related(trust_anchor::Entity)
             .one(&self.db)
             .await
             .map_err(to_data_layer_error)?
@@ -77,34 +75,35 @@ impl TrustEntityRepository for TrustEntityProvider {
             return Ok(None);
         };
 
-        let mut entity = TrustEntity::from(entity_model);
-        entity.trust_anchor = trust_anchor.map(Into::into);
-
-        Ok(Some(entity))
+        Ok(Some(from_model(
+            entity_model,
+            &self.organisation_repository,
+            &self.trust_anchor_repository,
+        )))
     }
 
     async fn get_active_by_trust_anchor_id(
         &self,
         trust_anchor_id: TrustAnchorId,
     ) -> Result<Vec<TrustEntity>, DataLayerError> {
-        let entities: Vec<(trust_entity::Model, Option<organisation::Model>)> =
-            trust_entity::Entity::find()
-                .filter(
-                    trust_entity::Column::TrustAnchorId
-                        .eq(trust_anchor_id)
-                        .and(trust_entity::Column::State.eq(TrustEntityState::Active)),
-                )
-                .find_also_related(organisation::Entity)
-                .all(&self.db)
-                .await
-                .map_err(to_data_layer_error)?;
+        let entities: Vec<trust_entity::Model> = trust_entity::Entity::find()
+            .filter(
+                trust_entity::Column::TrustAnchorId
+                    .eq(trust_anchor_id)
+                    .and(trust_entity::Column::State.eq(TrustEntityState::Active)),
+            )
+            .all(&self.db)
+            .await
+            .map_err(to_data_layer_error)?;
 
         Ok(entities
             .into_iter()
-            .map(|(entity_model, organisation_model)| {
-                let mut trust_entity_dto = TrustEntity::from(entity_model);
-                trust_entity_dto.organisation = convert_inner(organisation_model);
-                trust_entity_dto
+            .map(|entity_model| {
+                from_model(
+                    entity_model,
+                    &self.organisation_repository,
+                    &self.trust_anchor_repository,
+                )
             })
             .collect())
     }
@@ -117,11 +116,7 @@ impl TrustEntityRepository for TrustEntityProvider {
             .map_err(to_data_layer_error)
     }
 
-    async fn get(
-        &self,
-        id: TrustEntityId,
-        relations: &TrustEntityRelations,
-    ) -> Result<Option<TrustEntity>, DataLayerError> {
+    async fn get(&self, id: TrustEntityId) -> Result<Option<TrustEntity>, DataLayerError> {
         let entity_model = trust_entity::Entity::find_by_id(id)
             .one(&self.db)
             .await
@@ -131,37 +126,11 @@ impl TrustEntityRepository for TrustEntityProvider {
             return Ok(None);
         };
 
-        let trust_anchor_id = entity_model.trust_anchor_id.to_owned();
-        let organisation_id = entity_model.organisation_id.to_owned();
-
-        let mut trust_entity = TrustEntity::from(entity_model);
-
-        if relations.trust_anchor.is_some() {
-            trust_entity.trust_anchor = Some(
-                self.trust_anchor_repository
-                    .get(trust_anchor_id)
-                    .await?
-                    .ok_or(DataLayerError::MissingRequiredRelation {
-                        relation: "trust_entity-trust_anchor",
-                        id: trust_anchor_id.to_string(),
-                    })?,
-            );
-        }
-
-        if let Some(organisation_id) = organisation_id
-            && let Some(organisation_relations) = &relations.organisation
-        {
-            trust_entity.organisation = Some(
-                self.organisation_repository
-                    .get_organisation(&organisation_id, organisation_relations)
-                    .await?
-                    .ok_or(DataLayerError::MissingRequiredRelation {
-                        relation: "trust_entity-organisation",
-                        id: trust_anchor_id.to_string(),
-                    })?,
-            );
-        }
-        Ok(Some(trust_entity))
+        Ok(Some(from_model(
+            entity_model,
+            &self.organisation_repository,
+            &self.trust_anchor_repository,
+        )))
     }
 
     async fn list(

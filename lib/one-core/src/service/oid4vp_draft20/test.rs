@@ -173,7 +173,7 @@ async fn test_presentation_definition_success() {
                                 format: "JWT".into(),
                                 revocation_method: None,
                                 key_storage_security: None,
-                                claim_schemas: None,
+                                claim_schemas: Default::default(),
                                 organisation: None,
                                 layout_type: LayoutType::Card,
                                 layout_properties: None,

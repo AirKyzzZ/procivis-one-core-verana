@@ -255,7 +255,7 @@ fn test_proof(proof_id: Uuid, credential_format: CredentialFormat) -> Proof {
                     imported_source_url: "test_imported_src_url".to_string(),
                     allow_suspension: false,
                     requires_wallet_instance_attestation: false,
-                    claim_schemas: None,
+                    claim_schemas: Default::default(),
                     organisation: None,
                     transaction_code: None,
                 }),

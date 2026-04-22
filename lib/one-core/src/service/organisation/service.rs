@@ -9,7 +9,7 @@ use super::dto::{
     WalletInstanceDetailResponseDTO,
 };
 use super::error::OrganisationServiceError;
-use super::mapper::detail_from_model;
+use super::mapper::{detail_from_model, request_to_model};
 use super::validator::{
     validate_parent_organisation, validate_wallet_provider, validate_wallet_provider_issuer,
 };
@@ -18,7 +18,7 @@ use crate::model::holder_wallet_instance::HolderWalletInstanceRelations;
 use crate::model::identifier::{Identifier, IdentifierFilterValue, IdentifierListQuery};
 use crate::model::key::KeyRelations;
 use crate::model::list_filter::ListFilterValue;
-use crate::model::organisation::{OrganisationRelations, SortableOrganisationColumn};
+use crate::model::organisation::SortableOrganisationColumn;
 use crate::repository::error::DataLayerError;
 use crate::service::common_dto::ListQueryDTO;
 
@@ -95,7 +95,7 @@ impl OrganisationService {
     ) -> Result<GetOrganisationDetailsResponseDTO, OrganisationServiceError> {
         let organisation = self
             .organisation_repository
-            .get_organisation(id, &OrganisationRelations::default())
+            .get_organisation(id)
             .await
             .error_while("getting organisation")?;
 
@@ -173,11 +173,11 @@ impl OrganisationService {
         &self,
         request: CreateOrganisationRequestDTO,
     ) -> Result<OrganisationId, OrganisationServiceError> {
-        let organisation: crate::model::organisation::Organisation = request.into();
-        if let Some(parent_id) = organisation.parent_organisation {
+        let organisation = request_to_model(request, &self.organisation_repository);
+        if let Some(parent_organisation) = &organisation.parent_organisation {
             validate_parent_organisation(
                 organisation.id,
-                parent_id,
+                parent_organisation.id(),
                 &*self.organisation_repository,
             )
             .await?;
@@ -205,7 +205,7 @@ impl OrganisationService {
         if let Some(Some(issuer)) = request.wallet_provider_issuer {
             let org = self
                 .organisation_repository
-                .get_organisation(&request.id, &Default::default())
+                .get_organisation(&request.id)
                 .await
                 .error_while("getting organisation")?;
             let id = org.as_ref().map(|org| &org.id);

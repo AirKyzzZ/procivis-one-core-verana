@@ -1,26 +1,33 @@
+use std::sync::Arc;
+
 use uuid::Uuid;
 
 use crate::model::identifier::Identifier;
 use crate::model::list_filter::{ComparisonType, ListFilterCondition, ValueComparison};
 use crate::model::organisation::{Organisation, OrganisationFilterValue};
+use crate::model::relation::Related;
+use crate::repository::organisation_repository::OrganisationRepository;
 use crate::service::organisation::dto::{
     CreateOrganisationRequestDTO, GetOrganisationDetailsResponseDTO, OrganisationFilterParamsDTO,
     UpsertOrganisationRequestDTO, WalletInstanceDetailResponseDTO,
 };
 
-impl From<CreateOrganisationRequestDTO> for Organisation {
-    fn from(request: CreateOrganisationRequestDTO) -> Self {
-        let now = crate::clock::now_utc();
-        let id = request.id.unwrap_or(Uuid::new_v4().into());
-        Organisation {
-            id,
-            created_date: now,
-            last_modified: now,
-            deactivated_at: None,
-            wallet_provider: None,
-            wallet_provider_issuer: None,
-            parent_organisation: request.parent_organisation,
-        }
+pub(super) fn request_to_model(
+    request: CreateOrganisationRequestDTO,
+    organisation_repository: &Arc<dyn OrganisationRepository>,
+) -> Organisation {
+    let now = crate::clock::now_utc();
+    let id = request.id.unwrap_or(Uuid::new_v4().into());
+    Organisation {
+        id,
+        created_date: now,
+        last_modified: now,
+        deactivated_at: None,
+        wallet_provider: None,
+        wallet_provider_issuer: None,
+        parent_organisation: request.parent_organisation.map(|organisation_id| {
+            Related::new(organisation_id, organisation_repository.to_owned())
+        }),
     }
 }
 
@@ -45,7 +52,9 @@ pub(super) fn detail_from_model(
         deactivated_at: organisation.deactivated_at,
         wallet_provider: organisation.wallet_provider,
         wallet_provider_issuer: wallet_provider_issuer.map(Into::into),
-        parent_organisation: organisation.parent_organisation,
+        parent_organisation: organisation
+            .parent_organisation
+            .map(|parent_organisation| parent_organisation.id()),
         wallet_instance,
     }
 }

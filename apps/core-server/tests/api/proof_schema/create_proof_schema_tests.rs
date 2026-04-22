@@ -16,12 +16,8 @@ async fn test_create_proof_schema_success() {
         .create("test", &organisation, None, Default::default())
         .await;
 
-    let claims = credential_schema
-        .claim_schemas
-        .as_ref()
-        .unwrap()
-        .iter()
-        .map(|v| (v.id, v.required));
+    let claim_schemas = credential_schema.claim_schemas.get().await.unwrap();
+    let claims = claim_schemas.iter().map(|v| (v.id, v.required));
 
     // WHEN
     let resp = context
@@ -59,12 +55,8 @@ async fn test_create_proof_schema_fails_deactivated_organisation() {
         .create("test", &organisation, None, Default::default())
         .await;
 
-    let claims = credential_schema
-        .claim_schemas
-        .as_ref()
-        .unwrap()
-        .iter()
-        .map(|v| (v.id, v.required));
+    let claim_schemas = credential_schema.claim_schemas.get().await.unwrap();
+    let claims = claim_schemas.iter().map(|v| (v.id, v.required));
 
     // WHEN
     let resp = context
@@ -95,13 +87,8 @@ async fn test_create_nested_proof_schema_success() {
         .await;
 
     //Get only root element
-    let claims = credential_schema
-        .claim_schemas
-        .as_ref()
-        .unwrap()
-        .iter()
-        .take(1)
-        .map(|v| (v.id, v.required));
+    let claim_schemas = credential_schema.claim_schemas.get().await.unwrap();
+    let claims = claim_schemas.iter().take(1).map(|v| (v.id, v.required));
 
     // WHEN
     let resp = context
@@ -147,10 +134,8 @@ async fn test_succeed_to_create_nested_proof_schema_without_object_claim() {
         )
         .await;
 
-    let claims = credential_schema
-        .claim_schemas
-        .as_ref()
-        .unwrap()
+    let claim_schemas = credential_schema.claim_schemas.get().await.unwrap();
+    let claims = claim_schemas
         .iter()
         .filter(|v| v.data_type != "OBJECT")
         .map(|v| (v.id, v.required));
@@ -182,12 +167,8 @@ async fn test_create_proof_schema_with_the_same_name_in_different_organisations(
         .create("test", &organisation, None, Default::default())
         .await;
 
-    let claims = credential_schema
-        .claim_schemas
-        .as_ref()
-        .unwrap()
-        .iter()
-        .map(|v| (v.id, v.required));
+    let claim_schemas = credential_schema.claim_schemas.get().await.unwrap();
+    let claims = claim_schemas.iter().map(|v| (v.id, v.required));
 
     let resp = context
         .api
@@ -208,12 +189,8 @@ async fn test_create_proof_schema_with_the_same_name_in_different_organisations(
         .create("test", &organisation1, None, Default::default())
         .await;
 
-    let claims = credential_schema
-        .claim_schemas
-        .as_ref()
-        .unwrap()
-        .iter()
-        .map(|v| (v.id, v.required));
+    let claim_schemas = credential_schema.claim_schemas.get().await.unwrap();
+    let claims = claim_schemas.iter().map(|v| (v.id, v.required));
 
     let resp1 = context
         .api
@@ -240,12 +217,8 @@ async fn test_fail_to_create_proof_schema_with_the_same_name_in_organisation() {
         .create("test", &organisation, None, Default::default())
         .await;
 
-    let claims = credential_schema
-        .claim_schemas
-        .as_ref()
-        .unwrap()
-        .iter()
-        .map(|v| (v.id, v.required));
+    let claim_schemas = credential_schema.claim_schemas.get().await.unwrap();
+    let claims = claim_schemas.iter().map(|v| (v.id, v.required));
 
     // WHEN
     let resp = context
@@ -260,12 +233,7 @@ async fn test_fail_to_create_proof_schema_with_the_same_name_in_organisation() {
         .await;
     assert_eq!(resp.status(), 201);
 
-    let claims = credential_schema
-        .claim_schemas
-        .as_ref()
-        .unwrap()
-        .iter()
-        .map(|v| (v.id, v.required));
+    let claims = claim_schemas.iter().map(|v| (v.id, v.required));
 
     let resp = context
         .api
@@ -293,14 +261,10 @@ async fn test_create_proof_schema_with_the_same_name_and_organisation_as_deleted
         .create("test", &organisation, None, Default::default())
         .await;
 
-    let claims = credential_schema
-        .claim_schemas
-        .as_ref()
-        .unwrap()
-        .iter()
-        .map(|v| (v.id, v.required));
+    let claim_schemas = credential_schema.claim_schemas.get().await.unwrap();
+    let claims = claim_schemas.iter().map(|v| (v.id, v.required));
 
-    let claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[0];
+    let claim_schema = &claim_schemas[0];
 
     let proof_schema = context
         .db
@@ -356,12 +320,8 @@ async fn test_fail_to_create_proof_schema_from_deleted_credential_schema() {
         .delete(&credential_schema)
         .await;
 
-    let claims = credential_schema
-        .claim_schemas
-        .as_ref()
-        .unwrap()
-        .iter()
-        .map(|v| (v.id, v.required));
+    let claim_schemas = credential_schema.claim_schemas.get().await.unwrap();
+    let claims = claim_schemas.iter().map(|v| (v.id, v.required));
 
     // WHEN
     let resp = context
@@ -396,12 +356,8 @@ async fn test_fail_to_create_proof_schema_with_claims_not_related_to_credential_
         .create("test2", &organisation, None, Default::default())
         .await;
 
-    let claims2 = credential_schema2
-        .claim_schemas
-        .as_ref()
-        .unwrap()
-        .iter()
-        .map(|v| (v.id, v.required));
+    let claim_schemas = credential_schema2.claim_schemas.get().await.unwrap();
+    let claims2 = claim_schemas.iter().map(|v| (v.id, v.required));
 
     // WHEN
     let resp = context
@@ -458,7 +414,8 @@ async fn test_fail_to_create_proof_schema_with_mixed_combined_presentation_suppo
 
     let swiyu_claims: Vec<_> = swiyu_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
         .iter()
         .map(|v| {
@@ -471,7 +428,8 @@ async fn test_fail_to_create_proof_schema_with_mixed_combined_presentation_suppo
 
     let mdoc_claims: Vec<_> = mdoc_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
         .iter()
         .map(|v| {
@@ -541,7 +499,8 @@ async fn test_create_proof_schema_with_both_schemas_supporting_combined_presenta
 
     let mdoc_claims: Vec<_> = mdoc_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
         .iter()
         .map(|v| {
@@ -554,7 +513,8 @@ async fn test_create_proof_schema_with_both_schemas_supporting_combined_presenta
 
     let jwt_claims: Vec<_> = jwt_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
         .iter()
         .map(|v| {
@@ -610,12 +570,8 @@ async fn test_create_proof_schema_with_single_schema_without_combined_presentati
         )
         .await;
 
-    let claims = swiyu_schema
-        .claim_schemas
-        .as_ref()
-        .unwrap()
-        .iter()
-        .map(|v| (v.id, v.required));
+    let claim_schemas = swiyu_schema.claim_schemas.get().await.unwrap();
+    let claims = claim_schemas.iter().map(|v| (v.id, v.required));
 
     // WHEN
     let resp = context

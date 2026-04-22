@@ -8,25 +8,28 @@ use crate::service::backup::dto::UnexportableEntitiesResponseDTO;
 use crate::service::credential::dto::CredentialAttestationBlobs;
 use crate::service::credential::mapper::credential_detail_response_from_model;
 
-pub(super) fn unexportable_entities_to_response_dto(
+pub(super) async fn unexportable_entities_to_response_dto(
     entities: UnexportableEntities,
     config: &CoreConfig,
 ) -> Result<UnexportableEntitiesResponseDTO, BackupServiceError> {
-    Ok(UnexportableEntitiesResponseDTO {
-        credentials: entities
-            .credentials
-            .into_iter()
-            .map(|credential| {
-                credential_detail_response_from_model(
-                    credential,
-                    config,
-                    None,
-                    CredentialAttestationBlobs::default(),
-                    None,
-                )
-            })
-            .collect::<Result<Vec<_>, _>>()
+    let mut credentials = vec![];
+
+    for credential in entities.credentials {
+        credentials.push(
+            credential_detail_response_from_model(
+                credential,
+                config,
+                None,
+                CredentialAttestationBlobs::default(),
+                None,
+            )
+            .await
             .error_while("converting credential")?,
+        );
+    }
+
+    Ok(UnexportableEntitiesResponseDTO {
+        credentials,
         keys: convert_inner(entities.keys),
         dids: convert_inner(entities.dids),
         identifiers: convert_inner(entities.identifiers),

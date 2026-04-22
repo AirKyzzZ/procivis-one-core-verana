@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
+use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential_schema::{
     BackgroundProperties, CredentialSchema, CredentialSchemaListQuery, CredentialSchemaRelations,
     LayoutProperties, LayoutType, UpdateCredentialSchemaRequest,
@@ -10,7 +10,9 @@ use one_core::model::list_query::ListPagination;
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
 use one_core::repository::error::DataLayerError;
-use one_core::repository::organisation_repository::MockOrganisationRepository;
+use one_core::repository::organisation_repository::{
+    MockOrganisationRepository, OrganisationRepository,
+};
 use one_core::service::credential_schema::dto::CredentialSchemaFilterValue;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set, Unchanged};
 use shared_types::{CredentialSchemaId, RevocationMethodId};
@@ -20,6 +22,7 @@ use uuid::Uuid;
 use super::CredentialSchemaProvider;
 use crate::entity::credential_schema::KeyStorageSecurity;
 use crate::entity::{credential_schema, organisation};
+use crate::organisation::mapper::organisation_from_model;
 use crate::test_utilities::*;
 use crate::transaction_context::TransactionManagerImpl;
 
@@ -39,17 +42,21 @@ async fn setup_empty(repositories: Repositories) -> TestSetup {
     let db = data_layer.db;
 
     let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
+
+    let organisation_repository: Arc<dyn OrganisationRepository> =
+        Arc::from(repositories.organisation_repository);
     TestSetup {
-        organisation: Organisation::from(
+        organisation: organisation_from_model(
             organisation::Entity::find_by_id(organisation_id)
                 .one(&db)
                 .await
                 .expect("failed to load organisation")
                 .expect("organisation not found"),
+            &organisation_repository,
         ),
         repository: Box::new(CredentialSchemaProvider {
             db: TransactionManagerImpl::new(db.clone()),
-            organisation_repository: Arc::from(repositories.organisation_repository),
+            organisation_repository,
         }),
         db,
     }
@@ -114,21 +121,20 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
             name: "credential schema".to_string(),
             format: "JWT".into(),
             revocation_method: None,
-            claim_schemas: Some(
-                new_claim_schemas
-                    .into_iter()
-                    .map(|claim| ClaimSchema {
-                        id: claim.id,
-                        created_date: get_dummy_date(),
-                        last_modified: get_dummy_date(),
-                        key: claim.key.to_owned(),
-                        data_type: claim.datatype.to_owned(),
-                        array: false,
-                        metadata: false,
-                        required: claim.required,
-                    })
-                    .collect(),
-            ),
+            claim_schemas: new_claim_schemas
+                .into_iter()
+                .map(|claim| ClaimSchema {
+                    id: claim.id,
+                    created_date: get_dummy_date(),
+                    last_modified: get_dummy_date(),
+                    key: claim.key.to_owned(),
+                    data_type: claim.datatype.to_owned(),
+                    array: false,
+                    metadata: false,
+                    required: claim.required,
+                })
+                .collect::<Vec<_>>()
+                .into(),
             organisation: Some(organisation.clone()),
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -187,7 +193,7 @@ async fn test_create_credential_schema_success() {
             name: "schema".to_string(),
             format: "JWT".into(),
             revocation_method: None,
-            claim_schemas: Some(claim_schemas),
+            claim_schemas: claim_schemas.into(),
             organisation: Some(organisation),
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -308,7 +314,7 @@ async fn test_get_credential_schema_success() {
     organisation_repository
         .expect_get_organisation()
         .times(1)
-        .returning(|id, _| Ok(Some(dummy_organisation(Some(*id)))));
+        .returning(|id| Ok(Some(dummy_organisation(Some(*id)))));
 
     let TestSetupWithCredentialSchema {
         credential_schema,
@@ -324,7 +330,6 @@ async fn test_get_credential_schema_success() {
         .get_credential_schema(
             &credential_schema.id,
             &CredentialSchemaRelations {
-                claim_schemas: Some(ClaimSchemaRelations::default()),
                 organisation: Some(OrganisationRelations::default()),
             },
         )
@@ -333,7 +338,7 @@ async fn test_get_credential_schema_success() {
     assert!(result.is_ok());
     let result = result.unwrap().unwrap();
     assert_eq!(credential_schema.id, result.id);
-    let claim_schemas = result.claim_schemas.unwrap();
+    let claim_schemas = result.claim_schemas.get().await.unwrap();
     assert_eq!(claim_schemas.len(), 2);
     assert_eq!(organisation.id, result.organisation.unwrap().id);
 
@@ -349,7 +354,7 @@ async fn test_get_credential_schema_deleted() {
     organisation_repository
         .expect_get_organisation()
         .times(1)
-        .returning(|id, _| Ok(Some(dummy_organisation(Some(*id)))));
+        .returning(|id| Ok(Some(dummy_organisation(Some(*id)))));
 
     let TestSetupWithCredentialSchema {
         credential_schema,
@@ -375,7 +380,6 @@ async fn test_get_credential_schema_deleted() {
         .get_credential_schema(
             &credential_schema.id,
             &CredentialSchemaRelations {
-                claim_schemas: Some(ClaimSchemaRelations::default()),
                 organisation: Some(OrganisationRelations::default()),
             },
         )
@@ -442,7 +446,7 @@ async fn test_delete_credential_schema_not_found() {
             imported_source_url: "".to_string(),
             allow_suspension: false,
             requires_wallet_instance_attestation: false,
-            claim_schemas: None,
+            claim_schemas: Default::default(),
             organisation: None,
             transaction_code: None,
         })
@@ -513,7 +517,6 @@ async fn test_get_by_schema_id_and_organisation() {
             &credential_schema.schema_id,
             credential_schema.organisation.as_ref().unwrap().id,
             &CredentialSchemaRelations {
-                claim_schemas: Some(Default::default()),
                 organisation: Some(Default::default()),
             },
         )
@@ -521,7 +524,6 @@ async fn test_get_by_schema_id_and_organisation() {
         .unwrap()
         .unwrap();
 
-    assert!(&res.claim_schemas.is_some());
     assert!(&res.organisation.is_some());
 
     assert_eq!(res, credential_schema);

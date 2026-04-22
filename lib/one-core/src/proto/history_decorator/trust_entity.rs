@@ -1,14 +1,11 @@
 use std::sync::Arc;
 
 use anyhow::Context;
-use shared_types::{TrustAnchorId, TrustEntityId, TrustEntityKey};
+use shared_types::{OrganisationId, TrustAnchorId, TrustEntityId, TrustEntityKey};
 use uuid::Uuid;
 
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
-use crate::model::organisation::{Organisation, OrganisationRelations};
-use crate::model::trust_entity::{
-    TrustEntity, TrustEntityRelations, TrustEntityState, UpdateTrustEntityRequest,
-};
+use crate::model::trust_entity::{TrustEntity, TrustEntityState, UpdateTrustEntityRequest};
 use crate::proto::session_provider::{SessionExt, SessionProvider};
 use crate::repository::error::DataLayerError;
 use crate::repository::history_repository::HistoryRepository;
@@ -30,7 +27,7 @@ impl TrustEntityRepository for TrustEntityHistoryDecorator {
             trust_entity_id,
             entity.name,
             HistoryAction::Created,
-            entity.organisation.as_ref(),
+            entity.organisation.map(|org| org.id()),
         )
         .await;
 
@@ -77,7 +74,7 @@ impl TrustEntityRepository for TrustEntityHistoryDecorator {
                 id,
                 old_entity.name.to_owned(),
                 HistoryAction::Updated,
-                old_entity.organisation.as_ref(),
+                old_entity.organisation.as_ref().map(|org| org.id()),
             )
             .await;
         }
@@ -87,7 +84,7 @@ impl TrustEntityRepository for TrustEntityHistoryDecorator {
                 id,
                 old_entity.name,
                 state_history_action,
-                old_entity.organisation.as_ref(),
+                old_entity.organisation.map(|org| org.id()),
             )
             .await;
         }
@@ -102,7 +99,7 @@ impl TrustEntityRepository for TrustEntityHistoryDecorator {
             id,
             entity.name,
             HistoryAction::Deleted,
-            entity.organisation.as_ref(),
+            entity.organisation.map(|org| org.id()),
         )
         .await;
         Ok(())
@@ -124,12 +121,8 @@ impl TrustEntityRepository for TrustEntityHistoryDecorator {
             .await
     }
 
-    async fn get(
-        &self,
-        id: TrustEntityId,
-        relations: &TrustEntityRelations,
-    ) -> Result<Option<TrustEntity>, DataLayerError> {
-        self.inner.get(id, relations).await
+    async fn get(&self, id: TrustEntityId) -> Result<Option<TrustEntity>, DataLayerError> {
+        self.inner.get(id).await
     }
 
     async fn list(
@@ -147,13 +140,7 @@ impl TrustEntityHistoryDecorator {
     ) -> Result<TrustEntity, DataLayerError> {
         let trust_entity = self
             .inner
-            .get(
-                id,
-                &TrustEntityRelations {
-                    organisation: Some(OrganisationRelations::default()),
-                    ..Default::default()
-                },
-            )
+            .get(id)
             .await?
             .context("trust entity is missing")?;
 
@@ -165,7 +152,7 @@ impl TrustEntityHistoryDecorator {
         id: TrustEntityId,
         name: String,
         action: HistoryAction,
-        organisation: Option<&Organisation>,
+        organisation_id: Option<OrganisationId>,
     ) {
         let result = self
             .history_repository
@@ -180,7 +167,7 @@ impl TrustEntityHistoryDecorator {
                 entity_type: HistoryEntityType::TrustEntity,
                 metadata: None,
                 metadata_blob_id: None,
-                organisation_id: organisation.map(|o| o.id),
+                organisation_id,
                 user: self.session_provider.session().user(),
             })
             .await;

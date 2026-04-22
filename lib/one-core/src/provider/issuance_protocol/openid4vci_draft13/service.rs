@@ -30,7 +30,7 @@ use crate::provider::issuance_protocol::openid4vci_draft13::validator::{
     throw_if_token_request_invalid, throw_if_tx_code_invalid, validate_refresh_token,
 };
 
-pub(crate) fn create_issuer_metadata_response(
+pub(crate) async fn create_issuer_metadata_response(
     schema_base_url: &str,
     format_type: &FormatType,
     schema: &CredentialSchema,
@@ -46,7 +46,8 @@ pub(crate) fn create_issuer_metadata_response(
         cryptographic_binding_methods_supported,
         proof_types_supported,
         credential_signing_alg_values_supported,
-    )?;
+    )
+    .await?;
     Ok(OpenID4VCIIssuerMetadataResponseDTO {
         credential_issuer: schema_base_url.to_owned(),
         authorization_servers: None,
@@ -67,7 +68,7 @@ pub(crate) fn create_issuer_metadata_response(
     })
 }
 
-fn credential_configurations_supported(
+async fn credential_configurations_supported(
     format_type: &FormatType,
     credential_schema: &CredentialSchema,
     config: &CoreConfig,
@@ -84,7 +85,7 @@ fn credential_configurations_supported(
     );
     let schema_id = credential_schema.schema_id.to_owned();
 
-    let claims = prepare_nested_representation(credential_schema, config)?;
+    let claims = prepare_nested_representation(credential_schema, config).await?;
 
     Ok(IndexMap::from([(
         schema_id.clone(),
@@ -122,6 +123,7 @@ fn credential_configurations_supported(
                 cryptographic_binding_methods_supported,
                 proof_types_supported,
             )
+            .await
             .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?,
         },
     )]))

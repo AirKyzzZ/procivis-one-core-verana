@@ -52,10 +52,10 @@ impl TrustListPublicationRepository for TrustListPublicationProvider {
 
         let mut result = TrustListPublication::from(entity_model);
 
-        if let Some(organisation_relations) = &relations.organisation {
+        if let Some(_organisation_relations) = &relations.organisation {
             result.organisation = Some(
                 self.organisation_repository
-                    .get_organisation(&organisation_id, organisation_relations)
+                    .get_organisation(&organisation_id)
                     .await?
                     .ok_or(DataLayerError::MissingRequiredRelation {
                         relation: "trust_list_publication-organisation",

@@ -1157,7 +1157,6 @@ impl IssuanceProtocol for OpenID4VCI13 {
                     }),
                     schema: Some(CredentialSchemaRelations {
                         organisation: Some(OrganisationRelations::default()),
-                        claim_schemas: Some(ClaimSchemaRelations::default()),
                     }),
                     issuer_identifier: Some(IdentifierRelations {
                         did: Some(DidRelations {
@@ -1271,6 +1270,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
             CredentialAttestationBlobs::default(),
             None,
         )
+        .await
         .error_while("parsing credential")?;
 
         let contexts = vcdm_v2_base_context(None);
@@ -1859,7 +1859,6 @@ async fn prepare_issuance_interaction_and_credentials_with_claims(
             &schema_id,
             organisation.id,
             &CredentialSchemaRelations {
-                claim_schemas: Some(Default::default()),
                 organisation: Some(Default::default()),
             },
         )
@@ -1875,10 +1874,11 @@ async fn prepare_issuance_interaction_and_credentials_with_claims(
             if !has_matching_format(credential_config, format_type) {
                 return Err(IssuanceProtocolError::IncorrectCredentialSchemaType);
             }
-            let claims_with_values = build_claim_keys(credential_config, credential_subject)
-                .and_then(|claim_keys| {
-                    extract_offered_claims(&credential_schema, credential_id, &claim_keys)
-                });
+            let claims_with_values = async {
+                let claim_keys = build_claim_keys(credential_config, credential_subject)?;
+                extract_offered_claims(&credential_schema, credential_id, &claim_keys).await
+            }
+            .await;
 
             let claims = claims_with_values.unwrap_or_else(|e| {
                 tracing::warn!(%e, "failed to parse offered claims for external schema");

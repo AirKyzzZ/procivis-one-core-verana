@@ -9,7 +9,6 @@ use uuid::Uuid;
 use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::common::GetListResponse;
 use crate::model::identifier::IdentifierType;
-use crate::model::organisation::OrganisationRelations;
 use crate::model::trust_collection::{TrustCollection, TrustCollectionRelations};
 use crate::model::trust_list_role::TrustListRoleEnum;
 use crate::model::trust_list_subscription::{
@@ -89,8 +88,8 @@ async fn test_create_trust_collection_success() {
 
     organisation_repository
         .expect_get_organisation()
-        .with(eq(organisation_id), eq(OrganisationRelations::default()))
-        .returning(move |id, _| Ok(Some(dummy_organisation(Some(*id)))));
+        .with(eq(organisation_id))
+        .returning(move |id| Ok(Some(dummy_organisation(Some(*id)))));
 
     trust_collection_repository
         .expect_create()
@@ -148,8 +147,8 @@ async fn test_create_trust_collection_already_exists() {
 
     organisation_repository
         .expect_get_organisation()
-        .with(eq(organisation_id), eq(OrganisationRelations::default()))
-        .returning(move |id, _| Ok(Some(dummy_organisation(Some(*id)))));
+        .with(eq(organisation_id))
+        .returning(move |id| Ok(Some(dummy_organisation(Some(*id)))));
 
     trust_collection_repository
         .expect_create()
@@ -322,10 +321,10 @@ async fn test_get_trust_collection_parent_org_success() {
 
     organisation_repository
         .expect_get_organisation()
-        .with(eq(child_org_id), eq(OrganisationRelations::default()))
-        .returning(move |id, _| {
+        .with(eq(child_org_id))
+        .returning(move |id| {
             let mut child_org = dummy_organisation(Some(*id));
-            child_org.parent_organisation = Some(parent_org_id);
+            child_org.parent_organisation = Some(dummy_organisation(Some(parent_org_id)).into());
             Ok(Some(child_org))
         });
 

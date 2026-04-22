@@ -1461,7 +1461,6 @@ impl OpenID4VCIFinal1_0 {
             .get_credential_schema(
                 credential_schema_id,
                 &CredentialSchemaRelations {
-                    claim_schemas: Some(ClaimSchemaRelations::default()),
                     organisation: Some(OrganisationRelations::default()),
                 },
             )
@@ -1515,6 +1514,7 @@ impl OpenID4VCIFinal1_0 {
             ),
             credential_signing_alg_values_supported,
         )
+        .await
         .map_err(OpenIDIssuanceError::OpenID4VCI)?;
         Ok(PreparedMetadata {
             protocol_base_url,
@@ -1964,7 +1964,6 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                     }),
                     schema: Some(CredentialSchemaRelations {
                         organisation: Some(OrganisationRelations::default()),
-                        claim_schemas: Some(ClaimSchemaRelations::default()),
                     }),
                     issuer_identifier: Some(IdentifierRelations {
                         did: Some(DidRelations {
@@ -2077,6 +2076,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             CredentialAttestationBlobs::default(),
             None,
         )
+        .await
         .error_while("creating credential detail")?;
 
         let contexts = vcdm_v2_base_context(None);
@@ -2561,7 +2561,6 @@ async fn prepare_credential_schema(
             &credential_schema.schema_id,
             organisation.id,
             &CredentialSchemaRelations {
-                claim_schemas: Some(Default::default()),
                 organisation: Some(Default::default()),
             },
         )
@@ -2569,7 +2568,7 @@ async fn prepare_credential_schema(
         .error_while("getting credential schema")?;
 
     if let Some(stored_schema) = stored_schema {
-        prepare_credential_schema_updates(credential_schema, stored_schema, credential)
+        prepare_credential_schema_updates(credential_schema, stored_schema, credential).await
     } else {
         match credential_schema_importer
             .import_credential_schema(credential_schema.clone())
@@ -2593,7 +2592,6 @@ async fn prepare_credential_schema(
                 &credential_schema.schema_id,
                 organisation.id,
                 &CredentialSchemaRelations {
-                    claim_schemas: Some(Default::default()),
                     organisation: Some(Default::default()),
                 },
             )
@@ -2603,11 +2601,11 @@ async fn prepare_credential_schema(
                 "Credential schema not found".to_string(),
             ))?;
 
-        prepare_credential_schema_updates(credential_schema, stored_schema, credential)
+        prepare_credential_schema_updates(credential_schema, stored_schema, credential).await
     }
 }
 
-fn prepare_credential_schema_updates(
+async fn prepare_credential_schema_updates(
     parsed_schema: CredentialSchema,
     stored_schema: CredentialSchema,
     credential: &mut Credential,
@@ -2617,19 +2615,17 @@ fn prepare_credential_schema_updates(
         .as_mut()
         .ok_or(IssuanceProtocolError::Failed("Missing claims".to_string()))?;
 
-    let stored_claim_schemas =
-        stored_schema
-            .claim_schemas
-            .as_ref()
-            .ok_or(IssuanceProtocolError::Failed(
-                "Missing claim_schemas".to_string(),
-            ))?;
+    let stored_claim_schemas = stored_schema
+        .claim_schemas
+        .get()
+        .await
+        .error_while("getting claim schemas")?;
 
     let parsed_claim_schemas = parsed_schema
         .claim_schemas
-        .ok_or(IssuanceProtocolError::Failed(
-            "Missing claim_schemas".to_string(),
-        ))?;
+        .get()
+        .await
+        .error_while("getting claim schemas")?;
 
     let mut new_claim_schemas = vec![];
     for parsed_claim_schema in parsed_claim_schemas {

@@ -1127,7 +1127,7 @@ async fn test_parse_credential() {
 
     let schema = credential.schema.unwrap();
     assert_eq!(schema.schema_id, "pavel.7545.strings");
-    let claim_schemas = schema.claim_schemas.unwrap();
+    let claim_schemas = schema.claim_schemas.get().await.unwrap();
     assert_eq!(claim_schemas.len(), 7);
 
     let get_claim_schema_keys = |filter: &dyn Fn(&ClaimSchema) -> bool| {

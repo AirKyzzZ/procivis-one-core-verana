@@ -35,7 +35,7 @@ use crate::model::validity_credential::ValidityCredential;
 use crate::proto::trust_information::dto::TrustInformation;
 use crate::provider::credential_formatter::mdoc_formatter;
 
-pub(crate) fn credential_detail_response_from_model(
+pub(crate) async fn credential_detail_response_from_model(
     value: Credential,
     config: &CoreConfig,
     validity_credential: Option<ValidityCredential>,
@@ -84,7 +84,7 @@ pub(crate) fn credential_detail_response_from_model(
         revocation_date: get_revocation_date(&state, &value.last_modified),
         state: state.into(),
         last_modified: value.last_modified,
-        claims: from_vec_claim(claims, &schema, config)?,
+        claims: from_vec_claim(claims, &schema, config).await?,
         schema: schema.try_into()?,
         issuer: convert_inner(value.issuer_identifier),
         redirect_uri: value.redirect_uri,
@@ -108,21 +108,19 @@ pub(crate) fn credential_detail_response_from_model(
     })
 }
 
-fn from_vec_claim(
+async fn from_vec_claim(
     claims: Vec<Claim>,
     credential_schema: &CredentialSchema,
     config: &CoreConfig,
 ) -> Result<Vec<DetailCredentialClaimResponseDTO>, CredentialServiceError> {
-    let claim_schemas =
-        credential_schema
-            .claim_schemas
-            .as_ref()
-            .ok_or(CredentialServiceError::MappingError(
-                "claim_schemas is None".to_string(),
-            ))?;
+    let claim_schemas = credential_schema
+        .claim_schemas
+        .get()
+        .await
+        .error_while("getting claim schemas")?;
 
     let mut claims = claims.into_iter().try_fold(vec![], |state, claim| {
-        insert_claim(state, claim, claim_schemas, config)
+        insert_claim(state, claim, &claim_schemas, config)
     })?;
 
     sort_claims(&mut claims);

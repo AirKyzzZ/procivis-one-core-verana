@@ -196,7 +196,7 @@ async fn test_create_proof_schema_already_exists() {
                     name: "schema".to_string(),
                     format: "JWT".into(),
                     revocation_method: None,
-                    claim_schemas: None,
+                    claim_schemas: Default::default(),
                     organisation: None,
                     layout_type: LayoutType::Card,
                     layout_properties: None,
@@ -295,7 +295,7 @@ async fn test_create_proof_schema_success() {
                     name: "schema".to_string(),
                     format: "JWT".into(),
                     revocation_method: None,
-                    claim_schemas: None,
+                    claim_schemas: Default::default(),
                     organisation: None,
                     layout_type: LayoutType::Card,
                     layout_properties: None,
@@ -468,7 +468,7 @@ async fn test_get_proof_schema_with_relations() {
     claim_schema_repository
         .expect_get_claim_schema_list()
         .times(1)
-        .returning(|ids, _| {
+        .returning(|ids| {
             Ok(ids
                 .into_iter()
                 .map(|id| ClaimSchema {
@@ -488,7 +488,7 @@ async fn test_get_proof_schema_with_relations() {
     organisation_repository
         .expect_get_organisation()
         .times(1)
-        .returning(|id, _| Ok(Some(dummy_organisation(Some(*id)))));
+        .returning(|id| Ok(Some(dummy_organisation(Some(*id)))));
 
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     credential_schema_repository
@@ -505,7 +505,7 @@ async fn test_get_proof_schema_with_relations() {
                 name: "schema".to_string(),
                 format: "JWT".into(),
                 revocation_method: None,
-                claim_schemas: None,
+                claim_schemas: Default::default(),
                 organisation: None,
                 layout_type: LayoutType::Card,
                 layout_properties: None,
@@ -608,7 +608,7 @@ async fn test_get_proof_schema_with_input_proof_relations() {
     let mut claim_schema_repository = MockClaimSchemaRepository::default();
     claim_schema_repository
         .expect_get_claim_schema_list()
-        .returning(|ids, _| {
+        .returning(|ids| {
             Ok(ids
                 .into_iter()
                 .map(|id| ClaimSchema {
@@ -627,7 +627,7 @@ async fn test_get_proof_schema_with_input_proof_relations() {
     let mut organisation_repository = MockOrganisationRepository::default();
     organisation_repository
         .expect_get_organisation()
-        .returning(|id, _| Ok(Some(dummy_organisation(Some(id.to_owned())))));
+        .returning(|id| Ok(Some(dummy_organisation(Some(id.to_owned())))));
 
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     credential_schema_repository
@@ -643,7 +643,7 @@ async fn test_get_proof_schema_with_input_proof_relations() {
                 name: "schema".to_string(),
                 format: "JWT".into(),
                 revocation_method: None,
-                claim_schemas: None,
+                claim_schemas: Default::default(),
                 organisation: None,
                 layout_type: LayoutType::Card,
                 layout_properties: None,

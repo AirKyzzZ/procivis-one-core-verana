@@ -8,7 +8,7 @@ use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, VerificationProtocolType};
 use crate::error::ContextWithErrorCode;
 use crate::model::credential::{Credential, CredentialStateEnum};
-use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum};
 use crate::proto::session_provider::SessionProvider;
 use crate::provider::verification_protocol::VerificationProtocol;
@@ -71,13 +71,13 @@ pub(crate) async fn throw_if_org_id_not_matching_session_with_parent_check(
 
     if let ParentOrg::Allow(organisations_repository) = parent_org_check {
         let session_org = organisations_repository
-            .get_organisation(&session_org_id, &OrganisationRelations::default())
+            .get_organisation(&session_org_id)
             .await
             .error_while("fetching organisation")?
             .ok_or(EntityNotFoundError::Organisation(session_org_id))?;
         if session_org
             .parent_organisation
-            .is_some_and(|parent_organisation| parent_organisation == organisation_id)
+            .is_some_and(|parent_organisation| parent_organisation.id() == organisation_id)
         {
             return Ok(());
         }

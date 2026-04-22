@@ -1,5 +1,10 @@
+use std::sync::Arc;
+
 use one_core::model::list_filter::ListFilterCondition;
+use one_core::model::relation::Related;
 use one_core::model::trust_entity::TrustEntity;
+use one_core::repository::organisation_repository::OrganisationRepository;
+use one_core::repository::trust_anchor_repository::TrustAnchorRepository;
 use one_core::service::did::dto::DidListItemResponseDTO;
 use one_core::service::trust_anchor::dto::GetTrustAnchorDetailResponseDTO;
 use one_core::service::trust_entity::dto::{
@@ -8,13 +13,13 @@ use one_core::service::trust_entity::dto::{
 use sea_orm::sea_query::{IntoCondition, SimpleExpr};
 use sea_orm::{ColumnTrait, Condition, IntoSimpleExpr};
 
+use super::model::TrustEntityListItemEntityModel;
 use crate::entity::did;
 use crate::entity::trust_entity::{self, TrustEntityRole, TrustEntityState, TrustEntityType};
 use crate::list_query_generic::{
     IntoFilterCondition, IntoSortingColumn, get_comparison_condition, get_equals_condition,
     get_string_match_condition,
 };
-use crate::trust_entity::model::TrustEntityListItemEntityModel;
 
 impl From<TrustEntityListItemEntityModel> for TrustEntitiesResponseItemDTO {
     fn from(val: TrustEntityListItemEntityModel) -> Self {
@@ -82,30 +87,34 @@ impl From<TrustEntityListItemEntityModel> for TrustEntitiesResponseItemDTO {
     }
 }
 
-impl From<trust_entity::Model> for TrustEntity {
-    fn from(value: trust_entity::Model) -> Self {
-        Self {
-            id: value.id,
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-            deactivated_at: value.deactivated_at,
-            name: value.name,
-            logo: value
-                .logo
-                .map(|logo| String::from_utf8_lossy(&logo).into_owned()),
-            website: value.website,
-            terms_url: value.terms_url,
-            privacy_url: value.privacy_url,
-            role: value.role.into(),
-            state: value.state.into(),
-            r#type: value.r#type.into(),
-            entity_key: value.entity_key.into(),
-            content: value
-                .content
-                .map(|b| String::from_utf8_lossy(&b).into_owned()),
-            organisation: None,
-            trust_anchor: None,
-        }
+pub(super) fn from_model(
+    value: trust_entity::Model,
+    organisation_repository: &Arc<dyn OrganisationRepository>,
+    trust_anchor_repository: &Arc<dyn TrustAnchorRepository>,
+) -> TrustEntity {
+    TrustEntity {
+        id: value.id,
+        created_date: value.created_date,
+        last_modified: value.last_modified,
+        deactivated_at: value.deactivated_at,
+        name: value.name,
+        logo: value
+            .logo
+            .map(|logo| String::from_utf8_lossy(&logo).into_owned()),
+        website: value.website,
+        terms_url: value.terms_url,
+        privacy_url: value.privacy_url,
+        role: value.role.into(),
+        state: value.state.into(),
+        r#type: value.r#type.into(),
+        entity_key: value.entity_key.into(),
+        content: value
+            .content
+            .map(|b| String::from_utf8_lossy(&b).into_owned()),
+        organisation: value.organisation_id.map(|organisation_id| {
+            Related::new(organisation_id, organisation_repository.to_owned())
+        }),
+        trust_anchor: Related::new(value.trust_anchor_id, trust_anchor_repository.to_owned()),
     }
 }
 

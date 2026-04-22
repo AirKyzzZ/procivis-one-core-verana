@@ -659,7 +659,7 @@ async fn test_extract_credentials_swiyu() {
         imported_source_url: "".to_string(),
         allow_suspension: false,
         requires_wallet_instance_attestation: false,
-        claim_schemas: Some(vec![ClaimSchema {
+        claim_schemas: vec![ClaimSchema {
             id: Uuid::new_v4().into(),
             key: "portrait".to_string(),
             data_type: "SWIYU_PICTURE".to_string(),
@@ -668,7 +668,8 @@ async fn test_extract_credentials_swiyu() {
             array: false,
             metadata: false,
             required: false,
-        }]),
+        }]
+        .into(),
         organisation: None,
         transaction_code: None,
     };
@@ -1840,8 +1841,7 @@ async fn test_parse_credential_eudi() {
     // Verify claim_schemas were populated and deduplicated
     assert!(result.schema.is_some());
     let schema = result.schema.as_ref().unwrap();
-    assert!(schema.claim_schemas.is_some());
-    let claim_schemas = schema.claim_schemas.as_ref().unwrap();
+    let claim_schemas = schema.claim_schemas.get().await.unwrap();
 
     assert_eq!(claim_schemas.len(), 14);
 
@@ -2082,8 +2082,7 @@ async fn test_parse_credential() {
     // Verify claim_schemas were populated
     assert!(result.schema.is_some());
     let schema = result.schema.as_ref().unwrap();
-    assert!(schema.claim_schemas.is_some());
-    let claim_schemas = schema.claim_schemas.as_ref().unwrap();
+    let claim_schemas = schema.claim_schemas.get().await.unwrap();
 
     assert_eq!(claim_schemas.len(), 10);
 

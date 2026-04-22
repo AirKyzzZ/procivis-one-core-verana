@@ -162,7 +162,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             imported_source_url: "".to_string(),
             allow_suspension: false,
             requires_wallet_instance_attestation: false,
-            claim_schemas: Some(claim_schemas),
+            claim_schemas: claim_schemas.into(),
             organisation: None,
             transaction_code: None,
         };
@@ -500,9 +500,14 @@ impl SDJWTVCFormatter {
 
         // SWIYU credentials don't encode image claims with the data uri prefix
         if self.params.swiyu_mode
-            && let Some(claim_schemas) =
-                credential_schema.and_then(|schema| schema.claim_schemas.as_ref())
+            && let Some(credential_schema) = credential_schema
         {
+            let claim_schemas = credential_schema
+                .claim_schemas
+                .get()
+                .await
+                .error_while("getting claim schemas")?;
+
             for claim_schema in claim_schemas {
                 let Some(fields) = self
                     .datatype_config

@@ -118,7 +118,6 @@ impl CredentialSchemaHistoryDecorator {
                         &credential_schema.id,
                         &CredentialSchemaRelations {
                             organisation: Some(Default::default()),
-                            ..Default::default()
                         },
                     )
                     .await?

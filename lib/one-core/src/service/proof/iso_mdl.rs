@@ -60,6 +60,7 @@ impl ProofService {
             .ok_or_else(|| ProofServiceError::Other("BLE is missing in service".into()))?;
 
         let verifier_session = setup_verifier_session(device_engagement, &schema, handover)
+            .await
             .error_while("setting up verifier session")?;
 
         let now = crate::clock::now_utc();

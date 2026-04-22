@@ -85,7 +85,7 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
                 name: "name".into(),
                 format: "format".into(),
                 revocation_method: Some("revocation_method".into()),
-                claim_schemas: Some(vec![ClaimSchema {
+                claim_schemas: vec![ClaimSchema {
                     id: claim_schema_id,
                     key: "key".into(),
                     data_type: "STRING".into(),
@@ -94,7 +94,8 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
                     array: false,
                     metadata: false,
                     required: false,
-                }]),
+                }]
+                .into(),
                 organisation: Some(dummy_organisation(None)),
                 layout_type: LayoutType::Card,
                 layout_properties: None,

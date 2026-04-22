@@ -24,11 +24,11 @@ pub(super) struct ValidatedProofClaimDTO {
 }
 
 impl ValidatedProofResult {
-    pub(super) fn new(
+    pub(super) async fn new(
         proof: &Proof,
         proved_claims: Vec<ValidatedProofClaimDTO>,
     ) -> Result<Self, OpenID4VCError> {
-        validate_proof(proof.to_owned(), proved_claims)
+        validate_proof(proof.to_owned(), proved_claims).await
     }
 
     pub(crate) fn into_credentials_and_claims(self) -> (Vec<ProvedCredential>, Vec<Claim>) {
@@ -36,7 +36,7 @@ impl ValidatedProofResult {
     }
 }
 
-fn validate_proof(
+async fn validate_proof(
     proof: Proof,
     proved_claims: Vec<ValidatedProofClaimDTO>,
 ) -> Result<ValidatedProofResult, OpenID4VCError> {
@@ -62,9 +62,9 @@ fn validate_proof(
 
         let claim_schemas = credential_schema
             .claim_schemas
-            .ok_or(OpenID4VCError::MappingError(
-                "claim schemas is None".to_string(),
-            ))?;
+            .get()
+            .await
+            .map_err(|e| OpenID4VCError::MappingError(e.to_string()))?;
 
         claim_schemas_for_credential_schema
             .entry(credential_schema.id)

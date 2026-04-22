@@ -105,7 +105,6 @@ impl CredentialService {
             .get_credential_schema(
                 &request.credential_schema_id,
                 &CredentialSchemaRelations {
-                    claim_schemas: Some(Default::default()),
                     organisation: Some(Default::default()),
                 },
             )
@@ -122,13 +121,11 @@ impl CredentialService {
         validate_key_storage_security_supported(schema.key_storage_security, &self.config)
             .error_while("validating key storage security")?;
 
-        let claim_schemas =
-            schema
-                .claim_schemas
-                .to_owned()
-                .ok_or(CredentialServiceError::MappingError(
-                    "claim_schemas is None".to_string(),
-                ))?;
+        let claim_schemas = schema
+            .claim_schemas
+            .get()
+            .await
+            .error_while("getting claim schemas")?;
 
         let formatter_capabilities = self
             .formatter_provider
@@ -191,7 +188,8 @@ impl CredentialService {
             &schema,
             &formatter_capabilities,
             &self.config,
-        )?;
+        )
+        .await?;
         validate_redirect_uri(
             &request.protocol,
             request.redirect_uri.as_deref(),
@@ -257,7 +255,6 @@ impl CredentialService {
                 &CredentialRelations {
                     schema: Some(CredentialSchemaRelations {
                         organisation: Some(Default::default()),
-                        ..Default::default()
                     }),
                     ..Default::default()
                 },
@@ -322,7 +319,6 @@ impl CredentialService {
                         schema: Some(ClaimSchemaRelations::default()),
                     }),
                     schema: Some(CredentialSchemaRelations {
-                        claim_schemas: Some(ClaimSchemaRelations::default()),
                         organisation: Some(OrganisationRelations::default()),
                     }),
                     issuer_identifier: Some(Default::default()),
@@ -365,7 +361,8 @@ impl CredentialService {
             mdoc_validity_credentials,
             attestation_blobs,
             trust_information,
-        )?;
+        )
+        .await?;
 
         Ok(response)
     }
@@ -641,7 +638,6 @@ impl CredentialService {
                 &CredentialRelations {
                     schema: Some(CredentialSchemaRelations {
                         organisation: Some(OrganisationRelations::default()),
-                        ..Default::default()
                     }),
                     ..Default::default()
                 },
@@ -683,7 +679,6 @@ impl CredentialService {
                         schema: Some(ClaimSchemaRelations::default()),
                     }),
                     schema: Some(CredentialSchemaRelations {
-                        claim_schemas: Some(ClaimSchemaRelations::default()),
                         organisation: Some(OrganisationRelations::default()),
                     }),
                     issuer_identifier: Some(IdentifierRelations {

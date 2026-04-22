@@ -34,7 +34,6 @@ impl CredentialNotificationDecorator {
                 &CredentialRelations {
                     schema: Some(CredentialSchemaRelations {
                         organisation: Some(Default::default()),
-                        ..Default::default()
                     }),
                     ..Default::default()
                 },

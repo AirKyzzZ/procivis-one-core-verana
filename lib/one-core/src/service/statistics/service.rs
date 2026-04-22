@@ -32,7 +32,7 @@ impl StatisticsService {
             None => {
                 let organisation = self
                     .organisation_repository
-                    .get_organisation(&request.organisation_id, &Default::default())
+                    .get_organisation(&request.organisation_id)
                     .await
                     .error_while("getting organisation")?
                     .ok_or(EntityNotFoundError::Organisation(request.organisation_id))

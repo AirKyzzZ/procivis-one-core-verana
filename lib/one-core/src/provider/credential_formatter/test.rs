@@ -153,7 +153,7 @@ fn generate_credential_matching_detail(
             imported_source_url: detail.schema.imported_source_url,
             allow_suspension: detail.schema.allow_suspension,
             requires_wallet_instance_attestation: false,
-            claim_schemas: None,
+            claim_schemas: Default::default(),
             organisation: None,
             transaction_code: None,
         }),

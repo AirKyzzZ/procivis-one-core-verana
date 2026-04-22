@@ -16,7 +16,7 @@ use crate::error::ContextWithErrorCode;
 use crate::mapper::credential_schema_claim::claim_schema_from_metadata_claim_schema;
 use crate::mapper::x509::pem_chain_to_authority_key_identifiers;
 use crate::model::claim::Claim;
-use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
+use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaListQuery, CredentialSchemaRelations,
@@ -135,7 +135,8 @@ pub(crate) async fn get_presentation_definition_for_dcql_query(
             credential_filters,
             credential_formatter_provider,
             config,
-        )?;
+        )
+        .await?;
         relevant_credentials.append(&mut credential_candidates);
         requested_credentials.push(to_requested_credential(query, match_result)?)
     }
@@ -152,7 +153,7 @@ pub(crate) async fn get_presentation_definition_for_dcql_query(
             },
             requested_credentials,
         }],
-        credentials: credential_model_to_credential_dto(relevant_credentials, config)?,
+        credentials: credential_model_to_credential_dto(relevant_credentials, config).await?,
     })
 }
 
@@ -232,10 +233,14 @@ pub(crate) async fn get_presentation_definition_v2(
             )
             .await
             .error_while("getting credential schemas")?;
-            let credential_schema = credential_schema
-                .map(|schema| schema_to_detail_response_dto(schema, config))
-                .transpose()
-                .error_while("converting credential schema")?;
+            let credential_schema = match credential_schema {
+                None => None,
+                Some(schema) => Some(
+                    schema_to_detail_response_dto(schema, config)
+                        .await
+                        .error_while("converting credential schema")?,
+                ),
+            };
             credential_queries.insert(
                 query.id.to_string(),
                 failure_hint(
@@ -252,13 +257,19 @@ pub(crate) async fn get_presentation_definition_v2(
             .into_iter()
             .partition(|credential| credential.state == CredentialStateEnum::Accepted);
         if candidates.is_empty() {
-            let credential_schema = invalid_credentials
+            let credential_schema = match invalid_credentials
                 .into_iter()
                 .next()
                 .and_then(|cred| cred.schema)
-                .map(|schema| schema_to_detail_response_dto(schema, config))
-                .transpose()
-                .error_while("converting credential schema")?;
+            {
+                None => None,
+                Some(schema) => Some(
+                    schema_to_detail_response_dto(schema, config)
+                        .await
+                        .error_while("converting credential schema")?,
+                ),
+            };
+
             credential_queries.insert(
                 query.id.to_string(),
                 failure_hint(
@@ -289,7 +300,7 @@ pub(crate) async fn get_presentation_definition_v2(
                 )),
             )?;
 
-            let claims = first_matching_claims(&candidate, credential_filters, &*formatter)?;
+            let claims = first_matching_claims(&candidate, credential_filters, &*formatter).await?;
             let Some(claims) = claims else {
                 continue;
             };
@@ -300,6 +311,7 @@ pub(crate) async fn get_presentation_definition_v2(
                 CredentialAttestationBlobs::default(),
                 None,
             )
+            .await
             .error_while("creating credential detail")?;
             applicable_credentials.push(map_to_filtered_dto(credential_detail_dto, &claims));
         }
@@ -309,10 +321,14 @@ pub(crate) async fn get_presentation_definition_v2(
                 failure_hint(
                     &query,
                     CredentialQueryFailureReasonEnum::Constraint,
-                    failure_hint_schema
-                        .map(|schema| schema_to_detail_response_dto(schema, config))
-                        .transpose()
-                        .error_while("converting failure hint schema")?,
+                    match failure_hint_schema {
+                        None => None,
+                        Some(schema) => Some(
+                            schema_to_detail_response_dto(schema, config)
+                                .await
+                                .error_while("converting failure hint schema")?,
+                        ),
+                    },
                 )?,
             );
         } else {
@@ -468,13 +484,13 @@ fn to_claim_detail_ext_filtered(
     })
 }
 
-fn first_matching_claims(
+async fn first_matching_claims(
     credential: &Credential,
     filters: &[CredentialFilter],
     formatter: &dyn CredentialFormatter,
 ) -> Result<Option<Vec<SelectedClaim>>, VerificationProtocolError> {
     for filter in filters {
-        let claims = select_matching_claims(credential, filter, formatter)?;
+        let claims = select_matching_claims(credential, filter, formatter).await?;
         let Some(claims) = claims else {
             continue;
         };
@@ -561,7 +577,7 @@ struct ClaimToCredentials {
     required_by_verifier: bool,
 }
 
-fn first_applicable_claim_set(
+async fn first_applicable_claim_set(
     credentials: &[Credential],
     filters: &[CredentialFilter],
     formatter_provider: &dyn CredentialFormatterProvider,
@@ -651,7 +667,7 @@ fn first_applicable_claim_set(
 
         // Go through the filters and find the first that matches some claims, if any.
         for filter in filters {
-            let claims = select_claims(credential, filter, &*formatter, false)?;
+            let claims = select_claims(credential, filter, &*formatter, false).await?;
 
             let credential_applicable = !claims
                 .iter()
@@ -772,12 +788,12 @@ enum MatchedClaim {
     },
 }
 
-fn select_matching_claims(
+async fn select_matching_claims(
     credential: &Credential,
     filter: &CredentialFilter,
     formatter: &dyn CredentialFormatter,
 ) -> Result<Option<Vec<SelectedClaim>>, VerificationProtocolError> {
-    let claims = select_claims(credential, filter, formatter, true)?;
+    let claims = select_claims(credential, filter, formatter, true).await?;
     let mut result = vec![];
     for claim in claims {
         match claim {
@@ -788,7 +804,7 @@ fn select_matching_claims(
     Ok(Some(result))
 }
 
-fn select_claims(
+async fn select_claims(
     credential: &Credential,
     filter: &CredentialFilter,
     formatter: &dyn CredentialFormatter,
@@ -859,11 +875,9 @@ fn select_claims(
             credential.id
         )))?
         .claim_schemas
-        .as_ref()
-        .ok_or(VerificationProtocolError::Failed(format!(
-            "missing claim schemas for credential {}",
-            credential.id
-        )))?;
+        .get()
+        .await
+        .error_while("getting claim schemas")?;
 
     let user_claim_path = formatter.user_claims_path();
     // add claims requested by the verifier
@@ -910,7 +924,7 @@ fn select_claims(
                 format: filter.format.to_owned(),
                 metadata: dcql_path_matches_metadata(
                     &claim_filter.path,
-                    credential_claim_schemas,
+                    &credential_claim_schemas,
                     &formatter.user_claims_path(),
                 ),
             });
@@ -1351,7 +1365,6 @@ async fn find_schema_by_schema_ids(
                 ]),
             },
             &CredentialSchemaRelations {
-                claim_schemas: Some(ClaimSchemaRelations {}),
                 organisation: Some(OrganisationRelations::default()),
             },
         )

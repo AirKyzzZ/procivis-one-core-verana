@@ -9,9 +9,7 @@ use super::OrganisationService;
 use super::dto::{CreateOrganisationRequestDTO, OrganisationFilterParamsDTO};
 use super::error::OrganisationServiceError;
 use crate::error::{ErrorCode, ErrorCodeMixin};
-use crate::model::organisation::{
-    GetOrganisationList, OrganisationListQuery, OrganisationRelations,
-};
+use crate::model::organisation::{GetOrganisationList, OrganisationListQuery};
 use crate::repository::error::DataLayerError;
 use crate::repository::holder_wallet_instance_repository::MockHolderWalletInstanceRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
@@ -107,11 +105,8 @@ async fn test_get_organisation_success() {
     organisation_repository
         .expect_get_organisation()
         .times(1)
-        .with(
-            eq(organisation.id.to_owned()),
-            eq(OrganisationRelations::default()),
-        )
-        .returning(move |_, _| Ok(Some(org_clone.clone())));
+        .with(eq(organisation.id.to_owned()))
+        .returning(move |_| Ok(Some(org_clone.clone())));
 
     let mut holder_wallet_instance_repository = MockHolderWalletInstanceRepository::new();
     holder_wallet_instance_repository
@@ -137,7 +132,7 @@ async fn test_get_organisation_failure() {
     organisation_repository
         .expect_get_organisation()
         .times(1)
-        .returning(|_, _| Ok(None));
+        .returning(|_| Ok(None));
 
     let service = setup_service(organisation_repository);
     let result = service.get_organisation(&Uuid::new_v4().into()).await;

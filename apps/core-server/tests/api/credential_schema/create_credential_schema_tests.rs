@@ -41,7 +41,7 @@ async fn test_create_credential_schema_success() {
     assert_eq!(credential_schema.revocation_method, None);
     assert_eq!(credential_schema.organisation.unwrap().id, organisation.id);
     assert_eq!(credential_schema.format.as_ref(), "JWT");
-    let claim_schemas = credential_schema.claim_schemas.as_ref().unwrap();
+    let claim_schemas = credential_schema.claim_schemas.get().await.unwrap();
     assert_eq!(claim_schemas.iter().filter(|cs| !cs.metadata).count(), 2);
     assert_eq!(claim_schemas.iter().filter(|cs| cs.metadata).count(), 10);
     assert_eq!(
@@ -82,6 +82,8 @@ async fn test_create_credential_schema_remote_secure_element_success() {
     assert_eq!(
         credential_schema
             .claim_schemas
+            .get()
+            .await
             .unwrap()
             .iter()
             .filter(|claim_schema| !claim_schema.metadata)

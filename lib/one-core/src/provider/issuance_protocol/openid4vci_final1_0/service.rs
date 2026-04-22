@@ -69,7 +69,7 @@ pub(crate) fn create_issuer_metadata_response(
     })
 }
 
-pub(crate) fn credential_configurations_supported(
+pub(crate) async fn credential_configurations_supported(
     format: &FormatType,
     credential_schema: &CredentialSchema,
     cryptographic_binding_methods_supported: Vec<String>,
@@ -79,40 +79,41 @@ pub(crate) fn credential_configurations_supported(
     let schema_id = credential_schema.schema_id.to_owned();
 
     let credential_metadata_claims: Vec<OpenID4VCICredentialMetadataClaimResponseDTO> = {
-        if let Some(claims) = credential_schema.claim_schemas.as_ref() {
-            claims
-                .iter()
-                .filter_map(|claim| {
-                    if claim.data_type == "OBJECT" {
-                        return None;
-                    }
+        let claims = credential_schema
+            .claim_schemas
+            .get()
+            .await
+            .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?;
+        claims
+            .iter()
+            .filter_map(|claim| {
+                if claim.data_type == "OBJECT" {
+                    return None;
+                }
 
-                    if claim.metadata {
-                        return None;
-                    }
+                if claim.metadata {
+                    return None;
+                }
 
-                    let path = claim
-                        .key
-                        .split('/')
-                        .map(|s| s.to_string())
-                        .collect::<Vec<String>>();
+                let path = claim
+                    .key
+                    .split('/')
+                    .map(|s| s.to_string())
+                    .collect::<Vec<String>>();
 
-                    let name = path.last().unwrap_or(&claim.key).to_owned();
+                let name = path.last().unwrap_or(&claim.key).to_owned();
 
-                    Some(OpenID4VCICredentialMetadataClaimResponseDTO {
-                        path,
-                        mandatory: Some(claim.required),
-                        additional_values: None,
-                        display: Some(vec![OpenID4VCIIssuerMetadataClaimDisplay {
-                            name: Some(name),
-                            locale: Some("en".to_string()),
-                        }]),
-                    })
+                Some(OpenID4VCICredentialMetadataClaimResponseDTO {
+                    path,
+                    mandatory: Some(claim.required),
+                    additional_values: None,
+                    display: Some(vec![OpenID4VCIIssuerMetadataClaimDisplay {
+                        name: Some(name),
+                        locale: Some("en".to_string()),
+                    }]),
                 })
-                .collect()
-        } else {
-            vec![]
-        }
+            })
+            .collect()
     };
 
     let display_dto = create_display_dto_from_schema(credential_schema);

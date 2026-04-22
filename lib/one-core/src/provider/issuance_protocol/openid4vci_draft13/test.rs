@@ -315,7 +315,7 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
             name: "schema".to_string(),
             format: "JWT".into(),
             revocation_method: None,
-            claim_schemas: Some(vec![claim_schema]),
+            claim_schemas: vec![claim_schema].into(),
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: "CredentialSchemaId".to_owned(),
@@ -1928,7 +1928,7 @@ fn generic_schema() -> CredentialSchema {
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_id: "http://127.0.0.1/ssi/schema/v1/id".to_string(),
-        claim_schemas: Some(vec![
+        claim_schemas: vec![
             ClaimSchema {
                 id: Uuid::new_v4().into(),
                 key: "First Name".to_string(),
@@ -2009,7 +2009,8 @@ fn generic_schema() -> CredentialSchema {
                 metadata: false,
                 required: true,
             },
-        ]),
+        ]
+        .into(),
         organisation: Some(dummy_organisation(None)),
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
@@ -2031,7 +2032,7 @@ fn generic_schema_array_object() -> CredentialSchema {
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_id: "http://127.0.0.1/ssi/schema/v1/id".to_string(),
-        claim_schemas: Some(vec![
+        claim_schemas: vec![
             ClaimSchema {
                 id: Uuid::new_v4().into(),
                 key: "array_string".to_string(),
@@ -2112,7 +2113,8 @@ fn generic_schema_array_object() -> CredentialSchema {
                 metadata: false,
                 required: true,
             },
-        ]),
+        ]
+        .into(),
         organisation: Some(dummy_organisation(None)),
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
@@ -2134,7 +2136,7 @@ fn generic_schema_object_hell() -> CredentialSchema {
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_id: "http://127.0.0.1/ssi/schema/v1/id".to_string(),
-        claim_schemas: Some(vec![
+        claim_schemas: vec![
             ClaimSchema {
                 id: Uuid::new_v4().into(),
                 key: "opt_obj".to_string(),
@@ -2185,7 +2187,8 @@ fn generic_schema_object_hell() -> CredentialSchema {
                 metadata: false,
                 required: false,
             },
-        ]),
+        ]
+        .into(),
         organisation: Some(dummy_organisation(None)),
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
@@ -2193,8 +2196,8 @@ fn generic_schema_object_hell() -> CredentialSchema {
     }
 }
 
-#[test]
-fn test_extract_offered_claims_success_missing_optional_object() {
+#[tokio::test]
+async fn test_extract_offered_claims_success_missing_optional_object() {
     let schema = generic_schema();
 
     let claim_keys = IndexMap::from([
@@ -2214,7 +2217,9 @@ fn test_extract_offered_claims_success_missing_optional_object() {
         ),
     ]);
 
-    let result = extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys).unwrap();
+    let result = extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys)
+        .await
+        .unwrap();
     assert_eq!(2, result.len());
 
     let result = result
@@ -2226,8 +2231,8 @@ fn test_extract_offered_claims_success_missing_optional_object() {
     assert_eq!(claim_keys["Last Name"].value, result["Last Name"]);
 }
 
-#[test]
-fn test_extract_offered_claims_failed_partially_missing_optional_object() {
+#[tokio::test]
+async fn test_extract_offered_claims_failed_partially_missing_optional_object() {
     let schema = generic_schema();
 
     let claim_keys = IndexMap::from([
@@ -2254,12 +2259,12 @@ fn test_extract_offered_claims_failed_partially_missing_optional_object() {
         ),
     ]);
 
-    let result = extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys);
+    let result = extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys).await;
     assert!(matches!(result, Err(IssuanceProtocolError::Failed(_))));
 }
 
-#[test]
-fn test_extract_offered_claims_success_object_array() {
+#[tokio::test]
+async fn test_extract_offered_claims_success_object_array() {
     let schema = generic_schema_array_object();
 
     let claim_keys = IndexMap::from([
@@ -2336,7 +2341,9 @@ fn test_extract_offered_claims_success_object_array() {
         // Field 2 and array is missing for array object 2
     ]);
 
-    let result = extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys).unwrap();
+    let result = extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys)
+        .await
+        .unwrap();
     assert_eq!(17, result.len());
 
     for claim in result {
@@ -2346,8 +2353,8 @@ fn test_extract_offered_claims_success_object_array() {
     }
 }
 
-#[test]
-fn test_extract_offered_claims_success_optional_array_missing() {
+#[tokio::test]
+async fn test_extract_offered_claims_success_optional_array_missing() {
     let schema = generic_schema_array_object();
 
     let claim_keys = IndexMap::from([
@@ -2381,7 +2388,9 @@ fn test_extract_offered_claims_success_optional_array_missing() {
         ),
     ]);
 
-    let result = extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys).unwrap();
+    let result = extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys)
+        .await
+        .unwrap();
     assert_eq!(8, result.len());
 
     for claim in result {
@@ -2391,8 +2400,8 @@ fn test_extract_offered_claims_success_optional_array_missing() {
     }
 }
 
-#[test]
-fn test_extract_offered_claims_mandatory_array_missing_error() {
+#[tokio::test]
+async fn test_extract_offered_claims_mandatory_array_missing_error() {
     let schema = generic_schema_array_object();
 
     let claim_keys = IndexMap::from([
@@ -2419,11 +2428,15 @@ fn test_extract_offered_claims_mandatory_array_missing_error() {
         ),
     ]);
 
-    assert!(extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys).is_err())
+    assert!(
+        extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys)
+            .await
+            .is_err()
+    )
 }
 
-#[test]
-fn test_extract_offered_claims_mandatory_array_object_field_missing_error() {
+#[tokio::test]
+async fn test_extract_offered_claims_mandatory_array_object_field_missing_error() {
     let schema = generic_schema_array_object();
 
     let claim_keys = IndexMap::from([
@@ -2450,11 +2463,15 @@ fn test_extract_offered_claims_mandatory_array_object_field_missing_error() {
         ),
     ]);
 
-    assert!(extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys).is_err())
+    assert!(
+        extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys)
+            .await
+            .is_err()
+    )
 }
 
-#[test]
-fn test_extract_offered_claims_mandatory_object_error() {
+#[tokio::test]
+async fn test_extract_offered_claims_mandatory_object_error() {
     let schema = generic_schema_array_object();
 
     let claim_keys = IndexMap::from([
@@ -2481,11 +2498,15 @@ fn test_extract_offered_claims_mandatory_object_error() {
         ),
     ]);
 
-    assert!(extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys).is_err())
+    assert!(
+        extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys)
+            .await
+            .is_err()
+    )
 }
 
-#[test]
-fn test_extract_offered_claims_opt_object_opt_obj_present() {
+#[tokio::test]
+async fn test_extract_offered_claims_opt_object_opt_obj_present() {
     let schema = generic_schema_object_hell();
 
     let claim_keys = IndexMap::from([
@@ -2505,7 +2526,9 @@ fn test_extract_offered_claims_opt_object_opt_obj_present() {
         ),
     ]);
 
-    let result = extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys).unwrap();
+    let result = extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys)
+        .await
+        .unwrap();
     assert_eq!(4, result.len());
 
     for claim in result {
@@ -2515,8 +2538,8 @@ fn test_extract_offered_claims_opt_object_opt_obj_present() {
     }
 }
 
-#[test]
-fn test_extract_offered_claims_opt_object_opt_obj_missing() {
+#[tokio::test]
+async fn test_extract_offered_claims_opt_object_opt_obj_missing() {
     let schema = generic_schema_object_hell();
 
     let claim_keys = IndexMap::from([(
@@ -2527,7 +2550,9 @@ fn test_extract_offered_claims_opt_object_opt_obj_missing() {
         },
     )]);
 
-    let result = extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys).unwrap();
+    let result = extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys)
+        .await
+        .unwrap();
     assert_eq!(2, result.len());
 
     for claim in result {
@@ -2537,8 +2562,8 @@ fn test_extract_offered_claims_opt_object_opt_obj_missing() {
     }
 }
 
-#[test]
-fn test_extract_offered_claims_opt_object_opt_obj_present_man_field_missing_error() {
+#[tokio::test]
+async fn test_extract_offered_claims_opt_object_opt_obj_present_man_field_missing_error() {
     let schema = generic_schema_object_hell();
 
     let claim_keys = IndexMap::from([
@@ -2558,11 +2583,15 @@ fn test_extract_offered_claims_opt_object_opt_obj_present_man_field_missing_erro
         ),
     ]);
 
-    assert!(extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys).is_err())
+    assert!(
+        extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys)
+            .await
+            .is_err()
+    )
 }
 
-#[test]
-fn test_extract_offered_claims_opt_object_opt_obj_present_man_root_field_missing_error() {
+#[tokio::test]
+async fn test_extract_offered_claims_opt_object_opt_obj_present_man_root_field_missing_error() {
     let schema = generic_schema_object_hell();
 
     let claim_keys = IndexMap::from([(
@@ -2573,7 +2602,11 @@ fn test_extract_offered_claims_opt_object_opt_obj_present_man_root_field_missing
         },
     )]);
 
-    assert!(extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys).is_err())
+    assert!(
+        extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys)
+            .await
+            .is_err()
+    )
 }
 
 fn dummy_issuer_metadata() -> Vec<u8> {

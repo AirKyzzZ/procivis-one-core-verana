@@ -44,10 +44,10 @@ impl TrustCollectionRepository for TrustCollectionProvider {
 
         let organisation_id = trust_collection.organisation_id;
         let mut result = TrustCollection::try_from(trust_collection)?;
-        if let Some(organisation_relations) = &relations.organisation {
+        if let Some(_organisation_relations) = &relations.organisation {
             result.organisation = Some(
                 self.organisation_repository
-                    .get_organisation(&organisation_id, organisation_relations)
+                    .get_organisation(&organisation_id)
                     .await?
                     .ok_or(DataLayerError::MissingRequiredRelation {
                         relation: "trust_collection-organisation",

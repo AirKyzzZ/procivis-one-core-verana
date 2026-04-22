@@ -37,10 +37,10 @@ impl VerifierInstanceRepository for VerifierInstanceProvider {
         let org_id = model.organisation_id;
         let mut verifier_instance = VerifierInstance::from(model);
 
-        if let Some(org_relations) = &relations.organisation {
+        if let Some(_org_relations) = &relations.organisation {
             let org = self
                 .organisation_repository
-                .get_organisation(&org_id, org_relations)
+                .get_organisation(&org_id)
                 .await?
                 .ok_or(DataLayerError::MissingRequiredRelation {
                     relation: "verifier_instance-organisation",

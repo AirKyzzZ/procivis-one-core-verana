@@ -14,7 +14,6 @@ use super::validator::UniquenessCheckResult;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::credential_schema_claim::claim_schema_from_metadata_claim_schema;
 use crate::mapper::list_response_into;
-use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential_schema::{CredentialSchemaRelations, SortableCredentialSchemaColumn};
 use crate::model::organisation::OrganisationRelations;
 use crate::repository::error::DataLayerError;
@@ -75,7 +74,7 @@ impl CredentialSchemaService {
 
         let organisation = self
             .organisation_repository
-            .get_organisation(&request.organisation_id, &OrganisationRelations::default())
+            .get_organisation(&request.organisation_id)
             .await
             .error_while("getting organisation")?;
 
@@ -109,13 +108,18 @@ impl CredentialSchemaService {
                 )
             })
             .collect::<Vec<_>>();
-        credential_schema
-            .claim_schemas
-            .as_mut()
-            .ok_or(CredentialSchemaServiceError::MappingError(
-                "Missing claim schemas".to_string(),
-            ))?
-            .extend(metadata_claims);
+
+        {
+            let mut claim_schemas = credential_schema
+                .claim_schemas
+                .get()
+                .await
+                .error_while("adding metadata claim schemas")?;
+
+            claim_schemas.extend(metadata_claims);
+
+            credential_schema.claim_schemas = claim_schemas.into();
+        }
 
         let success_log = format!(
             "Created credential schema `{}` ({id}): format `{}`, revocation method {:?}, key storage security {}",
@@ -149,7 +153,6 @@ impl CredentialSchemaService {
                 credential_schema_id,
                 &CredentialSchemaRelations {
                     organisation: Some(Default::default()),
-                    ..Default::default()
                 },
             )
             .await
@@ -196,7 +199,6 @@ impl CredentialSchemaService {
             .get_credential_schema(
                 credential_schema_id,
                 &CredentialSchemaRelations {
-                    claim_schemas: Some(ClaimSchemaRelations::default()),
                     organisation: Some(OrganisationRelations::default()),
                 },
             )
@@ -218,7 +220,7 @@ impl CredentialSchemaService {
             ));
         }
 
-        schema_to_detail_response_dto(schema, &self.config)
+        schema_to_detail_response_dto(schema, &self.config).await
     }
 
     /// Returns list of credential schemas according to query
@@ -261,7 +263,7 @@ impl CredentialSchemaService {
             .error_while("checking session")?;
         let organisation = self
             .organisation_repository
-            .get_organisation(&request.organisation_id, &OrganisationRelations::default())
+            .get_organisation(&request.organisation_id)
             .await
             .error_while("getting organisation")?
             .ok_or(CredentialSchemaServiceError::MissingOrganisation(
@@ -316,7 +318,6 @@ impl CredentialSchemaService {
             .get_credential_schema(
                 credential_schema_id,
                 &CredentialSchemaRelations {
-                    claim_schemas: Some(ClaimSchemaRelations::default()),
                     organisation: Some(OrganisationRelations::default()),
                 },
             )

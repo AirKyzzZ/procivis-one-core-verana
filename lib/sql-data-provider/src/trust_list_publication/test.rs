@@ -495,7 +495,7 @@ async fn test_get_trust_list_publication_with_organisation_relation() {
     let mut mock_org_repo = MockOrganisationRepository::default();
     mock_org_repo
         .expect_get_organisation()
-        .returning(move |id, _relations| {
+        .returning(move |id| {
             Ok(Some(Organisation {
                 id: *id,
                 created_date: get_dummy_date(),

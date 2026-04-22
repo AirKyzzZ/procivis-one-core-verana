@@ -854,7 +854,7 @@ async fn test_parse_credential() {
         hashset! { "iat", "nbf", "iss", "sub", "exp", "vc", "vc/type", "vc/type/0", "vc/type/1" }
     );
 
-    let claim_schemas = schema.claim_schemas.as_ref().unwrap();
+    let claim_schemas = schema.claim_schemas.get().await.unwrap();
     assert_eq!(claim_schemas.len(), 11);
 
     let get_claim_schema_keys = |filter: &dyn Fn(&ClaimSchema) -> bool| {

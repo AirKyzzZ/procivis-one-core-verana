@@ -15,7 +15,7 @@ use super::OID4VCIFinal1_0Service;
 use super::error::OID4VCIFinal1_0ServiceError;
 use crate::config::core_config::{CoreConfig, KeyAlgorithmType};
 use crate::error::{ErrorCode, ErrorCodeMixin};
-use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
+use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, KeyStorageSecurity, LayoutType,
@@ -208,7 +208,7 @@ fn generic_credential_schema() -> CredentialSchema {
         key_storage_security: Some(KeyStorageSecurity::Basic),
         format: "JWT".into(),
         revocation_method: None,
-        claim_schemas: Some(vec![ClaimSchema {
+        claim_schemas: vec![ClaimSchema {
             array: false,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
@@ -217,7 +217,8 @@ fn generic_credential_schema() -> CredentialSchema {
             id: Uuid::new_v4().into(),
             metadata: false,
             required: true,
-        }]),
+        }]
+        .into(),
         organisation: None,
         layout_type: LayoutType::Card,
         layout_properties: None,
@@ -360,7 +361,6 @@ async fn test_get_issuer_metadata_jwt() {
     let mut schema = generic_credential_schema();
     schema.organisation = Some(generic_organisation());
     let relations = CredentialSchemaRelations {
-        claim_schemas: Some(ClaimSchemaRelations::default()),
         organisation: Some(OrganisationRelations::default()),
     };
     {
@@ -501,7 +501,6 @@ async fn test_get_issuer_metadata_sd_jwt() {
     schema.organisation = Some(generic_organisation());
     schema.format = "SD_JWT".into();
     let relations = CredentialSchemaRelations {
-        claim_schemas: Some(ClaimSchemaRelations::default()),
         organisation: Some(OrganisationRelations::default()),
     };
     {
@@ -631,7 +630,7 @@ async fn test_get_issuer_metadata_mdoc() {
     schema.format = "MDOC".into();
     schema.organisation = Some(generic_organisation());
     let now = crate::clock::now_utc();
-    schema.claim_schemas = Some(vec![
+    schema.claim_schemas = vec![
         ClaimSchema {
             id: Uuid::new_v4().into(),
             key: "location".to_string(),
@@ -652,10 +651,10 @@ async fn test_get_issuer_metadata_mdoc() {
             metadata: false,
             required: true,
         },
-    ]);
+    ]
+    .into();
 
     let relations = CredentialSchemaRelations {
-        claim_schemas: Some(ClaimSchemaRelations::default()),
         organisation: Some(OrganisationRelations::default()),
     };
     {

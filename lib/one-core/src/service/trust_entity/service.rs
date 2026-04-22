@@ -30,10 +30,8 @@ use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierType};
 use crate::model::list_filter::{ListFilterCondition, ListFilterValue, StringMatch};
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::{Organisation, OrganisationRelations};
-use crate::model::trust_anchor::{TrustAnchor, TrustAnchorRelations};
-use crate::model::trust_entity::{
-    TrustEntity, TrustEntityRelations, TrustEntityRole, TrustEntityType,
-};
+use crate::model::trust_anchor::TrustAnchor;
+use crate::model::trust_entity::{TrustEntity, TrustEntityRole, TrustEntityType};
 use crate::proto::bearer_token::validate_bearer_token;
 use crate::proto::certificate_validator::{
     CertSelection, CertificateValidationOptions, CrlMode, ParsedCertificate,
@@ -67,7 +65,7 @@ impl TrustEntityService {
 
         let organisation = self
             .organisation_repository
-            .get_organisation(&request.organisation_id, &Default::default())
+            .get_organisation(&request.organisation_id)
             .await
             .error_while("getting organisation")?
             .ok_or(TrustEntityServiceError::MissingOrganisation(
@@ -323,13 +321,7 @@ impl TrustEntityService {
     ) -> Result<GetTrustEntityResponseDTO, TrustEntityServiceError> {
         let trust_entity = self
             .trust_entity_repository
-            .get(
-                id,
-                &TrustEntityRelations {
-                    trust_anchor: Some(TrustAnchorRelations::default()),
-                    organisation: Some(OrganisationRelations::default()),
-                },
-            )
+            .get(id)
             .await
             .error_while("getting trust entity")?
             .ok_or(TrustEntityServiceError::NotFound(id))?;
@@ -341,7 +333,7 @@ impl TrustEntityService {
                         "invalid trust_entity.entity_key for type did".to_string(),
                     )
                 })?;
-                let organisation_id = trust_entity.organisation.as_ref().map(|o| o.id);
+                let organisation_id = trust_entity.organisation.as_ref().map(|o| o.id());
 
                 let did = self
                     .did_repository
@@ -442,6 +434,7 @@ impl TrustEntityService {
             identifier,
             content,
         )
+        .await
     }
 
     pub async fn publisher_get_trust_entity_for_did(
@@ -471,11 +464,11 @@ impl TrustEntityService {
             .error_while("getting trust entity")?
             .ok_or(TrustEntityServiceError::NotFoundByEntityKey(entity_key))?;
 
-        let leeway = self.get_proof_of_possession_leeway(&result)?;
+        let leeway = self.get_proof_of_possession_leeway(&result).await?;
         self.validate_bearer_token(&did_value, bearer_token, leeway)
             .await?;
 
-        get_detail_trust_entity_response(result, Some(did), None, None)
+        get_detail_trust_entity_response(result, Some(did), None, None).await
     }
 
     pub async fn list_trust_entities(
@@ -534,12 +527,7 @@ impl TrustEntityService {
     ) -> Result<(), TrustEntityServiceError> {
         let entity = self
             .trust_entity_repository
-            .get(
-                id,
-                &TrustEntityRelations {
-                    ..Default::default()
-                },
-            )
+            .get(id)
             .await
             .error_while("getting trust entity")?
             .ok_or(TrustEntityServiceError::NotFound(id))?;
@@ -585,7 +573,7 @@ impl TrustEntityService {
             return Err(TrustEntityServiceError::Duplicates);
         };
 
-        let leeway = self.get_proof_of_possession_leeway(&entity)?;
+        let leeway = self.get_proof_of_possession_leeway(&entity).await?;
         self.validate_bearer_token(&did_value, bearer_token, leeway)
             .await?;
 
@@ -944,16 +932,15 @@ impl TrustEntityService {
         }))
     }
 
-    fn get_proof_of_possession_leeway(
+    async fn get_proof_of_possession_leeway(
         &self,
         entity: &TrustEntity,
     ) -> Result<Duration, TrustEntityServiceError> {
         let anchor = entity
             .trust_anchor
-            .as_ref()
-            .ok_or(TrustEntityServiceError::MappingError(
-                "TrustEntity with no TrustAnchor".to_owned(),
-            ))?;
+            .get()
+            .await
+            .map_err(|err| TrustEntityServiceError::MappingError(err.to_string()))?;
         let trust_params: crate::provider::trust_management::simple_list::Params = self
             .config
             .trust_management

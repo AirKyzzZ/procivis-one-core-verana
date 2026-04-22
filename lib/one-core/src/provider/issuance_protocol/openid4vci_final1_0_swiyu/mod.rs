@@ -255,9 +255,12 @@ impl IssuanceProtocol for OpenID4VCISwiyu {
 
         let credential_schema_schema_id = prepared_metadata.schema.schema_id.clone();
 
-        let credential_schema_claims = prepared_metadata.schema.claim_schemas.as_ref().ok_or(
-            IssuanceProtocolError::Failed("missing credential schema claims".to_string()),
-        )?;
+        let credential_schema_claims = prepared_metadata
+            .schema
+            .claim_schemas
+            .get()
+            .await
+            .error_while("getting claim schemas")?;
 
         // make formats compatible to the swiyu wallet
         for (key, credential_config) in prepared_metadata

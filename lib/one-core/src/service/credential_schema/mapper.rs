@@ -13,6 +13,7 @@ use super::dto::{
 };
 use super::error::CredentialSchemaServiceError;
 use crate::config::core_config::{CoreConfig, FormatType};
+use crate::error::ContextWithErrorCode;
 use crate::mapper::credential_schema_claim::from_jwt_request_claim_schema;
 use crate::mapper::{NESTED_CLAIM_MARKER, remove_first_nesting_layer};
 use crate::model::credential_schema::{
@@ -26,14 +27,16 @@ use crate::model::list_query::ListPagination;
 use crate::model::organisation::Organisation;
 use crate::provider::credential_formatter::model::Context;
 
-pub(crate) fn schema_to_detail_response_dto(
+pub(crate) async fn schema_to_detail_response_dto(
     value: CredentialSchema,
     config: &CoreConfig,
 ) -> Result<CredentialSchemaDetailResponseDTO, CredentialSchemaServiceError> {
     let dcql = map_dcql_format_meta(&value, config);
     let claim_schemas = value
         .claim_schemas
-        .unwrap_or_default()
+        .get()
+        .await
+        .error_while("getting claim schemas")?
         .into_iter()
         .filter(|schema| !schema.metadata)
         .collect::<Vec<_>>();
@@ -161,21 +164,20 @@ pub(super) fn from_create_request_with_id(
         format: request.format,
         key_storage_security: request.key_storage_security,
         revocation_method: request.revocation_method,
-        claim_schemas: Some(
-            claim_schemas
-                .into_iter()
-                .map(|claim_schema| {
-                    from_jwt_request_claim_schema(
-                        now,
-                        Uuid::new_v4().into(),
-                        claim_schema.key,
-                        claim_schema.datatype,
-                        claim_schema.required,
-                        claim_schema.array,
-                    )
-                })
-                .collect(),
-        ),
+        claim_schemas: claim_schemas
+            .into_iter()
+            .map(|claim_schema| {
+                from_jwt_request_claim_schema(
+                    now,
+                    Uuid::new_v4().into(),
+                    claim_schema.key,
+                    claim_schema.datatype,
+                    claim_schema.required,
+                    claim_schema.array,
+                )
+            })
+            .collect::<Vec<_>>()
+            .into(),
         organisation: Some(organisation),
         layout_type: request.layout_type,
         layout_properties: request.layout_properties.map(Into::into),

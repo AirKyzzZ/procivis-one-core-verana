@@ -25,12 +25,12 @@ impl IdentifierProvider {
     ) -> Result<Identifier, DataLayerError> {
         let mut result: Identifier = model.clone().into();
 
-        if let Some(organisation_relations) = &relations.organisation
+        if let Some(_organisation_relations) = &relations.organisation
             && let Some(organisation_id) = &model.organisation_id
         {
             result.organisation = Some(
                 self.organisation_repository
-                    .get_organisation(organisation_id, organisation_relations)
+                    .get_organisation(organisation_id)
                     .await?
                     .ok_or(DataLayerError::MissingRequiredRelation {
                         relation: "identifier-organisation",

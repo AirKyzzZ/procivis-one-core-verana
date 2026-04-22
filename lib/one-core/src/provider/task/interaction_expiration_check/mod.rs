@@ -66,7 +66,6 @@ impl Task for InteractionExpirationCheckProvider {
                     &CredentialRelations {
                         schema: Some(CredentialSchemaRelations {
                             organisation: Some(Default::default()),
-                            ..Default::default()
                         }),
                         issuer_identifier: Some(IdentifierRelations {
                             did: Some(Default::default()),

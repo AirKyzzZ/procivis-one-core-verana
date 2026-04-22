@@ -216,13 +216,14 @@ async fn test_get_credential_offer_when_enable_credential_preview_false() {
         )
         .await;
 
-    let namespace_obj_claim_id = key_to_claim_schema_id("namespace", &credential_schema);
-    let root_field_claim_id = key_to_claim_schema_id("namespace/root_field", &credential_schema);
-    let array_claim_id = key_to_claim_schema_id("namespace/root_array", &credential_schema);
+    let namespace_obj_claim_id = key_to_claim_schema_id("namespace", &credential_schema).await;
+    let root_field_claim_id =
+        key_to_claim_schema_id("namespace/root_field", &credential_schema).await;
+    let array_claim_id = key_to_claim_schema_id("namespace/root_array", &credential_schema).await;
     let nested_obj_claim_id =
-        key_to_claim_schema_id("namespace/root_array/nested", &credential_schema);
+        key_to_claim_schema_id("namespace/root_array/nested", &credential_schema).await;
     let nested_field_claim_id =
-        key_to_claim_schema_id("namespace/root_array/nested/field", &credential_schema);
+        key_to_claim_schema_id("namespace/root_array/nested/field", &credential_schema).await;
 
     let credential = context
         .db
@@ -543,12 +544,13 @@ async fn test_get_credential_offer_with_array_success_mdoc() {
         )
         .await;
 
-    let root_field_claim_id = key_to_claim_schema_id("namespace/root_field", &credential_schema);
-    let array_claim_id = key_to_claim_schema_id("namespace/root_array", &credential_schema);
+    let root_field_claim_id =
+        key_to_claim_schema_id("namespace/root_field", &credential_schema).await;
+    let array_claim_id = key_to_claim_schema_id("namespace/root_array", &credential_schema).await;
     let nested_obj_claim_id =
-        key_to_claim_schema_id("namespace/root_array/nested", &credential_schema);
+        key_to_claim_schema_id("namespace/root_array/nested", &credential_schema).await;
     let nested_field_claim_id =
-        key_to_claim_schema_id("namespace/root_array/nested/field", &credential_schema);
+        key_to_claim_schema_id("namespace/root_array/nested/field", &credential_schema).await;
 
     let credential = context
         .db

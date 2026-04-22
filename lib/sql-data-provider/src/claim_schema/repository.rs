@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use autometrics::autometrics;
 use itertools::Itertools;
-use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
+use one_core::model::claim_schema::ClaimSchema;
 use one_core::repository::claim_schema_repository::ClaimSchemaRepository;
 use one_core::repository::error::DataLayerError;
 use one_dto_mapper::convert_inner;
@@ -18,7 +18,6 @@ impl ClaimSchemaRepository for ClaimSchemaProvider {
     async fn get_claim_schema_list(
         &self,
         ids: Vec<ClaimSchemaId>,
-        _relations: &ClaimSchemaRelations,
     ) -> Result<Vec<ClaimSchema>, DataLayerError> {
         let claim_schema_cnt = ids.iter().unique().count();
         let claim_schema_to_index: HashMap<ClaimSchemaId, usize> = ids

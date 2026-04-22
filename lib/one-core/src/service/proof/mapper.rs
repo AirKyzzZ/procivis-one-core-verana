@@ -243,6 +243,7 @@ pub(super) async fn get_verifier_proof_detail(
             CredentialAttestationBlobs::default(),
             None,
         )
+        .await
         .error_while("creating credential detail")?;
 
         credential_for_credential_schema.insert(credential_schema.id, credential_detail);
@@ -276,13 +277,11 @@ pub(super) async fn get_verifier_proof_detail(
                     "Missing credential schema in input_schema".to_string(),
                 ))?;
 
-        let credential_claim_schemas =
-            credential_schema
-                .claim_schemas
-                .as_ref()
-                .ok_or(ProofServiceError::MappingError(
-                    "Missing claim schema in credential_schema".to_string(),
-                ))?;
+        let credential_claim_schemas = credential_schema
+            .claim_schemas
+            .get()
+            .await
+            .error_while("getting claim schemas")?;
 
         // construct generated proof input claim schemas that are nested children of explicit input_claim_schemas
         // in order to have all inputs available later to map to particular shared claims
@@ -338,8 +337,11 @@ pub(super) async fn get_verifier_proof_detail(
 
         input_claim_schemas.extend(object_nested_claims);
 
-        let mut proof_input_claims =
-            nest_proof_claims(claims, credential_claim_schemas, Some(&input_claim_schemas))?;
+        let mut proof_input_claims = nest_proof_claims(
+            claims,
+            &credential_claim_schemas,
+            Some(&input_claim_schemas),
+        )?;
 
         input_claim_schemas
             .iter()
@@ -358,7 +360,7 @@ pub(super) async fn get_verifier_proof_detail(
                             &mut proof_input_claims,
                             prefix,
                             &input_claim.schema.key,
-                            credential_claim_schemas,
+                            &credential_claim_schemas,
                             input_claim.required,
                         )?;
 
@@ -648,6 +650,7 @@ pub(super) async fn get_holder_proof_detail(
                         CredentialAttestationBlobs::default(),
                         None,
                     )
+                    .await
                     .error_while("creating credential detail")?,
                     credential_schema.clone(),
                 ));
@@ -655,23 +658,19 @@ pub(super) async fn get_holder_proof_detail(
         }
     }
 
-    let proof_inputs =
-        submitted_credentials
-            .into_values()
-            .map(|(claims, credential, credential_schema)| {
-                let credential_claim_schemas = credential_schema.claim_schemas.as_ref().ok_or(
-                    ProofServiceError::MappingError(format!(
-                        "Missing claim schemas for credentials schema: {}",
-                        credential_schema.id
-                    )),
-                )?;
-                Ok(ProofInputDTO {
-                    claims: nest_proof_claims(&claims, credential_claim_schemas, None)?,
-                    credential: Some(credential),
-                    credential_schema: credential_schema.into(),
-                })
-            })
-            .collect::<Result<Vec<_>, ProofServiceError>>()?;
+    let mut proof_inputs = vec![];
+    for (claims, credential, credential_schema) in submitted_credentials.into_values() {
+        let credential_claim_schemas = credential_schema
+            .claim_schemas
+            .get()
+            .await
+            .error_while("getting claim schemas")?;
+        proof_inputs.push(ProofInputDTO {
+            claims: nest_proof_claims(&claims, &credential_claim_schemas, None)?,
+            credential: Some(credential),
+            credential_schema: credential_schema.into(),
+        });
+    }
 
     let verifier_certificate = proof
         .verifier_certificate

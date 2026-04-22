@@ -1,9 +1,11 @@
+use proc_macros::Model;
 use shared_types::ClaimSchemaId;
 use time::OffsetDateTime;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Model)]
 #[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct ClaimSchema {
+    #[model(id)]
     pub id: ClaimSchemaId,
     pub key: String,
     pub data_type: String,

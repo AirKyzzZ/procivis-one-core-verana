@@ -1,8 +1,7 @@
 use one_core::model::common::SortDirection;
 use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::model::organisation::{
-    Organisation, OrganisationListQuery, OrganisationRelations, SortableOrganisationColumn,
-    UpdateOrganisationRequest,
+    Organisation, OrganisationListQuery, SortableOrganisationColumn, UpdateOrganisationRequest,
 };
 use one_core::repository::organisation_repository::OrganisationRepository;
 use sea_orm::{DatabaseConnection, EntityTrait};
@@ -64,9 +63,7 @@ async fn test_create_organisation() {
 async fn test_get_organisation_missing() {
     let TestSetup { repository, .. } = setup().await;
 
-    let result = repository
-        .get_organisation(&Uuid::new_v4().into(), &OrganisationRelations::default())
-        .await;
+    let result = repository.get_organisation(&Uuid::new_v4().into()).await;
     assert!(matches!(result, Ok(None)));
 }
 
@@ -79,9 +76,7 @@ async fn test_get_organisation_success() {
         .await
         .unwrap();
 
-    let result = repository
-        .get_organisation(&org_id, &OrganisationRelations::default())
-        .await;
+    let result = repository.get_organisation(&org_id).await;
 
     assert!(result.is_ok());
     let organisation = result.unwrap().unwrap();

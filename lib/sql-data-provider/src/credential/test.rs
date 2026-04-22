@@ -98,21 +98,20 @@ async fn setup_empty() -> TestSetup {
         format: "JWT".into(),
         key_storage_security: Some(KeyStorageSecurity::Basic.into()),
         revocation_method: None,
-        claim_schemas: Some(
-            new_claim_schemas
-                .into_iter()
-                .map(|schema| ClaimSchema {
-                    id: schema.id,
-                    key: schema.key.to_string(),
-                    data_type: schema.datatype.to_string(),
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                    array: false,
-                    metadata: false,
-                    required: true,
-                })
-                .collect(),
-        ),
+        claim_schemas: new_claim_schemas
+            .into_iter()
+            .map(|schema| ClaimSchema {
+                id: schema.id,
+                key: schema.key.to_string(),
+                data_type: schema.datatype.to_string(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                array: false,
+                metadata: false,
+                required: true,
+            })
+            .collect::<Vec<_>>()
+            .into(),
         organisation: Some(dummy_organisation(Some(organisation_id))),
         layout_type: LayoutType::Card,
         layout_properties: None,
@@ -295,7 +294,7 @@ async fn test_create_credential_success() {
     );
 
     let credential_id = Uuid::new_v4().into();
-    let claim_schema = credential_schema.claim_schemas.as_ref().unwrap()[0].to_owned();
+    let claim_schema = credential_schema.claim_schemas.get().await.unwrap()[0].to_owned();
     let claims = vec![
         Claim {
             id: Uuid::new_v4().into(),
@@ -423,7 +422,7 @@ async fn test_create_credential_already_exists() {
 
     let provider = credential_repository(db.clone(), None);
 
-    let claim_schema = credential_schema.claim_schemas.as_ref().unwrap()[0].to_owned();
+    let claim_schema = credential_schema.claim_schemas.get().await.unwrap()[0].to_owned();
     let claims = vec![Claim {
         id: Uuid::new_v4().into(),
         credential_id,
@@ -780,7 +779,7 @@ async fn test_get_credential_list_success_filter_claim_name_value() {
         ..
     } = setup_with_credential().await;
 
-    let claim_schema = credential_schema.claim_schemas.as_ref().unwrap()[0].to_owned();
+    let claim_schema = credential_schema.claim_schemas.get().await.unwrap()[0].to_owned();
     let claims = [Claim {
         id: Uuid::new_v4().into(),
         credential_id,
@@ -880,8 +879,8 @@ async fn test_get_credential_success() {
     .unwrap()
     .id;
 
-    let claim_schema1 = credential_schema.claim_schemas.as_ref().unwrap()[1].to_owned();
-    let claim_schema2 = credential_schema.claim_schemas.as_ref().unwrap()[0].to_owned();
+    let claim_schema1 = credential_schema.claim_schemas.get().await.unwrap()[1].to_owned();
+    let claim_schema2 = credential_schema.claim_schemas.get().await.unwrap()[0].to_owned();
     let claims = vec![
         Claim {
             id: Uuid::new_v4().into(),
@@ -967,7 +966,6 @@ async fn test_get_credential_success() {
                     schema: Some(ClaimSchemaRelations::default()),
                 }),
                 schema: Some(CredentialSchemaRelations {
-                    claim_schemas: None,
                     organisation: Some(OrganisationRelations::default()),
                 }),
                 interaction: Some(InteractionRelations::default()),
@@ -1276,7 +1274,7 @@ async fn test_get_credential_by_claim_id_success() {
     .await
     .unwrap();
 
-    let claim_schema = credential_schema.claim_schemas.as_ref().unwrap()[0].to_owned();
+    let claim_schema = credential_schema.claim_schemas.get().await.unwrap()[0].to_owned();
     let claim = Claim {
         id: Uuid::new_v4().into(),
         credential_id: credential.id,

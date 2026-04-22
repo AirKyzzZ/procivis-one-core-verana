@@ -1,7 +1,10 @@
+use std::sync::Arc;
+
 use shared_types::{TrustAnchorId, TrustEntityId, TrustEntityKey};
 
-use crate::model::trust_entity::{TrustEntity, TrustEntityRelations, UpdateTrustEntityRequest};
-use crate::repository::error::DataLayerError;
+use super::error::DataLayerError;
+use crate::model::relation::AsyncModelLoader;
+use crate::model::trust_entity::{TrustEntity, UpdateTrustEntityRequest};
 use crate::service::trust_entity::dto::{GetTrustEntitiesResponseDTO, ListTrustEntitiesQueryDTO};
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
@@ -21,11 +24,7 @@ pub trait TrustEntityRepository: Send + Sync {
 
     async fn delete(&self, id: TrustEntityId) -> Result<(), DataLayerError>;
 
-    async fn get(
-        &self,
-        id: TrustEntityId,
-        relations: &TrustEntityRelations,
-    ) -> Result<Option<TrustEntity>, DataLayerError>;
+    async fn get(&self, id: TrustEntityId) -> Result<Option<TrustEntity>, DataLayerError>;
 
     async fn list(
         &self,
@@ -37,4 +36,16 @@ pub trait TrustEntityRepository: Send + Sync {
         id: TrustEntityId,
         request: UpdateTrustEntityRequest,
     ) -> Result<(), DataLayerError>;
+}
+
+#[async_trait::async_trait]
+impl AsyncModelLoader<TrustEntity> for Arc<dyn TrustEntityRepository> {
+    async fn load(&self, id: &TrustEntityId) -> Result<TrustEntity, DataLayerError> {
+        self.get(*id)
+            .await?
+            .ok_or_else(|| DataLayerError::MissingRequiredRelation {
+                relation: "trust-entity",
+                id: id.to_string(),
+            })
+    }
 }

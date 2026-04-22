@@ -3779,6 +3779,7 @@ dependencies = [
  "one-crypto",
  "one-dto-mapper",
  "pem",
+ "proc-macros",
  "quick-xml",
  "rcgen",
  "regex",

@@ -292,7 +292,7 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
             name: "schema".to_string(),
             format: "JWT".into(),
             revocation_method: None,
-            claim_schemas: Some(vec![claim_schema]),
+            claim_schemas: vec![claim_schema].into(),
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: "CredentialSchemaId".to_owned(),

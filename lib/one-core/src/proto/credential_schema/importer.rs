@@ -86,7 +86,7 @@ impl CredentialSchemaImporter for CredentialSchemaImporterProto {
                 self.generate_unique_credential_schema_name(&credential_schema)?;
         }
 
-        let credential_schema = self.append_metadata_claims(credential_schema)?;
+        let credential_schema = self.append_metadata_claims(credential_schema).await?;
 
         self.repository
             .create_credential_schema(credential_schema.clone())
@@ -147,7 +147,7 @@ impl CredentialSchemaImporterProto {
         Ok(format!("{}_{}", credential_schema.name, formated_now))
     }
 
-    fn append_metadata_claims(
+    async fn append_metadata_claims(
         &self,
         mut credential_schema: CredentialSchema,
     ) -> Result<CredentialSchema, Error> {
@@ -159,10 +159,11 @@ impl CredentialSchemaImporterProto {
             ))
             .error_while("getting formatter")?;
 
-        let claim_schemas = credential_schema
+        let mut claim_schemas = credential_schema
             .claim_schemas
-            .as_mut()
-            .ok_or(Error::MappingError("Missing claim schemas".to_string()))?;
+            .get()
+            .await
+            .error_while("getting claim schemas")?;
         let metadata_claims = formatter
             .get_metadata_claims()
             .into_iter()
@@ -175,6 +176,8 @@ impl CredentialSchemaImporterProto {
             })
             .collect::<Vec<_>>();
         claim_schemas.extend(metadata_claims);
+        credential_schema.claim_schemas = claim_schemas.into();
+
         Ok(credential_schema)
     }
 }

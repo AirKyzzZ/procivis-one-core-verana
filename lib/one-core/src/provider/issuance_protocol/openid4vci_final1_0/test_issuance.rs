@@ -731,7 +731,7 @@ fn dummy_credential() -> Credential {
             name: "schema".to_string(),
             format: "JWT".into(),
             revocation_method: None,
-            claim_schemas: Some(vec![ClaimSchema {
+            claim_schemas: vec![ClaimSchema {
                 id: claim_schema_id,
                 key: "key".to_string(),
                 data_type: "STRING".to_string(),
@@ -740,7 +740,8 @@ fn dummy_credential() -> Credential {
                 array: false,
                 metadata: false,
                 required: true,
-            }]),
+            }]
+            .into(),
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: "CredentialSchemaId".to_owned(),

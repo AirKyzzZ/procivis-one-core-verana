@@ -89,7 +89,7 @@ async fn test_create_organisation_success_with_parent() {
     // THEN
     assert_eq!(resp.status(), 201);
     let stored = context.db.organisations.get(&child_id.into()).await;
-    assert_eq!(stored.parent_organisation, Some(parent.id));
+    assert_eq!(stored.parent_organisation.unwrap().id(), parent.id);
 }
 
 #[tokio::test]

@@ -6,8 +6,7 @@ use uuid::Uuid;
 
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::organisation::{
-    GetOrganisationList, Organisation, OrganisationListQuery, OrganisationRelations,
-    UpdateOrganisationRequest,
+    GetOrganisationList, Organisation, OrganisationListQuery, UpdateOrganisationRequest,
 };
 use crate::proto::session_provider::{SessionExt, SessionProvider};
 use crate::repository::error::DataLayerError;
@@ -68,7 +67,7 @@ impl OrganisationRepository for OrganisationHistoryDecorator {
 
         let updated_entry = self
             .inner
-            .get_organisation(&request.id, &OrganisationRelations::default())
+            .get_organisation(&request.id)
             .await?
             .context("organisation missing")?;
 
@@ -98,9 +97,8 @@ impl OrganisationRepository for OrganisationHistoryDecorator {
     async fn get_organisation(
         &self,
         id: &OrganisationId,
-        relations: &OrganisationRelations,
     ) -> Result<Option<Organisation>, DataLayerError> {
-        self.inner.get_organisation(id, relations).await
+        self.inner.get_organisation(id).await
     }
 
     async fn get_organisation_for_wallet_provider(

@@ -16,8 +16,6 @@ use crate::error::ContextWithErrorCode;
 use crate::error::ErrorCode::BR_0000;
 use crate::model::blob::{Blob, BlobType};
 use crate::model::certificate::CertificateRelations;
-use crate::model::claim_schema::ClaimSchemaRelations;
-use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::DidRelations;
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::identifier::{Identifier, IdentifierRelations};
@@ -280,10 +278,7 @@ impl OID4VPFinal1_0Service {
                         organisation: Some(OrganisationRelations::default()),
                         proof_inputs: Some(ProofInputSchemaRelations {
                             claim_schemas: Some(ProofSchemaClaimRelations::default()),
-                            credential_schema: Some(CredentialSchemaRelations {
-                                claim_schemas: Some(ClaimSchemaRelations::default()),
-                                ..Default::default()
-                            }),
+                            credential_schema: Some(Default::default()),
                         }),
                     }),
                     interaction: Some(InteractionRelations::default()),

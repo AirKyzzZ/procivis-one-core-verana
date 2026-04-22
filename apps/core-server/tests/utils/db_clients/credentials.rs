@@ -33,7 +33,6 @@ impl CredentialsDB {
                         schema: Some(Default::default()),
                     }),
                     schema: Some(CredentialSchemaRelations {
-                        claim_schemas: Some(Default::default()),
                         organisation: Some(Default::default()),
                     }),
                     interaction: Some(Default::default()),
@@ -60,7 +59,7 @@ impl CredentialsDB {
         params: TestingCredentialParams,
     ) -> Credential {
         let credential_id = Uuid::new_v4().into();
-        let claim_schemas = credential_schema.claim_schemas.as_ref().unwrap();
+        let claim_schemas = credential_schema.claim_schemas.get().await.unwrap();
 
         let claims = if let Some(claims_data) = params.claims_data {
             claims_data
@@ -90,7 +89,7 @@ impl CredentialsDB {
                 .flat_map(|claim_schema| {
                     let path = add_intermediary_indices_to_claim_schema_key(
                         &claim_schema.key,
-                        claim_schemas,
+                        &claim_schemas,
                     );
                     if claim_schema.array {
                         vec![

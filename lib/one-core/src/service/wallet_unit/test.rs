@@ -76,7 +76,7 @@ async fn holder_register_success() {
     organisation_repository
         .expect_get_organisation()
         .once()
-        .return_once(move |id, _| {
+        .return_once(move |id| {
             check!(id == &organisation_id);
             Ok(Some(Organisation {
                 id: *id,
@@ -243,7 +243,7 @@ async fn holder_register_key_attestation_not_supported() {
     organisation_repository
         .expect_get_organisation()
         .once()
-        .return_once(move |id, _| {
+        .return_once(move |id| {
             check!(id == &organisation_id);
             Ok(Some(Organisation {
                 id: *id,
@@ -559,7 +559,7 @@ async fn holder_register_already_exists() {
     organisation_repository
         .expect_get_organisation()
         .once()
-        .return_once(move |id, _| {
+        .return_once(move |id| {
             check!(id == &organisation_id);
             Ok(Some(Organisation {
                 id: *id,

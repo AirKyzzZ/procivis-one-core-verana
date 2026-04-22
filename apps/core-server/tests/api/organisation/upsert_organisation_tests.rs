@@ -322,7 +322,7 @@ async fn test_upsert_organisation_success_set_parent_organisation() {
     // THEN
     assert_eq!(resp.status(), 204);
     let updated = context.db.organisations.get(&child.id).await;
-    assert_eq!(updated.parent_organisation, Some(parent.id));
+    assert_eq!(updated.parent_organisation.unwrap().id(), parent.id);
     let history = context
         .db
         .histories

@@ -34,7 +34,6 @@ use crate::mapper::exchange::{
 };
 use crate::model::blob::{Blob, BlobType};
 use crate::model::certificate::CertificateRelations;
-use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::common::LockType;
 use crate::model::credential::{
     Credential, CredentialRelations, CredentialStateEnum, UpdateCredentialRequest,
@@ -247,10 +246,7 @@ impl OID4VCIFinal1_0Service {
             .get_credential(
                 &credential_id,
                 &CredentialRelations {
-                    schema: Some(CredentialSchemaRelations {
-                        claim_schemas: Some(ClaimSchemaRelations::default()),
-                        ..Default::default()
-                    }),
+                    schema: Some(Default::default()),
                     interaction: Some(InteractionRelations::default()),
                     issuer_identifier: Some(Default::default()),
                     ..Default::default()
@@ -337,7 +333,6 @@ impl OID4VCIFinal1_0Service {
                 credential_schema_id,
                 &CredentialSchemaRelations {
                     organisation: Some(OrganisationRelations::default()),
-                    ..Default::default()
                 },
             )
             .await

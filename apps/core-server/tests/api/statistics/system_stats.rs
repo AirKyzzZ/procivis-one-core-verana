@@ -127,7 +127,8 @@ async fn test_system_management_stats() {
         fixtures::create_credential_schema(&context.db.db_conn, &org, None).await;
     let claim_schema = credential_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
         .first()
         .unwrap()
@@ -229,7 +230,8 @@ async fn add_test_entities(
         fixtures::create_credential_schema(&context.db.db_conn, org, None).await;
     let claim_schema = credential_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
         .first()
         .unwrap()

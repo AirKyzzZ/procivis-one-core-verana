@@ -115,7 +115,7 @@ fn generic_trust_entity(id: TrustEntityId) -> TrustEntity {
         r#type: TrustEntityType::Did,
         entity_key: (&dummy_did().did).into(),
         content: None,
-        trust_anchor: None,
+        trust_anchor: generic_trust_anchor(Uuid::new_v4().into()).into(),
         organisation: None,
     }
 }
@@ -146,7 +146,7 @@ async fn test_create_trust_entity_success() {
     let mut organisation_repository = MockOrganisationRepository::default();
     organisation_repository
         .expect_get_organisation()
-        .returning(move |_, _| {
+        .returning(move |_| {
             Ok(Some(Organisation {
                 id: organisation_id,
                 created_date: crate::clock::now_utc(),
@@ -219,7 +219,7 @@ async fn test_create_trust_entity_failed_only_one_entity_can_be_created_for_one_
     let mut organisation_repository = MockOrganisationRepository::default();
     organisation_repository
         .expect_get_organisation()
-        .returning(move |_, _| {
+        .returning(move |_| {
             Ok(Some(Organisation {
                 id: organisation_id,
                 created_date: crate::clock::now_utc(),
@@ -452,16 +452,19 @@ async fn test_publisher_get_remote_trust_entity_success() {
     // Trust entity repository - get by entity key
     let mut trust_entity = generic_trust_entity(trust_entity_id);
     trust_entity.entity_key = (&did_value).into();
-    trust_entity.trust_anchor = Some(generic_trust_anchor(trust_anchor_id));
-    trust_entity.organisation = Some(Organisation {
-        id: Uuid::new_v4().into(),
-        created_date: get_dummy_date(),
-        last_modified: get_dummy_date(),
-        deactivated_at: None,
-        wallet_provider: None,
-        wallet_provider_issuer: None,
-        parent_organisation: None,
-    });
+    trust_entity.trust_anchor = generic_trust_anchor(trust_anchor_id).into();
+    trust_entity.organisation = Some(
+        Organisation {
+            id: Uuid::new_v4().into(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            deactivated_at: None,
+            wallet_provider: None,
+            wallet_provider_issuer: None,
+            parent_organisation: None,
+        }
+        .into(),
+    );
 
     test_data
         .trust_entity_repository

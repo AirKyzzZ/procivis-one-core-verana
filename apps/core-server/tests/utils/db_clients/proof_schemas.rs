@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use one_core::model::claim_schema::ClaimSchema;
-use one_core::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
+use one_core::model::credential_schema::CredentialSchema;
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::model::proof_schema::{
     ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations, ProofSchema,
@@ -97,10 +97,7 @@ impl ProofSchemasDB {
                     organisation: Some(OrganisationRelations {}),
                     proof_inputs: Some(ProofInputSchemaRelations {
                         claim_schemas: Some(Default::default()),
-                        credential_schema: Some(CredentialSchemaRelations {
-                            claim_schemas: Some(Default::default()),
-                            ..Default::default()
-                        }),
+                        credential_schema: Some(Default::default()),
                     }),
                 },
             )

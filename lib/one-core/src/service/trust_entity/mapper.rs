@@ -101,8 +101,8 @@ pub(super) fn trust_entity_from_request(
         r#type,
         entity_key,
         content,
-        organisation: Some(organisation),
-        trust_anchor: Some(trust_anchor),
+        organisation: Some(organisation.into()),
+        trust_anchor: trust_anchor.into(),
     }
 }
 
@@ -129,12 +129,12 @@ pub(super) fn trust_entity_from_did_request(
         entity_key: (&did).into(),
         content: None,
         r#type: TrustEntityType::Did,
-        trust_anchor: Some(trust_anchor),
+        trust_anchor: trust_anchor.into(),
         organisation: None,
     }
 }
 
-pub(super) fn get_detail_trust_entity_response(
+pub(super) async fn get_detail_trust_entity_response(
     trust_entity: TrustEntity,
     did: Option<Did>,
     identifier: Option<Identifier>,
@@ -150,14 +150,17 @@ pub(super) fn get_detail_trust_entity_response(
         terms_url: trust_entity.terms_url,
         privacy_url: trust_entity.privacy_url,
         role: trust_entity.role,
-        trust_anchor: trust_entity.trust_anchor.map(Into::into).ok_or_else(|| {
-            TrustEntityServiceError::MappingError("Missing trust anchor".to_string())
-        })?,
+        trust_anchor: trust_entity
+            .trust_anchor
+            .get()
+            .await
+            .map_err(|err| TrustEntityServiceError::MappingError(err.to_string()))?
+            .into(),
         state: trust_entity.state,
         organisation_id: trust_entity
             .organisation
             .as_ref()
-            .map(|organisation| organisation.id),
+            .map(|organisation| organisation.id()),
         did: did.map(Into::into),
         r#type: trust_entity.r#type,
         entity_key: trust_entity.entity_key,

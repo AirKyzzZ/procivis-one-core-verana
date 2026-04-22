@@ -174,7 +174,6 @@ impl OID4VCIDraft13Service {
             .get_credential_schema(
                 credential_schema_id,
                 &CredentialSchemaRelations {
-                    claim_schemas: Some(ClaimSchemaRelations::default()),
                     organisation: Some(OrganisationRelations::default()),
                 },
             )
@@ -224,6 +223,7 @@ impl OID4VCIDraft13Service {
             )),
             credential_signing_alg_values_supported,
         )
+        .await
         .map_err(Into::into)
     }
 
@@ -243,13 +243,7 @@ impl OID4VCIDraft13Service {
 
         let schema = self
             .credential_schema_repository
-            .get_credential_schema(
-                credential_schema_id,
-                &CredentialSchemaRelations {
-                    claim_schemas: Some(ClaimSchemaRelations::default()),
-                    ..Default::default()
-                },
-            )
+            .get_credential_schema(credential_schema_id, &Default::default())
             .await
             .error_while("getting credential schema")?;
 
@@ -281,10 +275,7 @@ impl OID4VCIDraft13Service {
                         did: Some(Default::default()),
                         ..Default::default()
                     }),
-                    schema: Some(CredentialSchemaRelations {
-                        claim_schemas: Some(ClaimSchemaRelations::default()),
-                        ..Default::default()
-                    }),
+                    schema: Some(Default::default()),
                     interaction: Some(InteractionRelations::default()),
                     issuer_certificate: Some(Default::default()),
                     ..Default::default()
@@ -380,7 +371,6 @@ impl OID4VCIDraft13Service {
                 credential_schema_id,
                 &CredentialSchemaRelations {
                     organisation: Some(OrganisationRelations::default()),
-                    ..Default::default()
                 },
             )
             .await

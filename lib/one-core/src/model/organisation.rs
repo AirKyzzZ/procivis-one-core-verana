@@ -1,20 +1,23 @@
+use proc_macros::Model;
 use shared_types::{IdentifierId, OrganisationId};
 use time::OffsetDateTime;
 
-use crate::model::common::GetListResponse;
-use crate::model::list_filter::{ListFilterValue, ValueComparison};
-use crate::model::list_query::ListQuery;
+use super::common::GetListResponse;
+use super::list_filter::{ListFilterValue, ValueComparison};
+use super::list_query::ListQuery;
+use super::relation::Related;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Model)]
 #[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct Organisation {
+    #[model(id)]
     pub id: OrganisationId,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub deactivated_at: Option<OffsetDateTime>,
     pub wallet_provider: Option<String>,
     pub wallet_provider_issuer: Option<IdentifierId>,
-    pub parent_organisation: Option<OrganisationId>,
+    pub parent_organisation: Option<Related<Organisation>>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

@@ -3,6 +3,7 @@
 use proc_macro::TokenStream;
 
 mod endpoint;
+mod model;
 mod modify_schema;
 mod modify_schema_autodetect;
 mod options_not_nullable;
@@ -316,4 +317,19 @@ pub fn modify_schema_autodetect(args: TokenStream, input: TokenStream) -> TokenS
 #[proc_macro_attribute]
 pub fn endpoint(args: TokenStream, input: TokenStream) -> TokenStream {
     endpoint::endpoint(args, input)
+}
+
+/// Derive macro: `#[derive(Model)]`
+///
+/// Mark the identifier field with `#[model(id)]` attribute
+///
+/// Purpose
+/// - Mark model and its primary identifier to use with the `Related` construct
+///
+/// Limitations and requirements
+/// - only structs with named fields are supported
+/// - exactly one field must be marked with the `#[model(id)]` attribute
+#[proc_macro_derive(Model, attributes(model))]
+pub fn repository_model(input: TokenStream) -> TokenStream {
+    model::repository_model(input)
 }

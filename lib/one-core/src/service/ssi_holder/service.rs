@@ -19,7 +19,7 @@ impl SSIHolderService {
             .error_while("checking session")?;
         let organisation = self
             .organisation_repository
-            .get_organisation(&organisation_id, &Default::default())
+            .get_organisation(&organisation_id)
             .await
             .error_while("getting organisation")?
             .ok_or(HolderServiceError::MissingOrganisation(organisation_id))?;

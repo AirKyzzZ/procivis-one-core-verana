@@ -2519,6 +2519,8 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
         )
         .await;
 
+    let claim_schemas = credential_schema.claim_schemas.get().await.unwrap();
+
     let credential = context
         .db
         .credentials
@@ -2531,31 +2533,31 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
                 interaction: Some(interaction.to_owned()),
                 claims_data: Some(vec![
                     ClaimData {
-                        schema_id: credential_schema.claim_schemas.as_ref().unwrap()[0].id,
+                        schema_id: claim_schemas[0].id,
                         path: "first name".to_string(),
                         value: Some("John".to_string()),
                         selectively_disclosable: false,
                     },
                     ClaimData {
-                        schema_id: credential_schema.claim_schemas.as_ref().unwrap()[1].id,
+                        schema_id: claim_schemas[1].id,
                         path: "last name".to_string(),
                         value: Some("Doe".to_string()),
                         selectively_disclosable: false,
                     },
                     ClaimData {
-                        schema_id: credential_schema.claim_schemas.as_ref().unwrap()[2].id,
+                        schema_id: claim_schemas[2].id,
                         path: "address".to_string(),
                         value: None,
                         selectively_disclosable: false,
                     },
                     ClaimData {
-                        schema_id: credential_schema.claim_schemas.as_ref().unwrap()[3].id,
+                        schema_id: claim_schemas[3].id,
                         path: "address/postal code".to_string(),
                         value: Some("1234".to_string()),
                         selectively_disclosable: false,
                     },
                     ClaimData {
-                        schema_id: credential_schema.claim_schemas.as_ref().unwrap()[4].id,
+                        schema_id: claim_schemas[4].id,
                         path: "address/street".to_string(),
                         value: Some("Via Torino".to_string()),
                         selectively_disclosable: false,

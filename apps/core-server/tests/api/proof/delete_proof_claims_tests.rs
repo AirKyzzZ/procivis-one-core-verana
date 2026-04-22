@@ -26,7 +26,8 @@ async fn test_delete_proof_claims_success() {
 
     let claim_schema = credential_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
         .first()
         .unwrap()

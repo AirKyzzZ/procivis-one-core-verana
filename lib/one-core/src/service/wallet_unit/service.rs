@@ -25,7 +25,7 @@ use crate::model::holder_wallet_instance::{
     UpdateHolderWalletInstanceRequest,
 };
 use crate::model::key::{Key, KeyRelations};
-use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::model::organisation::Organisation;
 use crate::model::wallet_instance::{WalletInstanceOs, WalletInstanceStatus};
 use crate::model::wallet_instance_attestation::WalletInstanceAttestationRelations;
 use crate::proto::jwt::model::JWTPayload;
@@ -52,7 +52,7 @@ impl WalletUnitService {
             .error_while("checking session")?;
         let organisation = self
             .organisation_repository
-            .get_organisation(&request.organisation_id, &OrganisationRelations::default())
+            .get_organisation(&request.organisation_id)
             .await
             .error_while("getting organisation")?
             .ok_or(HolderWalletUnitError::MissingOrganisation(

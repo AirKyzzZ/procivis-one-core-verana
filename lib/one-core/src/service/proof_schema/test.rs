@@ -18,11 +18,10 @@ use crate::config::core_config::{
     ConfigEntryDisplay, CoreConfig, KeySecurityLevelFields, KeySecurityLevelType,
 };
 use crate::error::{ErrorCode, ErrorCodeMixin};
-use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
+use crate::model::claim_schema::ClaimSchema;
 use crate::model::common::GetListResponse;
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaRelations, GetCredentialSchemaList, KeyStorageSecurity,
-    LayoutType,
+    CredentialSchema, GetCredentialSchemaList, KeyStorageSecurity, LayoutType,
 };
 use crate::model::organisation::OrganisationRelations;
 use crate::model::proof_schema::{
@@ -368,8 +367,8 @@ async fn test_create_proof_schema_success() {
     organisation_repository
         .expect_get_organisation()
         .times(1)
-        .with(eq(organisation_id), eq(OrganisationRelations::default()))
-        .returning(|id, _| Ok(Some(dummy_organisation(Some(*id)))));
+        .with(eq(organisation_id))
+        .returning(|id| Ok(Some(dummy_organisation(Some(*id)))));
 
     let credential_schema_id: CredentialSchemaId = Uuid::new_v4().into();
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
@@ -387,7 +386,7 @@ async fn test_create_proof_schema_success() {
                 format: "JWT".into(),
                 revocation_method: None,
                 key_storage_security: None,
-                claim_schemas: Some(vec![claim_schema.clone()]),
+                claim_schemas: vec![claim_schema.clone()].into(),
                 organisation: None,
                 layout_type: LayoutType::Card,
                 layout_properties: None,
@@ -479,8 +478,8 @@ async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
     organisation_repository
         .expect_get_organisation()
         .times(1)
-        .with(eq(organisation_id), eq(OrganisationRelations::default()))
-        .returning(|id, _| Ok(Some(dummy_organisation(Some(*id)))));
+        .with(eq(organisation_id))
+        .returning(|id| Ok(Some(dummy_organisation(Some(*id)))));
 
     let claim_schema_software_id = Uuid::new_v4().into();
     let claim_schema_software = ClaimSchema {
@@ -517,7 +516,7 @@ async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
                 format: "JWT".into(),
                 revocation_method: None,
                 key_storage_security: Some(KeyStorageSecurity::Basic),
-                claim_schemas: Some(vec![claim_schema_software.clone()]),
+                claim_schemas: vec![claim_schema_software.clone()].into(),
                 organisation: None,
                 layout_type: LayoutType::Card,
                 layout_properties: None,
@@ -532,7 +531,7 @@ async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
                 name: "hardware".to_string(),
                 key_storage_security: Some(KeyStorageSecurity::Moderate),
                 schema_id: "hardware".to_owned(),
-                claim_schemas: Some(vec![claim_schema_hardware.clone()]),
+                claim_schemas: vec![claim_schema_hardware.clone()].into(),
                 ..schema_software.clone()
             };
 
@@ -629,8 +628,8 @@ async fn test_create_proof_schema_fail_unsupported_wallet_storage_type() {
     organisation_repository
         .expect_get_organisation()
         .times(1)
-        .with(eq(organisation_id), eq(OrganisationRelations::default()))
-        .returning(|id, _| Ok(Some(dummy_organisation(Some(*id)))));
+        .with(eq(organisation_id))
+        .returning(|id| Ok(Some(dummy_organisation(Some(*id)))));
 
     let credential_schema_id: CredentialSchemaId = Uuid::new_v4().into();
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
@@ -648,7 +647,7 @@ async fn test_create_proof_schema_fail_unsupported_wallet_storage_type() {
                 format: "JWT".into(),
                 revocation_method: None,
                 key_storage_security: Some(KeyStorageSecurity::EnhancedBasic),
-                claim_schemas: Some(vec![claim_schema.clone()]),
+                claim_schemas: vec![claim_schema.clone()].into(),
                 organisation: None,
                 layout_type: LayoutType::Card,
                 layout_properties: None,
@@ -770,8 +769,8 @@ async fn test_create_proof_schema_array_object_fail() {
     organisation_repository
         .expect_get_organisation()
         .times(1)
-        .with(eq(organisation_id), eq(OrganisationRelations::default()))
-        .returning(|id, _| Ok(Some(dummy_organisation(Some(*id)))));
+        .with(eq(organisation_id))
+        .returning(|id| Ok(Some(dummy_organisation(Some(*id)))));
 
     let credential_schema_id: CredentialSchemaId = Uuid::new_v4().into();
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
@@ -789,12 +788,13 @@ async fn test_create_proof_schema_array_object_fail() {
                 format: "SD_JWT".into(),
                 revocation_method: None,
                 key_storage_security: None,
-                claim_schemas: Some(vec![
+                claim_schemas: vec![
                     claim_schema_root.clone(),
                     claim_schema_array.clone(),
                     claim_schema_array_object.clone(),
                     claim_schema_array_object_item.clone(),
-                ]),
+                ]
+                .into(),
                 organisation: None,
                 layout_type: LayoutType::Card,
                 layout_properties: None,
@@ -922,8 +922,8 @@ async fn test_create_proof_schema_array_success() {
     organisation_repository
         .expect_get_organisation()
         .times(1)
-        .with(eq(organisation_id), eq(OrganisationRelations::default()))
-        .returning(|id, _| Ok(Some(dummy_organisation(Some(*id)))));
+        .with(eq(organisation_id))
+        .returning(|id| Ok(Some(dummy_organisation(Some(*id)))));
 
     let credential_schema_id: CredentialSchemaId = Uuid::new_v4().into();
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
@@ -941,12 +941,13 @@ async fn test_create_proof_schema_array_success() {
                 format: "SD_JWT".into(),
                 revocation_method: None,
                 key_storage_security: None,
-                claim_schemas: Some(vec![
+                claim_schemas: vec![
                     claim_schema_root.clone(),
                     claim_schema_array.clone(),
                     claim_schema_array_object.clone(),
                     claim_schema_array_object_item.clone(),
-                ]),
+                ]
+                .into(),
                 organisation: None,
                 layout_type: LayoutType::Card,
                 layout_properties: None,
@@ -1090,7 +1091,7 @@ async fn test_create_proof_schema_claims_dont_exist() {
                 format: "JWT".into(),
                 revocation_method: None,
                 key_storage_security: None,
-                claim_schemas: Some(vec![ClaimSchema {
+                claim_schemas: vec![ClaimSchema {
                     id: Uuid::new_v4().into(),
                     key: "key".to_string(),
                     data_type: "STRING".to_string(),
@@ -1099,7 +1100,8 @@ async fn test_create_proof_schema_claims_dont_exist() {
                     array: false,
                     metadata: false,
                     required: false,
-                }]),
+                }]
+                .into(),
                 organisation: None,
                 layout_type: LayoutType::Card,
                 layout_properties: None,
@@ -1135,7 +1137,7 @@ async fn test_create_proof_schema_claims_dont_exist() {
     organisation_repository
         .expect_get_organisation()
         .times(1)
-        .returning(move |_, _| Ok(Some(dummy_organisation(None))));
+        .returning(move |_| Ok(Some(dummy_organisation(None))));
 
     let service = setup_service(Repositories {
         proof_schema_repository,
@@ -1248,8 +1250,8 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
     let mut organisation_repository = MockOrganisationRepository::new();
     organisation_repository
         .expect_get_organisation()
-        .with(eq(organisation_id), always())
-        .return_once(move |_, _| Ok(Some(dummy_organisation(Some(organisation_id)))));
+        .with(eq(organisation_id))
+        .return_once(move |_| Ok(Some(dummy_organisation(Some(organisation_id)))));
 
     let mut proof_schema_repository = MockProofSchemaRepository::new();
     proof_schema_repository
@@ -1269,11 +1271,7 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::new();
     credential_schema_repository
         .expect_get_by_schema_id_and_organisation()
-        .withf(move |schema_id, org, relations| {
-            schema_id == "iso-org-test123"
-                && org == &organisation_id
-                && relations.claim_schemas.is_some()
-        })
+        .withf(move |schema_id, org, _| schema_id == "iso-org-test123" && org == &organisation_id)
         .once()
         .returning(|_, _, _| Ok(None));
     credential_schema_repository
@@ -1440,8 +1438,8 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
     let mut organisation_repository = MockOrganisationRepository::new();
     organisation_repository
         .expect_get_organisation()
-        .with(eq(organisation_id), always())
-        .return_once(move |_, _| Ok(Some(dummy_organisation(Some(organisation_id)))));
+        .with(eq(organisation_id))
+        .return_once(move |_| Ok(Some(dummy_organisation(Some(organisation_id)))));
 
     let mut proof_schema_repository = MockProofSchemaRepository::new();
     proof_schema_repository
@@ -1461,11 +1459,7 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::new();
     credential_schema_repository
         .expect_get_by_schema_id_and_organisation()
-        .withf(move |schema_id, org, relations| {
-            schema_id == "iso-org-test123"
-                && org == &organisation_id
-                && relations.claim_schemas.is_some()
-        })
+        .withf(move |schema_id, org, _| schema_id == "iso-org-test123" && org == &organisation_id)
         .once()
         .returning(|_, _, _| {
             Ok(Some(CredentialSchema {
@@ -1637,8 +1631,8 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
     let mut organisation_repository = MockOrganisationRepository::new();
     organisation_repository
         .expect_get_organisation()
-        .with(eq(organisation_id), always())
-        .return_once(move |_, _| Ok(Some(dummy_organisation(Some(organisation_id)))));
+        .with(eq(organisation_id))
+        .return_once(move |_| Ok(Some(dummy_organisation(Some(organisation_id)))));
 
     let mut proof_schema_repository = MockProofSchemaRepository::new();
     proof_schema_repository
@@ -1661,11 +1655,7 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
 
     credential_schema_repository
         .expect_get_by_schema_id_and_organisation()
-        .withf(move |schema_id, org, relations| {
-            schema_id == "iso-org-test123"
-                && org == &organisation_id
-                && relations.claim_schemas.is_some()
-        })
+        .withf(move |schema_id, org, _| schema_id == "iso-org-test123" && org == &organisation_id)
         .once()
         .returning(move |_, _, _| {
             Ok(Some(CredentialSchema {
@@ -1681,7 +1671,7 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
                 layout_type: LayoutType::Card,
                 layout_properties: None,
                 schema_id: "iso-org-test123".to_string(),
-                claim_schemas: Some(vec![ClaimSchema {
+                claim_schemas: vec![ClaimSchema {
                     id: Uuid::new_v4().into(),
                     key: "root/name".to_string(),
                     data_type: "STRING".to_string(),
@@ -1690,7 +1680,8 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
                     last_modified: get_dummy_date(),
                     metadata: false,
                     required: true,
-                }]),
+                }]
+                .into(),
                 organisation: None,
                 allow_suspension: true,
                 requires_wallet_instance_attestation: false,
@@ -1802,8 +1793,8 @@ async fn test_import_proof_failed_existing_proof_schema() {
     let mut organisation_repository = MockOrganisationRepository::new();
     organisation_repository
         .expect_get_organisation()
-        .with(eq(organisation_id), always())
-        .return_once(move |_, _| Ok(Some(dummy_organisation(Some(organisation_id)))));
+        .with(eq(organisation_id))
+        .return_once(move |_| Ok(Some(dummy_organisation(Some(organisation_id)))));
 
     let mut proof_schema_repository = MockProofSchemaRepository::new();
     proof_schema_repository
@@ -1885,8 +1876,8 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_datatype() {
     let mut organisation_repository = MockOrganisationRepository::new();
     organisation_repository
         .expect_get_organisation()
-        .with(eq(organisation_id), always())
-        .return_once(move |_, _| Ok(Some(dummy_organisation(Some(organisation_id)))));
+        .with(eq(organisation_id))
+        .return_once(move |_| Ok(Some(dummy_organisation(Some(organisation_id)))));
 
     let schema = ImportProofSchemaDTO {
         id: Uuid::new_v4().into(),
@@ -1951,8 +1942,8 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_format() {
     let mut organisation_repository = MockOrganisationRepository::new();
     organisation_repository
         .expect_get_organisation()
-        .with(eq(organisation_id), always())
-        .return_once(move |_, _| Ok(Some(dummy_organisation(Some(organisation_id)))));
+        .with(eq(organisation_id))
+        .return_once(move |_| Ok(Some(dummy_organisation(Some(organisation_id)))));
 
     let schema = ImportProofSchemaDTO {
         id: Uuid::new_v4().into(),
@@ -2227,10 +2218,7 @@ fn proof_schema_repo_expecting_get(proof_schema: ProofSchema) -> MockProofSchema
                 organisation: Some(OrganisationRelations::default()),
                 proof_inputs: Some(ProofInputSchemaRelations {
                     claim_schemas: Some(Default::default()),
-                    credential_schema: Some(CredentialSchemaRelations {
-                        claim_schemas: Some(ClaimSchemaRelations::default()),
-                        ..Default::default()
-                    }),
+                    credential_schema: Some(Default::default()),
                 }),
             }),
         )
@@ -2253,7 +2241,7 @@ fn credential_schema_with_claims(claims: Vec<ClaimSchema>) -> CredentialSchema {
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_id: "".to_string(),
-        claim_schemas: Some(claims),
+        claim_schemas: claims.into(),
         organisation: None,
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
@@ -2475,8 +2463,8 @@ async fn test_create_proof_schema_verify_nested_generic(
     organisation_repository
         .expect_get_organisation()
         .times(1)
-        .with(eq(organisation_id), eq(OrganisationRelations::default()))
-        .returning(|id, _| Ok(Some(dummy_organisation(Some(*id)))));
+        .with(eq(organisation_id))
+        .returning(|id| Ok(Some(dummy_organisation(Some(*id)))));
 
     let credential_schema_id: CredentialSchemaId = Uuid::new_v4().into();
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
@@ -2495,7 +2483,7 @@ async fn test_create_proof_schema_verify_nested_generic(
                 format: "JWT".into(),
                 revocation_method: None,
                 key_storage_security: None,
-                claim_schemas: Some(claim_schemas_cloned),
+                claim_schemas: claim_schemas_cloned.into(),
                 organisation: None,
                 layout_type: LayoutType::Card,
                 layout_properties: None,

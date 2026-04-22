@@ -54,14 +54,11 @@ async fn test_get_relevant_credentials_to_credential_schemas_success_jwt() {
 async fn test_get_relevant_credentials_to_credential_schemas_empty_missing_required_claims_simple()
 {
     let mut credential = dummy_credential();
-    credential
-        .schema
-        .as_mut()
-        .unwrap()
-        .claim_schemas
-        .as_mut()
-        .unwrap()
-        .push(ClaimSchema {
+
+    {
+        let credential_schema = credential.schema.as_mut().unwrap();
+        let mut claim_schemas = credential_schema.claim_schemas.get().await.unwrap();
+        claim_schemas.push(ClaimSchema {
             id: Uuid::new_v4().into(),
             key: "optkey".to_string(),
             data_type: "STRING".to_string(),
@@ -71,6 +68,9 @@ async fn test_get_relevant_credentials_to_credential_schemas_empty_missing_requi
             metadata: false,
             required: false,
         });
+        credential_schema.claim_schemas = claim_schemas.into();
+    }
+
     credential.state = CredentialStateEnum::Accepted;
 
     let (result_credentials, _result_group) = get_relevant_credentials_to_credential_schemas(
@@ -193,7 +193,7 @@ fn mdoc_credential() -> Credential {
     credential.state = CredentialStateEnum::Accepted;
     let schema = credential.schema.as_mut().unwrap();
     schema.format = "MDOC".into();
-    *schema.claim_schemas.as_mut().unwrap() = new_claim_schemas.to_vec();
+    schema.claim_schemas = new_claim_schemas.to_vec().into();
     *credential.claims.as_mut().unwrap() = vec![Claim {
         id: Uuid::new_v4().into(),
         credential_id: credential.id.to_owned(),
@@ -326,7 +326,7 @@ fn mdoc_credential_with_optional_namespace() -> Credential {
     ];
 
     let schema = credential.schema.as_mut().unwrap();
-    *schema.claim_schemas.as_mut().unwrap() = new_claim_schemas.to_vec();
+    schema.claim_schemas = new_claim_schemas.to_vec().into();
     *credential.claims.as_mut().unwrap() = vec![Claim {
         id: Uuid::new_v4().into(),
         credential_id: credential.id.to_owned(),
@@ -420,7 +420,7 @@ fn dummy_credential() -> Credential {
             name: "schema".to_string(),
             format: "JWT".into(),
             revocation_method: Some("revocation method".into()),
-            claim_schemas: Some(vec![ClaimSchema {
+            claim_schemas: vec![ClaimSchema {
                 id: claim_schema_id,
                 key: "key".to_string(),
                 data_type: "STRING".to_string(),
@@ -429,7 +429,8 @@ fn dummy_credential() -> Credential {
                 array: false,
                 metadata: false,
                 required: true,
-            }]),
+            }]
+            .into(),
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: "CredentialSchemaId".to_owned(),

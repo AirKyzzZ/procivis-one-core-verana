@@ -1,14 +1,17 @@
+use proc_macros::Model;
 use serde::{Deserialize, Serialize};
 use shared_types::{TrustEntityId, TrustEntityKey};
 use time::OffsetDateTime;
 
-use super::trust_anchor::{TrustAnchor, TrustAnchorRelations};
-use crate::model::organisation::{Organisation, OrganisationRelations};
+use super::organisation::Organisation;
+use super::trust_anchor::TrustAnchor;
+use crate::model::relation::Related;
 use crate::service::trust_entity::dto::TrustEntityContent;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Model)]
 #[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct TrustEntity {
+    #[model(id)]
     pub id: TrustEntityId,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
@@ -23,10 +26,8 @@ pub struct TrustEntity {
     pub r#type: TrustEntityType,
     pub entity_key: TrustEntityKey,
     pub content: Option<TrustEntityContent>,
-
-    // Relations
-    pub organisation: Option<Organisation>,
-    pub trust_anchor: Option<TrustAnchor>,
+    pub organisation: Option<Related<Organisation>>,
+    pub trust_anchor: Related<TrustAnchor>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -56,10 +57,7 @@ pub enum TrustEntityState {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
-pub struct TrustEntityRelations {
-    pub trust_anchor: Option<TrustAnchorRelations>,
-    pub organisation: Option<OrganisationRelations>,
-}
+pub struct TrustEntityRelations {}
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct UpdateTrustEntityRequest {

@@ -1,7 +1,6 @@
 use anyhow::anyhow;
 use autometrics::autometrics;
 use futures::FutureExt;
-use one_core::model::claim_schema::ClaimSchemaRelations;
 use one_core::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
 use one_core::model::proof_schema::{
     GetProofSchemaList, ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations,
@@ -168,10 +167,10 @@ impl ProofSchemaRepository for ProofSchemaProvider {
                 Some(self.get_related_input_schemas(id, input_relations).await?);
         }
 
-        if let Some(organisation_relations) = &relations.organisation {
+        if let Some(_organisation_relations) = &relations.organisation {
             proof_schema.organisation = Some(
                 self.organisation_repository
-                    .get_organisation(&organisation_id, organisation_relations)
+                    .get_organisation(&organisation_id)
                     .await?
                     .ok_or(DataLayerError::MissingRequiredRelation {
                         relation: "proof_schema-organisation",
@@ -271,7 +270,7 @@ impl ProofSchemaProvider {
 
                 let claim_schemas = self
                     .claim_schema_repository
-                    .get_claim_schema_list(claim_schema_ids, &ClaimSchemaRelations::default())
+                    .get_claim_schema_list(claim_schema_ids)
                     .await?;
 
                 let input_schema_claims = input_schema_claim_schema

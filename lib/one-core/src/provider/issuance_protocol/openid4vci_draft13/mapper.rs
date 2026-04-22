@@ -57,17 +57,15 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
 use crate::service::error::ValidationError;
 
-pub(crate) fn prepare_nested_representation(
+pub(crate) async fn prepare_nested_representation(
     credential_schema: &CredentialSchema,
     config: &CoreConfig,
 ) -> Result<OpenID4VCICredentialSubjectItem, OpenID4VCIError> {
-    let claim_schemas =
-        credential_schema
-            .claim_schemas
-            .as_ref()
-            .ok_or(OpenID4VCIError::RuntimeError(
-                "claim_schema is None".to_string(),
-            ))?;
+    let claim_schemas = credential_schema
+        .claim_schemas
+        .get()
+        .await
+        .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?;
 
     let object_types = config
         .datatype
@@ -86,7 +84,7 @@ pub(crate) fn prepare_nested_representation(
         // Metadata claims should not be listed in credential configurations
         .filter(|schema| !schema.metadata)
         .try_fold(Default::default(), |state, claim_schema| {
-            insert_claim_schema(state, claim_schema, claim_schemas, &object_types)
+            insert_claim_schema(state, claim_schema, &claim_schemas, &object_types)
         })
 }
 
@@ -470,21 +468,20 @@ fn from_create_request_with_id(
         format: request.format,
         key_storage_security: request.key_storage_security,
         revocation_method: request.revocation_method,
-        claim_schemas: Some(
-            claim_schemas
-                .into_iter()
-                .map(|claim_schema| {
-                    from_jwt_request_claim_schema(
-                        now,
-                        Uuid::new_v4().into(),
-                        claim_schema.key,
-                        claim_schema.datatype,
-                        claim_schema.required,
-                        claim_schema.array,
-                    )
-                })
-                .collect(),
-        ),
+        claim_schemas: claim_schemas
+            .into_iter()
+            .map(|claim_schema| {
+                from_jwt_request_claim_schema(
+                    now,
+                    Uuid::new_v4().into(),
+                    claim_schema.key,
+                    claim_schema.datatype,
+                    claim_schema.required,
+                    claim_schema.array,
+                )
+            })
+            .collect::<Vec<_>>()
+            .into(),
         layout_type: request.layout_type,
         layout_properties: request.layout_properties.map(Into::into),
         imported_source_url: request.imported_source_url,
@@ -526,23 +523,20 @@ fn unnest_claim_schemas_inner(
     result
 }
 
-pub(crate) fn extract_offered_claims(
+pub(crate) async fn extract_offered_claims(
     credential_schema: &CredentialSchema,
     credential_id: CredentialId,
     claim_keys: &IndexMap<String, OpenID4VCICredentialValueDetails>,
 ) -> Result<Vec<Claim>, IssuanceProtocolError> {
-    let claim_schemas =
-        credential_schema
-            .claim_schemas
-            .as_ref()
-            .ok_or(IssuanceProtocolError::Failed(
-                "Missing claim schemas for existing credential schema".to_string(),
-            ))?;
+    let claim_schemas = credential_schema
+        .claim_schemas
+        .get()
+        .await
+        .error_while("getting claim schemas")?;
 
     let now = crate::clock::now_utc();
 
     let nested_schema_claim_view: CredentialSchemaClaimsNestedView = claim_schemas
-        .clone()
         .try_into()
         .error_while("extracting nested claims")?;
 
@@ -1005,19 +999,17 @@ impl From<ClaimSchema> for CredentialClaimSchemaDTO {
     }
 }
 
-pub(super) fn credentials_supported_mdoc(
+pub(super) async fn credentials_supported_mdoc(
     schema: CredentialSchema,
     config: &CoreConfig,
     cryptographic_binding_methods_supported: Vec<String>,
     proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
 ) -> Result<OpenID4VCICredentialConfigurationData, IssuanceProtocolError> {
-    let claim_schemas: &Vec<ClaimSchema> =
-        schema
-            .claim_schemas
-            .as_ref()
-            .ok_or(IssuanceProtocolError::Failed(
-                "claim_schemas is None".to_string(),
-            ))?;
+    let claim_schemas = schema
+        .claim_schemas
+        .get()
+        .await
+        .error_while("getting claim schemas")?;
 
     // order of namespaces and elements inside MDOC schema as defined in OpenID4VCI mdoc spec: `{namespace}~{element}`
     let element_order: Vec<String> = claim_schemas
@@ -1034,8 +1026,9 @@ pub(super) fn credentials_supported_mdoc(
         .map(|element| element.key.replace(NESTED_CLAIM_MARKER, "~"))
         .collect();
 
-    let claim_schema =
-        prepare_nested_representation(&schema, config).map_err(OpenIDIssuanceError::OpenID4VCI)?;
+    let claim_schema = prepare_nested_representation(&schema, config)
+        .await
+        .map_err(OpenIDIssuanceError::OpenID4VCI)?;
 
     let format_type = config
         .format

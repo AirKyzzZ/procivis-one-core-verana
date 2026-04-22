@@ -634,7 +634,7 @@ async fn test_create_identifier_with_trust_information() {
     let organisation_id = session_provider.0.organisation_id.unwrap();
     organisation_repository
         .expect_get_organisation()
-        .returning(move |_, _| Ok(Some(dummy_organisation(Some(organisation_id)))));
+        .returning(move |_| Ok(Some(dummy_organisation(Some(organisation_id)))));
 
     let identifier_id = Uuid::new_v4().into();
     let mut identifier = dummy_identifier();

@@ -216,7 +216,8 @@ pub(super) fn credential_list_model_to_repository_model(
         revocation_method: credential.credential_schema_revocation_method,
         imported_source_url: credential.credential_schema_imported_source_url,
         schema_id: credential.credential_schema_schema_id,
-        claim_schemas: None,
+        // todo: this should be fixed in another ticket
+        claim_schemas: Default::default(),
         organisation: None,
         // todo: this should be fixed in another ticket
         layout_type: LayoutType::Card,

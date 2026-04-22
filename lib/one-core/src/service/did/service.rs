@@ -184,7 +184,7 @@ impl DidService {
             .error_while("checking session")?;
         let organisation = self
             .organisation_repository
-            .get_organisation(&request.organisation_id, &Default::default())
+            .get_organisation(&request.organisation_id)
             .await
             .error_while("getting organisation")?
             .ok_or(DidServiceError::MissingOrganisation(

@@ -355,7 +355,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
             format: "format".into(),
             imported_source_url: "CORE_URL".to_string(),
             revocation_method: Some("revocation method".into()),
-            claim_schemas: Some(vec![ClaimSchema {
+            claim_schemas: vec![ClaimSchema {
                 id: claim_schema_id,
                 key: "key".to_string(),
                 data_type: "STRING".to_string(),
@@ -364,7 +364,8 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
                 array: false,
                 metadata: false,
                 required: true,
-            }]),
+            }]
+            .into(),
             organisation: Some(dummy_organisation(None)),
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -546,7 +547,7 @@ pub fn dummy_credential_schema() -> CredentialSchema {
         imported_source_url: "CORE_URL".to_string(),
         format: "format".into(),
         revocation_method: Some("mock".into()),
-        claim_schemas: None,
+        claim_schemas: Default::default(),
         organisation: None,
         layout_type: LayoutType::Card,
         layout_properties: None,

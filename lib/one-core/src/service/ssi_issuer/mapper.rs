@@ -103,7 +103,7 @@ pub(crate) fn get_url_with_fragment(
     Ok(url.to_string())
 }
 
-pub(crate) fn credential_schema_to_sd_jwt_vc_metadata(
+pub(crate) async fn credential_schema_to_sd_jwt_vc_metadata(
     vct_type: String,
     schema: CredentialSchema,
 ) -> Result<SdJwtVcTypeMetadataResponseDTO, IssuerServiceError> {
@@ -128,9 +128,14 @@ pub(crate) fn credential_schema_to_sd_jwt_vc_metadata(
         rendering: Some(rendering),
     };
 
-    let nested_claims =
-        CredentialSchemaClaimsNestedView::try_from(schema.claim_schemas.unwrap_or_default())
-            .error_while("converting nested claims")?;
+    let nested_claims = CredentialSchemaClaimsNestedView::try_from(
+        schema
+            .claim_schemas
+            .get()
+            .await
+            .error_while("getting claim schemas")?,
+    )
+    .error_while("converting nested claims")?;
     let claims = vct_claims_from_nested_view(nested_claims);
     Ok(SdJwtVcTypeMetadataResponseDTO {
         vct: schema.schema_id,

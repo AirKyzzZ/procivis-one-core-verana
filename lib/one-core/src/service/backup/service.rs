@@ -41,7 +41,8 @@ impl BackupService {
                 .await
                 .error_while("fetching unexportable")?,
             &self.config,
-        )?;
+        )
+        .await?;
         self.backup_repository
             .delete_unexportable(db_copy.path())
             .await
@@ -176,6 +177,7 @@ impl BackupService {
                 .error_while("fetching unexportable")?,
             &self.config,
         )
+        .await
     }
 }
 

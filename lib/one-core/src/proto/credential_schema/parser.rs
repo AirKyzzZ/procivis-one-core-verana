@@ -98,7 +98,7 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
                 .schema
                 .requires_wallet_instance_attestation
                 .unwrap_or(false),
-            claim_schemas: Some(claim_schemas),
+            claim_schemas: claim_schemas.into(),
             organisation: Some(dto.organisation),
             transaction_code: convert_inner(dto.schema.transaction_code),
         })

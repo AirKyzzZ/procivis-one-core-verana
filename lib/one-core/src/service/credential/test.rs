@@ -182,7 +182,7 @@ fn generic_credential() -> Credential {
             key_storage_security: None,
             format: "JWT".into(),
             revocation_method: None,
-            claim_schemas: Some(vec![claim_schema]),
+            claim_schemas: vec![claim_schema].into(),
             organisation: Some(organisation),
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -255,7 +255,7 @@ fn generic_credential_list_entity() -> Credential {
             key_storage_security: None,
             format: "JWT".into(),
             revocation_method: None,
-            claim_schemas: None,
+            claim_schemas: Default::default(),
             organisation: None,
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -1254,7 +1254,7 @@ async fn test_create_credential_one_required_claim_missing_success() {
 
     let credential = generic_credential();
     let credential_schema = CredentialSchema {
-        claim_schemas: Some(vec![
+        claim_schemas: vec![
             ClaimSchema {
                 array: false,
                 id: Uuid::new_v4().into(),
@@ -1275,7 +1275,8 @@ async fn test_create_credential_one_required_claim_missing_success() {
                 metadata: false,
                 required: false,
             },
-        ]),
+        ]
+        .into(),
         ..credential.schema.clone().unwrap()
     };
 
@@ -1342,9 +1343,7 @@ async fn test_create_credential_one_required_claim_missing_success() {
         ..Default::default()
     });
 
-    let required_claim_schema_id = credential_schema.claim_schemas.as_ref().unwrap()[0]
-        .id
-        .to_owned();
+    let required_claim_schema_id = credential_schema.claim_schemas.get().await.unwrap()[0].id;
     let create_request_template = CreateCredentialRequestDTO {
         credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
         issuer: None,
@@ -1373,7 +1372,7 @@ async fn test_create_credential_one_required_claim_missing_success() {
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: required_claim_schema_id,
                 value: "value".to_string(),
-                path: credential_schema.claim_schemas.as_ref().unwrap()[0]
+                path: credential_schema.claim_schemas.get().await.unwrap()[0]
                     .key
                     .to_owned(),
             }],
@@ -1390,7 +1389,7 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
 
     let credential = generic_credential();
     let credential_schema = CredentialSchema {
-        claim_schemas: Some(vec![
+        claim_schemas: vec![
             ClaimSchema {
                 array: false,
                 id: Uuid::new_v4().into(),
@@ -1411,7 +1410,8 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
                 metadata: false,
                 required: false,
             },
-        ]),
+        ]
+        .into(),
         ..credential.schema.clone().unwrap()
     };
 
@@ -1471,9 +1471,7 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
         ..Default::default()
     });
 
-    let optional_claim_schema_id = credential_schema.claim_schemas.as_ref().unwrap()[1]
-        .id
-        .to_owned();
+    let optional_claim_schema_id = credential_schema.claim_schemas.get().await.unwrap()[1].id;
     let create_request_template = CreateCredentialRequestDTO {
         credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
         issuer: None,
@@ -1502,7 +1500,7 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: optional_claim_schema_id,
                 value: "value".to_string(),
-                path: credential_schema.claim_schemas.as_ref().unwrap()[1]
+                path: credential_schema.claim_schemas.get().await.unwrap()[1]
                     .key
                     .to_owned(),
             }],
@@ -1582,9 +1580,7 @@ async fn test_create_credential_schema_deleted() {
         ..Default::default()
     });
 
-    let claim_schema_id = credential_schema.claim_schemas.as_ref().unwrap()[0]
-        .id
-        .to_owned();
+    let claim_schema_id = credential_schema.claim_schemas.get().await.unwrap()[0].id;
 
     let result = service
         .create_credential(CreateCredentialRequestDTO {
@@ -1606,7 +1602,7 @@ async fn test_create_credential_schema_deleted() {
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id,
                 value: "value".to_string(),
-                path: credential_schema.claim_schemas.as_ref().unwrap()[0]
+                path: credential_schema.claim_schemas.get().await.unwrap()[0]
                     .key
                     .to_owned(),
             }],
@@ -2618,7 +2614,7 @@ fn generate_credential_schema_with_claim_schemas(
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_id: "".to_string(),
-        claim_schemas: Some(claim_schemas),
+        claim_schemas: claim_schemas.into(),
         organisation: None,
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
@@ -2626,8 +2622,8 @@ fn generate_credential_schema_with_claim_schemas(
     }
 }
 
-#[test]
-fn test_validate_create_request_all_nested_claims_are_required() {
+#[tokio::test]
+async fn test_validate_create_request_all_nested_claims_are_required() {
     let address_claim_id = Uuid::new_v4().into();
     let location_claim_id = Uuid::new_v4().into();
     let location_x_claim_id = Uuid::new_v4().into();
@@ -2700,6 +2696,7 @@ fn test_validate_create_request_all_nested_claims_are_required() {
         &generic_formatter_capabilities(),
         &generic_config().core,
     )
+    .await
     .unwrap();
 }
 
@@ -2710,8 +2707,8 @@ fn generic_capabilities() -> IssuanceProtocolCapabilities {
     }
 }
 
-#[test]
-fn test_validate_create_request_all_optional_nested_object_with_required_claims() {
+#[tokio::test]
+async fn test_validate_create_request_all_optional_nested_object_with_required_claims() {
     let address_claim_id = Uuid::new_v4().into();
     let location_claim_id = Uuid::new_v4().into();
     let location_x_claim_id = Uuid::new_v4().into();
@@ -2784,6 +2781,7 @@ fn test_validate_create_request_all_optional_nested_object_with_required_claims(
         &generic_formatter_capabilities(),
         &generic_config().core,
     )
+    .await
     .unwrap();
 
     validate_create_request(
@@ -2797,6 +2795,7 @@ fn test_validate_create_request_all_optional_nested_object_with_required_claims(
         &generic_formatter_capabilities(),
         &generic_config().core,
     )
+    .await
     .unwrap();
 
     let result = validate_create_request(
@@ -2816,15 +2815,16 @@ fn test_validate_create_request_all_optional_nested_object_with_required_claims(
         &schema,
         &generic_formatter_capabilities(),
         &generic_config().core,
-    );
+    )
+    .await;
     assert!(matches!(
         result,
         Err(CredentialServiceError::MissingClaimSchema(_))
     ));
 }
 
-#[test]
-fn test_validate_create_request_all_required_nested_object_with_optional_claims() {
+#[tokio::test]
+async fn test_validate_create_request_all_required_nested_object_with_optional_claims() {
     let address_claim_id = Uuid::new_v4().into();
     let location_claim_id = Uuid::new_v4().into();
     let location_x_claim_id = Uuid::new_v4().into();
@@ -2897,6 +2897,7 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
         &generic_formatter_capabilities(),
         &generic_config().core,
     )
+    .await
     .unwrap();
 
     let result = validate_create_request(
@@ -2909,7 +2910,8 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
         &schema,
         &generic_formatter_capabilities(),
         &generic_config().core,
-    );
+    )
+    .await;
     assert!(matches!(
         result,
         Err(CredentialServiceError::MissingClaimSchema(_))
@@ -2933,6 +2935,7 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
         &generic_formatter_capabilities(),
         &generic_config().core,
     )
+    .await
     .unwrap();
 }
 
@@ -2965,13 +2968,8 @@ async fn test_get_credential_success_with_non_required_nested_object() {
 
     let mut credential = generic_credential();
 
-    *credential
-        .schema
-        .as_mut()
-        .unwrap()
-        .claim_schemas
-        .as_mut()
-        .unwrap() = vec![location_claim_schema, location_x_claim_schema.to_owned()];
+    credential.schema.as_mut().unwrap().claim_schemas =
+        vec![location_claim_schema, location_x_claim_schema.to_owned()].into();
 
     *credential.claims.as_mut().unwrap() = vec![Claim {
         id: Uuid::new_v4().into(),
@@ -3166,7 +3164,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
             key_storage_security: None,
             format: "JWT".into(),
             revocation_method: None,
-            claim_schemas: Some(claim_schemas),
+            claim_schemas: claim_schemas.into(),
             organisation: Some(organisation),
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -3730,7 +3728,7 @@ async fn test_get_credential_success_array_index_sorting() {
             key_storage_security: None,
             format: "JWT".into(),
             revocation_method: None,
-            claim_schemas: Some(claim_schemas),
+            claim_schemas: claim_schemas.into(),
             organisation: Some(organisation),
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -4043,7 +4041,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
             key_storage_security: None,
             format: "MDOC".into(),
             revocation_method: None,
-            claim_schemas: Some(claim_schemas),
+            claim_schemas: claim_schemas.into(),
             organisation: Some(organisation),
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -4259,7 +4257,7 @@ async fn test_get_credential_success_array_single_element() {
             key_storage_security: None,
             format: "JWT".into(),
             revocation_method: None,
-            claim_schemas: Some(claim_schemas),
+            claim_schemas: claim_schemas.into(),
             organisation: Some(organisation),
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -4382,7 +4380,7 @@ async fn test_create_credential_array(
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_id: "".to_string(),
-        claim_schemas: Some(claim_schemas),
+        claim_schemas: claim_schemas.into(),
         organisation: Some(organisation.to_owned()),
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
@@ -4759,7 +4757,7 @@ async fn test_create_credential_invalid_certificate_role() {
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_id: "".to_string(),
-        claim_schemas: Some(claim_schemas),
+        claim_schemas: claim_schemas.into(),
         organisation: Some(organisation.to_owned()),
         allow_suspension: true,
         requires_wallet_instance_attestation: false,

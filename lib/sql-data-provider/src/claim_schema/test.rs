@@ -1,4 +1,4 @@
-use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
+use one_core::model::claim_schema::ClaimSchema;
 use one_core::repository::claim_schema_repository::ClaimSchemaRepository;
 use one_core::repository::error::DataLayerError;
 use sea_orm::ActiveValue::Set;
@@ -94,9 +94,7 @@ async fn test_get_claim_schema_list() {
     }
 
     // single item
-    let result = repository
-        .get_claim_schema_list(vec![schemas[0].id], &ClaimSchemaRelations::default())
-        .await;
+    let result = repository.get_claim_schema_list(vec![schemas[0].id]).await;
     assert!(result.is_ok());
     let result = result.unwrap();
     assert_eq!(result.len(), 1);
@@ -104,10 +102,7 @@ async fn test_get_claim_schema_list() {
 
     // both items - same order
     let result = repository
-        .get_claim_schema_list(
-            vec![schemas[0].id, schemas[1].id],
-            &ClaimSchemaRelations::default(),
-        )
+        .get_claim_schema_list(vec![schemas[0].id, schemas[1].id])
         .await;
     assert!(result.is_ok());
     let result = result.unwrap();
@@ -117,10 +112,7 @@ async fn test_get_claim_schema_list() {
 
     // both items - different order
     let result = repository
-        .get_claim_schema_list(
-            vec![schemas[1].id, schemas[0].id],
-            &ClaimSchemaRelations::default(),
-        )
+        .get_claim_schema_list(vec![schemas[1].id, schemas[0].id])
         .await;
     assert!(result.is_ok());
     let result = result.unwrap();
@@ -130,10 +122,7 @@ async fn test_get_claim_schema_list() {
 
     // one item missing
     let result = repository
-        .get_claim_schema_list(
-            vec![schemas[0].id, Uuid::new_v4().into()],
-            &ClaimSchemaRelations::default(),
-        )
+        .get_claim_schema_list(vec![schemas[0].id, Uuid::new_v4().into()])
         .await;
     assert!(matches!(
         result,

@@ -333,7 +333,7 @@ impl CredentialFormatter for JsonLdClassic {
             imported_source_url: "".to_string(),
             allow_suspension: false,
             requires_wallet_instance_attestation: false,
-            claim_schemas: Some(claim_schemas),
+            claim_schemas: claim_schemas.into(),
             organisation: None,
             transaction_code: None,
         };

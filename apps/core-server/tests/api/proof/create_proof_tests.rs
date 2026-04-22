@@ -27,7 +27,8 @@ async fn test_create_proof_success_without_related_key() {
         .await;
     let claim_schema = credential_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
         .first()
         .unwrap()
@@ -87,7 +88,8 @@ async fn test_create_proof_wrong_identifier_type() {
         .await;
     let claim_schema = credential_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
         .first()
         .unwrap()
@@ -140,7 +142,8 @@ async fn test_create_proof_success_with_related_key() {
         .await;
     let claim_schema = credential_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
         .first()
         .unwrap()
@@ -218,7 +221,8 @@ async fn test_create_proof_for_deactivated_did_returns_400() {
     let credential_schema = fixtures::create_credential_schema(&db_conn, &organisation, None).await;
     let claim_schema = credential_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
         .first()
         .unwrap()
@@ -322,7 +326,8 @@ async fn test_create_proof_mdoc_without_key_agreement_key() {
         .await;
     let claim_schema = credential_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
         .first()
         .unwrap()
@@ -416,7 +421,8 @@ async fn test_create_proof_success_without_key_agreement_key() {
         .await;
     let claim_schema = credential_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
         .first()
         .unwrap()
@@ -498,7 +504,8 @@ async fn test_create_proof_success_with_certificate() {
         .await;
     let claim_schema = credential_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
         .first()
         .unwrap()
@@ -582,7 +589,8 @@ async fn test_create_proof_certificate_without_authentication_role() {
         .await;
     let claim_schema = credential_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
         .first()
         .unwrap()
@@ -635,7 +643,8 @@ async fn test_create_proof_success_with_profile() {
         .await;
     let claim_schema = credential_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
         .first()
         .unwrap()
@@ -702,7 +711,8 @@ async fn test_create_proof_success_with_webhook_url() {
         .await;
     let claim_schema = credential_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
         .first()
         .unwrap()
@@ -763,7 +773,8 @@ async fn test_create_proof_fails_with_engagement_on_non_iso_mdl_protocol() {
         .await;
     let claim_schema = credential_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
         .first()
         .unwrap()
@@ -830,7 +841,8 @@ async fn test_create_proof_fails_with_iso_mdl_engagement_and_none_engagement() {
         .await;
     let claim_schema = credential_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
         .first()
         .unwrap()
@@ -898,7 +910,8 @@ async fn test_create_proof_fails_with_iso_mdl_engagement_and_invalid_engagement(
         .await;
     let claim_schema = credential_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
         .first()
         .unwrap()

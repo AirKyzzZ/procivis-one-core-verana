@@ -498,7 +498,7 @@ impl CredentialFormatter for MdocFormatter {
             allow_suspension: false,
             requires_wallet_instance_attestation: false,
             organisation: None,
-            claim_schemas: Some(claim_schemas),
+            claim_schemas: claim_schemas.into(),
             transaction_code: None,
         };
 

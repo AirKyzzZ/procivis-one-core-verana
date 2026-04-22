@@ -190,7 +190,6 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
                     }),
                     schema: Some(CredentialSchemaRelations {
                         organisation: Some(OrganisationRelations::default()),
-                        ..Default::default()
                     }),
                     key: Some(KeyRelations::default()),
                     ..Default::default()
@@ -270,7 +269,6 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
                 &CredentialRelations {
                     schema: Some(CredentialSchemaRelations {
                         organisation: Some(OrganisationRelations::default()),
-                        ..Default::default()
                     }),
                     issuer_identifier: Some(IdentifierRelations {
                         did: Some(DidRelations {

@@ -1,10 +1,12 @@
+use std::sync::Arc;
+
 use shared_types::OrganisationId;
 
 use super::error::DataLayerError;
 use crate::model::organisation::{
-    GetOrganisationList, Organisation, OrganisationListQuery, OrganisationRelations,
-    UpdateOrganisationRequest,
+    GetOrganisationList, Organisation, OrganisationListQuery, UpdateOrganisationRequest,
 };
+use crate::model::relation::AsyncModelLoader;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
@@ -22,7 +24,6 @@ pub trait OrganisationRepository: Send + Sync {
     async fn get_organisation(
         &self,
         id: &OrganisationId,
-        relations: &OrganisationRelations,
     ) -> Result<Option<Organisation>, DataLayerError>;
 
     async fn get_organisation_for_wallet_provider(
@@ -34,4 +35,16 @@ pub trait OrganisationRepository: Send + Sync {
         &self,
         query: OrganisationListQuery,
     ) -> Result<GetOrganisationList, DataLayerError>;
+}
+
+#[async_trait::async_trait]
+impl AsyncModelLoader<Organisation> for Arc<dyn OrganisationRepository> {
+    async fn load(&self, id: &OrganisationId) -> Result<Organisation, DataLayerError> {
+        self.get_organisation(id)
+            .await?
+            .ok_or_else(|| DataLayerError::MissingRequiredRelation {
+                relation: "organisation",
+                id: id.to_string(),
+            })
+    }
 }

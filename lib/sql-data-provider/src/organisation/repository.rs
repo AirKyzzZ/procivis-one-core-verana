@@ -1,17 +1,19 @@
+use std::sync::Arc;
+
 use autometrics::autometrics;
 use futures::FutureExt;
+use one_core::model::common::GetListResponse;
 use one_core::model::organisation::{
-    GetOrganisationList, Organisation, OrganisationListQuery, OrganisationRelations,
-    UpdateOrganisationRequest,
+    GetOrganisationList, Organisation, OrganisationListQuery, UpdateOrganisationRequest,
 };
 use one_core::proto::transaction_manager::IsolationLevel;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::organisation_repository::OrganisationRepository;
-use one_dto_mapper::convert_inner;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use shared_types::OrganisationId;
 
 use super::OrganisationProvider;
+use super::mapper::organisation_from_model;
 use crate::common::list_query_with_base_model;
 use crate::entity::organisation;
 use crate::list_query_generic::SelectWithListQuery;
@@ -59,27 +61,26 @@ impl OrganisationRepository for OrganisationProvider {
     async fn get_organisation(
         &self,
         id: &OrganisationId,
-        _relations: &OrganisationRelations,
     ) -> Result<Option<Organisation>, DataLayerError> {
         let organisation = organisation::Entity::find_by_id(id)
             .one(&self.db)
             .await
             .map_err(to_data_layer_error)?;
 
-        Ok(convert_inner(organisation))
+        Ok(organisation.map(|org| organisation_from_model(org, &self.cloned())))
     }
 
     async fn get_organisation_for_wallet_provider(
         &self,
         wallet_provider: &str,
     ) -> Result<Option<Organisation>, DataLayerError> {
-        let organisations: Option<organisation::Model> = organisation::Entity::find()
+        let organisation: Option<organisation::Model> = organisation::Entity::find()
             .filter(organisation::Column::WalletProvider.eq(wallet_provider))
             .one(&self.db)
             .await
             .map_err(to_data_layer_error)?;
 
-        Ok(convert_inner(organisations))
+        Ok(organisation.map(|org| organisation_from_model(org, &self.cloned())))
     }
 
     async fn get_organisation_list(
@@ -88,6 +89,24 @@ impl OrganisationRepository for OrganisationProvider {
     ) -> Result<GetOrganisationList, DataLayerError> {
         let query = organisation::Entity::find().with_list_query(&query_params);
 
-        list_query_with_base_model(query, query_params, &self.db).await
+        let list: GetListResponse<organisation::Model> =
+            list_query_with_base_model(query, query_params, &self.db).await?;
+
+        let repo = self.cloned();
+        Ok(GetOrganisationList {
+            values: list
+                .values
+                .into_iter()
+                .map(|org| organisation_from_model(org, &repo))
+                .collect(),
+            total_pages: list.total_pages,
+            total_items: list.total_items,
+        })
+    }
+}
+
+impl OrganisationProvider {
+    fn cloned(&self) -> Arc<dyn OrganisationRepository> {
+        Arc::new(self.clone())
     }
 }

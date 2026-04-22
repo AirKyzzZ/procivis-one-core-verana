@@ -47,7 +47,7 @@ pub(crate) struct VerifierSession {
     pub sk_device: SkDevice,
 }
 
-pub(crate) fn setup_verifier_session(
+pub(crate) async fn setup_verifier_session(
     device_engagement: EmbeddedCbor<DeviceEngagement>,
     schema: &ProofSchema,
     handover: Option<Handover>,
@@ -74,17 +74,20 @@ pub(crate) fn setup_verifier_session(
         .context("failed to derive key")
         .map_err(VerificationProtocolError::Other)?;
 
+    let mut doc_requests = vec![];
+    for input_schema in schema
+        .input_schemas
+        .as_ref()
+        .ok_or(VerificationProtocolError::Failed(
+            "missing input_schemas".to_string(),
+        ))?
+    {
+        doc_requests.push(proof_input_schema_to_doc_request(input_schema).await?);
+    }
+
     let device_request = DeviceRequest {
         version: "1.0".into(),
-        doc_requests: schema
-            .input_schemas
-            .as_ref()
-            .ok_or(VerificationProtocolError::Failed(
-                "missing input_schemas".to_string(),
-            ))?
-            .iter()
-            .map(proof_input_schema_to_doc_request)
-            .collect::<Result<_, VerificationProtocolError>>()?,
+        doc_requests,
     };
 
     let device_request_bytes = to_cbor(&device_request)?;
@@ -570,7 +573,7 @@ async fn read_response(
     }
 }
 
-fn proof_input_schema_to_doc_request(
+async fn proof_input_schema_to_doc_request(
     input: &ProofInputSchema,
 ) -> Result<DocRequest, VerificationProtocolError> {
     let proof_claim_schemas =
@@ -594,17 +597,16 @@ fn proof_input_schema_to_doc_request(
         let key = &proof_claim_schema.schema.key;
         let claim_keys = if key.contains(NESTED_CLAIM_MARKER) {
             // defining an element
-            vec![key]
+            vec![key.to_owned()]
         } else {
             // defining a whole namespace
             credential_schema
                 .claim_schemas
-                .as_ref()
-                .ok_or(VerificationProtocolError::Failed(
-                    "missing claim_schemas".to_string(),
-                ))?
-                .iter()
-                .map(|claim_schema| &claim_schema.key)
+                .get()
+                .await
+                .error_while("getting claim schemas")?
+                .into_iter()
+                .map(|claim_schema| claim_schema.key)
                 .filter(|k| k.starts_with(&format!("{key}{NESTED_CLAIM_MARKER}")))
                 .collect()
         };

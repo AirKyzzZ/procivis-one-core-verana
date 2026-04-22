@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
+use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential_schema::{
     BackgroundProperties, CodeProperties, CodeTypeEnum, CredentialSchema,
     CredentialSchemaListQuery, CredentialSchemaRelations, KeyStorageSecurity, LayoutProperties,
@@ -81,7 +81,7 @@ impl CredentialSchemasDB {
             deleted_at: params.deleted_at,
             format: params.format.unwrap_or("JWT".into()),
             revocation_method: revocation_method.into(),
-            claim_schemas: Some(claim_schemas),
+            claim_schemas: claim_schemas.into(),
             layout_type: LayoutType::Card,
             layout_properties: Some(LayoutProperties {
                 primary_attribute: Some("firstName".to_owned()),
@@ -158,7 +158,7 @@ impl CredentialSchemasDB {
             deleted_at: None,
             format: params.format.unwrap_or("JSON_LD_BBSPLUS".into()),
             revocation_method: revocation_method.into(),
-            claim_schemas: Some(claim_schemas),
+            claim_schemas: claim_schemas.into(),
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: id.to_string(),
@@ -253,7 +253,7 @@ impl CredentialSchemasDB {
             deleted_at: None,
             format: params.format.unwrap_or("JWT".into()),
             revocation_method: revocation_method.into(),
-            claim_schemas: Some(claim_schemas),
+            claim_schemas: claim_schemas.into(),
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: params.schema_id.unwrap_or("doctype".to_string()),
@@ -348,7 +348,7 @@ impl CredentialSchemasDB {
             deleted_at: None,
             format: params.format.unwrap_or("JWT".into()),
             revocation_method: revocation_method.into(),
-            claim_schemas: Some(claim_schemas),
+            claim_schemas: claim_schemas.into(),
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: format!("ssi/schema/{id}"),
@@ -454,7 +454,7 @@ impl CredentialSchemasDB {
             deleted_at: None,
             format: params.format.unwrap_or("JWT".into()),
             revocation_method: revocation_method.into(),
-            claim_schemas: Some(claim_schemas),
+            claim_schemas: claim_schemas.into(),
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: format!("ssi/schema/{id}"),
@@ -648,7 +648,7 @@ impl CredentialSchemasDB {
             deleted_at: None,
             format: params.format.unwrap_or("JWT".into()),
             revocation_method: revocation_method.into(),
-            claim_schemas: Some(claim_schemas),
+            claim_schemas: claim_schemas.into(),
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: format!("ssi/schema/{id}"),
@@ -695,7 +695,7 @@ impl CredentialSchemasDB {
             deleted_at: None,
             format: "JWT".into(),
             revocation_method: None,
-            claim_schemas: Some(claim_schemas),
+            claim_schemas: claim_schemas.into(),
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: new_id.to_string(),
@@ -724,7 +724,7 @@ impl CredentialSchemasDB {
         format: &str,
         schema_id: &str,
     ) -> CredentialSchema {
-        let claim_schemas = new_claim_schemas
+        let claim_schemas: Vec<_> = new_claim_schemas
             .iter()
             .map(|(id, name, required, data_type, array)| ClaimSchema {
                 id: (*id).into(),
@@ -749,7 +749,7 @@ impl CredentialSchemasDB {
             deleted_at: None,
             format: format.into(),
             revocation_method: revocation_method.into(),
-            claim_schemas: Some(claim_schemas),
+            claim_schemas: claim_schemas.into(),
             layout_type: LayoutType::Card,
             layout_properties: Some(LayoutProperties {
                 background: Some(BackgroundProperties {
@@ -782,7 +782,6 @@ impl CredentialSchemasDB {
             .get_credential_schema(
                 credential_schema_id,
                 &CredentialSchemaRelations {
-                    claim_schemas: Some(ClaimSchemaRelations::default()),
                     organisation: Some(OrganisationRelations::default()),
                 },
             )
@@ -811,7 +810,6 @@ impl CredentialSchemasDB {
                     ]),
                 },
                 &CredentialSchemaRelations {
-                    claim_schemas: Some(ClaimSchemaRelations {}),
                     organisation: Some(OrganisationRelations {}),
                 },
             )

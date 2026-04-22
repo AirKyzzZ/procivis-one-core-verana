@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use assert2::{assert, let_assert};
+use assert2::let_assert;
 use mockall::predicate::*;
 use shared_types::CredentialFormat;
 use similar_asserts::assert_eq;
@@ -116,8 +116,8 @@ fn test_parse_import_credential_schema_success() {
     );
 }
 
-#[test]
-fn test_parse_import_with_nested_claims_success() {
+#[tokio::test]
+async fn test_parse_import_with_nested_claims_success() {
     // given
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     let mut formatter = MockCredentialFormatter::default();
@@ -187,8 +187,7 @@ fn test_parse_import_with_nested_claims_success() {
 
     // then
     let_assert!(Ok(schema) = result);
-    let_assert!(Some(claim_schemas) = schema.claim_schemas);
-    assert!(2 == claim_schemas.len())
+    assert_eq!(schema.claim_schemas.get().await.unwrap().len(), 2);
 }
 
 #[tokio::test]
@@ -204,7 +203,7 @@ async fn test_importer_import_credential_schema_success() {
         name: "Test Schema".to_string(),
         format: "JWT".into(),
         revocation_method: None,
-        claim_schemas: Some(vec![ClaimSchema {
+        claim_schemas: vec![ClaimSchema {
             id: Uuid::new_v4().into(),
             key: "claim1".to_string(),
             data_type: "STRING".to_string(),
@@ -213,7 +212,8 @@ async fn test_importer_import_credential_schema_success() {
             array: false,
             metadata: false,
             required: true,
-        }]),
+        }]
+        .into(),
         organisation: Some(dummy_organisation(None)),
         layout_type: LayoutType::Card,
         layout_properties: None,
@@ -272,7 +272,7 @@ async fn test_importer_import_credential_schema_success_duplicate_name() {
         name: "Existing Schema".to_string(),
         format: "JWT".into(),
         revocation_method: None,
-        claim_schemas: Some(vec![]),
+        claim_schemas: vec![].into(),
         organisation: Some(dummy_organisation(None)),
         layout_type: LayoutType::Card,
         layout_properties: None,
@@ -338,7 +338,7 @@ async fn test_importer_import_credential_schema_failure_duplicate_schema_id() {
         name: "Existing Schema".to_string(),
         format: "JWT".into(),
         revocation_method: None,
-        claim_schemas: Some(vec![]),
+        claim_schemas: vec![].into(),
         organisation: Some(dummy_organisation(None)),
         layout_type: LayoutType::Card,
         layout_properties: None,

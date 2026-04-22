@@ -781,7 +781,7 @@ fn generic_credential() -> Credential {
             key_storage_security: None,
             format: "JWT".into(),
             revocation_method: Some("REVOCATION_METHOD".to_string().into()),
-            claim_schemas: Some(vec![claim_schema]),
+            claim_schemas: vec![claim_schema].into(),
             organisation: Some(organisation),
             layout_type: LayoutType::Card,
             layout_properties: None,

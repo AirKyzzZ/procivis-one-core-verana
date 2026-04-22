@@ -382,6 +382,7 @@ impl VerificationProtocol for IsoMdl {
                         CredentialAttestationBlobs::default(),
                         None,
                     )
+                    .await
                     .error_while("creating credential detail")?;
                     relevant_credentials.push(credential);
                 }

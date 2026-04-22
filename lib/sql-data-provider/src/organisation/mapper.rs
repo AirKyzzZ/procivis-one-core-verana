@@ -1,7 +1,11 @@
+use std::sync::Arc;
+
 use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::organisation::{
     Organisation, OrganisationFilterValue, SortableOrganisationColumn, UpdateOrganisationRequest,
 };
+use one_core::model::relation::Related;
+use one_core::repository::organisation_repository::OrganisationRepository;
 use sea_orm::sea_query::{IntoCondition, SimpleExpr};
 use sea_orm::{ColumnTrait, IntoSimpleExpr, Set, Unchanged};
 
@@ -9,6 +13,23 @@ use crate::entity::organisation;
 use crate::list_query_generic::{
     IntoFilterCondition, IntoSortingColumn, get_comparison_condition, get_nullability_condition,
 };
+
+pub(crate) fn organisation_from_model(
+    value: organisation::Model,
+    organisation_repository: &Arc<dyn OrganisationRepository>,
+) -> Organisation {
+    Organisation {
+        id: value.id,
+        created_date: value.created_date,
+        last_modified: value.last_modified,
+        deactivated_at: value.deactivated_at,
+        wallet_provider: value.wallet_provider,
+        wallet_provider_issuer: value.wallet_provider_issuer,
+        parent_organisation: value.parent_organisation.map(|organisation_id| {
+            Related::new(organisation_id, organisation_repository.to_owned())
+        }),
+    }
+}
 
 impl From<Organisation> for organisation::ActiveModel {
     fn from(value: Organisation) -> Self {
@@ -19,7 +40,9 @@ impl From<Organisation> for organisation::ActiveModel {
             deactivated_at: Set(value.deactivated_at),
             wallet_provider: Set(value.wallet_provider),
             wallet_provider_issuer: Set(value.wallet_provider_issuer),
-            parent_organisation: Set(value.parent_organisation),
+            parent_organisation: Set(value
+                .parent_organisation
+                .map(|parent_organisation| parent_organisation.id())),
         }
     }
 }

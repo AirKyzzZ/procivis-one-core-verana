@@ -83,14 +83,14 @@ impl ClaimRepository for ClaimProvider {
         #[allow(clippy::indexing_slicing)]
         models.sort_by_key(|model| claim_id_to_index[&model.id]);
 
-        if let Some(claim_schema_relations) = &relations.schema {
+        if let Some(_claim_schema_relations) = &relations.schema {
             let claim_schema_ids = models
                 .iter()
                 .map(|model| model.claim_schema_id)
                 .collect::<Vec<ClaimSchemaId>>();
             let claim_schemas = self
                 .claim_schema_repository
-                .get_claim_schema_list(claim_schema_ids.clone(), claim_schema_relations)
+                .get_claim_schema_list(claim_schema_ids)
                 .await?;
 
             let claims: Vec<Claim> = convert_inner(models.to_owned());

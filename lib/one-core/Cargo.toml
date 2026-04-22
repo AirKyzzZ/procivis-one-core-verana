@@ -46,6 +46,7 @@ num-traits                   = "0.2"
 one-crypto.workspace         = true
 one-dto-mapper.workspace     = true
 pem                          = { version = "3" }
+proc-macros.workspace        = true
 quick-xml.workspace          = true
 rcgen.workspace              = true
 regex.workspace              = true

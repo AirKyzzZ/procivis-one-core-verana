@@ -555,7 +555,7 @@ mod tests {
                 layout_type: LayoutType::Card,
                 layout_properties: None,
                 schema_id: "pavel.3310.simple".to_string(),
-                claim_schemas: Some(claim_schemas.clone()),
+                claim_schemas: claim_schemas.to_owned().into(),
                 organisation: None,
                 imported_source_url: "CORE_URL".to_string(),
                 allow_suspension: true,

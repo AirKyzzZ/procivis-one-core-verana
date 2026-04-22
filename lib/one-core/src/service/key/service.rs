@@ -62,7 +62,7 @@ impl KeyService {
 
         let organisation = self
             .organisation_repository
-            .get_organisation(&request.organisation_id, &OrganisationRelations::default())
+            .get_organisation(&request.organisation_id)
             .await
             .error_while("loading organisation from repository")?;
 

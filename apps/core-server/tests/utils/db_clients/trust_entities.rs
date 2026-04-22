@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use one_core::model::organisation::Organisation;
-use one_core::model::trust_anchor::{TrustAnchor, TrustAnchorRelations};
+use one_core::model::trust_anchor::TrustAnchor;
 use one_core::model::trust_entity::{
-    TrustEntity, TrustEntityRelations, TrustEntityRole, TrustEntityState, TrustEntityType,
+    TrustEntity, TrustEntityRole, TrustEntityState, TrustEntityType,
 };
 use one_core::repository::trust_entity_repository::TrustEntityRepository;
 use one_core::service::trust_entity::dto::TrustEntityContent;
@@ -51,11 +51,11 @@ impl TrustEntityDB {
             privacy_url: Some("PrivacyUrl".to_owned()),
             role,
             state,
-            trust_anchor: Some(trust_anchor),
+            trust_anchor: trust_anchor.into(),
             entity_key,
             r#type,
             content,
-            organisation,
+            organisation: organisation.map(Into::into),
         };
 
         self.repository.create(trust_entity.clone()).await.unwrap();
@@ -64,15 +64,6 @@ impl TrustEntityDB {
     }
 
     pub async fn get(&self, id: TrustEntityId) -> Option<TrustEntity> {
-        self.repository
-            .get(
-                id,
-                &TrustEntityRelations {
-                    trust_anchor: Some(TrustAnchorRelations::default()),
-                    ..Default::default()
-                },
-            )
-            .await
-            .unwrap()
+        self.repository.get(id).await.unwrap()
     }
 }

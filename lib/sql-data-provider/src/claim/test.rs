@@ -383,8 +383,8 @@ async fn test_get_claim_list_with_relation() {
     claim_schema_repository
         .expect_get_claim_schema_list()
         .times(1)
-        .withf(|ids, _| ids.len() == 2)
-        .returning(|ids, _| {
+        .withf(|ids| ids.len() == 2)
+        .returning(|ids| {
             Ok(ids
                 .into_iter()
                 .map(|id| ClaimSchema {

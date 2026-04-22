@@ -6,10 +6,11 @@ use shared_types::{CredentialFormat, CredentialSchemaId, RevocationMethodId};
 use strum::Display;
 use time::OffsetDateTime;
 
-use super::claim_schema::{ClaimSchema, ClaimSchemaRelations};
+use super::claim_schema::ClaimSchema;
 use super::common::GetListResponse;
 use super::list_query::ListQuery;
 use super::organisation::{Organisation, OrganisationRelations};
+use super::relation::RelatedVec;
 use crate::service::credential_schema::dto::{
     CredentialSchemaFilterValue, CredentialSchemaListIncludeEntityTypeEnum,
 };
@@ -36,7 +37,7 @@ pub struct CredentialSchema {
     pub transaction_code: Option<TransactionCode>,
 
     // Relations
-    pub claim_schemas: Option<Vec<ClaimSchema>>,
+    pub claim_schemas: RelatedVec<ClaimSchema>,
     pub organisation: Option<Organisation>,
 }
 
@@ -65,7 +66,6 @@ pub(crate) struct CredentialSchemaClaimsNestedObjectView {
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct CredentialSchemaRelations {
-    pub claim_schemas: Option<ClaimSchemaRelations>,
     pub organisation: Option<OrganisationRelations>,
 }
 

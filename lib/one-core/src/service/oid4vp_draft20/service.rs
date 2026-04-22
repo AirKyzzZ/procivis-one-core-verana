@@ -15,8 +15,6 @@ use crate::error::ErrorCode::BR_0000;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::get_encryption_key_jwk_from_proof;
 use crate::model::blob::{Blob, BlobType};
-use crate::model::claim_schema::ClaimSchemaRelations;
-use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::DidRelations;
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::identifier::IdentifierRelations;
@@ -255,10 +253,7 @@ impl OID4VPDraft20Service {
                         organisation: Some(OrganisationRelations::default()),
                         proof_inputs: Some(ProofInputSchemaRelations {
                             claim_schemas: Some(ProofSchemaClaimRelations::default()),
-                            credential_schema: Some(CredentialSchemaRelations {
-                                claim_schemas: Some(ClaimSchemaRelations::default()),
-                                ..Default::default()
-                            }),
+                            credential_schema: Some(Default::default()),
                         }),
                     }),
                     interaction: Some(InteractionRelations::default()),

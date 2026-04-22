@@ -1362,7 +1362,7 @@ async fn test_initiate_issuance() {
     let mut organisation_repository = MockOrganisationRepository::new();
     organisation_repository
         .expect_get_organisation()
-        .return_once(|_, _| Ok(Some(dummy_organisation(None))));
+        .return_once(|_| Ok(Some(dummy_organisation(None))));
 
     let mut interaction_repository = MockInteractionRepository::new();
     interaction_repository
@@ -1532,7 +1532,7 @@ async fn test_initiate_issuance_pkce() {
     let mut organisation_repository = MockOrganisationRepository::new();
     organisation_repository
         .expect_get_organisation()
-        .return_once(|_, _| Ok(Some(dummy_organisation(None))));
+        .return_once(|_| Ok(Some(dummy_organisation(None))));
 
     let mut interaction_repository = MockInteractionRepository::new();
     interaction_repository
@@ -1675,7 +1675,7 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
             key_storage_security: Some(KeyStorageSecurity::Basic),
             format: "JWT".into(),
             revocation_method: None,
-            claim_schemas: Some(vec![ClaimSchema {
+            claim_schemas: vec![ClaimSchema {
                 id: Uuid::new_v4().into(),
                 key: "key1".to_string(),
                 data_type: "STRING".to_string(),
@@ -1684,7 +1684,8 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
                 array: false,
                 metadata: false,
                 required: true,
-            }]),
+            }]
+            .into(),
             organisation: Some(dummy_organisation(organisation_id)),
             deleted_at: None,
             layout_type: LayoutType::Card,

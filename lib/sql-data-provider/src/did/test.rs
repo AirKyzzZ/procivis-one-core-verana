@@ -205,7 +205,7 @@ async fn test_get_did_by_value_existing_inside_organisation() {
     organisation_repository
         .expect_get_organisation()
         .times(1)
-        .returning(|id, _| Ok(Some(dummy_organisation(Some(*id)))));
+        .returning(|id| Ok(Some(dummy_organisation(Some(*id)))));
 
     let TestSetupWithDid {
         provider,
@@ -248,7 +248,7 @@ async fn test_get_did_by_value_existing_ignoring_organisation() {
     organisation_repository
         .expect_get_organisation()
         .times(1)
-        .returning(|id, _| Ok(Some(dummy_organisation(Some(*id)))));
+        .returning(|id| Ok(Some(dummy_organisation(Some(*id)))));
 
     let TestSetupWithDid {
         provider,
@@ -326,7 +326,7 @@ async fn test_get_did_existing() {
     organisation_repository
         .expect_get_organisation()
         .times(1)
-        .returning(|id, _| Ok(Some(dummy_organisation(Some(*id)))));
+        .returning(|id| Ok(Some(dummy_organisation(Some(*id)))));
 
     let mut key_repository = MockKeyRepository::default();
     key_repository.expect_get_key().times(1).returning(|id, _| {

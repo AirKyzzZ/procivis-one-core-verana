@@ -105,7 +105,7 @@ impl OpenId4VpProofValidator for OpenId4VpProofValidatorProto {
         }?;
         let redirect_uri: Option<String> = proof.redirect_uri.to_owned();
         Ok((
-            ValidatedProofResult::new(&proof, proved_claims)?,
+            ValidatedProofResult::new(&proof, proved_claims).await?,
             OpenID4VPDirectPostResponseDTO { redirect_uri },
         ))
     }

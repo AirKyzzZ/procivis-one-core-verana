@@ -176,7 +176,8 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                         .import_credential_schema(credential_schema)
                         .await
                         .error_while("importing credential schema")?;
-                    let claims = extract_offered_claims(&schema, *credential_id, claim_keys)?;
+                    let claims =
+                        extract_offered_claims(&schema, *credential_id, claim_keys).await?;
 
                     Ok(BuildCredentialSchemaResponse { claims, schema })
                 } else {
@@ -191,7 +192,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                     Ok(BuildCredentialSchemaResponse {
                         claims,
                         schema: CredentialSchema {
-                            claim_schemas: Some(claim_schemas),
+                            claim_schemas: claim_schemas.into(),
                             ..schema
                         },
                     })
@@ -234,7 +235,8 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                         .await
                         .error_while("importing schema")?;
 
-                    let claims = extract_offered_claims(&schema, *credential_id, claim_keys)?;
+                    let claims =
+                        extract_offered_claims(&schema, *credential_id, claim_keys).await?;
 
                     Ok(BuildCredentialSchemaResponse { claims, schema })
                 } else {
@@ -307,7 +309,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                             credential_config.wallet_storage_type.to_owned(),
                         ),
                         revocation_method: None,
-                        claim_schemas: Some(claim_schemas),
+                        claim_schemas: claim_schemas.into(),
                         layout_type: LayoutType::Card,
                         layout_properties,
                         schema_id: schema.id.clone(),

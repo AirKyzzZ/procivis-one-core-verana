@@ -4,21 +4,24 @@ use one_core::model::credential_schema::{
 };
 use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::organisation::Organisation;
+use one_core::model::relation::{AsyncVecLoader, RelatedVec};
 use one_core::repository::error::DataLayerError;
 use one_core::service::credential_schema::dto::CredentialSchemaFilterValue;
 use one_dto_mapper::convert_inner;
 use sea_orm::ActiveValue::Set;
 use sea_orm::sea_query::SimpleExpr;
 use sea_orm::sea_query::query::IntoCondition;
-use sea_orm::{ColumnTrait, IntoSimpleExpr};
+use sea_orm::{ColumnTrait, EntityTrait, IntoSimpleExpr, QueryFilter, QueryOrder};
 use shared_types::CredentialSchemaId;
 
+use crate::TransactionManagerImpl;
 use crate::entity::credential_schema::KeyStorageSecurity;
 use crate::entity::{claim_schema, credential_schema};
 use crate::list_query_generic::{
     IntoFilterCondition, IntoSortingColumn, get_comparison_condition, get_equals_condition,
     get_string_match_condition,
 };
+use crate::mapper::to_data_layer_error;
 
 impl IntoSortingColumn for SortableCredentialSchemaColumn {
     fn get_column(&self) -> SimpleExpr {
@@ -132,9 +135,9 @@ pub(super) fn claim_schemas_to_model_vec(
 
 pub(super) fn credential_schema_from_models(
     credential_schema: credential_schema::Model,
-    claim_schemas: Option<Vec<ClaimSchema>>,
     organisation: Option<Organisation>,
     skip_layout_properties: bool,
+    db: TransactionManagerImpl,
 ) -> Result<CredentialSchema, DataLayerError> {
     let transaction_code = match (
         credential_schema.transaction_code_type,
@@ -149,8 +152,9 @@ pub(super) fn credential_schema_from_models(
         _ => return Err(DataLayerError::MappingError),
     };
 
+    let id = credential_schema.id;
     Ok(CredentialSchema {
-        id: credential_schema.id,
+        id,
         deleted_at: credential_schema.deleted_at,
         created_date: credential_schema.created_date,
         last_modified: credential_schema.last_modified,
@@ -158,7 +162,7 @@ pub(super) fn credential_schema_from_models(
         key_storage_security: convert_inner(credential_schema.key_storage_security),
         format: credential_schema.format,
         revocation_method: credential_schema.revocation_method,
-        claim_schemas,
+        claim_schemas: RelatedVec::new(ClaimSchemasLoader { id, db }),
         organisation,
         layout_type: credential_schema.layout_type.into(),
         layout_properties: if skip_layout_properties {
@@ -173,4 +177,23 @@ pub(super) fn credential_schema_from_models(
             .requires_wallet_instance_attestation,
         transaction_code,
     })
+}
+
+struct ClaimSchemasLoader {
+    id: CredentialSchemaId,
+    db: TransactionManagerImpl,
+}
+
+#[async_trait::async_trait]
+impl AsyncVecLoader<ClaimSchema> for ClaimSchemasLoader {
+    async fn load(&self) -> Result<Vec<ClaimSchema>, DataLayerError> {
+        let claim_schemas = claim_schema::Entity::find()
+            .filter(claim_schema::Column::CredentialSchemaId.eq(self.id.to_string()))
+            .order_by_asc(claim_schema::Column::Order)
+            .all(&self.db)
+            .await
+            .map_err(to_data_layer_error)?;
+
+        Ok(convert_inner(claim_schemas))
+    }
 }

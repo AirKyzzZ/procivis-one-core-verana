@@ -33,7 +33,7 @@ pub(crate) fn throw_if_credential_state_eq(
     Ok(())
 }
 
-pub(crate) fn validate_create_request(
+pub(crate) async fn validate_create_request(
     exchange: &str,
     claims: &[CredentialRequestClaimDTO],
     schema: &CredentialSchema,
@@ -49,13 +49,11 @@ pub(crate) fn validate_create_request(
         return Err(CredentialServiceError::MissingCredentialSchema(schema.id));
     }
 
-    let claim_schemas =
-        &schema
-            .claim_schemas
-            .as_ref()
-            .ok_or(CredentialServiceError::MappingError(
-                "claim_schemas is None".to_string(),
-            ))?;
+    let claim_schemas = &schema
+        .claim_schemas
+        .get()
+        .await
+        .error_while("getting claim schemas")?;
 
     let mut paths: Vec<&str> = vec![];
 

@@ -485,10 +485,8 @@ fn test_data(
         required: false,
         ..dummy_claim_schema()
     };
-    credential_schema.claim_schemas = Some(vec![
-        claim_schema_required.clone(),
-        claim_schema_optional.clone(),
-    ]);
+    credential_schema.claim_schemas =
+        vec![claim_schema_required.clone(), claim_schema_optional.clone()].into();
     let proof = Proof {
         id: proof_id,
         verifier_identifier: Some(Identifier {

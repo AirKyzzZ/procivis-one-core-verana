@@ -64,7 +64,7 @@ use crate::provider::verification_protocol::openid4vp::{
 };
 use crate::service::error::{BusinessLogicError, ServiceError};
 
-pub(super) fn presentation_definition_from_interaction_data(
+pub(super) async fn presentation_definition_from_interaction_data(
     proof_id: ProofId,
     credentials: Vec<Credential>,
     credential_groups: Vec<CredentialGroup>,
@@ -122,7 +122,7 @@ pub(super) fn presentation_definition_from_interaction_data(
                 })
                 .collect::<Result<Vec<_>, VerificationProtocolError>>()?,
         }],
-        credentials: credential_model_to_credential_dto(convert_inner(credentials), config)?,
+        credentials: credential_model_to_credential_dto(convert_inner(credentials), config).await?,
     })
 }
 

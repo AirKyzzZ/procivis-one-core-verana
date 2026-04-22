@@ -42,10 +42,10 @@ impl HolderWalletInstanceRepository for HolderWalletInstanceProvider {
         let auth_key_id = model.authentication_key_id;
         let mut holder_wallet_unit = HolderWalletInstance::from(model);
 
-        if let Some(org_relations) = &relations.organisation {
+        if let Some(_org_relations) = &relations.organisation {
             let org = self
                 .organisation_repository
-                .get_organisation(&org_id, org_relations)
+                .get_organisation(&org_id)
                 .await?
                 .ok_or(DataLayerError::MissingRequiredRelation {
                     relation: "holder_wallet_unit-organisation",

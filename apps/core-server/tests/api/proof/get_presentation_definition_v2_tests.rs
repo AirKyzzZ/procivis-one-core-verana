@@ -17,13 +17,16 @@ async fn test_get_presentation_definition_2_simple_credential_success() {
     // GIVEN
     let (context, org, _, identifier, key) = TestContext::new_with_did(None).await;
     let schema = complex_sd_jwt_vc_credential_schema(&context, &org).await;
-    let claims = vec![claim_data(
-        "required_claim",
-        "required_claim",
-        Some("value"),
-        true,
-        &schema,
-    )];
+    let claims = vec![
+        claim_data(
+            "required_claim",
+            "required_claim",
+            Some("value"),
+            true,
+            &schema,
+        )
+        .await,
+    ];
     let credential = create_credential(
         &context,
         &identifier,
@@ -85,13 +88,16 @@ async fn test_get_presentation_definition_2_trust_purpose_success() {
     let (context, org, _, identifier, key) = TestContext::new_with_did(None).await;
     let schema = complex_sd_jwt_vc_credential_schema(&context, &org).await;
     let query_id: dcql::CredentialQueryId = "test_query_id".into();
-    let claims = vec![claim_data(
-        "required_claim",
-        "required_claim",
-        Some("value"),
-        true,
-        &schema,
-    )];
+    let claims = vec![
+        claim_data(
+            "required_claim",
+            "required_claim",
+            Some("value"),
+            true,
+            &schema,
+        )
+        .await,
+    ];
     let credential = create_credential(
         &context,
         &identifier,
@@ -181,14 +187,16 @@ async fn test_get_presentation_definition_2_claim_filtering_success() {
             Some("value"),
             true,
             &schema,
-        ),
+        )
+        .await,
         claim_data(
             "not_required_claim",
             "not_required_claim",
             Some("value"),
             true,
             &schema,
-        ),
+        )
+        .await,
     ];
     let credential = create_credential(
         &context,
@@ -264,14 +272,16 @@ async fn test_get_presentation_definition_2_claim_non_sd_extra_claim() {
             Some("value"),
             true,
             &schema,
-        ),
+        )
+        .await,
         claim_data(
             "not_required_claim",
             "not_required_claim",
             Some("value"),
             false,
             &schema,
-        ),
+        )
+        .await,
     ];
     let credential = create_credential(
         &context,
@@ -352,14 +362,16 @@ async fn test_get_presentation_definition_2_with_user_selection() {
             Some("value"),
             true,
             &schema,
-        ),
+        )
+        .await,
         claim_data(
             "not_required_claim",
             "not_required_claim",
             Some("value"),
             true,
             &schema,
-        ),
+        )
+        .await,
     ];
     let credential = create_credential(
         &context,
@@ -437,28 +449,31 @@ async fn test_get_presentation_definition_2_with_user_selection_nesting_mixed_sd
     let (context, org, _, identifier, key) = TestContext::new_with_did(None).await;
     let schema = complex_sd_jwt_vc_credential_schema(&context, &org).await;
     let claims = vec![
-        claim_data("root obj", "root obj", None, true, &schema),
+        claim_data("root obj", "root obj", None, true, &schema).await,
         claim_data(
             "root obj/string",
             "root obj/string",
             Some("nested string"),
             true,
             &schema,
-        ),
+        )
+        .await,
         claim_data(
             "root obj/number",
             "root obj/number",
             Some("42"),
             false,
             &schema,
-        ),
+        )
+        .await,
         claim_data(
             "required_claim",
             "required_claim",
             Some("value"),
             true,
             &schema,
-        ),
+        )
+        .await,
     ];
     let credential = create_credential(
         &context,
@@ -621,66 +636,75 @@ async fn test_get_presentation_definition_2_nested_array_element_selection() {
             Some("value"),
             true,
             &schema,
-        ),
-        claim_data("root obj array", "root obj array", None, true, &schema),
-        claim_data("root obj array/0", "root obj array", None, true, &schema),
-        claim_data("root obj array/1", "root obj array", None, true, &schema),
+        )
+        .await,
+        claim_data("root obj array", "root obj array", None, true, &schema).await,
+        claim_data("root obj array/0", "root obj array", None, true, &schema).await,
+        claim_data("root obj array/1", "root obj array", None, true, &schema).await,
         claim_data(
             "root obj array/0/nested object",
             "root obj array/nested object",
             None,
             true,
             &schema,
-        ),
+        )
+        .await,
         claim_data(
             "root obj array/1/nested object",
             "root obj array/nested object",
             None,
             true,
             &schema,
-        ),
+        )
+        .await,
         claim_data(
             "root obj array/0/nested object/nested string array",
             "root obj array/nested object/nested string array",
             None,
             true,
             &schema,
-        ),
+        )
+        .await,
         claim_data(
             "root obj array/1/nested object/nested string array",
             "root obj array/nested object/nested string array",
             None,
             true,
             &schema,
-        ),
+        )
+        .await,
         claim_data(
             "root obj array/0/nested object/nested string array/0",
             "root obj array/nested object/nested string array",
             Some("string arr 00"),
             true,
             &schema,
-        ),
+        )
+        .await,
         claim_data(
             "root obj array/1/nested object/nested string array/0",
             "root obj array/nested object/nested string array",
             Some("string arr 10"),
             true,
             &schema,
-        ),
+        )
+        .await,
         claim_data(
             "root obj array/0/nested object/nested string array/1",
             "root obj array/nested object/nested string array",
             Some("string arr 01"),
             true,
             &schema,
-        ),
+        )
+        .await,
         claim_data(
             "root obj array/1/nested object/nested string array/1",
             "root obj array/nested object/nested string array",
             Some("string arr 11"),
             true,
             &schema,
-        ),
+        )
+        .await,
     ];
     let credential = create_credential(
         &context,
@@ -826,13 +850,16 @@ async fn test_get_presentation_definition_2_inapplicable_credential_with_schema(
     // GIVEN
     let (context, org, _, identifier, key) = TestContext::new_with_did(None).await;
     let schema = complex_sd_jwt_vc_credential_schema(&context, &org).await;
-    let claims = vec![claim_data(
-        "required_claim",
-        "required_claim",
-        Some("value"),
-        true,
-        &schema,
-    )];
+    let claims = vec![
+        claim_data(
+            "required_claim",
+            "required_claim",
+            Some("value"),
+            true,
+            &schema,
+        )
+        .await,
+    ];
     create_credential(
         &context,
         &identifier,
@@ -895,13 +922,16 @@ async fn test_get_presentation_definition_2_inapplicable_credential_validity() {
     // GIVEN
     let (context, org, _, identifier, key) = TestContext::new_with_did(None).await;
     let schema = complex_sd_jwt_vc_credential_schema(&context, &org).await;
-    let claims = vec![claim_data(
-        "required_claim",
-        "required_claim",
-        Some("value"),
-        true,
-        &schema,
-    )];
+    let claims = vec![
+        claim_data(
+            "required_claim",
+            "required_claim",
+            Some("value"),
+            true,
+            &schema,
+        )
+        .await,
+    ];
     create_credential(
         &context,
         &identifier,
@@ -983,7 +1013,7 @@ async fn create_credential(
         .await
 }
 
-fn claim_data(
+async fn claim_data(
     path: &str,
     key: &str,
     value: Option<&str>,
@@ -992,7 +1022,8 @@ fn claim_data(
 ) -> ClaimData {
     let schema_id = schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .expect("missing claim schemas")
         .iter()
         .find(|claim_schema| claim_schema.key == key)

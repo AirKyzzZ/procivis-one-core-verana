@@ -97,10 +97,7 @@ impl ProofService {
                         organisation: Some(Default::default()),
                         proof_inputs: Some(ProofInputSchemaRelations {
                             claim_schemas: Some(ProofSchemaClaimRelations::default()),
-                            credential_schema: Some(CredentialSchemaRelations {
-                                claim_schemas: Some(ClaimSchemaRelations::default()),
-                                organisation: None,
-                            }),
+                            credential_schema: Some(Default::default()),
                         }),
                     }),
                     claims: Some(ProofClaimRelations {
@@ -112,7 +109,6 @@ impl ProofService {
                                 schema: Some(Default::default()),
                             }),
                             schema: Some(CredentialSchemaRelations {
-                                claim_schemas: Some(Default::default()),
                                 organisation: Some(Default::default()),
                             }),
                             issuer_identifier: Some(IdentifierRelations {
@@ -336,10 +332,7 @@ impl ProofService {
                     organisation: Some(OrganisationRelations::default()),
                     proof_inputs: Some(ProofInputSchemaRelations {
                         claim_schemas: Some(ProofSchemaClaimRelations::default()),
-                        credential_schema: Some(CredentialSchemaRelations {
-                            claim_schemas: Some(ClaimSchemaRelations::default()),
-                            ..Default::default()
-                        }),
+                        credential_schema: Some(Default::default()),
                     }),
                 },
             )
@@ -808,7 +801,7 @@ impl ProofService {
 
         let organisation = self
             .organisation_repository
-            .get_organisation(&request.organisation_id, &OrganisationRelations::default())
+            .get_organisation(&request.organisation_id)
             .await
             .error_while("getting organisation")?;
 

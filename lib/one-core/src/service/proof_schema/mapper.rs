@@ -27,10 +27,21 @@ use crate::model::proof_schema::{
     ProofSchemaListQuery,
 };
 
-pub(super) fn convert_proof_schema_to_response(
+pub(super) async fn convert_proof_schema_to_response(
     value: ProofSchema,
     datatype_config: &DatatypeConfig,
 ) -> Result<GetProofSchemaResponseDTO, ProofSchemaServiceError> {
+    let mut proof_input_schemas = vec![];
+    for input_schema in value
+        .input_schemas
+        .ok_or(ProofSchemaServiceError::MappingError(
+            "proof_input_schemas is None".to_string(),
+        ))?
+    {
+        proof_input_schemas
+            .push(convert_input_schema_to_response(input_schema, datatype_config).await?);
+    }
+
     Ok(GetProofSchemaResponseDTO {
         id: value.id,
         created_date: value.created_date,
@@ -44,27 +55,22 @@ pub(super) fn convert_proof_schema_to_response(
             ))?
             .id,
         expire_duration: value.expire_duration,
-        proof_input_schemas: value
-            .input_schemas
-            .ok_or(ProofSchemaServiceError::MappingError(
-                "proof_input_schemas is None".to_string(),
-            ))?
-            .into_iter()
-            .map(|value| convert_input_schema_to_response(value, datatype_config))
-            .collect::<Result<Vec<_>, _>>()?,
+        proof_input_schemas,
     })
 }
 
-pub(super) fn proof_input_from_import_request(
+pub(super) async fn proof_input_from_import_request(
     input_schema: ImportProofSchemaInputSchemaDTO,
     credential_schema: CredentialSchema,
 ) -> Result<ProofInputSchema, ProofSchemaServiceError> {
-    let credential_schema_claims = credential_schema.claim_schemas.as_ref().ok_or_else(|| {
-        ProofSchemaServiceError::MappingError("claim_schemas is None".to_string())
-    })?;
+    let credential_schema_claims = credential_schema
+        .claim_schemas
+        .get()
+        .await
+        .error_while("getting claim schemas")?;
 
     let proof_input_claim_schemas =
-        extract_proof_input_claim_schemas(input_schema.claim_schemas, credential_schema_claims)?;
+        extract_proof_input_claim_schemas(input_schema.claim_schemas, &credential_schema_claims)?;
 
     Ok(ProofInputSchema {
         claim_schemas: Some(proof_input_claim_schemas),
@@ -138,7 +144,7 @@ fn extract_proof_input_claim_schemas_nested(
     Ok(result)
 }
 
-fn convert_input_schema_to_response(
+async fn convert_input_schema_to_response(
     value: ProofInputSchema,
     datatype_config: &DatatypeConfig,
 ) -> Result<ProofInputSchemaResponseDTO, ProofSchemaServiceError> {
@@ -154,19 +160,17 @@ fn convert_input_schema_to_response(
                 "credential_schema is None".to_string(),
             ))?;
 
-    let credential_schema_claims =
-        credential_schema
-            .claim_schemas
-            .as_ref()
-            .ok_or(ProofSchemaServiceError::MappingError(
-                "claim_schemas is None".to_string(),
-            ))?;
+    let credential_schema_claims = credential_schema
+        .claim_schemas
+        .get()
+        .await
+        .error_while("getting claim schemas")?;
 
     Ok(ProofInputSchemaResponseDTO {
         claim_schemas: nest_claim_schemas(
             append_object_claim_schemas(
                 convert_inner(claim_schemas),
-                credential_schema_claims,
+                &credential_schema_claims,
                 datatype_config,
             )?,
             datatype_config,

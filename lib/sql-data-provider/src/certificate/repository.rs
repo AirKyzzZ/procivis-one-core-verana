@@ -38,7 +38,7 @@ impl CertificateProvider {
             );
         }
 
-        if let Some(organisation_relations) = &relations.organisation {
+        if let Some(_organisation_relations) = &relations.organisation {
             let identifier = identifier::Entity::find_by_id(model.identifier_id)
                 .one(&self.db)
                 .await
@@ -51,7 +51,7 @@ impl CertificateProvider {
             if let Some(organisation_id) = identifier.organisation_id {
                 result.organisation_id = Some(
                     self.organisation_repository
-                        .get_organisation(&organisation_id, organisation_relations)
+                        .get_organisation(&organisation_id)
                         .await?
                         .map(|o| o.id)
                         .ok_or(DataLayerError::MissingRequiredRelation {

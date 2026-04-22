@@ -234,7 +234,7 @@ async fn test_create_did_success() {
     organisation_repository
         .expect_get_organisation()
         .once()
-        .returning(|id, _| Ok(Some(dummy_organisation(Some(*id)))));
+        .returning(|id| Ok(Some(dummy_organisation(Some(*id)))));
 
     let mut identifier_creator = MockIdentifierCreator::new();
     identifier_creator

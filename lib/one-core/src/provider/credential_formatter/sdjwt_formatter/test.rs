@@ -1243,8 +1243,7 @@ async fn test_parse_credential() {
     assert_eq!(vc_claim.schema.as_ref().unwrap().metadata, true);
 
     // Verify claim schemas are deduplicated
-    assert!(schema.claim_schemas.is_some());
-    let claim_schemas = schema.claim_schemas.as_ref().unwrap();
+    let claim_schemas = schema.claim_schemas.get().await.unwrap();
 
     // Array schema should be present (array:true)
     let nationalities_schema = claim_schemas.iter().find(|s| s.key == "Nationalities");

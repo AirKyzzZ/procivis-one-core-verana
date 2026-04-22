@@ -60,10 +60,10 @@ impl WalletInstanceRepository for WalletInstanceProvider {
         let organisation_id = wallet_unit.organisation_id;
         let mut wallet_unit = WalletInstance::try_from(wallet_unit)?;
 
-        if let Some(org_relations) = &relations.organisation {
+        if let Some(_org_relations) = &relations.organisation {
             let org = self
                 .organisation_repository
-                .get_organisation(&organisation_id, org_relations)
+                .get_organisation(&organisation_id)
                 .await?
                 .ok_or(DataLayerError::MissingRequiredRelation {
                     relation: "wallet_unit-organisation",

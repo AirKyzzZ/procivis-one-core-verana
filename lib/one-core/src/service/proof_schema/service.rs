@@ -22,10 +22,7 @@ use super::validator::{
 };
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::list_response_into;
-use crate::model::claim_schema::ClaimSchemaRelations;
-use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaListQuery, CredentialSchemaRelations,
-};
+use crate::model::credential_schema::{CredentialSchema, CredentialSchemaListQuery};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::{Organisation, OrganisationRelations};
@@ -60,10 +57,7 @@ impl ProofSchemaService {
                     organisation: Some(OrganisationRelations::default()),
                     proof_inputs: Some(ProofInputSchemaRelations {
                         claim_schemas: Some(ProofSchemaClaimRelations::default()),
-                        credential_schema: Some(CredentialSchemaRelations {
-                            claim_schemas: Some(ClaimSchemaRelations::default()),
-                            ..Default::default()
-                        }),
+                        credential_schema: Some(Default::default()),
                     }),
                 },
             )
@@ -77,7 +71,7 @@ impl ProofSchemaService {
             return Err(ProofSchemaServiceError::NotFound(*id));
         }
 
-        convert_proof_schema_to_response(result, &self.config.datatype)
+        convert_proof_schema_to_response(result, &self.config.datatype).await
     }
 
     /// Returns list of proof schemas according to query
@@ -125,7 +119,7 @@ impl ProofSchemaService {
 
         let organisation = self
             .organisation_repository
-            .get_organisation(&request.organisation_id, &OrganisationRelations::default())
+            .get_organisation(&request.organisation_id)
             .await
             .error_while("getting organisation")?;
 
@@ -169,10 +163,7 @@ impl ProofSchemaService {
                     ),
                     ..Default::default()
                 },
-                &CredentialSchemaRelations {
-                    claim_schemas: Some(Default::default()),
-                    ..Default::default()
-                },
+                &Default::default(),
             )
             .await
             .error_while("getting credential schemas")?
@@ -196,7 +187,8 @@ impl ProofSchemaService {
             &request.proof_input_schemas,
             &credential_schemas,
             &*self.formatter_provider,
-        )?;
+        )
+        .await?;
 
         let now = crate::clock::now_utc();
         let proof_schema = proof_schema_from_create_request(
@@ -295,7 +287,7 @@ impl ProofSchemaService {
             .error_while("checking session")?;
         let organisation = self
             .organisation_repository
-            .get_organisation(&request.organisation_id, &OrganisationRelations::default())
+            .get_organisation(&request.organisation_id)
             .await
             .error_while("getting organisation")?
             .ok_or(ProofSchemaServiceError::MissingOrganisation(
@@ -333,10 +325,7 @@ impl ProofSchemaService {
                             .get_by_schema_id_and_organisation(
                                 &request_input_schema.credential_schema.schema_id,
                                 organisation.id,
-                                &CredentialSchemaRelations {
-                                    claim_schemas: Some(Default::default()),
-                                    ..Default::default()
-                                },
+                                &Default::default(),
                             )
                             .await .error_while("getting credential schema")?;
 
@@ -353,7 +342,7 @@ impl ProofSchemaService {
                                 self.create_credential_schema_from_input_schema(&request_input_schema, &organisation).await
                             }?;
 
-                        proof_input_from_import_request(request_input_schema, credential_schema)
+                        proof_input_from_import_request(request_input_schema, credential_schema).await
                     }
                 });
 

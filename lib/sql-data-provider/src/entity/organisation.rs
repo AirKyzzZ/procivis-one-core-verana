@@ -1,14 +1,10 @@
 use std::str::FromStr;
 
-use one_core::model::organisation::Organisation;
-use one_core::repository::error::DataLayerError;
-use one_dto_mapper::Into;
 use sea_orm::entity::prelude::*;
 use shared_types::{IdentifierId, OrganisationId};
 use time::OffsetDateTime;
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Into)]
-#[into(Organisation)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "organisation")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]

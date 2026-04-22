@@ -18,7 +18,8 @@ async fn test_get_proof_schema_success() {
 
     let claim_schema = credential_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
         .first()
         .unwrap()
@@ -73,10 +74,8 @@ async fn test_succeed_to_fetch_claims_just_root_object() {
         .create_with_nested_claims("test", &organisation, None, Default::default())
         .await;
 
-    let root_claim = credential_schema
-        .claim_schemas
-        .as_ref()
-        .unwrap()
+    let claim_schemas = credential_schema.claim_schemas.get().await.unwrap();
+    let root_claim = claim_schemas
         // We only put a root component in proof schema
         .first()
         .unwrap();
@@ -132,10 +131,8 @@ async fn test_succeed_to_fetch_claims_nested_root_object() {
         .create_with_nested_claims("test", &organisation, None, Default::default())
         .await;
 
-    let root_claim = credential_schema
-        .claim_schemas
-        .as_ref()
-        .unwrap()
+    let claim_schemas = credential_schema.claim_schemas.get().await.unwrap();
+    let root_claim = claim_schemas
         // We only put a nested (coordinates) root component in proof schema
         .get(2)
         .unwrap();

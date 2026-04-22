@@ -86,17 +86,16 @@ pub(crate) fn proof_from_handle_invitation(
     }
 }
 
-pub(crate) fn credential_model_to_credential_dto(
+pub(crate) async fn credential_model_to_credential_dto(
     credentials: Vec<Credential>,
     config: &CoreConfig,
 ) -> Result<
     Vec<CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>>,
     VerificationProtocolError,
 > {
-    // Missing organisation here.
-    Ok(credentials
-        .into_iter()
-        .map(|credential| {
+    let mut result = vec![];
+    for credential in credentials {
+        result.push(
             credential_detail_response_from_model(
                 credential,
                 config,
@@ -104,9 +103,12 @@ pub(crate) fn credential_model_to_credential_dto(
                 CredentialAttestationBlobs::default(),
                 None,
             )
-        })
-        .collect::<Result<Vec<CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>>, _>>()
-        .error_while("creating credential detail")?)
+            .await
+            .error_while("converting credential")?,
+        );
+    }
+
+    Ok(result)
 }
 
 pub(crate) async fn get_relevant_credentials_to_credential_schemas(
@@ -166,13 +168,11 @@ pub(crate) async fn get_relevant_credentials_to_credential_schemas(
                 continue;
             }
 
-            let claim_schemas = if let Some(claim_schemas) = schema.claim_schemas.as_ref() {
-                claim_schemas
-            } else {
-                return Err(VerificationProtocolError::Failed(
-                    "claim schema missing".to_string(),
-                ));
-            };
+            let claim_schemas = schema
+                .claim_schemas
+                .get()
+                .await
+                .error_while("getting claim schemas")?;
 
             if group.claims.iter().all(|requested_claim| {
                 !requested_claim.required
@@ -227,7 +227,7 @@ pub(crate) async fn get_relevant_credentials_to_credential_schemas(
                         is_requested_claim_present_in_credential(
                             required_claim,
                             &credential_claims_schemas,
-                            claim_schemas,
+                            &claim_schemas,
                             object_datatypes,
                         )
                     })
@@ -377,7 +377,6 @@ pub(crate) async fn get_presentation_credentials_by_schema_id(
                             schema: Some(Default::default()),
                         }),
                         schema: Some(CredentialSchemaRelations {
-                            claim_schemas: Some(Default::default()),
                             organisation: Some(Default::default()),
                         }),
                         issuer_certificate: Some(CertificateRelations {

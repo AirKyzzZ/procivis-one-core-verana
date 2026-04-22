@@ -1,4 +1,5 @@
 use std::path::Path;
+use std::sync::Arc;
 
 use anyhow::Context;
 use autometrics::autometrics;
@@ -6,6 +7,7 @@ use one_core::model::backup::{Metadata, UnexportableEntities};
 use one_core::model::history::History;
 use one_core::repository::backup_repository::BackupRepository;
 use one_core::repository::error::DataLayerError;
+use one_core::repository::organisation_repository::OrganisationRepository;
 use one_dto_mapper::{Into, convert_inner, try_convert_inner};
 use sea_orm::prelude::Expr;
 use sea_orm::sea_query::{Alias, Func, Query, SelectStatement, SimpleExpr};
@@ -17,10 +19,11 @@ use sea_orm::{
 use time::OffsetDateTime;
 
 use super::BackupProvider;
-use crate::backup::helpers::{
+use super::helpers::{
     JsonAgg, JsonObject, coalesce_to_empty_array, json_object_columns, open_sqlite_on_path,
 };
-use crate::backup::models::UnexportableCredentialModel;
+use super::mappers::credential_from_unexportable_model;
+use super::models::UnexportableCredentialModel;
 use crate::entity::{
     certificate, claim, claim_schema, credential, credential_schema, did, history,
     holder_wallet_instance, identifier, key, key_did, organisation, wallet_instance_attestation,
@@ -29,10 +32,15 @@ use crate::mapper::to_data_layer_error;
 use crate::transaction_context::TransactionManagerImpl;
 
 impl BackupProvider {
-    pub fn new(db: TransactionManagerImpl, exportable_storages: Vec<String>) -> Self {
+    pub fn new(
+        db: TransactionManagerImpl,
+        exportable_storages: Vec<String>,
+        organisation_repository: Arc<dyn OrganisationRepository>,
+    ) -> Self {
         Self {
             db,
             exportable_storages,
+            organisation_repository,
         }
     }
 
@@ -395,8 +403,15 @@ impl BackupRepository for BackupProvider {
         )
         .map_err(to_data_layer_error)?;
 
+        let credentials = credentials
+            .into_iter()
+            .map(|credential| {
+                credential_from_unexportable_model(credential, &self.organisation_repository)
+            })
+            .collect::<Result<_, DataLayerError>>()?;
+
         Ok(UnexportableEntities {
-            credentials: try_convert_inner(credentials)?,
+            credentials,
             keys: convert_inner(keys),
             dids: convert_inner(dids),
             identifiers: convert_inner(identifiers),

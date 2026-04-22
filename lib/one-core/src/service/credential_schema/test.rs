@@ -23,7 +23,7 @@ use super::validator::{
 };
 use crate::config::core_config::CoreConfig;
 use crate::error::{ErrorCode, ErrorCodeMixin};
-use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
+use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, GetCredentialSchemaList, KeyStorageSecurity,
     LayoutType, TransactionCodeType,
@@ -95,7 +95,7 @@ fn generic_credential_schema() -> CredentialSchema {
         name: "testName".to_string(),
         format: "".into(),
         revocation_method: None,
-        claim_schemas: Some(vec![ClaimSchema {
+        claim_schemas: vec![ClaimSchema {
             id: Uuid::new_v4().into(),
             key: "".to_string(),
             data_type: "".to_string(),
@@ -104,7 +104,8 @@ fn generic_credential_schema() -> CredentialSchema {
             array: false,
             metadata: false,
             required: true,
-        }]),
+        }]
+        .into(),
         organisation: Some(dummy_organisation(None)),
         layout_type: LayoutType::Card,
         layout_properties: None,
@@ -121,7 +122,6 @@ async fn test_get_credential_schema_success() {
     let organisation_repository = MockOrganisationRepository::default();
 
     let relations = CredentialSchemaRelations {
-        claim_schemas: Some(ClaimSchemaRelations::default()),
         organisation: Some(OrganisationRelations::default()),
     };
 
@@ -182,7 +182,6 @@ async fn test_get_credential_schema_deleted() {
 async fn test_get_credential_schema_fail_organisation_missing() {
     let mut repository = MockCredentialSchemaRepository::default();
     let relations = CredentialSchemaRelations {
-        claim_schemas: Some(ClaimSchemaRelations::default()),
         organisation: Some(OrganisationRelations::default()),
     };
 
@@ -329,11 +328,8 @@ async fn test_create_credential_schema_success() {
         organisation_repository
             .expect_get_organisation()
             .times(1)
-            .with(
-                eq(organisation.id.to_owned()),
-                eq(OrganisationRelations::default()),
-            )
-            .returning(move |_, _| Ok(Some(organisation.clone())));
+            .with(eq(organisation.id.to_owned()))
+            .returning(move |_| Ok(Some(organisation.clone())));
         repository
             .expect_create_credential_schema()
             .times(1)
@@ -420,11 +416,8 @@ async fn test_create_credential_schema_success_mdoc_with_custom_schema_id() {
         organisation_repository
             .expect_get_organisation()
             .times(1)
-            .with(
-                eq(organisation.id.to_owned()),
-                eq(OrganisationRelations::default()),
-            )
-            .returning(move |_, _| Ok(Some(organisation.clone())));
+            .with(eq(organisation.id.to_owned()))
+            .returning(move |_| Ok(Some(organisation.clone())));
         repository
             .expect_create_credential_schema()
             .times(1)
@@ -521,11 +514,8 @@ async fn test_create_credential_schema_success_nested_claims() {
         organisation_repository
             .expect_get_organisation()
             .times(1)
-            .with(
-                eq(organisation.id.to_owned()),
-                eq(OrganisationRelations::default()),
-            )
-            .returning(move |_, _| Ok(Some(organisation.clone())));
+            .with(eq(organisation.id.to_owned()))
+            .returning(move |_| Ok(Some(organisation.clone())));
         repository
             .expect_create_credential_schema()
             .times(1)
@@ -1196,7 +1186,7 @@ async fn test_create_credential_schema_fail_missing_organisation() {
         organisation_repository
             .expect_get_organisation()
             .times(1)
-            .returning(move |_, _| Ok(None));
+            .returning(move |_| Ok(None));
         let clone = response.clone();
         repository
             .expect_get_credential_schema_list()
@@ -2483,7 +2473,7 @@ async fn test_import_credential_schema_success() {
     let organisation = dummy_organisation(Some(own_organisation_id.into()));
     organisation_repository
         .expect_get_organisation()
-        .return_once(|_, _| Ok(Some(organisation)));
+        .return_once(|_| Ok(Some(organisation)));
 
     formatter
         .expect_get_capabilities()

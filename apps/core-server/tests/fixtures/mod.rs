@@ -600,7 +600,7 @@ pub async fn create_credential_schema(
         metadata: false,
         required: true,
     };
-    let claim_schemas = vec![claim_schema.to_owned()];
+    let claim_schemas = vec![claim_schema];
 
     let params = params.unwrap_or_default();
     let now = one_core::clock::now_utc();
@@ -618,7 +618,7 @@ pub async fn create_credential_schema(
         deleted_at: params.deleted_at,
         format: params.format.unwrap_or("JWT".into()),
         revocation_method: params.revocation_method,
-        claim_schemas: Some(claim_schemas),
+        claim_schemas: claim_schemas.into(),
         layout_type: params.layout_type.unwrap_or(LayoutType::Card),
         layout_properties: params.layout_properties,
         schema_id: params.schema_id.unwrap_or(id.to_string()),
@@ -645,7 +645,7 @@ pub async fn create_credential_schema_with_claims(
 ) -> CredentialSchema {
     let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
-    let claim_schemas = claims
+    let claim_schemas: Vec<_> = claims
         .iter()
         .map(|(id, key, required, data_type, array)| ClaimSchema {
             id: (*id).into(),
@@ -670,7 +670,7 @@ pub async fn create_credential_schema_with_claims(
         deleted_at: None,
         format: "JWT".into(),
         revocation_method: revocation_method.into(),
-        claim_schemas: Some(claim_schemas),
+        claim_schemas: claim_schemas.into(),
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_id: id.to_string(),
@@ -832,7 +832,8 @@ pub async fn create_credential(
     assert!(params.claims_data.is_none());
     let claims: Vec<Claim> = credential_schema
         .claim_schemas
-        .as_ref()
+        .get()
+        .await
         .unwrap()
         .iter()
         .map(move |claim_schema| Claim {
@@ -1018,10 +1019,14 @@ pub fn encrypted_token(token: &str) -> Vec<u8> {
     .unwrap()
 }
 
-pub fn key_to_claim_schema_id(key: &str, credential_schema: &CredentialSchema) -> ClaimSchemaId {
+pub async fn key_to_claim_schema_id(
+    key: &str,
+    credential_schema: &CredentialSchema,
+) -> ClaimSchemaId {
     credential_schema
         .claim_schemas
-        .clone()
+        .get()
+        .await
         .unwrap()
         .into_iter()
         .find(|claim| claim.key == key)

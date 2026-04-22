@@ -1,8 +1,7 @@
-use one_core::model::trust_entity::TrustEntity;
 use one_dto_mapper::{From, Into};
 use sea_orm::entity::prelude::*;
 use serde::Deserialize;
-use shared_types::{DidId, OrganisationId, TrustAnchorId, TrustEntityId};
+use shared_types::{OrganisationId, TrustAnchorId, TrustEntityId};
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]

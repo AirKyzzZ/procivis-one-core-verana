@@ -22,9 +22,9 @@ impl KeyProvider {
     ) -> Result<Option<Organisation>, DataLayerError> {
         match &organisation_relations {
             None => Ok(None),
-            Some(organisation_relations) => Ok(Some(
+            Some(_organisation_relations) => Ok(Some(
                 self.organisation_repository
-                    .get_organisation(&key.organisation_id, organisation_relations)
+                    .get_organisation(&key.organisation_id)
                     .await?
                     .ok_or(DataLayerError::MissingRequiredRelation {
                         relation: "key-organisation",

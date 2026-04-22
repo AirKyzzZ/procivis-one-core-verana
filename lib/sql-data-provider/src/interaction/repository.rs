@@ -67,10 +67,10 @@ impl InteractionRepository for InteractionProvider {
 
         let organisation_id = interaction.organisation_id.to_owned();
 
-        let organisation = if let Some(interaction_relations) = &relations.organisation {
+        let organisation = if let Some(_interaction_relations) = &relations.organisation {
             Some(
                 self.organisation_repository
-                    .get_organisation(&organisation_id, interaction_relations)
+                    .get_organisation(&organisation_id)
                     .await?
                     .ok_or(DataLayerError::MissingRequiredRelation {
                         relation: "interaction-organisation",

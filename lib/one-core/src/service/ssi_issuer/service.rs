@@ -21,10 +21,7 @@ use crate::config::ConfigValidationError;
 use crate::config::core_config::{FormatType, KeyStorageType, Params};
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::certificate::CertificateRelations;
-use crate::model::claim_schema::ClaimSchemaRelations;
-use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaListQuery, CredentialSchemaRelations,
-};
+use crate::model::credential_schema::{CredentialSchema, CredentialSchemaListQuery};
 use crate::model::did::DidRelations;
 use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::key::Key;
@@ -70,13 +67,7 @@ impl SSIIssuerService {
     ) -> Result<JsonLDContextResponseDTO, IssuerServiceError> {
         let credential_schema = self
             .credential_schema_repository
-            .get_credential_schema(
-                &credential_schema_id,
-                &CredentialSchemaRelations {
-                    claim_schemas: Some(ClaimSchemaRelations::default()),
-                    ..Default::default()
-                },
-            )
+            .get_credential_schema(&credential_schema_id, &Default::default())
             .await
             .error_while("getting credential schema")?;
 
@@ -95,13 +86,11 @@ impl SSIIssuerService {
             return Err(IssuerServiceError::InvalidFormat);
         }
 
-        let claim_schemas =
-            credential_schema
-                .claim_schemas
-                .as_ref()
-                .ok_or(IssuerServiceError::MappingError(
-                    "claim schemas missing".to_string(),
-                ))?;
+        let claim_schemas = credential_schema
+            .claim_schemas
+            .get()
+            .await
+            .error_while("getting claim schemas")?;
 
         let base_url = format!(
             "{}/ssi/context/v1/{credential_schema_id}",
@@ -145,7 +134,7 @@ impl SSIIssuerService {
                 }),
             ),
         ]);
-        entities.extend(generate_jsonld_context_response(claim_schemas, &base_url)?);
+        entities.extend(generate_jsonld_context_response(&claim_schemas, &base_url)?);
 
         Ok(JsonLDContextResponseDTO {
             context: JsonLDContextDTO {
@@ -199,10 +188,7 @@ impl SSIIssuerService {
                         CredentialSchemaListIncludeEntityTypeEnum::LayoutProperties,
                     ]),
                 },
-                &CredentialSchemaRelations {
-                    claim_schemas: Some(ClaimSchemaRelations::default()),
-                    ..Default::default()
-                },
+                &Default::default(),
             )
             .await
             .error_while("getting credential schemas")?;
@@ -210,7 +196,7 @@ impl SSIIssuerService {
         let Some(credential_schema) = schema_list.values.pop() else {
             return Err(IssuerServiceError::MissingSdJwtVcTypeMetadata(vct));
         };
-        credential_schema_to_sd_jwt_vc_metadata(vct_type, credential_schema)
+        credential_schema_to_sd_jwt_vc_metadata(vct_type, credential_schema).await
     }
 
     pub async fn get_sd_jwt_vc_issuer_metadata(
