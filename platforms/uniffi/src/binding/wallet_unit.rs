@@ -100,9 +100,11 @@ pub struct HolderRegisterWalletUnitRequestBindingDTO {
     /// The wallet unit's organization.
     #[try_into(with_fn = into_id)]
     organisation_id: String,
-    /// Reference the `walletProvider` configuration.
+    /// Wallet Provider details.
     #[try_into(infallible)]
     wallet_provider: WalletProviderBindingDTO,
+    /// Choose a key type and the system will generate a key to use for
+    /// registration.
     #[try_into(infallible)]
     key_type: String,
 }
@@ -120,7 +122,10 @@ pub struct HolderRegisterWalletUnitResponseBindingDTO {
 #[into(WalletProviderDTO)]
 #[uniffi(name = "WalletProvider")]
 struct WalletProviderBindingDTO {
+    /// Full URL for the GET Wallet Provider metadata endpoint,
+    /// for example: <domain>/ssi/wallet-provider/v1/<walletProvider>
     url: String,
+    /// Choose the Wallet Provider implementation.
     r#type: WalletProviderTypeBindingEnum,
 }
 

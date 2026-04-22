@@ -34,8 +34,8 @@ pub(crate) struct CreateOrganisationRequestRestDTO {
 pub(crate) struct UpsertOrganisationRequestRestDTO {
     #[schema(value_type = bool, example = true)]
     pub deactivate: Option<bool>,
-    /// Specify which configured wallet provider this organization will use
-    /// to issue attestations.
+    /// Specify which configured `walletProvider` this organization will use
+    /// to issue attestations to wallet units.
     #[serde(default, with = "::serde_with::rust::double_option")]
     #[schema(example = "PROCIVIS_ONE")]
     pub wallet_provider: Option<Option<String>>,
@@ -70,11 +70,16 @@ pub(crate) struct GetOrganisationDetailsResponseRestDTO {
     #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
     #[serde(serialize_with = "front_time_option")]
     pub deactivated_at: Option<OffsetDateTime>,
+    /// Wallet Provider configuration used by this organization to provide
+    /// wallets.
     pub wallet_provider: Option<String>,
+    /// Identifier used by this organization to provide wallets.
     #[from(with_fn = convert_inner)]
     pub wallet_provider_issuer: Option<GetIdentifierListItemResponseRestDTO>,
     #[schema(nullable = false)]
     pub parent_organisation: Option<OrganisationId>,
+    /// Wallet registration details for this organization's Business
+    /// Wallet.
     #[schema(nullable = false)]
     #[from(with_fn = convert_inner)]
     pub wallet_instance: Option<WalletInstanceResponseRestDTO>,

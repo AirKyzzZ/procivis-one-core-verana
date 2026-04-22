@@ -24,9 +24,11 @@ pub(crate) struct HolderRegisterWalletInstanceRequestRestDTO {
     /// authentication, this value is derived from the token.
     #[try_into(with_fn = fallback_organisation_id_from_session)]
     pub organisation_id: Option<OrganisationId>,
-    /// Reference the `walletProvider` configuration of the Wallet Provider.
+    /// Wallet Provider details.
     #[try_into(infallible)]
     pub wallet_provider: WalletProviderRestDTO,
+    /// Choose a key type and the system will generate a key to use for
+    /// registration.
     #[try_into(infallible)]
     pub key_type: String,
 }
@@ -44,7 +46,10 @@ pub(crate) struct HolderRegisterWalletInstanceResponseRestDTO {
 #[from(dto::WalletProviderDTO)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct WalletProviderRestDTO {
+    /// Full URL for the GET Wallet Provider metadata endpoint,
+    /// for example: <domain>/ssi/wallet-provider/v1/<walletProvider>
     pub url: String,
+    /// Choose the Wallet Provider implementation.
     pub r#type: WalletProviderTypeRestEnum,
 }
 
