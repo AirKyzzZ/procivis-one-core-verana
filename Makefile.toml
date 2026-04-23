@@ -79,7 +79,11 @@ args    = ["test", "--test", "integration_tests"]
 command = "cargo"
 
 [tasks.dbstart]
-args    = ["compose", "-f", "docker/db.yml", "up", "-d"]
+args    = ["compose", "-f", "docker/db.yml", "up", "-d", "mariadb", "walletdb"]
+command = "docker"
+
+[tasks.dbstart_postgres]
+args    = ["compose", "-f", "docker/db.yml", "up", "-d", "postgres"]
 command = "docker"
 
 [tasks.dbstop]
@@ -90,6 +94,7 @@ command = "docker"
 script = [
   "docker rm --force core-mariadb-1",
   "docker rm --force core-walletdb-1",
+  "docker rm --force core-postgres-1",
   "docker volume rm core_mariadb_data",
 ]
 

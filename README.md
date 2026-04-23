@@ -123,6 +123,13 @@ makers dbstart
 ONE_app__databaseUrl="mysql://root:Qpq5nDb5MKD6v9bt8dPD@localhost/core" makers integration-tests
 ```
 
+To run integration-tests with Postgres
+
+```shell
+makers dbstart_postgres
+ONE_app__databaseUrl="postgresql://core:886eOqVMmlHsayu6Vyxw@localhost/core" makers integration-tests
+```
+
 ### Run Wallet
 
 You can start a separate instance of a service that will play wallet role. This instance is accessible on port 3001.
