@@ -26,12 +26,16 @@ impl TryFrom<history::Model> for History {
     type Error = DataLayerError;
 
     fn try_from(value: history::Model) -> Result<Self, Self::Error> {
-        let metadata = value
-            .metadata
-            .as_deref()
-            .map(serde_json::from_str)
-            .transpose()
-            .map_err(|_| Self::Error::MappingError)?;
+        let metadata = value.metadata.as_deref().and_then(|raw| {
+            serde_json::from_str(raw)
+                .inspect_err(|err| {
+                    tracing::warn!(
+                        history_id = %value.id,
+                        "Failed to parse history.metadata, serving null: {err}",
+                    )
+                })
+                .ok()
+        });
 
         Ok(Self {
             id: value.id,

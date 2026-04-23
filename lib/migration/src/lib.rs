@@ -258,6 +258,7 @@ impl MigratorTrait for Migrator {
         vec![
             Box::new(migrations::m20260417_150300_initial::Migration),
             Box::new(migrations::m20260423_072243_unsigned_to_signed::Migration),
+            Box::new(migrations::m20260423_100000_migrate_history_backup_metadata::Migration),
         ]
     }
 }
