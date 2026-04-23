@@ -29,10 +29,11 @@ use crate::router::AppState;
         (status = 500, description = "Server error"),
     ),
     tag = "openid4vci",
-    summary = "OID4VC - Retrieve sd jwt vc issuer metadata",
+    summary = "OID4VC - Retrieve SD-JWT VC Issuer metadata",
     description = indoc::formatdoc! {"
-        This endpoint handles low-level mechanisms in interactions between agents.
-        Deep understanding of the involved protocols is recommended.
+        Returns JWT VC Issuer Metadata, including the issuer identifier
+        and the JSON Web Key Set (JWKS) containing the public keys used
+        to sign issued credentials.
     "},
 )]
 pub(crate) async fn oid4vci_get_jwt_vc_issuer_metadata(
