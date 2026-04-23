@@ -1,6 +1,9 @@
+use std::sync::LazyLock;
+
 use migration::runner::run_migrations;
+use regex::Regex;
 use sea_orm::sqlx::Postgres;
-use sea_orm::{ConnectOptions, ConnectionTrait, DbBackend};
+use sea_orm::{ConnectOptions, ConnectionTrait, DatabaseConnection, DbBackend, Statement};
 use sea_schema::postgres::def::{
     ColumnExpression, ColumnInfo, Schema, StringAttr, TableDef, TimeAttr, Type,
 };
@@ -26,6 +29,8 @@ pub(super) async fn get_pgsql_schema(url: &str) -> Box<dyn super::Schema> {
     let conn = sea_orm::Database::connect(url.to_owned()).await.unwrap();
     run_migrations(&conn).await.unwrap();
 
+    let non_unique_indexes = extract_non_unique_indexes(&conn).await;
+
     let pool = ConnectOptions::new(url.to_string())
         .sqlx_pool_options::<Postgres>()
         .connect(url.as_str())
@@ -36,11 +41,51 @@ pub(super) async fn get_pgsql_schema(url: &str) -> Box<dyn super::Schema> {
         .discover()
         .await
         .unwrap();
-    Box::new(SchemaWrapper(schema))
+    Box::new(SchemaWrapper(schema, non_unique_indexes))
+}
+
+#[derive(Debug, Clone)]
+struct NonUniqueIndex {
+    table: String,
+    name: String,
+    columns: Vec<String>,
+}
+
+static COLUMNS_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\([\w, ]+\)$").unwrap());
+
+async fn extract_non_unique_indexes(conn: &DatabaseConnection) -> Vec<NonUniqueIndex> {
+    let query_result = conn
+        .query_all(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT indexname, tablename, indexdef FROM pg_indexes;",
+        ))
+        .await
+        .unwrap();
+
+    let mut result = vec![];
+    for row in query_result {
+        let name: String = row.try_get_by_index(0).unwrap();
+        let table: String = row.try_get_by_index(1).unwrap();
+        let def: String = row.try_get_by_index(2).unwrap();
+
+        if def.starts_with(&format!("CREATE INDEX \"{name}\" ON"))
+            && let Some(columns) = COLUMNS_REGEX.find(&def)
+        {
+            let columns = columns.as_str().trim_matches(['(', ')']);
+            let columns = columns.split(", ").map(ToString::to_string).collect();
+
+            result.push(NonUniqueIndex {
+                name,
+                table,
+                columns,
+            });
+        }
+    }
+    result
 }
 
 #[derive(Debug)]
-struct SchemaWrapper(Schema);
+struct SchemaWrapper(Schema, Vec<NonUniqueIndex>);
 
 impl super::Schema for SchemaWrapper {
     fn backend(&self) -> DbBackend {
@@ -50,12 +95,19 @@ impl super::Schema for SchemaWrapper {
     fn table(&self, name: &str) -> Box<dyn Table> {
         let table = self.0.tables.iter().find(|t| t.info.name == name);
         assert!(table.is_some(), "Table {name} does not exist");
-        Box::new(TableWrapper(table.unwrap().to_owned()))
+
+        let non_unique_indexes = self
+            .1
+            .iter()
+            .filter(|index| index.table == name)
+            .map(ToOwned::to_owned)
+            .collect();
+        Box::new(TableWrapper(table.unwrap().to_owned(), non_unique_indexes))
     }
 }
 
 #[derive(Clone, Debug)]
-struct TableWrapper(TableDef);
+struct TableWrapper(TableDef, Vec<NonUniqueIndex>);
 
 impl Table for TableWrapper {
     fn column(&self, name: &str) -> Box<dyn Column> {
@@ -89,7 +141,8 @@ impl Table for TableWrapper {
     fn index(&self, name: &str, unique: bool, columns: &[&str]) -> Box<dyn Table> {
         // PostgreSQL has a limit of 63 characters for index names, so we need to truncate the name
         let name = if name.len() > 63 { &name[..63] } else { name };
-        if unique {
+
+        let index_columns = if unique {
             let index = self
                 .0
                 .unique_constraints
@@ -100,24 +153,32 @@ impl Table for TableWrapper {
                 "No unique index with name {name} exists in table {}",
                 self.0.info.name
             );
-            let index = index.unwrap();
 
-            assert_eq!(
-                index.columns.len(),
-                columns.len(),
-                "Index name {name} in table {}: wrong number of columns",
+            &index.unwrap().columns
+        } else {
+            let index = self.1.iter().find(|index| index.name == name);
+            assert!(
+                index.is_some(),
+                "No non-unique index with name {name} exists in table {}",
                 self.0.info.name
             );
 
-            for (idx, col) in index.columns.iter().enumerate() {
-                assert_eq!(
-                    col, columns[idx],
-                    "Index name {name} in table {}: wrong column/order",
-                    self.0.info.name
-                );
-            }
-        } else {
-            // TODO: unclear how to check non-unique indexes with sea-schema
+            &index.unwrap().columns
+        };
+
+        assert_eq!(
+            index_columns.len(),
+            columns.len(),
+            "Index name {name} in table {}: wrong number of columns",
+            self.0.info.name
+        );
+
+        for (idx, col) in index_columns.iter().enumerate() {
+            assert_eq!(
+                col, columns[idx],
+                "Index name {name} in table {}: wrong column/order",
+                self.0.info.name
+            );
         }
 
         Box::new(self.clone())
