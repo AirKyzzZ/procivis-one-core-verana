@@ -198,7 +198,7 @@ pub(super) fn credential_list_model_to_repository_model(
     ) {
         (Some(r#type), Some(length)) => Some(TransactionCode {
             r#type: r#type.into(),
-            length,
+            length: length as _,
             description: credential.credential_schema_transaction_code_description,
         }),
         (None, None) => None,

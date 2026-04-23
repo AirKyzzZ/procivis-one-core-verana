@@ -38,7 +38,7 @@ pub struct UnexportableCredentialModel {
     pub credential_schema_allow_suspension: bool,
     pub credential_schema_requires_wallet_instance_attestation: bool,
     pub credential_schema_transaction_code_type: Option<TransactionCodeType>,
-    pub credential_schema_transaction_code_length: Option<u32>,
+    pub credential_schema_transaction_code_length: Option<i32>,
     pub credential_schema_transaction_code_description: Option<String>,
 
     pub organisation_id: OrganisationId,

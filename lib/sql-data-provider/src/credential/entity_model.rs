@@ -40,7 +40,7 @@ pub(super) struct CredentialListEntityModel {
     pub credential_schema_requires_wallet_instance_attestation: bool,
     pub credential_schema_schema_layout_properties: Option<LayoutProperties>,
     pub credential_schema_transaction_code_type: Option<TransactionCodeType>,
-    pub credential_schema_transaction_code_length: Option<u32>,
+    pub credential_schema_transaction_code_length: Option<i32>,
     pub credential_schema_transaction_code_description: Option<String>,
 
     pub issuer_identifier_id: Option<IdentifierId>,

@@ -41,7 +41,7 @@ pub(super) fn credential_from_unexportable_model(
     ) {
         (Some(r#type), Some(length)) => Some(TransactionCode {
             r#type: r#type.into(),
-            length,
+            length: length as _,
             description: value.credential_schema_transaction_code_description,
         }),
         (None, None) => None,
