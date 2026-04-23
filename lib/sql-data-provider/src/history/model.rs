@@ -51,7 +51,7 @@ pub struct OrganisationOpsCount {
 pub struct PaginatedStats<T> {
     pub current: Vec<T>,
     pub previous: Option<Vec<T>>,
-    pub total_items: u64,
+    pub total_items: i64,
 }
 
 #[derive(FromQueryResult, Debug, Clone)]

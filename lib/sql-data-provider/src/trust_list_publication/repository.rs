@@ -129,7 +129,10 @@ impl TrustListPublicationRepository for TrustListPublicationProvider {
             id: Unchanged(id),
             last_modified: Set(one_core::clock::now_utc()),
             content: request.content.map(Set).unwrap_or_default(),
-            sequence_number: request.sequence_number.map(Set).unwrap_or_default(),
+            sequence_number: request
+                .sequence_number
+                .map(|s| Set(s as i32))
+                .unwrap_or_default(),
             ..Default::default()
         })
         .filter(

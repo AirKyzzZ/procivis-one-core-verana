@@ -82,22 +82,31 @@ async fn test_db_schema_trust_entity() {
         columns.extend(["deactivated_at_materialized"]);
     }
 
+    let mut index_columns1 = vec!["name", "organisation_id"];
+    if schema.backend() == DbBackend::MySql {
+        index_columns1.push("deactivated_at_materialized")
+    } else {
+        index_columns1.push("deactivated_at")
+    }
+
+    let mut index_columns2 = vec!["entity_key", "trust_anchor_id"];
+    if schema.backend() == DbBackend::MySql {
+        index_columns2.push("deactivated_at_materialized")
+    } else {
+        index_columns2.push("deactivated_at")
+    }
     let trust_entity = schema
         .table("trust_entity")
         .columns(&columns)
         .index(
             "idx-TrustEntity-Name-OrganisationId-DeactivatedAt-Unique",
             true,
-            &["name", "organisation_id", "deactivated_at_materialized"],
+            &index_columns1,
         )
         .index(
             "idx-TrustEntity-EntityKey-AnchorId-DeactivatedAt-Unique",
             true,
-            &[
-                "entity_key",
-                "trust_anchor_id",
-                "deactivated_at_materialized",
-            ],
+            &index_columns2,
         );
     trust_entity
         .column("id")
@@ -200,13 +209,21 @@ async fn test_db_schema_trust_list_publication() {
     if schema.backend() == DbBackend::MySql {
         columns.extend(["deactivated_at_materialized"]);
     }
+
+    let mut index_columns1 = vec!["name", "organisation_id"];
+    if schema.backend() == DbBackend::MySql {
+        index_columns1.push("deactivated_at_materialized")
+    } else {
+        index_columns1.push("deactivated_at")
+    }
+
     let trust_list_publication = schema
         .table("trust_list_publication")
         .columns(&columns)
         .index(
             "index-TrustPublication-Name-Org-DeactivatedAt-Unique",
             true,
-            &["name", "organisation_id", "deactivated_at_materialized"],
+            &index_columns1,
         );
     trust_list_publication
         .column("id")
@@ -255,7 +272,7 @@ async fn test_db_schema_trust_list_publication() {
         .default(None);
     trust_list_publication
         .column("sequence_number")
-        .r#type(ColumnType::Unsigned)
+        .r#type(ColumnType::Integer)
         .nullable(false)
         .default(None);
     trust_list_publication
@@ -366,10 +383,17 @@ async fn test_db_schema_trust_collection() {
     if schema.backend() == DbBackend::MySql {
         columns.push("deactivated_at_materialized");
     }
+    let mut index_columns1 = vec!["name", "organisation_id"];
+    if schema.backend() == DbBackend::MySql {
+        index_columns1.push("deactivated_at_materialized")
+    } else {
+        index_columns1.push("deactivated_at")
+    }
+
     let trust_entry = schema.table("trust_collection").columns(&columns).index(
         "index-TrustCol-Name-Org-DeactivatedAt-Unique",
         true,
-        &["name", "organisation_id", "deactivated_at_materialized"],
+        &index_columns1,
     );
     trust_entry
         .column("id")
@@ -427,22 +451,33 @@ async fn test_db_schema_trust_subscription() {
     if schema.backend() == DbBackend::MySql {
         columns.push("deactivated_at_materialized");
     }
+
+    let mut index_columns1 = vec!["name", "trust_collection_id"];
+    if schema.backend() == DbBackend::MySql {
+        index_columns1.push("deactivated_at_materialized")
+    } else {
+        index_columns1.push("deactivated_at")
+    }
+
+    let mut index_columns2 = vec!["reference", "trust_collection_id"];
+    if schema.backend() == DbBackend::MySql {
+        index_columns2.push("deactivated_at_materialized")
+    } else {
+        index_columns2.push("deactivated_at")
+    }
+
     let trust_entry = schema
         .table("trust_list_subscription")
         .columns(&columns)
         .index(
             "index-TrustListSubscription-Name-Col-DeactivatedAt-Unique",
             true,
-            &["name", "trust_collection_id", "deactivated_at_materialized"],
+            &index_columns1,
         )
         .index(
             "index-TrustListSubscription-Reference-Col-DeactivatedAt-Unique",
             true,
-            &[
-                "reference",
-                "trust_collection_id",
-                "deactivated_at_materialized",
-            ],
+            &index_columns2,
         );
     trust_entry
         .column("id")

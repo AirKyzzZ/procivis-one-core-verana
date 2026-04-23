@@ -59,7 +59,7 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
             array: Set(false),
             metadata: Set(false),
             credential_schema_id: Set(*credential_schema_id),
-            order: Set(index as u32),
+            order: Set(index as i32),
             required: Set(false),
         }
         .insert(&db)

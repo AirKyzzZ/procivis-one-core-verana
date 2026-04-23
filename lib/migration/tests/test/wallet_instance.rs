@@ -233,7 +233,7 @@ async fn test_db_schema_wallet_instance_attestation() {
         .nullable(true);
     wallet_instance_attestation
         .column("revocation_list_index")
-        .r#type(ColumnType::Unsigned)
+        .r#type(ColumnType::Integer)
         .nullable(true);
 }
 

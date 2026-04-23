@@ -7,10 +7,10 @@ use one_core::repository::trust_anchor_repository::TrustAnchorRepository;
 use one_core::service::trust_anchor::dto::{GetTrustAnchorsResponseDTO, ListTrustAnchorsQueryDTO};
 use one_dto_mapper::convert_inner;
 use sea_orm::prelude::Expr;
-use sea_orm::sea_query::{Alias, Func};
+use sea_orm::sea_query::Func;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
-    QuerySelect,
+    ActiveModelTrait, ColumnTrait, DatabaseBackend, EntityTrait, PaginatorTrait, QueryFilter,
+    QueryOrder, QuerySelect, QueryTrait,
 };
 use shared_types::TrustAnchorId;
 
@@ -63,16 +63,17 @@ impl TrustAnchorRepository for TrustAnchorProvider {
         let query = trust_anchor::Entity::find()
             .left_join(trust_entity::Entity)
             .expr_as(
-                Func::cast_as(
-                    Func::count(Expr::col((trust_entity::Entity, trust_entity::Column::Id))),
-                    Alias::new("UNSIGNED"),
-                ),
+                Func::count(Expr::col((trust_entity::Entity, trust_entity::Column::Id))),
                 "entities",
             )
             .group_by(trust_anchor::Column::Id)
             .with_list_query(&filters)
             .order_by_desc(trust_anchor::Column::CreatedDate)
             .order_by_desc(trust_anchor::Column::Id);
+
+        println!();
+        println!("{}", query.build(DatabaseBackend::Postgres));
+        println!();
 
         let (items_count, trust_anchors) = tokio::join!(
             query.to_owned().count(&self.db),

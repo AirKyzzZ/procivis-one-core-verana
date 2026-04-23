@@ -12,7 +12,7 @@ pub struct Model {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub revocation_list_id: RevocationListId,
-    pub index: Option<u32>,
+    pub index: Option<i32>,
     pub credential_id: Option<CredentialId>,
     pub r#type: RevocationListEntryType,
     pub signature_type: Option<String>,

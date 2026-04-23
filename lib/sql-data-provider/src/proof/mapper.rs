@@ -149,7 +149,7 @@ impl TryFrom<ProofListItemModel> for Proof {
                 name: value.schema_name.ok_or(DataLayerError::MappingError)?,
                 expire_duration: value
                     .schema_expire_duration
-                    .ok_or(DataLayerError::MappingError)?,
+                    .ok_or(DataLayerError::MappingError)? as u32,
                 imported_source_url: value.schema_imported_source_url,
                 organisation: None,
                 input_schemas: None,

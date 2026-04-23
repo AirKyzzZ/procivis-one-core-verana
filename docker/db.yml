@@ -13,6 +13,17 @@ services:
       MYSQL_DATABASE: core
     restart: on-failure
 
+# Template when using postgres
+#  postgresdb:
+#    image: postgres:18.3
+#    ports:
+#      - 5432:5432
+#    environment:
+#      POSTGRES_PASSWORD: 886eOqVMmlHsayu6Vyxw
+#      POSTGRES_USER: core
+#      POSTGRES_DB: core
+#    restart: on-failure
+
   walletdb:
     image: mariadb:12.0.2
     ports:

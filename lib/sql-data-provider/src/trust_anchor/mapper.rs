@@ -1,6 +1,8 @@
 use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::trust_anchor::TrustAnchor;
-use one_core::service::trust_anchor::dto::{SortableTrustAnchorColumn, TrustAnchorFilterValue};
+use one_core::service::trust_anchor::dto::{
+    SortableTrustAnchorColumn, TrustAnchorFilterValue, TrustAnchorsListItemResponseDTO,
+};
 use sea_orm::sea_query::SimpleExpr;
 use sea_orm::{IntoSimpleExpr, Set};
 
@@ -9,6 +11,7 @@ use crate::list_query_generic::{
     IntoFilterCondition, IntoSortingColumn, get_comparison_condition, get_equals_condition,
     get_string_match_condition,
 };
+use crate::trust_anchor::entities::TrustAnchorsListItemEntityModel;
 
 impl From<TrustAnchor> for trust_anchor::ActiveModel {
     fn from(value: TrustAnchor) -> Self {
@@ -69,6 +72,21 @@ impl IntoFilterCondition for TrustAnchorFilterValue {
             Self::LastModified(value) => {
                 get_comparison_condition(trust_anchor::Column::LastModified, value)
             }
+        }
+    }
+}
+
+impl From<TrustAnchorsListItemEntityModel> for TrustAnchorsListItemResponseDTO {
+    fn from(value: TrustAnchorsListItemEntityModel) -> Self {
+        Self {
+            id: value.id,
+            created_date: value.created_date,
+            last_modified: value.last_modified,
+            name: value.name,
+            r#type: value.r#type,
+            is_publisher: value.is_publisher,
+            publisher_reference: value.publisher_reference,
+            entities: value.entities as u32,
         }
     }
 }

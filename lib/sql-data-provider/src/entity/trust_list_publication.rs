@@ -26,7 +26,7 @@ pub struct Model {
     pub deleted_at: Option<OffsetDateTime>,
     #[sea_orm(column_type = "Blob")]
     pub content: Vec<u8>,
-    pub sequence_number: u32,
+    pub sequence_number: i32,
     pub organisation_id: OrganisationId,
     pub identifier_id: IdentifierId,
     #[sea_orm(nullable)]

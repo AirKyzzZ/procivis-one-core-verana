@@ -16,7 +16,7 @@ pub struct Model {
     pub payload: Vec<u8>,
     pub created_date: OffsetDateTime,
     pub next_try_date: OffsetDateTime,
-    pub tries_count: u32,
+    pub tries_count: i32,
     #[sea_orm(column_name = "type")]
     pub r#type: TaskId,
     pub history_target: Option<String>,

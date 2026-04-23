@@ -12,7 +12,7 @@ pub struct Model {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub name: String,
-    pub expire_duration: u32,
+    pub expire_duration: i32,
     pub organisation_id: OrganisationId,
     pub imported_source_url: Option<String>,
 }

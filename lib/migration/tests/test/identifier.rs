@@ -23,10 +23,16 @@ async fn test_db_schema_identifier() {
         columns.extend(["deleted_at_materialized"]);
     }
 
+    let mut index_columns = vec!["name", "organisation_id"];
+    if schema.backend() == DbBackend::MySql {
+        index_columns.push("deleted_at_materialized")
+    } else {
+        index_columns.push("deleted_at")
+    }
     let identifier = schema.table("identifier").columns(&columns).index(
         "index_Identifier_Name-OrganisationId-DeletedAt_Unique",
         true,
-        &["name", "organisation_id", "deleted_at_materialized"],
+        &index_columns,
     );
     identifier
         .column("id")

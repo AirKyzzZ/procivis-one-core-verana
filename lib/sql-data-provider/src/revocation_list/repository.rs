@@ -213,7 +213,7 @@ impl RevocationListRepository for RevocationListProvider {
             select = select.lock(map_lock_type(lock));
         };
 
-        let max: Option<Option<u32>> = select
+        let max: Option<Option<i32>> = select
             .into_tuple()
             .one(&self.db)
             .await
@@ -349,7 +349,7 @@ impl RevocationListRepository for RevocationListProvider {
                                 revocation_list_entry::Column::RevocationListId
                                     .eq(revocation_list_id),
                             )
-                            .add(revocation_list_entry::Column::Index.eq(index as u32)),
+                            .add(revocation_list_entry::Column::Index.eq(index as i32)),
                     )
             }
         };

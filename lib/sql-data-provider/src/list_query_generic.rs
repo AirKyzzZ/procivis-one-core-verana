@@ -236,7 +236,7 @@ pub struct SubStr;
 impl sea_orm::Iden for SubStr {
     #[allow(clippy::unwrap_used)]
     fn unquoted(&self, s: &mut dyn Write) {
-        write!(s, "substr").unwrap();
+        write!(s, "substring").unwrap();
     }
 }
 
@@ -252,7 +252,7 @@ impl sea_orm::Iden for Hex {
 pub(crate) fn get_blob_match_condition(
     column: impl ColumnTrait,
     value: StringMatch,
-    limit: u64,
+    limit: i32,
 ) -> Condition {
     let StringMatch { r#match, value } = value;
     let slice = Expr::expr(

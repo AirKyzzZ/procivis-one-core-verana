@@ -104,6 +104,33 @@ stages:
     fi
   - docker exec $DB_CONTAINER_NAME mysql --user=root --password=$MYSQL_ROOT_PASSWORD -e "SET GLOBAL max_connections = 1000;"
 
+.setup_postgres: &setup_postgres
+  - >
+    docker run -d --name $DB_CONTAINER_NAME
+    -e POSTGRES_USER=$POSTGRES_USER
+    -e POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+    -e POSTGRES_DB=$POSTGRES_DB
+    --network=$NETWORK_NAME
+    -p 5432:5432
+    postgres:18.3
+  - |
+    for i in $(seq 1 15); do
+      STATUS=$(docker exec "$DB_CONTAINER_NAME" psql -qtAX -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT 1" 2>/dev/null || true)
+      if [ "$STATUS" == "1" ]; then
+        echo "✅ Postgres is up and running."
+        break
+      else
+        echo "⏳ Waiting for Postgres to be ready... ($i)"
+        sleep 1
+      fi
+    done
+  - |
+    if [ "$STATUS" != "1" ]; then
+      echo "❌ Timed out waiting for Postgres to start."
+      docker logs $DB_CONTAINER_NAME
+      exit 1
+    fi
+
 .setup_rust_container: &setup_rust_container
   - docker run --network=$NETWORK_NAME -d --name $RUST_CONTAINER_NAME $BUILD_IMAGE sleep infinity
   - sleep 3
@@ -174,6 +201,27 @@ tests:mariadb:
     - docker stop $RUST_CONTAINER_NAME
     - docker rm $RUST_CONTAINER_NAME
     - *delete_network
+
+tests:postgres:
+  extends:
+    - .cargo_tests
+  variables:
+    DB_CONTAINER_NAME: postgres
+    POSTGRES_DB: core
+    POSTGRES_USER: core
+    POSTGRES_PASSWORD: password
+    ONE_app__databaseUrl: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${DB_CONTAINER_NAME}:5432/${POSTGRES_DB}"
+  before_script:
+    - *setup_network
+    - *setup_postgres
+    - *setup_rust_container
+  after_script:
+    - docker stop $DB_CONTAINER_NAME
+    - docker rm $DB_CONTAINER_NAME
+    - docker stop $RUST_CONTAINER_NAME
+    - docker rm $RUST_CONTAINER_NAME
+    - *delete_network
+
 
 tests:sqlite:
   extends:

@@ -477,7 +477,7 @@ impl HistoryProvider {
             previous: prev
                 .transpose()
                 .map_err(|err| DataLayerError::Db(err.into()))?,
-            total_items: count.map_err(|err| DataLayerError::Db(err.into()))?,
+            total_items: count.map_err(|err| DataLayerError::Db(err.into()))? as i64,
         })
     }
 }

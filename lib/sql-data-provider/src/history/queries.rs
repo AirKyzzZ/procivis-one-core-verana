@@ -5,7 +5,7 @@ use one_core::model::history::{
     StatsBySchemaFilterValue, SystemInteractionStatsQuery, SystemManagementStatsQuery,
     SystemStatsFilterValue, VerifierStatsQuery,
 };
-use one_core::model::list_filter::ListFilterCondition;
+use one_core::model::list_filter::{ListFilterCondition, StringMatch, StringMatchType};
 use one_core::repository::error::DataLayerError;
 use one_dto_mapper::convert_inner;
 use sea_orm::sea_query::{
@@ -27,7 +27,7 @@ use crate::history::mapper::{ceil, floor};
 use crate::history::model::TimeResolution;
 use crate::list_query_generic::{
     IntoFilterCondition, IntoJoinRelations, IntoSortingColumn, JoinRelation, SelectWithListQuery,
-    get_comparison_condition,
+    get_blob_match_condition, get_comparison_condition,
 };
 
 impl IntoSortingColumn for SortableHistoryColumn {
@@ -190,7 +190,14 @@ fn search_query_filter(search_text: String, search_type: HistorySearchEnum) -> C
                 Query::select()
                     .expr(claim::Column::CredentialId.into_expr())
                     .from(claim::Entity)
-                    .cond_where(claim::Column::Value.contains(search_text.to_owned()))
+                    .cond_where(get_blob_match_condition(
+                        claim::Column::Value,
+                        StringMatch {
+                            r#match: StringMatchType::Contains,
+                            value: search_text.to_owned(),
+                        },
+                        255,
+                    ))
                     .to_owned(),
             )
             .or(history::Column::EntityId.in_subquery(
@@ -221,7 +228,14 @@ fn search_query_filter(search_text: String, search_type: HistorySearchEnum) -> C
                         ))
                         .eq(Expr::col((proof::Entity, proof::Column::ProofSchemaId))),
                     )
-                    .cond_where(claim::Column::Value.contains(search_text))
+                    .cond_where(get_blob_match_condition(
+                        claim::Column::Value,
+                        StringMatch {
+                            r#match: StringMatchType::Contains,
+                            value: search_text,
+                        },
+                        255,
+                    ))
                     .to_owned(),
             ))
             .into_condition(),
@@ -615,18 +629,27 @@ impl TimeResolution {
         col: &str,
         db_backend: &DbBackend,
     ) -> Result<SimpleExpr, DataLayerError> {
-        let format = match self {
-            TimeResolution::Hour => "%Y-%m-%dT%H:00:00Z",
-            TimeResolution::Day => "%Y-%m-%dT00:00:00Z",
-            TimeResolution::Month => "%Y-%m-01T00:00:00Z",
-            TimeResolution::Year => "%Y-01-01T00:00:00Z",
+        let format = if db_backend == &DbBackend::Postgres {
+            match self {
+                TimeResolution::Hour => "hour",
+                TimeResolution::Day => "day",
+                TimeResolution::Month => "month",
+                TimeResolution::Year => "year",
+            }
+        } else {
+            match self {
+                TimeResolution::Hour => "%Y-%m-%dT%H:00:00Z",
+                TimeResolution::Day => "%Y-%m-%dT00:00:00Z",
+                TimeResolution::Month => "%Y-%m-01T00:00:00Z",
+                TimeResolution::Year => "%Y-01-01T00:00:00Z",
+            }
         };
         let expr = match db_backend {
             DbBackend::MySql => Expr::cust(format!(
                 "STR_TO_DATE(DATE_FORMAT({col}, '{format}'), '%Y-%m-%dT%H:%i:%sZ')"
             )),
             DbBackend::Sqlite => Expr::cust(format!("strftime('{format}', {col})")),
-            DbBackend::Postgres => return Err(DataLayerError::UnsupportedDbBackend),
+            DbBackend::Postgres => Expr::cust(format!("date_trunc('{format}', {col})")),
         };
         Ok(expr)
     }

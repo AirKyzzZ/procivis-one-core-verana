@@ -40,7 +40,7 @@ impl From<notification::Model> for Notification {
             payload: value.payload,
             created_date: value.created_date,
             next_try_date: value.next_try_date,
-            tries_count: value.tries_count,
+            tries_count: value.tries_count as u32,
             r#type: value.r#type,
             history_target: value.history_target,
             organisation_id: value.organisation_id,
@@ -56,7 +56,7 @@ impl From<Notification> for notification::ActiveModel {
             payload: Set(request.payload),
             created_date: Set(request.created_date),
             next_try_date: Set(request.next_try_date),
-            tries_count: Set(request.tries_count),
+            tries_count: Set(request.tries_count as i32),
             r#type: Set(request.r#type),
             history_target: Set(request.history_target),
             organisation_id: Set(request.organisation_id),
@@ -68,7 +68,7 @@ impl From<UpdateNotificationRequest> for notification::ActiveModel {
     fn from(value: UpdateNotificationRequest) -> Self {
         Self {
             next_try_date: value.next_try_date.map(Set).unwrap_or_default(),
-            tries_count: value.tries_count.map(Set).unwrap_or_default(),
+            tries_count: value.tries_count.map(|c| Set(c as i32)).unwrap_or_default(),
             ..Default::default()
         }
     }

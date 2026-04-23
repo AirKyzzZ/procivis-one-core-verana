@@ -1,11 +1,8 @@
-use one_core::service::trust_anchor::dto::TrustAnchorsListItemResponseDTO;
-use one_dto_mapper::Into;
 use sea_orm::FromQueryResult;
 use shared_types::TrustAnchorId;
 use time::OffsetDateTime;
 
-#[derive(Debug, FromQueryResult, Into)]
-#[into(TrustAnchorsListItemResponseDTO)]
+#[derive(Debug, FromQueryResult)]
 pub(super) struct TrustAnchorsListItemEntityModel {
     pub id: TrustAnchorId,
     pub created_date: OffsetDateTime,
@@ -14,5 +11,5 @@ pub(super) struct TrustAnchorsListItemEntityModel {
     pub r#type: String,
     pub publisher_reference: String,
     pub is_publisher: bool,
-    pub entities: u32,
+    pub entities: i64,
 }

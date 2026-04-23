@@ -25,13 +25,19 @@ async fn test_db_schema_certificate() {
         columns.extend(["deleted_at_materialized"]);
     }
 
+    let mut index_columns = vec!["fingerprint", "organisation_id"];
+    if schema.backend() == DbBackend::MySql {
+        index_columns.push("deleted_at_materialized")
+    } else {
+        index_columns.push("deleted_at")
+    }
     let certificate = schema
         .table("certificate")
         .columns(&columns)
         .index(
             "index-Certificate-Fingerprint-OrganisationId-Unique",
             true,
-            &["fingerprint", "organisation_id", "deleted_at_materialized"],
+            &index_columns,
         )
         .index(
             "index-Certificate-Name-ExpiryDate-IdentifierId-Unique",

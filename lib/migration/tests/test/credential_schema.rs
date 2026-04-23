@@ -30,18 +30,31 @@ async fn test_db_schema_credential_schema() {
         columns.push("deleted_at_materialized");
     }
 
+    let mut index_columns1 = vec!["organisation_id", "schema_id"];
+    if schema.backend() == DbBackend::MySql {
+        index_columns1.push("deleted_at_materialized")
+    } else {
+        index_columns1.push("deleted_at")
+    }
+
+    let mut index_columns2 = vec!["name", "organisation_id"];
+    if schema.backend() == DbBackend::MySql {
+        index_columns2.push("deleted_at_materialized")
+    } else {
+        index_columns2.push("deleted_at")
+    }
     let credential_schema = schema
         .table("credential_schema")
         .columns(&columns)
         .index(
             "index-Organisation-SchemaId-DeletedAt_Unique",
             true,
-            &["organisation_id", "schema_id", "deleted_at_materialized"],
+            &index_columns1,
         )
         .index(
             "index_CredentialSchema_Name-OrganisationId-DeletedAt_Unique",
             true,
-            &["name", "organisation_id", "deleted_at_materialized"],
+            &index_columns2,
         )
         .index(
             "index-CredentialSchema-CreatedDate",
@@ -127,7 +140,7 @@ async fn test_db_schema_credential_schema() {
         .nullable(true);
     credential_schema
         .column("transaction_code_length")
-        .r#type(ColumnType::Unsigned)
+        .r#type(ColumnType::Integer)
         .nullable(true);
     credential_schema
         .column("transaction_code_description")
@@ -204,7 +217,7 @@ async fn test_db_schema_claim_schema() {
         .default(None);
     claim_schema
         .column("order")
-        .r#type(ColumnType::Unsigned)
+        .r#type(ColumnType::Integer)
         .nullable(false)
         .default(None);
 }

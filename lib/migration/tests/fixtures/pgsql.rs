@@ -1,44 +1,42 @@
 use migration::runner::run_migrations;
-use sea_orm::sqlx::MySql;
-use sea_orm::{ConnectOptions, ConnectionTrait, DatabaseConnection, DbBackend};
-use sea_schema::mysql::def::{
-    ColumnDefault, ColumnInfo, ColumnKey, NumericAttr, Schema, StringAttr, TableDef, TimeAttr, Type,
+use sea_orm::sqlx::Postgres;
+use sea_orm::{ConnectOptions, ConnectionTrait, DbBackend};
+use sea_schema::postgres::def::{
+    ColumnExpression, ColumnInfo, Schema, StringAttr, TableDef, TimeAttr, Type,
 };
-use sea_schema::mysql::discovery::SchemaDiscovery;
+use sea_schema::postgres::discovery::SchemaDiscovery;
 use similar_asserts::assert_eq;
 
-use super::{Column, ColumnType, DefaultValue, Table};
+use crate::fixtures::{Column, ColumnType, DefaultValue, Table};
 
-pub(super) async fn get_mysql_schema(url: &str) -> Box<dyn super::Schema> {
+pub(super) async fn get_pgsql_schema(url: &str) -> Box<dyn super::Schema> {
     let mut url: url::Url = url.parse().unwrap();
     // remove path to connect to cluster
     url.set_path("");
 
     let conn = sea_orm::Database::connect(url.to_owned()).await.unwrap();
-
     let db_name: String = ulid::Ulid::new().to_string();
     println!("USING DATABASE {db_name}");
-
-    conn.execute_unprepared(&format!("CREATE DATABASE {db_name};"))
-        .await
-        .unwrap();
-    conn.execute_unprepared(&format!("USE {db_name};"))
+    conn.execute_unprepared(&format!("CREATE DATABASE \"{db_name}\";"))
         .await
         .unwrap();
 
     url.set_path(&db_name);
+
+    let conn = sea_orm::Database::connect(url.to_owned()).await.unwrap();
+    run_migrations(&conn).await.unwrap();
+
     let pool = ConnectOptions::new(url.to_string())
-        .sqlx_pool_options::<MySql>()
+        .sqlx_pool_options::<Postgres>()
         .connect(url.as_str())
         .await
         .unwrap();
 
-    run_migrations(&DatabaseConnection::from(pool.to_owned()))
+    let schema = SchemaDiscovery::new(pool, "public")
+        .discover()
         .await
         .unwrap();
-
-    let schema_discovery = SchemaDiscovery::new(pool, &db_name);
-    Box::new(SchemaWrapper(schema_discovery.discover().await.unwrap()))
+    Box::new(SchemaWrapper(schema))
 }
 
 #[derive(Debug)]
@@ -46,7 +44,7 @@ struct SchemaWrapper(Schema);
 
 impl super::Schema for SchemaWrapper {
     fn backend(&self) -> DbBackend {
-        DbBackend::MySql
+        DbBackend::Postgres
     }
 
     fn table(&self, name: &str) -> Box<dyn Table> {
@@ -89,33 +87,37 @@ impl Table for TableWrapper {
     }
 
     fn index(&self, name: &str, unique: bool, columns: &[&str]) -> Box<dyn Table> {
-        let index = self.0.indexes.iter().find(|index| index.name == name);
-        assert!(
-            index.is_some(),
-            "No index with name {name} exists in table {}",
-            self.0.info.name
-        );
-        let index = index.unwrap();
-
-        assert_eq!(
-            index.unique, unique,
-            "Index name {name} in table {}: wrong uniqueness",
-            self.0.info.name
-        );
-
-        assert_eq!(
-            index.parts.len(),
-            columns.len(),
-            "Index name {name} in table {}: wrong number of columns",
-            self.0.info.name
-        );
-
-        for (index, part) in index.parts.iter().enumerate() {
-            assert_eq!(
-                part.column, columns[index],
-                "Index name {name} in table {}: wrong column/order",
+        // PostgreSQL has a limit of 63 characters for index names, so we need to truncate the name
+        let name = if name.len() > 63 { &name[..63] } else { name };
+        if unique {
+            let index = self
+                .0
+                .unique_constraints
+                .iter()
+                .find(|index| index.name == name);
+            assert!(
+                index.is_some(),
+                "No unique index with name {name} exists in table {}",
                 self.0.info.name
             );
+            let index = index.unwrap();
+
+            assert_eq!(
+                index.columns.len(),
+                columns.len(),
+                "Index name {name} in table {}: wrong number of columns",
+                self.0.info.name
+            );
+
+            for (idx, col) in index.columns.iter().enumerate() {
+                assert_eq!(
+                    col, columns[idx],
+                    "Index name {name} in table {}: wrong column/order",
+                    self.0.info.name
+                );
+            }
+        } else {
+            // TODO: unclear how to check non-unique indexes with sea-schema
         }
 
         Box::new(self.clone())
@@ -142,9 +144,11 @@ impl Column for ColumnWrapper {
 
     fn nullable(&self, nullable: bool) -> Box<dyn Column> {
         assert_eq!(
-            self.info.null, nullable,
+            self.info.not_null.is_none(),
+            nullable,
             "Column {} in table {}: invalid nullability",
-            self.info.name, self.table.info.name
+            self.info.name,
+            self.table.info.name
         );
         Box::new(self.clone())
     }
@@ -161,9 +165,11 @@ impl Column for ColumnWrapper {
     }
 
     fn primary_key(&self) -> Box<dyn Column> {
-        assert_eq!(
-            self.info.key,
-            ColumnKey::Primary,
+        assert!(
+            self.table.primary_key_constraints.len() == 1
+                && self.table.primary_key_constraints[0]
+                    .columns
+                    .contains(&self.info.name),
             "Column {} in table {} not a primary key",
             self.info.name,
             self.table.info.name
@@ -174,7 +180,7 @@ impl Column for ColumnWrapper {
     fn foreign_key(&self, name: &str, into_table: &str, column: &str) -> Box<dyn Column> {
         let foreign_key = self
             .table
-            .foreign_keys
+            .reference_constraints
             .iter()
             .find(|foreign_key| foreign_key.columns.contains(&self.info.name));
         assert!(
@@ -190,12 +196,12 @@ impl Column for ColumnWrapper {
             self.info.name, self.table.info.name
         );
         assert_eq!(
-            foreign_key.referenced_table, into_table,
+            foreign_key.table, into_table,
             "Column {} in table {} not a foreign key referencing table {into_table}",
             self.info.name, self.table.info.name
         );
         assert!(
-            foreign_key.referenced_columns.contains(&column.to_string()),
+            foreign_key.foreign_columns.contains(&column.to_string()),
             "Column {} in table {} not a foreign key referencing column {column} in {into_table}",
             self.info.name,
             self.table.info.name
@@ -208,45 +214,31 @@ impl From<ColumnType> for Type {
     fn from(value: ColumnType) -> Self {
         match value {
             ColumnType::String(length) => Self::Varchar(StringAttr {
-                length: Some(length.unwrap_or(255)),
-                ..Default::default()
+                length: length.map(|len| len as u16),
             }),
-            ColumnType::Uuid => Self::Char(StringAttr {
-                length: Some(36),
-                ..Default::default()
-            }),
-            ColumnType::TimestampMilliseconds => Self::DateTime(TimeAttr {
-                fractional: Some(3),
-            }),
-            ColumnType::TimestampSeconds => Self::DateTime(Default::default()),
-            ColumnType::Integer => Self::Int(NumericAttr {
-                maximum: Some(11),
-                ..Default::default()
-            }),
-            ColumnType::BigInt => Self::BigInt(NumericAttr {
-                maximum: Some(20),
-                ..Default::default()
-            }),
-            ColumnType::Boolean => Self::TinyInt(NumericAttr {
-                maximum: Some(1),
-                ..Default::default()
-            }),
-            ColumnType::Blob => Self::LongBlob,
-            ColumnType::Json => Self::LongText(Default::default()),
-            ColumnType::Text => Self::Text(Default::default()),
-            ColumnType::VarBinary(length) => Self::Varbinary(StringAttr {
-                length: Some(length.unwrap_or(255)),
-                ..Default::default()
-            }),
+            ColumnType::Uuid => Self::Char(StringAttr { length: Some(36) }),
+            ColumnType::TimestampMilliseconds => {
+                Self::TimestampWithTimeZone(TimeAttr { precision: Some(3) })
+            }
+            ColumnType::TimestampSeconds => {
+                Self::TimestampWithTimeZone(TimeAttr { precision: Some(0) })
+            }
+            ColumnType::Integer => Self::Integer,
+            ColumnType::BigInt => Self::BigInt,
+            ColumnType::Boolean => Self::Boolean,
+            ColumnType::Blob => Self::Bytea,
+            ColumnType::Json => Self::Json,
+            ColumnType::Text => Self::Text,
+            ColumnType::VarBinary(_) => Self::Bytea,
         }
     }
 }
 
-impl From<DefaultValue> for ColumnDefault {
+impl From<DefaultValue> for ColumnExpression {
     fn from(value: DefaultValue) -> Self {
         match value {
-            DefaultValue::String(text) => Self::String(text),
-            DefaultValue::Integer(number) => Self::Int(number),
+            DefaultValue::String(text) => Self(text),
+            DefaultValue::Integer(number) => Self(number.to_string()),
         }
     }
 }

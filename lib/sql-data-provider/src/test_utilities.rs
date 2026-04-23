@@ -199,7 +199,7 @@ pub async fn insert_many_claims_schema_to_database<'a>(
             metadata: Set(claim_schema.metadata),
             credential_schema_id: Set(claim_input.credential_schema_id),
             required: Set(claim_schema.required),
-            order: Set(claim_schema.order),
+            order: Set(claim_schema.order as i32),
         }
         .insert(database)
         .await?;

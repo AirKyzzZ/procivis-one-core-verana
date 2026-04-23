@@ -105,7 +105,7 @@ impl TryFrom<CredentialSchema> for credential_schema::ActiveModel {
             allow_suspension: Set(value.allow_suspension),
             requires_wallet_instance_attestation: Set(value.requires_wallet_instance_attestation),
             transaction_code_type: Set(transaction_code_type),
-            transaction_code_length: Set(transaction_code_length),
+            transaction_code_length: Set(transaction_code_length.map(|l| l as i32)),
             transaction_code_description: Set(transaction_code_description),
         })
     }
@@ -128,7 +128,7 @@ pub(super) fn claim_schemas_to_model_vec(
             metadata: Set(claim_schema.metadata),
             credential_schema_id: Set(*credential_schema_id),
             required: Set(claim_schema.required),
-            order: Set(index as u32),
+            order: Set(index as i32),
         })
         .collect()
 }
@@ -145,7 +145,7 @@ pub(super) fn credential_schema_from_models(
     ) {
         (Some(r#type), Some(length)) => Some(TransactionCode {
             r#type: r#type.into(),
-            length,
+            length: length as u32,
             description: credential_schema.transaction_code_description,
         }),
         (None, None) => None,

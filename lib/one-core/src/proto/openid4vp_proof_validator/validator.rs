@@ -71,7 +71,7 @@ impl OpenId4VpProofValidator for OpenId4VpProofValidatorProto {
             &proof,
             &[ProofStateEnum::Pending, ProofStateEnum::Requested],
         )
-        .map_err(|e| OpenID4VCError::ValidationError(e.to_string()))?;
+        .map_err(|e| OpenID4VCError::InvalidProofState(e.to_string()))?;
 
         let proved_claims = match (
             &interaction_data.dcql_query,

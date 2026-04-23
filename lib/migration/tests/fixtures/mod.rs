@@ -5,6 +5,7 @@ use sea_orm::DbBackend;
 use tokio::sync::OnceCell;
 
 mod mysql;
+mod pgsql;
 mod sqlite;
 
 static SCHEMA: OnceCell<Arc<dyn Schema>> = OnceCell::const_new();
@@ -17,6 +18,8 @@ async fn fetch_schema() -> Arc<dyn Schema> {
     let url = std::env::var("ONE_app__databaseUrl").unwrap_or("sqlite::memory:".to_string());
     let schema = if url.starts_with("mysql:") {
         mysql::get_mysql_schema(&url).await
+    } else if url.starts_with("postgresql:") {
+        pgsql::get_pgsql_schema(&url).await
     } else {
         sqlite::get_sqlite_schema(&url).await
     };
@@ -50,7 +53,7 @@ pub(super) enum ColumnType {
     Uuid,
     TimestampMilliseconds,
     TimestampSeconds,
-    Unsigned,
+    Integer,
     BigInt,
     Boolean,
     Blob,

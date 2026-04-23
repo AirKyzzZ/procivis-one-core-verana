@@ -614,11 +614,14 @@ impl BitstringStatusList {
                     }
                 }
                 .boxed())
-                .await
-                .error_while("creating revocation list entry")?
-                .error_while("creating revocation list entry")?;
-
-            if let Some(index) = result {
+                .await;
+            let Ok(result) = result else {
+                tracing::debug!(
+                    "Transaction failed adding entity to list({list_id}), retry({retry_counter})"
+                );
+                continue;
+            };
+            if let Some(index) = result.error_while("creating revocation list entry")? {
                 return Ok(index);
             }
 

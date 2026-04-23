@@ -484,8 +484,8 @@ where
         .collect();
     GetListResponse {
         values,
-        total_pages: calculate_pages_count(paginated_stats.total_items, limit.unwrap_or(0)),
-        total_items: paginated_stats.total_items,
+        total_pages: calculate_pages_count(paginated_stats.total_items as u64, limit.unwrap_or(0)),
+        total_items: paginated_stats.total_items as u64,
     }
 }
 

@@ -63,8 +63,11 @@ pub(crate) async fn oid4vp_final1_0_direct_post(
             )
                 .into_response()
         }
-        Err(OID4VPFinal1_0ServiceError::OpenID4VCError(OpenID4VCError::InvalidRequest)) => {
-            tracing::error!("OpenID4VC invalid request");
+        err @ Err(OID4VPFinal1_0ServiceError::OpenID4VCError(OpenID4VCError::InvalidRequest))
+        | err @ Err(OID4VPFinal1_0ServiceError::OpenID4VCError(
+            OpenID4VCError::InvalidProofState(_),
+        )) => {
+            tracing::error!("OpenID4VC invalid request: {err:?}");
             (
                 StatusCode::BAD_REQUEST,
                 Json(OpenID4VCIErrorResponseRestDTO {

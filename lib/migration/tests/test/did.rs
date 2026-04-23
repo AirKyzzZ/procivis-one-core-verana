@@ -23,19 +23,29 @@ async fn test_db_schema_did() {
         columns.extend(["deleted_at_materialized", "organisation_id_materialized"]);
     }
 
+    let mut index_columns1 = vec!["name", "organisation_id"];
+    if schema.backend() == DbBackend::MySql {
+        index_columns1.push("deleted_at_materialized")
+    } else {
+        index_columns1.push("deleted_at")
+    }
+
+    let mut index_columns2 = vec!["did"];
+    if schema.backend() == DbBackend::MySql {
+        index_columns2.push("organisation_id_materialized")
+    } else {
+        index_columns2.push("organisation_id")
+    }
+
     let did = schema
         .table("did")
         .columns(&columns)
         .index(
             "index_Did_Name-OrganisationId-DeletedAt_Unique",
             true,
-            &["name", "organisation_id", "deleted_at_materialized"],
+            &index_columns1,
         )
-        .index(
-            "index-Did-Did-OrganisationId-Unique",
-            true,
-            &["did", "organisation_id_materialized"],
-        )
+        .index("index-Did-Did-OrganisationId-Unique", true, &index_columns2)
         .index("index-Did-CreatedDate", false, &["created_date"])
         .index("index-Did-Did", false, &["did"]);
     did.column("id")

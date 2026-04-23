@@ -714,11 +714,15 @@ impl TokenStatusList {
                     }
                 }
                 .boxed())
-                .await
-                .error_while("creating revocation list entry")?
-                .error_while("creating revocation list entry")?;
+                .await;
+            let Ok(result) = result else {
+                tracing::debug!(
+                    "Transaction failed adding entity to list({list_id}), retry({retry_counter})"
+                );
+                continue;
+            };
 
-            if let Some(index) = result {
+            if let Some(index) = result.error_while("adding entity to list")? {
                 return Ok(index);
             }
 

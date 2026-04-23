@@ -18,6 +18,9 @@ pub enum OpenID4VCError {
     #[error("invalid_request")]
     InvalidRequest,
 
+    #[error("Invalid proof state: `{0}`")]
+    InvalidProofState(String),
+
     #[error("vp_formats_not_supported")]
     VPFormatsNotSupported,
     #[error("vc_formats_not_supported")]

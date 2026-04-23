@@ -19,8 +19,9 @@ use one_dto_mapper::convert_inner;
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::sea_query::{Expr, IntoCondition};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, FromQueryResult, JoinType, PaginatorTrait,
-    QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select, Set, SqlErr, Unchanged,
+    ActiveModelTrait, ColumnTrait, DatabaseBackend, EntityTrait, FromQueryResult, JoinType,
+    PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, QueryTrait, RelationTrait, Select, Set,
+    SqlErr, Unchanged,
 };
 use shared_types::{ClaimId, CredentialId, CredentialSchemaId, IdentifierId, InteractionId};
 use uuid::Uuid;
@@ -337,6 +338,8 @@ fn get_credential_list_query(query_params: CredentialListQuery) -> Select<creden
         // list query
         .with_filter_join(&query_params)
         .with_list_query(&query_params);
+
+    println!("{}", query.build(DatabaseBackend::Postgres));
 
     if query_params.sorting.is_some() || query_params.pagination.is_some() {
         // fallback ordering

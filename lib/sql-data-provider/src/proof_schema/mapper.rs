@@ -21,7 +21,7 @@ impl From<proof_schema::Model> for ProofSchema {
             last_modified: value.last_modified,
             deleted_at: value.deleted_at,
             name: value.name,
-            expire_duration: value.expire_duration,
+            expire_duration: value.expire_duration as u32,
             organisation: None,
             input_schemas: None,
             imported_source_url: value.imported_source_url,
@@ -95,7 +95,7 @@ impl TryFrom<&ProofSchema> for proof_schema::ActiveModel {
                 )))?
                 .id),
             deleted_at: Set(None),
-            expire_duration: Set(value.expire_duration),
+            expire_duration: Set(value.expire_duration as i32),
         })
     }
 }

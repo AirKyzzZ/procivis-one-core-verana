@@ -144,15 +144,19 @@ pub fn create_config(
     app_config
 }
 
+// Fixed name prevents multiple init DBs from being created in the same cluster.
+const INIT_DB: &str = "INIT_DB";
 static SQLITE_INIT_DB: tokio::sync::OnceCell<DatabaseConnection> =
     tokio::sync::OnceCell::const_new();
 static MARIADB_DB_INIT_STMNTS: tokio::sync::OnceCell<Vec<String>> =
     tokio::sync::OnceCell::const_new();
 
+static POSTGRES_INIT_DB: tokio::sync::OnceCell<String> = tokio::sync::OnceCell::const_new();
+
 pub async fn create_db(_config: &AppConfig<ServerConfig>) -> DbConn {
     let env_db_url = std::env::var("ONE_app__databaseUrl").ok();
     match env_db_url {
-        Some(url) if !url.starts_with("sqlite") => {
+        Some(url) if url.starts_with("mysql") => {
             let mut url: Url = url.parse().unwrap();
             // remove path to connect to cluster
             url.set_path("");
@@ -168,25 +172,57 @@ pub async fn create_db(_config: &AppConfig<ServerConfig>) -> DbConn {
                 .await
                 .unwrap();
 
-            if url.scheme() == "mysql" {
-                /*
-                 * When dealing with MariaDB databases, prepare an "init"
-                 * database with migrations applied. From that "init" db, extract all
-                 * the `CREATE TABLE` table statements required to set up the tables in the
-                 * fully migrated state directly.
-                 * Then, whenever a new database is created, simply apply all the `CREATE TABLE`
-                 * statements to the new DB. Copying the schema this way is
-                 * a lot faster than re-running the migrations each time.
-                 */
-                let init_stmnts = MARIADB_DB_INIT_STMNTS
-                    .get_or_init(|| async { init_db_statements(&url).await })
-                    .await;
-                url.set_path(&db_name);
-                initialize_db(url, init_stmnts).await
-            } else {
-                url.set_path(&db_name);
-                sql_data_provider::db_conn(url, true).await.unwrap()
-            }
+            /*
+             * When dealing with MariaDB databases, prepare an "init"
+             * database with migrations applied. From that "init" db, extract all
+             * the `CREATE TABLE` table statements required to set up the tables in the
+             * fully migrated state directly.
+             * Then, whenever a new database is created, simply apply all the `CREATE TABLE`
+             * statements to the new DB. Copying the schema this way is
+             * a lot faster than re-running the migrations each time.
+             */
+            let init_stmnts = MARIADB_DB_INIT_STMNTS
+                .get_or_init(|| async { init_db_statements(&url).await })
+                .await;
+            url.set_path(&db_name);
+            initialize_db(url, init_stmnts).await
+        }
+        Some(url) if url.starts_with("postgresql") => {
+            let mut url: Url = url.parse().unwrap();
+            // remove path to connect to cluster
+            url.set_path("");
+            let conn = sea_orm::Database::connect(url.clone()).await.unwrap();
+
+            let mut url_clone = url.clone();
+            let init_db_name = POSTGRES_INIT_DB
+                .get_or_init(move || async {
+                    let conn = sea_orm::Database::connect(url_clone.clone()).await.unwrap();
+                    let result = conn
+                        .execute_unprepared(&format!(
+                            "SELECT * FROM pg_database WHERE datname = '{INIT_DB}'"
+                        ))
+                        .await
+                        .unwrap();
+                    if result.rows_affected() == 0 {
+                        conn.execute_unprepared(&format!("CREATE DATABASE \"{INIT_DB}\";"))
+                            .await
+                            .unwrap();
+                    }
+                    url_clone.set_path(INIT_DB);
+                    sql_data_provider::db_conn(url_clone, true).await.unwrap();
+                    INIT_DB.to_string()
+                })
+                .await;
+            let db_name: String = ulid::Ulid::new().to_string();
+            conn.execute_unprepared(&format!(
+                "CREATE DATABASE \"{db_name}\" WITH TEMPLATE \"{init_db_name}\";"
+            ))
+            .await
+            .unwrap();
+
+            println!("USING DATABASE {db_name}");
+            url.set_path(&db_name);
+            sql_data_provider::db_conn(url, false).await.unwrap()
         }
         // Allows to run API test locally against persistent SQLite DB using e.g.
         // ONE_app__databaseUrl="sqlite://database.sqlite3?mode=rwc";RUST_BACKTRACE=1
@@ -245,16 +281,15 @@ async fn initialize_db(url: Url, init_statements: &[String]) -> DatabaseConnecti
 
 async fn init_db_statements(url: &Url) -> Vec<String> {
     let conn = sea_orm::Database::connect(url.clone()).await.unwrap();
-    let db_name: String = ulid::Ulid::new().to_string();
-    conn.execute_unprepared(&format!("CREATE DATABASE {db_name};"))
+    conn.execute_unprepared(&format!("CREATE DATABASE IF NOT EXISTS `{INIT_DB}`;"))
         .await
         .unwrap();
-    conn.execute_unprepared(&format!("USE {db_name};"))
+    conn.execute_unprepared(&format!("USE `{INIT_DB}`;"))
         .await
         .unwrap();
 
     let mut init_db_url = url.clone();
-    init_db_url.set_path(&db_name);
+    init_db_url.set_path(INIT_DB);
     let init_db = sql_data_provider::db_conn(init_db_url, true).await.unwrap();
 
     let result = init_db

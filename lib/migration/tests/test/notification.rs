@@ -51,7 +51,7 @@ async fn test_db_schema_notification() {
         .default(None);
     notification
         .column("tries_count")
-        .r#type(ColumnType::Unsigned)
+        .r#type(ColumnType::Integer)
         .nullable(false)
         .default(None);
     notification

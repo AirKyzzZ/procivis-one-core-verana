@@ -21,15 +21,18 @@ async fn test_db_schema_revocation_list() {
         columns.extend(["issuer_certificate_id_materialized"]);
     }
 
+    let mut index_columns = vec!["issuer_identifier_id"];
+    if schema.backend() == DbBackend::MySql {
+        index_columns.push("issuer_certificate_id_materialized")
+    } else {
+        index_columns.push("issuer_certificate_id")
+    }
+    index_columns.extend(["purpose", "type"]);
+
     let revocation_list = schema.table("revocation_list").columns(&columns).index(
         "index-IssuerIdentifierId-IssuerCertificateId-Purpose-Type-Unique",
         true,
-        &[
-            "issuer_identifier_id",
-            "issuer_certificate_id_materialized",
-            "purpose",
-            "type",
-        ],
+        &index_columns,
     );
     revocation_list
         .column("id")
@@ -148,7 +151,7 @@ async fn test_db_schema_revocation_list_entry() {
         );
     revocation_list_entry
         .column("index")
-        .r#type(ColumnType::Unsigned)
+        .r#type(ColumnType::Integer)
         .nullable(true);
     revocation_list_entry
         .column("credential_id")

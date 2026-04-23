@@ -312,6 +312,20 @@ impl MigrationTrait for Migration {
         trust_entity_table(manager).await?;
 
         foreign_key_postprocessing(manager).await?;
+
+        if manager.get_database_backend() == DbBackend::Postgres {
+            // Postgres compatibility shim for hex() function.
+            manager
+                .get_connection()
+                .execute_unprepared(
+                    r#"
+                    create function hex(bytea) returns text language sql immutable strict as $$
+                      select encode($1, 'hex')
+                    $$;
+                    "#,
+                )
+                .await?;
+        }
         Ok(())
     }
 }

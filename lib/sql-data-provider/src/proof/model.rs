@@ -38,6 +38,6 @@ pub(super) struct ProofListItemModel {
     pub schema_name: Option<String>,
     pub schema_created_date: Option<OffsetDateTime>,
     pub schema_last_modified: Option<OffsetDateTime>,
-    pub schema_expire_duration: Option<u32>,
+    pub schema_expire_duration: Option<i32>,
     pub schema_imported_source_url: Option<String>,
 }

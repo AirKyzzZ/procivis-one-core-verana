@@ -68,7 +68,7 @@ impl ProofSchemaRepository for ProofSchemaProvider {
             proof_input_schemas_active_model
                 .iter()
                 .zip(proof_input_schemas)
-                .map(|(p1, p2)| (*p1.order.as_ref(), p2))
+                .map(|(p1, p2)| (*p1.order.as_ref() as u32, p2))
                 .collect();
 
         let action = async {
@@ -113,7 +113,7 @@ impl ProofSchemaRepository for ProofSchemaProvider {
                     .ok_or(DataLayerError::IncorrectParameters)?;
 
                 if model.credential_schema != credential_schema.id
-                    || order != model.order
+                    || order != model.order as u32
                 {
                     return Err(DataLayerError::Db(anyhow!(
                         "Inserted proof input schema model doesn't match request proof input schema for proof schema: {proof_schema_id}"
@@ -279,7 +279,7 @@ impl ProofSchemaProvider {
                     .map(|(model, schema)| ProofInputClaimSchema {
                         schema,
                         required: model.required,
-                        order: model.order,
+                        order: model.order as u32,
                     })
                     .collect();
 

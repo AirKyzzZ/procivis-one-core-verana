@@ -30,7 +30,7 @@ pub struct Model {
     pub credential_schema_id: CredentialSchemaId,
     #[serde(deserialize_with = "bool_from_int")]
     pub required: bool,
-    pub order: u32,
+    pub order: i32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

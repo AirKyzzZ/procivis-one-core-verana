@@ -2861,6 +2861,7 @@ checksum = "cad0aaf716e798876e02217ae420bd730370a175ffd59870018c4aa4daa1513e"
 dependencies = [
  "jiff",
  "sqlx-core",
+ "sqlx-postgres",
  "sqlx-sqlite",
 ]
 

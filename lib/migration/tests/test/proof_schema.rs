@@ -1,6 +1,6 @@
 use sea_orm::DbBackend;
 
-use crate::fixtures::{ColumnType, get_schema};
+use crate::fixtures::{ColumnType, DefaultValue, get_schema};
 
 #[tokio::test]
 async fn test_db_schema_proof_schema() {
@@ -20,13 +20,19 @@ async fn test_db_schema_proof_schema() {
         columns.push("deleted_at_materialized");
     }
 
+    let mut index_columns = vec!["name", "organisation_id"];
+    if schema.backend() == DbBackend::MySql {
+        index_columns.push("deleted_at_materialized")
+    } else {
+        index_columns.push("deleted_at")
+    }
     let proof_schema = schema
         .table("proof_schema")
         .columns(&columns)
         .index(
             "index_ProofSchema_Name-OrganisationId-DeletedAt_Unique",
             true,
-            &["name", "organisation_id", "deleted_at_materialized"],
+            &index_columns,
         )
         .index("index-ProofSchema-CreatedDate", false, &["created_date"]);
     proof_schema
@@ -56,7 +62,7 @@ async fn test_db_schema_proof_schema() {
         .default(None);
     proof_schema
         .column("expire_duration")
-        .r#type(ColumnType::Unsigned)
+        .r#type(ColumnType::Integer)
         .nullable(false)
         .default(None);
     proof_schema
@@ -83,12 +89,19 @@ async fn test_db_schema_proof_input_schema() {
         "credential_schema",
         "proof_schema",
     ]);
-    proof_input_schema
-        .column("id")
+    let id_column = proof_input_schema.column("id");
+    id_column
         .r#type(ColumnType::BigInt)
         .nullable(false)
-        .default(None)
         .primary_key();
+    if schema.backend() == DbBackend::Postgres {
+        // auto-incrementing primary key
+        id_column.default(Some(DefaultValue::String(
+            "nextval('proof_input_schema_id_seq'::regclass)".to_string(),
+        )))
+    } else {
+        id_column.default(None)
+    };
     proof_input_schema
         .column("created_date")
         .r#type(ColumnType::TimestampMilliseconds)
@@ -101,7 +114,7 @@ async fn test_db_schema_proof_input_schema() {
         .default(None);
     proof_input_schema
         .column("order")
-        .r#type(ColumnType::Unsigned)
+        .r#type(ColumnType::Integer)
         .nullable(false)
         .default(None);
     proof_input_schema
@@ -156,7 +169,7 @@ async fn test_db_schema_proof_input_claim_schema() {
         );
     proof_input_claim_schema
         .column("order")
-        .r#type(ColumnType::Unsigned)
+        .r#type(ColumnType::Integer)
         .nullable(false)
         .default(None);
     proof_input_claim_schema
