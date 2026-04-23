@@ -62,7 +62,7 @@ async fn test_db_schema_proof_schema() {
         .default(None);
     proof_schema
         .column("expire_duration")
-        .r#type(ColumnType::Integer)
+        .r#type(ColumnType::BigInt)
         .nullable(false)
         .default(None);
     proof_schema

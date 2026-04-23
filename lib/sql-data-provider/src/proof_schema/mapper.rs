@@ -95,7 +95,7 @@ impl TryFrom<&ProofSchema> for proof_schema::ActiveModel {
                 )))?
                 .id),
             deleted_at: Set(None),
-            expire_duration: Set(value.expire_duration as i32),
+            expire_duration: Set(value.expire_duration as i64),
         })
     }
 }

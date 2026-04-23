@@ -46,7 +46,7 @@ impl MigrationTrait for Migration {
             .alter_table(
                 Table::alter()
                     .table(ProofSchema::Table)
-                    .modify_column(integer(ProofSchema::ExpireDuration))
+                    .modify_column(big_integer(ProofSchema::ExpireDuration))
                     .to_owned(),
             )
             .await?;
