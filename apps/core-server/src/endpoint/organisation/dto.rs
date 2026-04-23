@@ -23,8 +23,9 @@ use crate::serialize::{front_time, front_time_option};
 pub(crate) struct CreateOrganisationRequestRestDTO {
     #[into(with_fn = convert_inner)]
     pub id: Option<OrganisationId>,
-    /// Specify a parent organisation. Allows for re-use / inheritance of e.g. trust lists.
-    /// The provided organisation must not have a parent organisation.
+    /// Optionally assign a parent organization to share policy-level
+    /// configuration, such as trust collections, across a one-level hierarchy.
+    /// The provided organization must not have a parent organization.
     #[into(with_fn = convert_inner)]
     pub parent_organisation: Option<OrganisationId>,
 }
@@ -43,8 +44,9 @@ pub(crate) struct UpsertOrganisationRequestRestDTO {
     /// be any type of identifier but it must be backed by an ECDSA key.
     #[serde(default, with = "::serde_with::rust::double_option")]
     pub wallet_provider_issuer: Option<Option<IdentifierId>>,
-    /// Specify a parent organisation. Allows for re-use / inheritance of e.g. trust lists.
-    /// The provided organisation must not have a parent organisation.
+    /// Optionally assign a parent organization to share policy-level
+    /// configuration, such as trust collections, across a one-level hierarchy.
+    /// The provided organization must not have a parent organization.
     #[serde(default, with = "::serde_with::rust::double_option")]
     pub parent_organisation: Option<Option<OrganisationId>>,
 }
@@ -76,6 +78,8 @@ pub(crate) struct GetOrganisationDetailsResponseRestDTO {
     /// Identifier used by this organization to provide wallets.
     #[from(with_fn = convert_inner)]
     pub wallet_provider_issuer: Option<GetIdentifierListItemResponseRestDTO>,
+    /// The parent organization this organization inherits policy-level
+    /// configuration from, if any.
     #[schema(nullable = false)]
     pub parent_organisation: Option<OrganisationId>,
     /// Wallet registration details for this organization's Business
@@ -105,36 +109,37 @@ pub(crate) enum SortableOrganisationColumnRestDTO {
 #[try_into(T = OrganisationFilterParamsDTO, Error = ServiceError)]
 #[serde(rename_all = "camelCase")] // No deny_unknown_fields because of flattening inside GetOrganisationQuery
 pub(crate) struct OrganisationFilterQueryParamsRest {
-    /// Return only organisations created after this time.
+    /// Return only organizations created after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
     #[try_into(infallible)]
     pub created_date_after: Option<OffsetDateTime>,
-    /// Return only organisations created before this time.
+    /// Return only organizations created before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
     #[try_into(infallible)]
     pub created_date_before: Option<OffsetDateTime>,
-    /// Return only organisations last modified after this time.
+    /// Return only organizations last modified after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
     #[try_into(infallible)]
     pub last_modified_after: Option<OffsetDateTime>,
-    /// Return only organisations last modified before this time.
+    /// Return only organizations last modified before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
     #[try_into(infallible)]
     pub last_modified_before: Option<OffsetDateTime>,
-    /// If true, return only organisations that have a parent organisation.
-    /// If false, return only root organisations.
+    /// If true, return only organizations that have a parent organization.
+    /// If false, return only root organizations.
     #[param(inline, nullable = false)]
     #[try_into(infallible, with_fn = convert_inner)]
     pub has_parent_organisation: Option<Boolean>,
-    /// Return only organisations whose parent is one of the given organisation ids.
+    /// Return only organizations that are children of the given
+    /// organization IDs.
     #[param(rename = "parentOrganisations[]", nullable = false)]
     #[try_into(infallible)]
     pub parent_organisations: Option<Vec<OrganisationId>>,

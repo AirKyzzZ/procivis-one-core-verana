@@ -138,6 +138,8 @@ pub(crate) struct TrustCollectionFilterQueryParamsRestDTO {
     #[param(nullable = false)]
     #[try_into(infallible)]
     pub last_modified_before: Option<OffsetDateTime>,
+    /// If true, include trust collections from the parent organization.
+    /// If false, return only this organization's own trust collections.
     #[serde(default = "default_true")]
     #[try_into(infallible)]
     pub include_parent_organisation_collections: Boolean,
