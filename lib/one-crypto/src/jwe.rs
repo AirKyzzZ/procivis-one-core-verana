@@ -127,7 +127,11 @@ fn encrypt_in_place_aes_gmc<Aes>(
 where
     Aes: BlockSizeUser<BlockSize = U16> + BlockEncrypt + KeyInit + BlockCipher,
 {
-    let iv = AesGcm::<Aes, U12>::generate_nonce(get_rng());
+    // TODO: Remove the wrapper once a compatible version of the crate is available (ONE-9596)
+    let mut rng = get_rng();
+    let wrapper = crate::rand08::CompatWrapper(&mut rng);
+    let iv = AesGcm::<Aes, U12>::generate_nonce(wrapper);
+
     let cipher = AesGcm::<Aes, U12>::new(GenericArray::from_slice(key.expose_secret()));
     let tag = cipher
         .encrypt_in_place_detached(&iv, associated_data, buf)

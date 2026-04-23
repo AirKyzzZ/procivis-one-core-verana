@@ -123,9 +123,9 @@ async fn test_list_wallet_instance_revoked_success() {
 #[tokio::test]
 async fn test_list_wallet_instance_by_attestation_success() {
     // GIVEN
-    const TEST_ELEMENTS: usize = 5;
+    const TEST_ELEMENTS: u32 = 5;
     let (context, organisation) = TestContext::new_with_organisation(None).await;
-    let mut attestations = Vec::with_capacity(TEST_ELEMENTS);
+    let mut attestations = Vec::with_capacity(TEST_ELEMENTS as usize);
 
     for i in 0..TEST_ELEMENTS {
         let holder_key_pair = Ecdsa.generate_key().unwrap();
@@ -164,8 +164,8 @@ async fn test_list_wallet_instance_by_attestation_success() {
         attestations.push((wallet_unit.id, attestation));
     }
 
-    let idx = rand::random::<usize>() % TEST_ELEMENTS;
-    let (wallet_unit_id, attestation) = attestations[idx].clone();
+    let idx = rand::random::<u32>() % TEST_ELEMENTS;
+    let (wallet_unit_id, attestation) = attestations[idx as usize].clone();
 
     // WHEN
     let resp = context

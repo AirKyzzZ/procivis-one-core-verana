@@ -8,7 +8,6 @@ use one_core::model::credential::{
 use one_core::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
 use one_core::model::identifier::{Identifier, IdentifierRelations};
 use one_core::repository::credential_repository::CredentialRepository;
-use rand::{RngCore, thread_rng};
 use shared_types::CredentialId;
 use sql_data_provider::test_utilities::get_dummy_date;
 use uuid::Uuid;
@@ -205,14 +204,14 @@ fn schema_to_dummy_value(claim_schema: &ClaimSchema, random_claims: bool) -> Opt
     let value = match data_type.as_str() {
         "NUMBER" => {
             if random_claims {
-                thread_rng().next_u32().to_string()
+                rand::random::<u32>().to_string()
             } else {
                 "42".to_string()
             }
         }
         "BOOLEAN" => {
             if random_claims {
-                thread_rng().next_u32().is_multiple_of(2).to_string()
+                rand::random::<u32>().is_multiple_of(2).to_string()
             } else {
                 "true".to_string()
             }

@@ -126,7 +126,10 @@ impl ECDSASigner {
     }
 
     pub fn generate_key_pair() -> (SecretSlice<u8>, Vec<u8>) {
-        let sk = SigningKey::random(&mut get_rng());
+        let mut rng = get_rng();
+        let mut wrapper = crate::rand08::CompatWrapper(&mut rng);
+
+        let sk = SigningKey::random(&mut wrapper);
         let pk = VerifyingKey::from(&sk);
         (
             sk.to_bytes().to_vec().into(),

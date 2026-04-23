@@ -88,8 +88,12 @@ pub struct GeneratedKey {
 
 impl BBSSigner {
     pub fn generate_key_pair() -> GeneratedKey {
+        // TODO: Remove the wrapper once a compatible version of the crate is available (ONE-9596)
+        let mut rng = get_rng();
+        let mut wrapper = crate::rand08::CompatWrapper(&mut rng);
+
         // There is not much to break hence default on failure should be good enough.
-        let key_pair = KeyPair::random(&mut get_rng(), b"").unwrap_or_default();
+        let key_pair = KeyPair::random(&mut wrapper, b"").unwrap_or_default();
         let private = key_pair.secret_key.to_bytes().to_vec().into();
         let public = key_pair.public_key.to_octets().to_vec();
         GeneratedKey { public, private }

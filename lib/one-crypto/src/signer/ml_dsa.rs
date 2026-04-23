@@ -2,9 +2,7 @@ use ml_dsa::signature::{Signer as MlDsaSignerTrait, Verifier};
 use ml_dsa::{
     B32, EncodedSignature, EncodedVerifyingKey, KeyGen, MlDsa65, Signature, VerifyingKey,
 };
-use rand_chacha_new::ChaCha20Rng;
-use rand_new::SeedableRng;
-use rand_new::rngs::SysRng;
+use rand_chacha::ChaCha20Rng;
 use secrecy::{ExposeSecret, SecretSlice};
 
 use crate::{Signer, SignerError};
@@ -18,8 +16,7 @@ pub struct KeyPair {
 
 impl MlDsaSigner {
     pub fn generate_key_pair() -> Result<KeyPair, SignerError> {
-        let mut rng = ChaCha20Rng::try_from_rng(&mut SysRng)
-            .map_err(|err| SignerError::CouldNotGenerateKeyPair(err.to_string()))?;
+        let mut rng: ChaCha20Rng = rand::make_rng();
         let kp = MlDsa65::key_gen(&mut rng);
         Ok(KeyPair {
             public: kp.verifying_key().encode().to_vec(),

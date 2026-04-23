@@ -38,10 +38,9 @@ thiserror.workspace          = true
 pairing_crypto = { version = "0.4.3", git = "https://github.com/procivis/pairing_crypto", rev = "0ec3629" }
 
 # TODO (ONE-8329): should be unified
-rand.workspace  = true
-rand_chacha     = { version = "0.3" }
-rand_chacha_new = { package = "rand_chacha", version = "0.10" }
-rand_new        = { package = "rand", version = "0.10" }
+rand            = { workspace = true }
+rand_old        = { package = "rand", version = "0.8.5" }
+rand_chacha     = { version = "0.10.0" }
 
 [dev-dependencies]
 hex             = { workspace = true }

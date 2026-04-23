@@ -1,8 +1,8 @@
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use hmac::Mac;
 use p256::ecdsa::Signature;
-use rand::distributions::{Alphanumeric, DistString};
-use rand::{CryptoRng, Rng, RngCore, SeedableRng};
+use rand::distr::{Alphanumeric, Distribution, SampleString, Uniform};
+use rand::{CryptoRng, Rng};
 use rand_chacha::ChaCha20Rng;
 use serde::{Deserialize, Deserializer};
 
@@ -16,8 +16,12 @@ pub fn generate_salt_base64_16() -> String {
 }
 
 pub fn generate_numeric(length: usize) -> String {
+    // SAFETY: Constructor fails only if low > high
+    #[allow(clippy::unwrap_used)]
+    let distribution = Uniform::new_inclusive('0', '9').unwrap();
+
     let rng = &mut get_rng();
-    std::iter::repeat_with(|| rng.gen_range('0'..='9'))
+    std::iter::repeat_with(|| distribution.sample(rng))
         .take(length)
         .collect()
 }
@@ -49,8 +53,9 @@ pub fn generate_random_bytes<const N: usize>() -> [u8; N] {
     res
 }
 
-pub fn get_rng() -> impl RngCore + CryptoRng {
-    ChaCha20Rng::from_entropy()
+pub fn get_rng() -> impl CryptoRng {
+    let result: ChaCha20Rng = rand::make_rng();
+    result
 }
 
 pub fn deserialize_base64<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>

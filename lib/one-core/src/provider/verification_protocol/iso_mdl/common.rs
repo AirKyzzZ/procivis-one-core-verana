@@ -183,7 +183,10 @@ pub(crate) struct KeyAgreement<PK> {
 
 impl KeyAgreement<EDeviceKey> {
     pub fn new() -> Self {
-        let sk = EphemeralSecret::random_from_rng(get_rng());
+        let mut rng = get_rng();
+        let wrapper = one_crypto::rand08::CompatWrapper(&mut rng);
+
+        let sk = EphemeralSecret::random_from_rng(wrapper);
         let pk = EDeviceKey::new(PublicKey::from(&sk));
 
         KeyAgreement { pk, sk }
@@ -204,7 +207,10 @@ impl KeyAgreement<EDeviceKey> {
 
 impl KeyAgreement<EReaderKey> {
     pub(super) fn new() -> Self {
-        let sk = EphemeralSecret::random_from_rng(get_rng());
+        let mut rng = get_rng();
+        let wrapper = one_crypto::rand08::CompatWrapper(&mut rng);
+
+        let sk = EphemeralSecret::random_from_rng(wrapper);
         let pk = EReaderKey::new(PublicKey::from(&sk));
 
         KeyAgreement { pk, sk }

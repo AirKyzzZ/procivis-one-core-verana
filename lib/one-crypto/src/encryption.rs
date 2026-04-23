@@ -27,7 +27,10 @@ pub fn encrypt_file(
     let cipher = ChaCha20Poly1305::new_from_slice(key.key.expose_secret())
         .map_err(|err| EncryptionError::Crypto(err.to_string()))?;
 
-    let nonce = ChaCha20Poly1305::generate_nonce(get_rng());
+    // TODO: Remove the wrapper once compatible version of the crate is available (ONE-9596)
+    let mut rng = get_rng();
+    let wrapper = crate::rand08::CompatWrapper(&mut rng);
+    let nonce = ChaCha20Poly1305::generate_nonce(wrapper);
 
     let mut content = vec![];
     input_file.read_to_end(&mut content)?;
