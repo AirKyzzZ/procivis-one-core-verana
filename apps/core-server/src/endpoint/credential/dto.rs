@@ -32,6 +32,7 @@ use crate::endpoint::credential_schema::dto::{
 };
 use crate::endpoint::identifier::dto::GetIdentifierListItemResponseRestDTO;
 use crate::serialize::{front_time, front_time_option};
+
 #[options_not_nullable]
 #[derive(Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
@@ -176,6 +177,7 @@ pub struct WalletUnitAttestationRestDTO {
 #[from(TrustInformation)]
 #[serde(rename_all = "camelCase")]
 pub struct TrustInformationRestDTO {
+    #[serde(serialize_with = "front_time")]
     received_at: OffsetDateTime,
     name: String,
 }
