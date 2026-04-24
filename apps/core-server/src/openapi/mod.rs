@@ -356,13 +356,13 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                 ))
                 .build(),
             Tag::builder()
-                .name("wallet_unit")
+                .name("wallet_instance")
                 .description(Some(indoc::formatdoc! {"
-                For Wallet Providers, manage wallet units and attestations issued by the system.
+                For Wallet Providers, manage wallet instances and attestations issued by the system.
             "}))
                 .extensions(Some(
                     Extensions::builder()
-                        .add("x-displayName", "Wallet units (Provider)")
+                        .add("x-displayName", "Wallet instances (Provider)")
                         .build(),
                 ))
                 .build(),
@@ -373,7 +373,7 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
             "}))
                 .extensions(Some(
                     Extensions::builder()
-                        .add("x-displayName", "Wallet units (Holder)")
+                        .add("x-displayName", "Wallet instances (Holder)")
                         .build(),
                 ))
                 .build(),
