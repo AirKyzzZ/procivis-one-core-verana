@@ -108,7 +108,7 @@ impl SignatureProvider for SignatureProviderImpl {
         self.key
             .key_algorithm_type()
             .and_then(|alg| self.key_algorithm_provider.key_algorithm_from_type(alg))
-            .and_then(|key_algorithm| key_algorithm.issuance_jose_alg_id())
+            .map(|key_algorithm| key_algorithm.issuance_jose_alg_id())
     }
 
     fn get_public_key(&self) -> Vec<u8> {
@@ -140,7 +140,7 @@ impl SignatureProvider for AttestationSignatureProvider {
         self.key
             .key_algorithm_type()
             .and_then(|alg| self.key_algorithm_provider.key_algorithm_from_type(alg))
-            .and_then(|key_algorithm| key_algorithm.issuance_jose_alg_id())
+            .map(|key_algorithm| key_algorithm.issuance_jose_alg_id())
     }
 
     fn get_public_key(&self) -> Vec<u8> {

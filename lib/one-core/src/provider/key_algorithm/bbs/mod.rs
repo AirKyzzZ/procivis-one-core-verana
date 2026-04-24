@@ -70,9 +70,9 @@ impl KeyAlgorithm for BBS {
         }
     }
 
-    fn issuance_jose_alg_id(&self) -> Option<String> {
+    fn issuance_jose_alg_id(&self) -> String {
         // invalid value for backward compatibility
-        Some("BBS_PLUS".to_string())
+        "BBS_PLUS".to_owned()
     }
 
     fn verification_jose_alg_ids(&self) -> Vec<String> {

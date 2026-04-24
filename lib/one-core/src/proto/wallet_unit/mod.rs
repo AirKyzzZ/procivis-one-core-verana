@@ -144,12 +144,6 @@ impl HolderWalletUnitProtoImpl {
             })
             .error_while("getting key algorithm")?;
 
-        let jose_alg = key_algorithm.issuance_jose_alg_id().ok_or_else(|| {
-            Error::MappingError(format!(
-                "Invalid key algorithm for issuance: {key_algorithm_type}",
-            ))
-        })?;
-
         let key_storage = self
             .key_provider
             .get_key_storage(&key.storage_type)
@@ -164,7 +158,7 @@ impl HolderWalletUnitProtoImpl {
         let now = crate::clock::now_utc();
         let jwt = Jwt::new(
             "JWT".to_string(),
-            jose_alg,
+            key_algorithm.issuance_jose_alg_id(),
             None,
             Some(JwtPublicKeyInfo::Jwk(public_key)),
             JWTPayload {

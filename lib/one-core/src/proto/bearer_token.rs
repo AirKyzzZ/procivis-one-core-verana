@@ -114,16 +114,12 @@ pub(crate) async fn prepare_bearer_token(
         ..Default::default()
     };
 
-    let algorithm = key_algorithm
-        .issuance_jose_alg_id()
-        .ok_or(Error::MappingError("Missing JOSE alg".to_string()))?;
-
     let signer = key_provider
         .get_signature_provider(&key, None, key_algorithm_provider.clone())
         .error_while("getting signature provider")?;
     let bearer_token = Jwt::<BearerTokenPayload> {
         header: JWTHeader {
-            algorithm,
+            algorithm: key_algorithm.issuance_jose_alg_id(),
             key_id,
             r#type: None,
             jwk,

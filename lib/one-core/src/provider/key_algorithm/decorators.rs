@@ -46,8 +46,8 @@ impl<T: Provider + KeyAlgorithm + Display + ?Sized> KeyAlgorithm for DisabledPro
         self.disabled_error()
     }
 
-    fn issuance_jose_alg_id(&self) -> Option<String> {
-        None
+    fn issuance_jose_alg_id(&self) -> String {
+        self.inner().issuance_jose_alg_id()
     }
 
     fn verification_jose_alg_ids(&self) -> Vec<String> {

@@ -333,7 +333,7 @@ async fn test_get_issuer_metadata_jwt() {
     let mut key_algorithm = MockKeyAlgorithm::default();
     key_algorithm
         .expect_issuance_jose_alg_id()
-        .return_once(|| Some("ES256".to_string()));
+        .return_once(|| "ES256".to_string());
 
     key_algorithm_provider
         .expect_key_algorithm_from_type()
@@ -471,7 +471,7 @@ async fn test_get_issuer_metadata_sd_jwt() {
     let mut key_algorithm = MockKeyAlgorithm::default();
     key_algorithm
         .expect_issuance_jose_alg_id()
-        .return_once(|| Some("ES256".to_string()));
+        .return_once(|| "ES256".to_string());
 
     key_algorithm_provider
         .expect_key_algorithm_from_type()
@@ -598,7 +598,7 @@ async fn test_get_issuer_metadata_mdoc() {
     let mut key_algorithm = MockKeyAlgorithm::default();
     key_algorithm
         .expect_issuance_jose_alg_id()
-        .return_once(|| Some("ES256".to_string()));
+        .return_once(|| "ES256".to_string());
 
     key_algorithm_provider
         .expect_key_algorithm_from_type()

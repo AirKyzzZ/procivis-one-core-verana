@@ -114,7 +114,7 @@ async fn test_format_presentation() {
     let mut key_algorithm = MockKeyAlgorithm::new();
     key_algorithm
         .expect_issuance_jose_alg_id()
-        .returning(|| Some("ES256".to_string()));
+        .returning(|| "ES256".to_string());
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider

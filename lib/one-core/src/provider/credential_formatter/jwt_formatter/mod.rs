@@ -30,8 +30,8 @@ use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, LayoutType};
 use crate::model::identifier::Identifier;
 use crate::model::organisation::Organisation;
+use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::{JWTPayload, jwt_metadata_claims};
-use crate::proto::jwt::{Jwt, TokenError};
 use crate::provider::credential_formatter::mapper::default_2_years;
 use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::did_method::error::DidMethodError;
@@ -155,10 +155,7 @@ impl CredentialFormatter for JWTFormatter {
             ))
             .error_while("getting key algorithm")?;
 
-        let jose_alg = key_algorithm
-            .issuance_jose_alg_id()
-            .ok_or(TokenError::MissingJOSEAlgorithm(algorithm.to_string()))
-            .error_while("preparing JWT header")?;
+        let jose_alg = key_algorithm.issuance_jose_alg_id();
 
         match status_list_type {
             RevocationType::BitstringStatusList => {

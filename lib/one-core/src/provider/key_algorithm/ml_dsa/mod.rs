@@ -71,8 +71,8 @@ impl KeyAlgorithm for MlDsa {
         }
     }
 
-    fn issuance_jose_alg_id(&self) -> Option<String> {
-        Some("ML-DSA-65".to_string())
+    fn issuance_jose_alg_id(&self) -> String {
+        "ML-DSA-65".to_owned()
     }
 
     fn verification_jose_alg_ids(&self) -> Vec<String> {

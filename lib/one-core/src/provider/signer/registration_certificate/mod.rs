@@ -209,17 +209,13 @@ impl RegistrationCertificate {
             .and_then(|alg| self.key_algorithm_provider.key_algorithm_from_type(alg))
             .ok_or_else(|| SignerError::MissingKeyAlgorithmProvider(key.key_type.to_owned()))?;
 
-        let algorithm = key_algorithm
-            .issuance_jose_alg_id()
-            .ok_or(SignerError::MappingError("Missing JOSE alg".to_string()))?;
-
         let signer = self
             .key_provider
             .get_signature_provider(&key, None, self.key_algorithm_provider.clone())
             .error_while("getting signature provider")?;
         let jwt = WRPRegistrationCertificate::new(
             "rc-wrp+jwt".to_owned(),
-            algorithm.to_owned(),
+            key_algorithm.issuance_jose_alg_id(),
             None,
             pubkey_info,
             payload,

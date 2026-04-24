@@ -42,7 +42,7 @@ pub trait KeyAlgorithm: Provider + Send + Sync {
     /// https://www.iana.org/assignments/jose/jose.xhtml#web-signature-encryption-algorithms
     /// https://www.iana.org/assignments/cose/cose.xhtml#algorithms
     /// https://datatracker.ietf.org/doc/html/draft-ietf-cose-dilithium
-    fn issuance_jose_alg_id(&self) -> Option<String>;
+    fn issuance_jose_alg_id(&self) -> String;
     fn verification_jose_alg_ids(&self) -> Vec<String>;
     fn cose_alg_id(&self) -> Option<i64>;
 

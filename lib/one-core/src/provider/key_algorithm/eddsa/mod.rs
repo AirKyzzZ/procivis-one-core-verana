@@ -106,8 +106,8 @@ impl KeyAlgorithm for Eddsa {
         }
     }
 
-    fn issuance_jose_alg_id(&self) -> Option<String> {
-        Some("EdDSA".to_string())
+    fn issuance_jose_alg_id(&self) -> String {
+        "EdDSA".to_owned()
     }
 
     fn verification_jose_alg_ids(&self) -> Vec<String> {

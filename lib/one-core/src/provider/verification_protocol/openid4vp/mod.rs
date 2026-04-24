@@ -242,13 +242,7 @@ fn get_jwt_signer<'a>(
             "algorithm not found".to_string(),
         ))?;
 
-    let jose_algorithm =
-        key_algorithm
-            .issuance_jose_alg_id()
-            .ok_or(VerificationProtocolError::Failed(
-                "JOSE algorithm not found".to_string(),
-            ))?;
-
+    let jose_algorithm = key_algorithm.issuance_jose_alg_id();
     Ok(JWTSigner {
         auth_fn,
         verifier_key,

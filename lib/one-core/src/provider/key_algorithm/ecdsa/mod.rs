@@ -93,8 +93,8 @@ impl KeyAlgorithm for Ecdsa {
         }
     }
 
-    fn issuance_jose_alg_id(&self) -> Option<String> {
-        Some("ES256".to_string())
+    fn issuance_jose_alg_id(&self) -> String {
+        "ES256".to_owned()
     }
 
     fn verification_jose_alg_ids(&self) -> Vec<String> {
