@@ -352,7 +352,6 @@ impl WRPValidatorImpl {
                         include_inherited_collections: true,
                     }
                     .condition()
-                        & TrustCollectionFilterValue::Remote(true)
                         & TrustCollectionFilterValue::Empty(false),
                 ),
                 ..Default::default()
