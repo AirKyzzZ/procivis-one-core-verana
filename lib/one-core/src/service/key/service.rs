@@ -9,8 +9,7 @@ use super::dto::{GetKeyListResponseDTO, KeyFilterParamsDTO, KeyRequestDTO};
 use crate::config::core_config::KeyAlgorithmType;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
-use crate::model::key::{KeyRelations, SortableKeyColumn};
-use crate::model::organisation::OrganisationRelations;
+use crate::model::key::SortableKeyColumn;
 use crate::proto::session_provider::SessionExt;
 use crate::repository::error::DataLayerError;
 use crate::service::common_dto::ListQueryDTO;
@@ -21,7 +20,7 @@ use crate::service::key::dto::{
 use crate::service::key::error::KeyServiceError;
 use crate::service::key::mapper::from_create_request;
 use crate::service::key::validator::validate_generate_request;
-use crate::validator::{throw_if_org_id_not_matching_session, throw_if_org_not_matching_session};
+use crate::validator::throw_if_org_id_not_matching_session;
 
 impl KeyService {
     /// Returns details of a key
@@ -32,22 +31,17 @@ impl KeyService {
     pub async fn get_key(&self, key_id: &KeyId) -> Result<KeyResponseDTO, KeyServiceError> {
         let key = self
             .key_repository
-            .get_key(
-                key_id,
-                &KeyRelations {
-                    organisation: Some(OrganisationRelations::default()),
-                },
-            )
+            .get_key(key_id)
             .await
             .error_while("loading key")?;
 
         let Some(key) = key else {
             return Err(KeyServiceError::KeyNotFound(*key_id));
         };
-        throw_if_org_not_matching_session(key.organisation.as_ref(), &*self.session_provider)
+        throw_if_org_id_not_matching_session(key.organisation.id_ref(), &*self.session_provider)
             .error_while("validating organisation")?;
 
-        key.try_into()
+        Ok(key.into())
     }
 
     /// Generates a new random key with data provided in arguments
@@ -158,19 +152,14 @@ impl KeyService {
     ) -> Result<KeyGenerateCSRResponseDTO, KeyServiceError> {
         let key = self
             .key_repository
-            .get_key(
-                key_id,
-                &KeyRelations {
-                    organisation: Some(OrganisationRelations::default()),
-                },
-            )
+            .get_key(key_id)
             .await
             .error_while("loading key")?;
 
         let Some(key) = key else {
             return Err(KeyServiceError::KeyNotFound(*key_id));
         };
-        throw_if_org_not_matching_session(key.organisation.as_ref(), &*self.session_provider)
+        throw_if_org_id_not_matching_session(key.organisation.id_ref(), &*self.session_provider)
             .error_while("validating organisation")?;
 
         let content = self
@@ -194,13 +183,7 @@ impl KeyService {
                 entity_type: HistoryEntityType::Key,
                 metadata: None,
                 metadata_blob_id: None,
-                organisation_id: Some(
-                    key.organisation
-                        .ok_or(KeyServiceError::MappingError(
-                            "missing key organisation".to_string(),
-                        ))?
-                        .id,
-                ),
+                organisation_id: Some(key.organisation.id()),
                 user: self.session_provider.session().user(),
             })
             .await;

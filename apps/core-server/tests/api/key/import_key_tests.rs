@@ -39,7 +39,7 @@ async fn test_import_key_ecdsa() {
     assert_eq!(key.name, "ESTEST");
     assert_eq!(key.key_type, "ECDSA");
     assert!(!key.public_key.is_empty());
-    assert_eq!(key.organisation.unwrap().id, organisation.id);
+    assert_eq!(key.organisation.id(), organisation.id);
 }
 
 #[tokio::test]
@@ -75,7 +75,7 @@ async fn test_import_key_eddsa() {
     assert_eq!(key.name, "EDDSATEST");
     assert_eq!(key.key_type, "EDDSA");
     assert!(!key.public_key.is_empty());
-    assert_eq!(key.organisation.unwrap().id, organisation.id);
+    assert_eq!(key.organisation.id(), organisation.id);
 }
 
 #[tokio::test]

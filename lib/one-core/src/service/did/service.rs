@@ -384,7 +384,7 @@ pub(crate) async fn generate_update_key(
         key_reference: key.key_reference,
         storage_type: key_storage_type.to_string(),
         key_type: update_key_type.to_string(),
-        organisation: Some(organisation.clone()),
+        organisation: organisation.into(),
     };
 
     Ok(key)

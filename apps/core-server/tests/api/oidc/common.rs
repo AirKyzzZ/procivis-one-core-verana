@@ -7,6 +7,7 @@ use one_core::provider::key_algorithm::key::KeyHandle;
 use one_core::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use one_core::provider::key_storage::KeyStorage;
 use one_core::provider::key_storage::internal::InternalKeyProvider;
+use one_core::service::test_utilities::dummy_organisation;
 use serde_json::json;
 use uuid::Uuid;
 
@@ -61,7 +62,7 @@ pub(super) async fn proof_jwt(use_kid: bool, nonce: Option<&str>) -> String {
         key_reference: params.key_reference,
         storage_type: params.storage_type.unwrap_or_default(),
         key_type: params.key_type.unwrap_or_default(),
-        organisation: None,
+        organisation: dummy_organisation(None).into(),
     };
 
     let key_provider = InternalKeyProvider::new(

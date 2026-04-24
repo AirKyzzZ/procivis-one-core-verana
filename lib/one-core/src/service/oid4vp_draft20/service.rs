@@ -496,7 +496,7 @@ impl OID4VPDraft20Service {
                 // KeyId can't be verified here since we don't know related proof yet.
                 let key = self
                     .key_repository
-                    .get_key(&key_id, &KeyRelations::default())
+                    .get_key(&key_id)
                     .await
                     .error_while("getting key")?
                     .ok_or_else(|| {

@@ -144,18 +144,16 @@ impl CredentialProvider {
             None
         };
 
-        let key = if let Some(key_relations) = &relations.key {
+        let key = if let Some(_key_relations) = &relations.key {
             match &credential.key_id {
                 None => None,
                 Some(key_id) => {
-                    let key = self
-                        .key_repository
-                        .get_key(key_id, key_relations)
-                        .await?
-                        .ok_or(DataLayerError::MissingRequiredRelation {
+                    let key = self.key_repository.get_key(key_id).await?.ok_or(
+                        DataLayerError::MissingRequiredRelation {
                             relation: "credential-key",
                             id: key_id.to_string(),
-                        })?;
+                        },
+                    )?;
 
                     Some(key)
                 }

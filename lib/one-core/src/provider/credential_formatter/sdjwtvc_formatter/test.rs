@@ -1127,7 +1127,7 @@ async fn test_format_extract_round_trip_non_sd_array_elements() {
         key_reference: None,
         storage_type: "INTERNAL".to_string(),
         key_type: "EDDSA".to_string(),
-        organisation: None,
+        organisation: dummy_organisation(None).into(),
     };
 
     let keys = vec![key];
@@ -1340,7 +1340,7 @@ async fn test_format_extract_round_trip_sd_array_elements() {
         key_reference: None,
         storage_type: "INTERNAL".to_string(),
         key_type: "EDDSA".to_string(),
-        organisation: None,
+        organisation: dummy_organisation(None).into(),
     };
 
     let keys = vec![key];

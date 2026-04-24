@@ -614,7 +614,7 @@ async fn test_create_identifier_with_trust_information() {
     let key_id = dummy_key.id;
     key_repository
         .expect_get_key()
-        .returning(move |_, _| Ok(Some(dummy_key.clone())));
+        .returning(move |_| Ok(Some(dummy_key.clone())));
     let mut identifier_creator = MockIdentifierCreator::default();
     let mut identifier_trust_information_repository =
         MockIdentifierTrustInformationRepository::default();

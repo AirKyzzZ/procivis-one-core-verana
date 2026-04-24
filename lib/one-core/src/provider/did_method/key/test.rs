@@ -18,6 +18,7 @@ use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
 };
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::service::test_utilities::dummy_organisation;
 
 fn setup_key_did_method(
     key_algorithm: MockKeyAlgorithm,
@@ -336,7 +337,7 @@ async fn test_create_did_success() {
         key_reference: None,
         storage_type: "INTERNAL".to_string(),
         key_type: "EDDSA".to_string(),
-        organisation: None,
+        organisation: dummy_organisation(None).into(),
     };
 
     let mut key_algorithm = MockKeyAlgorithm::default();

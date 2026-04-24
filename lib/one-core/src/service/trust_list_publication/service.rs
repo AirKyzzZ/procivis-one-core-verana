@@ -518,6 +518,7 @@ mod tests {
     use crate::repository::identifier_repository::MockIdentifierRepository;
     use crate::repository::trust_entry_repository::MockTrustEntryRepository;
     use crate::repository::trust_list_publication_repository::MockTrustListPublicationRepository;
+    use crate::service::test_utilities::dummy_organisation;
 
     #[tokio::test]
     async fn test_create_trust_list_publication_identifier_matches_capabilities() {
@@ -574,7 +575,7 @@ mod tests {
                     key_reference: None,
                     storage_type: "".to_string(),
                     key_type: "EDDSA".to_string(),
-                    organisation: None,
+                    organisation: dummy_organisation(None).into(),
                 }),
             }]),
             trust_information: None,
@@ -1066,7 +1067,7 @@ mod tests {
             key_reference: None,
             storage_type: "INTERNAL".to_string(),
             key_type: key_type.to_string(),
-            organisation: None,
+            organisation: dummy_organisation(None).into(),
         }
     }
 

@@ -79,7 +79,7 @@ async fn test_get_did_exists() {
                 key_reference: None,
                 storage_type: "INTERNAL".to_string(),
                 key_type: "EDDSA".to_string(),
-                organisation: None,
+                organisation: dummy_organisation(None).into(),
             },
             reference: "abc".to_string(),
         }]),

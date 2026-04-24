@@ -360,17 +360,15 @@ impl ProofProvider {
             proof.interaction = Some(interaction);
         }
 
-        if let (Some(verifier_key_relations), Some(verifier_key_id)) =
+        if let (Some(_verifier_key_relations), Some(verifier_key_id)) =
             (&relations.verifier_key, proof_model.verifier_key_id)
         {
-            let verifier_key = self
-                .key_repository
-                .get_key(&verifier_key_id, verifier_key_relations)
-                .await?
-                .ok_or(DataLayerError::MissingRequiredRelation {
+            let verifier_key = self.key_repository.get_key(&verifier_key_id).await?.ok_or(
+                DataLayerError::MissingRequiredRelation {
                     relation: "proof-verifierkey",
                     id: verifier_key_id.to_string(),
-                })?;
+                },
+            )?;
 
             proof.verifier_key = Some(verifier_key);
         }

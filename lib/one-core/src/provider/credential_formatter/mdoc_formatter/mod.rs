@@ -499,7 +499,7 @@ impl CredentialFormatter for MdocFormatter {
             imported_source_url: "".to_string(),
             allow_suspension: false,
             requires_wallet_instance_attestation: false,
-            organisation: organisation.into(),
+            organisation: organisation.clone().into(),
             claim_schemas: claim_schemas.into(),
             transaction_code: None,
         };
@@ -507,12 +507,14 @@ impl CredentialFormatter for MdocFormatter {
         let issuer_identifier = prepare_identifier(
             &IdentifierDetails::Certificate(issuer_certificate),
             self.key_algorithm_provider.as_ref(),
+            organisation.to_owned(),
         )?;
 
         let holder_jwk = try_extract_holder_public_key(&issuer_signed.issuer_auth)?;
         let holder_identifier = prepare_identifier(
             &IdentifierDetails::Key(holder_jwk),
             self.key_algorithm_provider.as_ref(),
+            organisation,
         )?;
 
         Ok(Credential {

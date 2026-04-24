@@ -506,7 +506,7 @@ pub fn dummy_key() -> Key {
         key_reference: None,
         storage_type: "foo".into(),
         key_type: "EDDSA".into(),
-        organisation: None,
+        organisation: dummy_organisation(None).into(),
     }
 }
 

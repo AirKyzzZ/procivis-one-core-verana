@@ -208,7 +208,7 @@ fn generic_credential_key() -> Credential {
         name: "key1".to_string(),
         key_reference: None,
         storage_type: "LOCAL".to_string(),
-        organisation: Some(dummy_organisation(None)),
+        organisation: dummy_organisation(None).into(),
         key_type: "ECDSA".to_string(),
     };
     let issuer_identifier = Identifier {

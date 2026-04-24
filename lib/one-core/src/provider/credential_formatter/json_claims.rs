@@ -10,6 +10,7 @@ use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::identifier::{Identifier, IdentifierState};
 use crate::model::key::Key;
+use crate::model::organisation::Organisation;
 use crate::provider::credential_formatter::model::IdentifierDetails;
 use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -220,6 +221,7 @@ fn is_same_type(a: &CredentialClaimValue, b: &CredentialClaimValue) -> bool {
 pub fn prepare_identifier(
     detail: &IdentifierDetails,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
+    organisation: Organisation,
 ) -> Result<Identifier, FormatterError> {
     let now = crate::clock::now_utc();
     let identifier_id = Uuid::new_v4().into();
@@ -230,7 +232,7 @@ pub fn prepare_identifier(
             let cert = Certificate {
                 id: Uuid::new_v4().into(),
                 identifier_id,
-                organisation_id: None,
+                organisation_id: Some(organisation.id),
                 created_date: now,
                 last_modified: now,
                 deleted_at: None,
@@ -264,7 +266,7 @@ pub fn prepare_identifier(
                 deactivated: false,
                 log: None,
                 keys: None,
-                organisation: None,
+                organisation: Some(organisation.clone()),
             };
             (
                 None,
@@ -286,7 +288,7 @@ pub fn prepare_identifier(
                 key_reference: None,
                 storage_type: "INTERNAL".to_string(),
                 key_type: parsed_key.algorithm_type.to_string(),
-                organisation: None,
+                organisation: organisation.clone().into(),
             };
             (
                 None,
@@ -306,7 +308,7 @@ pub fn prepare_identifier(
         is_remote: true,
         state: IdentifierState::Active,
         deleted_at: None,
-        organisation: None,
+        organisation: Some(organisation),
         did: identifier_did,
         key: identifier_key,
         certificates: identifier_certificate.map(|c| vec![c]),

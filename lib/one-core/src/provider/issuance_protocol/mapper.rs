@@ -102,7 +102,7 @@ pub(super) async fn autogenerate_holder_binding(
         key_reference: key.key_reference,
         storage_type: key_storage_id,
         key_type: key_algorithm.to_string(),
-        organisation: Some(organisation.to_owned()),
+        organisation: organisation.to_owned().into(),
     };
     key_repository
         .create_key(key.to_owned())

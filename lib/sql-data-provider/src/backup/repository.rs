@@ -28,6 +28,7 @@ use crate::entity::{
     certificate, claim, claim_schema, credential, credential_schema, did, history,
     holder_wallet_instance, identifier, key, key_did, organisation, wallet_instance_attestation,
 };
+use crate::key::mapper::key_from_model;
 use crate::mapper::to_data_layer_error;
 use crate::transaction_context::TransactionManagerImpl;
 
@@ -412,7 +413,10 @@ impl BackupRepository for BackupProvider {
 
         Ok(UnexportableEntities {
             credentials,
-            keys: convert_inner(keys),
+            keys: keys
+                .into_iter()
+                .map(|key| key_from_model(key, &self.organisation_repository))
+                .collect(),
             dids: convert_inner(dids),
             identifiers: convert_inner(identifiers),
             histories: try_convert_inner(histories)?,

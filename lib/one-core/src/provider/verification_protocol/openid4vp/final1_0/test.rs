@@ -61,7 +61,8 @@ use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 use crate::service::test_utilities::{
-    dummy_claim_schema, dummy_credential_schema, dummy_identifier, generic_config,
+    dummy_claim_schema, dummy_credential_schema, dummy_identifier, dummy_organisation,
+    generic_config,
 };
 
 #[derive(Default)]
@@ -151,7 +152,7 @@ fn test_key(key_type: &str) -> Key {
         key_reference: None,
         storage_type: "INTERNAL".to_string(),
         key_type: key_type.to_string(),
-        organisation: None,
+        organisation: dummy_organisation(None).into(),
     }
 }
 
@@ -517,7 +518,7 @@ async fn test_share_proof_direct_post_jwt_ecdsa() {
             key_reference: None,
             storage_type: "INTERNAL".to_string(),
             key_type: "ECDSA".to_string(),
-            organisation: None,
+            organisation: dummy_organisation(None).into(),
         },
         reference: "1".to_string(),
     };
@@ -598,7 +599,7 @@ async fn test_share_proof_direct_post_jwt_eddsa() {
             key_reference: None,
             storage_type: "INTERNAL".to_string(),
             key_type: "EDDSA".to_string(),
-            organisation: None,
+            organisation: dummy_organisation(None).into(),
         },
         reference: "1".to_string(),
     };

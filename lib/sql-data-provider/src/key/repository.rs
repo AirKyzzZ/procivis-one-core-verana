@@ -1,6 +1,6 @@
 use autometrics::autometrics;
-use one_core::model::key::{GetKeyList, Key, KeyListQuery, KeyRelations};
-use one_core::model::organisation::{Organisation, OrganisationRelations};
+use one_core::model::common::GetListResponse;
+use one_core::model::key::{GetKeyList, Key, KeyListQuery};
 use one_core::repository::error::DataLayerError;
 use one_core::repository::key_repository::KeyRepository;
 use sea_orm::ActiveValue::NotSet;
@@ -10,37 +10,14 @@ use shared_types::KeyId;
 use crate::common::list_query_with_base_model;
 use crate::entity::key;
 use crate::key::KeyProvider;
-use crate::key::mapper::from_model_and_relations;
+use crate::key::mapper::key_from_model;
 use crate::list_query_generic::SelectWithListQuery;
 use crate::mapper::to_data_layer_error;
-
-impl KeyProvider {
-    async fn get_organisation(
-        &self,
-        key: &key::Model,
-        organisation_relations: &Option<OrganisationRelations>,
-    ) -> Result<Option<Organisation>, DataLayerError> {
-        match &organisation_relations {
-            None => Ok(None),
-            Some(_organisation_relations) => Ok(Some(
-                self.organisation_repository
-                    .get_organisation(&key.organisation_id)
-                    .await?
-                    .ok_or(DataLayerError::MissingRequiredRelation {
-                        relation: "key-organisation",
-                        id: key.organisation_id.to_string(),
-                    })?,
-            )),
-        }
-    }
-}
 
 #[autometrics]
 #[async_trait::async_trait]
 impl KeyRepository for KeyProvider {
     async fn create_key(&self, request: Key) -> Result<KeyId, DataLayerError> {
-        let organisation_id = request.organisation.ok_or(DataLayerError::MappingError)?.id;
-
         key::ActiveModel {
             id: Set(request.id),
             created_date: Set(request.created_date),
@@ -50,7 +27,7 @@ impl KeyRepository for KeyProvider {
             key_reference: Set(request.key_reference),
             storage_type: Set(request.storage_type),
             key_type: Set(request.key_type),
-            organisation_id: Set(organisation_id),
+            organisation_id: Set(request.organisation.id()),
             deleted_at: NotSet,
         }
         .insert(&self.db)
@@ -60,11 +37,7 @@ impl KeyRepository for KeyProvider {
         Ok(request.id)
     }
 
-    async fn get_key(
-        &self,
-        id: &KeyId,
-        relations: &KeyRelations,
-    ) -> Result<Option<Key>, DataLayerError> {
+    async fn get_key(&self, id: &KeyId) -> Result<Option<Key>, DataLayerError> {
         let key = key::Entity::find_by_id(*id)
             .filter(key::Column::DeletedAt.is_null())
             .one(&self.db)
@@ -78,11 +51,7 @@ impl KeyRepository for KeyProvider {
             return Ok(None);
         };
 
-        let organisation = self.get_organisation(&key, &relations.organisation).await?;
-
-        let key = from_model_and_relations(key, organisation);
-
-        Ok(Some(key))
+        Ok(Some(key_from_model(key, &self.organisation_repository)))
     }
 
     async fn get_keys(&self, ids: &[KeyId]) -> Result<Vec<Key>, DataLayerError> {
@@ -98,7 +67,7 @@ impl KeyRepository for KeyProvider {
 
         Ok(keys
             .into_iter()
-            .map(|key| from_model_and_relations(key, None))
+            .map(|key| key_from_model(key, &self.organisation_repository))
             .collect())
     }
 
@@ -109,6 +78,17 @@ impl KeyRepository for KeyProvider {
             .order_by_desc(key::Column::CreatedDate)
             .order_by_desc(key::Column::Id);
 
-        list_query_with_base_model(query, query_params, &self.db).await
+        let list: GetListResponse<key::Model> =
+            list_query_with_base_model(query, query_params, &self.db).await?;
+
+        Ok(GetKeyList {
+            total_items: list.total_items,
+            total_pages: list.total_pages,
+            values: list
+                .values
+                .into_iter()
+                .map(|key| key_from_model(key, &self.organisation_repository))
+                .collect(),
+        })
     }
 }

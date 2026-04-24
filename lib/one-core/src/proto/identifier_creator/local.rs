@@ -12,7 +12,7 @@ use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::certificate::{Certificate, CertificateRelations, CertificateState};
 use crate::model::did::Did;
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierState, IdentifierType};
-use crate::model::key::{Key, KeyRelations};
+use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::proto::certificate_validator::x509_extension::validate_ca;
 use crate::proto::certificate_validator::{
@@ -77,14 +77,8 @@ impl IdentifierCreatorProto {
             return Err(Error::KeyMustNotBeRemote(key.name));
         }
 
-        if key
-            .organisation
-            .as_ref()
-            .ok_or(Error::MappingError("missing organisation".to_string()))?
-            .id
-            != organisation.id
-        {
-            return Err(Error::MappingError("Organisation ID mismatch".to_string()));
+        if key.organisation.id() != organisation.id {
+            return Err(Error::OrganisationMismatch);
         }
 
         let now = crate::clock::now_utc();
@@ -355,22 +349,14 @@ impl IdentifierCreatorProto {
         }
         let key = self
             .key_repository
-            .get_key(
-                &request.key_id,
-                &KeyRelations {
-                    organisation: Some(Default::default()),
-                },
-            )
+            .get_key(&request.key_id)
             .await
             .error_while("getting key")?
             .ok_or(Error::KeyNotFound(request.key_id))?;
 
-        match (&key.organisation, organisation_id) {
-            (Some(key_org), org_id) if org_id == key_org.id => {}
-            _ => {
-                return Err(Error::OrganisationMismatch);
-            }
-        };
+        if organisation_id != key.organisation.id() {
+            return Err(Error::OrganisationMismatch);
+        }
 
         let generated = request.content.is_some();
         let chain = match (request.chain, request.content) {
@@ -514,7 +500,7 @@ impl IdentifierCreatorProto {
     ) -> Result<Certificate, Error> {
         let key = self
             .key_repository
-            .get_key(&request.key_id, &Default::default())
+            .get_key(&request.key_id)
             .await
             .error_while("getting key")?
             .ok_or(Error::KeyNotFound(request.key_id))?;

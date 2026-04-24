@@ -70,7 +70,7 @@ async fn setup_empty(repositories: Repositories) -> TestSetup {
             key_reference: Some("private".to_string().bytes().collect()),
             storage_type: "INTERNAL".to_string(),
             key_type: "ED25519".to_string(),
-            organisation: None,
+            organisation: dummy_organisation(Some(organisation_id)).into(),
         },
         db,
     }
@@ -329,7 +329,7 @@ async fn test_get_did_existing() {
         .returning(|id| Ok(Some(dummy_organisation(Some(*id)))));
 
     let mut key_repository = MockKeyRepository::default();
-    key_repository.expect_get_key().times(1).returning(|id, _| {
+    key_repository.expect_get_key().times(1).returning(|id| {
         Ok(Some(Key {
             id: id.to_owned(),
             created_date: get_dummy_date(),
@@ -339,7 +339,7 @@ async fn test_get_did_existing() {
             key_reference: Some("private".to_string().bytes().collect()),
             storage_type: "INTERNAL".to_string(),
             key_type: "ED25519".to_string(),
-            organisation: None,
+            organisation: dummy_organisation(None).into(),
         }))
     });
 

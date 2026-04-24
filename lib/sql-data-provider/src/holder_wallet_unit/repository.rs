@@ -54,17 +54,15 @@ impl HolderWalletInstanceRepository for HolderWalletInstanceProvider {
             holder_wallet_unit.organisation = Some(org)
         }
 
-        if let (Some(key_relations), Some(auth_key_id)) =
+        if let (Some(_key_relations), Some(auth_key_id)) =
             (&relations.authentication_key, &auth_key_id)
         {
-            let key = self
-                .key_repository
-                .get_key(auth_key_id, key_relations)
-                .await?
-                .ok_or(DataLayerError::MissingRequiredRelation {
+            let key = self.key_repository.get_key(auth_key_id).await?.ok_or(
+                DataLayerError::MissingRequiredRelation {
                     relation: "holder_wallet_unit-authentication_key",
                     id: org_id.to_string(),
-                })?;
+                },
+            )?;
             holder_wallet_unit.authentication_key = Some(key)
         }
 

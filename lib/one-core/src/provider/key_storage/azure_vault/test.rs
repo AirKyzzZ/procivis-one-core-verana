@@ -20,6 +20,7 @@ use crate::model::key::Key;
 use crate::proto::http_client::reqwest_client::ReqwestClient;
 use crate::provider::key_storage::KeyStorage;
 use crate::provider::key_storage::error::KeyStorageError;
+use crate::service::test_utilities::dummy_organisation;
 
 fn get_params(mock_base_url: String) -> serde_json::Value {
     json!({
@@ -249,7 +250,7 @@ async fn test_azure_vault_sign() {
             key_reference: Some(key_reference.as_bytes().to_vec()),
             storage_type: "".to_string(),
             key_type: "".to_string(),
-            organisation: None,
+            organisation: dummy_organisation(None).into(),
         })
         .unwrap();
     let result = key_handle.sign("message_to_sign".as_bytes()).await.unwrap();

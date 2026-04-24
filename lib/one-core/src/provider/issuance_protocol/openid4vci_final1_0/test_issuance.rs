@@ -67,7 +67,7 @@ async fn test_issuer_submit_succeeds() {
         key_reference: Some(b"private_key".to_vec()),
         storage_type: key_storage_type.to_string(),
         key_type: key_type.to_string(),
-        organisation: Some(dummy_organisation(None)),
+        organisation: dummy_organisation(None).into(),
     };
 
     let credential = {
@@ -795,6 +795,6 @@ fn dummy_key() -> Key {
         key_reference: Some(b"private_key".to_vec()),
         storage_type: "SOFTWARE".to_string(),
         key_type: "EDDSA".to_string(),
-        organisation: Some(dummy_organisation(None)),
+        organisation: dummy_organisation(None).into(),
     }
 }

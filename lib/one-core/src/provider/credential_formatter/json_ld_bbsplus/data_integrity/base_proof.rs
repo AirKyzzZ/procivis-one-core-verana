@@ -305,6 +305,7 @@ mod test {
     use crate::provider::key_algorithm::bbs::BBS;
     use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
     use crate::provider::key_storage::provider::SignatureProviderImpl;
+    use crate::service::test_utilities::dummy_organisation;
     use crate::util::rdf_canonization::json_ld_processor_options;
 
     #[tokio::test]
@@ -574,7 +575,7 @@ mod test {
                 key_reference: None,
                 storage_type: "test".to_string(),
                 key_type: "test".to_string(),
-                organisation: None,
+                organisation: dummy_organisation(None).into(),
             },
             key_handle,
             jwk_key_id: None,

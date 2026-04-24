@@ -212,6 +212,7 @@ mod test {
     use crate::provider::key_algorithm::eddsa::Eddsa;
     use crate::provider::key_algorithm::provider::{MockKeyAlgorithmProvider, ParsedKey};
     use crate::provider::key_storage::provider::SignatureProviderImpl;
+    use crate::service::test_utilities::dummy_organisation;
 
     #[tokio::test]
     async fn test_format_then_verify_proof_with_holder_key_id() {
@@ -335,7 +336,7 @@ mod test {
                 key_reference: None,
                 storage_type: "test".to_string(),
                 key_type: "EDDSA".to_string(),
-                organisation: None,
+                organisation: dummy_organisation(None).into(),
             },
             key_handle,
             jwk_key_id: key_id,

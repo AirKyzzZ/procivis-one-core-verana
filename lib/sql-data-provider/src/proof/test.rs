@@ -338,7 +338,7 @@ async fn test_create_proof_success() {
             key_reference: None,
             storage_type: "".to_string(),
             key_type: "".to_string(),
-            organisation: None,
+            organisation: dummy_organisation(None).into(),
         }),
         verifier_certificate: None,
         verifier_identifier: Some(Identifier {
@@ -598,22 +598,19 @@ async fn test_get_proof_with_relations() {
         });
 
     let mut key_repository = MockKeyRepository::default();
-    key_repository
-        .expect_get_key()
-        .once()
-        .returning(|key_id, _| {
-            Ok(Some(Key {
-                id: key_id.to_owned(),
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-                public_key: vec![],
-                name: "".to_string(),
-                key_reference: None,
-                storage_type: "".to_string(),
-                key_type: "".to_string(),
-                organisation: None,
-            }))
-        });
+    key_repository.expect_get_key().once().returning(|key_id| {
+        Ok(Some(Key {
+            id: key_id.to_owned(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            public_key: vec![],
+            name: "".to_string(),
+            key_reference: None,
+            storage_type: "".to_string(),
+            key_type: "".to_string(),
+            organisation: dummy_organisation(None).into(),
+        }))
+    });
 
     let TestSetupWithProof {
         repository,
@@ -792,22 +789,19 @@ async fn test_get_proof_by_interaction_id_success() {
         });
 
     let mut key_repository = MockKeyRepository::default();
-    key_repository
-        .expect_get_key()
-        .once()
-        .returning(|key_id, _| {
-            Ok(Some(Key {
-                id: key_id.to_owned(),
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-                public_key: vec![],
-                name: "".to_string(),
-                key_reference: None,
-                storage_type: "".to_string(),
-                key_type: "".to_string(),
-                organisation: None,
-            }))
-        });
+    key_repository.expect_get_key().once().returning(|key_id| {
+        Ok(Some(Key {
+            id: key_id.to_owned(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            public_key: vec![],
+            name: "".to_string(),
+            key_reference: None,
+            storage_type: "".to_string(),
+            key_type: "".to_string(),
+            organisation: dummy_organisation(None).into(),
+        }))
+    });
 
     let TestSetupWithProof {
         repository,

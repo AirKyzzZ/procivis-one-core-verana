@@ -1,7 +1,9 @@
+use std::sync::Arc;
+
 use one_core::model::key::{Key, KeyFilterValue, SortableKeyColumn};
 use one_core::model::list_filter::ListFilterCondition;
-use one_core::model::organisation::Organisation;
-use one_dto_mapper::convert_inner;
+use one_core::model::relation::Related;
+use one_core::repository::organisation_repository::OrganisationRepository;
 use sea_orm::sea_query::{IntoCondition, SimpleExpr};
 use sea_orm::{ColumnTrait, IntoSimpleExpr};
 
@@ -11,9 +13,9 @@ use crate::list_query_generic::{
     get_nullability_condition, get_string_match_condition,
 };
 
-pub(super) fn from_model_and_relations(
+pub(crate) fn key_from_model(
     value: entity::key::Model,
-    organisation: Option<Organisation>,
+    organisation_repository: &Arc<dyn OrganisationRepository>,
 ) -> Key {
     Key {
         id: value.id,
@@ -24,7 +26,7 @@ pub(super) fn from_model_and_relations(
         key_reference: value.key_reference,
         storage_type: value.storage_type,
         key_type: value.key_type,
-        organisation: convert_inner(organisation),
+        organisation: Related::new(value.organisation_id, organisation_repository.to_owned()),
     }
 }
 
@@ -67,22 +69,6 @@ impl IntoFilterCondition for KeyFilterValue {
             Self::LastModified(value) => {
                 get_comparison_condition(entity::key::Column::LastModified, value)
             }
-        }
-    }
-}
-
-impl From<entity::key::Model> for Key {
-    fn from(value: entity::key::Model) -> Self {
-        Self {
-            id: value.id,
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-            public_key: value.public_key,
-            name: value.name,
-            key_reference: value.key_reference,
-            storage_type: value.storage_type,
-            key_type: value.key_type,
-            organisation: None,
         }
     }
 }

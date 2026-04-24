@@ -366,7 +366,7 @@ pub async fn create_key(
         key_reference: params.key_reference,
         storage_type: params.storage_type.unwrap_or_default(),
         key_type: params.key_type.unwrap_or_default(),
-        organisation: Some(organisation.to_owned()),
+        organisation: organisation.to_owned().into(),
     };
 
     data_layer

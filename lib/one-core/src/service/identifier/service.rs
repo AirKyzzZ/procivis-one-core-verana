@@ -71,9 +71,7 @@ impl IdentifierService {
                         organisation: Some(OrganisationRelations::default()),
                         keys: Some(KeyRelations::default()),
                     }),
-                    key: Some(KeyRelations {
-                        organisation: Some(OrganisationRelations::default()),
-                    }),
+                    key: Some(Default::default()),
                     certificates: Some(CertificateRelations {
                         key: Some(KeyRelations::default()),
                         organisation: Some(OrganisationRelations::default()),
@@ -193,12 +191,7 @@ impl IdentifierService {
                             )?;
                             let key = self
                                 .key_repository
-                                .get_key(
-                                    &key_id,
-                                    &KeyRelations {
-                                        organisation: Some(Default::default()),
-                                    },
-                                )
+                                .get_key(&key_id)
                                 .await
                                 .error_while("getting key")?
                                 .ok_or(IdentifierServiceError::MissingKey(key_id))?;
@@ -225,12 +218,7 @@ impl IdentifierService {
                             )?;
                             let key = self
                                 .key_repository
-                                .get_key(
-                                    &key_id,
-                                    &KeyRelations {
-                                        organisation: Some(Default::default()),
-                                    },
-                                )
+                                .get_key(&key_id)
                                 .await
                                 .error_while("getting key")?
                                 .ok_or(IdentifierServiceError::MissingKey(key_id))?;

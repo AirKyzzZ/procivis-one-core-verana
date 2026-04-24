@@ -351,11 +351,15 @@ impl CredentialFormatter for SDJWTFormatter {
             allow_suspension: false,
             requires_wallet_instance_attestation: false,
             claim_schemas: claim_schemas.into(),
-            organisation: organisation.into(),
+            organisation: organisation.clone().into(),
             transaction_code: None,
         };
 
-        let issuer_identifier = prepare_identifier(&issuer, self.key_algorithm_provider.as_ref())?;
+        let issuer_identifier = prepare_identifier(
+            &issuer,
+            self.key_algorithm_provider.as_ref(),
+            organisation.to_owned(),
+        )?;
         let holder_identifier = parsed_credential
             .payload
             .subject
@@ -364,7 +368,9 @@ impl CredentialFormatter for SDJWTFormatter {
             .map_err(DidMethodError::DidValueError)
             .error_while("parsing subject DID")?
             .map(IdentifierDetails::Did)
-            .map(|details| prepare_identifier(&details, self.key_algorithm_provider.as_ref()))
+            .map(|details| {
+                prepare_identifier(&details, self.key_algorithm_provider.as_ref(), organisation)
+            })
             .transpose()?;
 
         Ok(Credential {

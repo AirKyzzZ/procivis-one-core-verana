@@ -19,6 +19,7 @@ use crate::provider::key_algorithm::model::GeneratedKey;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::KeyStorage;
 use crate::provider::key_storage::error::KeyStorageError;
+use crate::service::test_utilities::dummy_organisation;
 
 #[tokio::test]
 async fn test_internal_generate_with_encryption() {
@@ -142,7 +143,7 @@ async fn test_internal_sign_with_encryption() {
         key_reference: generated_key.key_reference,
         storage_type: "".to_string(),
         key_type: "EDDSA".to_string(),
-        organisation: None,
+        organisation: dummy_organisation(None).into(),
     };
 
     let key_handle = provider.key_handle(&key).unwrap();

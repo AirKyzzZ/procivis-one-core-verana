@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use one_core::model::key::{Key, KeyFilterValue, KeyListQuery, KeyRelations};
+use one_core::model::key::{Key, KeyFilterValue, KeyListQuery};
 use one_core::model::list_filter::ListFilterValue;
 use one_core::model::list_query::ListPagination;
 use one_core::model::organisation::Organisation;
@@ -122,7 +122,7 @@ async fn test_create_key_success() {
             key_reference: None,
             storage_type: "INTERNAL".to_string(),
             key_type: "RSA_4096".to_string(),
-            organisation: Some(organisation),
+            organisation: organisation.into(),
         })
         .await;
 
@@ -141,11 +141,7 @@ async fn test_get_key_success() {
         organisation_repository: Arc::new(organisation_repository),
     };
 
-    let result = provider
-        .get_key(&key_id, &KeyRelations { organisation: None })
-        .await
-        .unwrap()
-        .unwrap();
+    let result = provider.get_key(&key_id).await.unwrap().unwrap();
 
     assert_eq!(key_id, result.id);
 }

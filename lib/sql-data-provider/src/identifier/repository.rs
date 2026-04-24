@@ -63,18 +63,15 @@ impl IdentifierProvider {
         }
 
         if model.r#type == identifier::IdentifierType::Key
-            && let Some(key_relations) = &relations.key
+            && let Some(_key_relations) = &relations.key
             && let Some(key_id) = &model.key_id
         {
-            result.key = Some(
-                self.key_repository
-                    .get_key(key_id, key_relations)
-                    .await?
-                    .ok_or(DataLayerError::MissingRequiredRelation {
-                        relation: "identifier-key",
-                        id: key_id.to_string(),
-                    })?,
-            );
+            result.key = Some(self.key_repository.get_key(key_id).await?.ok_or(
+                DataLayerError::MissingRequiredRelation {
+                    relation: "identifier-key",
+                    id: key_id.to_string(),
+                },
+            )?);
         }
 
         if (model.r#type == identifier::IdentifierType::Certificate

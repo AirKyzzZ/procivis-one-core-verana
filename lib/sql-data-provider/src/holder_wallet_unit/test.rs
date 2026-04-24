@@ -193,7 +193,7 @@ async fn setup_empty() -> TestSetup {
             key_reference: Some("private".to_string().bytes().collect()),
             storage_type: "INTERNAL".to_string(),
             key_type: "ED25519".to_string(),
-            organisation: None,
+            organisation: dummy_organisation(Some(organisation_id)).into(),
         },
     }
 }

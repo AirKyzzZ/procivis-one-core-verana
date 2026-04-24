@@ -12,6 +12,7 @@ use crate::provider::key_storage::KeyStorage;
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::key_storage::model::StorageGeneratedKey;
 use crate::provider::key_storage::secure_element::MockNativeKeyStorage;
+use crate::service::test_utilities::dummy_organisation;
 
 #[tokio::test]
 async fn test_generate_success() {
@@ -60,7 +61,7 @@ async fn test_sign_success() {
             name: "".to_string(),
             storage_type: "REMOTE_SECURE_ELEMENT".to_string(),
             key_type: "EDDSA".to_string(),
-            organisation: None,
+            organisation: dummy_organisation(None).into(),
         })
         .unwrap();
 

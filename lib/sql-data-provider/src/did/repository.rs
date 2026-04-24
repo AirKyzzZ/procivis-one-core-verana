@@ -42,7 +42,7 @@ impl DidProvider {
             );
         }
 
-        if let Some(key_relations) = &relations.keys {
+        if let Some(_key_relations) = &relations.keys {
             let key_dids = key_did::Entity::find()
                 .filter(key_did::Column::DidId.eq(model.id))
                 .all(&self.db)
@@ -56,14 +56,12 @@ impl DidProvider {
                 let key = if let Some(key) = key_map.get(key_id) {
                     key.to_owned()
                 } else {
-                    let key = self
-                        .key_repository
-                        .get_key(key_id, key_relations)
-                        .await?
-                        .ok_or(DataLayerError::MissingRequiredRelation {
+                    let key = self.key_repository.get_key(key_id).await?.ok_or(
+                        DataLayerError::MissingRequiredRelation {
                             relation: "did-key",
                             id: key_id.to_string(),
-                        })?;
+                        },
+                    )?;
 
                     key_map.insert(*key_id, key.to_owned());
                     key

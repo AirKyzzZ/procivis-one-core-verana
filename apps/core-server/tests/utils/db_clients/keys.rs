@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use hex_literal::hex;
-use one_core::model::key::{Key, KeyRelations};
-use one_core::model::organisation::{Organisation, OrganisationRelations};
+use one_core::model::key::Key;
+use one_core::model::organisation::Organisation;
 use one_core::repository::key_repository::KeyRepository;
 use shared_types::KeyId;
 use uuid::Uuid;
@@ -30,7 +30,7 @@ impl KeysDB {
             key_reference: params.key_reference,
             storage_type: params.storage_type.unwrap_or_default(),
             key_type: params.key_type.unwrap_or_default(),
-            organisation: Some(organisation.to_owned()),
+            organisation: organisation.to_owned().into(),
         };
 
         self.repository.create_key(key.clone()).await.unwrap();
@@ -39,16 +39,7 @@ impl KeysDB {
     }
 
     pub async fn get(&self, id: &KeyId) -> Key {
-        self.repository
-            .get_key(
-                id,
-                &KeyRelations {
-                    organisation: Some(OrganisationRelations::default()),
-                },
-            )
-            .await
-            .unwrap()
-            .unwrap()
+        self.repository.get_key(id).await.unwrap().unwrap()
     }
 }
 

@@ -10,7 +10,6 @@ use crate::model::certificate::CertificateRelations;
 use crate::model::did::DidRelations;
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::identifier::IdentifierRelations;
-use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::revocation_list::{RevocationListEntityInfo, RevocationListRelations};
 use crate::proto::session_provider::SessionExt;
@@ -38,12 +37,12 @@ impl SignatureService {
                 &IdentifierRelations {
                     organisation: Some(OrganisationRelations::default()),
                     did: Some(DidRelations {
-                        keys: Some(KeyRelations { organisation: None }),
+                        keys: Some(Default::default()),
                         organisation: None,
                     }),
-                    key: Some(KeyRelations { organisation: None }),
+                    key: Some(Default::default()),
                     certificates: Some(CertificateRelations {
-                        key: Some(KeyRelations { organisation: None }),
+                        key: Some(Default::default()),
                         organisation: None,
                     }),
                     ..Default::default()

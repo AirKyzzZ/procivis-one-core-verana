@@ -4,7 +4,7 @@ use shared_types::KeyId;
 use uuid::Uuid;
 
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
-use crate::model::key::{GetKeyList, Key, KeyListQuery, KeyRelations};
+use crate::model::key::{GetKeyList, Key, KeyListQuery};
 use crate::proto::session_provider::{SessionExt, SessionProvider};
 use crate::repository::error::DataLayerError;
 use crate::repository::history_repository::HistoryRepository;
@@ -34,7 +34,7 @@ impl KeyRepository for KeyHistoryDecorator {
                 entity_type: HistoryEntityType::Key,
                 metadata: None,
                 metadata_blob_id: None,
-                organisation_id: Some(request.organisation.ok_or(DataLayerError::MappingError)?.id),
+                organisation_id: Some(request.organisation.id()),
                 user: self.session_provider.session().user(),
             })
             .await;
@@ -46,12 +46,8 @@ impl KeyRepository for KeyHistoryDecorator {
         Ok(key_id)
     }
 
-    async fn get_key(
-        &self,
-        id: &KeyId,
-        relations: &KeyRelations,
-    ) -> Result<Option<Key>, DataLayerError> {
-        self.inner.get_key(id, relations).await
+    async fn get_key(&self, id: &KeyId) -> Result<Option<Key>, DataLayerError> {
+        self.inner.get_key(id).await
     }
 
     async fn get_keys(&self, ids: &[KeyId]) -> Result<Vec<Key>, DataLayerError> {

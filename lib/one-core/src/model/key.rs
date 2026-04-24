@@ -4,13 +4,12 @@ use shared_types::{KeyId, OrganisationId};
 use standardized_types::jwk::PrivateJwk;
 use time::OffsetDateTime;
 
-use super::list_filter::{ListFilterValue, StringMatch};
+use super::common::GetListResponse;
+use super::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use super::list_query::ListQuery;
 use super::organisation::Organisation;
+use super::relation::Related;
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::common::GetListResponse;
-use crate::model::list_filter::ValueComparison;
-use crate::model::organisation::OrganisationRelations;
 
 #[derive(Debug, Clone)]
 #[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
@@ -24,8 +23,7 @@ pub struct Key {
     pub storage_type: String,
     pub key_type: String,
 
-    // Relations:
-    pub organisation: Option<Organisation>,
+    pub organisation: Related<Organisation>,
 }
 
 impl Key {
@@ -39,9 +37,7 @@ impl Key {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
-pub struct KeyRelations {
-    pub organisation: Option<OrganisationRelations>,
-}
+pub struct KeyRelations {}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SortableKeyColumn {

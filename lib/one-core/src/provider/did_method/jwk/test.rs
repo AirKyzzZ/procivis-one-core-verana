@@ -18,6 +18,7 @@ use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
 };
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::service::test_utilities::dummy_organisation;
 
 #[tokio::test]
 async fn test_resolve_jwk_did_without_use_field() {
@@ -217,7 +218,7 @@ async fn test_create_did_jwk_success() {
         key_reference: None,
         storage_type: "test".to_owned(),
         key_type: "ECDSA".to_owned(),
-        organisation: None,
+        organisation: dummy_organisation(None).into(),
     }];
     let result = provider
         .create(

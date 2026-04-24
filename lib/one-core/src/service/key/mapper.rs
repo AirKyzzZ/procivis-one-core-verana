@@ -10,7 +10,6 @@ use crate::model::list_filter::{
 use crate::model::organisation::Organisation;
 use crate::provider::key_storage::model::StorageGeneratedKey;
 use crate::service::key::dto::KeyResponseDTO;
-use crate::service::key::error::KeyServiceError;
 
 pub(super) fn from_create_request(
     key_id: KeyId,
@@ -29,32 +28,23 @@ pub(super) fn from_create_request(
         key_reference: generated_key.key_reference,
         storage_type: request.storage_type,
         key_type: request.key_type,
-        organisation: Some(organisation),
+        organisation: organisation.into(),
     }
 }
 
-impl TryFrom<Key> for KeyResponseDTO {
-    type Error = KeyServiceError;
-
-    fn try_from(value: Key) -> Result<Self, Self::Error> {
-        let organisation_id = value
-            .organisation
-            .ok_or(KeyServiceError::MappingError(
-                "organisation is None".to_string(),
-            ))?
-            .id;
-
-        Ok(Self {
+impl From<Key> for KeyResponseDTO {
+    fn from(value: Key) -> Self {
+        Self {
             id: value.id.into(),
             created_date: value.created_date,
             last_modified: value.last_modified,
-            organisation_id,
+            organisation_id: value.organisation.id(),
             name: value.name,
             public_key: value.public_key,
             key_type: value.key_type,
             storage_type: value.storage_type,
             is_remote: value.key_reference.is_none(),
-        })
+        }
     }
 }
 

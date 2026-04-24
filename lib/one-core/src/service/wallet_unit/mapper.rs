@@ -40,7 +40,7 @@ pub(super) fn key_from_generated_key(
         key_reference: generated_key.key_reference,
         storage_type: key_storage_id.to_string(),
         key_type: key_type.to_string(),
-        organisation: Some(organisation),
+        organisation: organisation.into(),
     }
 }
 

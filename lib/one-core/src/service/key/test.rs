@@ -67,7 +67,7 @@ fn generic_key(name: &str, organisation_id: Uuid) -> Key {
         key_reference: None,
         storage_type: "INTERNAL".to_string(),
         key_type: "EDDSA".to_string(),
-        organisation: Some(dummy_organisation(Some(organisation_id.into()))),
+        organisation: dummy_organisation(Some(organisation_id.into())).into(),
     }
 }
 
@@ -84,7 +84,7 @@ async fn test_create_key_success() {
     let org_id = Uuid::new_v4();
 
     let key = generic_key("NAME", org_id);
-    let organisation = key.organisation.to_owned().unwrap();
+    let organisation = key.organisation.get().await.unwrap();
     {
         let organisation = organisation.clone();
 
@@ -152,7 +152,7 @@ async fn test_get_key_success() {
         repository
             .expect_get_key()
             .once()
-            .returning(move |_, _| Ok(Some(key.clone())));
+            .returning(move |_| Ok(Some(key.clone())));
     }
 
     let service = setup_service(
@@ -267,7 +267,7 @@ async fn test_generate_csr_failed() {
     repository
         .expect_get_key()
         .once()
-        .returning(move |_, _| Ok(Some(key_clone.clone())));
+        .returning(move |_| Ok(Some(key_clone.clone())));
 
     let service = setup_service(
         repository,
@@ -355,7 +355,7 @@ async fn test_key_ops_session_org_mismatch() {
     let key_id = Uuid::new_v4();
     repository
         .expect_get_key()
-        .returning(move |_, _| Ok(Some(generic_key("NAME", key_id))));
+        .returning(move |_| Ok(Some(generic_key("NAME", key_id))));
 
     let service = KeyService::new(
         Arc::new(repository),

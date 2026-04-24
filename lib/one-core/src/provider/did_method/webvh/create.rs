@@ -278,6 +278,7 @@ mod test {
     use crate::provider::key_algorithm::eddsa::Eddsa;
     use crate::provider::key_storage::MockKeyStorage;
     use crate::provider::key_storage::provider::MockKeyProvider;
+    use crate::service::test_utilities::dummy_organisation;
 
     #[tokio::test]
     async fn test_create_fails_for_non_eddsa_update_keys() {
@@ -527,7 +528,7 @@ mod test {
             key_reference: None,
             storage_type: "INTERNAL".to_string(),
             key_type: key_type.to_string(),
-            organisation: None,
+            organisation: dummy_organisation(None).into(),
         }
     }
 

@@ -11,6 +11,7 @@ use crate::model::key::Key;
 use crate::provider::key_storage::KeyStorage;
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::key_storage::model::StorageGeneratedKey;
+use crate::service::test_utilities::dummy_organisation;
 
 fn get_params() -> serde_json::Value {
     serde_json::json!({
@@ -67,7 +68,7 @@ async fn test_sign_success() {
             name: "".to_string(),
             storage_type: "SECURE_ELEMENT".to_string(),
             key_type: "ECDSA".to_string(),
-            organisation: None,
+            organisation: dummy_organisation(None).into(),
         })
         .unwrap();
 

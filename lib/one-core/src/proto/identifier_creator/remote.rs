@@ -270,7 +270,10 @@ impl IdentifierCreatorProto {
                 created_date: now,
                 last_modified: now,
                 name: format!("{role} {key_id}"),
-                organisation: organisation.cloned(),
+                organisation: organisation
+                    .ok_or(Error::MappingError("missing organisation".to_string()))?
+                    .to_owned()
+                    .into(),
                 public_key: parsed_key.key.public_key_as_raw(),
                 key_reference: None,
                 storage_type: "INTERNAL".to_string(),
