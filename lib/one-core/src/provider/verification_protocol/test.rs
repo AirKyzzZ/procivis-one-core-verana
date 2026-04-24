@@ -434,7 +434,7 @@ fn dummy_credential() -> Credential {
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: "CredentialSchemaId".to_owned(),
-            organisation: Some(dummy_organisation(None)),
+            organisation: dummy_organisation(None).into(),
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,

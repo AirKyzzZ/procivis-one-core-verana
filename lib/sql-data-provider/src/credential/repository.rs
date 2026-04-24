@@ -42,14 +42,13 @@ async fn get_credential_schema(
 ) -> Result<Option<CredentialSchema>, DataLayerError> {
     match relations {
         None => Ok(None),
-        Some(schema_relations) => Ok(Some(
-            repository
-                .get_credential_schema(schema_id, schema_relations)
-                .await?
-                .ok_or(DataLayerError::MissingRequiredRelation {
+        Some(_schema_relations) => Ok(Some(
+            repository.get_credential_schema(schema_id).await?.ok_or(
+                DataLayerError::MissingRequiredRelation {
                     relation: "credential-credential_schema",
                     id: schema_id.to_string(),
-                })?,
+                },
+            )?,
         )),
     }
 }
@@ -294,6 +293,10 @@ fn get_credential_list_query(query_params: CredentialListQuery) -> Select<creden
             "credential_schema_schema_id",
         )
         .column_as(
+            credential_schema::Column::OrganisationId,
+            "credential_schema_organisation_id",
+        )
+        .column_as(
             credential_schema::Column::ImportedSourceUrl,
             "credential_schema_imported_source_url",
         )
@@ -497,7 +500,11 @@ impl CredentialRepository for CredentialProvider {
         let credentials = credentials.map_err(|e| DataLayerError::Db(e.into()))?;
 
         Ok(GetCredentialList {
-            values: credentials_to_repository(credentials)?,
+            values: credentials_to_repository(
+                credentials,
+                &self.organisation_repository,
+                &self.db,
+            )?,
             total_pages: calculate_pages_count(items_count, limit.unwrap_or(0)),
             total_items: items_count,
         })

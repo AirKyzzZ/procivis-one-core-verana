@@ -371,7 +371,7 @@ fn test_proof(proof_id: Uuid, credential_format: CredentialFormat) -> Proof {
                     allow_suspension: false,
                     requires_wallet_instance_attestation: false,
                     claim_schemas: Default::default(),
-                    organisation: None,
+                    organisation: dummy_organisation(None).into(),
                     transaction_code: None,
                 }),
             }]),

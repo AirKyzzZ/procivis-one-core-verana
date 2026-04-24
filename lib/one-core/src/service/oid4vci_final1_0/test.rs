@@ -1,7 +1,7 @@
 use std::str::FromStr;
 use std::sync::Arc;
 
-use mockall::predicate::{always, eq};
+use mockall::predicate::eq;
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use secrecy::ExposeSecret;
@@ -17,13 +17,11 @@ use crate::config::core_config::{CoreConfig, KeyAlgorithmType};
 use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
-use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaRelations, KeyStorageSecurity, LayoutType,
-};
+use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, LayoutType};
 use crate::model::did::Did;
 use crate::model::identifier::{Identifier, IdentifierType};
 use crate::model::interaction::{Interaction, InteractionType};
-use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::model::organisation::Organisation;
 use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::credential_schema::importer::MockCredentialSchemaImporter;
 use crate::proto::http_client::MockHttpClient;
@@ -219,7 +217,7 @@ fn generic_credential_schema() -> CredentialSchema {
             required: true,
         }]
         .into(),
-        organisation: None,
+        organisation: dummy_organisation(None).into(),
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_id: "CredentialSchemaId".to_owned(),
@@ -359,17 +357,15 @@ async fn test_get_issuer_metadata_jwt() {
 
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut schema = generic_credential_schema();
-    schema.organisation = Some(generic_organisation());
-    let relations = CredentialSchemaRelations {
-        organisation: Some(OrganisationRelations::default()),
-    };
+    schema.organisation = generic_organisation().into();
+
     {
         let clone = schema.clone();
         credential_schema_repository
             .expect_get_credential_schema()
             .times(1)
-            .with(eq(schema.id.to_owned()), eq(relations))
-            .returning(move |_, _| Ok(Some(clone.clone())));
+            .with(eq(schema.id.to_owned()))
+            .returning(move |_| Ok(Some(clone.clone())));
     }
 
     let issuance_protocol = setup_protocol(ProtocolMocks {
@@ -498,18 +494,16 @@ async fn test_get_issuer_metadata_sd_jwt() {
         .return_once(move |_| Some(Arc::new(formatter)));
 
     let mut schema = generic_credential_schema();
-    schema.organisation = Some(generic_organisation());
+    schema.organisation = generic_organisation().into();
     schema.format = "SD_JWT".into();
-    let relations = CredentialSchemaRelations {
-        organisation: Some(OrganisationRelations::default()),
-    };
+
     {
         let clone = schema.clone();
         credential_schema_repository
             .expect_get_credential_schema()
             .times(1)
-            .with(eq(schema.id.to_owned()), eq(relations))
-            .returning(move |_, _| Ok(Some(clone.clone())));
+            .with(eq(schema.id.to_owned()))
+            .returning(move |_| Ok(Some(clone.clone())));
     }
 
     let issuance_protocol = setup_protocol(ProtocolMocks {
@@ -628,7 +622,7 @@ async fn test_get_issuer_metadata_mdoc() {
 
     let mut schema = generic_credential_schema();
     schema.format = "MDOC".into();
-    schema.organisation = Some(generic_organisation());
+    schema.organisation = generic_organisation().into();
     let now = crate::clock::now_utc();
     schema.claim_schemas = vec![
         ClaimSchema {
@@ -654,16 +648,13 @@ async fn test_get_issuer_metadata_mdoc() {
     ]
     .into();
 
-    let relations = CredentialSchemaRelations {
-        organisation: Some(OrganisationRelations::default()),
-    };
     {
         let clone = schema.clone();
         credential_schema_repository
             .expect_get_credential_schema()
             .times(1)
-            .with(eq(schema.id.to_owned()), eq(relations))
-            .returning(move |_, _| Ok(Some(clone.clone())));
+            .with(eq(schema.id.to_owned()))
+            .returning(move |_| Ok(Some(clone.clone())));
     }
     let issuance_protocol = setup_protocol(ProtocolMocks {
         credential_schema_repository,
@@ -742,11 +733,8 @@ async fn test_create_token() {
     repository
         .expect_get_credential_schema()
         .times(1)
-        .with(
-            eq(schema.id.to_owned()),
-            eq(CredentialSchemaRelations::default()),
-        )
-        .returning(move |_, _| Ok(Some(clone.clone())));
+        .with(eq(schema.id.to_owned()))
+        .returning(move |_| Ok(Some(clone.clone())));
 
     let credential = dummy_credential(
         "OPENID4VCI_FINAL1",
@@ -820,11 +808,8 @@ async fn test_create_token_empty_pre_authorized_code() {
         credential_schema_repository
             .expect_get_credential_schema()
             .times(1)
-            .with(
-                eq(schema.id.to_owned()),
-                eq(CredentialSchemaRelations::default()),
-            )
-            .returning(move |_, _| Ok(Some(clone.clone())));
+            .with(eq(schema.id.to_owned()))
+            .returning(move |_| Ok(Some(clone.clone())));
     }
 
     let service = setup_service(Mocks {
@@ -864,11 +849,8 @@ async fn test_create_token_pre_authorized_code_used() {
     repository
         .expect_get_credential_schema()
         .times(1)
-        .with(
-            eq(schema.id.to_owned()),
-            eq(CredentialSchemaRelations::default()),
-        )
-        .returning(move |_, _| Ok(Some(clone.clone())));
+        .with(eq(schema.id.to_owned()))
+        .returning(move |_| Ok(Some(clone.clone())));
 
     let clone = schema.clone();
     let credential = dummy_credential(
@@ -928,11 +910,8 @@ async fn test_create_token_wrong_credential_state() {
     repository
         .expect_get_credential_schema()
         .times(1)
-        .with(
-            eq(schema.id.to_owned()),
-            eq(CredentialSchemaRelations::default()),
-        )
-        .returning(move |_, _| Ok(Some(clone.clone())));
+        .with(eq(schema.id.to_owned()))
+        .returning(move |_| Ok(Some(clone.clone())));
 
     let clone = schema.clone();
     let credential = dummy_credential(
@@ -1001,8 +980,8 @@ async fn test_create_credential_success() {
         repository
             .expect_get_credential_schema()
             .times(1)
-            .with(eq(schema.id.to_owned()), always())
-            .returning(move |_, _| Ok(Some(clone.clone())));
+            .with(eq(schema.id.to_owned()))
+            .returning(move |_| Ok(Some(clone.clone())));
 
         let clone = credential.clone();
         credential_repository
@@ -1185,8 +1164,8 @@ async fn test_create_credential_success_sd_jwt_vc() {
         repository
             .expect_get_credential_schema()
             .times(1)
-            .with(eq(schema.id.to_owned()), always())
-            .returning(move |_, _| Ok(Some(clone.clone())));
+            .with(eq(schema.id.to_owned()))
+            .returning(move |_| Ok(Some(clone.clone())));
 
         let clone = credential.clone();
         credential_repository
@@ -1366,8 +1345,8 @@ async fn test_create_credential_success_mdoc() {
         repository
             .expect_get_credential_schema()
             .times(1)
-            .with(eq(schema.id.to_owned()), always())
-            .returning(move |_, _| Ok(Some(clone.clone())));
+            .with(eq(schema.id.to_owned()))
+            .returning(move |_| Ok(Some(clone.clone())));
 
         let clone = credential.clone();
         credential_repository
@@ -1537,8 +1516,8 @@ async fn test_create_credential_configuration_id_invalid() {
         repository
             .expect_get_credential_schema()
             .times(1)
-            .with(eq(schema.id.to_owned()), always())
-            .returning(move |_, _| Ok(Some(clone.clone())));
+            .with(eq(schema.id.to_owned()))
+            .returning(move |_| Ok(Some(clone.clone())));
     }
     let service = setup_service(Mocks {
         credential_schema_repository: repository,
@@ -1580,8 +1559,8 @@ async fn test_create_credential_format_invalid_bearer_token() {
         repository
             .expect_get_credential_schema()
             .times(1)
-            .with(eq(schema.id.to_owned()), always())
-            .returning(move |_, _| Ok(Some(clone.clone())));
+            .with(eq(schema.id.to_owned()))
+            .returning(move |_| Ok(Some(clone.clone())));
     }
     let service = setup_service(Mocks {
         credential_schema_repository: repository,
@@ -1626,8 +1605,8 @@ async fn test_create_credential_pre_authorized_code_not_used() {
         repository
             .expect_get_credential_schema()
             .times(1)
-            .with(eq(schema.id.to_owned()), always())
-            .returning(move |_, _| Ok(Some(clone.clone())));
+            .with(eq(schema.id.to_owned()))
+            .returning(move |_| Ok(Some(clone.clone())));
 
         interaction_repository
             .expect_get_interaction()
@@ -1680,8 +1659,8 @@ async fn test_create_credential_interaction_data_invalid() {
         repository
             .expect_get_credential_schema()
             .times(1)
-            .with(eq(schema.id.to_owned()), always())
-            .returning(move |_, _| Ok(Some(clone.clone())));
+            .with(eq(schema.id.to_owned()))
+            .returning(move |_| Ok(Some(clone.clone())));
 
         interaction_repository
             .expect_get_interaction()
@@ -1734,8 +1713,8 @@ async fn test_create_credential_access_token_expired() {
         repository
             .expect_get_credential_schema()
             .times(1)
-            .with(eq(schema.id.to_owned()), always())
-            .returning(move |_, _| Ok(Some(clone.clone())));
+            .with(eq(schema.id.to_owned()))
+            .returning(move |_| Ok(Some(clone.clone())));
 
         interaction_repository
             .expect_get_interaction()
@@ -1804,8 +1783,8 @@ async fn test_create_credential_issuer_failed() {
         repository
             .expect_get_credential_schema()
             .times(1)
-            .with(eq(schema.id.to_owned()), always())
-            .returning(move |_, _| Ok(Some(clone.clone())));
+            .with(eq(schema.id.to_owned()))
+            .returning(move |_| Ok(Some(clone.clone())));
 
         let clone = credential.clone();
         credential_repository
@@ -1970,8 +1949,8 @@ async fn test_create_credential_nonce_reused() {
         repository
             .expect_get_credential_schema()
             .times(1)
-            .with(eq(schema.id.to_owned()), always())
-            .returning(move |_, _| Ok(Some(clone.clone())));
+            .with(eq(schema.id.to_owned()))
+            .returning(move |_| Ok(Some(clone.clone())));
 
         let clone = credential.clone();
         credential_repository
@@ -2095,13 +2074,10 @@ async fn test_for_mdoc_schema_pre_authorized_grant_type_creates_refresh_token() 
     credential_schema_repository
         .expect_get_credential_schema()
         .once()
-        .with(
-            eq(schema.id.to_owned()),
-            eq(CredentialSchemaRelations::default()),
-        )
+        .with(eq(schema.id.to_owned()))
         .return_once({
             let schema = schema.clone();
-            move |_, _| Ok(Some(schema))
+            move |_| Ok(Some(schema))
         });
 
     let credential = dummy_credential(
@@ -2182,13 +2158,10 @@ async fn test_valid_refresh_token_grant_type_creates_refresh_and_tokens() {
     credential_schema_repository
         .expect_get_credential_schema()
         .once()
-        .with(
-            eq(schema.id.to_owned()),
-            eq(CredentialSchemaRelations::default()),
-        )
+        .with(eq(schema.id.to_owned()))
         .return_once({
             let schema = schema.clone();
-            move |_, _| Ok(Some(schema))
+            move |_| Ok(Some(schema))
         });
 
     let interaction_id = Uuid::from_str("c62f4237-3c74-42f2-a5ff-c72489e025f7")
@@ -2278,13 +2251,10 @@ async fn test_refresh_token_request_fails_if_refresh_token_is_expired() {
     credential_schema_repository
         .expect_get_credential_schema()
         .once()
-        .with(
-            eq(schema.id.to_owned()),
-            eq(CredentialSchemaRelations::default()),
-        )
+        .with(eq(schema.id.to_owned()))
         .return_once({
             let schema = schema.clone();
-            move |_, _| Ok(Some(schema))
+            move |_| Ok(Some(schema))
         });
 
     let interaction_id = Uuid::from_str("c62f4237-3c74-42f2-a5ff-c72489e025f7")
@@ -2354,13 +2324,10 @@ async fn test_create_token_eudi_compliant_without_attestation_fails() {
     credential_schema_repository
         .expect_get_credential_schema()
         .once()
-        .with(
-            eq(schema.id.to_owned()),
-            eq(CredentialSchemaRelations::default()),
-        )
+        .with(eq(schema.id.to_owned()))
         .return_once({
             let schema = schema.clone();
-            move |_, _| Ok(Some(schema))
+            move |_| Ok(Some(schema))
         });
 
     let mut credential_repository = MockCredentialRepository::default();
@@ -2413,13 +2380,10 @@ async fn test_create_token_eudi_compliant_with_only_attestation_fails() {
     credential_schema_repository
         .expect_get_credential_schema()
         .once()
-        .with(
-            eq(schema.id.to_owned()),
-            eq(CredentialSchemaRelations::default()),
-        )
+        .with(eq(schema.id.to_owned()))
         .return_once({
             let schema = schema.clone();
-            move |_, _| Ok(Some(schema))
+            move |_| Ok(Some(schema))
         });
 
     let mut credential_repository = MockCredentialRepository::default();
@@ -2471,13 +2435,10 @@ async fn test_create_token_non_eudi_with_attestation_fails() {
     credential_schema_repository
         .expect_get_credential_schema()
         .once()
-        .with(
-            eq(schema.id.to_owned()),
-            eq(CredentialSchemaRelations::default()),
-        )
+        .with(eq(schema.id.to_owned()))
         .return_once({
             let schema = schema.clone();
-            move |_, _| Ok(Some(schema))
+            move |_| Ok(Some(schema))
         });
 
     let mut credential_repository = MockCredentialRepository::default();

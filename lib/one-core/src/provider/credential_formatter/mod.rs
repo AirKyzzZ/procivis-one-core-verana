@@ -8,6 +8,7 @@ use crate::config::core_config::{KeyAlgorithmType, RevocationType};
 use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::Identifier;
+use crate::model::organisation::Organisation;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 
@@ -127,6 +128,7 @@ pub trait CredentialFormatter: Send + Sync {
     async fn parse_credential(
         &self,
         credential: &str,
+        organisation: Organisation,
         verification: Box<dyn TokenVerifier>,
     ) -> Result<Credential, FormatterError>;
 }

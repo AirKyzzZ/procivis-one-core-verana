@@ -96,7 +96,7 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
                     required: false,
                 }]
                 .into(),
-                organisation: Some(dummy_organisation(None)),
+                organisation: dummy_organisation(None).into(),
                 layout_type: LayoutType::Card,
                 layout_properties: None,
                 schema_id: "CredentialSchemaId".to_owned(),

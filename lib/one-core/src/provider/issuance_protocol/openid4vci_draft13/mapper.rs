@@ -486,7 +486,7 @@ fn from_create_request_with_id(
         layout_properties: request.layout_properties.map(Into::into),
         imported_source_url: request.imported_source_url,
         schema_id: request.schema_id,
-        organisation: Some(organisation),
+        organisation: organisation.into(),
         allow_suspension: false,
         requires_wallet_instance_attestation: false,
         transaction_code: None,

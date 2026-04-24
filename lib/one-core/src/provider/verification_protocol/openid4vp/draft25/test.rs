@@ -39,7 +39,7 @@ use crate::provider::verification_protocol::{
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
-use crate::service::test_utilities::dummy_identifier;
+use crate::service::test_utilities::{dummy_identifier, dummy_organisation};
 
 #[derive(Default)]
 struct TestInputs {
@@ -256,7 +256,7 @@ fn test_proof(proof_id: Uuid, credential_format: CredentialFormat) -> Proof {
                     allow_suspension: false,
                     requires_wallet_instance_attestation: false,
                     claim_schemas: Default::default(),
-                    organisation: None,
+                    organisation: dummy_organisation(None).into(),
                     transaction_code: None,
                 }),
             }]),

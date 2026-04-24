@@ -58,14 +58,9 @@ impl CredentialSchemaImporter for CredentialSchemaImporterProto {
         &self,
         mut credential_schema: CredentialSchema,
     ) -> Result<CredentialSchema, Error> {
-        let organisation = credential_schema
-            .organisation
-            .as_ref()
-            .ok_or(Error::MappingError("Missing organisation".to_string()))?;
-
         let conflicting_credential_schemas = self
             .get_credential_schemas_with_same_name_and_id(
-                organisation.id,
+                credential_schema.organisation.id(),
                 credential_schema.name.clone(),
                 credential_schema.schema_id.clone(),
             )
@@ -131,7 +126,7 @@ impl CredentialSchemaImporterProto {
         };
         Ok(self
             .repository
-            .get_credential_schema_list(query, &Default::default())
+            .get_credential_schema_list(query)
             .await
             .error_while("getting credential schema list")?
             .values)

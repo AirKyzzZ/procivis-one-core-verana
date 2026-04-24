@@ -1,7 +1,7 @@
 use anyhow::anyhow;
 use autometrics::autometrics;
 use futures::FutureExt;
-use one_core::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
+use one_core::model::credential_schema::CredentialSchema;
 use one_core::model::proof_schema::{
     GetProofSchemaList, ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations,
     ProofSchema, ProofSchemaListQuery, ProofSchemaRelations,
@@ -220,10 +220,9 @@ impl ProofSchemaProvider {
     async fn get_related_credential_schema(
         &self,
         credential_schema_id: CredentialSchemaId,
-        credential_schema_relations: &CredentialSchemaRelations,
     ) -> Result<CredentialSchema, DataLayerError> {
         self.credential_schema_repository
-            .get_credential_schema(&credential_schema_id, credential_schema_relations)
+            .get_credential_schema(&credential_schema_id)
             .await?
             .ok_or(DataLayerError::MissingRequiredRelation {
                 relation: "proof_schema-credential_schema",
@@ -286,12 +285,9 @@ impl ProofSchemaProvider {
                 new_input.claim_schemas = Some(input_schema_claims);
             }
 
-            if let Some(credential_schema_relations) = &relations.credential_schema {
+            if let Some(_credential_schema_relations) = &relations.credential_schema {
                 let credential_schema = self
-                    .get_related_credential_schema(
-                        input_schema.credential_schema,
-                        credential_schema_relations,
-                    )
+                    .get_related_credential_schema(input_schema.credential_schema)
                     .await?;
 
                 new_input.credential_schema = Some(credential_schema);

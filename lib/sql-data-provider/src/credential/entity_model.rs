@@ -1,6 +1,7 @@
 use sea_orm::FromQueryResult;
 use shared_types::{
-    BlobId, CredentialFormat, CredentialId, CredentialSchemaId, IdentifierId, RevocationMethodId,
+    BlobId, CredentialFormat, CredentialId, CredentialSchemaId, IdentifierId, OrganisationId,
+    RevocationMethodId,
 };
 use time::OffsetDateTime;
 
@@ -35,6 +36,7 @@ pub(super) struct CredentialListEntityModel {
     pub credential_schema_revocation_method: Option<RevocationMethodId>,
     pub credential_schema_key_storage_security: Option<KeyStorageSecurity>,
     pub credential_schema_schema_id: String,
+    pub credential_schema_organisation_id: OrganisationId,
     pub credential_schema_imported_source_url: String,
     pub credential_schema_allow_suspension: bool,
     pub credential_schema_requires_wallet_instance_attestation: bool,

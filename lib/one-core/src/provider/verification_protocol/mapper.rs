@@ -21,7 +21,6 @@ use crate::model::credential::{
     Credential, CredentialFilterValue, CredentialListQuery, CredentialRelations, CredentialRole,
     CredentialStateEnum,
 };
-use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::list_filter::ListFilterValue;
@@ -376,9 +375,7 @@ pub(crate) async fn get_presentation_credentials_by_schema_id(
                         claims: Some(ClaimRelations {
                             schema: Some(Default::default()),
                         }),
-                        schema: Some(CredentialSchemaRelations {
-                            organisation: Some(Default::default()),
-                        }),
+                        schema: Some(Default::default()),
                         issuer_certificate: Some(CertificateRelations {
                             ..Default::default()
                         }),

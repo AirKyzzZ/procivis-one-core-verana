@@ -26,10 +26,11 @@ pub(crate) async fn credential_schema_already_exists(
     organisation_id: OrganisationId,
 ) -> Result<UniquenessCheckResult, CredentialSchemaServiceError> {
     let credential_schemas = repository
-        .get_credential_schema_list(
-            create_unique_name_check_request(name, schema_id.clone(), organisation_id)?,
-            &Default::default(),
-        )
+        .get_credential_schema_list(create_unique_name_check_request(
+            name,
+            schema_id.clone(),
+            organisation_id,
+        )?)
         .await
         .error_while("getting credential schemas")?;
 

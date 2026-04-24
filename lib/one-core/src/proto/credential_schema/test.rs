@@ -214,7 +214,7 @@ async fn test_importer_import_credential_schema_success() {
             required: true,
         }]
         .into(),
-        organisation: Some(dummy_organisation(None)),
+        organisation: dummy_organisation(None).into(),
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_id: "http://example.com/schema".to_string(),
@@ -228,7 +228,7 @@ async fn test_importer_import_credential_schema_success() {
     repository
         .expect_get_credential_schema_list()
         .once()
-        .returning(|_, _| {
+        .returning(|_| {
             Ok(GetCredentialSchemaList {
                 values: vec![],
                 total_pages: 0,
@@ -273,7 +273,7 @@ async fn test_importer_import_credential_schema_success_duplicate_name() {
         format: "JWT".into(),
         revocation_method: None,
         claim_schemas: vec![].into(),
-        organisation: Some(dummy_organisation(None)),
+        organisation: dummy_organisation(None).into(),
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_id: "http://example.com/schema".to_string(),
@@ -287,7 +287,7 @@ async fn test_importer_import_credential_schema_success_duplicate_name() {
     repository
         .expect_get_credential_schema_list()
         .once()
-        .return_once(move |_, _| {
+        .return_once(move |_| {
             Ok(GetCredentialSchemaList {
                 values: vec![existing_schema_clone],
                 total_pages: 0,
@@ -339,7 +339,7 @@ async fn test_importer_import_credential_schema_failure_duplicate_schema_id() {
         format: "JWT".into(),
         revocation_method: None,
         claim_schemas: vec![].into(),
-        organisation: Some(dummy_organisation(None)),
+        organisation: dummy_organisation(None).into(),
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_id: "http://example.com/schema".to_string(),
@@ -353,7 +353,7 @@ async fn test_importer_import_credential_schema_failure_duplicate_schema_id() {
     repository
         .expect_get_credential_schema_list()
         .once()
-        .return_once(move |_, _| {
+        .return_once(move |_| {
             Ok(GetCredentialSchemaList {
                 values: vec![existing_schema_clone],
                 total_pages: 0,

@@ -499,6 +499,7 @@ mod tests {
     use crate::model::credential_schema::{KeyStorageSecurity, LayoutType};
     use crate::model::did::{Did, DidType};
     use crate::model::identifier::IdentifierState;
+    use crate::service::test_utilities::dummy_organisation;
 
     #[test]
     fn test_extracted_credential_to_model_mdoc() {
@@ -556,7 +557,7 @@ mod tests {
                 layout_properties: None,
                 schema_id: "pavel.3310.simple".to_string(),
                 claim_schemas: claim_schemas.to_owned().into(),
-                organisation: None,
+                organisation: dummy_organisation(None).into(),
                 imported_source_url: "CORE_URL".to_string(),
                 allow_suspension: true,
                 requires_wallet_instance_attestation: false,

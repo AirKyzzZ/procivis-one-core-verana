@@ -8,13 +8,12 @@ use one_core::model::credential::{
     Clearable, Credential, CredentialFilterValue, CredentialListQuery, CredentialRelations,
     CredentialRole, CredentialStateEnum, UpdateCredentialRequest,
 };
-use one_core::model::credential_schema::{CredentialSchema, CredentialSchemaRelations, LayoutType};
+use one_core::model::credential_schema::{CredentialSchema, LayoutType};
 use one_core::model::did::Did;
 use one_core::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use one_core::model::interaction::{Interaction, InteractionRelations, InteractionType};
 use one_core::model::list_filter::{ComparisonType, ListFilterValue, StringMatch, ValueComparison};
 use one_core::model::list_query::ListPagination;
-use one_core::model::organisation::OrganisationRelations;
 use one_core::repository::certificate_repository::{
     CertificateRepository, MockCertificateRepository,
 };
@@ -29,6 +28,9 @@ use one_core::repository::interaction_repository::{
     InteractionRepository, MockInteractionRepository,
 };
 use one_core::repository::key_repository::{KeyRepository, MockKeyRepository};
+use one_core::repository::organisation_repository::{
+    MockOrganisationRepository, OrganisationRepository,
+};
 use one_dto_mapper::convert_inner;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
 use shared_types::CredentialId;
@@ -112,7 +114,7 @@ async fn setup_empty() -> TestSetup {
             })
             .collect::<Vec<_>>()
             .into(),
-        organisation: Some(dummy_organisation(Some(organisation_id))),
+        organisation: dummy_organisation(Some(organisation_id)).into(),
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_id: "CredentialSchemaId".to_owned(),
@@ -224,6 +226,7 @@ struct Repositories {
     pub interaction_repository: Arc<dyn InteractionRepository>,
     pub certificate_repository: Arc<dyn CertificateRepository>,
     pub key_repository: Arc<dyn KeyRepository>,
+    pub organisation_repository: Arc<dyn OrganisationRepository>,
 }
 
 impl Default for Repositories {
@@ -235,6 +238,7 @@ impl Default for Repositories {
             interaction_repository: Arc::from(MockInteractionRepository::default()),
             certificate_repository: Arc::new(MockCertificateRepository::default()),
             key_repository: Arc::new(MockKeyRepository::default()),
+            organisation_repository: Arc::new(MockOrganisationRepository::default()),
         }
     }
 }
@@ -252,6 +256,7 @@ fn credential_repository(
         interaction_repository: repositories.interaction_repository,
         certificate_repository: repositories.certificate_repository,
         key_repository: repositories.key_repository,
+        organisation_repository: repositories.organisation_repository,
     }
 }
 
@@ -281,7 +286,7 @@ async fn test_create_credential_success() {
     let credential_schema_result = Ok(Some(credential_schema.clone()));
     schema_repository
         .expect_get_credential_schema()
-        .return_once(move |_, _| credential_schema_result);
+        .return_once(move |_| credential_schema_result);
 
     let provider = credential_repository(
         db.clone(),
@@ -600,7 +605,7 @@ async fn test_get_credential_list_success() {
             }),
             sorting: None,
             filtering: Some(
-                CredentialFilterValue::OrganisationId(credential_schema.organisation.unwrap().id)
+                CredentialFilterValue::OrganisationId(credential_schema.organisation.id())
                     .condition(),
             ),
             include: None,
@@ -928,7 +933,7 @@ async fn test_get_credential_success() {
     credential_schema_repository
         .expect_get_credential_schema()
         .times(1)
-        .returning(move |_, _| Ok(Some(credential_schema_clone.clone())));
+        .returning(move |_| Ok(Some(credential_schema_clone.clone())));
 
     let claims_clone = claims.clone();
     claim_repository
@@ -965,9 +970,7 @@ async fn test_get_credential_success() {
                 claims: Some(ClaimRelations {
                     schema: Some(ClaimSchemaRelations::default()),
                 }),
-                schema: Some(CredentialSchemaRelations {
-                    organisation: Some(OrganisationRelations::default()),
-                }),
+                schema: Some(Default::default()),
                 interaction: Some(InteractionRelations::default()),
                 ..Default::default()
             },

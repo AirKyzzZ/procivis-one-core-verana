@@ -174,7 +174,7 @@ async fn test_presentation_definition_success() {
                                 revocation_method: None,
                                 key_storage_security: None,
                                 claim_schemas: Default::default(),
-                                organisation: None,
+                                organisation: dummy_organisation(None).into(),
                                 layout_type: LayoutType::Card,
                                 layout_properties: None,
                                 schema_id: "CredentialSchemaId".to_owned(),

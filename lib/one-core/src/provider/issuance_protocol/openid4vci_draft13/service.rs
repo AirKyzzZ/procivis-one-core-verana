@@ -55,14 +55,7 @@ pub(crate) async fn create_issuer_metadata_response(
         notification_endpoint: Some(format!("{schema_base_url}/notification")),
         credential_configurations_supported,
         display: Some(vec![OpenID4VCIIssuerMetadataDisplayResponseDTO {
-            name: schema
-                .organisation
-                .as_ref()
-                .ok_or(OpenID4VCIError::RuntimeError(
-                    "missing organisation".to_string(),
-                ))?
-                .id
-                .to_string(),
+            name: schema.organisation.id_ref().to_string(),
             locale: "en".to_string(),
         }]),
     })

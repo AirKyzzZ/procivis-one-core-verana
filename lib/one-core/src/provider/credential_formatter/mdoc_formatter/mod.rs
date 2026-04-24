@@ -42,6 +42,7 @@ use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::identifier::Identifier;
+use crate::model::organisation::Organisation;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::cose::{CoseSign1, CoseSign1Builder};
 use crate::proto::jwt::TokenError;
@@ -430,6 +431,7 @@ impl CredentialFormatter for MdocFormatter {
     async fn parse_credential(
         &self,
         credential: &str,
+        organisation: Organisation,
         _verification: Box<dyn TokenVerifier>,
     ) -> Result<Credential, FormatterError> {
         let issuer_signed: IssuerSigned = decode_cbor_base64(credential)?;
@@ -497,7 +499,7 @@ impl CredentialFormatter for MdocFormatter {
             imported_source_url: "".to_string(),
             allow_suspension: false,
             requires_wallet_instance_attestation: false,
-            organisation: None,
+            organisation: organisation.into(),
             claim_schemas: claim_schemas.into(),
             transaction_code: None,
         };

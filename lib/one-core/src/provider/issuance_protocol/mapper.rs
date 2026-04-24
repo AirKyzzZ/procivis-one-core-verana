@@ -12,9 +12,7 @@ use crate::model::claim::ClaimRelations;
 use crate::model::credential::{
     Clearable, Credential, CredentialRelations, CredentialStateEnum, UpdateCredentialRequest,
 };
-use crate::model::credential_schema::{
-    CredentialSchemaRelations, TransactionCode, TransactionCodeType,
-};
+use crate::model::credential_schema::{TransactionCode, TransactionCodeType};
 use crate::model::identifier::IdentifierRelations;
 use crate::model::interaction::{Interaction, InteractionRelations, InteractionType};
 use crate::model::key::Key;
@@ -316,9 +314,7 @@ pub(crate) async fn get_credential_by_interaction_id(
                 claims: Some(ClaimRelations {
                     schema: Some(Default::default()),
                 }),
-                schema: Some(CredentialSchemaRelations {
-                    organisation: Some(Default::default()),
-                }),
+                schema: Some(Default::default()),
                 interaction: Some(InteractionRelations {
                     organisation: Some(Default::default()),
                 }),

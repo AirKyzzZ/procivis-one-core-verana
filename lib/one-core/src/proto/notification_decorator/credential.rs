@@ -9,7 +9,6 @@ use crate::model::credential::{
     Credential, CredentialListQuery, CredentialRelations, CredentialStateEnum, GetCredentialList,
     UpdateCredentialRequest,
 };
-use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::proto::notification_scheduler::{NotificationPayload, NotificationScheduler};
 use crate::provider::issuance_protocol::model::CommonParams;
 use crate::repository::credential_repository::CredentialRepository;
@@ -32,9 +31,7 @@ impl CredentialNotificationDecorator {
             .get_credential(
                 &credential_id,
                 &CredentialRelations {
-                    schema: Some(CredentialSchemaRelations {
-                        organisation: Some(Default::default()),
-                    }),
+                    schema: Some(Default::default()),
                     ..Default::default()
                 },
             )
@@ -66,12 +63,7 @@ impl CredentialNotificationDecorator {
             .ok_or(ServiceError::MappingError("missing schema".to_string()))
             .error_while("getting organisation_id")?
             .organisation
-            .as_ref()
-            .ok_or(ServiceError::MappingError(
-                "missing organisation".to_string(),
-            ))
-            .error_while("getting organisation_id")?
-            .id;
+            .id();
 
         self.notification_scheduler
             .schedule(

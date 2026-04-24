@@ -319,7 +319,7 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: "CredentialSchemaId".to_owned(),
-            organisation: Some(dummy_organisation(None)),
+            organisation: dummy_organisation(None).into(),
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
@@ -1686,7 +1686,7 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
     credential_schema_repository
         .expect_get_by_schema_id_and_organisation()
         .times(1)
-        .returning(|_, _, _| Ok(None));
+        .returning(|_, _| Ok(None));
     credential_repository
         .expect_create_credential()
         .times(1)
@@ -1850,7 +1850,7 @@ async fn inner_continue_issuance_test(
     credential_schema_repository
         .expect_get_by_schema_id_and_organisation()
         .times(1)
-        .returning(|_, _, _| Ok(None));
+        .returning(|_, _| Ok(None));
 
     let mut operations = MockHandleInvitationOperations::default();
     operations
@@ -2011,7 +2011,7 @@ fn generic_schema() -> CredentialSchema {
             },
         ]
         .into(),
-        organisation: Some(dummy_organisation(None)),
+        organisation: dummy_organisation(None).into(),
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
         transaction_code: None,
@@ -2115,7 +2115,7 @@ fn generic_schema_array_object() -> CredentialSchema {
             },
         ]
         .into(),
-        organisation: Some(dummy_organisation(None)),
+        organisation: dummy_organisation(None).into(),
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
         transaction_code: None,
@@ -2189,7 +2189,7 @@ fn generic_schema_object_hell() -> CredentialSchema {
             },
         ]
         .into(),
-        organisation: Some(dummy_organisation(None)),
+        organisation: dummy_organisation(None).into(),
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
         transaction_code: None,

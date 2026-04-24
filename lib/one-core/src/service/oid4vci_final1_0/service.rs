@@ -42,7 +42,6 @@ use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelation
 use crate::model::did::{DidRelations, KeyRole};
 use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::interaction::{InteractionRelations, UpdateInteractionRequest};
-use crate::model::organisation::OrganisationRelations;
 use crate::proto::identifier_creator::{IdentifierRole, RemoteIdentifierRelation};
 use crate::proto::jwt::Jwt;
 use crate::proto::key_verification::KeyVerification;
@@ -156,12 +155,7 @@ impl OID4VCIFinal1_0Service {
 
         let Some(credential_schema) = self
             .credential_schema_repository
-            .get_credential_schema(
-                credential_schema_id,
-                &CredentialSchemaRelations {
-                    ..Default::default()
-                },
-            )
+            .get_credential_schema(credential_schema_id)
             .await
             .error_while("getting credential schema")?
         else {
@@ -329,12 +323,7 @@ impl OID4VCIFinal1_0Service {
     ) -> Result<OpenID4VCICredentialResponseDTO, OID4VCIFinal1_0ServiceError> {
         let Some(schema) = self
             .credential_schema_repository
-            .get_credential_schema(
-                credential_schema_id,
-                &CredentialSchemaRelations {
-                    organisation: Some(OrganisationRelations::default()),
-                },
-            )
+            .get_credential_schema(credential_schema_id)
             .await
             .error_while("getting credential schema")?
         else {
@@ -549,12 +538,18 @@ impl OID4VCIFinal1_0Service {
             return Err(OpenID4VCIError::InvalidOrMissingProof.into());
         }
 
+        let organisation = schema
+            .organisation
+            .get()
+            .await
+            .error_while("getting organisation")?;
+
         let (holder_identifier, holder_key_id) = match holder_binding {
             OpenID4VCIProofHolderBinding::Did { did, key_id } => {
                 let (identifier, _) = self
                     .identifier_creator
                     .get_or_create_remote_identifier(
-                        &schema.organisation,
+                        &Some(organisation),
                         &IdentifierDetails::Did(did),
                         IdentifierRole::Holder,
                     )
@@ -566,7 +561,7 @@ impl OID4VCIFinal1_0Service {
                 let (identifier, RemoteIdentifierRelation::Key(key)) = self
                     .identifier_creator
                     .get_or_create_remote_identifier(
-                        &schema.organisation,
+                        &Some(organisation),
                         &IdentifierDetails::Key(jwk),
                         IdentifierRole::Holder,
                     )
@@ -881,7 +876,7 @@ impl OID4VCIFinal1_0Service {
 
         let credential_schema = self
             .credential_schema_repository
-            .get_credential_schema(credential_schema_id, &CredentialSchemaRelations::default())
+            .get_credential_schema(credential_schema_id)
             .await
             .error_while("getting credential schema")?
             .ok_or(OID4VCIFinal1_0ServiceError::MissingCredentialSchema(

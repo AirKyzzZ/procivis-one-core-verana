@@ -3,10 +3,10 @@ use std::sync::Arc;
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential_schema::{
     BackgroundProperties, CodeProperties, CodeTypeEnum, CredentialSchema,
-    CredentialSchemaListQuery, CredentialSchemaRelations, KeyStorageSecurity, LayoutProperties,
-    LayoutType, LogoProperties, TransactionCode,
+    CredentialSchemaListQuery, KeyStorageSecurity, LayoutProperties, LayoutType, LogoProperties,
+    TransactionCode,
 };
-use one_core::model::organisation::{Organisation, OrganisationRelations};
+use one_core::model::organisation::Organisation;
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
 use one_core::repository::error::DataLayerError;
 use one_core::service::credential_schema::dto::CredentialSchemaListIncludeEntityTypeEnum;
@@ -77,7 +77,7 @@ impl CredentialSchemasDB {
             last_modified: get_dummy_date(),
             name: name.to_owned(),
             key_storage_security: params.key_storage_security,
-            organisation: Some(organisation.clone()),
+            organisation: organisation.clone().into(),
             deleted_at: params.deleted_at,
             format: params.format.unwrap_or("JWT".into()),
             revocation_method: revocation_method.into(),
@@ -154,7 +154,7 @@ impl CredentialSchemasDB {
             last_modified: get_dummy_date(),
             name: name.to_owned(),
             key_storage_security: params.key_storage_security,
-            organisation: Some(organisation.clone()),
+            organisation: organisation.clone().into(),
             deleted_at: None,
             format: params.format.unwrap_or("JSON_LD_BBSPLUS".into()),
             revocation_method: revocation_method.into(),
@@ -249,7 +249,7 @@ impl CredentialSchemasDB {
             last_modified: get_dummy_date(),
             name: name.to_owned(),
             key_storage_security: params.key_storage_security,
-            organisation: Some(organisation.clone()),
+            organisation: organisation.clone().into(),
             deleted_at: None,
             format: params.format.unwrap_or("JWT".into()),
             revocation_method: revocation_method.into(),
@@ -344,7 +344,7 @@ impl CredentialSchemasDB {
             last_modified: get_dummy_date(),
             name: name.to_owned(),
             key_storage_security: params.key_storage_security,
-            organisation: Some(organisation.clone()),
+            organisation: organisation.clone().into(),
             deleted_at: None,
             format: params.format.unwrap_or("JWT".into()),
             revocation_method: revocation_method.into(),
@@ -450,7 +450,7 @@ impl CredentialSchemasDB {
             last_modified: get_dummy_date(),
             name: name.to_owned(),
             key_storage_security: params.key_storage_security,
-            organisation: Some(organisation.clone()),
+            organisation: organisation.clone().into(),
             deleted_at: None,
             format: params.format.unwrap_or("JWT".into()),
             revocation_method: revocation_method.into(),
@@ -644,7 +644,7 @@ impl CredentialSchemasDB {
             last_modified: get_dummy_date(),
             name: name.to_owned(),
             key_storage_security: params.key_storage_security,
-            organisation: Some(organisation.clone()),
+            organisation: organisation.clone().into(),
             deleted_at: None,
             format: params.format.unwrap_or("JWT".into()),
             revocation_method: revocation_method.into(),
@@ -691,7 +691,7 @@ impl CredentialSchemasDB {
             last_modified: get_dummy_date(),
             key_storage_security: None,
             name: name.to_owned(),
-            organisation: Some(organisation.clone()),
+            organisation: organisation.clone().into(),
             deleted_at: None,
             format: "JWT".into(),
             revocation_method: None,
@@ -745,7 +745,7 @@ impl CredentialSchemasDB {
             last_modified: get_dummy_date(),
             key_storage_security: None,
             name: name.to_owned(),
-            organisation: Some(organisation.clone()),
+            organisation: organisation.clone().into(),
             deleted_at: None,
             format: format.into(),
             revocation_method: revocation_method.into(),
@@ -779,12 +779,7 @@ impl CredentialSchemasDB {
 
     pub async fn get(&self, credential_schema_id: &CredentialSchemaId) -> CredentialSchema {
         self.repository
-            .get_credential_schema(
-                credential_schema_id,
-                &CredentialSchemaRelations {
-                    organisation: Some(OrganisationRelations::default()),
-                },
-            )
+            .get_credential_schema(credential_schema_id)
             .await
             .unwrap()
             .unwrap()
@@ -800,19 +795,14 @@ impl CredentialSchemasDB {
     pub async fn list(&self) -> Vec<CredentialSchema> {
         let response = self
             .repository
-            .get_credential_schema_list(
-                CredentialSchemaListQuery {
-                    pagination: None,
-                    sorting: None,
-                    filtering: None,
-                    include: Some(vec![
-                        CredentialSchemaListIncludeEntityTypeEnum::LayoutProperties,
-                    ]),
-                },
-                &CredentialSchemaRelations {
-                    organisation: Some(OrganisationRelations {}),
-                },
-            )
+            .get_credential_schema_list(CredentialSchemaListQuery {
+                pagination: None,
+                sorting: None,
+                filtering: None,
+                include: Some(vec![
+                    CredentialSchemaListIncludeEntityTypeEnum::LayoutProperties,
+                ]),
+            })
             .await
             .unwrap();
         response.values

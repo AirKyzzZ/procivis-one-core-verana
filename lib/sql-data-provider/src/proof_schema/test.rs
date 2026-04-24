@@ -197,7 +197,7 @@ async fn test_create_proof_schema_already_exists() {
                     format: "JWT".into(),
                     revocation_method: None,
                     claim_schemas: Default::default(),
-                    organisation: None,
+                    organisation: dummy_organisation(None).into(),
                     layout_type: LayoutType::Card,
                     layout_properties: None,
                     schema_id: "CredentialSchemaId".to_owned(),
@@ -296,7 +296,7 @@ async fn test_create_proof_schema_success() {
                     format: "JWT".into(),
                     revocation_method: None,
                     claim_schemas: Default::default(),
-                    organisation: None,
+                    organisation: dummy_organisation(None).into(),
                     layout_type: LayoutType::Card,
                     layout_properties: None,
                     schema_id: "CredentialSchemaId".to_owned(),
@@ -494,7 +494,7 @@ async fn test_get_proof_schema_with_relations() {
     credential_schema_repository
         .expect_get_credential_schema()
         .times(1)
-        .returning(|id, _| {
+        .returning(|id| {
             Ok(Some(CredentialSchema {
                 id: id.to_owned(),
                 deleted_at: None,
@@ -506,7 +506,7 @@ async fn test_get_proof_schema_with_relations() {
                 format: "JWT".into(),
                 revocation_method: None,
                 claim_schemas: Default::default(),
-                organisation: None,
+                organisation: dummy_organisation(None).into(),
                 layout_type: LayoutType::Card,
                 layout_properties: None,
                 schema_id: "CredentialSchemaId".to_owned(),
@@ -632,7 +632,7 @@ async fn test_get_proof_schema_with_input_proof_relations() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     credential_schema_repository
         .expect_get_credential_schema()
-        .returning(|id, _| {
+        .returning(|id| {
             Ok(Some(CredentialSchema {
                 id: id.to_owned(),
                 deleted_at: None,
@@ -644,7 +644,7 @@ async fn test_get_proof_schema_with_input_proof_relations() {
                 format: "JWT".into(),
                 revocation_method: None,
                 claim_schemas: Default::default(),
-                organisation: None,
+                organisation: dummy_organisation(None).into(),
                 layout_type: LayoutType::Card,
                 layout_properties: None,
                 schema_id: id.to_string(),

@@ -1,11 +1,13 @@
+use std::sync::Arc;
+
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential_schema::{
     CredentialSchema, SortableCredentialSchemaColumn, TransactionCode,
 };
 use one_core::model::list_filter::ListFilterCondition;
-use one_core::model::organisation::Organisation;
-use one_core::model::relation::{AsyncVecLoader, RelatedVec};
+use one_core::model::relation::{AsyncVecLoader, Related, RelatedVec};
 use one_core::repository::error::DataLayerError;
+use one_core::repository::organisation_repository::OrganisationRepository;
 use one_core::service::credential_schema::dto::CredentialSchemaFilterValue;
 use one_dto_mapper::convert_inner;
 use sea_orm::ActiveValue::Set;
@@ -72,12 +74,8 @@ impl IntoFilterCondition for CredentialSchemaFilterValue {
     }
 }
 
-impl TryFrom<CredentialSchema> for credential_schema::ActiveModel {
-    type Error = DataLayerError;
-
-    fn try_from(value: CredentialSchema) -> Result<Self, Self::Error> {
-        let organisation_id = value.organisation.ok_or(DataLayerError::MappingError)?.id;
-
+impl From<CredentialSchema> for credential_schema::ActiveModel {
+    fn from(value: CredentialSchema) -> Self {
         let (transaction_code_type, transaction_code_length, transaction_code_description) =
             match value.transaction_code {
                 Some(code) => (
@@ -88,7 +86,7 @@ impl TryFrom<CredentialSchema> for credential_schema::ActiveModel {
                 None => (None, None, None),
             };
 
-        Ok(Self {
+        Self {
             id: Set(value.id),
             deleted_at: Set(value.deleted_at),
             created_date: Set(value.created_date),
@@ -97,7 +95,7 @@ impl TryFrom<CredentialSchema> for credential_schema::ActiveModel {
             imported_source_url: Set(value.imported_source_url),
             format: Set(value.format),
             revocation_method: Set(value.revocation_method),
-            organisation_id: Set(organisation_id),
+            organisation_id: Set(value.organisation.id()),
             key_storage_security: Set(convert_inner(value.key_storage_security)),
             layout_type: Set(value.layout_type.into()),
             layout_properties: Set(convert_inner(value.layout_properties)),
@@ -107,7 +105,7 @@ impl TryFrom<CredentialSchema> for credential_schema::ActiveModel {
             transaction_code_type: Set(transaction_code_type),
             transaction_code_length: Set(transaction_code_length.map(|l| l as i32)),
             transaction_code_description: Set(transaction_code_description),
-        })
+        }
     }
 }
 
@@ -135,9 +133,9 @@ pub(super) fn claim_schemas_to_model_vec(
 
 pub(super) fn credential_schema_from_models(
     credential_schema: credential_schema::Model,
-    organisation: Option<Organisation>,
     skip_layout_properties: bool,
     db: TransactionManagerImpl,
+    organisation_repository: &Arc<dyn OrganisationRepository>,
 ) -> Result<CredentialSchema, DataLayerError> {
     let transaction_code = match (
         credential_schema.transaction_code_type,
@@ -163,7 +161,10 @@ pub(super) fn credential_schema_from_models(
         format: credential_schema.format,
         revocation_method: credential_schema.revocation_method,
         claim_schemas: RelatedVec::new(ClaimSchemasLoader { id, db }),
-        organisation,
+        organisation: Related::new(
+            credential_schema.organisation_id,
+            organisation_repository.to_owned(),
+        ),
         layout_type: credential_schema.layout_type.into(),
         layout_properties: if skip_layout_properties {
             None
@@ -179,9 +180,9 @@ pub(super) fn credential_schema_from_models(
     })
 }
 
-struct ClaimSchemasLoader {
-    id: CredentialSchemaId,
-    db: TransactionManagerImpl,
+pub(crate) struct ClaimSchemasLoader {
+    pub id: CredentialSchemaId,
+    pub db: TransactionManagerImpl,
 }
 
 #[async_trait::async_trait]

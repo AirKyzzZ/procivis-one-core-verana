@@ -14,12 +14,11 @@ use super::validator::UniquenessCheckResult;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::credential_schema_claim::claim_schema_from_metadata_claim_schema;
 use crate::mapper::list_response_into;
-use crate::model::credential_schema::{CredentialSchemaRelations, SortableCredentialSchemaColumn};
-use crate::model::organisation::OrganisationRelations;
+use crate::model::credential_schema::SortableCredentialSchemaColumn;
 use crate::repository::error::DataLayerError;
 use crate::service::common_dto::ListQueryDTO;
 use crate::util::logging::quoted_opt_provider;
-use crate::validator::{throw_if_org_id_not_matching_session, throw_if_org_not_matching_session};
+use crate::validator::throw_if_org_id_not_matching_session;
 
 impl CredentialSchemaService {
     /// Creates a credential schema according to request
@@ -149,20 +148,15 @@ impl CredentialSchemaService {
     ) -> Result<(), CredentialSchemaServiceError> {
         let credential_schema = self
             .credential_schema_repository
-            .get_credential_schema(
-                credential_schema_id,
-                &CredentialSchemaRelations {
-                    organisation: Some(Default::default()),
-                },
-            )
+            .get_credential_schema(credential_schema_id)
             .await
             .error_while("getting credential schema")?
             .ok_or(CredentialSchemaServiceError::NotFound(
                 *credential_schema_id,
             ))?;
 
-        throw_if_org_not_matching_session(
-            credential_schema.organisation.as_ref(),
+        throw_if_org_id_not_matching_session(
+            credential_schema.organisation.id_ref(),
             &*self.session_provider,
         )
         .error_while("checking session")?;
@@ -196,12 +190,7 @@ impl CredentialSchemaService {
     ) -> Result<CredentialSchemaDetailResponseDTO, CredentialSchemaServiceError> {
         let schema = self
             .credential_schema_repository
-            .get_credential_schema(
-                credential_schema_id,
-                &CredentialSchemaRelations {
-                    organisation: Some(OrganisationRelations::default()),
-                },
-            )
+            .get_credential_schema(credential_schema_id)
             .await
             .error_while("getting credential schema")?;
 
@@ -211,7 +200,7 @@ impl CredentialSchemaService {
             ));
         };
 
-        throw_if_org_not_matching_session(schema.organisation.as_ref(), &*self.session_provider)
+        throw_if_org_id_not_matching_session(schema.organisation.id_ref(), &*self.session_provider)
             .error_while("checking session")?;
 
         if schema.deleted_at.is_some() {
@@ -244,7 +233,7 @@ impl CredentialSchemaService {
 
         let result = self
             .credential_schema_repository
-            .get_credential_schema_list(filter_params.into(), &Default::default())
+            .get_credential_schema_list(filter_params.into())
             .await
             .error_while("getting credential schemas")?;
         Ok(list_response_into(result))
@@ -315,20 +304,15 @@ impl CredentialSchemaService {
     ) -> Result<CredentialSchemaShareResponseDTO, CredentialSchemaServiceError> {
         let credential_schema = self
             .credential_schema_repository
-            .get_credential_schema(
-                credential_schema_id,
-                &CredentialSchemaRelations {
-                    organisation: Some(OrganisationRelations::default()),
-                },
-            )
+            .get_credential_schema(credential_schema_id)
             .await
             .error_while("getting credential schema")?
             .ok_or(CredentialSchemaServiceError::NotFound(
                 *credential_schema_id,
             ))?;
 
-        throw_if_org_not_matching_session(
-            credential_schema.organisation.as_ref(),
+        throw_if_org_id_not_matching_session(
+            credential_schema.organisation.id_ref(),
             &*self.session_provider,
         )
         .error_while("checking session")?;

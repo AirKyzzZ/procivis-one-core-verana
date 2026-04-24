@@ -31,7 +31,7 @@ use crate::provider::data_type::model::ExtractedClaim;
 use crate::provider::data_type::provider::MockDataTypeProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
-use crate::service::test_utilities::{dummy_did, dummy_identifier};
+use crate::service::test_utilities::{dummy_did, dummy_identifier, dummy_organisation};
 use crate::util::test_utilities::prepare_caching_loader;
 
 #[tokio::test]
@@ -308,7 +308,7 @@ async fn test_parse_credential() {
     verify_mock.expect_verify().return_once(|_, _, _, _| Ok(()));
 
     let credential = formatter
-        .parse_credential(CREDENTIAL, Box::new(verify_mock))
+        .parse_credential(CREDENTIAL, dummy_organisation(None), Box::new(verify_mock))
         .await
         .unwrap();
 

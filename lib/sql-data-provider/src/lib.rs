@@ -265,6 +265,7 @@ impl DataLayer {
             interaction_repository: interaction_repository.clone(),
             certificate_repository: certificate_repository.clone(),
             key_repository: key_repository.clone(),
+            organisation_repository: organisation_repository.clone(),
         });
 
         let proof_repository = Arc::new(ProofProvider {

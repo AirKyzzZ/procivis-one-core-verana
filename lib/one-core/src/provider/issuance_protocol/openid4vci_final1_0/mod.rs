@@ -63,8 +63,7 @@ use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{Credential, CredentialRelations, CredentialStateEnum};
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaRelations, KeyStorageSecurity, LayoutType,
-    UpdateCredentialSchemaRequest,
+    CredentialSchema, KeyStorageSecurity, LayoutType, UpdateCredentialSchemaRequest,
 };
 use crate::model::did::{DidRelations, KeyRole};
 use crate::model::history::{HistoryAction, HistoryMetadata, WalletRelyingPartyMetadata};
@@ -73,7 +72,7 @@ use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierType};
 use crate::model::identifier_trust_information::{IdentifierTrustInformation, SchemaFormat};
 use crate::model::interaction::{Interaction, UpdateInteractionRequest};
 use crate::model::key::{Key, KeyRelations};
-use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::model::organisation::Organisation;
 use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
 use crate::model::wallet_instance::WalletInstanceStatus;
 use crate::proto::certificate_validator::CertificateValidator;
@@ -826,7 +825,11 @@ impl OpenID4VCIFinal1_0 {
             })?;
 
         let mut credential = formatter
-            .parse_credential(&issuer_response.credential, self.verification_fn())
+            .parse_credential(
+                &issuer_response.credential,
+                organisation.to_owned(),
+                self.verification_fn(),
+            )
             .await
             .map_err(|e| IssuanceProtocolError::CredentialVerificationFailed(e.into()))?;
 
@@ -851,7 +854,7 @@ impl OpenID4VCIFinal1_0 {
             schema.name = name;
         }
         schema.format = format;
-        schema.organisation = Some(organisation.to_owned());
+        schema.organisation = organisation.to_owned().into();
         schema.layout_type = LayoutType::Card;
         schema.layout_properties = metadata_display.and_then(|display| display.to_owned().into());
         schema.key_storage_security = interaction_data
@@ -917,7 +920,7 @@ impl OpenID4VCIFinal1_0 {
         let (issuer_identifer, issuer_identifier_relation) = self
             .identifier_creator
             .get_or_create_remote_identifier(
-                &schema.organisation,
+                &Some(organisation.to_owned()),
                 &identifier_details,
                 IdentifierRole::Issuer,
             )
@@ -1458,12 +1461,7 @@ impl OpenID4VCIFinal1_0 {
 
         let schema = self
             .credential_schema_repository
-            .get_credential_schema(
-                credential_schema_id,
-                &CredentialSchemaRelations {
-                    organisation: Some(OrganisationRelations::default()),
-                },
-            )
+            .get_credential_schema(credential_schema_id)
             .await
             .error_while("getting credential schema")?;
 
@@ -1962,9 +1960,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                     claims: Some(ClaimRelations {
                         schema: Some(ClaimSchemaRelations::default()),
                     }),
-                    schema: Some(CredentialSchemaRelations {
-                        organisation: Some(OrganisationRelations::default()),
-                    }),
+                    schema: Some(Default::default()),
                     issuer_identifier: Some(IdentifierRelations {
                         did: Some(DidRelations {
                             keys: Some(KeyRelations::default()),
@@ -2557,13 +2553,7 @@ async fn prepare_credential_schema(
     credential: &mut Credential,
 ) -> Result<Option<UpdateCredentialSchemaRequest>, IssuanceProtocolError> {
     let stored_schema = credential_schema_repository
-        .get_by_schema_id_and_organisation(
-            &credential_schema.schema_id,
-            organisation.id,
-            &CredentialSchemaRelations {
-                organisation: Some(Default::default()),
-            },
-        )
+        .get_by_schema_id_and_organisation(&credential_schema.schema_id, organisation.id)
         .await
         .error_while("getting credential schema")?;
 
@@ -2588,13 +2578,7 @@ async fn prepare_credential_schema(
 
         // refetch and try again
         let stored_schema = credential_schema_repository
-            .get_by_schema_id_and_organisation(
-                &credential_schema.schema_id,
-                organisation.id,
-                &CredentialSchemaRelations {
-                    organisation: Some(Default::default()),
-                },
-            )
+            .get_by_schema_id_and_organisation(&credential_schema.schema_id, organisation.id)
             .await
             .error_while("getting credential schema")?
             .ok_or(IssuanceProtocolError::Failed(

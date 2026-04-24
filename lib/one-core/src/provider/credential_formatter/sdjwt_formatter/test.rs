@@ -39,7 +39,9 @@ use crate::provider::data_type::provider::MockDataTypeProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
-use crate::service::test_utilities::{dummy_did, dummy_did_document, dummy_identifier, dummy_jwk};
+use crate::service::test_utilities::{
+    dummy_did, dummy_did_document, dummy_identifier, dummy_jwk, dummy_organisation,
+};
 
 impl From<&str> for DisclosureArray {
     fn from(value: &str) -> Self {
@@ -1135,7 +1137,7 @@ async fn test_parse_credential() {
         .expect_key_algorithm_provider()
         .return_const(Box::new(key_algorithm_provider));
     let result = formatter
-        .parse_credential(CREDENTIAL, Box::new(verify_mock))
+        .parse_credential(CREDENTIAL, dummy_organisation(None), Box::new(verify_mock))
         .await
         .unwrap();
 

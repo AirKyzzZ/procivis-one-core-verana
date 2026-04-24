@@ -366,7 +366,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
                 required: true,
             }]
             .into(),
-            organisation: Some(dummy_organisation(None)),
+            organisation: dummy_organisation(None).into(),
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: "CredentialSchemaId".to_owned(),
@@ -548,7 +548,7 @@ pub fn dummy_credential_schema() -> CredentialSchema {
         format: "format".into(),
         revocation_method: Some("mock".into()),
         claim_schemas: Default::default(),
-        organisation: None,
+        organisation: dummy_organisation(None).into(),
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_id: "CredentialSchemaId".to_owned(),

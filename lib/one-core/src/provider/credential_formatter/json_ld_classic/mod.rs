@@ -31,6 +31,7 @@ use crate::error::ContextWithErrorCode;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, LayoutType};
 use crate::model::identifier::Identifier;
+use crate::model::organisation::Organisation;
 use crate::proto::http_client::HttpClient;
 use crate::provider::caching_loader::json_ld_context::{ContextCache, JsonLdCachingLoader};
 use crate::provider::credential_formatter::mapper::default_2_years;
@@ -245,6 +246,7 @@ impl CredentialFormatter for JsonLdClassic {
     async fn parse_credential(
         &self,
         credential: &str,
+        organisation: Organisation,
         verification: Box<dyn TokenVerifier>,
     ) -> Result<Credential, FormatterError> {
         let now = crate::clock::now_utc();
@@ -334,7 +336,7 @@ impl CredentialFormatter for JsonLdClassic {
             allow_suspension: false,
             requires_wallet_instance_attestation: false,
             claim_schemas: claim_schemas.into(),
-            organisation: None,
+            organisation: organisation.into(),
             transaction_code: None,
         };
 

@@ -108,9 +108,7 @@ impl ProofService {
                             claims: Some(ClaimRelations {
                                 schema: Some(Default::default()),
                             }),
-                            schema: Some(CredentialSchemaRelations {
-                                organisation: Some(Default::default()),
-                            }),
+                            schema: Some(Default::default()),
                             issuer_identifier: Some(IdentifierRelations {
                                 did: Some(Default::default()),
                                 ..Default::default()

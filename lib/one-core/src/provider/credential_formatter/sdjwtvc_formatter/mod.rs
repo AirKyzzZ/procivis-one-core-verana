@@ -44,6 +44,7 @@ use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, LayoutType};
 use crate::model::identifier::Identifier;
+use crate::model::organisation::Organisation;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::Jwt;
@@ -101,6 +102,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
     async fn parse_credential(
         &self,
         credential: &str,
+        organisation: Organisation,
         verification: Box<dyn TokenVerifier>,
     ) -> Result<Credential, FormatterError> {
         let now = crate::clock::now_utc();
@@ -163,7 +165,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             allow_suspension: false,
             requires_wallet_instance_attestation: false,
             claim_schemas: claim_schemas.into(),
-            organisation: None,
+            organisation: organisation.into(),
             transaction_code: None,
         };
 

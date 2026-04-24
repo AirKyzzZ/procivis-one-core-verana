@@ -7,7 +7,6 @@ use self::dto::InteractionExpirationCheckResultDTO;
 use super::Task;
 use crate::error::ContextWithErrorCode;
 use crate::model::credential::{Credential, CredentialRelations, CredentialRole};
-use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::identifier::IdentifierRelations;
 use crate::model::interaction::InteractionRelations;
@@ -64,9 +63,7 @@ impl Task for InteractionExpirationCheckProvider {
                 .get_credential(
                     credential_id,
                     &CredentialRelations {
-                        schema: Some(CredentialSchemaRelations {
-                            organisation: Some(Default::default()),
-                        }),
+                        schema: Some(Default::default()),
                         issuer_identifier: Some(IdentifierRelations {
                             did: Some(Default::default()),
                             ..Default::default()
@@ -99,7 +96,7 @@ impl Task for InteractionExpirationCheckProvider {
                     entity_type: HistoryEntityType::Credential,
                     metadata: None,
                     metadata_blob_id: None,
-                    organisation_id: schema.organisation.map(|o| o.id),
+                    organisation_id: Some(schema.organisation.id()),
                     user: self.session_provider.session().user(),
                 })
                 .await

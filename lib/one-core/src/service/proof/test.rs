@@ -27,9 +27,7 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
     Credential, CredentialRelations, CredentialRole, CredentialStateEnum,
 };
-use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaRelations, KeyStorageSecurity, LayoutType,
-};
+use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, LayoutType};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::history::GetHistoryList;
 use crate::model::identifier::{Identifier, IdentifierRelations};
@@ -259,7 +257,7 @@ fn generic_proof_input_schema() -> ProofInputSchema {
             layout_properties: None,
             schema_id: "".to_string(),
             claim_schemas: Default::default(),
-            organisation: None,
+            organisation: dummy_organisation(None).into(),
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
@@ -316,7 +314,7 @@ async fn test_get_presentation_definition_proof_role_verifier() {
                     format: "JWT".into(),
                     revocation_method: None,
                     claim_schemas: Default::default(),
-                    organisation: None,
+                    organisation: dummy_organisation(None).into(),
                     layout_type: LayoutType::Card,
                     layout_properties: None,
                     schema_id: "CredentialSchemaId".to_owned(),
@@ -441,7 +439,7 @@ async fn test_get_proof_exists() {
                         required: true,
                     }]
                     .into(),
-                    organisation: None,
+                    organisation: dummy_organisation(None).into(),
                     layout_type: LayoutType::Card,
                     layout_properties: None,
                     schema_id: "CredentialSchemaId".to_owned(),
@@ -499,9 +497,7 @@ async fn test_get_proof_exists() {
                             claims: Some(ClaimRelations {
                                 schema: Some(Default::default()),
                             }),
-                            schema: Some(CredentialSchemaRelations {
-                                organisation: Some(Default::default()),
-                            }),
+                            schema: Some(Default::default()),
                             issuer_identifier: Some(IdentifierRelations {
                                 did: Some(Default::default()),
                                 ..Default::default()
@@ -581,7 +577,7 @@ async fn test_get_proof_with_array_holder() {
         format: "JWT".into(),
         revocation_method: None,
         claim_schemas: vec![claim_schema.clone()].into(),
-        organisation: Some(organisation.clone()),
+        organisation: organisation.clone().into(),
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_id: "CredentialSchemaId".to_owned(),
@@ -725,9 +721,7 @@ async fn test_get_proof_with_array_holder() {
                             claims: Some(ClaimRelations {
                                 schema: Some(Default::default()),
                             }),
-                            schema: Some(CredentialSchemaRelations {
-                                organisation: Some(Default::default()),
-                            }),
+                            schema: Some(Default::default()),
                             issuer_identifier: Some(IdentifierRelations {
                                 did: Some(Default::default()),
                                 ..Default::default()
@@ -833,7 +827,7 @@ async fn test_get_proof_with_array_in_object_holder() {
         format: "JWT".into(),
         revocation_method: None,
         claim_schemas: claim_schemas.clone().into(),
-        organisation: Some(organisation.clone()),
+        organisation: organisation.clone().into(),
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_id: "CredentialSchemaId".to_owned(),
@@ -987,9 +981,7 @@ async fn test_get_proof_with_array_in_object_holder() {
                             claims: Some(ClaimRelations {
                                 schema: Some(Default::default()),
                             }),
-                            schema: Some(CredentialSchemaRelations {
-                                organisation: Some(Default::default()),
-                            }),
+                            schema: Some(Default::default()),
                             issuer_identifier: Some(IdentifierRelations {
                                 did: Some(Default::default()),
                                 ..Default::default()
@@ -1100,7 +1092,7 @@ async fn test_get_proof_with_object_array_holder() {
         format: "JWT".into(),
         revocation_method: None,
         claim_schemas: claim_schemas.clone().into(),
-        organisation: Some(organisation.clone()),
+        organisation: organisation.clone().into(),
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_id: "CredentialSchemaId".to_owned(),
@@ -1264,9 +1256,7 @@ async fn test_get_proof_with_object_array_holder() {
                             claims: Some(ClaimRelations {
                                 schema: Some(Default::default()),
                             }),
-                            schema: Some(CredentialSchemaRelations {
-                                organisation: Some(Default::default()),
-                            }),
+                            schema: Some(Default::default()),
                             issuer_identifier: Some(IdentifierRelations {
                                 did: Some(Default::default()),
                                 ..Default::default()
@@ -1373,7 +1363,7 @@ async fn test_get_proof_with_array() {
         format: "JWT".into(),
         revocation_method: None,
         claim_schemas: vec![claim_schema.clone()].into(),
-        organisation: Some(organisation.clone()),
+        organisation: organisation.clone().into(),
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_id: "CredentialSchemaId".to_owned(),
@@ -1524,9 +1514,7 @@ async fn test_get_proof_with_array() {
                             claims: Some(ClaimRelations {
                                 schema: Some(Default::default()),
                             }),
-                            schema: Some(CredentialSchemaRelations {
-                                organisation: Some(Default::default()),
-                            }),
+                            schema: Some(Default::default()),
                             issuer_identifier: Some(IdentifierRelations {
                                 did: Some(Default::default()),
                                 ..Default::default()
@@ -1632,7 +1620,7 @@ async fn test_get_proof_with_array_in_object() {
         format: "JWT".into(),
         revocation_method: None,
         claim_schemas: claim_schemas.clone().into(),
-        organisation: Some(organisation.clone()),
+        organisation: organisation.clone().into(),
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_id: "CredentialSchemaId".to_owned(),
@@ -1793,9 +1781,7 @@ async fn test_get_proof_with_array_in_object() {
                             claims: Some(ClaimRelations {
                                 schema: Some(Default::default()),
                             }),
-                            schema: Some(CredentialSchemaRelations {
-                                organisation: Some(Default::default()),
-                            }),
+                            schema: Some(Default::default()),
                             issuer_identifier: Some(IdentifierRelations {
                                 did: Some(Default::default()),
                                 ..Default::default()
@@ -1907,7 +1893,7 @@ async fn test_get_proof_with_object_array() {
         format: "JWT".into(),
         revocation_method: None,
         claim_schemas: claim_schemas.clone().into(),
-        organisation: Some(organisation.clone()),
+        organisation: organisation.clone().into(),
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_id: "CredentialSchemaId".to_owned(),
@@ -2078,9 +2064,7 @@ async fn test_get_proof_with_object_array() {
                             claims: Some(ClaimRelations {
                                 schema: Some(Default::default()),
                             }),
-                            schema: Some(CredentialSchemaRelations {
-                                organisation: Some(Default::default()),
-                            }),
+                            schema: Some(Default::default()),
                             issuer_identifier: Some(IdentifierRelations {
                                 did: Some(Default::default()),
                                 ..Default::default()

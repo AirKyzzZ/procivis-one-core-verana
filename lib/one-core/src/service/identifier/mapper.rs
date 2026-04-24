@@ -385,7 +385,7 @@ async fn credential_schema_filter(
     config: &CoreConfig,
 ) -> Result<IdentifierFilterValue, IdentifierServiceError> {
     let schema = credential_schema_repository
-        .get_credential_schema(credential_schema_id, &CredentialSchemaRelations::default())
+        .get_credential_schema(credential_schema_id)
         .await
         .error_while("retrieving credential schema")?
         .ok_or(IdentifierServiceError::CredentialSchemaNotFound(

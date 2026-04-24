@@ -6,6 +6,7 @@ use one_core::repository::credential_schema_repository::CredentialSchemaReposito
 use one_core::repository::identifier_repository::IdentifierRepository;
 use one_core::repository::interaction_repository::InteractionRepository;
 use one_core::repository::key_repository::KeyRepository;
+use one_core::repository::organisation_repository::OrganisationRepository;
 
 use crate::transaction_context::TransactionManagerImpl;
 
@@ -21,6 +22,7 @@ pub(crate) struct CredentialProvider {
     pub interaction_repository: Arc<dyn InteractionRepository>,
     pub certificate_repository: Arc<dyn CertificateRepository>,
     pub key_repository: Arc<dyn KeyRepository>,
+    pub organisation_repository: Arc<dyn OrganisationRepository>,
 }
 
 #[cfg(test)]

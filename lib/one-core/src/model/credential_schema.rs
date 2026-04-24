@@ -9,8 +9,8 @@ use time::OffsetDateTime;
 use super::claim_schema::ClaimSchema;
 use super::common::GetListResponse;
 use super::list_query::ListQuery;
-use super::organisation::{Organisation, OrganisationRelations};
-use super::relation::RelatedVec;
+use super::organisation::Organisation;
+use super::relation::{Related, RelatedVec};
 use crate::service::credential_schema::dto::{
     CredentialSchemaFilterValue, CredentialSchemaListIncludeEntityTypeEnum,
 };
@@ -36,9 +36,8 @@ pub struct CredentialSchema {
     pub requires_wallet_instance_attestation: bool,
     pub transaction_code: Option<TransactionCode>,
 
-    // Relations
     pub claim_schemas: RelatedVec<ClaimSchema>,
-    pub organisation: Option<Organisation>,
+    pub organisation: Related<Organisation>,
 }
 
 #[derive(Debug)]
@@ -65,9 +64,7 @@ pub(crate) struct CredentialSchemaClaimsNestedObjectView {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
-pub struct CredentialSchemaRelations {
-    pub organisation: Option<OrganisationRelations>,
-}
+pub struct CredentialSchemaRelations {}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SortableCredentialSchemaColumn {

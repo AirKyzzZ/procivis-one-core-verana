@@ -313,7 +313,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                         layout_type: LayoutType::Card,
                         layout_properties,
                         schema_id: schema.id.clone(),
-                        organisation: Some(organisation.clone()),
+                        organisation: organisation.into(),
                         allow_suspension: false,
                         requires_wallet_instance_attestation: false,
                         transaction_code: None,

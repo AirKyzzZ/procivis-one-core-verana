@@ -74,7 +74,7 @@ pub(crate) async fn credential_from_proved(
 
 fn from_provider_schema(schema: CredentialSchema, organisation: Organisation) -> CredentialSchema {
     CredentialSchema {
-        organisation: Some(organisation),
+        organisation: organisation.into(),
         ..schema
     }
 }

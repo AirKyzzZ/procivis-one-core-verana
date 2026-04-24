@@ -2,12 +2,12 @@ use std::sync::Arc;
 
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential_schema::{
-    BackgroundProperties, CredentialSchema, CredentialSchemaListQuery, CredentialSchemaRelations,
-    LayoutProperties, LayoutType, UpdateCredentialSchemaRequest,
+    BackgroundProperties, CredentialSchema, CredentialSchemaListQuery, LayoutProperties,
+    LayoutType, UpdateCredentialSchemaRequest,
 };
 use one_core::model::list_filter::ListFilterValue;
 use one_core::model::list_query::ListPagination;
-use one_core::model::organisation::{Organisation, OrganisationRelations};
+use one_core::model::organisation::Organisation;
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::organisation_repository::{
@@ -135,7 +135,7 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
                 })
                 .collect::<Vec<_>>()
                 .into(),
-            organisation: Some(organisation.clone()),
+            organisation: organisation.clone().into(),
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: credential_schema_id.to_string(),
@@ -194,7 +194,7 @@ async fn test_create_credential_schema_success() {
             format: "JWT".into(),
             revocation_method: None,
             claim_schemas: claim_schemas.into(),
-            organisation: Some(organisation),
+            organisation: organisation.into(),
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: "CredentialSchemaId".to_owned(),
@@ -246,19 +246,16 @@ async fn test_get_credential_schema_list_success() {
     } = setup_with_schema(Repositories::default()).await;
 
     let result = repository
-        .get_credential_schema_list(
-            CredentialSchemaListQuery {
-                pagination: Some(ListPagination {
-                    page: 0,
-                    page_size: 5,
-                }),
-                filtering: Some(
-                    CredentialSchemaFilterValue::OrganisationId(organisation.id).condition(),
-                ),
-                ..Default::default()
-            },
-            &Default::default(),
-        )
+        .get_credential_schema_list(CredentialSchemaListQuery {
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 5,
+            }),
+            filtering: Some(
+                CredentialSchemaFilterValue::OrganisationId(organisation.id).condition(),
+            ),
+            ..Default::default()
+        })
         .await;
     assert!(result.is_ok());
     let result = result.unwrap();
@@ -287,19 +284,16 @@ async fn test_get_credential_schema_list_deleted_schema() {
     .unwrap();
 
     let result = repository
-        .get_credential_schema_list(
-            CredentialSchemaListQuery {
-                pagination: Some(ListPagination {
-                    page: 0,
-                    page_size: 1,
-                }),
-                filtering: Some(
-                    CredentialSchemaFilterValue::OrganisationId(organisation.id).condition(),
-                ),
-                ..Default::default()
-            },
-            &Default::default(),
-        )
+        .get_credential_schema_list(CredentialSchemaListQuery {
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 1,
+            }),
+            filtering: Some(
+                CredentialSchemaFilterValue::OrganisationId(organisation.id).condition(),
+            ),
+            ..Default::default()
+        })
         .await;
     assert!(result.is_ok());
     let result = result.unwrap();
@@ -310,29 +304,15 @@ async fn test_get_credential_schema_list_deleted_schema() {
 
 #[tokio::test]
 async fn test_get_credential_schema_success() {
-    let mut organisation_repository = MockOrganisationRepository::default();
-    organisation_repository
-        .expect_get_organisation()
-        .times(1)
-        .returning(|id| Ok(Some(dummy_organisation(Some(*id)))));
-
     let TestSetupWithCredentialSchema {
         credential_schema,
         repository,
         organisation,
         ..
-    } = setup_with_schema(Repositories {
-        organisation_repository,
-    })
-    .await;
+    } = setup_with_schema(Default::default()).await;
 
     let result = repository
-        .get_credential_schema(
-            &credential_schema.id,
-            &CredentialSchemaRelations {
-                organisation: Some(OrganisationRelations::default()),
-            },
-        )
+        .get_credential_schema(&credential_schema.id)
         .await;
 
     assert!(result.is_ok());
@@ -340,31 +320,22 @@ async fn test_get_credential_schema_success() {
     assert_eq!(credential_schema.id, result.id);
     let claim_schemas = result.claim_schemas.get().await.unwrap();
     assert_eq!(claim_schemas.len(), 2);
-    assert_eq!(organisation.id, result.organisation.unwrap().id);
+    assert_eq!(organisation.id, result.organisation.id());
 
     let empty_relations_mean_no_other_repository_calls = repository
-        .get_credential_schema(&credential_schema.id, &CredentialSchemaRelations::default())
+        .get_credential_schema(&credential_schema.id)
         .await;
     assert!(empty_relations_mean_no_other_repository_calls.is_ok());
 }
 
 #[tokio::test]
 async fn test_get_credential_schema_deleted() {
-    let mut organisation_repository = MockOrganisationRepository::default();
-    organisation_repository
-        .expect_get_organisation()
-        .times(1)
-        .returning(|id| Ok(Some(dummy_organisation(Some(*id)))));
-
     let TestSetupWithCredentialSchema {
         credential_schema,
         repository,
         db,
         ..
-    } = setup_with_schema(Repositories {
-        organisation_repository,
-    })
-    .await;
+    } = setup_with_schema(Default::default()).await;
 
     let delete_date = get_dummy_date();
     credential_schema::ActiveModel {
@@ -377,17 +348,12 @@ async fn test_get_credential_schema_deleted() {
     .unwrap();
 
     let result = repository
-        .get_credential_schema(
-            &credential_schema.id,
-            &CredentialSchemaRelations {
-                organisation: Some(OrganisationRelations::default()),
-            },
-        )
+        .get_credential_schema(&credential_schema.id)
         .await;
 
     assert!(result.is_ok());
     let result = result.unwrap().unwrap();
-    assert_eq!(result.id, credential_schema.id,);
+    assert_eq!(result.id, credential_schema.id);
     assert_eq!(result.deleted_at.unwrap(), delete_date);
 }
 
@@ -396,10 +362,7 @@ async fn test_get_credential_schema_not_found() {
     let TestSetup { repository, .. } = setup_empty(Repositories::default()).await;
 
     let result = repository
-        .get_credential_schema(
-            &Uuid::new_v4().into(),
-            &CredentialSchemaRelations::default(),
-        )
+        .get_credential_schema(&Uuid::new_v4().into())
         .await;
     assert!(matches!(result, Ok(None)));
 }
@@ -447,7 +410,7 @@ async fn test_delete_credential_schema_not_found() {
             allow_suspension: false,
             requires_wallet_instance_attestation: false,
             claim_schemas: Default::default(),
-            organisation: None,
+            organisation: dummy_organisation(None).into(),
             transaction_code: None,
         })
         .await;
@@ -515,16 +478,11 @@ async fn test_get_by_schema_id_and_organisation() {
     let res = repository
         .get_by_schema_id_and_organisation(
             &credential_schema.schema_id,
-            credential_schema.organisation.as_ref().unwrap().id,
-            &CredentialSchemaRelations {
-                organisation: Some(Default::default()),
-            },
+            credential_schema.organisation.id(),
         )
         .await
         .unwrap()
         .unwrap();
-
-    assert!(&res.organisation.is_some());
 
     assert_eq!(res, credential_schema);
 }

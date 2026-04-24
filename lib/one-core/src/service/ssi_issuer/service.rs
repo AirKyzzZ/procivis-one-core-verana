@@ -67,7 +67,7 @@ impl SSIIssuerService {
     ) -> Result<JsonLDContextResponseDTO, IssuerServiceError> {
         let credential_schema = self
             .credential_schema_repository
-            .get_credential_schema(&credential_schema_id, &Default::default())
+            .get_credential_schema(&credential_schema_id)
             .await
             .error_while("getting credential schema")?;
 
@@ -175,21 +175,18 @@ impl SSIIssuerService {
 
         let mut schema_list = self
             .credential_schema_repository
-            .get_credential_schema_list(
-                CredentialSchemaListQuery {
-                    pagination: None,
-                    sorting: None,
-                    filtering: Some(
-                        CredentialSchemaFilterValue::OrganisationId(organisation_id).condition()
-                            & CredentialSchemaFilterValue::SchemaId(StringMatch::equals(&vct))
-                                .condition(),
-                    ),
-                    include: Some(vec![
-                        CredentialSchemaListIncludeEntityTypeEnum::LayoutProperties,
-                    ]),
-                },
-                &Default::default(),
-            )
+            .get_credential_schema_list(CredentialSchemaListQuery {
+                pagination: None,
+                sorting: None,
+                filtering: Some(
+                    CredentialSchemaFilterValue::OrganisationId(organisation_id).condition()
+                        & CredentialSchemaFilterValue::SchemaId(StringMatch::equals(&vct))
+                            .condition(),
+                ),
+                include: Some(vec![
+                    CredentialSchemaListIncludeEntityTypeEnum::LayoutProperties,
+                ]),
+            })
             .await
             .error_while("getting credential schemas")?;
 
@@ -302,7 +299,7 @@ impl SSIIssuerService {
         credential_schema_id: &CredentialSchemaId,
     ) -> Result<CredentialSchema, IssuerServiceError> {
         self.credential_schema_repository
-            .get_credential_schema(credential_schema_id, &Default::default())
+            .get_credential_schema(credential_schema_id)
             .await
             .error_while("fetching credential schema")?
             .ok_or_else(|| IssuerServiceError::MissingCredentialSchema(*credential_schema_id))

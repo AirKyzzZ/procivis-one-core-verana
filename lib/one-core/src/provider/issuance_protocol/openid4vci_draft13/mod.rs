@@ -35,13 +35,13 @@ use crate::model::credential::{
     Clearable, Credential, CredentialRelations, CredentialStateEnum, UpdateCredentialRequest,
 };
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaRelations, KeyStorageSecurity, UpdateCredentialSchemaRequest,
+    CredentialSchema, KeyStorageSecurity, UpdateCredentialSchemaRequest,
 };
 use crate::model::did::{DidRelations, KeyRole};
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierType};
 use crate::model::interaction::{Interaction, UpdateInteractionRequest};
 use crate::model::key::{Key, KeyRelations};
-use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::model::organisation::Organisation;
 use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
 use crate::proto::certificate_validator::{
     CertificateValidationOptions, CertificateValidator, ParsedCertificate,
@@ -544,15 +544,14 @@ impl OpenID4VCI13 {
 
         let organisation = schema
             .organisation
-            .as_ref()
-            .ok_or(IssuanceProtocolError::Failed(
-                "Missing credential schema organisation".to_string(),
-            ))?;
+            .get()
+            .await
+            .error_while("getting organisation")?;
 
         let (issuer_dentifier, issuer_identifier_relation) = self
             .identifier_creator
             .get_or_create_remote_identifier(
-                &Some(organisation.to_owned()),
+                &Some(organisation),
                 &response_credential.issuer,
                 IdentifierRole::Issuer,
             )
@@ -1155,9 +1154,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
                     claims: Some(ClaimRelations {
                         schema: Some(ClaimSchemaRelations::default()),
                     }),
-                    schema: Some(CredentialSchemaRelations {
-                        organisation: Some(OrganisationRelations::default()),
-                    }),
+                    schema: Some(Default::default()),
                     issuer_identifier: Some(IdentifierRelations {
                         did: Some(DidRelations {
                             keys: Some(KeyRelations::default()),
@@ -1855,13 +1852,7 @@ async fn prepare_issuance_interaction_and_credentials_with_claims(
 
     let credential_id: CredentialId = Uuid::new_v4().into();
     let (claims, credential_schema) = match credential_schema_repository
-        .get_by_schema_id_and_organisation(
-            &schema_id,
-            organisation.id,
-            &CredentialSchemaRelations {
-                organisation: Some(Default::default()),
-            },
-        )
+        .get_by_schema_id_and_organisation(&schema_id, organisation.id)
         .await
         .error_while("getting credential schema")?
     {

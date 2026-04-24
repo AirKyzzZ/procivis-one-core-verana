@@ -32,7 +32,6 @@ use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{DidRelations, KeyRole};
 use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::interaction::{InteractionRelations, UpdateInteractionRequest};
-use crate::model::organisation::OrganisationRelations;
 use crate::proto::identifier_creator::{IdentifierRole, RemoteIdentifierRelation};
 use crate::proto::key_verification::KeyVerification;
 use crate::proto::transaction_manager::IsolationLevel;
@@ -83,12 +82,7 @@ impl OID4VCIDraft13Service {
 
         let Some(credential_schema) = self
             .credential_schema_repository
-            .get_credential_schema(
-                credential_schema_id,
-                &CredentialSchemaRelations {
-                    ..Default::default()
-                },
-            )
+            .get_credential_schema(credential_schema_id)
             .await
             .error_while("getting credential schema")?
         else {
@@ -171,12 +165,7 @@ impl OID4VCIDraft13Service {
 
         let schema = self
             .credential_schema_repository
-            .get_credential_schema(
-                credential_schema_id,
-                &CredentialSchemaRelations {
-                    organisation: Some(OrganisationRelations::default()),
-                },
-            )
+            .get_credential_schema(credential_schema_id)
             .await
             .error_while("getting credential schema")?;
 
@@ -243,7 +232,7 @@ impl OID4VCIDraft13Service {
 
         let schema = self
             .credential_schema_repository
-            .get_credential_schema(credential_schema_id, &Default::default())
+            .get_credential_schema(credential_schema_id)
             .await
             .error_while("getting credential schema")?;
 
@@ -367,12 +356,7 @@ impl OID4VCIDraft13Service {
 
         let Some(schema) = self
             .credential_schema_repository
-            .get_credential_schema(
-                credential_schema_id,
-                &CredentialSchemaRelations {
-                    organisation: Some(OrganisationRelations::default()),
-                },
-            )
+            .get_credential_schema(credential_schema_id)
             .await
             .error_while("getting credential schema")?
         else {
@@ -446,12 +430,17 @@ impl OID4VCIDraft13Service {
                 ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidOrMissingProof)
             })?;
 
+            let organisation = schema
+                .organisation
+                .get()
+                .await
+                .error_while("getting organisation")?;
             match verified_proof {
                 Either::Left((holder_did_value, holder_key_id)) => {
                     let (identifier, _) = self
                         .identifier_creator
                         .get_or_create_remote_identifier(
-                            &schema.organisation,
+                            &Some(organisation),
                             &IdentifierDetails::Did(holder_did_value),
                             IdentifierRole::Holder,
                         )
@@ -463,7 +452,7 @@ impl OID4VCIDraft13Service {
                     let (identifier, RemoteIdentifierRelation::Key(key)) = self
                         .identifier_creator
                         .get_or_create_remote_identifier(
-                            &schema.organisation,
+                            &Some(organisation),
                             &IdentifierDetails::Key(jwk),
                             IdentifierRole::Holder,
                         )
@@ -740,7 +729,7 @@ impl OID4VCIDraft13Service {
 
         let Some(credential_schema) = self
             .credential_schema_repository
-            .get_credential_schema(credential_schema_id, &CredentialSchemaRelations::default())
+            .get_credential_schema(credential_schema_id)
             .await
             .error_while("getting credential schema")?
         else {

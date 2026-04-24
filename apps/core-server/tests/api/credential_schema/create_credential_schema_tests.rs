@@ -39,7 +39,7 @@ async fn test_create_credential_schema_success() {
 
     assert_eq!(credential_schema.name, "some credential schema");
     assert_eq!(credential_schema.revocation_method, None);
-    assert_eq!(credential_schema.organisation.unwrap().id, organisation.id);
+    assert_eq!(credential_schema.organisation.id(), organisation.id);
     assert_eq!(credential_schema.format.as_ref(), "JWT");
     let claim_schemas = credential_schema.claim_schemas.get().await.unwrap();
     assert_eq!(claim_schemas.iter().filter(|cs| !cs.metadata).count(), 2);
@@ -572,7 +572,7 @@ async fn test_create_credential_schema_modc_without_schema_id() {
 
     assert_eq!(credential_schema.name, "schema");
     assert_eq!(credential_schema.revocation_method, None);
-    assert_eq!(credential_schema.organisation.unwrap().id, organisation.id);
+    assert_eq!(credential_schema.organisation.id(), organisation.id);
     assert_eq!(credential_schema.format.as_ref(), "MDOC");
     assert_eq!(credential_schema.schema_id, id.to_string());
 }
@@ -608,7 +608,7 @@ async fn test_create_credential_schema_sdjwtvc_with_schema_id() {
 
     assert_eq!(credential_schema.name, "schema");
     assert_eq!(credential_schema.revocation_method, None);
-    assert_eq!(credential_schema.organisation.unwrap().id, organisation.id);
+    assert_eq!(credential_schema.organisation.id(), organisation.id);
     assert_eq!(credential_schema.format.as_ref(), "SD_JWT_VC");
     assert_eq!(credential_schema.schema_id, schema_id);
 }

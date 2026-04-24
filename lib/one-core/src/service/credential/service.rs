@@ -26,11 +26,9 @@ use crate::model::credential::{
     Credential, CredentialListIncludeEntityTypeEnum, CredentialRelations, CredentialRole,
     CredentialStateEnum, SortableCredentialColumn, UpdateCredentialRequest,
 };
-use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{DidRelations, KeyRole};
 use crate::model::identifier::{IdentifierRelations, IdentifierState, IdentifierType};
 use crate::model::interaction::{InteractionRelations, InteractionType};
-use crate::model::organisation::OrganisationRelations;
 use crate::model::validity_credential::ValidityCredentialType;
 use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::issuance_protocol::model::ShareResponse;
@@ -44,7 +42,6 @@ use crate::util::interactions::{add_new_interaction, clear_previous_interaction}
 use crate::util::key_selection::{CertificateFilter, KeyFilter, KeySelection, SelectedKey};
 use crate::validator::{
     throw_if_credential_schema_not_in_session_org, throw_if_org_id_not_matching_session,
-    throw_if_org_not_matching_session,
 };
 
 impl CredentialService {
@@ -102,12 +99,7 @@ impl CredentialService {
 
         let Some(schema) = self
             .credential_schema_repository
-            .get_credential_schema(
-                &request.credential_schema_id,
-                &CredentialSchemaRelations {
-                    organisation: Some(Default::default()),
-                },
-            )
+            .get_credential_schema(&request.credential_schema_id)
             .await
             .error_while("getting credential schema")?
         else {
@@ -115,7 +107,7 @@ impl CredentialService {
                 request.credential_schema_id,
             ));
         };
-        throw_if_org_not_matching_session(schema.organisation.as_ref(), &*self.session_provider)
+        throw_if_org_id_not_matching_session(schema.organisation.id_ref(), &*self.session_provider)
             .error_while("checking session")?;
 
         validate_key_storage_security_supported(schema.key_storage_security, &self.config)
@@ -253,9 +245,7 @@ impl CredentialService {
             .get_credential(
                 credential_id,
                 &CredentialRelations {
-                    schema: Some(CredentialSchemaRelations {
-                        organisation: Some(Default::default()),
-                    }),
+                    schema: Some(Default::default()),
                     ..Default::default()
                 },
             )
@@ -272,7 +262,7 @@ impl CredentialService {
             .ok_or(CredentialServiceError::MappingError(
                 "credential_schema is None".to_string(),
             ))?;
-        throw_if_org_not_matching_session(schema.organisation.as_ref(), &*self.session_provider)
+        throw_if_org_id_not_matching_session(schema.organisation.id_ref(), &*self.session_provider)
             .error_while("checking session")?;
 
         let is_issuer = credential.role == CredentialRole::Issuer;
@@ -318,9 +308,7 @@ impl CredentialService {
                     claims: Some(ClaimRelations {
                         schema: Some(ClaimSchemaRelations::default()),
                     }),
-                    schema: Some(CredentialSchemaRelations {
-                        organisation: Some(OrganisationRelations::default()),
-                    }),
+                    schema: Some(Default::default()),
                     issuer_identifier: Some(Default::default()),
                     issuer_certificate: Some(CertificateRelations::default()),
                     holder_identifier: Some(Default::default()),
@@ -541,8 +529,8 @@ impl CredentialService {
                 "Missing credential schema".to_string(),
             ));
         };
-        throw_if_org_not_matching_session(
-            credential_schema.organisation.as_ref(),
+        throw_if_org_id_not_matching_session(
+            credential_schema.organisation.id_ref(),
             &*self.session_provider,
         )
         .error_while("checking session")?;
@@ -568,11 +556,11 @@ impl CredentialService {
             ));
         }
 
-        let Some(organisation) = &credential_schema.organisation else {
-            return Err(CredentialServiceError::MappingError(
-                "Missing organisation".to_string(),
-            ));
-        };
+        let organisation = credential_schema
+            .organisation
+            .get()
+            .await
+            .error_while("getting organisation")?;
 
         let credential_exchange = &credential.protocol;
         let exchange = self
@@ -598,7 +586,7 @@ impl CredentialService {
             interaction_id,
             &*self.interaction_repository,
             interaction_data,
-            Some(organisation.to_owned()),
+            Some(organisation),
             InteractionType::Issuance,
             expires_at,
         )
@@ -636,9 +624,7 @@ impl CredentialService {
             .get_credential(
                 &id,
                 &CredentialRelations {
-                    schema: Some(CredentialSchemaRelations {
-                        organisation: Some(OrganisationRelations::default()),
-                    }),
+                    schema: Some(Default::default()),
                     ..Default::default()
                 },
             )
@@ -678,9 +664,7 @@ impl CredentialService {
                     claims: Some(ClaimRelations {
                         schema: Some(ClaimSchemaRelations::default()),
                     }),
-                    schema: Some(CredentialSchemaRelations {
-                        organisation: Some(OrganisationRelations::default()),
-                    }),
+                    schema: Some(Default::default()),
                     issuer_identifier: Some(IdentifierRelations {
                         did: Some(Default::default()),
                         ..Default::default()

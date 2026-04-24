@@ -34,7 +34,9 @@ use crate::provider::key_algorithm::provider::{MockKeyAlgorithmProvider, ParsedK
 use crate::provider::presentation_formatter::mso_mdoc::model::DeviceResponse;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::iso_18013_7::OID4VPDraftHandover;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
-use crate::service::test_utilities::{dummy_did, dummy_identifier, generic_config, get_dummy_date};
+use crate::service::test_utilities::{
+    dummy_did, dummy_identifier, dummy_organisation, generic_config, get_dummy_date,
+};
 
 #[test]
 fn test_issuer_auth_serialize_deserialize() {
@@ -1060,7 +1062,7 @@ async fn test_parse_credential() {
     verify_mock.expect_verify().return_once(|_, _, _, _| Ok(()));
 
     let credential = formatter
-        .parse_credential(ISSUED_MDOC, Box::new(verify_mock))
+        .parse_credential(ISSUED_MDOC, dummy_organisation(None), Box::new(verify_mock))
         .await
         .unwrap();
 

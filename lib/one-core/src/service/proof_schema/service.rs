@@ -148,23 +148,18 @@ impl ProofSchemaService {
         let expected_credential_schemas = credential_schema_ids.len();
         let credential_schemas = self
             .credential_schema_repository
-            .get_credential_schema_list(
-                CredentialSchemaListQuery {
-                    pagination: Some(ListPagination {
-                        page: 0,
-                        page_size: expected_credential_schemas as u32,
-                    }),
-                    filtering: Some(
-                        CredentialSchemaFilterValue::OrganisationId(request.organisation_id)
-                            .condition()
-                            & CredentialSchemaFilterValue::CredentialSchemaIds(
-                                credential_schema_ids,
-                            ),
-                    ),
-                    ..Default::default()
-                },
-                &Default::default(),
-            )
+            .get_credential_schema_list(CredentialSchemaListQuery {
+                pagination: Some(ListPagination {
+                    page: 0,
+                    page_size: expected_credential_schemas as u32,
+                }),
+                filtering: Some(
+                    CredentialSchemaFilterValue::OrganisationId(request.organisation_id)
+                        .condition()
+                        & CredentialSchemaFilterValue::CredentialSchemaIds(credential_schema_ids),
+                ),
+                ..Default::default()
+            })
             .await
             .error_while("getting credential schemas")?
             .values;
@@ -325,7 +320,6 @@ impl ProofSchemaService {
                             .get_by_schema_id_and_organisation(
                                 &request_input_schema.credential_schema.schema_id,
                                 organisation.id,
-                                &Default::default(),
                             )
                             .await .error_while("getting credential schema")?;
 

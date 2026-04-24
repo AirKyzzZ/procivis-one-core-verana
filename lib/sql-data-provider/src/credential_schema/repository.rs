@@ -1,20 +1,16 @@
 use autometrics::autometrics;
 use futures::FutureExt;
-use futures::stream::{self, StreamExt};
-use itertools::Either;
 use one_core::model::credential_schema::{
-    CredentialSchema, CredentialSchemaListQuery, CredentialSchemaRelations,
-    GetCredentialSchemaList, UpdateCredentialSchemaRequest,
+    CredentialSchema, CredentialSchemaListQuery, GetCredentialSchemaList,
+    UpdateCredentialSchemaRequest,
 };
-use one_core::model::organisation::Organisation;
 use one_core::proto::transaction_manager::IsolationLevel;
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
 use one_core::repository::error::DataLayerError;
 use one_core::service::credential_schema::dto::CredentialSchemaListIncludeEntityTypeEnum;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, ModelTrait, PaginatorTrait, QueryFilter,
-    QueryOrder, Unchanged,
+    ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, Unchanged,
 };
 use shared_types::{CredentialSchemaId, OrganisationId};
 
@@ -22,10 +18,9 @@ use crate::common::calculate_pages_count;
 use crate::credential_schema::CredentialSchemaProvider;
 use crate::credential_schema::mapper::{claim_schemas_to_model_vec, credential_schema_from_models};
 use crate::entity::credential_schema::LayoutType;
-use crate::entity::{claim_schema, credential_schema, organisation};
+use crate::entity::{claim_schema, credential_schema};
 use crate::list_query_generic::SelectWithListQuery;
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
-use crate::organisation::mapper::organisation_from_model;
 
 #[autometrics]
 #[async_trait::async_trait]
@@ -37,7 +32,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
     ) -> Result<CredentialSchemaId, DataLayerError> {
         let claim_schemas = schema.claim_schemas.get().await?;
 
-        let credential_schema: credential_schema::ActiveModel = schema.try_into()?;
+        let credential_schema: credential_schema::ActiveModel = schema.into();
 
         let credential_schema = self
             .db
@@ -93,7 +88,6 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
     async fn get_credential_schema(
         &self,
         id: &CredentialSchemaId,
-        relations: &CredentialSchemaRelations,
     ) -> Result<Option<CredentialSchema>, DataLayerError> {
         let credential_schema = credential_schema::Entity::find_by_id(id)
             .one(&self.db)
@@ -104,25 +98,11 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
             return Ok(None);
         };
 
-        let organisation = if let Some(_organisation_relations) = &relations.organisation {
-            Some(
-                self.organisation_repository
-                    .get_organisation(&credential_schema.organisation_id)
-                    .await?
-                    .ok_or(DataLayerError::MissingRequiredRelation {
-                        relation: "credential_schema-organisation",
-                        id: credential_schema.organisation_id.to_string(),
-                    })?,
-            )
-        } else {
-            None
-        };
-
         let credential_schema = credential_schema_from_models(
             credential_schema,
-            organisation,
             false,
             self.db.to_owned(),
+            &self.organisation_repository,
         )?;
 
         Ok(Some(credential_schema))
@@ -131,7 +111,6 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
     async fn get_credential_schema_list(
         &self,
         query_params: CredentialSchemaListQuery,
-        relations: &CredentialSchemaRelations,
     ) -> Result<GetCredentialSchemaList, DataLayerError> {
         let limit = query_params
             .pagination
@@ -150,43 +129,18 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
         let items_count = items_count.map_err(|e| DataLayerError::Db(e.into()))?;
         let credential_schemas = credential_schemas.map_err(|e| DataLayerError::Db(e.into()))?;
 
-        let organisations = if let Some(_organisations) = &relations.organisation {
-            Either::Left(
-                stream::iter(&credential_schemas)
-                    .then(|credential_schema| async {
-                        Ok::<_, DataLayerError>(Some(
-                            self.organisation_repository
-                                .get_organisation(&credential_schema.organisation_id)
-                                .await?
-                                .ok_or(DataLayerError::MissingRequiredRelation {
-                                    relation: "credential_schema-organisation",
-                                    id: credential_schema.organisation_id.to_string(),
-                                })?,
-                        ))
-                    })
-                    .collect::<Vec<_>>()
-                    .await
-                    .into_iter()
-                    .collect::<Result<Vec<_>, _>>()?,
-            )
-        } else {
-            Either::Right(std::iter::repeat(None::<Organisation>))
-        };
-
+        let skip_layout_properties = !query_params.include.as_ref().is_some_and(|include| {
+            include.contains(&CredentialSchemaListIncludeEntityTypeEnum::LayoutProperties)
+        });
         Ok(GetCredentialSchemaList {
             values: credential_schemas
                 .into_iter()
-                .zip(organisations.into_iter())
-                .map(|(credential_schema, organisation)| {
+                .map(|credential_schema| {
                     credential_schema_from_models(
                         credential_schema,
-                        organisation,
-                        !query_params.include.as_ref().is_some_and(|include| {
-                            include.contains(
-                                &CredentialSchemaListIncludeEntityTypeEnum::LayoutProperties,
-                            )
-                        }),
+                        skip_layout_properties,
                         self.db.to_owned(),
+                        &self.organisation_repository,
                     )
                 })
                 .collect::<Result<_, _>>()?,
@@ -253,7 +207,6 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
         &self,
         schema_id: &str,
         organisation_id: OrganisationId,
-        relations: &CredentialSchemaRelations,
     ) -> Result<Option<CredentialSchema>, DataLayerError> {
         let credential_schema = credential_schema::Entity::find()
             .filter(credential_schema::Column::SchemaId.eq(schema_id))
@@ -267,24 +220,11 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
             return Ok(None);
         };
 
-        let mut organisation = None;
-        if relations.organisation.is_some() {
-            organisation = Some(organisation_from_model(
-                credential_schema
-                    .find_related(organisation::Entity)
-                    .one(&self.db)
-                    .await
-                    .map_err(to_data_layer_error)?
-                    .ok_or(DataLayerError::MappingError)?,
-                &self.organisation_repository,
-            ));
-        }
-
         Ok(credential_schema_from_models(
             credential_schema,
-            organisation,
             true,
             self.db.to_owned(),
+            &self.organisation_repository,
         )?
         .into())
     }

@@ -18,12 +18,9 @@ use crate::mapper::x509::pem_chain_to_authority_key_identifiers;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
-use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaListQuery, CredentialSchemaRelations,
-};
+use crate::model::credential_schema::{CredentialSchema, CredentialSchemaListQuery};
 use crate::model::list_filter::{ListFilterCondition, ListFilterValue, StringMatch};
 use crate::model::list_query::ListPagination;
-use crate::model::organisation::OrganisationRelations;
 use crate::model::proof::Proof;
 use crate::proto::openid4vp_proof_validator::validator::get_trusted_akis;
 use crate::proto::trust_information::TrustInformationProvider;
@@ -1349,25 +1346,20 @@ async fn find_schema_by_schema_ids(
         .map(|id| CredentialSchemaFilterValue::SchemaId(StringMatch::equals(id)))
         .fold(ListFilterCondition::default(), |acc, cond| acc | cond);
     let candidates = credential_schema_repository
-        .get_credential_schema_list(
-            CredentialSchemaListQuery {
-                pagination: Some(ListPagination {
-                    page: 0,
-                    page_size: 1,
-                }),
-                sorting: None,
-                filtering: Some(
-                    CredentialSchemaFilterValue::OrganisationId(organisation_id).condition()
-                        & schema_ids_filter_cond,
-                ),
-                include: Some(vec![
-                    CredentialSchemaListIncludeEntityTypeEnum::LayoutProperties,
-                ]),
-            },
-            &CredentialSchemaRelations {
-                organisation: Some(OrganisationRelations::default()),
-            },
-        )
+        .get_credential_schema_list(CredentialSchemaListQuery {
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 1,
+            }),
+            sorting: None,
+            filtering: Some(
+                CredentialSchemaFilterValue::OrganisationId(organisation_id).condition()
+                    & schema_ids_filter_cond,
+            ),
+            include: Some(vec![
+                CredentialSchemaListIncludeEntityTypeEnum::LayoutProperties,
+            ]),
+        })
         .await?;
     Ok(candidates.values.into_iter().next())
 }

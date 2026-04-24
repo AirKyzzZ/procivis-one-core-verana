@@ -101,7 +101,7 @@ async fn test_get_sd_jwt_vc_issuer_metadata_success_with_did() {
     credential_schema_repository
         .expect_get_credential_schema()
         .once()
-        .return_once(move |_, _| Ok(Some(credential_schema)));
+        .return_once(move |_| Ok(Some(credential_schema)));
 
     let mut mock_public_key = MockSignaturePublicKeyHandle::new();
     mock_public_key.expect_as_jwk().once().return_once(|| {
@@ -182,7 +182,7 @@ async fn test_get_sd_jwt_vc_issuer_metadata_success() {
     credential_schema_repository
         .expect_get_credential_schema()
         .once()
-        .return_once(move |_, _| Ok(Some(credential_schema)));
+        .return_once(move |_| Ok(Some(credential_schema)));
 
     let mut mock_public_key = MockSignaturePublicKeyHandle::new();
     mock_public_key.expect_as_jwk().once().return_once(|| {
@@ -357,7 +357,7 @@ async fn test_get_sd_jwt_vc_issuer_metadata_fails_when_credential_schema_not_fou
     credential_schema_repository
         .expect_get_credential_schema()
         .once()
-        .return_once(|_, _| Ok(None));
+        .return_once(|_| Ok(None));
 
     let service = setup_service(
         credential_schema_repository,

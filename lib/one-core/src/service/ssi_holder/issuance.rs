@@ -23,7 +23,7 @@ use crate::model::claim::Claim;
 use crate::model::credential::{
     Credential, CredentialRelations, CredentialStateEnum, UpdateCredentialRequest,
 };
-use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
+use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::DidRelations;
 use crate::model::identifier::IdentifierRelations;
 use crate::model::interaction::{Interaction, InteractionRelations, InteractionType};
@@ -69,9 +69,7 @@ impl SSIHolderService {
                     interaction: Some(InteractionRelations {
                         organisation: Some(OrganisationRelations::default()),
                     }),
-                    schema: Some(CredentialSchemaRelations {
-                        organisation: Some(OrganisationRelations::default()),
-                    }),
+                    schema: Some(Default::default()),
                     ..Default::default()
                 },
             )
@@ -519,9 +517,7 @@ impl SSIHolderService {
                 interaction_id,
                 &CredentialRelations {
                     interaction: Some(InteractionRelations::default()),
-                    schema: Some(CredentialSchemaRelations {
-                        organisation: Some(OrganisationRelations::default()),
-                    }),
+                    schema: Some(Default::default()),
                     ..Default::default()
                 },
             )

@@ -11,7 +11,7 @@ use crate::model::certificate::CertificateRelations;
 use crate::model::credential::{
     Clearable, CredentialRelations, CredentialRole, CredentialStateEnum, UpdateCredentialRequest,
 };
-use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
+use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::DidRelations;
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierType};
 use crate::model::interaction::InteractionRelations;
@@ -32,7 +32,7 @@ use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::service::error::{EntityNotFoundError, MissingProviderError};
 use crate::validator::{
-    throw_if_credential_schema_not_in_session_org, throw_if_org_not_matching_session,
+    throw_if_credential_schema_not_in_session_org, throw_if_org_id_not_matching_session,
 };
 
 mod mdoc;
@@ -188,9 +188,7 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
                         key: Some(KeyRelations::default()),
                         ..Default::default()
                     }),
-                    schema: Some(CredentialSchemaRelations {
-                        organisation: Some(OrganisationRelations::default()),
-                    }),
+                    schema: Some(Default::default()),
                     key: Some(KeyRelations::default()),
                     ..Default::default()
                 },
@@ -211,8 +209,8 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
             .as_ref()
             .ok_or(Error::MappingError("credential schema is None".to_string()))?;
 
-        throw_if_org_not_matching_session(
-            credential_schema.organisation.as_ref(),
+        throw_if_org_id_not_matching_session(
+            credential_schema.organisation.id_ref(),
             &*self.session_provider,
         )
         .error_while("verifying organisation")?;
@@ -267,9 +265,7 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
             .get_credential(
                 &credential_id,
                 &CredentialRelations {
-                    schema: Some(CredentialSchemaRelations {
-                        organisation: Some(OrganisationRelations::default()),
-                    }),
+                    schema: Some(Default::default()),
                     issuer_identifier: Some(IdentifierRelations {
                         did: Some(DidRelations {
                             keys: Some(KeyRelations::default()),

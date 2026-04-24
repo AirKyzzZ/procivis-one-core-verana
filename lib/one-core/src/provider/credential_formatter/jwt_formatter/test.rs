@@ -35,7 +35,7 @@ use crate::provider::data_type::provider::MockDataTypeProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
-use crate::service::test_utilities::{dummy_did, dummy_identifier};
+use crate::service::test_utilities::{dummy_did, dummy_identifier, dummy_organisation};
 
 fn get_credential_data(status: CredentialStatus, core_base_url: &str) -> CredentialData {
     let issuance_date: OffsetDateTime = crate::clock::now_utc();
@@ -795,7 +795,7 @@ async fn test_parse_credential() {
         .expect_key_algorithm_provider()
         .return_const(Box::new(key_algorithm_provider));
     let credential = jwt_formatter
-        .parse_credential(TOKEN, Box::new(verify_mock))
+        .parse_credential(TOKEN, dummy_organisation(None), Box::new(verify_mock))
         .await
         .unwrap();
 

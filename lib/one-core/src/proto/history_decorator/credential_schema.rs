@@ -4,11 +4,10 @@ use shared_types::{CredentialSchemaId, OrganisationId};
 use uuid::Uuid;
 
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaListQuery, CredentialSchemaRelations,
-    GetCredentialSchemaList, UpdateCredentialSchemaRequest,
+    CredentialSchema, CredentialSchemaListQuery, GetCredentialSchemaList,
+    UpdateCredentialSchemaRequest,
 };
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
-use crate::model::organisation::Organisation;
 use crate::proto::session_provider::{SessionExt, SessionProvider};
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::error::DataLayerError;
@@ -38,15 +37,12 @@ impl CredentialSchemaRepository for CredentialSchemaHistoryDecorator {
                 HistoryAction::Imported
             };
 
-        let organisation = self.get_organisation(&request).await?;
-
         let result = self
             .inner
             .create_credential_schema(request.to_owned())
             .await?;
 
-        self.write_history(&request, organisation, history_action)
-            .await;
+        self.write_history(&request, history_action).await;
 
         Ok(result)
     }
@@ -55,13 +51,11 @@ impl CredentialSchemaRepository for CredentialSchemaHistoryDecorator {
         &self,
         credential_schema: &CredentialSchema,
     ) -> Result<(), DataLayerError> {
-        let organisation = self.get_organisation(credential_schema).await?;
-
         self.inner
             .delete_credential_schema(credential_schema)
             .await?;
 
-        self.write_history(credential_schema, organisation, HistoryAction::Deleted)
+        self.write_history(credential_schema, HistoryAction::Deleted)
             .await;
 
         Ok(())
@@ -77,65 +71,30 @@ impl CredentialSchemaRepository for CredentialSchemaHistoryDecorator {
     async fn get_credential_schema(
         &self,
         id: &CredentialSchemaId,
-        relations: &CredentialSchemaRelations,
     ) -> Result<Option<CredentialSchema>, DataLayerError> {
-        self.inner.get_credential_schema(id, relations).await
+        self.inner.get_credential_schema(id).await
     }
 
     async fn get_credential_schema_list(
         &self,
         query_params: CredentialSchemaListQuery,
-        relations: &CredentialSchemaRelations,
     ) -> Result<GetCredentialSchemaList, DataLayerError> {
-        self.inner
-            .get_credential_schema_list(query_params, relations)
-            .await
+        self.inner.get_credential_schema_list(query_params).await
     }
 
     async fn get_by_schema_id_and_organisation(
         &self,
         schema_id: &str,
         organisation_id: OrganisationId,
-        relations: &CredentialSchemaRelations,
     ) -> Result<Option<CredentialSchema>, DataLayerError> {
         self.inner
-            .get_by_schema_id_and_organisation(schema_id, organisation_id, relations)
+            .get_by_schema_id_and_organisation(schema_id, organisation_id)
             .await
     }
 }
 
 impl CredentialSchemaHistoryDecorator {
-    async fn get_organisation(
-        &self,
-        credential_schema: &CredentialSchema,
-    ) -> Result<Organisation, DataLayerError> {
-        Ok(match &credential_schema.organisation {
-            Some(organisation) => organisation.to_owned(),
-            None => {
-                let credential_schema = self
-                    .inner
-                    .get_credential_schema(
-                        &credential_schema.id,
-                        &CredentialSchemaRelations {
-                            organisation: Some(Default::default()),
-                        },
-                    )
-                    .await?
-                    .ok_or(DataLayerError::MappingError)?;
-
-                credential_schema
-                    .organisation
-                    .ok_or(DataLayerError::MappingError)?
-            }
-        })
-    }
-
-    async fn write_history(
-        &self,
-        credential_schema: &CredentialSchema,
-        organisation: Organisation,
-        action: HistoryAction,
-    ) {
+    async fn write_history(&self, credential_schema: &CredentialSchema, action: HistoryAction) {
         let result = self
             .history_repository
             .create_history(History {
@@ -149,7 +108,7 @@ impl CredentialSchemaHistoryDecorator {
                 entity_type: HistoryEntityType::CredentialSchema,
                 metadata: None,
                 metadata_blob_id: None,
-                organisation_id: Some(organisation.id),
+                organisation_id: Some(credential_schema.organisation.id()),
                 user: self.session_provider.session().user(),
             })
             .await;

@@ -1686,7 +1686,7 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
                 required: true,
             }]
             .into(),
-            organisation: Some(dummy_organisation(organisation_id)),
+            organisation: dummy_organisation(organisation_id).into(),
             deleted_at: None,
             layout_type: LayoutType::Card,
             layout_properties: None,

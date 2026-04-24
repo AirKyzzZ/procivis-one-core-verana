@@ -75,7 +75,7 @@ pub(super) fn credential_from_unexportable_model(
             key_storage_security: convert_inner(value.credential_schema_key_storage_security),
             revocation_method: value.credential_schema_revocation_method,
             claim_schemas: claim_schemas.into(),
-            organisation: Some(Organisation {
+            organisation: Organisation {
                 id: value.organisation_id,
                 created_date: value.organisation_created_date,
                 last_modified: value.organisation_last_modified,
@@ -85,7 +85,8 @@ pub(super) fn credential_from_unexportable_model(
                 parent_organisation: value
                     .organisation_parent_organisation
                     .map(|org_id| Related::new(org_id, organisation_repository.to_owned())),
-            }),
+            }
+            .into(),
             // todo: this should be fixed in another ticket
             layout_type: LayoutType::Card,
             layout_properties: None,

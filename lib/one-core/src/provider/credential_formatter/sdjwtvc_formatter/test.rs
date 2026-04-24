@@ -60,7 +60,7 @@ use crate::provider::key_algorithm::provider::{
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 use crate::service::ssi_issuer::dto::SdJwtVcTypeMetadataResponseDTO;
 use crate::service::test_utilities::{
-    dummy_did, dummy_did_document, dummy_identifier, dummy_jwk, generic_config,
+    dummy_did, dummy_did_document, dummy_identifier, dummy_jwk, dummy_organisation, generic_config,
 };
 use crate::util::test_utilities::assert_time_diff_less_than;
 
@@ -670,7 +670,7 @@ async fn test_extract_credentials_swiyu() {
             required: false,
         }]
         .into(),
-        organisation: None,
+        organisation: dummy_organisation(None).into(),
         transaction_code: None,
     };
 
@@ -1714,7 +1714,7 @@ async fn test_parse_credential_eudi() {
         .expect_key_algorithm_provider()
         .return_const(Box::new(key_algorithm_provider));
     let result = formatter
-        .parse_credential(CREDENTIAL, Box::new(verify_mock))
+        .parse_credential(CREDENTIAL, dummy_organisation(None), Box::new(verify_mock))
         .await
         .unwrap();
 
@@ -1996,7 +1996,7 @@ async fn test_parse_credential() {
         .expect_key_algorithm_provider()
         .return_const(Box::new(key_algorithm_provider));
     let result = formatter
-        .parse_credential(CREDENTIAL, Box::new(verify_mock))
+        .parse_credential(CREDENTIAL, dummy_organisation(None), Box::new(verify_mock))
         .await
         .unwrap();
 

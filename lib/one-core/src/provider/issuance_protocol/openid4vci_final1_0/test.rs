@@ -296,7 +296,7 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: "CredentialSchemaId".to_owned(),
-            organisation: Some(dummy_organisation(None)),
+            organisation: dummy_organisation(None).into(),
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
@@ -452,7 +452,16 @@ async fn test_holder_accept_credential_success() {
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         data: Some(serde_json::to_vec(&interaction_data).unwrap()),
-        organisation: credential.schema.as_ref().unwrap().organisation.to_owned(),
+        organisation: Some(
+            credential
+                .schema
+                .as_ref()
+                .unwrap()
+                .organisation
+                .get()
+                .await
+                .unwrap(),
+        ),
         nonce_id: None,
         interaction_type: InteractionType::Issuance,
         expires_at: None,
@@ -513,7 +522,7 @@ async fn test_holder_accept_credential_success() {
         .return_const(Duration::seconds(1000));
     formatter.expect_parse_credential().returning({
         let clone = credential.clone();
-        move |_, _| Ok(clone.clone())
+        move |_, _, _| Ok(clone.clone())
     });
 
     let formatter = Arc::new(formatter);
@@ -530,7 +539,7 @@ async fn test_holder_accept_credential_success() {
     credential_schema_repository
         .expect_get_by_schema_id_and_organisation()
         .once()
-        .returning(move |_, _, _| Ok(Some(schema.clone())));
+        .returning(move |_, _| Ok(Some(schema.clone())));
 
     interaction_repository
         .expect_update_interaction()
@@ -687,7 +696,16 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         data: Some(serde_json::to_vec(&interaction_data).unwrap()),
-        organisation: credential.schema.as_ref().unwrap().organisation.to_owned(),
+        organisation: Some(
+            credential
+                .schema
+                .as_ref()
+                .unwrap()
+                .organisation
+                .get()
+                .await
+                .unwrap(),
+        ),
         nonce_id: None,
         interaction_type: InteractionType::Issuance,
         expires_at: None,
@@ -737,7 +755,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         .return_const(Duration::seconds(1000));
     formatter.expect_parse_credential().returning({
         let clone = credential.clone();
-        move |_, _| Ok(clone.clone())
+        move |_, _, _| Ok(clone.clone())
     });
     let formatter = Arc::new(formatter);
     let formatter_clone = formatter.clone();
@@ -753,7 +771,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
     credential_schema_repository
         .expect_get_by_schema_id_and_organisation()
         .once()
-        .returning(move |_, _, _| Ok(Some(schema.clone())));
+        .returning(move |_, _| Ok(Some(schema.clone())));
 
     interaction_repository
         .expect_update_interaction()
@@ -930,7 +948,16 @@ async fn test_holder_accept_credential_autogenerate_holder_binding() {
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         data: Some(serde_json::to_vec(&interaction_data).unwrap()),
-        organisation: credential.schema.as_ref().unwrap().organisation.to_owned(),
+        organisation: Some(
+            credential
+                .schema
+                .as_ref()
+                .unwrap()
+                .organisation
+                .get()
+                .await
+                .unwrap(),
+        ),
         nonce_id: None,
         interaction_type: InteractionType::Issuance,
         expires_at: None,
@@ -991,7 +1018,7 @@ async fn test_holder_accept_credential_autogenerate_holder_binding() {
         .return_const(Duration::seconds(1000));
     formatter.expect_parse_credential().returning({
         let clone = credential.clone();
-        move |_, _| Ok(clone.clone())
+        move |_, _, _| Ok(clone.clone())
     });
 
     let formatter = Arc::new(formatter);
@@ -1008,7 +1035,7 @@ async fn test_holder_accept_credential_autogenerate_holder_binding() {
     credential_schema_repository
         .expect_get_by_schema_id_and_organisation()
         .once()
-        .returning(move |_, _, _| Ok(Some(schema.clone())));
+        .returning(move |_, _| Ok(Some(schema.clone())));
 
     interaction_repository
         .expect_update_interaction()
@@ -2063,7 +2090,16 @@ async fn test_holder_accept_credential_fails_without_wallet_unit_id_when_key_att
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         data: Some(serde_json::to_vec(&interaction_data).unwrap()),
-        organisation: credential.schema.as_ref().unwrap().organisation.to_owned(),
+        organisation: Some(
+            credential
+                .schema
+                .as_ref()
+                .unwrap()
+                .organisation
+                .get()
+                .await
+                .unwrap(),
+        ),
         nonce_id: None,
         interaction_type: InteractionType::Issuance,
         expires_at: None,
@@ -2190,7 +2226,16 @@ async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_att
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         data: Some(serde_json::to_vec(&interaction_data).unwrap()),
-        organisation: credential.schema.as_ref().unwrap().organisation.to_owned(),
+        organisation: Some(
+            credential
+                .schema
+                .as_ref()
+                .unwrap()
+                .organisation
+                .get()
+                .await
+                .unwrap(),
+        ),
         nonce_id: None,
         interaction_type: InteractionType::Issuance,
         expires_at: None,
@@ -2251,7 +2296,7 @@ async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_att
         .return_const(Duration::seconds(1000));
     formatter.expect_parse_credential().returning({
         let clone = credential.clone();
-        move |_, _| Ok(clone.clone())
+        move |_, _, _| Ok(clone.clone())
     });
 
     let formatter = Arc::new(formatter);
@@ -2268,7 +2313,7 @@ async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_att
     credential_schema_repository
         .expect_get_by_schema_id_and_organisation()
         .once()
-        .returning(move |_, _, _| Ok(Some(schema.clone())));
+        .returning(move |_, _| Ok(Some(schema.clone())));
 
     interaction_repository
         .expect_update_interaction()

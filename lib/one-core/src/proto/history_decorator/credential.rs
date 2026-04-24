@@ -9,7 +9,6 @@ use crate::model::credential::{
     Credential, CredentialListQuery, CredentialRelations, CredentialRole, CredentialStateEnum,
     GetCredentialList, UpdateCredentialRequest,
 };
-use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::identifier::IdentifierRelations;
 use crate::proto::session_provider::{SessionExt, SessionProvider};
@@ -45,9 +44,7 @@ impl CredentialHistoryDecorator {
             .get_credential(
                 &credential_id,
                 &CredentialRelations {
-                    schema: Some(CredentialSchemaRelations {
-                        organisation: Some(Default::default()),
-                    }),
+                    schema: Some(Default::default()),
                     issuer_identifier: Some(IdentifierRelations {
                         did: Some(Default::default()),
                         ..Default::default()
@@ -89,14 +86,6 @@ impl CredentialHistoryDecorator {
             return;
         };
 
-        let Some(organisation) = &credential_schema.organisation else {
-            tracing::warn!(
-                "failed inserting {action:?} history event for credential: {}. credential schema is missing organisation",
-                credential.id
-            );
-            return;
-        };
-
         let entry = History {
             id: Uuid::new_v4().into(),
             created_date: crate::clock::now_utc(),
@@ -108,7 +97,7 @@ impl CredentialHistoryDecorator {
             entity_type: HistoryEntityType::Credential,
             metadata: None,
             metadata_blob_id: None,
-            organisation_id: Some(organisation.id),
+            organisation_id: Some(credential_schema.organisation.id()),
             user: self.session_provider.session().user(),
         };
 

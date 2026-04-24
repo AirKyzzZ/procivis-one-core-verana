@@ -18,7 +18,7 @@ use crate::service::credential::dto::{
     DetailCredentialSchemaResponseDTO,
 };
 use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
-use crate::service::test_utilities::{dummy_did, dummy_identifier};
+use crate::service::test_utilities::{dummy_did, dummy_identifier, dummy_organisation};
 
 fn generate_credential_detail_response(
     claims: Vec<DetailCredentialClaimResponseDTO>,
@@ -154,7 +154,7 @@ fn generate_credential_matching_detail(
             allow_suspension: detail.schema.allow_suspension,
             requires_wallet_instance_attestation: false,
             claim_schemas: Default::default(),
-            organisation: None,
+            organisation: dummy_organisation(None).into(),
             transaction_code: None,
         }),
         interaction: None,

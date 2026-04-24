@@ -5,7 +5,7 @@ use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential::{
     Credential, CredentialRelations, CredentialRole, CredentialStateEnum,
 };
-use one_core::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
+use one_core::model::credential_schema::CredentialSchema;
 use one_core::model::identifier::{Identifier, IdentifierRelations};
 use one_core::repository::credential_repository::CredentialRepository;
 use shared_types::CredentialId;
@@ -31,9 +31,7 @@ impl CredentialsDB {
                     claims: Some(ClaimRelations {
                         schema: Some(Default::default()),
                     }),
-                    schema: Some(CredentialSchemaRelations {
-                        organisation: Some(Default::default()),
-                    }),
+                    schema: Some(Default::default()),
                     interaction: Some(Default::default()),
                     holder_identifier: Some(IdentifierRelations {
                         did: Some(Default::default()),

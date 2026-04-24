@@ -1,17 +1,23 @@
+use std::sync::Arc;
+
 use one_core::model::credential::{
     Clearable, Credential, CredentialFilterValue, SortableCredentialColumn,
 };
 use one_core::model::credential_schema::{CredentialSchema, LayoutType, TransactionCode};
 use one_core::model::identifier::Identifier;
 use one_core::model::list_filter::ListFilterCondition;
+use one_core::model::relation::{Related, RelatedVec};
 use one_core::repository::error::DataLayerError;
+use one_core::repository::organisation_repository::OrganisationRepository;
 use one_dto_mapper::convert_inner;
 use sea_orm::sea_query::query::IntoCondition;
 use sea_orm::sea_query::{ExprTrait, SimpleExpr};
 use sea_orm::{ActiveValue, ColumnTrait, IntoSimpleExpr, JoinType, RelationTrait, Set, Value};
 use shared_types::{BlobId, CertificateId, IdentifierId, InteractionId, KeyId};
 
+use crate::TransactionManagerImpl;
 use crate::credential::entity_model::CredentialListEntityModel;
+use crate::credential_schema::mapper::ClaimSchemasLoader;
 use crate::entity::{claim, credential, credential_schema, identifier};
 use crate::list_query_generic::{
     IntoFilterCondition, IntoJoinRelations, IntoSortingColumn, JoinRelation,
@@ -191,6 +197,8 @@ pub(super) fn request_to_active_model(
 
 pub(super) fn credential_list_model_to_repository_model(
     credential: CredentialListEntityModel,
+    organisation_repository: &Arc<dyn OrganisationRepository>,
+    db: &TransactionManagerImpl,
 ) -> Result<Credential, DataLayerError> {
     let transaction_code = match (
         credential.credential_schema_transaction_code_type,
@@ -216,9 +224,14 @@ pub(super) fn credential_list_model_to_repository_model(
         revocation_method: credential.credential_schema_revocation_method,
         imported_source_url: credential.credential_schema_imported_source_url,
         schema_id: credential.credential_schema_schema_id,
-        // todo: this should be fixed in another ticket
-        claim_schemas: Default::default(),
-        organisation: None,
+        claim_schemas: RelatedVec::new(ClaimSchemasLoader {
+            id: credential.credential_schema_id,
+            db: db.to_owned(),
+        }),
+        organisation: Related::new(
+            credential.credential_schema_organisation_id,
+            organisation_repository.to_owned(),
+        ),
         // todo: this should be fixed in another ticket
         layout_type: LayoutType::Card,
         layout_properties: credential
@@ -291,10 +304,16 @@ pub(super) fn credential_list_model_to_repository_model(
 
 pub(super) fn credentials_to_repository(
     credentials: Vec<CredentialListEntityModel>,
+    organisation_repository: &Arc<dyn OrganisationRepository>,
+    db: &TransactionManagerImpl,
 ) -> Result<Vec<Credential>, DataLayerError> {
     let mut result: Vec<Credential> = Vec::new();
     for credential in credentials.into_iter() {
-        result.push(credential_list_model_to_repository_model(credential)?);
+        result.push(credential_list_model_to_repository_model(
+            credential,
+            organisation_repository,
+            db,
+        )?);
     }
 
     Ok(result)

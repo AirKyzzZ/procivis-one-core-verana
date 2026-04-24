@@ -85,7 +85,7 @@ pub(crate) async fn credential_detail_response_from_model(
         state: state.into(),
         last_modified: value.last_modified,
         claims: from_vec_claim(claims, &schema, config).await?,
-        schema: schema.try_into()?,
+        schema: schema.into(),
         issuer: convert_inner(value.issuer_identifier),
         redirect_uri: value.redirect_uri,
         role: value.role.into(),
@@ -508,18 +508,9 @@ fn insert_array_parent(
     Ok(current_path)
 }
 
-impl TryFrom<CredentialSchema> for DetailCredentialSchemaResponseDTO {
-    type Error = CredentialServiceError;
-
-    fn try_from(value: CredentialSchema) -> Result<Self, Self::Error> {
-        let organisation_id = match value.organisation {
-            None => Err(CredentialServiceError::MappingError(
-                "Organisation has not been fetched".to_string(),
-            )),
-            Some(value) => Ok(value.id),
-        }?;
-
-        Ok(Self {
+impl From<CredentialSchema> for DetailCredentialSchemaResponseDTO {
+    fn from(value: CredentialSchema) -> Self {
+        Self {
             id: value.id,
             created_date: value.created_date,
             deleted_at: value.deleted_at,
@@ -529,14 +520,14 @@ impl TryFrom<CredentialSchema> for DetailCredentialSchemaResponseDTO {
             format: value.format,
             revocation_method: value.revocation_method,
             key_storage_security: value.key_storage_security,
-            organisation_id,
+            organisation_id: value.organisation.id(),
             schema_id: value.schema_id,
             layout_type: value.layout_type.into(),
             layout_properties: value.layout_properties.map(Into::into),
             allow_suspension: value.allow_suspension,
             requires_wallet_instance_attestation: value.requires_wallet_instance_attestation,
             transaction_code: convert_inner(value.transaction_code),
-        })
+        }
     }
 }
 

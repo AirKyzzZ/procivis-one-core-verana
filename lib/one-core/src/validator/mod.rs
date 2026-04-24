@@ -95,7 +95,7 @@ pub(crate) fn throw_if_credential_schema_not_in_session_org(
         .ok_or(ServiceError::MappingError(
             "credential_schema is None".to_string(),
         ))?;
-    throw_if_org_not_matching_session(schema.organisation.as_ref(), session_provider)
+    throw_if_org_id_not_matching_session(schema.organisation.id_ref(), session_provider)
 }
 
 pub(crate) fn throw_if_credential_state_not_eq(

@@ -42,12 +42,6 @@ pub(crate) async fn schema_to_detail_response_dto(
         .collect::<Vec<_>>();
     let claim_schemas = renest_claim_schemas(convert_inner(claim_schemas))?;
 
-    let organisation_id = match value.organisation {
-        None => Err(CredentialSchemaServiceError::MappingError(
-            "Organisation has not been fetched".to_string(),
-        )),
-        Some(value) => Ok(value.id),
-    }?;
     Ok(CredentialSchemaDetailResponseDTO {
         id: value.id,
         created_date: value.created_date,
@@ -56,7 +50,7 @@ pub(crate) async fn schema_to_detail_response_dto(
         format: value.format,
         imported_source_url: value.imported_source_url,
         revocation_method: value.revocation_method,
-        organisation_id,
+        organisation_id: value.organisation.id(),
         claims: claim_schemas,
         key_storage_security: value.key_storage_security,
         schema_id: value.schema_id,
@@ -178,7 +172,7 @@ pub(super) fn from_create_request_with_id(
             })
             .collect::<Vec<_>>()
             .into(),
-        organisation: Some(organisation),
+        organisation: organisation.into(),
         layout_type: request.layout_type,
         layout_properties: request.layout_properties.map(Into::into),
         imported_source_url,
