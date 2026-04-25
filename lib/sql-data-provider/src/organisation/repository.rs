@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use autometrics::autometrics;
 use futures::FutureExt;
-use one_core::model::common::GetListResponse;
 use one_core::model::organisation::{
     GetOrganisationList, Organisation, OrganisationListQuery, UpdateOrganisationRequest,
 };
@@ -14,7 +13,7 @@ use shared_types::OrganisationId;
 
 use super::OrganisationProvider;
 use super::mapper::organisation_from_model;
-use crate::common::list_query_with_base_model;
+use crate::common::list_query_with_custom_model;
 use crate::entity::organisation;
 use crate::list_query_generic::SelectWithListQuery;
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
@@ -89,19 +88,11 @@ impl OrganisationRepository for OrganisationProvider {
     ) -> Result<GetOrganisationList, DataLayerError> {
         let query = organisation::Entity::find().with_list_query(&query_params);
 
-        let list: GetListResponse<organisation::Model> =
-            list_query_with_base_model(query, query_params, &self.db).await?;
-
         let repo = self.cloned();
-        Ok(GetOrganisationList {
-            values: list
-                .values
-                .into_iter()
-                .map(|org| organisation_from_model(org, &repo))
-                .collect(),
-            total_pages: list.total_pages,
-            total_items: list.total_items,
+        list_query_with_custom_model(query, query_params, &self.db, |org| {
+            Ok(organisation_from_model(org, &repo))
         })
+        .await
     }
 }
 

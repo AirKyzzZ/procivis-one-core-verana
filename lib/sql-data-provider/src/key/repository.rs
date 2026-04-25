@@ -1,5 +1,4 @@
 use autometrics::autometrics;
-use one_core::model::common::GetListResponse;
 use one_core::model::key::{GetKeyList, Key, KeyListQuery};
 use one_core::repository::error::DataLayerError;
 use one_core::repository::key_repository::KeyRepository;
@@ -7,7 +6,7 @@ use sea_orm::ActiveValue::NotSet;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set};
 use shared_types::KeyId;
 
-use crate::common::list_query_with_base_model;
+use crate::common::list_query_with_custom_model;
 use crate::entity::key;
 use crate::key::KeyProvider;
 use crate::key::mapper::key_from_model;
@@ -78,17 +77,9 @@ impl KeyRepository for KeyProvider {
             .order_by_desc(key::Column::CreatedDate)
             .order_by_desc(key::Column::Id);
 
-        let list: GetListResponse<key::Model> =
-            list_query_with_base_model(query, query_params, &self.db).await?;
-
-        Ok(GetKeyList {
-            total_items: list.total_items,
-            total_pages: list.total_pages,
-            values: list
-                .values
-                .into_iter()
-                .map(|key| key_from_model(key, &self.organisation_repository))
-                .collect(),
+        list_query_with_custom_model(query, query_params, &self.db, |key| {
+            Ok(key_from_model(key, &self.organisation_repository))
         })
+        .await
     }
 }

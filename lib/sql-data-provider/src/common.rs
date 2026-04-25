@@ -1,7 +1,6 @@
 use one_core::model::common::GetListResponse;
 use one_core::model::list_query::ListQuery;
 use one_core::repository::error::DataLayerError;
-use one_dto_mapper::try_convert_inner;
 use sea_orm::{EntityTrait, PaginatorTrait, Select};
 use serde::de::{Deserialize, Deserializer, Error, Unexpected};
 use serde_json::Value;
@@ -58,21 +57,54 @@ pub(crate) async fn list_query_with_base_model<
 where
     Select<E>: PaginatorTrait<'db, TransactionManagerImpl>,
 {
-    let limit = query_params
-        .pagination
-        .as_ref()
-        .map(|pagination| pagination.page_size as _);
+    list_query_with_custom_model(query, query_params, db, |model| {
+        model.try_into().map_err(ItemErr::into)
+    })
+    .await
+}
 
-    let (items_count, items) =
-        tokio::join!(PaginatorTrait::count(query.to_owned(), db), query.all(db));
+pub(crate) async fn list_query_with_custom_model<
+    'db,
+    E: EntityTrait,
+    ListItem,
+    SortableColumn,
+    FV,
+    Include,
+    ModelConversion: Fn(E::Model) -> Result<ListItem, DataLayerError>,
+>(
+    query: Select<E>,
+    query_params: ListQuery<SortableColumn, FV, Include>,
+    db: &'db TransactionManagerImpl,
+    model_conversion: ModelConversion,
+) -> Result<GetListResponse<ListItem>, DataLayerError>
+where
+    Select<E>: PaginatorTrait<'db, TransactionManagerImpl>,
+{
+    let (total_items, total_pages, models) = if let Some(pagination) = query_params.pagination {
+        let (count, items) =
+            tokio::join!(PaginatorTrait::count(query.to_owned(), db), query.all(db));
 
-    let items_count = items_count.map_err(to_data_layer_error)?;
-    let items = items.map_err(to_data_layer_error)?;
+        let total_items = count.map_err(to_data_layer_error)?;
+        let models = items.map_err(to_data_layer_error)?;
+
+        (
+            total_items,
+            calculate_pages_count(total_items, pagination.page_size as _),
+            models,
+        )
+    } else {
+        // if no pagination applied, there's no need to SQL query count, all models will be returned by the list query
+        let models = query.all(db).await.map_err(to_data_layer_error)?;
+        (models.len() as _, 0, models)
+    };
 
     Ok(GetListResponse::<ListItem> {
-        values: try_convert_inner(items).map_err(ItemErr::into)?,
-        total_pages: calculate_pages_count(items_count, limit.unwrap_or(0)),
-        total_items: items_count,
+        values: models
+            .into_iter()
+            .map(model_conversion)
+            .collect::<Result<Vec<ListItem>, _>>()?,
+        total_pages,
+        total_items,
     })
 }
 
