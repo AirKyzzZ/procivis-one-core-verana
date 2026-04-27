@@ -258,6 +258,7 @@ async fn test_resolve_trust_entries_success() {
                 IdentifierType::CertificateAuthority,
             ],
             features: vec![Feature::SupportsRemoteIdentifiers],
+            pid_provider_role_schema_ids: vec![],
         });
     trust_list_subscriber
         .expect_resolve_entries()
@@ -345,6 +346,7 @@ async fn test_resolve_trust_entries_filters_local() {
                 IdentifierType::CertificateAuthority,
             ],
             features: vec![Feature::SupportsRemoteIdentifiers],
+            pid_provider_role_schema_ids: vec![],
         });
     // Should be called with empty identifiers list
     trust_list_subscriber
@@ -484,6 +486,7 @@ async fn test_resolve_trust_entries_subscriber_error() {
                 IdentifierType::CertificateAuthority,
             ],
             features: vec![Feature::SupportsRemoteIdentifiers],
+            pid_provider_role_schema_ids: vec![],
         });
     trust_list_subscriber
         .expect_resolve_entries()
@@ -567,6 +570,7 @@ async fn test_resolve_trust_entries_filters_key_type() {
                 IdentifierType::CertificateAuthority,
             ],
             features: vec![Feature::SupportsRemoteIdentifiers],
+            pid_provider_role_schema_ids: vec![],
         });
 
     // Should be called with empty identifiers list because Key type is filtered out

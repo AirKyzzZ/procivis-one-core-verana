@@ -303,7 +303,7 @@ fn setup_subscriber(time: OffsetDateTime, reference: &Url) -> EtsiLoteSubscriber
         Duration::seconds(60),
     );
 
-    EtsiLoteSubscriber::new(cache, certificate_validator, key_algorithm_provider)
+    EtsiLoteSubscriber::new(cache, certificate_validator, key_algorithm_provider, vec![])
 }
 
 // XAdES-signed XML LoTE containing the same TRUSTED_CERT entity.
@@ -401,6 +401,7 @@ fn setup_subscriber_xml(time: OffsetDateTime, reference: &Url) -> EtsiLoteSubscr
         cache,
         Arc::new(MockCertificateValidator::new()),
         key_algorithm_provider,
+        vec![],
     )
 }
 

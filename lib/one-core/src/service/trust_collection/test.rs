@@ -483,6 +483,7 @@ async fn test_create_trust_list_subscription_success() {
                 IdentifierType::CertificateAuthority,
             ],
             features: vec![Feature::SupportsRemoteIdentifiers],
+            pid_provider_role_schema_ids: vec![],
         });
 
     let trust_list_subscriber_arc: Arc<

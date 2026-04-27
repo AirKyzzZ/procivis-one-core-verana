@@ -771,6 +771,8 @@ trustListSubscriber:
       private:
         accepts: "application/jwt"
         leeway: 60
+        supportedPidProviderRoleSchemaIds:
+          ["eu.europa.ec.eudi.pid.1", "urn:eudi:pid:1"]
 blobStorage:
   DB:
     enabled: true

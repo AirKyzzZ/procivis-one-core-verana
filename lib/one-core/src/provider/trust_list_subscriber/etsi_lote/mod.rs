@@ -39,6 +39,7 @@ pub(crate) struct EtsiLoteParams {
     pub accepts: LoteContentType,
     #[serde_as(as = "DurationSeconds<i64>")]
     pub leeway: time::Duration,
+    pub supported_pid_provider_role_schema_ids: Vec<String>,
 }
 
 #[derive(Clone, Debug, Display, Deserialize)]
@@ -55,6 +56,7 @@ pub struct EtsiLoteSubscriber {
     cache: EtsiLoteCache,
     certificate_validator: Arc<dyn CertificateValidator>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    pid_provider_role_schema_ids: Vec<String>,
 }
 
 impl EtsiLoteSubscriber {
@@ -62,11 +64,13 @@ impl EtsiLoteSubscriber {
         cache: EtsiLoteCache,
         certificate_validator: Arc<dyn CertificateValidator>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+        pid_provider_role_schema_ids: Vec<String>,
     ) -> Self {
         Self {
             cache,
             certificate_validator,
             key_algorithm_provider,
+            pid_provider_role_schema_ids,
         }
     }
 
@@ -101,6 +105,7 @@ impl TrustListSubscriber for EtsiLoteSubscriber {
                 IdentifierType::CertificateAuthority,
             ],
             features: vec![Feature::SupportsRemoteIdentifiers],
+            pid_provider_role_schema_ids: self.pid_provider_role_schema_ids.to_owned(),
         }
     }
 
