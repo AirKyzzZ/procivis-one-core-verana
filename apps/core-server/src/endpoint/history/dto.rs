@@ -18,6 +18,7 @@ use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
 use crate::deserialize::deserialize_timestamp;
+use crate::dto::common::trust_detail::TrustResolutionResultRestEnum;
 use crate::dto::common::{Boolean, ListQueryParamsRest};
 use crate::endpoint::credential::dto::{
     CredentialDetailClaimResponseRestDTO, GetCredentialResponseRestDTO,
@@ -111,15 +112,6 @@ pub(crate) enum HistoryMetadataRestEnum {
 #[from(one_core::service::history::dto::TrustResolutionMetadataDTO)]
 pub struct TrustResolutionMetadataRestDTO {
     pub result: TrustResolutionResultRestEnum,
-}
-
-#[derive(Debug, Clone, Serialize, From, ToSchema)]
-#[from("one_core::model::history::TrustResolutionResult")]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum TrustResolutionResultRestEnum {
-    Trusted,
-    Untrusted,
-    Unknown,
 }
 
 #[derive(Debug, Serialize, ToSchema, TryFrom)]

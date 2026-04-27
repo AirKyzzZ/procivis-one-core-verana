@@ -117,6 +117,7 @@ impl<IN: Into<ClaimBindingDTO>> From<CredentialDetailResponseDTO<IN>>
             mdoc_mso_validity: value.mdoc_mso_validity.map(|inner| inner.into()),
             protocol: value.protocol,
             profile: value.profile,
+            trust_information: convert_inner(value.trust_information),
         }
     }
 }

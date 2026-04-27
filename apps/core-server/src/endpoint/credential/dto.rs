@@ -23,6 +23,7 @@ use uuid::Uuid;
 
 use crate::deserialize::deserialize_timestamp;
 use crate::dto::common::ListQueryParamsRest;
+use crate::dto::common::trust_detail::TrustResolutionResultRestEnum;
 use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::endpoint::certificate::dto::CertificateResponseRestDTO;
 use crate::endpoint::credential_schema::dto::{
@@ -173,13 +174,15 @@ pub struct WalletUnitAttestationRestDTO {
     attestation: String,
 }
 
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(TrustInformation)]
 #[serde(rename_all = "camelCase")]
 pub struct TrustInformationRestDTO {
     #[serde(serialize_with = "front_time")]
     received_at: OffsetDateTime,
-    name: String,
+    name: Option<String>,
+    result: TrustResolutionResultRestEnum,
 }
 
 /// The role the system has in relation to the credential.

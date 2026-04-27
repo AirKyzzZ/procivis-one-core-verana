@@ -62,3 +62,12 @@ pub(crate) struct EudiIntermediaryResponseRestDTO {
     pub phone: Option<String>,
     pub country: String,
 }
+
+#[derive(Debug, Clone, Serialize, From, ToSchema)]
+#[from("one_core::model::history::TrustResolutionResult")]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum TrustResolutionResultRestEnum {
+    Trusted,
+    Untrusted,
+    Unknown,
+}

@@ -1,7 +1,10 @@
 use one_core::model::blob::BlobType;
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential::{CredentialRole, CredentialStateEnum};
-use one_core::model::history::{HistoryAction, HistoryMetadata, WalletRelyingPartyMetadata};
+use one_core::model::history::{
+    HistoryAction, HistoryMetadata, TrustResolutionMetadata, TrustResolutionResult,
+    WalletRelyingPartyMetadata,
+};
 use one_core::service::credential::dto::WalletInstanceAttestationDTO;
 use similar_asserts::assert_eq;
 use sql_data_provider::test_utilities::get_dummy_date;
@@ -111,6 +114,22 @@ async fn test_get_credential_with_trust_information_success() {
         .create(
             &organisation,
             TestingHistoryParams {
+                action: Some(HistoryAction::TrustResolved),
+                entity_id: Some(credential.id.into()),
+                metadata: Some(HistoryMetadata::TrustResolution(TrustResolutionMetadata {
+                    result: TrustResolutionResult::Trusted,
+                })),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    context
+        .db
+        .histories
+        .create(
+            &organisation,
+            TestingHistoryParams {
                 action: Some(HistoryAction::WrpRcReceived),
                 entity_id: Some(credential.id.into()),
                 metadata: Some(HistoryMetadata::WalletRelyingParty(
@@ -133,6 +152,7 @@ async fn test_get_credential_with_trust_information_success() {
 
     resp["id"].assert_eq(&credential.id);
     assert_eq!(resp["trustInformation"]["name"], "Test RP");
+    assert_eq!(resp["trustInformation"]["result"], "TRUSTED");
     assert!(!resp["trustInformation"]["receivedAt"].is_null());
 }
 

@@ -4,14 +4,13 @@ use HistoryAction::WrpAcReceived;
 use dcql::CredentialQueryId;
 use shared_types::EntityId;
 use shared_types::i18n::I18nString;
-use time::OffsetDateTime;
 
 use crate::error::ContextWithErrorCode;
 use crate::model::common::SortDirection;
-use crate::model::history::HistoryAction::{WrpNrReceived, WrpRcReceived};
+use crate::model::history::HistoryAction::{TrustResolved, WrpNrReceived, WrpRcReceived};
 use crate::model::history::{
     GetHistoryList, History, HistoryAction, HistoryFilterValue, HistoryListQuery, HistoryMetadata,
-    SortableHistoryColumn,
+    SortableHistoryColumn, TrustResolutionResult,
 };
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListSorting;
@@ -155,13 +154,11 @@ impl TrustInformationProvider for TrustInformationProviderImpl {
         &self,
         entity_id: EntityId,
     ) -> Result<Option<TrustInformation>, Error> {
-        self.get_wrp_history_entries(entity_id, vec![WrpRcReceived, WrpNrReceived])
+        let entries = self
+            .get_wrp_history_entries(entity_id, vec![WrpRcReceived, WrpNrReceived, TrustResolved])
             .await?
-            .values
-            .into_iter()
-            .nth(0)
-            .map(trust_information_from_history)
-            .transpose()
+            .values;
+        trust_information_from_history(&entries)
     }
 
     async fn get_trust_purpose(
@@ -205,31 +202,56 @@ impl TrustInformationProvider for TrustInformationProviderImpl {
     }
 }
 
-fn trust_information_from_history(history: History) -> Result<TrustInformation, Error> {
-    history
-        .metadata
-        .ok_or_else(|| {
-            Error::MissingHistoryMetadata(
-                history.id,
-                history.entity_type,
-                history.entity_id,
-                history.action,
-            )
-        })
-        .and_then(|hm| trust_information_from_history_metadata(hm, history.created_date))
+fn trust_information_from_history(history: &[History]) -> Result<Option<TrustInformation>, Error> {
+    let Some(trust_resolved_entry) = history.iter().find(|h| h.action == TrustResolved) else {
+        return Ok(None);
+    };
+    let result = trust_resolution_result_from_history_metadata(trust_resolved_entry)?;
+    let name = history
+        .iter()
+        .find(|h| h.action == WrpRcReceived || h.action == WrpNrReceived)
+        .map(wrp_name_from_history)
+        .transpose()?;
+    Ok(Some(TrustInformation {
+        received_at: trust_resolved_entry.created_date,
+        name,
+        result,
+    }))
 }
 
-fn trust_information_from_history_metadata(
-    history_metadata: HistoryMetadata,
-    created_date: OffsetDateTime,
-) -> Result<TrustInformation, Error> {
-    match history_metadata {
-        HistoryMetadata::WalletRelyingParty(metadata) => Ok(TrustInformation {
-            received_at: created_date,
-            name: metadata.name,
-        }),
+fn wrp_name_from_history(history: &History) -> Result<String, Error> {
+    let metadata = history.metadata.as_ref().ok_or_else(|| {
+        Error::MissingHistoryMetadata(
+            history.id,
+            history.entity_type,
+            history.entity_id,
+            history.action,
+        )
+    })?;
+    match metadata {
+        HistoryMetadata::WalletRelyingParty(metadata) => Ok(metadata.name.to_owned()),
         _ => Err(Error::InvalidMetadataType(
-            history_metadata.into(),
+            metadata.into(),
+            "WalletRelyingParty",
+        )),
+    }
+}
+
+fn trust_resolution_result_from_history_metadata(
+    history: &History,
+) -> Result<TrustResolutionResult, Error> {
+    let metadata = history.metadata.as_ref().ok_or_else(|| {
+        Error::MissingHistoryMetadata(
+            history.id,
+            history.entity_type,
+            history.entity_id,
+            history.action,
+        )
+    })?;
+    match metadata {
+        HistoryMetadata::TrustResolution(metadata) => Ok(metadata.result),
+        _ => Err(Error::InvalidMetadataType(
+            metadata.into(),
             "WalletRelyingParty",
         )),
     }

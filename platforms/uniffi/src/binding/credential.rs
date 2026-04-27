@@ -1,6 +1,7 @@
 use one_core::model::credential::{
     CredentialListIncludeEntityTypeEnum, ExactCredentialFilterColumn, SortableCredentialColumn,
 };
+use one_core::proto::trust_information::dto::TrustInformation;
 use one_core::service::credential::dto::{
     CredentialRole, CredentialSearchTypeDTO, CredentialStateEnum, DetailCredentialClaimResponseDTO,
     GetCredentialListResponseDTO,
@@ -11,9 +12,10 @@ use super::common::SortDirection;
 use super::credential_schema::{CredentialClaimSchemaBindingDTO, CredentialSchemaBindingDTO};
 use super::identifier::GetIdentifierListItemBindingDTO;
 use crate::OneCore;
+use crate::binding::history::TrustResolutionResultBindingEnum;
 use crate::binding::trust_information::TrustInformationDetailResponseBindingDTO;
 use crate::error::BindingError;
-use crate::utils::into_id;
+use crate::utils::{TimestampFormat, into_id};
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCore {
@@ -101,6 +103,17 @@ pub struct CredentialDetailBindingDTO {
     pub protocol: String,
     /// Country profile associated with the credential.
     pub profile: Option<String>,
+    pub trust_information: Option<TrustInformationBindingDTO>,
+}
+
+#[derive(Clone, Debug, From, uniffi::Record)]
+#[from(TrustInformation)]
+#[uniffi(name = "TrustInformation")]
+pub struct TrustInformationBindingDTO {
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    received_at: String,
+    name: Option<String>,
+    result: TrustResolutionResultBindingEnum,
 }
 
 #[derive(Clone, Debug, PartialEq, Into, uniffi::Enum)]

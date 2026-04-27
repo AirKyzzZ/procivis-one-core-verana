@@ -43,7 +43,7 @@ pub struct TrustResolutionMetadata {
     pub result: TrustResolutionResult,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum TrustResolutionResult {
     Trusted,
@@ -128,7 +128,7 @@ pub enum HistoryAction {
     TrustResolved,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum HistoryEntityType {
     Key,

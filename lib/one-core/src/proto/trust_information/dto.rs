@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use shared_types::i18n::I18nString;
 use time::OffsetDateTime;
 
+use crate::model::history::TrustResolutionResult;
 use crate::proto::jwt::model::JWTPayload;
 use crate::proto::wrp_validator::model::WRPPayload;
 use crate::provider::signer::registration_certificate::model::Payload;
@@ -11,7 +12,8 @@ use crate::util::access_cert_parser::EtsiParsedAccessCert;
 #[serde(rename_all = "camelCase")]
 pub struct TrustInformation {
     pub received_at: OffsetDateTime,
-    pub name: String,
+    pub name: Option<String>,
+    pub result: TrustResolutionResult,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
