@@ -2,7 +2,9 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use dcql::CredentialFormat;
-use one_core::model::certificate::{Certificate, CertificateRole, CertificateState};
+use one_core::model::certificate::{
+    Certificate, CertificateRelations, CertificateRole, CertificateState,
+};
 use one_core::model::common::SortDirection;
 use one_core::model::did::Did;
 use one_core::model::identifier::{
@@ -582,4 +584,75 @@ async fn test_list_identifier_filter_certificate_role() {
         .await
         .unwrap();
     assert_eq!(list.total_items, 0);
+}
+
+#[tokio::test]
+async fn test_get_returns_soft_deleted_certificates_in_relation() {
+    let setup = setup().await;
+    let identifier_id: shared_types::IdentifierId = Uuid::new_v4().into();
+
+    let identifier = Identifier {
+        id: identifier_id,
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        name: "cert_identifier".to_string(),
+        r#type: IdentifierType::Certificate,
+        is_remote: false,
+        state: IdentifierState::Active,
+        organisation: Some(setup.organisation.clone()),
+        did: None,
+        key: None,
+        certificates: None,
+        deleted_at: None,
+        trust_information: None,
+    };
+    setup.provider.create(identifier.clone()).await.unwrap();
+
+    let cert_id: shared_types::CertificateId = Uuid::new_v4().into();
+    let certificate = Certificate {
+        id: cert_id,
+        identifier_id,
+        organisation_id: Some(setup.organisation.id),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        deleted_at: None,
+        expiry_date: get_dummy_date(),
+        name: "cert".to_string(),
+        chain: "chain".to_string(),
+        fingerprint: "fp-resolve-soft-deleted".to_string(),
+        state: CertificateState::Active,
+        roles: vec![],
+        key: None,
+    };
+    setup
+        .certificate_repository
+        .create(certificate.clone())
+        .await
+        .unwrap();
+
+    setup
+        .certificate_repository
+        .delete(&certificate)
+        .await
+        .unwrap();
+
+    let resolved = setup
+        .provider
+        .get(
+            identifier_id,
+            &IdentifierRelations {
+                certificates: Some(CertificateRelations::default()),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap()
+        .expect("identifier should still be retrievable");
+
+    let certs = resolved
+        .certificates
+        .expect("certificates relation should be populated");
+    assert_eq!(certs.len(), 1);
+    assert_eq!(certs[0].id, cert_id);
+    assert!(certs[0].deleted_at.is_some());
 }

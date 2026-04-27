@@ -411,6 +411,9 @@ impl IdentifierService {
         self.transaction_manager
             .tx(async {
                 for cert in &certificates {
+                    if cert.deleted_at.is_some() {
+                        continue;
+                    }
                     self.certificate_repository
                         .delete(cert)
                         .await

@@ -1,11 +1,13 @@
 use dcql::CredentialFormat;
 use one_core::model::blob::BlobType;
 use one_core::model::identifier_trust_information::SchemaFormat;
+use rcgen::CertificateParams;
 use shared_types::IdentifierId;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use crate::api_oidc_tests::common::eddsa_key_2;
+use crate::fixtures::certificate::{create_ca_cert, create_cert, ecdsa, eddsa};
 use crate::fixtures::{
     TestingKeyParams, create_credential_schema_with_claims, create_proof_schema,
 };
@@ -459,4 +461,49 @@ async fn test_identifier_filter_proof_schema_success() {
     let resp = result.json_value().await;
     assert_eq!(resp["totalItems"], 1);
     assert_eq!(resp["values"][0]["id"], identifier.id.to_string());
+}
+
+#[tokio::test]
+async fn test_certificate_identifier_redelete_returns_not_found() {
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let key = context
+        .db
+        .keys
+        .create(&organisation, ecdsa_testing_params())
+        .await;
+
+    let mut ca_params = CertificateParams::default();
+    let (ca_cert, ca_issuer) = create_ca_cert(&mut ca_params, &eddsa::Key);
+    let cert = create_cert(
+        &mut CertificateParams::default(),
+        ecdsa::Key,
+        &ca_issuer,
+        &ca_params,
+    );
+    let chain = format!("{}{}", cert.pem(), ca_cert.pem());
+
+    let create_resp = context
+        .api
+        .identifiers
+        .create_certificate_identifier(
+            "test-cert-identifier",
+            key.id,
+            organisation.id,
+            &chain,
+            &["ASSERTION_METHOD"],
+        )
+        .await;
+    assert_eq!(create_resp.status(), 201);
+    let identifier_id: IdentifierId = create_resp.json_value().await["id"]
+        .as_str()
+        .unwrap()
+        .parse()
+        .unwrap();
+
+    let delete_resp = context.api.identifiers.delete(&identifier_id).await;
+    assert_eq!(delete_resp.status(), 204);
+
+    let already_deleted = context.api.identifiers.delete(&identifier_id).await;
+    assert_eq!(already_deleted.status(), 404);
 }
