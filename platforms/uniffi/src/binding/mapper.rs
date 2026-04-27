@@ -333,6 +333,11 @@ fn convert_history_metadata(
             }
             // external metadata only used in REST API
             HistoryMetadataResponse::External(_) => None,
+            HistoryMetadataResponse::TrustResolution(value) => {
+                Some(HistoryMetadataBinding::TrustResolution {
+                    value: value.into(),
+                })
+            }
         },
     }
 }

@@ -10,7 +10,8 @@ use crate::error::ErrorCode;
 use crate::model::common::GetListResponse;
 use crate::model::history::{
     History, HistoryAction, HistoryEntityType, HistoryErrorMetadata, HistoryMetadata,
-    HistorySearchEnum, HistorySource, WalletRelyingPartyMetadata,
+    HistorySearchEnum, HistorySource, TrustResolutionMetadata, TrustResolutionResult,
+    WalletRelyingPartyMetadata,
 };
 use crate::service::backup::dto::UnexportableEntitiesResponseDTO;
 
@@ -22,6 +23,7 @@ pub enum HistoryMetadataResponse {
     WalletUnitJWT(String),
     External(serde_json::Value),
     WalletRelyingParty(WalletRelyingPartyMetadataDTO),
+    TrustResolution(TrustResolutionMetadataDTO),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, From)]
@@ -35,6 +37,12 @@ pub struct HistoryErrorMetadataDTO {
 #[from(WalletRelyingPartyMetadata)]
 pub struct WalletRelyingPartyMetadataDTO {
     pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, From)]
+#[from(TrustResolutionMetadata)]
+pub struct TrustResolutionMetadataDTO {
+    pub result: TrustResolutionResult,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, From)]

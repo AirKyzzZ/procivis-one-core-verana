@@ -1,7 +1,10 @@
 use one_core::model::history::{
     HistoryAction, HistoryEntityType, HistorySearchEnum, SortableHistoryColumn,
+    TrustResolutionResult,
 };
-use one_core::service::history::dto::{GetHistoryListResponseDTO, WalletRelyingPartyMetadataDTO};
+use one_core::service::history::dto::{
+    GetHistoryListResponseDTO, TrustResolutionMetadataDTO, WalletRelyingPartyMetadataDTO,
+};
 use one_dto_mapper::{From, Into, convert_inner};
 
 use super::backup::UnexportableEntitiesBindingDTO;
@@ -78,6 +81,7 @@ pub enum HistoryActionBindingEnum {
     WrpAcReceived,
     WrpRcReceived,
     WrpNrReceived,
+    TrustResolved,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, From, Into, uniffi::Enum)]
@@ -128,6 +132,9 @@ pub enum HistoryMetadataBinding {
     WalletRelyingParty {
         value: WalletRelyingPartyMetadataBindingDTO,
     },
+    TrustResolution {
+        value: TrustResolutionMetadataBindingDTO,
+    },
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -149,6 +156,22 @@ pub struct HistoryErrorMetadataBindingDTO {
 #[uniffi(name = "WalletRelyingPartyMetadata")]
 pub struct WalletRelyingPartyMetadataBindingDTO {
     pub name: String,
+}
+
+#[derive(Debug, Clone, From, uniffi::Record)]
+#[from(TrustResolutionMetadataDTO)]
+#[uniffi(name = "TrustResolutionMetadata")]
+pub struct TrustResolutionMetadataBindingDTO {
+    pub result: TrustResolutionResultBindingEnum,
+}
+
+#[derive(Debug, Clone, From, uniffi::Enum)]
+#[from(TrustResolutionResult)]
+#[uniffi(name = "TrustResolutionResult")]
+pub enum TrustResolutionResultBindingEnum {
+    Trusted,
+    Untrusted,
+    Unknown,
 }
 
 #[derive(Clone, Debug, uniffi::Record)]

@@ -22,6 +22,7 @@ pub enum HistoryMetadata {
     WalletUnitJWT(String),
     External(serde_json::Value),
     WalletRelyingParty(WalletRelyingPartyMetadata),
+    TrustResolution(TrustResolutionMetadata),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -35,6 +36,19 @@ pub struct WalletRelyingPartyMetadata {
     pub name: String,
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub purpose: HashMap<dcql::CredentialQueryId, Vec<MultiLangString>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TrustResolutionMetadata {
+    pub result: TrustResolutionResult,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum TrustResolutionResult {
+    Trusted,
+    Untrusted,
+    Unknown,
 }
 
 impl<T: ErrorCodeMixin> From<T> for HistoryMetadata {
@@ -111,6 +125,7 @@ pub enum HistoryAction {
     WrpAcReceived,
     WrpRcReceived,
     WrpNrReceived,
+    TrustResolved,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]

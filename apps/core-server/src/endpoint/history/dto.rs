@@ -104,6 +104,22 @@ pub(crate) enum HistoryMetadataRestEnum {
     WalletUnitJWT(#[try_from(infallible)] String),
     External(#[try_from(infallible)] serde_json::Value),
     WalletRelyingParty(#[try_from(infallible)] WalletRelyingPartyMetadataRestDTO),
+    TrustResolution(#[try_from(infallible)] TrustResolutionMetadataRestDTO),
+}
+
+#[derive(Debug, Clone, Serialize, From, ToSchema)]
+#[from(one_core::service::history::dto::TrustResolutionMetadataDTO)]
+pub struct TrustResolutionMetadataRestDTO {
+    pub result: TrustResolutionResultRestEnum,
+}
+
+#[derive(Debug, Clone, Serialize, From, ToSchema)]
+#[from("one_core::model::history::TrustResolutionResult")]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum TrustResolutionResultRestEnum {
+    Trusted,
+    Untrusted,
+    Unknown,
 }
 
 #[derive(Debug, Serialize, ToSchema, TryFrom)]
@@ -180,6 +196,7 @@ pub enum HistoryAction {
     WrpAcReceived,
     WrpRcReceived,
     WrpNrReceived,
+    TrustResolved,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]
