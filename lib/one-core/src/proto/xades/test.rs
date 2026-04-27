@@ -89,7 +89,7 @@ fn make_xades_test_fixtures() -> TestFixtures {
     });
     mock_signer
         .expect_jose_alg()
-        .returning(|| Some("ES256".to_string()));
+        .returning(|| Ok("ES256".to_string()));
     mock_signer.expect_get_key_id().returning(|| None);
     mock_signer
         .expect_get_key_algorithm()

@@ -25,7 +25,6 @@ use crate::model::proof::Proof;
 use crate::proto::identifier_creator::RemoteIdentifierRelation;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{CredentialClaim, CredentialClaimValue};
-use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::service::error::{BusinessLogicError, ServiceError};
 use crate::util::key_selection::KeyFilter;
@@ -266,12 +265,8 @@ pub(crate) fn get_encryption_key_jwk_from_proof(
     }
     .to_owned();
 
-    let key_algorithm = encryption_key
-        .key_algorithm_type()
-        .and_then(|key_type| key_algorithm_provider.key_algorithm_from_type(key_type))
-        .ok_or(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
-            encryption_key.key_type.to_owned(),
-        ))
+    let key_algorithm = key_algorithm_provider
+        .key_algorithm_from_key(&encryption_key)
         .error_while("getting key algorithm")?;
 
     /*

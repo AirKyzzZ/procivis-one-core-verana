@@ -14,7 +14,7 @@ use super::mapper::{
 };
 use super::validator::validate_deactivation_request;
 use crate::config::core_config::{KeyAlgorithmType, KeyStorageType};
-use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
+use crate::error::ContextWithErrorCode;
 use crate::model::did::{DidRelations, RelatedKey, SortableDidColumn};
 use crate::model::identifier::{IdentifierState, UpdateIdentifierRequest};
 use crate::model::key::{Key, KeyRelations};
@@ -23,7 +23,6 @@ use crate::proto::identifier_creator::CreateLocalIdentifierRequest;
 use crate::provider::did_method::DidKeys;
 use crate::provider::did_method::common::jwk_verification_method;
 use crate::provider::did_method::dto::DidDocumentDTO;
-use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::service::common_dto::ListQueryDTO;
 use crate::validator::{throw_if_org_id_not_matching_session, throw_if_org_not_matching_session};
@@ -78,13 +77,10 @@ impl DidService {
             &grouped_key
                 .into_iter()
                 .map(|(key_id, key)| {
-                    let Some(key_type) = key.key.key_algorithm_type() else {
-                        return Err(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
-                            key.key.key_type,
-                        )
-                        .error_while("getting key algorithm")
-                        .into());
-                    };
+                    let key_type = key
+                        .key
+                        .key_algorithm_type()
+                        .error_while("getting key algorithm")?;
 
                     let jwk = self
                         .key_algorithm_provider

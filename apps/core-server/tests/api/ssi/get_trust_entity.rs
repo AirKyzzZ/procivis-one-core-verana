@@ -101,12 +101,12 @@ impl SignatureProvider for FakeEcdsaSigner {
         Some(self.key_id.clone())
     }
 
-    fn get_key_algorithm(&self) -> Result<KeyAlgorithmType, String> {
+    fn get_key_algorithm(&self) -> Result<KeyAlgorithmType, KeyAlgorithmError> {
         Ok(KeyAlgorithmType::Ecdsa)
     }
 
-    fn jose_alg(&self) -> Option<String> {
-        Some("ES256".to_string())
+    fn jose_alg(&self) -> Result<String, KeyAlgorithmError> {
+        Ok("ES256".to_string())
     }
 
     fn get_public_key(&self) -> Vec<u8> {
@@ -133,6 +133,9 @@ async fn prepare_bearer_token(context: &TestContext, org: &Organisation) -> (Did
     key_algorithm_provider
         .expect_key_algorithm_from_type()
         .returning(|_| Some(Arc::new(Ecdsa)));
+    key_algorithm_provider
+        .expect_key_algorithm_from_key()
+        .returning(|_| Ok(Arc::new(Ecdsa)));
     let did_method = KeyDidMethod::new(Arc::new(key_algorithm_provider));
 
     let keys = vec![key.clone()];

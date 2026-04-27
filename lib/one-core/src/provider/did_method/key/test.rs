@@ -26,10 +26,14 @@ fn setup_key_did_method(
 ) -> KeyDidMethod {
     let alg = Arc::new(key_algorithm);
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    let alg_clone = alg.clone();
     key_algorithm_provider
         .expect_key_algorithm_from_type()
         .with(eq(algorithm_id))
-        .returning(move |_| Some(alg.clone()));
+        .returning(move |_| Some(alg_clone.clone()));
+    key_algorithm_provider
+        .expect_key_algorithm_from_key()
+        .returning(move |_| Ok(alg.clone()));
 
     KeyDidMethod::new(Arc::new(key_algorithm_provider))
 }

@@ -51,6 +51,9 @@ pub(super) async fn proof_jwt(use_kid: bool, nonce: Option<&str>) -> String {
     key_algorithm_provider
         .expect_key_algorithm_from_type()
         .returning(|_| Some(Arc::new(Eddsa)));
+    key_algorithm_provider
+        .expect_key_algorithm_from_key()
+        .returning(|_| Ok(Arc::new(Eddsa)));
 
     let params = holder_key.params.clone();
     let key = Key {

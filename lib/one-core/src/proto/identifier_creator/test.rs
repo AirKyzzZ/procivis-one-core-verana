@@ -392,7 +392,7 @@ async fn test_get_or_create_remote_identifier_key_created_in_parallel() {
 async fn test_create_local_identifier_did() {
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
-        .expect_key_algorithm_from_type()
+        .expect_key_algorithm_from_key()
         .once()
         .return_once(|_| {
             let mut key_algorithm = MockKeyAlgorithm::new();
@@ -400,7 +400,7 @@ async fn test_create_local_identifier_did() {
                 .expect_algorithm_type()
                 .once()
                 .returning(|| KeyAlgorithmType::Eddsa);
-            Some(Arc::new(key_algorithm))
+            Ok(Arc::new(key_algorithm))
         });
 
     let key = Key {
@@ -493,7 +493,7 @@ async fn test_create_local_identifier_did() {
 async fn test_create_local_identifier_did_did_value_already_exists() {
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
-        .expect_key_algorithm_from_type()
+        .expect_key_algorithm_from_key()
         .once()
         .return_once(|_| {
             let mut key_algorithm = MockKeyAlgorithm::new();
@@ -501,7 +501,7 @@ async fn test_create_local_identifier_did_did_value_already_exists() {
                 .expect_algorithm_type()
                 .once()
                 .returning(|| KeyAlgorithmType::Eddsa);
-            Some(Arc::new(key_algorithm))
+            Ok(Arc::new(key_algorithm))
         });
 
     let key = Key {

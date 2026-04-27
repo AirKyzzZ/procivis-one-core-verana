@@ -726,7 +726,7 @@ async fn test_holder_accept_credential_success() {
             let mut mock_signature_provider = MockSignatureProvider::new();
             mock_signature_provider
                 .expect_jose_alg()
-                .returning(|| Some("EdDSA".to_string()));
+                .returning(|| Ok("EdDSA".to_string()));
 
             mock_signature_provider
                 .expect_get_key_id()
@@ -950,7 +950,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
             let mut mock_signature_provider = MockSignatureProvider::new();
             mock_signature_provider
                 .expect_jose_alg()
-                .returning(|| Some("EdDSA".to_string()));
+                .returning(|| Ok("EdDSA".to_string()));
 
             mock_signature_provider
                 .expect_get_key_id()
@@ -1185,7 +1185,7 @@ async fn test_holder_accept_expired_credential_fails() {
             let mut mock_signature_provider = MockSignatureProvider::new();
             mock_signature_provider
                 .expect_jose_alg()
-                .returning(|| Some("EdDSA".to_string()));
+                .returning(|| Ok("EdDSA".to_string()));
 
             mock_signature_provider
                 .expect_get_key_id()

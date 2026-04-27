@@ -58,7 +58,7 @@ use crate::model::wallet_instance_attested_key::{
 use crate::proto::jwt::model::{
     DecomposedJwt, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey,
 };
-use crate::proto::jwt::{Jwt, JwtPublicKeyInfo, TokenError};
+use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
 use crate::proto::session_provider::SessionExt;
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVcStatus;
@@ -898,12 +898,7 @@ impl WalletProviderService {
         issuer_public_key_info: JwtPublicKeyInfo,
     ) -> Result<Jwt<WalletInstanceAttestationClaims>, WalletProviderError> {
         let now = self.clock.now_utc();
-        let jose_alg = auth_fn
-            .jose_alg()
-            .ok_or(TokenError::MissingJOSEAlgorithm(
-                "No JOSE alg specified".to_string(),
-            ))
-            .error_while("preparing WIA header")?;
+        let jose_alg = auth_fn.jose_alg().error_while("preparing WIA header")?;
         let key_id = auth_fn.get_key_id();
 
         Ok(Jwt::new(
@@ -950,12 +945,7 @@ impl WalletProviderService {
         revocation_info: Option<CredentialRevocationInfo>,
     ) -> Result<Jwt<WalletUnitAttestationClaims>, WalletProviderError> {
         let now = self.clock.now_utc();
-        let jose_alg = auth_fn
-            .jose_alg()
-            .ok_or(TokenError::MissingJOSEAlgorithm(
-                "No JOSE alg specified".to_string(),
-            ))
-            .error_while("preparing WUA header")?;
+        let jose_alg = auth_fn.jose_alg().error_while("preparing WUA header")?;
         let key_id = auth_fn.get_key_id();
 
         let status = revocation_info

@@ -92,8 +92,6 @@ pub(crate) enum Error {
     MissingCertificateCommonName,
     #[error("Invalid signer type: `{0}`")]
     InvalidSignerType(SignerType),
-    #[error("Invalid key algorithm: {0}")]
-    InvalidKeyAlgorithm(String),
     #[error("Key `{0}` not found")]
     KeyNotFound(KeyId),
     #[error("Identifier `{0}` not found")]
@@ -120,7 +118,6 @@ impl ErrorCodeMixin for Error {
             Self::DidMethodIncapableKeyAlgorithm { .. } => ErrorCode::BR_0065,
             Self::DidValueAlreadyExists(_) => ErrorCode::BR_0028,
             Self::KeyMustNotBeRemote(_) => ErrorCode::BR_0076,
-            Self::InvalidKeyAlgorithm(_) => ErrorCode::BR_0043,
             Self::InvalidCertificateInput => ErrorCode::BR_0331,
             Self::InvalidSignerType(_) => ErrorCode::BR_0381,
             Self::CertificateKeyNotMatching => ErrorCode::BR_0214,

@@ -334,9 +334,7 @@ pub(super) async fn request_as_signed_jwt(
 ) -> Result<String, VerificationProtocolError> {
     let unsigned_jwt = Jwt {
         header: JWTHeader {
-            algorithm: auth_fn.jose_alg().ok_or(VerificationProtocolError::Failed(
-                "No JOSE alg specified".to_string(),
-            ))?,
+            algorithm: auth_fn.jose_alg().error_while("getting JOSE algorithm")?,
             key_id: auth_fn.get_key_id(),
             r#type: Some("oauth-authz-req+jwt".to_string()),
             jwk: None,

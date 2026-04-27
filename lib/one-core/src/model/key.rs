@@ -2,6 +2,7 @@ use std::str::FromStr;
 
 use shared_types::{KeyId, OrganisationId};
 use standardized_types::jwk::PrivateJwk;
+use thiserror::Error;
 use time::OffsetDateTime;
 
 use super::common::GetListResponse;
@@ -10,6 +11,7 @@ use super::list_query::ListQuery;
 use super::organisation::Organisation;
 use super::relation::Related;
 use crate::config::core_config::KeyAlgorithmType;
+use crate::error::{ErrorCode, ErrorCodeMixin};
 
 #[derive(Debug, Clone)]
 #[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
@@ -26,9 +28,24 @@ pub struct Key {
     pub organisation: Related<Organisation>,
 }
 
+#[derive(Debug, Error)]
+pub enum KeyModelError {
+    #[error("Unsupported key algorithm `{0}`")]
+    UnsupportedKeyAlgorithmType(String),
+}
+
+impl ErrorCodeMixin for KeyModelError {
+    fn error_code(&self) -> ErrorCode {
+        match self {
+            Self::UnsupportedKeyAlgorithmType(_) => ErrorCode::BR_0432,
+        }
+    }
+}
+
 impl Key {
-    pub fn key_algorithm_type(&self) -> Option<KeyAlgorithmType> {
-        KeyAlgorithmType::from_str(&self.key_type).ok()
+    pub fn key_algorithm_type(&self) -> Result<KeyAlgorithmType, KeyModelError> {
+        KeyAlgorithmType::from_str(&self.key_type)
+            .map_err(|_| KeyModelError::UnsupportedKeyAlgorithmType(self.key_type.clone()))
     }
 
     pub fn is_remote(&self) -> bool {

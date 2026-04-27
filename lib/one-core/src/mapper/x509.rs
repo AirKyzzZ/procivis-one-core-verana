@@ -11,7 +11,7 @@ use x509_parser::oid_registry::{
 use x509_parser::pem::Pem;
 
 use crate::config::core_config::KeyAlgorithmType;
-use crate::error::{ErrorCode, ErrorCodeMixin};
+use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, NestedError};
 use crate::model::key::Key;
 use crate::provider::key_storage::KeyStorage;
 
@@ -122,16 +122,19 @@ pub fn pem_chain_to_authority_key_identifiers(
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum RcgenSigningError {
     #[error("Unsupported key type `{0}`")]
-    UnsupportedKeyType(String),
-    #[error("Mapping error: {0}")]
-    MappingError(String),
+    UnsupportedKeyType(KeyAlgorithmType),
     #[error(transparent)]
     CryptoError(#[from] one_crypto::SignerError),
+    #[error(transparent)]
+    Nested(#[from] NestedError),
 }
 
 impl ErrorCodeMixin for RcgenSigningError {
     fn error_code(&self) -> ErrorCode {
-        ErrorCode::BR_0329
+        match self {
+            RcgenSigningError::Nested(nested) => nested.error_code(),
+            _ => ErrorCode::BR_0329,
+        }
     }
 }
 
@@ -150,16 +153,13 @@ impl SigningKeyAdapter {
         key_storage: Arc<dyn KeyStorage>,
         handle: tokio::runtime::Handle,
     ) -> Result<SigningKeyAdapter, RcgenSigningError> {
-        let algorithm = match key.key_algorithm_type() {
-            Some(KeyAlgorithmType::Ecdsa) => &rcgen::PKCS_ECDSA_P256_SHA256,
-            Some(KeyAlgorithmType::Eddsa) => &rcgen::PKCS_ED25519,
-            Some(other) => return Err(RcgenSigningError::UnsupportedKeyType(other.to_string())),
-            None => {
-                return Err(RcgenSigningError::MappingError(format!(
-                    "missing key type on key {}",
-                    key.id
-                )));
-            }
+        let algorithm = match key
+            .key_algorithm_type()
+            .error_while("getting key algorithm type")?
+        {
+            KeyAlgorithmType::Ecdsa => &rcgen::PKCS_ECDSA_P256_SHA256,
+            KeyAlgorithmType::Eddsa => &rcgen::PKCS_ED25519,
+            other => return Err(RcgenSigningError::UnsupportedKeyType(other)),
         };
 
         let public_key = if algorithm == &rcgen::PKCS_ECDSA_P256_SHA256 {

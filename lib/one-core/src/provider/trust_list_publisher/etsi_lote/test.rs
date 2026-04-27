@@ -142,8 +142,7 @@ fn make_signing_mocks() -> (
                 let secret: secrecy::SecretSlice<u8> = sk.clone().into();
                 Ok(ECDSASigner.sign(msg, &pk, &secret).unwrap())
             });
-            mock.expect_jose_alg()
-                .returning(|| Some("ES256".to_string()));
+            mock.expect_jose_alg().returning(|| Ok("ES256".to_string()));
             Ok(Box::new(mock))
         });
 
@@ -1210,7 +1209,7 @@ async fn test_sign_jades_compact_structure() {
         .returning(|_| Ok(fake_signature.to_vec()));
     mock_signer
         .expect_jose_alg()
-        .returning(|| Some("ES256".to_string()));
+        .returning(|| Ok("ES256".to_string()));
 
     let cert1 = ct_codecs::Base64::encode_to_string(b"fake-cert-1-der-bytes").unwrap();
     let cert2 = ct_codecs::Base64::encode_to_string(b"fake-cert-2-der-bytes").unwrap();

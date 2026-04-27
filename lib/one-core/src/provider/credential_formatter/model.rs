@@ -76,8 +76,8 @@ pub trait TokenVerifier: Send + Sync {
 pub trait SignatureProvider: Send + Sync {
     async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, KeyAlgorithmError>;
     fn get_key_id(&self) -> Option<String>;
-    fn get_key_algorithm(&self) -> Result<KeyAlgorithmType, String>;
-    fn jose_alg(&self) -> Option<String>;
+    fn get_key_algorithm(&self) -> Result<KeyAlgorithmType, KeyAlgorithmError>;
+    fn jose_alg(&self) -> Result<String, KeyAlgorithmError>;
     fn get_public_key(&self) -> Vec<u8>;
 }
 

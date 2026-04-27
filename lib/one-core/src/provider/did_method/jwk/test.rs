@@ -1,11 +1,9 @@
 use std::sync::Arc;
 
-use mockall::predicate::eq;
 use similar_asserts::assert_eq;
 use standardized_types::jwk::{JwkUse, PublicJwk, PublicJwkEc};
 use uuid::Uuid;
 
-use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::Key;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::jwk::JWKDidMethod;
@@ -202,10 +200,9 @@ async fn test_create_did_jwk_success() {
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
     key_algorithm_provider
-        .expect_key_algorithm_from_type()
-        .with(eq(KeyAlgorithmType::Ecdsa))
+        .expect_key_algorithm_from_key()
         .once()
-        .return_once(move |_| Some(Arc::new(key_algorithm)));
+        .return_once(move |_| Ok(Arc::new(key_algorithm)));
 
     let provider = JWKDidMethod::new(Arc::new(key_algorithm_provider));
 

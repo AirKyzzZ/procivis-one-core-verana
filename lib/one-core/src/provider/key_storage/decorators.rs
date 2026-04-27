@@ -6,6 +6,7 @@ use shared_types::KeyId;
 use standardized_types::jwk::PrivateJwk;
 
 use crate::config::core_config::{ConfigFields, KeyAlgorithmType};
+use crate::error::ContextWithErrorCode;
 use crate::model::key::Key;
 use crate::provider::Provider;
 use crate::provider::disabled_provider::DisabledProvider;
@@ -140,16 +141,10 @@ impl KeyStorage for CapabilityCheckedKeyStorage {
     }
 
     fn key_handle(&self, key: &Key) -> Result<KeyHandle, KeyStorageError> {
-        if !self
-            .get_capabilities()
-            .algorithms
-            .contains(
-                &key.key_algorithm_type()
-                    .ok_or(KeyStorageError::InvalidKeyAlgorithm(
-                        key.key_type.to_string(),
-                    ))?,
-            )
-        {
+        if !self.get_capabilities().algorithms.contains(
+            &key.key_algorithm_type()
+                .error_while("getting key algorithm type")?,
+        ) {
             return Err(KeyStorageError::UnsupportedKeyType {
                 key_type: key.key_type.to_string(),
             });

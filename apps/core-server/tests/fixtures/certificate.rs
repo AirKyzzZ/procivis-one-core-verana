@@ -91,12 +91,12 @@ pub mod ecdsa {
             unimplemented!()
         }
 
-        fn get_key_algorithm(&self) -> Result<KeyAlgorithmType, String> {
+        fn get_key_algorithm(&self) -> Result<KeyAlgorithmType, KeyAlgorithmError> {
             Ok(KeyAlgorithmType::Ecdsa)
         }
 
-        fn jose_alg(&self) -> Option<String> {
-            Some(String::from("ES256"))
+        fn jose_alg(&self) -> Result<String, KeyAlgorithmError> {
+            Ok(String::from("ES256"))
         }
 
         fn get_public_key(&self) -> Vec<u8> {
@@ -177,12 +177,12 @@ pub mod eddsa {
             unimplemented!()
         }
 
-        fn get_key_algorithm(&self) -> Result<KeyAlgorithmType, String> {
+        fn get_key_algorithm(&self) -> Result<KeyAlgorithmType, KeyAlgorithmError> {
             Ok(KeyAlgorithmType::Eddsa)
         }
 
-        fn jose_alg(&self) -> Option<String> {
-            Some("EdDSA".to_string())
+        fn jose_alg(&self) -> Result<String, KeyAlgorithmError> {
+            Ok("EdDSA".to_string())
         }
 
         fn get_public_key(&self) -> Vec<u8> {

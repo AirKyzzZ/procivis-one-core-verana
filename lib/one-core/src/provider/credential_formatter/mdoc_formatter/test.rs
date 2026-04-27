@@ -373,7 +373,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
     auth_fn.expect_sign().returning(|msg| Ok(msg.to_vec()));
     auth_fn
         .expect_get_key_algorithm()
-        .return_const(Ok(KeyAlgorithmType::Ecdsa));
+        .returning(|| Ok(KeyAlgorithmType::Ecdsa));
 
     let formatted_credential = formatter
         .format_credential(credential_data, Box::new(auth_fn))
@@ -635,7 +635,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
     auth_fn.expect_sign().returning(|msg| Ok(msg.to_vec()));
     auth_fn
         .expect_get_key_algorithm()
-        .return_const(Ok(KeyAlgorithmType::Ecdsa));
+        .returning(|| Ok(KeyAlgorithmType::Ecdsa));
 
     let formatted_credential = formatter
         .format_credential(credential_data, Box::new(auth_fn))
@@ -921,7 +921,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
     auth_fn.expect_sign().returning(|msg| Ok(msg.to_vec()));
     auth_fn
         .expect_get_key_algorithm()
-        .return_const(Ok(KeyAlgorithmType::Ecdsa));
+        .returning(|| Ok(KeyAlgorithmType::Ecdsa));
 
     let formatted_credential = formatter
         .format_credential(credential_data, Box::new(auth_fn))

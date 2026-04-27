@@ -149,18 +149,9 @@ impl CredentialFormatter for MdocFormatter {
                     "Missing holder key".to_string(),
                 ))?;
 
-                let key_alg = key
-                    .key_algorithm_type()
-                    .ok_or(FormatterError::CouldNotFormat(format!(
-                        "Invalid key algorithm {}",
-                        key.key_type
-                    )))?;
-
                 self.key_algorithm_provider
-                    .key_algorithm_from_type(key_alg)
-                    .ok_or_else(|| {
-                        FormatterError::CouldNotFormat(format!("Missing key algorithm {key_alg}"))
-                    })?
+                    .key_algorithm_from_key(&key)
+                    .error_while("getting key algorithm")?
                     .reconstruct_key(&key.public_key, None, None)
                     .error_while("reconstructing key")?
                     .public_key_as_cose()

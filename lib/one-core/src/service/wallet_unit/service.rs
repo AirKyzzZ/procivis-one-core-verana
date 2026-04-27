@@ -29,7 +29,7 @@ use crate::model::organisation::Organisation;
 use crate::model::wallet_instance::{WalletInstanceOs, WalletInstanceStatus};
 use crate::model::wallet_instance_attestation::WalletInstanceAttestationRelations;
 use crate::proto::jwt::model::JWTPayload;
-use crate::proto::jwt::{Jwt, JwtPublicKeyInfo, TokenError};
+use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
 use crate::proto::session_provider::SessionExt;
 use crate::proto::wallet_unit::WalletUnitStatusCheckResponse;
 use crate::provider::credential_formatter::model::AuthenticationFn;
@@ -629,9 +629,6 @@ impl WalletUnitService {
             "jwt".to_string(),
             auth_fn
                 .jose_alg()
-                .ok_or(TokenError::MissingJOSEAlgorithm(
-                    "No JOSE alg specified".to_string(),
-                ))
                 .error_while("preparing key possession proof header")?,
             auth_fn.get_key_id(),
             None,
@@ -671,9 +668,6 @@ impl WalletUnitService {
             "jwt".to_string(),
             auth_fn
                 .jose_alg()
-                .ok_or(TokenError::MissingJOSEAlgorithm(
-                    "No JOSE alg specified".to_string(),
-                ))
                 .error_while("preparing device signing key POP header")?,
             None,
             Some(JwtPublicKeyInfo::Jwk(public_key)),

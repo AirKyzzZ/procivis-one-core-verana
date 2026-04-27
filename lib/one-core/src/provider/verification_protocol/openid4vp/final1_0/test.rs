@@ -394,8 +394,8 @@ fn setup_key_agreement_mocks(
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     let arc = Arc::new(key_algorithm);
     key_algorithm_provider
-        .expect_key_algorithm_from_type()
-        .returning(move |_| Some(arc.clone()));
+        .expect_key_algorithm_from_key()
+        .returning(move |_| Ok(arc.clone()));
 
     (key_algorithm_provider, key_provider, key_id)
 }

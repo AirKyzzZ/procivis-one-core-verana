@@ -15,6 +15,7 @@ use super::ml_dsa::MlDsa;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, KeyAlgorithmFields, KeyAlgorithmType};
 use crate::error::ContextWithErrorCode;
+use crate::model::key::Key;
 use crate::provider::provider_directory::{InitializationError, ProviderDirectory};
 
 #[derive(Clone)]
@@ -27,6 +28,11 @@ pub struct ParsedKey {
 pub trait KeyAlgorithmProvider: Send + Sync {
     fn key_algorithm_from_type(&self, algorithm: KeyAlgorithmType)
     -> Option<Arc<dyn KeyAlgorithm>>;
+
+    fn key_algorithm_from_key(
+        &self,
+        key: &Key,
+    ) -> Result<Arc<dyn KeyAlgorithm>, KeyAlgorithmProviderError>;
 
     fn key_algorithm_from_jose_alg(
         &self,
@@ -62,6 +68,19 @@ impl KeyAlgorithmProvider for KeyAlgorithmProviderImpl {
         algorithm: KeyAlgorithmType,
     ) -> Option<Arc<dyn KeyAlgorithm>> {
         self.directory.provider(&algorithm).ok()
+    }
+
+    fn key_algorithm_from_key(
+        &self,
+        key: &Key,
+    ) -> Result<Arc<dyn KeyAlgorithm>, KeyAlgorithmProviderError> {
+        let key_type = key
+            .key_algorithm_type()
+            .error_while("getting key algorithm type")?;
+        self.directory
+            .provider(&key_type)
+            .error_while("getting key algorithm provider")
+            .map_err(Into::into)
     }
 
     fn key_algorithm_from_jose_alg(

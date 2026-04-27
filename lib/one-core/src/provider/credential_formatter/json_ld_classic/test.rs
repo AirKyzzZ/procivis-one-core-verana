@@ -168,7 +168,7 @@ async fn create_token(include_layout: bool) -> Value {
         .returning(|| Some("keyid".to_string()));
     auth_fn
         .expect_get_key_algorithm()
-        .return_const(Ok(KeyAlgorithmType::Ecdsa));
+        .returning(|| Ok(KeyAlgorithmType::Ecdsa));
 
     let formatted_credential = formatter
         .format_credential(credential_data, Box::new(auth_fn))

@@ -27,7 +27,6 @@ use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::key::Key;
 use crate::model::list_filter::{ListFilterValue, StringMatch};
 use crate::provider::issuance_protocol::IssuanceProtocol;
-use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::service::credential_schema::dto::{
     CredentialSchemaFilterValue, CredentialSchemaListIncludeEntityTypeEnum,
 };
@@ -248,15 +247,9 @@ impl SSIIssuerService {
         &self,
         key: &Key,
     ) -> Result<Option<PublicJwk>, IssuerServiceError> {
-        let key_algorithm = key
-            .key_algorithm_type()
-            .and_then(|key_type| {
-                self.key_algorithm_provider
-                    .key_algorithm_from_type(key_type)
-            })
-            .ok_or(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
-                key.key_type.to_owned(),
-            ))
+        let key_algorithm = self
+            .key_algorithm_provider
+            .key_algorithm_from_key(key)
             .error_while("getting key algorithm")?;
 
         /*

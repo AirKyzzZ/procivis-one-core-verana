@@ -48,7 +48,7 @@ impl KeyFilter {
         self.algorithms
             .as_ref()
             .map(|algorithms| {
-                let Some(algorithm_type) = key.key_algorithm_type() else {
+                let Ok(algorithm_type) = key.key_algorithm_type() else {
                     return false;
                 };
                 algorithms.contains(&algorithm_type)

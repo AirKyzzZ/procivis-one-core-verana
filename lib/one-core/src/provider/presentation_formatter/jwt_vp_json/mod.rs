@@ -104,17 +104,10 @@ impl PresentationFormatter for JwtVpPresentationFormatter {
         };
 
         let key_id = holder_binding_fn.get_key_id();
-
-        let jose_alg = holder_binding_fn
-            .jose_alg()
-            .ok_or(FormatterError::CouldNotFormat(
-                "Invalid key algorithm".to_string(),
-            ))?;
-
         let public_key_info = if holder_did.is_none() {
             let key_algorithm = holder_binding_fn
                 .get_key_algorithm()
-                .map_err(FormatterError::CouldNotFormat)?;
+                .error_while("getting key algorithm type")?;
             let key_algorithm = self
                 .key_algorithm_provider
                 .key_algorithm_from_type(key_algorithm)
@@ -131,7 +124,15 @@ impl PresentationFormatter for JwtVpPresentationFormatter {
             None
         };
 
-        let jwt = Jwt::new("JWT".to_owned(), jose_alg, key_id, public_key_info, payload);
+        let jwt = Jwt::new(
+            "JWT".to_owned(),
+            holder_binding_fn
+                .jose_alg()
+                .error_while("getting JOSE algorithm")?,
+            key_id,
+            public_key_info,
+            payload,
+        );
 
         let vp_token = jwt
             .tokenize(Some(&*holder_binding_fn))

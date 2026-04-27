@@ -1312,7 +1312,7 @@ fn test_auth_fn(key_pair: KeyPair, issuer_did: DidValue) -> MockSignatureProvide
         .returning(move || key_pair.public.clone());
     auth_fn
         .expect_jose_alg()
-        .returning(|| Some("EdDSA".to_string()));
+        .returning(|| Ok("EdDSA".to_string()));
     auth_fn
 }
 
@@ -1574,6 +1574,9 @@ fn formatter_for_params(
     key_algorithm_provider
         .expect_key_algorithm_from_type()
         .returning(|_| Some(Arc::new(Eddsa)));
+    key_algorithm_provider
+        .expect_key_algorithm_from_key()
+        .returning(|_| Ok(Arc::new(Eddsa)));
     key_algorithm_provider
         .expect_key_algorithm_from_jose_alg()
         .returning(|_| Some((KeyAlgorithmType::Eddsa, Arc::new(Eddsa))));

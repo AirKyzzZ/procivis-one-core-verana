@@ -97,7 +97,7 @@ impl XAdESProto for XAdES {
 
         let xades_suite: xades::SignatureSuite = signer
             .get_key_algorithm()
-            .map_err(Error::UnsupportedSuite)?
+            .error_while("getting key algorithm type")?
             .try_into()
             .error_while("generating signature")?;
 

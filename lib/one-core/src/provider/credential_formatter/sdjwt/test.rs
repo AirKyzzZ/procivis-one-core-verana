@@ -44,7 +44,7 @@ async fn test_prepare_sd_presentation() {
         .returning(|| Some(key_id.to_string()));
     signer
         .expect_jose_alg()
-        .returning(|| Some(key_alg.to_string()));
+        .returning(|| Ok(key_alg.to_string()));
     signer.expect_sign().returning(|_| Ok(vec![0; 32]));
 
     // Take name and age
@@ -139,7 +139,7 @@ async fn test_prepare_sd_presentation_malformed() {
         .returning(|| Some(key_id.to_string()));
     signer
         .expect_jose_alg()
-        .returning(|| Some(key_alg.to_string()));
+        .returning(|| Ok(key_alg.to_string()));
     signer.expect_sign().returning(|_| Ok(vec![0; 32]));
 
     // Take name and age

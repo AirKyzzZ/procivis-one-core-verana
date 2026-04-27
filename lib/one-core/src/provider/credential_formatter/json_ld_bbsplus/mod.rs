@@ -106,7 +106,9 @@ impl CredentialFormatter for JsonLdBbsplus {
         credential_data: CredentialData,
         auth_fn: AuthenticationFn,
     ) -> Result<String, FormatterError> {
-        if auth_fn.get_key_algorithm() != Ok(KeyAlgorithmType::BbsPlus) {
+        if let Ok(alg) = auth_fn.get_key_algorithm()
+            && alg != KeyAlgorithmType::BbsPlus
+        {
             return Err(FormatterError::BBSOnly);
         }
 
@@ -171,7 +173,9 @@ impl CredentialFormatter for JsonLdBbsplus {
                     .to_string(),
             ));
         }
-        if auth_fn.get_key_algorithm() != Ok(KeyAlgorithmType::BbsPlus) {
+        if let Ok(alg) = auth_fn.get_key_algorithm()
+            && alg != KeyAlgorithmType::BbsPlus
+        {
             return Err(FormatterError::BBSOnly);
         }
 

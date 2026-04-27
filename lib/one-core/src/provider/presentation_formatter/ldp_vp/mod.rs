@@ -26,7 +26,6 @@ use crate::provider::credential_formatter::model::{
     AuthenticationFn, Context, IdentifierDetails, Issuer, VerificationFn,
 };
 use crate::provider::credential_formatter::vcdm::{ContextType, VcdmProof};
-use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::presentation_formatter::PresentationFormatter;
 use crate::provider::presentation_formatter::ldp_vp::model::{
     CredentialEnvelope, LdPresentation, VerifiableCredential,
@@ -119,7 +118,6 @@ impl PresentationFormatter for LdpVpPresentationFormatter {
 
         let algorithm = holder_binding_fn
             .get_key_algorithm()
-            .map_err(KeyAlgorithmProviderError::MissingAlgorithmImplementation)
             .error_while("getting key algorithm")?;
 
         let cryptosuite = match algorithm {

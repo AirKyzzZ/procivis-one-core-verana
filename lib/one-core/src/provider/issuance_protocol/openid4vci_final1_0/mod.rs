@@ -900,9 +900,7 @@ impl OpenID4VCIFinal1_0 {
                     .key_algorithm_provider
                     .reconstruct_key(
                         key.key_algorithm_type()
-                            .ok_or(IssuanceProtocolError::Failed(
-                                "Invalid key algorithm".to_string(),
-                            ))?,
+                            .error_while("getting key algorithm tye")?,
                         &key.public_key,
                         None,
                         None,
@@ -1745,9 +1743,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             .key_algorithm_provider
             .reconstruct_key(
                 key.key_algorithm_type()
-                    .ok_or(IssuanceProtocolError::Failed(
-                        "Invalid key algorithm".to_string(),
-                    ))?,
+                    .error_while("getting key algorithm type")?,
                 &key.public_key,
                 None,
                 None,
@@ -2678,9 +2674,7 @@ async fn create_wallet_unit_attestation_pop(
 
     let proof = Jwt::new(
         "oauth-client-attestation-pop+jwt".to_string(),
-        auth_fn.jose_alg().ok_or(IssuanceProtocolError::Failed(
-            "No JOSE alg specified".to_string(),
-        ))?,
+        auth_fn.jose_alg().error_while("getting JOSE alg")?,
         auth_fn.get_key_id(),
         None,
         JWTPayload {

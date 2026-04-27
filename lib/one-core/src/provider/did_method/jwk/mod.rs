@@ -21,7 +21,6 @@ use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::jwk::jwk_helpers::{extract_jwk, generate_document};
 use crate::provider::did_method::keys::Keys;
 use crate::provider::did_method::model::{AmountOfKeys, DidCapabilities, DidDocument, Operation};
-use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
 pub struct JWKDidMethod {
@@ -47,19 +46,9 @@ impl DidMethod for JWKDidMethod {
         let keys = keys.ok_or(DidMethodError::CreationError("Missing keys".to_string()))?;
         let key = expect_one_key(&keys)?;
 
-        let key_algorithm_type = key
-            .key_algorithm_type()
-            .ok_or(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
-                key.key_type.to_owned(),
-            ))
-            .error_while("getting key algorithm")?;
-
         let key_algorithm = self
             .key_algorithm_provider
-            .key_algorithm_from_type(key_algorithm_type)
-            .ok_or(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
-                key_algorithm_type.to_string(),
-            ))
+            .key_algorithm_from_key(key)
             .error_while("getting key algorithm")?;
 
         let jwk = key_algorithm

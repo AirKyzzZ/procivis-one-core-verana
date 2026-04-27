@@ -194,11 +194,7 @@ impl CredentialIssuerMetadataResolver {
         let now = now_utc();
         let issuer_metadata_jwt = Jwt::new(
             "openidvci-issuer-metadata+jwt".to_string(),
-            auth_fn
-                .jose_alg()
-                .ok_or(OID4VCIFinal1_0ServiceError::MappingError(
-                    "No JOSE alg specified".to_string(),
-                ))?,
+            auth_fn.jose_alg().error_while("getting JOSE algorithm")?,
             auth_fn.get_key_id(),
             key_info,
             JWTPayload {

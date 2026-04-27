@@ -36,7 +36,6 @@ use crate::proto::http_client::HttpClient;
 use crate::provider::caching_loader::json_ld_context::{ContextCache, JsonLdCachingLoader};
 use crate::provider::credential_formatter::mapper::default_2_years;
 use crate::provider::data_type::provider::DataTypeProvider;
-use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::util::rdf_canonization::{json_ld_processor_options, rdf_canonize};
@@ -99,7 +98,6 @@ impl CredentialFormatter for JsonLdClassic {
 
         let key_algorithm = auth_fn
             .get_key_algorithm()
-            .map_err(KeyAlgorithmProviderError::MissingAlgorithmImplementation)
             .error_while("getting key algorithm")?;
 
         if !self.params.embed_layout_properties {

@@ -98,17 +98,19 @@ impl SignatureProvider for SignatureProviderImpl {
         self.jwk_key_id.to_owned()
     }
 
-    fn get_key_algorithm(&self) -> Result<KeyAlgorithmType, String> {
+    fn get_key_algorithm(&self) -> Result<KeyAlgorithmType, KeyAlgorithmError> {
         self.key
             .key_algorithm_type()
-            .ok_or(self.key.key_type.to_owned())
+            .error_while("getting key algorithm type")
+            .map_err(Into::into)
     }
 
-    fn jose_alg(&self) -> Option<String> {
-        self.key
-            .key_algorithm_type()
-            .and_then(|alg| self.key_algorithm_provider.key_algorithm_from_type(alg))
-            .map(|key_algorithm| key_algorithm.issuance_jose_alg_id())
+    fn jose_alg(&self) -> Result<String, KeyAlgorithmError> {
+        Ok(self
+            .key_algorithm_provider
+            .key_algorithm_from_key(&self.key)
+            .error_while("getting key algorithm")?
+            .issuance_jose_alg_id())
     }
 
     fn get_public_key(&self) -> Vec<u8> {
@@ -130,17 +132,19 @@ impl SignatureProvider for AttestationSignatureProvider {
         self.jwk_key_id.to_owned()
     }
 
-    fn get_key_algorithm(&self) -> Result<KeyAlgorithmType, String> {
+    fn get_key_algorithm(&self) -> Result<KeyAlgorithmType, KeyAlgorithmError> {
         self.key
             .key_algorithm_type()
-            .ok_or(self.key.key_type.to_owned())
+            .error_while("getting key algorithm")
+            .map_err(Into::into)
     }
 
-    fn jose_alg(&self) -> Option<String> {
-        self.key
-            .key_algorithm_type()
-            .and_then(|alg| self.key_algorithm_provider.key_algorithm_from_type(alg))
-            .map(|key_algorithm| key_algorithm.issuance_jose_alg_id())
+    fn jose_alg(&self) -> Result<String, KeyAlgorithmError> {
+        Ok(self
+            .key_algorithm_provider
+            .key_algorithm_from_key(&self.key)
+            .error_while("getting key algorithm")?
+            .issuance_jose_alg_id())
     }
 
     fn get_public_key(&self) -> Vec<u8> {

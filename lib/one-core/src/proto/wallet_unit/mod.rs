@@ -21,7 +21,6 @@ use crate::provider::credential_formatter::model::{
     CertificateDetails, CredentialStatus, IdentifierDetails,
 };
 use crate::provider::issuance_protocol::model::KeyStorageSecurityLevel;
-use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::model::RevocationState;
@@ -127,21 +126,9 @@ impl HolderWalletUnitProtoImpl {
         wallet_provider_url: &str,
         key: &Key,
     ) -> Result<String, Error> {
-        let key_algorithm_type = key
-            .key_algorithm_type()
-            .ok_or_else(|| {
-                KeyAlgorithmProviderError::MissingAlgorithmImplementation(key.key_type.to_owned())
-            })
-            .error_while("getting key algorithm")?;
-
         let key_algorithm = self
             .key_algorithm_provider
-            .key_algorithm_from_type(key_algorithm_type)
-            .ok_or_else(|| {
-                KeyAlgorithmProviderError::MissingAlgorithmImplementation(
-                    key_algorithm_type.to_string(),
-                )
-            })
+            .key_algorithm_from_key(key)
             .error_while("getting key algorithm")?;
 
         let key_storage = self

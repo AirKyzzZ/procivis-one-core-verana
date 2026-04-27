@@ -127,9 +127,9 @@ async fn test_get_sd_jwt_vc_issuer_metadata_success_with_did() {
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
-        .expect_key_algorithm_from_type()
+        .expect_key_algorithm_from_key()
         .once()
-        .return_once(move |_| Some(Arc::new(mock_key_algorithm)));
+        .return_once(move |_| Ok(Arc::new(mock_key_algorithm)));
 
     let service = setup_service(
         credential_schema_repository,
@@ -208,9 +208,9 @@ async fn test_get_sd_jwt_vc_issuer_metadata_success() {
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
-        .expect_key_algorithm_from_type()
+        .expect_key_algorithm_from_key()
         .once()
-        .return_once(move |_| Some(Arc::new(mock_key_algorithm)));
+        .return_once(move |_| Ok(Arc::new(mock_key_algorithm)));
 
     let core_base_url = "https://core.example".to_string();
     let service = setup_service(

@@ -670,8 +670,8 @@ async fn test_get_client_metadata_success() {
             });
 
         key_algorithm_provider
-            .expect_key_algorithm_from_type()
-            .return_once(|_| Some(Arc::new(key_algorithm)));
+            .expect_key_algorithm_from_key()
+            .return_once(|_| Ok(Arc::new(key_algorithm)));
     }
     key_provider.expect_get_key_storage().return_once(|_| {
         let mut key_storage = MockKeyStorage::default();

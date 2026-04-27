@@ -146,13 +146,9 @@ pub(crate) fn select_key_agreement_key_from_proof(
         return Ok(None);
     };
 
-    let key_algorithm = candidate_encryption_key
-        .key_algorithm_type()
-        .and_then(|key_type| key_algorithm_provider.key_algorithm_from_type(key_type))
-        .ok_or(VerificationProtocolError::Failed(format!(
-            "key algorithm not found for key type: {}",
-            candidate_encryption_key.key_type
-        )))?;
+    let key_algorithm = key_algorithm_provider
+        .key_algorithm_from_key(candidate_encryption_key)
+        .error_while("getting key algorithm")?;
 
     /*
      * TODO(ONE-5428): Azure vault doesn't work directly with encrypted JWE params

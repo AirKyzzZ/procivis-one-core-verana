@@ -876,9 +876,7 @@ async fn format_status_list_credential(
 
     let algorithm = key
         .key_algorithm_type()
-        .ok_or(RevocationError::InvalidKeyAlgorithm(
-            key.key_type.to_owned(),
-        ))?;
+        .error_while("getting key algorithm type")?;
 
     let status_list = formatter
         .format_status_list(

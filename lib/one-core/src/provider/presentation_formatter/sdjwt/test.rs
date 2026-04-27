@@ -40,7 +40,7 @@ async fn test_format_presentation_with_cnf_success() {
     let mut signer = MockSignatureProvider::default();
     signer
         .expect_jose_alg()
-        .returning(|| Some(key_alg.to_string()));
+        .returning(|| Ok(key_alg.to_string()));
     signer
         .expect_get_key_algorithm()
         .returning(|| Ok(KeyAlgorithmType::Ecdsa));
@@ -216,7 +216,7 @@ async fn test_format_presentation_without_cnf_success() {
     let mut signer = MockSignatureProvider::default();
     signer
         .expect_jose_alg()
-        .returning(|| Some(key_alg.to_string()));
+        .returning(|| Ok(key_alg.to_string()));
     signer
         .expect_get_key_algorithm()
         .returning(|| Ok(KeyAlgorithmType::Ecdsa));
@@ -307,7 +307,7 @@ async fn test_format_presentation_without_cnf_missing_audience_nonce_succeeds() 
     let mut signer = MockSignatureProvider::default();
     signer
         .expect_jose_alg()
-        .returning(|| Some(key_alg.to_string()));
+        .returning(|| Ok(key_alg.to_string()));
     signer
         .expect_get_key_algorithm()
         .returning(|| Ok(KeyAlgorithmType::Ecdsa));

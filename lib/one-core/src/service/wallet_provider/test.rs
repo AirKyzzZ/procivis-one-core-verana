@@ -480,12 +480,12 @@ impl SignatureProvider for FakeEcdsaSigner {
         Some(self.key_id.clone())
     }
 
-    fn get_key_algorithm(&self) -> Result<KeyAlgorithmType, String> {
+    fn get_key_algorithm(&self) -> Result<KeyAlgorithmType, KeyAlgorithmError> {
         Ok(KeyAlgorithmType::Ecdsa)
     }
 
-    fn jose_alg(&self) -> Option<String> {
-        Some("ES256".to_string())
+    fn jose_alg(&self) -> Result<String, KeyAlgorithmError> {
+        Ok("ES256".to_string())
     }
 
     fn get_public_key(&self) -> Vec<u8> {

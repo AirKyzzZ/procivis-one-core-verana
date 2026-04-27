@@ -9,6 +9,7 @@ use uuid::Uuid;
 use super::error::OID4VCIFinal1_0ServiceError;
 use crate::config::core_config::KeyAlgorithmType;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
+use crate::model::key::KeyModelError;
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::{DecomposedJwt, JWTPayload};
 use crate::provider::credential_formatter::error::FormatterError;
@@ -147,12 +148,16 @@ impl SignatureProvider for HS256Signer {
         None
     }
 
-    fn get_key_algorithm(&self) -> Result<KeyAlgorithmType, String> {
-        Err("HS256".to_string())
+    fn get_key_algorithm(&self) -> Result<KeyAlgorithmType, KeyAlgorithmError> {
+        Err(
+            KeyModelError::UnsupportedKeyAlgorithmType("HS256".to_string())
+                .error_while("getting key algorithm type")
+                .into(),
+        )
     }
 
-    fn jose_alg(&self) -> Option<String> {
-        Some("HS256".to_string())
+    fn jose_alg(&self) -> Result<String, KeyAlgorithmError> {
+        Ok("HS256".to_string())
     }
 
     fn get_public_key(&self) -> Vec<u8> {

@@ -8,7 +8,6 @@ use crate::model::identifier::IdentifierType;
 use crate::proto::session_provider::SessionProvider;
 use crate::provider::credential_formatter::model::FormatterCapabilities;
 use crate::provider::issuance_protocol::HolderBindingInput;
-use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::validator::throw_if_org_id_not_matching_session;
 
@@ -69,13 +68,8 @@ pub(super) fn validate_holder_capabilities(
         }
     }
 
-    let key_algorithm = holder_binding
-        .key
-        .key_algorithm_type()
-        .and_then(|alg| key_algorithm_provider.key_algorithm_from_type(alg))
-        .ok_or(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
-            holder_binding.key.key_type.to_owned(),
-        ))
+    let key_algorithm = key_algorithm_provider
+        .key_algorithm_from_key(&holder_binding.key)
         .error_while("getting key algorithm")?;
     if !capabilities
         .holder_key_algorithms

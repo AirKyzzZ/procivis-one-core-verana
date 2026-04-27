@@ -176,9 +176,7 @@ impl OpenID4VCIProofJWTFormatter {
 
         let jwt = Jwt::new_with_attestation(
             JWT_PROOF_TYPE.to_string(),
-            auth_fn.jose_alg().ok_or(FormatterError::CouldNotFormat(
-                "Invalid key algorithm".to_string(),
-            ))?,
+            auth_fn.jose_alg().error_while("getting JOSE alg")?,
             key_id,
             jwk,
             key_attestation,
@@ -323,8 +321,8 @@ mod test {
 
         let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
         key_algorithm_provider
-            .expect_key_algorithm_from_type()
-            .returning(|_| Some(Arc::new(Eddsa)));
+            .expect_key_algorithm_from_key()
+            .returning(|_| Ok(Arc::new(Eddsa)));
 
         let provider = SignatureProviderImpl {
             key: Key {

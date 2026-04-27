@@ -123,9 +123,7 @@ impl CredentialFormatter for JWTFormatter {
         let key_id = auth_fn.get_key_id();
         let jwt = Jwt::new(
             "JWT".to_owned(),
-            auth_fn.jose_alg().ok_or(FormatterError::CouldNotFormat(
-                "Invalid key algorithm".to_string(),
-            ))?,
+            auth_fn.jose_alg().error_while("getting JOSE algorithm")?,
             key_id,
             None,
             payload,

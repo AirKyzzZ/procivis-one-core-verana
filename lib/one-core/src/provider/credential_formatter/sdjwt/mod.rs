@@ -24,7 +24,7 @@ use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::model::{
     DecomposedJwt, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey,
 };
-use crate::proto::jwt::{AnyPayload, Jwt, JwtPublicKeyInfo, TokenError};
+use crate::proto::jwt::{AnyPayload, Jwt, JwtPublicKeyInfo};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::CredentialPresentation;
 use crate::provider::credential_formatter::sdjwt::disclosures::{
@@ -37,7 +37,6 @@ use crate::provider::credential_formatter::sdjwt::x5c::resolve_jwks_url;
 use crate::provider::credential_formatter::vcdm::VcdmCredential;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 pub mod disclosures;
 pub mod mapper;
@@ -98,18 +97,9 @@ pub(crate) async fn format_credential<T: Serialize>(
                     .key
                     .as_ref()
                     .ok_or(FormatterError::CouldNotFormat("Missing key".to_string()))?;
-                let key_type = key
-                    .key_algorithm_type()
-                    .ok_or(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
-                        key.key_type.to_string(),
-                    ))
-                    .error_while("getting key algorithm")?;
 
                 let key_algorithm = key_algorithm_provider
-                    .key_algorithm_from_type(key_type)
-                    .ok_or(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
-                        key_type.to_string(),
-                    ))
+                    .key_algorithm_from_key(key)
                     .error_while("getting key algorithm")?;
 
                 let jwk = key_algorithm
@@ -149,12 +139,7 @@ pub(crate) async fn format_credential<T: Serialize>(
     let key_id = auth_fn.get_key_id();
     let jwt = Jwt::new(
         additional_inputs.token_type,
-        auth_fn
-            .jose_alg()
-            .ok_or(TokenError::MissingJOSEAlgorithm(
-                "Missing key algorithm".to_string(),
-            ))
-            .error_while("preparing JWT")?,
+        auth_fn.jose_alg().error_while("preparing JWT")?,
         key_id,
         additional_inputs
             .issuer_certificate
@@ -246,9 +231,7 @@ pub(crate) async fn append_key_binding_token(
     const KEY_BINDING_TYPE: &str = "kb+jwt";
     let alg = holder_binding_fn
         .jose_alg()
-        .ok_or(FormatterError::CouldNotFormat(
-            "Invalid key algorithm".to_string(),
-        ))?;
+        .error_while("getting JOSE alg")?;
     let sd_hash = hasher.hash_base64_url(token.as_bytes())?;
     let payload = JWTPayload {
         issued_at: Some(crate::clock::now_utc()),

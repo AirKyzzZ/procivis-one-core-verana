@@ -918,6 +918,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Provider is disabled")]
     BR_0431,
+
+    #[strum(message = "Unsupported key algorithm")]
+    BR_0432,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

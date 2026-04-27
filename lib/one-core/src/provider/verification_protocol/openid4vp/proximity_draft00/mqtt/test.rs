@@ -191,7 +191,9 @@ async fn test_handle_invitation_success() {
     auth_fn
         .expect_get_key_id()
         .return_const(Some("did-vm-id".to_string()));
-    auth_fn.expect_jose_alg().return_const("ES256".to_string());
+    auth_fn
+        .expect_jose_alg()
+        .returning(|| Ok("ES256".to_string()));
     auth_fn.expect_sign().returning(move |_| Ok(vec![1, 2, 3]));
 
     let mut did_method_provider: MockDidMethodProvider = MockDidMethodProvider::new();

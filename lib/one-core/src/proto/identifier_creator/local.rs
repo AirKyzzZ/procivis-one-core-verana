@@ -257,11 +257,10 @@ impl IdentifierCreatorProto {
             if key.is_remote() {
                 return Err(Error::KeyMustNotBeRemote(key.name.clone()));
             }
-            let key_algorithm = key
-                .key_algorithm_type()
-                .and_then(|alg| self.key_algorithm_provider.key_algorithm_from_type(alg))
-                .ok_or(Error::InvalidKeyAlgorithm(key.key_type.to_owned()))?;
-
+            let key_algorithm = self
+                .key_algorithm_provider
+                .key_algorithm_from_key(key)
+                .error_while("getting key algorithm")?;
             if !capabilities
                 .key_algorithms
                 .contains(&key_algorithm.algorithm_type())

@@ -927,19 +927,20 @@ impl IssuanceProtocol for OpenID4VCI13 {
             )
             .error_while("getting signature provider")?;
 
-        let key =
-            self.key_algorithm_provider
-                .reconstruct_key(
-                    holder_binding.key.key_algorithm_type().ok_or(
-                        IssuanceProtocolError::Failed("Invalid key algorithm".to_string()),
-                    )?,
-                    &holder_binding.key.public_key,
-                    None,
-                    None,
-                )
-                .error_while("reconstructing key")?
-                .public_key_as_jwk()
-                .error_while("getting JWK")?;
+        let key = self
+            .key_algorithm_provider
+            .reconstruct_key(
+                holder_binding
+                    .key
+                    .key_algorithm_type()
+                    .error_while("getting key algorithm tye")?,
+                &holder_binding.key.public_key,
+                None,
+                None,
+            )
+            .error_while("reconstructing key")?
+            .public_key_as_jwk()
+            .error_while("getting JWK")?;
 
         let credential_response = self
             .holder_request_credential(

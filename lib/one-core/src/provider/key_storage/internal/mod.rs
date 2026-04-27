@@ -13,7 +13,6 @@ use crate::config::core_config::KeyAlgorithmType;
 use crate::error::ContextWithErrorCode;
 use crate::mapper::params::deserialize_encryption_key;
 use crate::model::key::{Key, PrivateJwkExt};
-use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::KeyStorage;
@@ -116,12 +115,9 @@ impl KeyStorage for InternalKeyProvider {
     }
 
     fn key_handle(&self, key: &Key) -> Result<KeyHandle, KeyStorageError> {
-        let algorithm = key
-            .key_algorithm_type()
-            .and_then(|alg| self.key_algorithm_provider.key_algorithm_from_type(alg))
-            .ok_or(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
-                key.key_type.clone(),
-            ))
+        let algorithm = self
+            .key_algorithm_provider
+            .key_algorithm_from_key(key)
             .error_while("getting key algorithm")?;
 
         let key_reference = key

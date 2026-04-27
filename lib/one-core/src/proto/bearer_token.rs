@@ -13,7 +13,6 @@ use crate::model::did::KeyRole;
 use crate::model::identifier::{Identifier, IdentifierType};
 use crate::provider::credential_formatter::model::VerificationFn;
 use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::util::key_selection::KeyFilter;
 use crate::validator::validate_expiration_time;
@@ -86,12 +85,8 @@ pub(crate) async fn prepare_bearer_token(
         }
     };
 
-    let key_algorithm = key
-        .key_algorithm_type()
-        .and_then(|alg| key_algorithm_provider.key_algorithm_from_type(alg))
-        .ok_or_else(|| {
-            KeyAlgorithmProviderError::MissingAlgorithmImplementation(key.key_type.to_owned())
-        })
+    let key_algorithm = key_algorithm_provider
+        .key_algorithm_from_key(&key)
         .error_while("getting key algorithm")?;
 
     let jwk = if issuer.is_none() {

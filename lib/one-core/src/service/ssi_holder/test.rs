@@ -944,9 +944,9 @@ async fn test_accept_credential() {
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
-        .expect_key_algorithm_from_type()
+        .expect_key_algorithm_from_key()
         .once()
-        .returning(|_| Some(Arc::new(Ecdsa)));
+        .returning(|_| Ok(Arc::new(Ecdsa)));
 
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository
@@ -1095,9 +1095,9 @@ async fn test_accept_credential_with_did() {
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
-        .expect_key_algorithm_from_type()
+        .expect_key_algorithm_from_key()
         .once()
-        .returning(|_| Some(Arc::new(Ecdsa)));
+        .returning(|_| Ok(Arc::new(Ecdsa)));
 
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository
@@ -1247,9 +1247,9 @@ async fn test_accept_credential_wrong_tx_code() {
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
-        .expect_key_algorithm_from_type()
+        .expect_key_algorithm_from_key()
         .once()
-        .returning(|_| Some(Arc::new(Ecdsa)));
+        .returning(|_| Ok(Arc::new(Ecdsa)));
 
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository

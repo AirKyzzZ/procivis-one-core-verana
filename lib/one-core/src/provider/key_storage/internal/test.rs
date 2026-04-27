@@ -116,9 +116,9 @@ async fn test_internal_sign_with_encryption() {
         .returning(move |_| Some(arc_key_algorithm_clone.clone()));
 
     mock_key_algorithm_provider
-        .expect_key_algorithm_from_type()
+        .expect_key_algorithm_from_key()
         .once()
-        .returning(move |_| Some(arc_key_algorithm.clone()));
+        .returning(move |_| Ok(arc_key_algorithm.clone()));
 
     let provider = InternalKeyProvider::new(
         "test",

@@ -552,9 +552,7 @@ async fn sign_jades_compact(
     x5c: Vec<String>,
     now: OffsetDateTime,
 ) -> Result<Vec<u8>, TrustListPublisherError> {
-    let algorithm = signer.jose_alg().ok_or_else(|| {
-        TrustListPublisherError::Signing("no JOSE algorithm for signer key".into())
-    })?;
+    let algorithm = signer.jose_alg().error_while("getting JOSE algorithm")?;
 
     let x5t_s256 = compute_x5t_s256(x5c.first().ok_or_else(|| {
         TrustListPublisherError::InvalidJws("x5c certificate chain is empty".into())

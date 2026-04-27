@@ -125,7 +125,7 @@ async fn holder_register_success() {
             let mut signature_provider = MockSignatureProvider::new();
             signature_provider
                 .expect_jose_alg()
-                .returning(|| Some("EdDSA".to_string()));
+                .returning(|| Ok("EdDSA".to_string()));
             signature_provider.expect_get_key_id().returning(|| None);
             signature_provider
                 .expect_sign()

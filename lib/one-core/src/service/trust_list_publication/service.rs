@@ -445,10 +445,9 @@ fn validate_publication_identifier_capabilities(
         return Err(TrustListPublicationServiceError::InvalidSelectedKey);
     };
 
-    let key_algorithm_type = key.key_algorithm_type().ok_or_else(|| {
-        TrustListPublicationServiceError::UnknownKeyAlgorithm(key.key_type.clone())
-    })?;
-
+    let key_algorithm_type = key
+        .key_algorithm_type()
+        .error_while("getting key algorithm type")?;
     if !capabilities.key_algorithms.contains(&key_algorithm_type) {
         return Err(TrustListPublicationServiceError::InvalidKeyType(
             key_algorithm_type,
@@ -504,6 +503,7 @@ mod tests {
     use uuid::Uuid;
 
     use super::*;
+    use crate::error::{ErrorCode, ErrorCodeMixin};
     use crate::model::certificate::{Certificate, CertificateState};
     use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
     use crate::model::key::Key;
@@ -918,12 +918,7 @@ mod tests {
 
         // then
         assert!(result.is_err());
-        match result {
-            Err(TrustListPublicationServiceError::UnknownKeyAlgorithm(key_type)) => {
-                assert_eq!(key_type, "UNKNOWN_ALGO");
-            }
-            _ => panic!("Expected UnknownKeyAlgorithm error"),
-        }
+        assert_eq!(result.err().unwrap().error_code(), ErrorCode::BR_0432)
     }
 
     #[test]
