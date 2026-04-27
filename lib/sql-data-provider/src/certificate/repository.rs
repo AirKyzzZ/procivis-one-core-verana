@@ -80,7 +80,6 @@ impl CertificateRepository for CertificateProvider {
         relations: &CertificateRelations,
     ) -> Result<Option<Certificate>, DataLayerError> {
         let certificate = certificate::Entity::find_by_id(id)
-            .filter(certificate::Column::DeletedAt.is_null())
             .one(&self.db)
             .await
             .map_err(to_data_layer_error)?;

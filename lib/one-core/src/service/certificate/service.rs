@@ -26,6 +26,7 @@ impl CertificateService {
             )
             .await
             .error_while("getting certificate")?
+            .filter(|c| c.deleted_at.is_none())
             .ok_or(CertificateServiceError::NotFound(id))?;
 
         throw_if_org_id_not_matching_session(
@@ -52,6 +53,7 @@ impl CertificateService {
             .get(id, &Default::default())
             .await
             .error_while("getting certificate")?
+            .filter(|c| c.deleted_at.is_none())
             .ok_or(CertificateServiceError::NotFound(id))?;
 
         let identifier = self

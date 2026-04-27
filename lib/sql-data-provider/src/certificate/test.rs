@@ -171,6 +171,38 @@ async fn test_update_certificate() {
 }
 
 #[tokio::test]
+async fn test_get_returns_soft_deleted_certificate() {
+    let setup = setup().await;
+    let id: shared_types::CertificateId = Uuid::new_v4().into();
+    let certificate = Certificate {
+        id,
+        identifier_id: setup.identifier_id,
+        organisation_id: Some(setup.organisation_id),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        expiry_date: get_dummy_date(),
+        name: "cert".to_string(),
+        chain: "chain".to_string(),
+        fingerprint: "fp-get-soft-deleted".to_string(),
+        state: CertificateState::Active,
+        roles: vec![],
+        key: None,
+        deleted_at: None,
+    };
+    setup.provider.create(certificate.clone()).await.unwrap();
+    setup.provider.delete(&certificate).await.unwrap();
+
+    let retrieved = setup
+        .provider
+        .get(id, &Default::default())
+        .await
+        .unwrap()
+        .expect("soft-deleted certificate should still be retrievable");
+    assert_eq!(retrieved.id, id);
+    assert!(retrieved.deleted_at.is_some());
+}
+
+#[tokio::test]
 async fn test_delete_certificate_sets_deleted_at() {
     let setup = setup().await;
     let id = Uuid::new_v4().into();
@@ -193,14 +225,13 @@ async fn test_delete_certificate_sets_deleted_at() {
 
     setup.provider.delete(&certificate).await.unwrap();
 
-    assert!(
-        setup
-            .provider
-            .get(id, &Default::default())
-            .await
-            .unwrap()
-            .is_none()
-    );
+    let retrieved = setup
+        .provider
+        .get(id, &Default::default())
+        .await
+        .unwrap()
+        .expect("soft-deleted certificate should still be retrievable");
+    assert!(retrieved.deleted_at.is_some());
 }
 
 #[tokio::test]
