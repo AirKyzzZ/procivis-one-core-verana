@@ -9,6 +9,7 @@ use utoipa::{Modify, OpenApi};
 use utoipauto::utoipauto;
 
 pub(crate) mod permissions;
+pub(crate) mod swagger_plugin;
 
 use crate::build_info::{APP_VERSION, build};
 use crate::openapi::permissions::PermissionsModifier;
