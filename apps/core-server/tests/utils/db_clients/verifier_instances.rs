@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use one_core::model::organisation::Organisation;
-use one_core::model::verifier_instance::{VerifierInstance, VerifierInstanceRelations};
+use one_core::model::verifier_instance::VerifierInstance;
 use one_core::repository::verifier_instance_repository::VerifierInstanceRepository;
 use shared_types::VerifierInstanceId;
 use uuid::Uuid;
@@ -38,7 +38,7 @@ impl VerifierInstancesDB {
                 .provider_url
                 .unwrap_or("http://provider.url".to_string()),
             trusted_issuer_required: false,
-            organisation: Some(organisation),
+            organisation: organisation.into(),
         };
 
         self.repository
@@ -49,11 +49,7 @@ impl VerifierInstancesDB {
         verifier_instance
     }
 
-    pub async fn get(
-        &self,
-        id: impl Into<VerifierInstanceId>,
-        relations: &VerifierInstanceRelations,
-    ) -> Option<VerifierInstance> {
-        self.repository.get(&id.into(), relations).await.unwrap()
+    pub async fn get(&self, id: impl Into<VerifierInstanceId>) -> Option<VerifierInstance> {
+        self.repository.get(&id.into()).await.unwrap()
     }
 }

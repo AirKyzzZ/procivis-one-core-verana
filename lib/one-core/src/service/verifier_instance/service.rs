@@ -14,7 +14,7 @@ use super::dto::{
 use super::error::VerifierInstanceServiceError;
 use crate::error::ContextWithErrorCode;
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
-use crate::model::verifier_instance::{VerifierInstance, VerifierInstanceRelations};
+use crate::model::verifier_instance::VerifierInstance;
 use crate::proto::session_provider::SessionExt;
 use crate::service::wallet_unit::dto::TrustCollectionsDetailResponseDTO;
 use crate::service::wallet_unit::mapper::{
@@ -100,7 +100,7 @@ impl VerifierInstanceService {
                         provider_name: metadata.verifier_name.to_owned(),
                         provider_url,
                         trusted_issuer_required: false,
-                        organisation: Some(organisation),
+                        organisation: organisation.into(),
                     })
                     .await
                     .error_while("creating verifier instance")?;
@@ -150,22 +150,16 @@ impl VerifierInstanceService {
     ) -> Result<TrustCollectionsDetailResponseDTO, VerifierInstanceServiceError> {
         let instance = self
             .verifier_instance_repository
-            .get(
-                &id,
-                &VerifierInstanceRelations {
-                    organisation: Some(Default::default()),
-                },
-            )
+            .get(&id)
             .await
             .error_while("getting verifier instance")?
             .ok_or(VerifierInstanceServiceError::VerifierInstanceNotFound(id))?;
 
-        let organisation =
-            instance
-                .organisation
-                .ok_or(VerifierInstanceServiceError::MappingError(
-                    "Missing organisation".to_string(),
-                ))?;
+        let organisation = instance
+            .organisation
+            .get()
+            .await
+            .error_while("getting organisation")?;
 
         throw_if_org_id_not_matching_session(&organisation.id, &*self.session_provider)
             .error_while("checking session")?;
@@ -199,22 +193,16 @@ impl VerifierInstanceService {
     ) -> Result<(), VerifierInstanceServiceError> {
         let instance = self
             .verifier_instance_repository
-            .get(
-                &id,
-                &VerifierInstanceRelations {
-                    organisation: Some(Default::default()),
-                },
-            )
+            .get(&id)
             .await
             .error_while("getting verifier instance")?
             .ok_or(VerifierInstanceServiceError::VerifierInstanceNotFound(id))?;
 
-        let organisation =
-            instance
-                .organisation
-                .ok_or(VerifierInstanceServiceError::MappingError(
-                    "Missing organisation".to_string(),
-                ))?;
+        let organisation = instance
+            .organisation
+            .get()
+            .await
+            .error_while("getting organisation")?;
 
         throw_if_org_id_not_matching_session(&organisation.id, &*self.session_provider)
             .error_while("checking session")?;

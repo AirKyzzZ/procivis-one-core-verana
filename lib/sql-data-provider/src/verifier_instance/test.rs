@@ -45,14 +45,8 @@ async fn get_verifier_instance_success() {
         .await
         .unwrap();
 
-    let result = provider
-        .get(&id, &Default::default())
-        .await
-        .unwrap()
-        .unwrap();
+    let result = provider.get(&id).await.unwrap().unwrap();
 
-    // no relations
-    assert!(result.organisation.is_none());
     assert_eq!(result.id, id);
 }
 
@@ -89,7 +83,7 @@ fn test_verifier_instance(id: VerifierInstanceId, organisation: Organisation) ->
         provider_name: "test_name".to_string(),
         provider_url: "test_url".to_string(),
         trusted_issuer_required: false,
-        organisation: Some(organisation),
+        organisation: organisation.into(),
     }
 }
 

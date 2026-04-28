@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use assert2::check;
-use mockall::predicate::{always, eq};
+use mockall::predicate::eq;
 use shared_types::OrganisationId;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
@@ -80,7 +80,7 @@ async fn test_register_verifier_instance_success() {
         .expect_create()
         .once()
         .withf(move |instance| {
-            assert_eq!(instance.organisation.as_ref().unwrap().id, organisation_id);
+            assert_eq!(instance.organisation.id(), organisation_id);
             assert_eq!(instance.provider_name, "provider-name");
             assert_eq!(instance.provider_type, "PROCIVIS_ONE");
             assert_eq!(instance.provider_url, "https://verifier.provider");
@@ -153,8 +153,8 @@ async fn test_get_trust_collections() {
     verifier_instance_repository
         .expect_get()
         .once()
-        .with(eq(id), always())
-        .return_once(move |id, _| {
+        .with(eq(id))
+        .return_once(move |id| {
             Ok(Some(VerifierInstance {
                 id: *id,
                 created_date: get_dummy_date(),
@@ -163,7 +163,7 @@ async fn test_get_trust_collections() {
                 provider_name: "provider-name".to_string(),
                 provider_url: "http://provider.url".to_string(),
                 trusted_issuer_required: false,
-                organisation: Some(dummy_organisation(Some(organisation_id))),
+                organisation: dummy_organisation(Some(organisation_id)).into(),
             }))
         });
 

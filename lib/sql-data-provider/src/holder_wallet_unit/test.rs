@@ -1,8 +1,9 @@
 use one_core::model::holder_wallet_instance::{
-    HolderWalletInstance, HolderWalletInstanceRelations, UpdateHolderWalletInstanceRequest,
+    CreateHolderWalletInstanceRequest, HolderWalletInstance, HolderWalletInstanceRelations,
+    UpdateHolderWalletInstanceRequest,
 };
 use one_core::model::key::{Key, KeyRelations};
-use one_core::model::organisation::{Organisation, OrganisationRelations};
+use one_core::model::organisation::Organisation;
 use one_core::model::wallet_instance::{WalletInstanceStatus, WalletProviderType};
 use one_core::model::wallet_instance_attestation::{
     WalletInstanceAttestation, WalletInstanceAttestationRelations,
@@ -37,9 +38,7 @@ async fn create_holder_wallet_instance_success() {
     let id = Uuid::new_v4().into();
     let result = provider
         .create_holder_wallet_instance(
-            test_wallet_instance(id, organisation, key)
-                .try_into()
-                .unwrap(),
+            instance_to_create_request(test_wallet_instance(id, organisation, key)).await,
         )
         .await;
 
@@ -61,9 +60,7 @@ async fn get_holder_wallet_instance_success() {
     let id = Uuid::new_v4().into();
     provider
         .create_holder_wallet_instance(
-            test_wallet_instance(id, organisation, key)
-                .try_into()
-                .unwrap(),
+            instance_to_create_request(test_wallet_instance(id, organisation, key)).await,
         )
         .await
         .unwrap();
@@ -91,9 +88,8 @@ async fn update_holder_wallet_instance_success() {
     let id = Uuid::new_v4().into();
     provider
         .create_holder_wallet_instance(
-            test_wallet_instance(id, organisation.clone(), key.clone())
-                .try_into()
-                .unwrap(),
+            instance_to_create_request(test_wallet_instance(id, organisation.clone(), key.clone()))
+                .await,
         )
         .await
         .unwrap();
@@ -126,7 +122,6 @@ async fn update_holder_wallet_instance_success() {
                 wallet_unit_attestations: Some(WalletInstanceAttestationRelations {
                     attested_key: Some(KeyRelations::default()),
                 }),
-                organisation: Some(OrganisationRelations::default()),
                 authentication_key: Some(KeyRelations::default()),
             },
         )
@@ -135,7 +130,7 @@ async fn update_holder_wallet_instance_success() {
         .unwrap();
     assert!(reloaded.wallet_unit_attestations.is_some());
     assert_eq!(reloaded.wallet_unit_attestations.unwrap().len(), 1);
-    assert_eq!(reloaded.organisation.unwrap().id, organisation.id);
+    assert_eq!(reloaded.organisation.id(), organisation.id);
     assert_eq!(reloaded.authentication_key.unwrap().id, key.id);
 }
 
@@ -153,10 +148,25 @@ fn test_wallet_instance(
         wallet_provider_type: WalletProviderType::ProcivisOne,
         wallet_provider_name: "test_name".to_string(),
         wallet_provider_url: "test_url".to_string(),
-        organisation: Some(organisation),
+        organisation: organisation.into(),
         authentication_key: Some(key),
         provider_wallet_unit_id: Uuid::new_v4().into(),
         wallet_unit_attestations: None,
+    }
+}
+
+async fn instance_to_create_request(
+    instance: HolderWalletInstance,
+) -> CreateHolderWalletInstanceRequest {
+    CreateHolderWalletInstanceRequest {
+        id: instance.id,
+        wallet_provider_type: instance.wallet_provider_type,
+        wallet_provider_name: instance.wallet_provider_name,
+        wallet_provider_url: instance.wallet_provider_url,
+        provider_wallet_unit_id: instance.provider_wallet_unit_id,
+        status: instance.status,
+        organisation: instance.organisation.get().await.unwrap(),
+        authentication_key: instance.authentication_key,
     }
 }
 

@@ -2,7 +2,8 @@ use shared_types::{HolderWalletInstanceId, WalletInstanceId};
 use time::OffsetDateTime;
 
 use crate::model::key::{Key, KeyRelations};
-use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::model::organisation::Organisation;
+use crate::model::relation::Related;
 use crate::model::wallet_instance::{WalletInstanceStatus, WalletProviderType};
 use crate::model::wallet_instance_attestation::{
     WalletInstanceAttestation, WalletInstanceAttestationRelations,
@@ -21,7 +22,7 @@ pub struct HolderWalletInstance {
     pub status: WalletInstanceStatus,
 
     // Relations:
-    pub organisation: Option<Organisation>,
+    pub organisation: Related<Organisation>,
     pub authentication_key: Option<Key>,
     pub wallet_unit_attestations: Option<Vec<WalletInstanceAttestation>>,
 }
@@ -29,7 +30,6 @@ pub struct HolderWalletInstance {
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct HolderWalletInstanceRelations {
     pub wallet_unit_attestations: Option<WalletInstanceAttestationRelations>,
-    pub organisation: Option<OrganisationRelations>,
     pub authentication_key: Option<KeyRelations>,
 }
 

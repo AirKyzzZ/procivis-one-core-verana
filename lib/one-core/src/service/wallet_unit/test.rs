@@ -36,7 +36,7 @@ use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::repository::trust_collection_repository::MockTrustCollectionRepository;
 use crate::repository::trust_list_subscription_repository::MockTrustListSubscriptionRepository;
-use crate::service::test_utilities::{generic_config, get_dummy_date};
+use crate::service::test_utilities::{dummy_organisation, generic_config, get_dummy_date};
 use crate::service::wallet_provider::dto::{
     FeatureFlags, RegisterWalletUnitResponseDTO, WalletProviderMetadataResponseDTO,
     WalletUnitAttestationMetadataDTO,
@@ -381,7 +381,7 @@ async fn holder_wallet_unit_status_check_still_valid() {
                     wallet_provider_name: "PROCIVIS_ONE".to_string(),
                     wallet_provider_url: "https://wallet.provider".to_string(),
                     provider_wallet_unit_id: Uuid::new_v4().into(),
-                    organisation: None,
+                    organisation: dummy_organisation(None).into(),
                     authentication_key: None,
                     wallet_unit_attestations: None,
                 },
@@ -429,7 +429,7 @@ async fn holder_wallet_unit_status_check_revocation() {
                 wallet_provider_name: "PROCIVIS_ONE".to_string(),
                 wallet_provider_url: "https://wallet.provider".to_string(),
                 provider_wallet_unit_id: Uuid::new_v4().into(),
-                organisation: Some(Organisation {
+                organisation: Organisation {
                     id: Uuid::new_v4().into(),
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
@@ -437,7 +437,8 @@ async fn holder_wallet_unit_status_check_revocation() {
                     wallet_provider: None,
                     wallet_provider_issuer: None,
                     parent_organisation: None,
-                }),
+                }
+                .into(),
                 authentication_key: None,
                 wallet_unit_attestations: None,
             }))
@@ -524,7 +525,7 @@ async fn holder_wallet_unit_status_check_already_revoked() {
                     wallet_provider_name: "PROCIVIS_ONE".to_string(),
                     wallet_provider_url: "https://wallet.provider".to_string(),
                     provider_wallet_unit_id: Uuid::new_v4().into(),
-                    organisation: None,
+                    organisation: dummy_organisation(None).into(),
                     authentication_key: None,
                     wallet_unit_attestations: None,
                 },
@@ -586,7 +587,7 @@ async fn holder_register_already_exists() {
                 wallet_provider_name: "PROCIVIS_ONE".to_string(),
                 wallet_provider_url: "https://wallet.provider".to_string(),
                 provider_wallet_unit_id: Uuid::new_v4().into(),
-                organisation: None,
+                organisation: dummy_organisation(None).into(),
                 authentication_key: None,
                 wallet_unit_attestations: None,
             }))

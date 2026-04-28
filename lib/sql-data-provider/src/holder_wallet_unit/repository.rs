@@ -11,6 +11,7 @@ use shared_types::{HolderWalletInstanceId, OrganisationId};
 
 use crate::entity::holder_wallet_instance;
 use crate::holder_wallet_unit::HolderWalletInstanceProvider;
+use crate::holder_wallet_unit::mapper::holder_wallet_instance_from_model;
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 
 #[async_trait]
@@ -40,20 +41,8 @@ impl HolderWalletInstanceRepository for HolderWalletInstanceProvider {
 
         let org_id = model.organisation_id;
         let auth_key_id = model.authentication_key_id;
-        let mut holder_wallet_unit = HolderWalletInstance::from(model);
-
-        if let Some(_org_relations) = &relations.organisation {
-            let org = self
-                .organisation_repository
-                .get_organisation(&org_id)
-                .await?
-                .ok_or(DataLayerError::MissingRequiredRelation {
-                    relation: "holder_wallet_unit-organisation",
-                    id: org_id.to_string(),
-                })?;
-            holder_wallet_unit.organisation = Some(org)
-        }
-
+        let mut holder_wallet_unit =
+            holder_wallet_instance_from_model(model, &self.organisation_repository);
         if let (Some(_key_relations), Some(auth_key_id)) =
             (&relations.authentication_key, &auth_key_id)
         {
@@ -89,7 +78,7 @@ impl HolderWalletInstanceRepository for HolderWalletInstanceProvider {
             .one(&self.db)
             .await
             .map_err(to_data_layer_error)?;
-        Ok(model.map(Into::into))
+        Ok(model.map(|m| holder_wallet_instance_from_model(m, &self.organisation_repository)))
     }
 
     async fn update_holder_wallet_instance(

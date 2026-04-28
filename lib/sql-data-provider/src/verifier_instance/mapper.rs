@@ -1,30 +1,32 @@
+use std::sync::Arc;
+
+use one_core::model::relation::Related;
 use one_core::model::verifier_instance::VerifierInstance;
-use one_core::repository::error::DataLayerError;
+use one_core::repository::organisation_repository::OrganisationRepository;
 use sea_orm::Set;
 
 use crate::entity::verifier_instance::{ActiveModel, Model};
 
-impl From<Model> for VerifierInstance {
-    fn from(value: Model) -> Self {
-        Self {
-            id: value.id,
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-            provider_type: value.provider_type,
-            provider_name: value.provider_name,
-            provider_url: value.provider_url,
-            trusted_issuer_required: value.trusted_issuer_required,
-            organisation: None,
-        }
+pub(crate) fn verifier_instance_from_model(
+    model: Model,
+    organisation_repository: &Arc<dyn OrganisationRepository>,
+) -> VerifierInstance {
+    VerifierInstance {
+        id: model.id,
+        created_date: model.created_date,
+        last_modified: model.last_modified,
+        provider_type: model.provider_type,
+        provider_name: model.provider_name,
+        provider_url: model.provider_url,
+        trusted_issuer_required: model.trusted_issuer_required,
+        organisation: Related::new(model.organisation_id, organisation_repository.to_owned()),
     }
 }
 
-impl TryFrom<VerifierInstance> for ActiveModel {
-    type Error = DataLayerError;
-
-    fn try_from(value: VerifierInstance) -> Result<Self, Self::Error> {
+impl From<VerifierInstance> for ActiveModel {
+    fn from(value: VerifierInstance) -> Self {
         let now = one_core::clock::now_utc();
-        Ok(Self {
+        Self {
             id: Set(value.id),
             created_date: Set(now),
             last_modified: Set(now),
@@ -32,7 +34,7 @@ impl TryFrom<VerifierInstance> for ActiveModel {
             provider_type: Set(value.provider_type),
             provider_url: Set(value.provider_url),
             trusted_issuer_required: Set(value.trusted_issuer_required),
-            organisation_id: Set(value.organisation.ok_or(DataLayerError::MappingError)?.id),
-        })
+            organisation_id: Set(value.organisation.id()),
+        }
     }
 }

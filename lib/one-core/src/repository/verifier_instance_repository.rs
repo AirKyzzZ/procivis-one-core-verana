@@ -1,6 +1,6 @@
 use shared_types::{OrganisationId, VerifierInstanceId};
 
-use crate::model::verifier_instance::{VerifierInstance, VerifierInstanceRelations};
+use crate::model::verifier_instance::VerifierInstance;
 use crate::repository::error::DataLayerError;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
@@ -12,7 +12,6 @@ pub trait VerifierInstanceRepository: Send + Sync {
     async fn get(
         &self,
         id: &VerifierInstanceId,
-        relations: &VerifierInstanceRelations,
     ) -> Result<Option<VerifierInstance>, DataLayerError>;
 
     async fn get_by_org_id(

@@ -7,9 +7,7 @@ use shared_types::{HolderWalletInstanceId, VerifierInstanceId};
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, NestedError};
 use crate::model::holder_wallet_instance::HolderWalletInstanceRelations;
 use crate::model::list_filter::ListFilterValue;
-use crate::model::organisation::OrganisationRelations;
 use crate::model::trust_collection::{TrustCollectionFilterValue, TrustCollectionListQuery};
-use crate::model::verifier_instance::VerifierInstanceRelations;
 use crate::proto::trust_collection::TrustCollectionManager;
 use crate::proto::trust_list_subscription_sync::TrustListSubscriptionSync;
 use crate::proto::verifier_provider_client::VerifierProviderClient;
@@ -105,13 +103,7 @@ impl TrustCollectionSyncTask {
             Params::HolderWalletUnitId(id) => {
                 let holder_wallet_unit = self
                     .wallet_unit_repository
-                    .get_holder_wallet_instance(
-                        &id,
-                        &HolderWalletInstanceRelations {
-                            organisation: Some(OrganisationRelations::default()),
-                            ..Default::default()
-                        },
-                    )
+                    .get_holder_wallet_instance(&id, &HolderWalletInstanceRelations::default())
                     .await
                     .error_while("loading wallet unit")?
                     .ok_or(TrustCollectionSyncError::WalletUnitNotFound(id))?;
@@ -121,14 +113,8 @@ impl TrustCollectionSyncTask {
                     .get_wallet_provider_metadata(holder_wallet_unit.to_owned().into())
                     .await
                     .error_while("getting wallet provider metadata")?;
-                let org_id = holder_wallet_unit
-                    .organisation
-                    .ok_or(TrustCollectionSyncError::MappingError(
-                        "Missing organisation".to_string(),
-                    ))?
-                    .id;
                 (
-                    org_id,
+                    holder_wallet_unit.organisation.id(),
                     holder_wallet_unit.wallet_provider_url,
                     convert_inner(metadata.trust_collections),
                 )
@@ -136,12 +122,7 @@ impl TrustCollectionSyncTask {
             Params::VerifierInstanceId(id) => {
                 let verifier_instance = self
                     .verifier_instance_repository
-                    .get(
-                        &id,
-                        &VerifierInstanceRelations {
-                            organisation: Some(OrganisationRelations::default()),
-                        },
-                    )
+                    .get(&id)
                     .await
                     .error_while("loading verifier instance")?
                     .ok_or(TrustCollectionSyncError::VerifierInstanceNotFound(id))?;
@@ -154,14 +135,8 @@ impl TrustCollectionSyncTask {
                     .get_verifier_provider_metadata(&metadata_url)
                     .await
                     .error_while("getting verifier provider metadata")?;
-                let org_id = verifier_instance
-                    .organisation
-                    .ok_or(TrustCollectionSyncError::MappingError(
-                        "Missing organisation".to_string(),
-                    ))?
-                    .id;
                 (
-                    org_id,
+                    verifier_instance.organisation.id(),
                     verifier_instance.provider_url,
                     convert_inner(metadata.trust_collections),
                 )

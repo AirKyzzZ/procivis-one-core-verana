@@ -49,7 +49,7 @@ async fn register_verifier_instance_successfully() {
     let instance = context
         .db
         .verifier_instances
-        .get(instance_id, &Default::default())
+        .get(instance_id)
         .await
         .unwrap();
     assert_eq!(instance.provider_name, "verifier-name");

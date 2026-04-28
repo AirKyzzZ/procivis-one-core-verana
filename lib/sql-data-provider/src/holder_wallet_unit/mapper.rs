@@ -1,26 +1,31 @@
+use std::sync::Arc;
+
 use one_core::model::holder_wallet_instance::{
     CreateHolderWalletInstanceRequest, HolderWalletInstance,
 };
+use one_core::model::relation::Related;
 use one_core::model::wallet_instance::{WalletInstanceStatus, WalletProviderType};
+use one_core::repository::organisation_repository::OrganisationRepository;
 use sea_orm::Set;
 
 use crate::entity::holder_wallet_instance::{ActiveModel, Model};
 
-impl From<Model> for HolderWalletInstance {
-    fn from(value: Model) -> Self {
-        Self {
-            id: value.id,
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-            wallet_provider_type: WalletProviderType::from(value.wallet_provider_type),
-            wallet_provider_name: value.wallet_provider_name,
-            wallet_provider_url: value.wallet_provider_url,
-            provider_wallet_unit_id: value.provider_wallet_unit_id,
-            status: WalletInstanceStatus::from(value.status),
-            organisation: None,
-            authentication_key: None,
-            wallet_unit_attestations: None,
-        }
+pub(crate) fn holder_wallet_instance_from_model(
+    value: Model,
+    organisation_repository: &Arc<dyn OrganisationRepository>,
+) -> HolderWalletInstance {
+    HolderWalletInstance {
+        id: value.id,
+        created_date: value.created_date,
+        last_modified: value.last_modified,
+        wallet_provider_type: WalletProviderType::from(value.wallet_provider_type),
+        wallet_provider_name: value.wallet_provider_name,
+        wallet_provider_url: value.wallet_provider_url,
+        provider_wallet_unit_id: value.provider_wallet_unit_id,
+        status: WalletInstanceStatus::from(value.status),
+        organisation: Related::new(value.organisation_id, organisation_repository.clone()),
+        authentication_key: None,
+        wallet_unit_attestations: None,
     }
 }
 

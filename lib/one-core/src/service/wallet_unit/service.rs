@@ -239,23 +239,17 @@ impl WalletUnitService {
     ) -> Result<TrustCollectionsDetailResponseDTO, HolderWalletUnitError> {
         let unit = self
             .holder_wallet_unit_repository
-            .get_holder_wallet_instance(
-                &id,
-                &HolderWalletInstanceRelations {
-                    organisation: Some(Default::default()),
-                    ..Default::default()
-                },
-            )
+            .get_holder_wallet_instance(&id, &HolderWalletInstanceRelations::default())
             .await
             .error_while("getting holder wallet unit")?
             .ok_or(HolderWalletUnitError::HolderWalletUnitNotFound(id))?;
 
-        let organisation =
-            unit.organisation
-                .to_owned()
-                .ok_or(HolderWalletUnitError::MappingError(
-                    "Missing organisation".to_string(),
-                ))?;
+        let organisation = unit
+            .organisation
+            .to_owned()
+            .get()
+            .await
+            .error_while("getting organisation")?;
 
         throw_if_org_id_not_matching_session(&organisation.id, &*self.session_provider)
             .error_while("checking session")?;
@@ -288,7 +282,6 @@ impl WalletUnitService {
                 &HolderWalletInstanceRelations {
                     authentication_key: Some(KeyRelations::default()),
                     wallet_unit_attestations: Some(WalletInstanceAttestationRelations::default()),
-                    ..Default::default()
                 },
             )
             .await
@@ -328,7 +321,7 @@ impl WalletUnitService {
                     entity_type: HistoryEntityType::WalletUnit,
                     metadata: None,
                     metadata_blob_id: None,
-                    organisation_id: holder_wallet_unit.organisation.map(|o| o.id),
+                    organisation_id: Some(holder_wallet_unit.organisation.id()),
                     user: self.session_provider.session().user(),
                     created_date: self.clock.now_utc(),
                 })
@@ -345,23 +338,16 @@ impl WalletUnitService {
     ) -> Result<(), HolderWalletUnitError> {
         let holder_wallet_unit = self
             .holder_wallet_unit_repository
-            .get_holder_wallet_instance(
-                &id,
-                &HolderWalletInstanceRelations {
-                    organisation: Some(Default::default()),
-                    ..Default::default()
-                },
-            )
+            .get_holder_wallet_instance(&id, &HolderWalletInstanceRelations::default())
             .await
             .error_while("getting holder wallet unit")?
             .ok_or(HolderWalletUnitError::HolderWalletUnitNotFound(id))?;
 
-        let organisation =
-            holder_wallet_unit
-                .organisation
-                .ok_or(HolderWalletUnitError::MappingError(
-                    "Missing organisation".to_string(),
-                ))?;
+        let organisation = holder_wallet_unit
+            .organisation
+            .get()
+            .await
+            .error_while("getting organisation")?;
 
         throw_if_org_id_not_matching_session(&organisation.id, &*self.session_provider)
             .error_while("checking session")?;

@@ -91,7 +91,7 @@ async fn test_sync_trust_collections_verifier() {
     verifier_instance_repository
         .expect_get()
         .once()
-        .returning(|_, _| Ok(Some(dummy_verifier_instance())));
+        .returning(|_| Ok(Some(dummy_verifier_instance())));
     let mut verifier_client = MockVerifierProviderClient::new();
     let collection_to_keep = dummy_collection("to be kept".to_string());
     let collection_to_delete = dummy_collection("to be deleted".to_string());
@@ -232,7 +232,7 @@ fn dummy_wallet_unit() -> HolderWalletInstance {
         wallet_provider_url: "https://wallet-provider.org".to_string(),
         provider_wallet_unit_id: Uuid::new_v4().into(),
         status: WalletInstanceStatus::Active,
-        organisation: Some(dummy_organisation(None)),
+        organisation: dummy_organisation(None).into(),
         authentication_key: None,
         wallet_unit_attestations: None,
     }
@@ -248,7 +248,7 @@ fn dummy_verifier_instance() -> VerifierInstance {
         provider_name: "verifier-provider".to_string(),
         provider_url: "https://verifier-provider.org".to_string(),
         trusted_issuer_required: false,
-        organisation: Some(dummy_organisation(None)),
+        organisation: dummy_organisation(None).into(),
     }
 }
 
