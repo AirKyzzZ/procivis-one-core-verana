@@ -15,6 +15,7 @@ use crate::repository::error::DataLayerError;
 use crate::repository::holder_wallet_instance_repository::MockHolderWalletInstanceRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
+use crate::repository::verifier_instance_repository::MockVerifierInstanceRepository;
 use crate::service::common_dto::ListQueryDTO;
 use crate::service::test_utilities::dummy_organisation;
 
@@ -22,17 +23,20 @@ fn setup_service(organisation_repository: MockOrganisationRepository) -> Organis
     setup_service_with_mocks(
         organisation_repository,
         MockHolderWalletInstanceRepository::new(),
+        MockVerifierInstanceRepository::new(),
     )
 }
 
 fn setup_service_with_mocks(
     organisation_repository: MockOrganisationRepository,
     holder_wallet_instance_repository: MockHolderWalletInstanceRepository,
+    repository: MockVerifierInstanceRepository,
 ) -> OrganisationService {
     OrganisationService {
         organisation_repository: Arc::new(organisation_repository),
         identifier_repository: Arc::new(MockIdentifierRepository::new()),
         holder_wallet_instance_repository: Arc::new(holder_wallet_instance_repository),
+        verifier_instance_repository: Arc::new(repository),
         core_config: Arc::new(Default::default()),
     }
 }
@@ -115,8 +119,16 @@ async fn test_get_organisation_success() {
         .times(1)
         .returning(|_| Ok(GetListResponse::empty()));
 
-    let service =
-        setup_service_with_mocks(organisation_repository, holder_wallet_instance_repository);
+    let mut verifier_instance_repository = MockVerifierInstanceRepository::new();
+    verifier_instance_repository
+        .expect_list()
+        .times(1)
+        .returning(|_| Ok(GetListResponse::empty()));
+    let service = setup_service_with_mocks(
+        organisation_repository,
+        holder_wallet_instance_repository,
+        verifier_instance_repository,
+    );
     let result = service.get_organisation(&organisation.id).await;
 
     assert!(result.is_ok());

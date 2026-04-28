@@ -5,6 +5,7 @@ use uuid::Uuid;
 use crate::fixtures::TestingKeyParams;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::holder_wallet_instance::TestHolderWalletInstanceParams;
+use crate::utils::db_clients::verifier_instances::TestVerifierInstanceParams;
 use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
@@ -63,7 +64,7 @@ async fn test_get_organisation_returns_wallet_instance() {
             },
         )
         .await;
-    context
+    let holder_wallet_instance = context
         .db
         .holder_wallet_units
         .create(
@@ -92,6 +93,8 @@ async fn test_get_organisation_returns_wallet_instance() {
         wallet_instance["walletProviderUrl"],
         "https://wallet.provider"
     );
+    assert_eq!(wallet_instance["id"], holder_wallet_instance.id.to_string());
+    assert_eq!(wallet_instance["trustedRpRequired"], false);
     assert_eq!(wallet_instance["walletProviderName"], "PROCIVIS_ONE");
     assert_eq!(wallet_instance["authenticationKeyType"], "ECDSA");
 }
@@ -128,4 +131,39 @@ async fn get_deactivated_organisation_success() {
     assert!(resp["createdDate"].is_string());
     assert!(resp["lastModified"].is_string());
     assert!(resp["deactivatedAt"].is_string());
+}
+
+#[tokio::test]
+async fn test_get_organisation_with_verifier_instance_success() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let verifier_instance = context
+        .db
+        .verifier_instances
+        .create(
+            organisation.clone(),
+            TestVerifierInstanceParams {
+                id: None,
+                provider_type: None,
+                provider_name: None,
+                provider_url: None,
+            },
+        )
+        .await;
+    // WHEN
+    let resp = context.api.organisations.get(&organisation.id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    resp["id"].assert_eq(&organisation.id);
+    assert!(resp["createdDate"].is_string());
+    assert!(resp["lastModified"].is_string());
+    let verifier_instance_resp = resp["verifierInstance"].as_object().unwrap();
+    assert_eq!(
+        verifier_instance_resp["id"],
+        verifier_instance.id.to_string()
+    );
+    assert_eq!(verifier_instance_resp["trustedIssuerRequired"], false);
 }

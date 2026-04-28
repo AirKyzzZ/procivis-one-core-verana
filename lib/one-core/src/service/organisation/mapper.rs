@@ -8,8 +8,10 @@ use crate::model::organisation::{Organisation, OrganisationFilterValue};
 use crate::model::relation::Related;
 use crate::repository::organisation_repository::OrganisationRepository;
 use crate::service::organisation::dto::{
-    CreateOrganisationRequestDTO, GetOrganisationDetailsResponseDTO, OrganisationFilterParamsDTO,
-    UpsertOrganisationRequestDTO, WalletInstanceDetailResponseDTO,
+    CreateOrganisationRequestDTO, GetOrganisationDetailsResponseDTO,
+    GetOrganisationListItemResponseDTO, HolderWalletInstanceDetailResponseDTO,
+    OrganisationFilterParamsDTO, UpsertOrganisationRequestDTO, VerifierInstanceDetailResponseDTO,
+    WalletProviderDetailResponseDTO,
 };
 
 pub(super) fn request_to_model(
@@ -43,19 +45,56 @@ impl From<UpsertOrganisationRequestDTO> for CreateOrganisationRequestDTO {
 pub(super) fn detail_from_model(
     organisation: Organisation,
     wallet_provider_issuer: Option<Identifier>,
-    wallet_instance: Option<WalletInstanceDetailResponseDTO>,
+    wallet_instance: Option<HolderWalletInstanceDetailResponseDTO>,
+    verifier_instance: Option<VerifierInstanceDetailResponseDTO>,
 ) -> GetOrganisationDetailsResponseDTO {
     GetOrganisationDetailsResponseDTO {
         id: organisation.id,
         created_date: organisation.created_date,
         last_modified: organisation.last_modified,
         deactivated_at: organisation.deactivated_at,
-        wallet_provider: organisation.wallet_provider,
-        wallet_provider_issuer: wallet_provider_issuer.map(Into::into),
+        wallet_provider: map_to_wallet_provider(
+            organisation.wallet_provider,
+            wallet_provider_issuer,
+        ),
         parent_organisation: organisation
             .parent_organisation
             .map(|parent_organisation| parent_organisation.id()),
         wallet_instance,
+        verifier_instance,
+    }
+}
+
+pub(super) fn list_item_from_model(
+    organisation: Organisation,
+    wallet_provider_issuer: Option<Identifier>,
+) -> GetOrganisationListItemResponseDTO {
+    GetOrganisationListItemResponseDTO {
+        id: organisation.id,
+        created_date: organisation.created_date,
+        last_modified: organisation.last_modified,
+        deactivated_at: organisation.deactivated_at,
+        wallet_provider: map_to_wallet_provider(
+            organisation.wallet_provider,
+            wallet_provider_issuer,
+        ),
+        parent_organisation: organisation
+            .parent_organisation
+            .map(|parent_organisation| parent_organisation.id()),
+    }
+}
+
+fn map_to_wallet_provider(
+    provider_name: Option<String>,
+    wallet_provider_issuer: Option<Identifier>,
+) -> Option<WalletProviderDetailResponseDTO> {
+    if provider_name.is_some() || wallet_provider_issuer.is_some() {
+        Some(WalletProviderDetailResponseDTO {
+            provider_name,
+            issuer: wallet_provider_issuer.map(Into::into),
+        })
+    } else {
+        None
     }
 }
 

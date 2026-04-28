@@ -1,5 +1,5 @@
 use one_dto_mapper::Into;
-use shared_types::{IdentifierId, OrganisationId};
+use shared_types::{HolderWalletInstanceId, IdentifierId, OrganisationId, VerifierInstanceId};
 use time::OffsetDateTime;
 
 use crate::model::common::GetListResponse;
@@ -28,21 +28,44 @@ pub struct GetOrganisationDetailsResponseDTO {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub deactivated_at: Option<OffsetDateTime>,
-    pub wallet_provider: Option<String>,
-    pub wallet_provider_issuer: Option<GetIdentifierListItemResponseDTO>,
     pub parent_organisation: Option<OrganisationId>,
-    pub wallet_instance: Option<WalletInstanceDetailResponseDTO>,
+    pub wallet_instance: Option<HolderWalletInstanceDetailResponseDTO>,
+    pub verifier_instance: Option<VerifierInstanceDetailResponseDTO>,
+    pub wallet_provider: Option<WalletProviderDetailResponseDTO>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct WalletInstanceDetailResponseDTO {
+pub struct GetOrganisationListItemResponseDTO {
+    pub id: OrganisationId,
+    pub created_date: OffsetDateTime,
+    pub last_modified: OffsetDateTime,
+    pub deactivated_at: Option<OffsetDateTime>,
+    pub parent_organisation: Option<OrganisationId>,
+    pub wallet_provider: Option<WalletProviderDetailResponseDTO>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct HolderWalletInstanceDetailResponseDTO {
+    pub id: HolderWalletInstanceId,
+    pub trusted_rp_required: bool,
     pub wallet_provider_url: String,
     pub wallet_provider_name: String,
     pub authentication_key_type: String,
 }
 
-pub type OrganisationListItemResponseDTO = GetOrganisationDetailsResponseDTO;
-pub type GetOrganisationListResponseDTO = GetListResponse<OrganisationListItemResponseDTO>;
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct VerifierInstanceDetailResponseDTO {
+    pub id: VerifierInstanceId,
+    pub trusted_issuer_required: bool,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct WalletProviderDetailResponseDTO {
+    pub provider_name: Option<String>,
+    pub issuer: Option<GetIdentifierListItemResponseDTO>,
+}
+
+pub type GetOrganisationListResponseDTO = GetListResponse<GetOrganisationListItemResponseDTO>;
 
 #[derive(Clone, Debug, Default)]
 pub struct OrganisationFilterParamsDTO {

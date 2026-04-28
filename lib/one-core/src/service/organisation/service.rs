@@ -1,16 +1,15 @@
 use std::collections::HashMap;
 
-use HolderWalletInstanceFilterValue::OrganisationIds;
 use shared_types::{IdentifierId, OrganisationId};
 
 use super::OrganisationService;
 use super::dto::{
     CreateOrganisationRequestDTO, GetOrganisationDetailsResponseDTO,
-    GetOrganisationListResponseDTO, OrganisationFilterParamsDTO, UpsertOrganisationRequestDTO,
-    WalletInstanceDetailResponseDTO,
+    GetOrganisationListResponseDTO, HolderWalletInstanceDetailResponseDTO,
+    OrganisationFilterParamsDTO, UpsertOrganisationRequestDTO, VerifierInstanceDetailResponseDTO,
 };
 use super::error::OrganisationServiceError;
-use super::mapper::{detail_from_model, request_to_model};
+use super::mapper::{detail_from_model, list_item_from_model, request_to_model};
 use super::validator::{
     validate_parent_organisation, validate_wallet_provider, validate_wallet_provider_issuer,
 };
@@ -23,6 +22,7 @@ use crate::model::key::KeyRelations;
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListQuery;
 use crate::model::organisation::SortableOrganisationColumn;
+use crate::model::verifier_instance::VerifierInstanceFilterValue;
 use crate::repository::error::DataLayerError;
 use crate::service::common_dto::ListQueryDTO;
 
@@ -77,7 +77,7 @@ impl OrganisationService {
                     .and_then(|issuer| identifiers.get(issuer))
                     .map(ToOwned::to_owned);
 
-                detail_from_model(organisation, wallet_provider_issuer, None)
+                list_item_from_model(organisation, wallet_provider_issuer)
             })
             .collect();
 
@@ -121,22 +121,27 @@ impl OrganisationService {
             };
 
         let wallet_instance = self.load_wallet_instance_details(id).await?;
+        let verifier_instance = self.load_verifier_instance_details(id).await?;
 
         Ok(detail_from_model(
             organisation,
             wallet_provider_issuer,
             wallet_instance,
+            verifier_instance,
         ))
     }
 
     async fn load_wallet_instance_details(
         &self,
         organisation_id: &OrganisationId,
-    ) -> Result<Option<WalletInstanceDetailResponseDTO>, OrganisationServiceError> {
+    ) -> Result<Option<HolderWalletInstanceDetailResponseDTO>, OrganisationServiceError> {
         let list = self
             .holder_wallet_instance_repository
             .list(ListQuery {
-                filtering: Some(OrganisationIds(vec![*organisation_id]).condition()),
+                filtering: Some(
+                    HolderWalletInstanceFilterValue::OrganisationIds(vec![*organisation_id])
+                        .condition(),
+                ),
                 ..Default::default()
             })
             .await
@@ -157,15 +162,40 @@ impl OrganisationService {
         else {
             return Ok(None);
         };
-
         let Some(authentication_key) = with_key.authentication_key else {
             return Ok(None);
         };
 
-        Ok(Some(WalletInstanceDetailResponseDTO {
+        Ok(Some(HolderWalletInstanceDetailResponseDTO {
+            id: instance.id,
+            trusted_rp_required: instance.trusted_rp_required,
             wallet_provider_url: with_key.wallet_provider_url,
             wallet_provider_name: with_key.wallet_provider_name,
             authentication_key_type: authentication_key.key_type,
+        }))
+    }
+
+    async fn load_verifier_instance_details(
+        &self,
+        organisation_id: &OrganisationId,
+    ) -> Result<Option<VerifierInstanceDetailResponseDTO>, OrganisationServiceError> {
+        let list = self
+            .verifier_instance_repository
+            .list(ListQuery {
+                filtering: Some(
+                    VerifierInstanceFilterValue::OrganisationIds(vec![*organisation_id])
+                        .condition(),
+                ),
+                ..Default::default()
+            })
+            .await
+            .error_while("getting verifier instance")?;
+        let Some(instance) = list.values.first() else {
+            return Ok(None);
+        };
+        Ok(Some(VerifierInstanceDetailResponseDTO {
+            id: instance.id,
+            trusted_issuer_required: instance.trusted_issuer_required,
         }))
     }
 
@@ -233,7 +263,6 @@ impl OrganisationService {
                 .await?;
         }
 
-        // TODO: improve?
         let success_log = format!("Updated organisation {}", request.id);
         let result = self
             .organisation_repository
