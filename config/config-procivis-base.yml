@@ -302,8 +302,8 @@ verificationProtocol:
               verifier_attestation,
               redirect_uri,
               decentralized_identifier,
-              x509_san_dns,
               x509_hash,
+              x509_san_dns,
             ]
         holder:
           supportedClientIdSchemes:
@@ -311,8 +311,8 @@ verificationProtocol:
               verifier_attestation,
               redirect_uri,
               decentralized_identifier,
-              x509_san_dns,
               x509_hash,
+              x509_san_dns,
             ]
         redirectUri:
           enabled: true
@@ -335,8 +335,8 @@ verificationProtocol:
               verifier_attestation,
               redirect_uri,
               decentralized_identifier,
-              x509_san_dns,
               x509_hash,
+              x509_san_dns,
             ]
         holder:
           supportedClientIdSchemes:
@@ -344,8 +344,8 @@ verificationProtocol:
               verifier_attestation,
               redirect_uri,
               decentralized_identifier,
-              x509_san_dns,
               x509_hash,
+              x509_san_dns,
             ]
           trustEcosystemsEnabled: false
         redirectUri:
