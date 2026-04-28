@@ -26,7 +26,7 @@ async fn test_delete_trust_anchor() {
             TrustEntityType::Did,
             did.did.into(),
             None,
-            did.organisation,
+            Some(did.organisation.unwrap().get().await.unwrap()),
         )
         .await;
 

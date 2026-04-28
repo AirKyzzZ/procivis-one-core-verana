@@ -87,7 +87,7 @@ async fn test_list_trust_anchors_with_entities() {
                 TrustEntityType::Did,
                 did1.did.into(),
                 None,
-                did1.organisation,
+                Some(did1.organisation.unwrap().get().await.unwrap()),
             )
             .await;
 
@@ -102,7 +102,7 @@ async fn test_list_trust_anchors_with_entities() {
                 TrustEntityType::Did,
                 did2.did.into(),
                 None,
-                did2.organisation,
+                Some(did2.organisation.unwrap().get().await.unwrap()),
             )
             .await;
     }

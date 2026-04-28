@@ -78,11 +78,12 @@ async fn test_get_sd_jwt_vc_issuer_metadata_success_with_did() {
     let mut did: Did = dummy_did();
     let mut key = dummy_key();
     key.storage_type = "INTERNAL".to_string();
-    did.keys = Some(vec![RelatedKey {
+    did.keys = vec![RelatedKey {
         role: KeyRole::AssertionMethod,
         key,
         reference: "key-1".to_string(),
-    }]);
+    }]
+    .into();
     identifier.did = Some(did.clone());
 
     let mut protocol_provider = MockIssuanceProtocolProvider::new();

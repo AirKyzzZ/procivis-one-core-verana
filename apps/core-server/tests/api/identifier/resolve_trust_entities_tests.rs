@@ -79,7 +79,7 @@ async fn test_identifier_resolve_trust_entity_did_success() {
             TrustEntityType::Did,
             did.did.into(),
             None,
-            did.organisation,
+            Some(did.organisation.unwrap().get().await.unwrap()),
         )
         .await;
 
@@ -257,7 +257,7 @@ async fn test_identifier_resolve_did_and_cert_different_anchors_success() {
             TrustEntityType::Did,
             did.did.into(),
             None,
-            did.organisation,
+            Some(did.organisation.unwrap().get().await.unwrap()),
         )
         .await;
 

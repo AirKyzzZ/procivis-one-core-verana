@@ -286,6 +286,7 @@ impl DataLayer {
             transaction_manager.clone(),
             exportable_storages,
             organisation_repository.clone(),
+            key_repository.clone(),
         ));
 
         let blob_repository = Arc::new(BlobProvider {

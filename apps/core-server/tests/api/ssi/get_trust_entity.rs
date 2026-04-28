@@ -66,7 +66,7 @@ async fn test_get_trust_entity_by_did_success() {
             TrustEntityType::Did,
             (&did.did).into(),
             None,
-            did.organisation,
+            None,
         )
         .await;
 

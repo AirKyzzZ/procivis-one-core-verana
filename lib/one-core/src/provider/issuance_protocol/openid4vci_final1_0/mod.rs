@@ -65,7 +65,7 @@ use crate::model::credential::{Credential, CredentialRelations, CredentialStateE
 use crate::model::credential_schema::{
     CredentialSchema, KeyStorageSecurity, LayoutType, UpdateCredentialSchemaRequest,
 };
-use crate::model::did::{DidRelations, KeyRole};
+use crate::model::did::KeyRole;
 use crate::model::history::{HistoryAction, HistoryMetadata, WalletRelyingPartyMetadata};
 use crate::model::holder_wallet_instance::HolderWalletInstance;
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierType};
@@ -350,7 +350,7 @@ impl OpenID4VCIFinal1_0 {
             .error_while("getting format params")?)
     }
 
-    fn jwk_key_id_from_identifier(
+    async fn jwk_key_id_from_identifier(
         &self,
         issuer_identifier: &Identifier,
         key: &Key,
@@ -361,8 +361,9 @@ impl OpenID4VCIFinal1_0 {
 
         let related_did_key = did
             .find_key(&key.id, &KeyFilter::role_filter(KeyRole::AssertionMethod))
+            .await
             .error_while("finding related key")?;
-        let issuer_jwk_key_id = did.verification_method_id(related_did_key);
+        let issuer_jwk_key_id = did.verification_method_id(&related_did_key);
 
         Ok(Some(issuer_jwk_key_id))
     }
@@ -1727,9 +1728,10 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                     &holder_binding.key.id,
                     &KeyFilter::role_filter(KeyRole::Authentication),
                 )
+                .await
                 .error_while("finding related key")?;
 
-            Some(did.verification_method_id(related_key))
+            Some(did.verification_method_id(&related_key))
         } else {
             None
         };
@@ -1958,10 +1960,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                     }),
                     schema: Some(Default::default()),
                     issuer_identifier: Some(IdentifierRelations {
-                        did: Some(DidRelations {
-                            keys: Some(KeyRelations::default()),
-                            ..Default::default()
-                        }),
+                        did: Some(Default::default()),
                         certificates: Some(CertificateRelations {
                             key: Some(KeyRelations::default()),
                             ..Default::default()
@@ -2049,7 +2048,8 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             .key_provider
             .get_signature_provider(
                 key,
-                self.jwk_key_id_from_identifier(issuer_identifier, key)?,
+                self.jwk_key_id_from_identifier(issuer_identifier, key)
+                    .await?,
                 self.key_algorithm_provider.clone(),
             )
             .error_while("getting signature provider")?;

@@ -146,6 +146,7 @@ impl CredentialIssuerMetadataResolver {
                 )),
                 ..Default::default()
             })
+            .await
             .map_err(|e| match e {
                 KeySelectionError::CertificateNotMatchingFilter { .. }
                 | KeySelectionError::NoActiveMatchingCertificate { .. } => {
@@ -156,7 +157,7 @@ impl CredentialIssuerMetadataResolver {
                 e => e.error_while("selecting signing key").into(),
             })?;
 
-        let kid = if let SelectedKey::Did { key, did } = signing_key {
+        let kid = if let SelectedKey::Did { key, did } = &signing_key {
             Some(did.verification_method_id(key))
         } else {
             None

@@ -26,7 +26,7 @@ use crate::model::credential::{
     Credential, CredentialListIncludeEntityTypeEnum, CredentialRelations, CredentialRole,
     CredentialStateEnum, SortableCredentialColumn, UpdateCredentialRequest,
 };
-use crate::model::did::{DidRelations, KeyRole};
+use crate::model::did::KeyRole;
 use crate::model::identifier::{IdentifierRelations, IdentifierState, IdentifierType};
 use crate::model::interaction::{InteractionRelations, InteractionType};
 use crate::model::validity_credential::ValidityCredentialType;
@@ -60,10 +60,7 @@ impl CredentialService {
                 .get(
                     issuer_identifier_id,
                     &IdentifierRelations {
-                        did: Some(DidRelations {
-                            keys: Some(Default::default()),
-                            ..Default::default()
-                        }),
+                        did: Some(Default::default()),
                         certificates: Some(CertificateRelations {
                             key: Some(Default::default()),
                             ..Default::default()
@@ -84,10 +81,7 @@ impl CredentialService {
                     .get_from_did_id(
                         issuer_did_id,
                         &IdentifierRelations {
-                            did: Some(DidRelations {
-                                keys: Some(Default::default()),
-                                ..Default::default()
-                            }),
+                            did: Some(Default::default()),
                             ..Default::default()
                         },
                     )
@@ -149,6 +143,7 @@ impl CredentialService {
                 key_filter: Some(key_filter),
                 certificate_filter: Some(certificate_filter),
             })
+            .await
             .error_while("selecting key")?;
 
         let (issuer_key, issuer_certificate) = match selection {
@@ -157,7 +152,9 @@ impl CredentialService {
                     IdentifierType::Key,
                 ));
             }
-            SelectedKey::Certificate { certificate, key } => (key, Some(certificate.to_owned())),
+            SelectedKey::Certificate { certificate, key } => {
+                (key.to_owned(), Some(certificate.to_owned()))
+            }
             SelectedKey::Did { did, key } => {
                 validate_protocol_did_compatibility(
                     &exchange_capabilities.did_methods,
@@ -170,7 +167,7 @@ impl CredentialService {
                     &formatter_capabilities,
                     &self.config,
                 )?;
-                (&key.key, None)
+                (key.key.to_owned(), None)
             }
         };
 
@@ -210,7 +207,6 @@ impl CredentialService {
             issuer_identifier.id,
             request.protocol
         );
-        let issuer_key = issuer_key.to_owned();
         let credential = from_create_request(
             request,
             credential_id,

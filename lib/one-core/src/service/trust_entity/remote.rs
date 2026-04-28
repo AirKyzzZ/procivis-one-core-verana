@@ -10,9 +10,8 @@ use super::dto::{
 };
 use super::error::TrustEntityServiceError;
 use crate::error::ContextWithErrorCode;
-use crate::model::did::{Did, DidRelations};
+use crate::model::did::Did;
 use crate::model::identifier::IdentifierRelations;
-use crate::model::key::KeyRelations;
 use crate::proto::bearer_token::prepare_bearer_token;
 use crate::service::error::MissingProviderError;
 
@@ -131,10 +130,7 @@ impl TrustEntityService {
             .get_from_did_id(
                 *did_id,
                 &IdentifierRelations {
-                    did: Some(DidRelations {
-                        keys: Some(KeyRelations::default()),
-                        ..Default::default()
-                    }),
+                    did: Some(Default::default()),
                     ..Default::default()
                 },
             )

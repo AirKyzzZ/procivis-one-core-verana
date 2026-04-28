@@ -39,7 +39,7 @@ async fn test_create_did_key_ecdsa_success() {
     assert_eq!(did.did_method, "KEY");
     assert_eq!(did.did_type, DidType::Local);
     assert!(did.did.as_str().starts_with("did:key:zDn"));
-    let keys = did.keys.unwrap();
+    let keys = did.keys.get().await.unwrap();
     assert_eq!(keys.len(), 5);
     for k in keys {
         assert_eq!(k.key.id, key.id);
@@ -106,7 +106,7 @@ async fn test_create_did_key_eddsa_success() {
     assert_eq!(did.did_method, "KEY");
     assert_eq!(did.did_type, DidType::Local);
     assert!(did.did.as_str().starts_with("did:key:z6Mk"));
-    let keys = did.keys.unwrap();
+    let keys = did.keys.get().await.unwrap();
     assert_eq!(keys.len(), 5);
     for k in keys {
         assert_eq!(k.key.id, key.id);
@@ -176,7 +176,7 @@ async fn test_create_did_web_success() {
     assert_eq!(did.did_method, "WEB");
     assert_eq!(did.did_type, DidType::Local);
     assert!(did.did.as_str().starts_with("did:web"));
-    let keys = did.keys.unwrap();
+    let keys = did.keys.get().await.unwrap();
     assert_eq!(keys.len(), 5);
     for k in keys {
         assert_eq!(k.key.id, key.id);
@@ -225,7 +225,7 @@ async fn test_create_did_web_mixed_keys() {
     assert_eq!(did.did_method, "WEB");
     assert_eq!(did.did_type, DidType::Local);
     assert!(did.did.as_str().starts_with("did:web"));
-    let keys = did.keys.unwrap();
+    let keys = did.keys.get().await.unwrap();
     assert_eq!(keys.len(), 7);
 }
 
@@ -259,7 +259,7 @@ async fn test_create_did_jwk_success() {
     assert_eq!(did.did_method, "JWK");
     assert_eq!(did.did_type, DidType::Local);
     assert!(did.did.as_str().starts_with("did:jwk"));
-    let keys = did.keys.unwrap();
+    let keys = did.keys.get().await.unwrap();
     assert_eq!(keys.len(), 5);
     for k in keys {
         assert_eq!(k.key.id, key.id);

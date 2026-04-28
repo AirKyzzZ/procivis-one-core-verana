@@ -7,6 +7,7 @@ use one_core::model::backup::{Metadata, UnexportableEntities};
 use one_core::model::history::History;
 use one_core::repository::backup_repository::BackupRepository;
 use one_core::repository::error::DataLayerError;
+use one_core::repository::key_repository::KeyRepository;
 use one_core::repository::organisation_repository::OrganisationRepository;
 use one_dto_mapper::{Into, convert_inner, try_convert_inner};
 use sea_orm::prelude::Expr;
@@ -24,6 +25,7 @@ use super::helpers::{
 };
 use super::mappers::credential_from_unexportable_model;
 use super::models::UnexportableCredentialModel;
+use crate::did::mapper::did_from_model;
 use crate::entity::{
     certificate, claim, claim_schema, credential, credential_schema, did, history,
     holder_wallet_instance, identifier, key, key_did, organisation, wallet_instance_attestation,
@@ -37,11 +39,13 @@ impl BackupProvider {
         db: TransactionManagerImpl,
         exportable_storages: Vec<String>,
         organisation_repository: Arc<dyn OrganisationRepository>,
+        key_repository: Arc<dyn KeyRepository>,
     ) -> Self {
         Self {
             db,
             exportable_storages,
             organisation_repository,
+            key_repository,
         }
     }
 
@@ -417,7 +421,17 @@ impl BackupRepository for BackupProvider {
                 .into_iter()
                 .map(|key| key_from_model(key, &self.organisation_repository))
                 .collect(),
-            dids: convert_inner(dids),
+            dids: dids
+                .into_iter()
+                .map(|did| {
+                    did_from_model(
+                        did,
+                        &self.db,
+                        &self.organisation_repository,
+                        &self.key_repository,
+                    )
+                })
+                .collect(),
             identifiers: convert_inner(identifiers),
             histories: try_convert_inner(histories)?,
             total_credentials,

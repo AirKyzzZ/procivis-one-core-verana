@@ -22,7 +22,6 @@ use crate::config::core_config::{FormatType, KeyStorageType, Params};
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::certificate::CertificateRelations;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaListQuery};
-use crate::model::did::DidRelations;
 use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::key::Key;
 use crate::model::list_filter::{ListFilterValue, StringMatch};
@@ -233,6 +232,7 @@ impl SSIIssuerService {
     ) -> Result<Vec<PublicJwk>, IssuerServiceError> {
         let keys = identifier
             .list_keys(None, None)
+            .await
             .error_while("selecting identifier keys")?;
         let mut result = Vec::with_capacity(keys.len());
         for key in keys {
@@ -306,10 +306,7 @@ impl SSIIssuerService {
             .get(
                 *identifier_id,
                 &IdentifierRelations {
-                    did: Some(DidRelations {
-                        keys: Some(Default::default()),
-                        ..Default::default()
-                    }),
+                    did: Some(Default::default()),
                     key: Some(Default::default()),
                     certificates: Some(CertificateRelations {
                         key: Some(Default::default()),

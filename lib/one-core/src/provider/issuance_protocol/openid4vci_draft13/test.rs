@@ -152,9 +152,9 @@ fn generic_credential_did() -> Credential {
         did: "did:example:123".parse().unwrap(),
         did_type: DidType::Remote,
         did_method: "KEY".to_string(),
-        keys: None,
+        keys: Default::default(),
         deactivated: false,
-        organisation: Some(dummy_organisation(None)),
+        organisation: Some(dummy_organisation(None).into()),
         log: None,
     };
     let issuer_identifier = Identifier {
@@ -549,14 +549,8 @@ async fn test_handle_invitation_credential_by_ref_with_did_success() {
         .expect_get_or_create_remote_identifier()
         .times(1)
         .returning(move |_, _, _| {
-            let did = credential_clone
-                .issuer_identifier
-                .as_ref()
-                .unwrap()
-                .did
-                .as_ref()
-                .unwrap()
-                .clone();
+            let issuer_identifier = credential_clone.issuer_identifier.as_ref().unwrap();
+            let did = issuer_identifier.did.as_ref().unwrap().clone();
             let relation = RemoteIdentifierRelation::Did(did.clone());
             Ok((
                 Identifier {
@@ -571,7 +565,7 @@ async fn test_handle_invitation_credential_by_ref_with_did_success() {
                     is_remote: true,
                     state: IdentifierState::Active,
                     deleted_at: None,
-                    organisation: did.organisation,
+                    organisation: issuer_identifier.organisation.to_owned(),
                     key: None,
                     certificates: None,
                     trust_information: None,
@@ -1023,11 +1017,12 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
                 identifier: Identifier {
                     r#type: IdentifierType::Did,
                     did: Some(Did {
-                        keys: Some(vec![RelatedKey {
+                        keys: vec![RelatedKey {
                             role: KeyRole::Authentication,
                             key: key.to_owned(),
                             reference: "ref".to_string(),
-                        }]),
+                        }]
+                        .into(),
                         ..dummy_did()
                     }),
                     ..dummy_identifier()

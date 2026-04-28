@@ -35,7 +35,7 @@ async fn test_get_trust_entity_by_did_success() {
             TrustEntityType::Did,
             did.did.into(),
             None,
-            did.organisation,
+            Some(did.organisation.unwrap().get().await.unwrap()),
         )
         .await;
 
@@ -77,7 +77,7 @@ async fn test_get_trust_entity_by_did_multiple_anchors_success() {
             TrustEntityType::Did,
             did1.did.into(),
             None,
-            did1.organisation,
+            Some(did1.organisation.unwrap().get().await.unwrap()),
         )
         .await;
 
@@ -111,7 +111,7 @@ async fn test_get_trust_entity_by_did_multiple_anchors_success() {
             TrustEntityType::Did,
             did2.did.into(),
             None,
-            did2.organisation,
+            Some(did2.organisation.unwrap().get().await.unwrap()),
         )
         .await;
 

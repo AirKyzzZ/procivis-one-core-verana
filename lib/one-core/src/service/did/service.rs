@@ -15,17 +15,18 @@ use super::mapper::{
 use super::validator::validate_deactivation_request;
 use crate::config::core_config::{KeyAlgorithmType, KeyStorageType};
 use crate::error::ContextWithErrorCode;
-use crate::model::did::{DidRelations, RelatedKey, SortableDidColumn};
+use crate::model::did::{RelatedKey, SortableDidColumn};
 use crate::model::identifier::{IdentifierState, UpdateIdentifierRequest};
-use crate::model::key::{Key, KeyRelations};
-use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::model::key::Key;
+use crate::model::organisation::Organisation;
 use crate::proto::identifier_creator::CreateLocalIdentifierRequest;
 use crate::provider::did_method::DidKeys;
 use crate::provider::did_method::common::jwk_verification_method;
 use crate::provider::did_method::dto::DidDocumentDTO;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::service::common_dto::ListQueryDTO;
-use crate::validator::{throw_if_org_id_not_matching_session, throw_if_org_not_matching_session};
+use crate::service::did::mapper::response_from_did;
+use crate::validator::throw_if_org_id_not_matching_session;
 
 impl DidService {
     /// Returns did document for did:web
@@ -39,13 +40,7 @@ impl DidService {
     ) -> Result<DidDocumentDTO, DidServiceError> {
         let did = self
             .did_repository
-            .get_did(
-                id,
-                &DidRelations {
-                    keys: Some(KeyRelations::default()),
-                    ..Default::default()
-                },
-            )
+            .get_did(id)
             .await
             .error_while("getting did")?;
 
@@ -64,16 +59,13 @@ impl DidService {
         }
 
         let mut grouped_key: HashMap<KeyId, RelatedKey> = HashMap::new();
-        let keys = did
-            .keys
-            .as_ref()
-            .ok_or(DidServiceError::MappingError("No keys found".to_string()))?;
-        for key in keys {
+        let keys = did.keys.get().await.error_while("getting did keys")?;
+        for key in &keys {
             grouped_key.insert(key.key.id, key.to_owned());
         }
         map_did_model_to_did_web_response(
             &did,
-            keys,
+            &keys,
             &grouped_key
                 .into_iter()
                 .map(|(key_id, key)| {
@@ -106,7 +98,7 @@ impl DidService {
     pub async fn get_did_webvh_log(&self, id: &DidId) -> Result<String, DidServiceError> {
         let did = self
             .did_repository
-            .get_did(id, &DidRelations::default())
+            .get_did(id)
             .await
             .error_while("getting did")?;
 
@@ -130,22 +122,24 @@ impl DidService {
     pub async fn get_did(&self, id: &DidId) -> Result<DidResponseDTO, DidServiceError> {
         let did = self
             .did_repository
-            .get_did(
-                id,
-                &DidRelations {
-                    organisation: Some(OrganisationRelations::default()),
-                    keys: Some(KeyRelations::default()),
-                },
-            )
+            .get_did(id)
             .await
             .error_while("getting did")?;
         let Some(did) = did else {
             return Err(DidServiceError::NotFound(*id));
         };
-        throw_if_org_not_matching_session(did.organisation.as_ref(), &*self.session_provider)
-            .error_while("checking session")?;
+        throw_if_org_id_not_matching_session(
+            did.organisation
+                .as_ref()
+                .ok_or(DidServiceError::MappingError(
+                    "organisation is None".to_string(),
+                ))?
+                .id_ref(),
+            &*self.session_provider,
+        )
+        .error_while("checking session")?;
 
-        did.try_into()
+        response_from_did(did).await
     }
 
     /// Returns list of dids according to query
@@ -223,21 +217,23 @@ impl DidService {
     ) -> Result<(), DidServiceError> {
         let did = self
             .did_repository
-            .get_did(
-                id,
-                &DidRelations {
-                    organisation: Some(Default::default()),
-                    keys: Some(Default::default()),
-                },
-            )
+            .get_did(id)
             .await
             .error_while("getting did")?;
 
         let Some(did) = did else {
             return Err(DidServiceError::NotFound(*id));
         };
-        throw_if_org_not_matching_session(did.organisation.as_ref(), &*self.session_provider)
-            .error_while("checking session")?;
+        throw_if_org_id_not_matching_session(
+            did.organisation
+                .as_ref()
+                .ok_or(DidServiceError::MappingError(
+                    "organisation is None".to_string(),
+                ))?
+                .id_ref(),
+            &*self.session_provider,
+        )
+        .error_while("checking session")?;
 
         let did_method_key = &did.did_method;
         let did_method = self
@@ -249,7 +245,7 @@ impl DidService {
 
         if let Some(deactivated) = request.deactivated {
             validate_deactivation_request(&did, did_method.as_ref(), deactivated)?;
-            let keys = map_did_to_did_keys(&did)?;
+            let keys = map_did_to_did_keys(&did).await?;
             let update = did_method
                 .deactivate(did.id, keys, did.log)
                 .await

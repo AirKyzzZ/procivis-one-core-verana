@@ -31,6 +31,7 @@ use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::proof_schema_repository::ProofSchemaRepository;
 use crate::service::common_dto::ListQueryDTO;
 use crate::service::did::dto::CreateDidRequestDTO;
+use crate::service::did::mapper::response_from_did;
 use crate::service::error::MissingProviderError;
 
 pub(super) async fn identifier_to_response_dto(
@@ -98,6 +99,10 @@ pub(super) async fn identifier_to_response_dto(
         ))?;
     let trust_information = map_trust_information(blob_storage_provider, trust_information).await?;
 
+    let did = match value.did {
+        Some(did) => Some(response_from_did(did).await.error_while("converting did")?),
+        None => None,
+    };
     Ok(GetIdentifierResponseDTO {
         id: value.id,
         created_date: value.created_date,
@@ -107,11 +112,7 @@ pub(super) async fn identifier_to_response_dto(
         r#type: value.r#type,
         is_remote: value.is_remote,
         state: value.state,
-        did: value
-            .did
-            .map(TryInto::try_into)
-            .transpose()
-            .error_while("converting DID")?,
+        did,
         key: value
             .key
             .map(TryInto::try_into)

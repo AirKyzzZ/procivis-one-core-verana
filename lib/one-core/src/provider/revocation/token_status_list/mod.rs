@@ -18,7 +18,7 @@ use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, ErrorCodeMix
 use crate::model::certificate::{Certificate, CertificateRelations, CertificateState};
 use crate::model::common::LockType;
 use crate::model::credential::Credential;
-use crate::model::did::{DidRelations, KeyRole};
+use crate::model::did::KeyRole;
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierType};
 use crate::model::revocation_list::{
     RevocationList, RevocationListEntityId, RevocationListEntry, RevocationListEntryState,
@@ -359,10 +359,7 @@ impl RevocationMethod for TokenStatusList {
             .get(
                 issuer_id,
                 &IdentifierRelations {
-                    did: Some(DidRelations {
-                        keys: Some(Default::default()),
-                        ..Default::default()
-                    }),
+                    did: Some(Default::default()),
                     key: Some(Default::default()),
                     certificates: Some(CertificateRelations {
                         key: Some(Default::default()),
@@ -517,10 +514,7 @@ impl RevocationMethod for TokenStatusList {
                                     key: Some(Default::default()),
                                     ..Default::default()
                                 }),
-                                did: Some(DidRelations {
-                                    keys: Some(Default::default()),
-                                    ..Default::default()
-                                }),
+                                did: Some(Default::default()),
                                 key: Some(Default::default()),
                                 ..Default::default()
                             }),
@@ -861,10 +855,11 @@ async fn format_status_list_credential(
             }),
             ..Default::default()
         })
+        .await
         .map_err(|_| RevocationError::KeyWithRoleNotFound(KeyRole::AssertionMethod))?;
     let key = selection.key();
 
-    let key_id = if let SelectedKey::Did { did, key } = selection {
+    let key_id = if let SelectedKey::Did { did, key } = &selection {
         Some(did.verification_method_id(key))
     } else {
         None

@@ -95,7 +95,7 @@ pub(crate) fn generate_vp_formats_supported() -> HashMap<String, PresentationFor
     formats
 }
 
-pub(crate) fn select_key_agreement_key_from_proof(
+pub(crate) async fn select_key_agreement_key_from_proof(
     proof: &Proof,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
     config: &CoreConfig,
@@ -113,7 +113,7 @@ pub(crate) fn select_key_agreement_key_from_proof(
     };
 
     let candidate_encryption_key = match verifier_identifier.r#type {
-        IdentifierType::Certificate | IdentifierType::Key => Some(verifier_key),
+        IdentifierType::Certificate | IdentifierType::Key => Some(verifier_key.to_owned()),
         IdentifierType::Did => {
             let Some(verifier_did) = verifier_identifier.did.as_ref() else {
                 return Err(VerificationProtocolError::Failed(
@@ -123,14 +123,17 @@ pub(crate) fn select_key_agreement_key_from_proof(
 
             let key_agreement_key_filter = KeyFilter::role_filter(KeyRole::KeyAgreement);
             // We ensure the specified key is a key agreement key
-            let encryption_key = verifier_did.find_key(&verifier_key.id, &key_agreement_key_filter);
+            let encryption_key = verifier_did
+                .find_key(&verifier_key.id, &key_agreement_key_filter)
+                .await;
             match encryption_key {
-                Ok(key) => Some(&key.key),
+                Ok(key) => Some(key.key),
                 // If the key is not a key agreement key or not found, we try to find a matching key
                 Err(_) => verifier_did
                     .find_first_matching_key(&key_agreement_key_filter)
+                    .await
                     .error_while("finding agreement key")?
-                    .map(|key| &key.key),
+                    .map(|key| key.key),
             }
         }
         IdentifierType::CertificateAuthority => {
@@ -147,7 +150,7 @@ pub(crate) fn select_key_agreement_key_from_proof(
     };
 
     let key_algorithm = key_algorithm_provider
-        .key_algorithm_from_key(candidate_encryption_key)
+        .key_algorithm_from_key(&candidate_encryption_key)
         .error_while("getting key algorithm")?;
 
     /*

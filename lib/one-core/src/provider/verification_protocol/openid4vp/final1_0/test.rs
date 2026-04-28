@@ -206,13 +206,14 @@ fn test_verifier_proof(format: CredentialFormat, verifier_key: Option<RelatedKey
                 did_type: DidType::Local,
                 did_method: "KEY".to_string(),
                 deactivated: false,
-                keys: verifier_key.map(|k| vec![k]).or_else(|| {
-                    Some(vec![RelatedKey {
+                keys: verifier_key
+                    .map(|k| vec![k])
+                    .unwrap_or(vec![RelatedKey {
                         role: KeyRole::AssertionMethod,
                         key: key.clone(),
                         reference: "1".to_string(),
                     }])
-                }),
+                    .into(),
                 organisation: None,
                 log: None,
             }),

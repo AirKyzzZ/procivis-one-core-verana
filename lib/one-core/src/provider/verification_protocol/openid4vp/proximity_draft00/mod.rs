@@ -854,10 +854,13 @@ pub(super) async fn prepare_proof_share(
         )));
     };
 
-    let Ok(verifier_key) = verifier_did.find_key(
-        &params.key_id,
-        &KeyFilter::role_filter(KeyRole::Authentication),
-    ) else {
+    let Ok(verifier_key) = verifier_did
+        .find_key(
+            &params.key_id,
+            &KeyFilter::role_filter(KeyRole::Authentication),
+        )
+        .await
+    else {
         return Err(VerificationProtocolError::InvalidRequest(format!(
             "Verifier key {} not found for proof {}",
             params.key_id,
@@ -865,7 +868,7 @@ pub(super) async fn prepare_proof_share(
         )));
     };
 
-    let verifier_jwk_key_id = verifier_did.verification_method_id(verifier_key);
+    let verifier_jwk_key_id = verifier_did.verification_method_id(&verifier_key);
 
     let auth_fn_ble = params
         .key_provider

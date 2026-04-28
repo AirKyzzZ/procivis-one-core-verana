@@ -38,7 +38,7 @@ async fn test_update_trust_entity_action_withdraw_success() {
             TrustEntityType::Did,
             did.did.into(),
             None,
-            did.organisation,
+            Some(did.organisation.unwrap().get().await.unwrap()),
         )
         .await;
 
@@ -111,7 +111,7 @@ async fn test_update_trust_entity_removed_and_withdrawn_history_success() {
             TrustEntityType::Did,
             did.did.into(),
             None,
-            did.organisation,
+            Some(did.organisation.unwrap().get().await.unwrap()),
         )
         .await;
 
@@ -178,7 +178,7 @@ async fn test_patch_trust_entity_did() {
             TrustEntityType::Did,
             did.did.into(),
             None,
-            did.organisation,
+            Some(did.organisation.unwrap().get().await.unwrap()),
         )
         .await;
 
@@ -249,7 +249,7 @@ async fn test_patch_trust_entity_duplicate_name() {
             TrustEntityType::Did,
             did.did.clone().into(),
             None,
-            did.organisation.clone(),
+            Some(did.organisation.clone().unwrap().get().await.unwrap()),
         )
         .await;
 
@@ -264,7 +264,7 @@ async fn test_patch_trust_entity_duplicate_name() {
             TrustEntityType::Did,
             did.did.into(),
             None,
-            did.organisation,
+            Some(did.organisation.unwrap().get().await.unwrap()),
         )
         .await;
 
@@ -308,7 +308,7 @@ async fn test_patch_name_trust_entity_did() {
             TrustEntityType::Did,
             did.did.into(),
             None,
-            did.organisation,
+            Some(did.organisation.unwrap().get().await.unwrap()),
         )
         .await;
 
@@ -469,7 +469,7 @@ async fn test_patch_trust_entity_remove_logo_with_empty_string() {
             TrustEntityType::Did,
             did.did.into(),
             None,
-            did.organisation,
+            Some(did.organisation.unwrap().get().await.unwrap()),
         )
         .await;
 
@@ -534,7 +534,7 @@ async fn test_patch_trust_entity_remove_logo_with_none() {
             TrustEntityType::Did,
             did.did.into(),
             None,
-            did.organisation,
+            Some(did.organisation.unwrap().get().await.unwrap()),
         )
         .await;
 
@@ -599,7 +599,7 @@ async fn test_fail_to_patch_trust_entity_with_did_type() {
             TrustEntityType::Did,
             did.did.into(),
             None,
-            did.organisation,
+            Some(did.organisation.unwrap().get().await.unwrap()),
         )
         .await;
 

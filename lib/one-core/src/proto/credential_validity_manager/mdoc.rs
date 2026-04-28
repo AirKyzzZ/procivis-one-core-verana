@@ -137,8 +137,9 @@ impl CredentialValidityManagerImpl {
 
         let key = holder_did
             .find_key(&key.id, &Default::default())
+            .await
             .error_while("getting key from holder did")?;
-        let key_id = holder_did.verification_method_id(key);
+        let key_id = holder_did.verification_method_id(&key);
 
         let auth_fn = self
             .key_provider

@@ -108,7 +108,7 @@ pub(super) fn validate_format_and_exchange_protocol_compatibility(
     Ok(())
 }
 
-pub(super) fn validate_did_and_format_compatibility(
+pub(super) async fn validate_did_and_format_compatibility(
     proof_schema: &ProofSchema,
     verifier_did: &Did,
     formatter_provider: &dyn CredentialFormatterProvider,
@@ -123,6 +123,7 @@ pub(super) fn validate_did_and_format_compatibility(
 
     let key_agreement_key = verifier_did
         .find_first_matching_key(&KeyFilter::role_filter(KeyRole::KeyAgreement))
+        .await
         .error_while("finding key agreement key")?;
 
     input_schemas.iter().try_for_each(|input_schema| {

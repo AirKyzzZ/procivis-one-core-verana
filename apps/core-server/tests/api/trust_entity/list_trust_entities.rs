@@ -49,7 +49,7 @@ async fn test_list_trust_entities() {
             TrustEntityType::Did,
             did.did.into(),
             None,
-            did.organisation,
+            Some(did.organisation.unwrap().get().await.unwrap()),
         )
         .await;
 
@@ -69,7 +69,7 @@ async fn test_list_trust_entities() {
             TrustEntityType::Did,
             did2.did.into(),
             None,
-            did2.organisation,
+            Some(did2.organisation.unwrap().get().await.unwrap()),
         )
         .await;
 
@@ -143,7 +143,7 @@ async fn test_list_trust_entities_filter_trust_anchor() {
             TrustEntityType::Did,
             did.did.into(),
             None,
-            did.organisation,
+            Some(did.organisation.unwrap().get().await.unwrap()),
         )
         .await;
 
@@ -163,7 +163,7 @@ async fn test_list_trust_entities_filter_trust_anchor() {
             TrustEntityType::Did,
             did2.did.into(),
             None,
-            did2.organisation,
+            Some(did2.organisation.unwrap().get().await.unwrap()),
         )
         .await;
 
@@ -183,7 +183,7 @@ async fn test_list_trust_entities_filter_trust_anchor() {
             TrustEntityType::Did,
             did3.did.into(),
             None,
-            did3.organisation,
+            Some(did3.organisation.unwrap().get().await.unwrap()),
         )
         .await;
 
@@ -238,7 +238,7 @@ async fn test_list_trust_entities_find_by_name() {
             TrustEntityType::Did,
             did.did.into(),
             None,
-            did.organisation,
+            Some(did.organisation.unwrap().get().await.unwrap()),
         )
         .await;
 
@@ -258,7 +258,7 @@ async fn test_list_trust_entities_find_by_name() {
             TrustEntityType::Did,
             did2.did.into(),
             None,
-            did2.organisation,
+            Some(did2.organisation.unwrap().get().await.unwrap()),
         )
         .await;
 
@@ -278,7 +278,7 @@ async fn test_list_trust_entities_find_by_name() {
             TrustEntityType::Did,
             did3.did.into(),
             None,
-            did3.organisation,
+            Some(did3.organisation.unwrap().get().await.unwrap()),
         )
         .await;
 
@@ -334,7 +334,7 @@ async fn test_list_trust_entities_find_by_did_id() {
             TrustEntityType::Did,
             did.did.into(),
             None,
-            did.organisation,
+            Some(did.organisation.unwrap().get().await.unwrap()),
         )
         .await;
 
@@ -354,7 +354,7 @@ async fn test_list_trust_entities_find_by_did_id() {
             TrustEntityType::Did,
             did2.did.into(),
             None,
-            did2.organisation,
+            Some(did2.organisation.unwrap().get().await.unwrap()),
         )
         .await;
 
@@ -374,7 +374,7 @@ async fn test_list_trust_entities_find_by_did_id() {
             TrustEntityType::Did,
             did3.did.into(),
             None,
-            did3.organisation,
+            Some(did3.organisation.unwrap().get().await.unwrap()),
         )
         .await;
 
@@ -439,7 +439,7 @@ async fn test_list_trust_entities_filter_types() {
             TrustEntityType::Did,
             did.did.into(),
             None,
-            did.organisation,
+            Some(did.organisation.unwrap().get().await.unwrap()),
         )
         .await;
 
@@ -459,7 +459,7 @@ async fn test_list_trust_entities_filter_types() {
             TrustEntityType::Did,
             did2.did.into(),
             None,
-            did2.organisation,
+            Some(did2.organisation.unwrap().get().await.unwrap()),
         )
         .await;
 
@@ -568,7 +568,7 @@ async fn test_list_trust_entities_filter_states() {
             TrustEntityType::Did,
             did.did.into(),
             None,
-            did.organisation,
+            Some(did.organisation.unwrap().get().await.unwrap()),
         )
         .await;
 
@@ -588,7 +588,7 @@ async fn test_list_trust_entities_filter_states() {
             TrustEntityType::Did,
             did2.did.into(),
             None,
-            did2.organisation,
+            Some(did2.organisation.unwrap().get().await.unwrap()),
         )
         .await;
 
@@ -684,7 +684,7 @@ async fn test_list_trust_entities_entity_key() {
             TrustEntityType::Did,
             (&did.did).into(),
             None,
-            did.organisation,
+            Some(did.organisation.unwrap().get().await.unwrap()),
         )
         .await;
 
@@ -787,7 +787,7 @@ async fn test_list_trust_entities_filter_date() {
             TrustEntityType::Did,
             did.did.into(),
             None,
-            did.organisation,
+            Some(did.organisation.unwrap().get().await.unwrap()),
         )
         .await;
 

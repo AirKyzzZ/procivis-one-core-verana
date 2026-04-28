@@ -11,10 +11,9 @@ use super::dto::{
 use super::error::DidServiceError;
 use crate::config::core_config::KeyAlgorithmType;
 use crate::error::{ErrorCode, ErrorCodeMixin};
-use crate::model::did::{Did, DidRelations, DidType, GetDidList, KeyRole, RelatedKey};
+use crate::model::did::{Did, DidType, GetDidList, KeyRole, RelatedKey};
 use crate::model::identifier::Identifier;
-use crate::model::key::{Key, KeyRelations};
-use crate::model::organisation::OrganisationRelations;
+use crate::model::key::Key;
 use crate::proto::identifier_creator::MockIdentifierCreator;
 use crate::proto::session_provider::NoSessionProvider;
 use crate::proto::session_provider::test::StaticSessionProvider;
@@ -64,11 +63,11 @@ async fn test_get_did_exists() {
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         name: "name".to_string(),
-        organisation: Some(dummy_organisation(None)),
+        organisation: Some(dummy_organisation(None).into()),
         did: "did:key:abc".parse().unwrap(),
         did_type: DidType::Local,
         did_method: "KEY".to_string(),
-        keys: Some(vec![RelatedKey {
+        keys: vec![RelatedKey {
             role: KeyRole::Authentication,
             key: Key {
                 id: Uuid::new_v4().into(),
@@ -82,7 +81,8 @@ async fn test_get_did_exists() {
                 organisation: dummy_organisation(None).into(),
             },
             reference: "abc".to_string(),
-        }]),
+        }]
+        .into(),
         deactivated: false,
         log: None,
     };
@@ -91,14 +91,8 @@ async fn test_get_did_exists() {
         repository
             .expect_get_did()
             .once()
-            .with(
-                eq(did.id.to_owned()),
-                eq(DidRelations {
-                    organisation: Some(OrganisationRelations::default()),
-                    keys: Some(KeyRelations::default()),
-                }),
-            )
-            .returning(move |_, _| Ok(Some(did_clone.clone())));
+            .with(eq(did.id.to_owned()))
+            .returning(move |_| Ok(Some(did_clone.clone())));
     }
 
     let service = setup_service(
@@ -122,10 +116,7 @@ async fn test_get_did_exists() {
 #[tokio::test]
 async fn test_get_did_missing() {
     let mut repository = MockDidRepository::default();
-    repository
-        .expect_get_did()
-        .once()
-        .returning(|_, _| Ok(None));
+    repository.expect_get_did().once().returning(|_| Ok(None));
 
     let service = setup_service(
         repository,
@@ -150,11 +141,11 @@ async fn test_get_did_list() {
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         name: "name".to_string(),
-        organisation: Some(dummy_organisation(Some(organisation_id))),
+        organisation: Some(dummy_organisation(Some(organisation_id)).into()),
         did: "did:key:abc".parse().unwrap(),
         did_type: DidType::Local,
         did_method: "KEY".to_string(),
-        keys: None,
+        keys: Default::default(),
         deactivated: false,
         log: None,
     };
@@ -267,11 +258,11 @@ async fn test_update_did() {
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         name: "name".to_string(),
-        organisation: Some(dummy_organisation(None)),
+        organisation: Some(dummy_organisation(None).into()),
         did: "did:web:abc".parse().unwrap(),
         did_type: DidType::Local,
         did_method: "KEY".to_string(),
-        keys: Some(vec![]),
+        keys: Default::default(),
         deactivated: false,
         log: None,
     };
@@ -300,7 +291,7 @@ async fn test_update_did() {
     let mut did_repository = MockDidRepository::default();
     did_repository.expect_get_did().once().returning({
         let clone = did.to_owned();
-        move |_, _| Ok(Some(clone.to_owned()))
+        move |_| Ok(Some(clone.to_owned()))
     });
     did_repository
         .expect_update_did()
@@ -336,11 +327,11 @@ async fn test_update_did_fail_reactivation() {
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         name: "name".to_string(),
-        organisation: Some(dummy_organisation(None)),
+        organisation: Some(dummy_organisation(None).into()),
         did: "did:web:abc".parse().unwrap(),
         did_type: DidType::Local,
         did_method: "KEY".to_string(),
-        keys: Some(vec![]),
+        keys: Default::default(),
         deactivated: true,
         log: None,
     };
@@ -363,7 +354,7 @@ async fn test_update_did_fail_reactivation() {
     let mut did_repository = MockDidRepository::default();
     did_repository.expect_get_did().once().returning({
         let clone = did.to_owned();
-        move |_, _| Ok(Some(clone.to_owned()))
+        move |_| Ok(Some(clone.to_owned()))
     });
 
     let service = setup_service(
@@ -426,18 +417,18 @@ async fn test_did_ops_session_org_mismatch() {
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         name: "name".to_string(),
-        organisation: Some(dummy_organisation(None)),
+        organisation: Some(dummy_organisation(None).into()),
         did: "did:web:abc".parse().unwrap(),
         did_type: DidType::Local,
         did_method: "KEY".to_string(),
-        keys: None,
+        keys: Default::default(),
         deactivated: false,
         log: None,
     };
     let mut did_repository = MockDidRepository::default();
     did_repository
         .expect_get_did()
-        .returning(move |_, _| Ok(Some(did.clone())));
+        .returning(move |_| Ok(Some(did.clone())));
     let service = DidService {
         did_repository: Arc::new(did_repository),
         identifier_creator: Arc::new(MockIdentifierCreator::default()),

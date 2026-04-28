@@ -459,14 +459,14 @@ pub async fn create_did(
         created_date: params.created_date.unwrap_or(now),
         last_modified: params.last_modified.unwrap_or(now),
         name: unwrap_or_random(params.name),
-        organisation: Some(organisation.to_owned()),
+        organisation: Some(organisation.to_owned().into()),
         did: params
             .did
             .unwrap_or(DidValue::from_str(&format!("did:test:{did_id}")).unwrap()),
         did_type: params.did_type.unwrap_or(DidType::Local),
         did_method: params.did_method.unwrap_or("KEY".to_string()),
         deactivated: params.deactivated.unwrap_or(false),
-        keys: params.keys,
+        keys: params.keys.unwrap_or_default().into(),
         log: None,
     };
 

@@ -160,6 +160,7 @@ impl Signer for RegistrationCertificate {
                 certificate,
                 ..Default::default()
             })
+            .await
             .error_while("Selecting signing key")?;
 
         let (jwt_id, status) = self.handle_revocation(&identifier, &selected_key).await?;

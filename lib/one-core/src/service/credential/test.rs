@@ -111,11 +111,11 @@ fn generic_credential() -> Credential {
         created_date: now,
         last_modified: now,
         name: "did1".to_string(),
-        organisation: Some(organisation.clone()),
+        organisation: Some(organisation.clone().into()),
         did: "did:example:1".parse().unwrap(),
         did_type: DidType::Local,
         did_method: "KEY".to_string(),
-        keys: Some(vec![RelatedKey {
+        keys: vec![RelatedKey {
             role: KeyRole::AssertionMethod,
             key: Key {
                 id: Uuid::new_v4().into(),
@@ -129,7 +129,8 @@ fn generic_credential() -> Credential {
                 organisation: dummy_organisation(None).into(),
             },
             reference: "1".to_string(),
-        }]),
+        }]
+        .into(),
         deactivated: false,
         log: None,
     };
@@ -235,7 +236,7 @@ fn generic_credential_list_entity() -> Credential {
                 did: "did:example:1".parse().unwrap(),
                 did_type: DidType::Local,
                 did_method: "KEY".to_string(),
-                keys: None,
+                keys: Default::default(),
                 deactivated: false,
                 log: None,
             }),
@@ -1175,7 +1176,7 @@ async fn test_create_credential_fails_if_did_is_deactivated() {
         did: "did:example:1".parse().unwrap(),
         did_type: DidType::Local,
         did_method: "KEY".to_string(),
-        keys: None,
+        keys: Default::default(),
         deactivated: true,
         log: None,
     };
@@ -1705,7 +1706,7 @@ async fn test_create_credential_key_with_issuer_key() {
                     .unwrap()
                     .id,
             ),
-            issuer_key: Some(issuer_did.keys.unwrap()[0].key.id),
+            issuer_key: Some(issuer_did.keys.get().await.unwrap()[0].key.id),
             issuer_certificate: None,
             protocol: "OPENID4VCI_DRAFT13".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
@@ -1739,7 +1740,7 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
     let credential = generic_credential();
     let key_id = Uuid::new_v4();
     let issuer_did = Did {
-        keys: Some(vec![
+        keys: vec![
             RelatedKey {
                 role: KeyRole::KeyAgreement,
                 key: Key {
@@ -1770,7 +1771,8 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
                 },
                 reference: "1".to_string(),
             },
-        ]),
+        ]
+        .into(),
         ..credential.issuer_identifier.clone().unwrap().did.unwrap()
     };
     let credential_schema = credential.schema.clone().unwrap();
@@ -1877,7 +1879,7 @@ async fn test_fail_to_create_credential_no_assertion_key() {
 
     let credential = generic_credential();
     let issuer_did = Did {
-        keys: Some(vec![RelatedKey {
+        keys: vec![RelatedKey {
             role: KeyRole::KeyAgreement,
             key: Key {
                 id: Uuid::new_v4().into(),
@@ -1891,7 +1893,8 @@ async fn test_fail_to_create_credential_no_assertion_key() {
                 organisation: dummy_organisation(None).into(),
             },
             reference: "1".to_string(),
-        }]),
+        }]
+        .into(),
         ..credential.issuer_identifier.clone().unwrap().did.unwrap()
     };
 
@@ -2093,7 +2096,7 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
     let credential = generic_credential();
     let key_id = Uuid::new_v4();
     let issuer_did = Did {
-        keys: Some(vec![RelatedKey {
+        keys: vec![RelatedKey {
             role: KeyRole::KeyAgreement,
             key: Key {
                 id: key_id.into(),
@@ -2107,7 +2110,8 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
                 organisation: dummy_organisation(None).into(),
             },
             reference: "1".to_string(),
-        }]),
+        }]
+        .into(),
         ..credential.issuer_identifier.clone().unwrap().did.unwrap()
     };
     let credential_schema = credential.schema.clone().unwrap();
@@ -2206,7 +2210,7 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
     let credential = generic_credential();
     let key_id = Uuid::new_v4();
     let issuer_did = Did {
-        keys: Some(vec![RelatedKey {
+        keys: vec![RelatedKey {
             role: KeyRole::AssertionMethod,
             key: Key {
                 id: key_id.into(),
@@ -2220,7 +2224,8 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
                 organisation: dummy_organisation(None).into(),
             },
             reference: "1".to_string(),
-        }]),
+        }]
+        .into(),
         ..credential.issuer_identifier.clone().unwrap().did.unwrap()
     };
     let credential_schema = credential.schema.clone().unwrap();
@@ -2484,7 +2489,7 @@ async fn test_create_credential_fail_invalid_redirect_uri() {
                     .unwrap()
                     .id,
             ),
-            issuer_key: Some(issuer_did.keys.unwrap()[0].key.id),
+            issuer_key: Some(issuer_did.keys.get().await.unwrap()[0].key.id),
             issuer_certificate: None,
             protocol: "OPENID4VCI_DRAFT13".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
@@ -3126,11 +3131,11 @@ async fn test_get_credential_success_array_complex_nested_all() {
                 created_date: now,
                 last_modified: now,
                 name: "did1".to_string(),
-                organisation: Some(organisation.clone()),
+                organisation: Some(organisation.clone().into()),
                 did: "did:example:1".parse().unwrap(),
                 did_type: DidType::Local,
                 did_method: "KEY".to_string(),
-                keys: Some(vec![RelatedKey {
+                keys: vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
                     key: Key {
                         id: Uuid::new_v4().into(),
@@ -3144,7 +3149,8 @@ async fn test_get_credential_success_array_complex_nested_all() {
                         organisation: dummy_organisation(None).into(),
                     },
                     reference: "1".to_string(),
-                }]),
+                }]
+                .into(),
                 deactivated: false,
                 log: None,
             }),
@@ -3690,11 +3696,11 @@ async fn test_get_credential_success_array_index_sorting() {
                 created_date: now,
                 last_modified: now,
                 name: "did1".to_string(),
-                organisation: Some(organisation.clone()),
+                organisation: Some(organisation.clone().into()),
                 did: "did:example:1".parse().unwrap(),
                 did_type: DidType::Local,
                 did_method: "KEY".to_string(),
-                keys: Some(vec![RelatedKey {
+                keys: vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
                     key: Key {
                         id: Uuid::new_v4().into(),
@@ -3708,7 +3714,8 @@ async fn test_get_credential_success_array_index_sorting() {
                         organisation: dummy_organisation(None).into(),
                     },
                     reference: "1".to_string(),
-                }]),
+                }]
+                .into(),
                 deactivated: false,
                 log: None,
             }),
@@ -4003,11 +4010,11 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
                 created_date: now,
                 last_modified: now,
                 name: "did1".to_string(),
-                organisation: Some(organisation.clone()),
+                organisation: Some(organisation.clone().into()),
                 did: "did:example:1".parse().unwrap(),
                 did_type: DidType::Local,
                 did_method: "KEY".to_string(),
-                keys: Some(vec![RelatedKey {
+                keys: vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
                     key: Key {
                         id: Uuid::new_v4().into(),
@@ -4021,7 +4028,8 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
                         organisation: dummy_organisation(None).into(),
                     },
                     reference: "1".to_string(),
-                }]),
+                }]
+                .into(),
                 deactivated: false,
                 log: None,
             }),
@@ -4219,11 +4227,11 @@ async fn test_get_credential_success_array_single_element() {
                 created_date: now,
                 last_modified: now,
                 name: "did1".to_string(),
-                organisation: Some(organisation.clone()),
+                organisation: Some(organisation.clone().into()),
                 did: "did:example:1".parse().unwrap(),
                 did_type: DidType::Local,
                 did_method: "KEY".to_string(),
-                keys: Some(vec![RelatedKey {
+                keys: vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
                     key: Key {
                         id: Uuid::new_v4().into(),
@@ -4237,7 +4245,8 @@ async fn test_get_credential_success_array_single_element() {
                         organisation: dummy_organisation(None).into(),
                     },
                     reference: "1".to_string(),
-                }]),
+                }]
+                .into(),
                 deactivated: false,
                 log: None,
             }),
@@ -4411,11 +4420,12 @@ async fn test_create_credential_array(
 
     let did = Did {
         did_method: "KEY".to_string(),
-        keys: Some(vec![RelatedKey {
+        keys: vec![RelatedKey {
             role: KeyRole::AssertionMethod,
             key: dummy_key(),
             reference: "1".to_string(),
-        }]),
+        }]
+        .into(),
         ..dummy_did()
     };
     let did_clone = did.clone();

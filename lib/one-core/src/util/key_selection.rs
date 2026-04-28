@@ -1,10 +1,12 @@
+use std::borrow::Cow;
+
 use rcgen::KeyUsagePurpose;
 use shared_types::{CertificateId, DidId, IdentifierId, KeyId};
 use x509_parser::pem::Pem;
 use x509_parser::prelude::KeyUsage;
 
 use crate::config::core_config::KeyAlgorithmType;
-use crate::error::{ErrorCode, ErrorCodeMixin};
+use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, NestedError};
 use crate::model::certificate::{Certificate, CertificateRole, CertificateState};
 use crate::model::did::{Did, KeyRole, RelatedKey};
 use crate::model::identifier::{Identifier, IdentifierType};
@@ -103,7 +105,7 @@ pub enum SelectedKey<'a> {
     },
     Did {
         did: &'a Did,
-        key: &'a RelatedKey,
+        key: Box<Cow<'a, RelatedKey>>,
     },
 }
 
@@ -197,6 +199,9 @@ pub enum KeySelectionError {
     KeyDidMismatch { did_id: DidId, key_id: KeyId },
     #[error("Mapping error: {0}")]
     MappingError(String),
+
+    #[error(transparent)]
+    Nested(#[from] NestedError),
 }
 
 impl ErrorCodeMixin for KeySelectionError {
@@ -204,22 +209,24 @@ impl ErrorCodeMixin for KeySelectionError {
         match self {
             Self::MappingError(_) => ErrorCode::BR_0047,
             Self::CertificateNotMatchingFilter { .. } => ErrorCode::BR_0222,
+            Self::Nested(nested) => nested.error_code(),
             _ => ErrorCode::BR_0330,
         }
     }
 }
 
 impl Did {
-    pub fn find_key(
+    pub async fn find_key(
         &self,
         key_id: &KeyId,
         filter: &KeyFilter,
-    ) -> Result<&RelatedKey, KeySelectionError> {
+    ) -> Result<RelatedKey, KeySelectionError> {
         let mut same_id_keys = self
             .keys
-            .as_ref()
-            .ok_or_else(|| KeySelectionError::MappingError("keys is None".to_string()))?
-            .iter()
+            .get()
+            .await
+            .error_while("getting did keys")?
+            .into_iter()
             .filter(|entry| &entry.key.id == key_id)
             .peekable();
 
@@ -238,27 +245,29 @@ impl Did {
             })
     }
 
-    pub fn find_first_matching_key(
+    pub async fn find_first_matching_key(
         &self,
         filter: &KeyFilter,
-    ) -> Result<Option<&RelatedKey>, KeySelectionError> {
+    ) -> Result<Option<RelatedKey>, KeySelectionError> {
         Ok(self
             .keys
-            .as_ref()
-            .ok_or_else(|| KeySelectionError::MappingError("keys is None".to_string()))?
-            .iter()
+            .get()
+            .await
+            .error_while("getting did keys")?
+            .into_iter()
             .find(|entry| filter.matches_related_key(entry)))
     }
 
-    pub fn find_matching_keys(
+    pub async fn find_matching_keys(
         &self,
         filter: &KeyFilter,
-    ) -> Result<Vec<&RelatedKey>, KeySelectionError> {
+    ) -> Result<Vec<RelatedKey>, KeySelectionError> {
         Ok(self
             .keys
-            .as_ref()
-            .ok_or_else(|| KeySelectionError::MappingError("keys is None".to_string()))?
-            .iter()
+            .get()
+            .await
+            .error_while("getting did keys")?
+            .into_iter()
             .filter(|entry| filter.matches_related_key(entry))
             .collect())
     }
@@ -308,7 +317,7 @@ fn key_usage_matches(key_usage: &KeyUsage, key_usage_purpose: &KeyUsagePurpose) 
 }
 
 impl Identifier {
-    pub(crate) fn select_key(
+    pub(crate) async fn select_key(
         &self,
         selection: KeySelection,
     ) -> Result<SelectedKey<'_>, KeySelectionError> {
@@ -362,8 +371,8 @@ impl Identifier {
                 }
 
                 let key = match selection.key {
-                    Some(key_id) => did.find_key(&key_id, &filter)?,
-                    None => did.find_first_matching_key(&filter)?.ok_or(
+                    Some(key_id) => did.find_key(&key_id, &filter).await?,
+                    None => did.find_first_matching_key(&filter).await?.ok_or(
                         KeySelectionError::NoKeyMatchingFilter {
                             identifier_id: self.id,
                             key_filter: filter,
@@ -371,7 +380,10 @@ impl Identifier {
                     )?,
                 };
 
-                Ok(SelectedKey::Did { did, key })
+                Ok(SelectedKey::Did {
+                    did,
+                    key: Box::new(Cow::Owned(key)),
+                })
             }
             IdentifierType::Certificate | IdentifierType::CertificateAuthority => {
                 self.throw_on_did_id(&selection)?;
@@ -448,7 +460,7 @@ impl Identifier {
         }
     }
 
-    pub(crate) fn list_keys(
+    pub(crate) async fn list_keys(
         &self,
         key_filter: Option<KeyFilter>,
         certificate_filter: Option<CertificateFilter>,
@@ -480,7 +492,7 @@ impl Identifier {
                     return Err(KeySelectionError::DidDeactivated { did_id: did.id });
                 }
 
-                let matching_keys = did.find_matching_keys(&filter)?;
+                let matching_keys = did.find_matching_keys(&filter).await?;
                 if matching_keys.is_empty() {
                     return Err(KeySelectionError::NoKeyMatchingFilter {
                         identifier_id: self.id,
@@ -489,7 +501,10 @@ impl Identifier {
                 }
                 Ok(matching_keys
                     .into_iter()
-                    .map(|key| SelectedKey::Did { did, key })
+                    .map(|key| SelectedKey::Did {
+                        did,
+                        key: Box::new(Cow::Owned(key)),
+                    })
                     .collect())
             }
             IdentifierType::Certificate | IdentifierType::CertificateAuthority => {
@@ -515,7 +530,7 @@ impl Identifier {
                                 .ok_or(KeySelectionError::MappingError(
                                     "Missing certificate key".to_owned(),
                                 ))?;
-                        Ok(SelectedKey::Certificate { certificate, key })
+                        Ok::<_, KeySelectionError>(SelectedKey::Certificate { certificate, key })
                     })
                     .collect::<Result<Vec<_>, _>>()?;
 

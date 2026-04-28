@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use futures::StreamExt;
 use one_core::repository::backup_repository::BackupRepository;
+use one_core::repository::key_repository::MockKeyRepository;
 use one_core::repository::organisation_repository::MockOrganisationRepository;
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Iterable, Set};
@@ -257,6 +258,7 @@ async fn setup_empty() -> TestSetup {
             db: TransactionManagerImpl::new(db.clone()),
             exportable_storages: vec!["INTERNAL".into()],
             organisation_repository: Arc::new(MockOrganisationRepository::new()),
+            key_repository: Arc::new(MockKeyRepository::new()),
         },
         organisation_id,
         _db_holder,

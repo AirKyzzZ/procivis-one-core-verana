@@ -7,7 +7,6 @@ use super::SignatureService;
 use crate::error::ContextWithErrorCode;
 use crate::model::blob::{Blob, BlobType};
 use crate::model::certificate::CertificateRelations;
-use crate::model::did::DidRelations;
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::identifier::IdentifierRelations;
 use crate::model::organisation::OrganisationRelations;
@@ -36,10 +35,7 @@ impl SignatureService {
                 request.issuer,
                 &IdentifierRelations {
                     organisation: Some(OrganisationRelations::default()),
-                    did: Some(DidRelations {
-                        keys: Some(Default::default()),
-                        organisation: None,
-                    }),
+                    did: Some(Default::default()),
                     key: Some(Default::default()),
                     certificates: Some(CertificateRelations {
                         key: Some(Default::default()),

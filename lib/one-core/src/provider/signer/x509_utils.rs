@@ -59,6 +59,7 @@ pub(super) async fn prepare_params_and_ca_issuer<'a>(
             key_filter: Some(KeyFilter::cert_usage_filter(required_ca_cert_key_usages)),
             ..Default::default()
         })
+        .await
         .error_while("selecting signing key")?
     else {
         return Err(SignerError::InvalidIssuerIdentifier(

@@ -26,7 +26,6 @@ use crate::error::ErrorCode::BR_0224;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
 use crate::model::blob::Blob;
 use crate::model::certificate::CertificateRelations;
-use crate::model::did::DidRelations;
 use crate::model::identifier::{Identifier, IdentifierRelations, SortableIdentifierColumn};
 use crate::model::identifier_trust_information::{
     IdentifierTrustInformation, IdentifierTrustInformationRelations,
@@ -67,10 +66,7 @@ impl IdentifierService {
             .get(
                 *id,
                 &IdentifierRelations {
-                    did: Some(DidRelations {
-                        organisation: Some(OrganisationRelations::default()),
-                        keys: Some(KeyRelations::default()),
-                    }),
+                    did: Some(Default::default()),
                     key: Some(Default::default()),
                     certificates: Some(CertificateRelations {
                         key: Some(KeyRelations::default()),

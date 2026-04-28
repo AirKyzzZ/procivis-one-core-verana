@@ -9,8 +9,7 @@ use super::dto::{
 use super::validation::{validate_verifiable_credential, validate_verifiable_presentation};
 use crate::config::core_config::VerificationProtocolType;
 use crate::error::ContextWithErrorCode;
-use crate::model::did::{DidRelations, KeyRole};
-use crate::model::key::KeyRelations;
+use crate::model::did::KeyRole;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::key_verification::KeyVerification;
 use crate::provider::caching_loader::json_ld_context::ContextCache;
@@ -75,14 +74,7 @@ impl VCAPIService {
             .error_while("parsing issuer did")?;
         let issuer_did = self
             .did_repository
-            .get_did_by_value(
-                &issuer_did_value,
-                None,
-                &DidRelations {
-                    keys: Some(KeyRelations::default()),
-                    organisation: None,
-                },
-            )
+            .get_did_by_value(&issuer_did_value, None)
             .await
             .error_while("getting did")?
             .ok_or(ServiceError::Other("Issuer DID not found".to_string()))?;
@@ -95,12 +87,13 @@ impl VCAPIService {
                 "Issuer DID identifier not found".to_string(),
             ))?;
 
-        let key = issuer_did
+        let keys = issuer_did
             .keys
-            .as_ref()
-            .ok_or(ServiceError::Other(
-                "No local keys found for issuer DID".to_string(),
-            ))?
+            .get()
+            .await
+            .error_while("getting did keys")?;
+
+        let key = keys
             .first()
             .ok_or(ServiceError::Other("Issuer DID has empty keys".to_string()))?;
 

@@ -66,13 +66,14 @@ pub(crate) async fn prepare_bearer_token(
 
             let authentication_key = did
                 .find_first_matching_key(&KeyFilter::role_filter(KeyRole::Authentication))
+                .await
                 .error_while("finding did key")?
                 .ok_or(Error::KeyNotFound)?;
 
-            let key_id = did.verification_method_id(authentication_key);
+            let key_id = did.verification_method_id(&authentication_key);
 
             (
-                authentication_key.key.to_owned(),
+                authentication_key.key,
                 Some(key_id),
                 Some(did.did.to_string()),
             )

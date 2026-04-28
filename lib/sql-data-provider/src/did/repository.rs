@@ -1,110 +1,45 @@
-use std::collections::HashMap;
-
 use autometrics::autometrics;
 use futures::FutureExt;
-use one_core::model::did::{
-    Did, DidListQuery, DidRelations, GetDidList, RelatedKey, UpdateDidRequest,
-};
-use one_core::model::key::Key;
+use one_core::model::did::{Did, DidListQuery, GetDidList, UpdateDidRequest};
 use one_core::proto::transaction_manager::IsolationLevel;
 use one_core::repository::did_repository::DidRepository;
 use one_core::repository::error::DataLayerError;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set, Unchanged,
 };
-use shared_types::{DidId, DidValue, KeyId, OrganisationId};
+use shared_types::{DidId, DidValue, OrganisationId};
 
 use super::DidProvider;
-use crate::common::list_query_with_base_model;
+use super::mapper::did_from_model;
+use crate::common::list_query_with_custom_model;
 use crate::entity::{did, key_did};
 use crate::list_query_generic::{SelectWithFilterJoin, SelectWithListQuery};
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 
-impl DidProvider {
-    async fn resolve_relations(
-        &self,
-        model: did::Model,
-        relations: &DidRelations,
-    ) -> Result<Did, DataLayerError> {
-        let mut result: Did = model.clone().into();
-
-        if let Some(_organisation_relations) = &relations.organisation
-            && let Some(organisation_id) = &model.organisation_id
-        {
-            result.organisation = Some(
-                self.organisation_repository
-                    .get_organisation(organisation_id)
-                    .await?
-                    .ok_or(DataLayerError::MissingRequiredRelation {
-                        relation: "did-organisation",
-                        id: organisation_id.to_string(),
-                    })?,
-            );
-        }
-
-        if let Some(_key_relations) = &relations.keys {
-            let key_dids = key_did::Entity::find()
-                .filter(key_did::Column::DidId.eq(model.id))
-                .all(&self.db)
-                .await
-                .map_err(|e| DataLayerError::Db(e.into()))?;
-
-            let mut related_keys: Vec<RelatedKey> = vec![];
-            let mut key_map: HashMap<KeyId, Key> = HashMap::default();
-            for key_did_model in key_dids {
-                let key_id = &key_did_model.key_id;
-                let key = if let Some(key) = key_map.get(key_id) {
-                    key.to_owned()
-                } else {
-                    let key = self.key_repository.get_key(key_id).await?.ok_or(
-                        DataLayerError::MissingRequiredRelation {
-                            relation: "did-key",
-                            id: key_id.to_string(),
-                        },
-                    )?;
-
-                    key_map.insert(*key_id, key.to_owned());
-                    key
-                };
-
-                related_keys.push(RelatedKey {
-                    role: key_did_model.role.into(),
-                    key,
-                    reference: key_did_model.reference,
-                })
-            }
-            result.keys = Some(related_keys);
-        }
-
-        Ok(result)
-    }
-}
-
 #[autometrics]
 #[async_trait::async_trait]
 impl DidRepository for DidProvider {
-    async fn get_did(
-        &self,
-        id: &DidId,
-        relations: &DidRelations,
-    ) -> Result<Option<Did>, DataLayerError> {
+    async fn get_did(&self, id: &DidId) -> Result<Option<Did>, DataLayerError> {
         let did = did::Entity::find_by_id(id)
             .filter(did::Column::DeletedAt.is_null())
             .one(&self.db)
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
-        match did {
-            None => Ok(None),
-            Some(did) => Ok(Some(self.resolve_relations(did, relations).await?)),
-        }
+        Ok(did.map(|did| {
+            did_from_model(
+                did,
+                &self.db,
+                &self.organisation_repository,
+                &self.key_repository,
+            )
+        }))
     }
 
     async fn get_did_by_value(
         &self,
         value: &DidValue,
         organisation: Option<Option<OrganisationId>>,
-        relations: &DidRelations,
     ) -> Result<Option<Did>, DataLayerError> {
         let mut query = did::Entity::find()
             .filter(did::Column::Did.eq(value))
@@ -124,10 +59,14 @@ impl DidRepository for DidProvider {
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
-        match did {
-            None => Ok(None),
-            Some(did) => Ok(Some(self.resolve_relations(did, relations).await?)),
-        }
+        Ok(did.map(|did| {
+            did_from_model(
+                did,
+                &self.db,
+                &self.organisation_repository,
+                &self.key_repository,
+            )
+        }))
     }
 
     async fn get_did_list(&self, query_params: DidListQuery) -> Result<GetDidList, DataLayerError> {
@@ -138,7 +77,15 @@ impl DidRepository for DidProvider {
             .order_by_desc(did::Column::CreatedDate)
             .order_by_desc(did::Column::Id);
 
-        list_query_with_base_model(query, query_params, &self.db).await
+        list_query_with_custom_model(query, query_params, &self.db, |did| {
+            Ok(did_from_model(
+                did,
+                &self.db,
+                &self.organisation_repository,
+                &self.key_repository,
+            ))
+        })
+        .await
     }
 
     #[tracing::instrument(level = "debug", skip_all, err(level = "warn"))]
@@ -149,12 +96,13 @@ impl DidRepository for DidProvider {
             .db
             .tx_with_config(
                 async {
-                    let did = did::ActiveModel::try_from(request)?
+                    let did = did::ActiveModel::from(request)
                         .insert(&self.db)
                         .await
                         .map_err(to_data_layer_error)?;
 
-                    if let Some(keys) = keys {
+                    let keys = keys.get().await?;
+                    if !keys.is_empty() {
                         key_did::Entity::insert_many(
                             keys.into_iter()
                                 .map(|key| key_did::ActiveModel {

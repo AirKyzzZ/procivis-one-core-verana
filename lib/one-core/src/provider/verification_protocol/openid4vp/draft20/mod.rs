@@ -392,7 +392,8 @@ impl VerificationProtocol for OpenID4VP20HTTP {
         };
 
         let client_metadata =
-            generate_client_metadata_draft(proof, &*self.key_algorithm_provider, &self.config)?;
+            generate_client_metadata_draft(proof, &*self.key_algorithm_provider, &self.config)
+                .await?;
 
         let authorization_request = generate_authorization_request_params_draft20(
             proof,

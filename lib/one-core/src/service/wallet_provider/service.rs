@@ -36,7 +36,6 @@ use crate::error::{ContextWithErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
 use crate::mapper::list_response_into;
 use crate::mapper::x509::pem_chain_into_x5c;
 use crate::model::certificate::CertificateRelations;
-use crate::model::did::DidRelations;
 use crate::model::history::{
     History, HistoryAction, HistoryEntityType, HistoryErrorMetadata, HistoryMetadata, HistorySource,
 };
@@ -1004,10 +1003,7 @@ impl WalletProviderService {
             .get(
                 issuer_identifier_id,
                 &IdentifierRelations {
-                    did: Some(DidRelations {
-                        keys: Some(KeyRelations::default()),
-                        ..Default::default()
-                    }),
+                    did: Some(Default::default()),
                     key: Some(KeyRelations::default()),
                     certificates: Some(CertificateRelations {
                         key: Some(KeyRelations::default()),
@@ -1031,6 +1027,7 @@ impl WalletProviderService {
                 }
                 .into(),
             )
+            .await
             .error_while("selecting key")?;
         let issuer_key = selection.key();
 
@@ -1051,9 +1048,10 @@ impl WalletProviderService {
                         ..Default::default()
                     },
                 )
+                .await
                 .error_while("finding key")?;
 
-            Some(issuer_did.verification_method_id(key))
+            Some(issuer_did.verification_method_id(&key))
         } else {
             None
         };
@@ -1196,10 +1194,7 @@ impl WalletProviderService {
                     attested_keys: Some(WalletInstanceAttestedKeyRelations {
                         revocation: Some(RevocationListRelations {
                             issuer_identifier: Some(IdentifierRelations {
-                                did: Some(DidRelations {
-                                    keys: Some(KeyRelations::default()),
-                                    ..Default::default()
-                                }),
+                                did: Some(Default::default()),
                                 key: Some(KeyRelations::default()),
                                 certificates: Some(CertificateRelations {
                                     key: Some(KeyRelations::default()),

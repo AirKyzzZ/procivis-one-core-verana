@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use one_core::repository::key_repository::KeyRepository;
 use one_core::repository::organisation_repository::OrganisationRepository;
 
 use crate::transaction_context::TransactionManagerImpl;
@@ -13,6 +14,7 @@ pub(crate) struct BackupProvider {
     pub db: TransactionManagerImpl,
     exportable_storages: Vec<String>,
     organisation_repository: Arc<dyn OrganisationRepository>,
+    key_repository: Arc<dyn KeyRepository>,
 }
 
 #[cfg(test)]

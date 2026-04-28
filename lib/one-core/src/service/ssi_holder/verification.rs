@@ -22,7 +22,6 @@ use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{Credential, CredentialRelations};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
-use crate::model::did::DidRelations;
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::identifier::IdentifierRelations;
 use crate::model::interaction::InteractionRelations;
@@ -152,10 +151,7 @@ impl SSIHolderService {
                                 schema: Some(ClaimSchemaRelations::default()),
                             }),
                             holder_identifier: Some(IdentifierRelations {
-                                did: Some(DidRelations {
-                                    keys: Some(KeyRelations::default()),
-                                    ..Default::default()
-                                }),
+                                did: Some(Default::default()),
                                 key: Some(KeyRelations::default()),
                                 ..Default::default()
                             }),
@@ -291,7 +287,8 @@ impl SSIHolderService {
                     token: credential_content.to_owned(),
                     disclosed_keys: submitted_paths,
                 };
-                let (holder_did, key, jwk_key_id) = holder_did_key_jwk_from_credential(credential)?;
+                let (holder_did, key, jwk_key_id) =
+                    holder_did_key_jwk_from_credential(credential).await?;
                 let presentation = self
                     .prepare_credential_presentation(credential_presentation, &*formatter)
                     .await?;
@@ -648,10 +645,7 @@ impl SSIHolderService {
                     claims: Some(Default::default()),
                     key: Some(Default::default()),
                     holder_identifier: Some(IdentifierRelations {
-                        did: Some(DidRelations {
-                            keys: Some(Default::default()),
-                            ..Default::default()
-                        }),
+                        did: Some(Default::default()),
                         key: Some(Default::default()),
                         ..Default::default()
                     }),
@@ -697,7 +691,7 @@ impl SSIHolderService {
             .prepare_credential_presentation(credential_presentation, &*formatter)
             .await?;
 
-        let (holder_did, key, jwk_key_id) = holder_did_key_jwk_from_credential(&credential)?;
+        let (holder_did, key, jwk_key_id) = holder_did_key_jwk_from_credential(&credential).await?;
         let presented_credential = FormattedCredentialPresentation {
             presentation,
             credential_schema: credential_schema.clone(),

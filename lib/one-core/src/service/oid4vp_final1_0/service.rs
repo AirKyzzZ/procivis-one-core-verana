@@ -16,7 +16,6 @@ use crate::error::ContextWithErrorCode;
 use crate::error::ErrorCode::BR_0000;
 use crate::model::blob::{Blob, BlobType};
 use crate::model::certificate::CertificateRelations;
-use crate::model::did::DidRelations;
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::identifier_trust_information::{
@@ -71,10 +70,7 @@ impl OID4VPFinal1_0Service {
                 &ProofRelations {
                     interaction: Some(Default::default()),
                     verifier_identifier: Some(IdentifierRelations {
-                        did: Some(DidRelations {
-                            keys: Some(KeyRelations::default()),
-                            ..Default::default()
-                        }),
+                        did: Some(Default::default()),
                         certificates: Some(CertificateRelations {
                             key: Some(KeyRelations::default()),
                             ..Default::default()
@@ -137,6 +133,7 @@ impl OID4VPFinal1_0Service {
             &*self.key_algorithm_provider,
             &self.config,
         )
+        .await
         .error_while("selecting agreement key")?;
 
         let verifier_info = match client_id_scheme {
@@ -221,10 +218,7 @@ impl OID4VPFinal1_0Service {
                 &id,
                 &ProofRelations {
                     verifier_identifier: Some(IdentifierRelations {
-                        did: Some(DidRelations {
-                            keys: Some(KeyRelations::default()),
-                            ..Default::default()
-                        }),
+                        did: Some(Default::default()),
                         ..Default::default()
                     }),
                     verifier_key: Some(Default::default()),
@@ -250,6 +244,7 @@ impl OID4VPFinal1_0Service {
             &*self.key_algorithm_provider,
             &self.config,
         )
+        .await
         .error_while("selecting agreement key")?;
 
         Ok(create_open_id_for_vp_client_metadata_final1_0(key_handle)

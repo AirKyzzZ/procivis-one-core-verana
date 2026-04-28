@@ -2,13 +2,12 @@ use std::sync::Arc;
 
 use one_core::model::common::SortDirection;
 use one_core::model::did::{
-    Did, DidFilterValue, DidListQuery, DidRelations, DidType, KeyRole, RelatedKey,
-    SortableDidColumn,
+    Did, DidFilterValue, DidListQuery, DidType, KeyRole, RelatedKey, SortableDidColumn,
 };
-use one_core::model::key::{Key, KeyRelations};
+use one_core::model::key::Key;
 use one_core::model::list_filter::{ListFilterCondition, StringMatch, StringMatchType};
 use one_core::model::list_query::{ListPagination, ListSorting};
-use one_core::model::organisation::{Organisation, OrganisationRelations};
+use one_core::model::organisation::Organisation;
 use one_core::repository::did_repository::DidRepository;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::key_repository::MockKeyRepository;
@@ -136,17 +135,18 @@ async fn test_create_did() {
         .create_did(Did {
             id,
             name: "Name".to_string(),
-            organisation: Some(organisation),
+            organisation: Some(organisation.into()),
             did: "did:key:123".parse().unwrap(),
             did_type: DidType::Local,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             did_method: "KEY".to_string(),
-            keys: Some(vec![RelatedKey {
+            keys: vec![RelatedKey {
                 role: KeyRole::Authentication,
                 key,
                 reference: "1".to_string(),
-            }]),
+            }]
+            .into(),
             deactivated: false,
             log: None,
         })
@@ -185,13 +185,13 @@ async fn test_create_did_invalid_organisation() {
         .create_did(Did {
             id: Uuid::new_v4().into(),
             name: "Name".to_string(),
-            organisation: Some(non_existing_organisation),
+            organisation: Some(non_existing_organisation.into()),
             did: "did:key:123".parse().unwrap(),
             did_type: DidType::Local,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             did_method: "KEY".to_string(),
-            keys: None,
+            keys: Default::default(),
             deactivated: false,
             log: None,
         })
@@ -201,12 +201,6 @@ async fn test_create_did_invalid_organisation() {
 
 #[tokio::test]
 async fn test_get_did_by_value_existing_inside_organisation() {
-    let mut organisation_repository = MockOrganisationRepository::default();
-    organisation_repository
-        .expect_get_organisation()
-        .times(1)
-        .returning(|id| Ok(Some(dummy_organisation(Some(*id)))));
-
     let TestSetupWithDid {
         provider,
         did_id,
@@ -214,21 +208,10 @@ async fn test_get_did_by_value_existing_inside_organisation() {
         did_value,
         organisation,
         ..
-    } = setup_with_did(Repositories {
-        organisation_repository,
-        ..Default::default()
-    })
-    .await;
+    } = setup_with_did(Default::default()).await;
 
     let result = provider
-        .get_did_by_value(
-            &did_value,
-            Some(Some(organisation.id)),
-            &DidRelations {
-                organisation: Some(OrganisationRelations::default()),
-                ..Default::default()
-            },
-        )
+        .get_did_by_value(&did_value, Some(Some(organisation.id)))
         .await;
 
     assert!(result.is_ok());
@@ -239,17 +222,11 @@ async fn test_get_did_by_value_existing_inside_organisation() {
     assert_eq!(content.did_type, DidType::Local);
     assert_eq!(content.did, did_value);
     assert_eq!(content.name, did_name);
-    assert_eq!(content.organisation.unwrap().id, organisation.id);
+    assert_eq!(content.organisation.unwrap().id(), organisation.id);
 }
 
 #[tokio::test]
 async fn test_get_did_by_value_existing_ignoring_organisation() {
-    let mut organisation_repository = MockOrganisationRepository::default();
-    organisation_repository
-        .expect_get_organisation()
-        .times(1)
-        .returning(|id| Ok(Some(dummy_organisation(Some(*id)))));
-
     let TestSetupWithDid {
         provider,
         did_id,
@@ -257,22 +234,9 @@ async fn test_get_did_by_value_existing_ignoring_organisation() {
         did_value,
         organisation,
         ..
-    } = setup_with_did(Repositories {
-        organisation_repository,
-        ..Default::default()
-    })
-    .await;
+    } = setup_with_did(Default::default()).await;
 
-    let result = provider
-        .get_did_by_value(
-            &did_value,
-            None,
-            &DidRelations {
-                organisation: Some(OrganisationRelations::default()),
-                ..Default::default()
-            },
-        )
-        .await;
+    let result = provider.get_did_by_value(&did_value, None).await;
 
     assert!(result.is_ok());
 
@@ -280,7 +244,7 @@ async fn test_get_did_by_value_existing_ignoring_organisation() {
     assert_eq!(content.id, did_id);
     assert_eq!(content.did, did_value);
     assert_eq!(content.name, did_name);
-    assert_eq!(content.organisation.unwrap().id, organisation.id);
+    assert_eq!(content.organisation.unwrap().id(), organisation.id);
 }
 
 #[tokio::test]
@@ -291,16 +255,7 @@ async fn test_get_did_by_value_lookup_null_organisation() {
         ..
     } = setup_with_did(Repositories::default()).await;
 
-    let result = provider
-        .get_did_by_value(
-            &did_value,
-            Some(None),
-            &DidRelations {
-                organisation: Some(OrganisationRelations::default()),
-                ..Default::default()
-            },
-        )
-        .await;
+    let result = provider.get_did_by_value(&did_value, Some(None)).await;
 
     assert!(matches!(result, Ok(None)));
 }
@@ -310,11 +265,7 @@ async fn test_get_did_by_value_missing() {
     let TestSetupWithDid { provider, .. } = setup_with_did(Repositories::default()).await;
 
     let result = provider
-        .get_did_by_value(
-            &"did:missing:123".parse().unwrap(),
-            None,
-            &DidRelations::default(),
-        )
+        .get_did_by_value(&"did:missing:123".parse().unwrap(), None)
         .await;
 
     assert!(matches!(result, Ok(None)));
@@ -322,12 +273,6 @@ async fn test_get_did_by_value_missing() {
 
 #[tokio::test]
 async fn test_get_did_existing() {
-    let mut organisation_repository = MockOrganisationRepository::default();
-    organisation_repository
-        .expect_get_organisation()
-        .times(1)
-        .returning(|id| Ok(Some(dummy_organisation(Some(*id)))));
-
     let mut key_repository = MockKeyRepository::default();
     key_repository.expect_get_key().times(1).returning(|id| {
         Ok(Some(Key {
@@ -352,20 +297,12 @@ async fn test_get_did_existing() {
         key,
         ..
     } = setup_with_did(Repositories {
-        organisation_repository,
         key_repository,
+        ..Default::default()
     })
     .await;
 
-    let result = provider
-        .get_did(
-            &did_id,
-            &DidRelations {
-                organisation: Some(OrganisationRelations::default()),
-                keys: Some(KeyRelations::default()),
-            },
-        )
-        .await;
+    let result = provider.get_did(&did_id).await;
 
     assert!(result.is_ok());
 
@@ -376,8 +313,8 @@ async fn test_get_did_existing() {
     assert_eq!(content.did, did_value);
     assert_eq!(content.name, did_name);
 
-    assert_eq!(content.organisation.unwrap().id, organisation.id);
-    let keys = content.keys.unwrap();
+    assert_eq!(content.organisation.unwrap().id(), organisation.id);
+    let keys = content.keys.get().await.unwrap();
     assert_eq!(keys.len(), 1);
     assert_eq!(keys[0].key.id, key.id);
 }
@@ -386,10 +323,7 @@ async fn test_get_did_existing() {
 async fn test_get_did_not_existing() {
     let TestSetup { provider, .. } = setup_empty(Repositories::default()).await;
 
-    let result = provider
-        .get_did(&Uuid::new_v4().into(), &DidRelations::default())
-        .await
-        .unwrap();
+    let result = provider.get_did(&Uuid::new_v4().into()).await.unwrap();
 
     assert!(result.is_none());
 }

@@ -1,7 +1,7 @@
 use std::str::FromStr;
 use std::sync::Arc;
 
-use mockall::predicate::{always, eq};
+use mockall::predicate::eq;
 use shared_types::{DidId, DidValue, TrustAnchorId, TrustEntityId, TrustEntityKey};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
@@ -93,7 +93,7 @@ fn generic_did(id: DidId) -> Did {
         did_type: DidType::Local,
         did_method: "KEY".to_string(),
         deactivated: false,
-        keys: None,
+        keys: Default::default(),
         organisation: None,
         log: None,
     }
@@ -134,8 +134,8 @@ async fn test_create_trust_entity_success() {
     let mut did_repository = MockDidRepository::default();
     did_repository
         .expect_get_did()
-        .with(eq(did_id), always())
-        .returning(move |id, _| Ok(Some(generic_did(*id))));
+        .with(eq(did_id))
+        .returning(move |id| Ok(Some(generic_did(*id))));
 
     let mut trust_entity_repository = MockTrustEntityRepository::default();
     trust_entity_repository
@@ -200,9 +200,9 @@ async fn test_create_trust_entity_failed_only_one_entity_can_be_created_for_one_
     let mut did_repository = MockDidRepository::default();
     did_repository
         .expect_get_did()
-        .with(eq(did_id), always())
+        .with(eq(did_id))
         .times(2)
-        .returning(move |id, _| Ok(Some(generic_did(*id))));
+        .returning(move |id| Ok(Some(generic_did(*id))));
 
     let mut trust_entity_repository = MockTrustEntityRepository::default();
     trust_entity_repository
@@ -432,22 +432,25 @@ async fn test_publisher_get_remote_trust_entity_success() {
     // DID repository - get DID by value
     let mut did = generic_did(did_id);
     did.did = did_value.clone();
-    did.organisation = Some(Organisation {
-        id: Uuid::new_v4().into(),
-        created_date: get_dummy_date(),
-        last_modified: get_dummy_date(),
-        deactivated_at: None,
-        wallet_provider: None,
-        wallet_provider_issuer: None,
-        parent_organisation: None,
-    });
+    did.organisation = Some(
+        Organisation {
+            id: Uuid::new_v4().into(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            deactivated_at: None,
+            wallet_provider: None,
+            wallet_provider_issuer: None,
+            parent_organisation: None,
+        }
+        .into(),
+    );
 
     test_data
         .did_repository
         .expect_get_did_by_value()
-        .with(eq(did_value.clone()), eq(Some(None)), always())
+        .with(eq(did_value.clone()), eq(Some(None)))
         .once()
-        .return_once(move |_, _, _| Ok(Some(did)));
+        .return_once(move |_, _| Ok(Some(did)));
 
     // Trust entity repository - get by entity key
     let mut trust_entity = generic_trust_entity(trust_entity_id);

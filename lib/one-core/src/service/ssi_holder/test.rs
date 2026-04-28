@@ -274,11 +274,12 @@ async fn test_submit_proof_succeeds() {
 
     let key = dummy_key();
     let did = Did {
-        keys: Some(vec![RelatedKey {
+        keys: vec![RelatedKey {
             role: KeyRole::Authentication,
             key: key.clone(),
             reference: "1".to_string(),
-        }]),
+        }]
+        .into(),
         did_method: "KEY".to_string(),
         ..dummy_did()
     };
@@ -473,11 +474,12 @@ async fn test_submit_proof_multiple_credentials_succeeds() {
 
     let key = dummy_key();
     let did = Did {
-        keys: Some(vec![RelatedKey {
+        keys: vec![RelatedKey {
             role: KeyRole::Authentication,
             key: key.clone(),
             reference: "1".to_string(),
-        }]),
+        }]
+        .into(),
         did_method: "KEY".to_string(),
         ..dummy_did()
     };
@@ -691,11 +693,12 @@ async fn test_submit_proof_repeating_claims() {
 
     let key = dummy_key();
     let did = Did {
-        keys: Some(vec![RelatedKey {
+        keys: vec![RelatedKey {
             role: KeyRole::Authentication,
             key: key.clone(),
             reference: "1".to_string(),
-        }]),
+        }]
+        .into(),
         did_method: "KEY".to_string(),
         ..dummy_did()
     };
@@ -929,11 +932,12 @@ async fn test_accept_credential() {
         Ok(Some(Identifier {
             id: identifier_id,
             did: Some(Did {
-                keys: Some(vec![RelatedKey {
+                keys: vec![RelatedKey {
                     role: KeyRole::Authentication,
                     key: dummy_key(),
                     reference: "1".to_string(),
-                }]),
+                }]
+                .into(),
                 did_method: "KEY".to_string(),
                 ..dummy_did()
             }),
@@ -1080,11 +1084,12 @@ async fn test_accept_credential_with_did() {
             Ok(Some(Identifier {
                 did: Some(Did {
                     id: did_id,
-                    keys: Some(vec![RelatedKey {
+                    keys: vec![RelatedKey {
                         role: KeyRole::Authentication,
                         key: dummy_key(),
                         reference: "1".to_string(),
-                    }]),
+                    }]
+                    .into(),
                     did_method: "KEY".to_string(),
                     ..dummy_did()
                 }),
@@ -1232,11 +1237,12 @@ async fn test_accept_credential_wrong_tx_code() {
             Ok(Some(Identifier {
                 id: identifier_id,
                 did: Some(Did {
-                    keys: Some(vec![RelatedKey {
+                    keys: vec![RelatedKey {
                         role: KeyRole::Authentication,
                         key: dummy_key(),
                         reference: "1".to_string(),
-                    }]),
+                    }]
+                    .into(),
                     did_method: "KEY".to_string(),
                     ..dummy_did()
                 }),
@@ -1655,7 +1661,7 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
                 did: "did:key:123".parse().unwrap(),
                 did_type: DidType::Remote,
                 did_method: "KEY".to_string(),
-                keys: None,
+                keys: Default::default(),
                 organisation: None,
                 deactivated: false,
                 log: None,
@@ -1746,11 +1752,12 @@ async fn test_accept_credential_identifier_org_mismatch() {
         Ok(Some(Identifier {
             id: identifier_id,
             did: Some(Did {
-                keys: Some(vec![RelatedKey {
+                keys: vec![RelatedKey {
                     role: KeyRole::Authentication,
                     key: dummy_key(),
                     reference: "1".to_string(),
-                }]),
+                }]
+                .into(),
                 did_method: "KEY".to_string(),
                 ..dummy_did()
             }),
@@ -1792,11 +1799,12 @@ async fn test_accept_credential_credential_org_mismatch() {
         Ok(Some(Identifier {
             id: identifier_id,
             did: Some(Did {
-                keys: Some(vec![RelatedKey {
+                keys: vec![RelatedKey {
                     role: KeyRole::Authentication,
                     key: dummy_key(),
                     reference: "1".to_string(),
-                }]),
+                }]
+                .into(),
                 did_method: "KEY".to_string(),
                 ..dummy_did()
             }),
@@ -1839,11 +1847,12 @@ async fn test_reject_credential_credential_org_mismatch() {
         Ok(Some(Identifier {
             id: identifier_id,
             did: Some(Did {
-                keys: Some(vec![RelatedKey {
+                keys: vec![RelatedKey {
                     role: KeyRole::Authentication,
                     key: dummy_key(),
                     reference: "1".to_string(),
-                }]),
+                }]
+                .into(),
                 did_method: "KEY".to_string(),
                 ..dummy_did()
             }),

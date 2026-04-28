@@ -232,7 +232,7 @@ impl RevocationMethod for BitstringStatusList {
             &*self.key_provider,
             &self.key_algorithm_provider,
             &self.core_base_url,
-            &*self.get_formatter_for_issuance(&issuer_identifier)?,
+            &*self.get_formatter_for_issuance(&issuer_identifier).await?,
         )
         .await?;
 
@@ -399,7 +399,7 @@ impl RevocationMethod for BitstringStatusList {
 }
 
 impl BitstringStatusList {
-    fn get_formatter_for_issuance(
+    async fn get_formatter_for_issuance(
         &self,
         issuer_identifier: &Identifier,
     ) -> Result<Arc<dyn CredentialFormatter>, RevocationError> {
@@ -412,11 +412,10 @@ impl BitstringStatusList {
 
         let is_bbs = !issuer_did
             .keys
-            .as_ref()
-            .ok_or(RevocationError::MappingError(
-                "issuer_did keys are None".to_string(),
-            ))?
-            .iter()
+            .get()
+            .await
+            .error_while("getting issuer did keys")?
+            .into_iter()
             .any(|key| key.key.key_type == KeyAlgorithmType::BbsPlus.to_string());
 
         let format = match self.params.format {
@@ -653,7 +652,7 @@ impl BitstringStatusList {
             &*self.key_provider,
             &self.key_algorithm_provider,
             &self.core_base_url,
-            &*self.get_formatter_for_issuance(issuer_identifier)?,
+            &*self.get_formatter_for_issuance(issuer_identifier).await?,
         )
         .await?;
 
@@ -714,12 +713,13 @@ pub(crate) async fn format_status_list_credential(
 
     let key = issuer_did
         .find_first_matching_key(&KeyFilter::role_filter(KeyRole::AssertionMethod))
+        .await
         .map_err(|_| RevocationError::KeyWithRoleNotFound(KeyRole::AssertionMethod))?
         .ok_or(RevocationError::KeyWithRoleNotFound(
             KeyRole::AssertionMethod,
         ))?;
 
-    let key_id = issuer_did.verification_method_id(key);
+    let key_id = issuer_did.verification_method_id(&key);
     let key = &key.key;
 
     let auth_fn = key_provider

@@ -39,7 +39,7 @@ use crate::model::credential::{
     Credential, CredentialRelations, CredentialStateEnum, UpdateCredentialRequest,
 };
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
-use crate::model::did::{DidRelations, KeyRole};
+use crate::model::did::KeyRole;
 use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::interaction::{InteractionRelations, UpdateInteractionRequest};
 use crate::proto::identifier_creator::{IdentifierRole, RemoteIdentifierRelation};
@@ -117,10 +117,7 @@ impl OID4VCIFinal1_0Service {
             .get(
                 *identifier_id,
                 &IdentifierRelations {
-                    did: Some(DidRelations {
-                        keys: Some(Default::default()),
-                        ..Default::default()
-                    }),
+                    did: Some(Default::default()),
                     key: Some(Default::default()),
                     certificates: Some(CertificateRelations {
                         key: Some(Default::default()),
@@ -746,10 +743,7 @@ impl OID4VCIFinal1_0Service {
                 &interaction.id,
                 &CredentialRelations {
                     issuer_identifier: Some(IdentifierRelations {
-                        did: Some(DidRelations {
-                            keys: Some(Default::default()),
-                            ..Default::default()
-                        }),
+                        did: Some(Default::default()),
                         certificates: Some(CertificateRelations {
                             key: Some(Default::default()),
                             ..Default::default()

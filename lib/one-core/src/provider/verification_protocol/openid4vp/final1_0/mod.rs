@@ -630,11 +630,9 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
                 "Proof schema not found".to_string(),
             ))?;
 
-        let key_agreement_key = select_key_agreement_key_from_proof(
-            proof,
-            &*self.key_algorithm_provider,
-            &self.config,
-        )?;
+        let key_agreement_key =
+            select_key_agreement_key_from_proof(proof, &*self.key_algorithm_provider, &self.config)
+                .await?;
 
         let client_metadata = create_open_id_for_vp_client_metadata_final1_0(key_agreement_key)?;
         let encryption_key = client_metadata

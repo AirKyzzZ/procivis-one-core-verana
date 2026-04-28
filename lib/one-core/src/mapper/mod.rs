@@ -210,7 +210,7 @@ pub(crate) fn extracted_credential_to_model(
     })
 }
 
-pub(crate) fn get_encryption_key_jwk_from_proof(
+pub(crate) async fn get_encryption_key_jwk_from_proof(
     proof: &Proof,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
     config: &CoreConfig,
@@ -231,8 +231,8 @@ pub(crate) fn get_encryption_key_jwk_from_proof(
         ))?;
 
     let encryption_key = match verifier_identifier.r#type {
-        IdentifierType::Key => verifier_key,
-        IdentifierType::Certificate => verifier_key,
+        IdentifierType::Key => verifier_key.to_owned(),
+        IdentifierType::Certificate => verifier_key.to_owned(),
         IdentifierType::Did => {
             let verifier_did =
                 verifier_identifier
@@ -243,27 +243,28 @@ pub(crate) fn get_encryption_key_jwk_from_proof(
                     ))?;
 
             let key_filter = KeyFilter::role_filter(KeyRole::KeyAgreement);
-            let encryption_key = verifier_did.find_key(&verifier_key.id, &key_filter);
+            let encryption_key = verifier_did.find_key(&verifier_key.id, &key_filter).await;
 
-            let Some(encryption_key) = match encryption_key {
+            let encryption_key = match encryption_key {
                 Ok(key) => Some(key),
                 Err(_) => verifier_did
                     .find_first_matching_key(&key_filter)
+                    .await
                     .error_while("finding matching key")?,
-            }
-            .to_owned() else {
+            };
+
+            let Some(encryption_key) = encryption_key else {
                 return Ok(None);
             };
 
-            &encryption_key.key
+            encryption_key.key
         }
         IdentifierType::CertificateAuthority => {
             return Err(ServiceError::MappingError(
                 "Invalid verifier identifier type CertificateAuthority".to_string(),
             ));
         }
-    }
-    .to_owned();
+    };
 
     let key_algorithm = key_algorithm_provider
         .key_algorithm_from_key(&encryption_key)
@@ -533,7 +534,7 @@ mod tests {
             did_type: DidType::Remote,
             did_method: "didMethod".to_string(),
             deactivated: false,
-            keys: None,
+            keys: Default::default(),
             organisation: None,
             log: None,
         };

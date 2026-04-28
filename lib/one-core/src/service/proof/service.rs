@@ -37,7 +37,7 @@ use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{CredentialFilterValue, CredentialListQuery, CredentialRelations};
 use crate::model::credential_schema::CredentialSchemaRelations;
-use crate::model::did::{DidRelations, KeyRole};
+use crate::model::did::KeyRole;
 use crate::model::history::{HistoryAction, HistoryFilterValue, HistoryListQuery};
 use crate::model::identifier::{IdentifierRelations, IdentifierType};
 use crate::model::interaction::{InteractionRelations, InteractionType};
@@ -416,10 +416,7 @@ impl ProofService {
                 .get(
                     verifier_identifier_id,
                     &IdentifierRelations {
-                        did: Some(DidRelations {
-                            keys: Some(Default::default()),
-                            ..Default::default()
-                        }),
+                        did: Some(Default::default()),
                         certificates: Some(CertificateRelations {
                             key: Some(Default::default()),
                             ..Default::default()
@@ -439,10 +436,7 @@ impl ProofService {
                     .get_from_did_id(
                         verifier_did_id,
                         &IdentifierRelations {
-                            did: Some(DidRelations {
-                                keys: Some(Default::default()),
-                                ..Default::default()
-                            }),
+                            did: Some(Default::default()),
                             ..Default::default()
                         },
                     )
@@ -460,6 +454,7 @@ impl ProofService {
                 key_filter: Some(KeyFilter::role_filter(KeyRole::Authentication)),
                 ..Default::default()
             })
+            .await
             .error_while("selecting key")?;
         let (verifier_key, verifier_certificate) = match selection {
             SelectedKey::Key(_) => {
@@ -467,7 +462,9 @@ impl ProofService {
                     IdentifierType::Key,
                 ));
             }
-            SelectedKey::Certificate { certificate, key } => (key, Some(certificate.to_owned())),
+            SelectedKey::Certificate { certificate, key } => {
+                (key.to_owned(), Some(certificate.to_owned()))
+            }
             SelectedKey::Did { did, key } => {
                 validate_protocol_did_compatibility(
                     &exchange_protocol_capabilities.did_methods,
@@ -479,8 +476,9 @@ impl ProofService {
                     &proof_schema,
                     did,
                     &*self.credential_formatter_provider,
-                )?;
-                (&key.key, None)
+                )
+                .await?;
+                (key.key.to_owned(), None)
             }
         };
 
@@ -496,7 +494,7 @@ impl ProofService {
 
         validate_verification_key_storage_compatibility(
             &proof_schema,
-            verifier_key,
+            &verifier_key,
             &*self.credential_formatter_provider,
             &self.config,
         )?;
@@ -545,7 +543,7 @@ impl ProofService {
             "using proof schema `{}` ({}): protocol `{}`, transport `{}`",
             proof_schema.name, proof_schema.id, request.protocol, transport
         );
-        let verifier_key = verifier_key.to_owned();
+
         let proof_id = self
             .proof_repository
             .create_proof(proof_from_create_request(
@@ -1117,10 +1115,7 @@ impl ProofService {
                     }),
                     verifier_key: Some(KeyRelations::default()),
                     verifier_identifier: Some(IdentifierRelations {
-                        did: Some(DidRelations {
-                            keys: Some(KeyRelations::default()),
-                            ..Default::default()
-                        }),
+                        did: Some(Default::default()),
                         certificates: Some(CertificateRelations {
                             key: Some(KeyRelations::default()),
                             ..Default::default()

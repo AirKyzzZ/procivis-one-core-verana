@@ -48,18 +48,15 @@ impl IdentifierProvider {
         }
 
         if model.r#type == identifier::IdentifierType::Did
-            && let Some(did_relations) = &relations.did
+            && let Some(_did_relations) = &relations.did
             && let Some(did_id) = &model.did_id
         {
-            result.did = Some(
-                self.did_repository
-                    .get_did(did_id, did_relations)
-                    .await?
-                    .ok_or(DataLayerError::MissingRequiredRelation {
-                        relation: "identifier-did",
-                        id: did_id.to_string(),
-                    })?,
-            );
+            result.did = Some(self.did_repository.get_did(did_id).await?.ok_or(
+                DataLayerError::MissingRequiredRelation {
+                    relation: "identifier-did",
+                    id: did_id.to_string(),
+                },
+            )?);
         }
 
         if model.r#type == identifier::IdentifierType::Key

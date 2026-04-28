@@ -75,11 +75,12 @@ async fn test_issuer_submit_succeeds() {
             }),
             issuer_identifier: Some(Identifier {
                 did: Some(Did {
-                    keys: Some(vec![RelatedKey {
+                    keys: vec![RelatedKey {
                         role: KeyRole::AssertionMethod,
                         key: key.to_owned(),
                         reference: "1".to_string(),
-                    }]),
+                    }]
+                    .into(),
                     ..dummy_did()
                 }),
                 ..dummy_identifier()
@@ -225,11 +226,12 @@ fn generic_mdoc_credential(format: CredentialFormat, state: CredentialStateEnum)
         }),
         issuer_identifier: Some(Identifier {
             did: Some(Did {
-                keys: Some(vec![RelatedKey {
+                keys: vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
                     key: key.to_owned(),
                     reference: "1".to_string(),
-                }]),
+                }]
+                .into(),
                 ..dummy_did()
             }),
             ..dummy_identifier()
@@ -726,7 +728,7 @@ fn dummy_did() -> Did {
         did: "did:example:123".parse().unwrap(),
         did_type: DidType::Local,
         did_method: "John".to_string(),
-        keys: None,
+        keys: Default::default(),
         organisation: None,
         deactivated: false,
         log: None,

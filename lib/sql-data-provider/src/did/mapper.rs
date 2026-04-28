@@ -1,33 +1,24 @@
-use one_core::model::did::{Did, DidFilterValue, SortableDidColumn};
-use one_core::model::list_filter::ListFilterCondition;
-use one_core::repository::error::DataLayerError;
-use sea_orm::ActiveValue::NotSet;
-use sea_orm::sea_query::{IntoCondition, SimpleExpr};
-use sea_orm::{ColumnTrait, IntoSimpleExpr, JoinType, RelationTrait, Set};
+use std::collections::HashMap;
+use std::sync::Arc;
 
-use crate::entity::{self, did, key, key_did};
+use one_core::model::did::{Did, DidFilterValue, RelatedKey, SortableDidColumn};
+use one_core::model::key::Key;
+use one_core::model::list_filter::ListFilterCondition;
+use one_core::model::relation::{AsyncVecLoader, Related, RelatedVec};
+use one_core::repository::error::DataLayerError;
+use one_core::repository::key_repository::KeyRepository;
+use one_core::repository::organisation_repository::OrganisationRepository;
+use sea_orm::ActiveValue::{NotSet, Set};
+use sea_orm::sea_query::{IntoCondition, SimpleExpr};
+use sea_orm::{ColumnTrait, EntityTrait, IntoSimpleExpr, JoinType, QueryFilter, RelationTrait};
+use shared_types::{DidId, KeyId};
+
+use crate::entity::{did, key, key_did};
 use crate::list_query_generic::{
     IntoFilterCondition, IntoJoinRelations, IntoSortingColumn, JoinRelation, get_equals_condition,
     get_string_match_condition,
 };
-
-impl From<entity::did::Model> for Did {
-    fn from(value: entity::did::Model) -> Self {
-        Self {
-            id: value.id,
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-            name: value.name,
-            did: value.did,
-            did_type: value.type_field.into(),
-            did_method: value.method,
-            organisation: None,
-            keys: None,
-            deactivated: value.deactivated,
-            log: value.log,
-        }
-    }
-}
+use crate::transaction_context::TransactionManagerImpl;
 
 impl IntoSortingColumn for SortableDidColumn {
     fn get_column(&self) -> SimpleExpr {
@@ -107,13 +98,11 @@ impl IntoJoinRelations for DidFilterValue {
     }
 }
 
-impl TryFrom<Did> for did::ActiveModel {
-    type Error = DataLayerError;
+impl From<Did> for did::ActiveModel {
+    fn from(value: Did) -> Self {
+        let organisation_id = value.organisation.map(|f| f.id());
 
-    fn try_from(value: Did) -> Result<Self, Self::Error> {
-        let organisation_id = value.organisation.map(|f| f.id);
-
-        Ok(Self {
+        Self {
             id: Set(value.id),
             did: Set(value.did.to_owned()),
             created_date: Set(value.created_date),
@@ -125,6 +114,80 @@ impl TryFrom<Did> for did::ActiveModel {
             deactivated: Set(value.deactivated),
             deleted_at: NotSet,
             log: Set(value.log),
-        })
+        }
+    }
+}
+
+pub(crate) fn did_from_model(
+    model: did::Model,
+    db: &TransactionManagerImpl,
+    organisation_repository: &Arc<dyn OrganisationRepository>,
+    key_repository: &Arc<dyn KeyRepository>,
+) -> Did {
+    let organisation = model
+        .organisation_id
+        .map(|organisation_id| Related::new(organisation_id, organisation_repository.to_owned()));
+
+    let id = model.id;
+    Did {
+        id,
+        created_date: model.created_date,
+        last_modified: model.last_modified,
+        name: model.name,
+        did: model.did,
+        did_type: model.type_field.into(),
+        did_method: model.method,
+        organisation,
+        keys: RelatedVec::new(DidKeysLoader {
+            id,
+            db: db.clone(),
+            key_repository: key_repository.to_owned(),
+        }),
+        deactivated: model.deactivated,
+        log: model.log,
+    }
+}
+
+struct DidKeysLoader {
+    pub id: DidId,
+    pub db: TransactionManagerImpl,
+    pub key_repository: Arc<dyn KeyRepository>,
+}
+
+#[async_trait::async_trait]
+impl AsyncVecLoader<RelatedKey> for DidKeysLoader {
+    async fn load(&self) -> Result<Vec<RelatedKey>, DataLayerError> {
+        let key_dids = key_did::Entity::find()
+            .filter(key_did::Column::DidId.eq(self.id))
+            .all(&self.db)
+            .await
+            .map_err(|e| DataLayerError::Db(e.into()))?;
+
+        let mut related_keys: Vec<RelatedKey> = vec![];
+        let mut key_map: HashMap<KeyId, Key> = HashMap::default();
+        for key_did_model in key_dids {
+            let key_id = &key_did_model.key_id;
+            let key = if let Some(key) = key_map.get(key_id) {
+                key.to_owned()
+            } else {
+                let key = self.key_repository.get_key(key_id).await?.ok_or(
+                    DataLayerError::MissingRequiredRelation {
+                        relation: "did-key",
+                        id: key_id.to_string(),
+                    },
+                )?;
+
+                key_map.insert(*key_id, key.to_owned());
+                key
+            };
+
+            related_keys.push(RelatedKey {
+                role: key_did_model.role.into(),
+                key,
+                reference: key_did_model.reference,
+            })
+        }
+
+        Ok(related_keys)
     }
 }

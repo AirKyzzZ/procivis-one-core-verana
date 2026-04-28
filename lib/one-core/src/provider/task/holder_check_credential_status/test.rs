@@ -225,11 +225,11 @@ fn generic_credential() -> Credential {
         created_date: now,
         last_modified: now,
         name: "did1".to_string(),
-        organisation: Some(organisation.clone()),
+        organisation: Some(organisation.clone().into()),
         did: "did:example:1".parse().unwrap(),
         did_type: DidType::Local,
         did_method: "KEY".to_string(),
-        keys: Some(vec![RelatedKey {
+        keys: vec![RelatedKey {
             role: KeyRole::AssertionMethod,
             key: Key {
                 id: Uuid::new_v4().into(),
@@ -243,7 +243,8 @@ fn generic_credential() -> Credential {
                 organisation: dummy_organisation(None).into(),
             },
             reference: "1".to_string(),
-        }]),
+        }]
+        .into(),
         deactivated: false,
         log: None,
     };

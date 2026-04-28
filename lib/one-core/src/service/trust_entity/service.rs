@@ -29,7 +29,7 @@ use crate::model::did::{DidRelations, DidType};
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierType};
 use crate::model::list_filter::{ListFilterCondition, ListFilterValue, StringMatch};
 use crate::model::list_query::ListPagination;
-use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::model::organisation::Organisation;
 use crate::model::trust_anchor::TrustAnchor;
 use crate::model::trust_entity::{TrustEntity, TrustEntityRole, TrustEntityType};
 use crate::proto::bearer_token::validate_bearer_token;
@@ -163,10 +163,7 @@ impl TrustEntityService {
                 identifier_id,
                 &IdentifierRelations {
                     organisation: None,
-                    did: Some(DidRelations {
-                        organisation: Some(OrganisationRelations::default()),
-                        ..Default::default()
-                    }),
+                    did: Some(Default::default()),
                     ..Default::default()
                 },
             )
@@ -207,13 +204,7 @@ impl TrustEntityService {
     ) -> Result<TrustEntity, TrustEntityServiceError> {
         let did = self
             .did_repository
-            .get_did(
-                &did_id,
-                &DidRelations {
-                    organisation: Some(OrganisationRelations {}),
-                    keys: None,
-                },
-            )
+            .get_did(&did_id)
             .await
             .error_while("getting did")?
             .ok_or(TrustEntityServiceError::MissingDid(did_id))?;
@@ -337,7 +328,7 @@ impl TrustEntityService {
 
                 let did = self
                     .did_repository
-                    .get_did_by_value(&did_value, Some(organisation_id), &DidRelations::default())
+                    .get_did_by_value(&did_value, Some(organisation_id))
                     .await
                     .error_while("getting did")?
                     .ok_or(TrustEntityServiceError::MissingDidValue(did_value))?;
@@ -444,14 +435,7 @@ impl TrustEntityService {
     ) -> Result<GetTrustEntityResponseDTO, TrustEntityServiceError> {
         let did = self
             .did_repository
-            .get_did_by_value(
-                &did_value,
-                Some(None),
-                &DidRelations {
-                    organisation: Some(OrganisationRelations {}),
-                    keys: None,
-                },
-            )
+            .get_did_by_value(&did_value, Some(None))
             .await
             .error_while("getting did")?
             .ok_or(TrustEntityServiceError::MissingDidValue(did_value.clone()))?;
@@ -557,7 +541,7 @@ impl TrustEntityService {
 
         let Some(did) = self
             .did_repository
-            .get_did_by_value(&did_value, Some(None), &DidRelations::default())
+            .get_did_by_value(&did_value, Some(None))
             .await
             .error_while("getting did")?
         else {
@@ -680,13 +664,7 @@ impl TrustEntityService {
 
             let did = self
                 .did_repository
-                .get_did(
-                    &did_id,
-                    &DidRelations {
-                        organisation: Some(OrganisationRelations {}),
-                        keys: None,
-                    },
-                )
+                .get_did(&did_id)
                 .await
                 .error_while("getting did")?
                 .ok_or(TrustEntityServiceError::MissingDid(did_id))?;

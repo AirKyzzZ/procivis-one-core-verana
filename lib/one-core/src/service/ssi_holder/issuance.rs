@@ -24,7 +24,6 @@ use crate::model::credential::{
     Credential, CredentialRelations, CredentialStateEnum, UpdateCredentialRequest,
 };
 use crate::model::credential_schema::CredentialSchema;
-use crate::model::did::DidRelations;
 use crate::model::identifier::IdentifierRelations;
 use crate::model::interaction::{Interaction, InteractionRelations, InteractionType};
 use crate::model::organisation::{Organisation, OrganisationRelations};
@@ -83,10 +82,7 @@ impl SSIHolderService {
                         did_id,
                         &IdentifierRelations {
                             organisation: Some(OrganisationRelations::default()),
-                            did: Some(DidRelations {
-                                keys: Some(Default::default()),
-                                ..Default::default()
-                            }),
+                            did: Some(Default::default()),
                             key: Some(Default::default()),
                             ..Default::default()
                         },
@@ -101,10 +97,7 @@ impl SSIHolderService {
                         identifier_id,
                         &IdentifierRelations {
                             organisation: Some(OrganisationRelations::default()),
-                            did: Some(DidRelations {
-                                keys: Some(Default::default()),
-                                ..Default::default()
-                            }),
+                            did: Some(Default::default()),
                             key: Some(Default::default()),
                             ..Default::default()
                         },
@@ -128,7 +121,7 @@ impl SSIHolderService {
             )
             .error_while("checking session")?;
 
-            let key = select_holder_key(&identifier, key_id)?;
+            let key = select_holder_key(&identifier, key_id).await?;
             Some(HolderBindingInput { identifier, key })
         } else {
             None

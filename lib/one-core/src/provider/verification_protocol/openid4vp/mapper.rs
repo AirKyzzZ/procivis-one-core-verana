@@ -733,9 +733,10 @@ pub(crate) async fn format_authorization_request_client_id_scheme_verifier_attes
 
     let key = verifier_did
         .find_key(&verifier_key.id, &Default::default())
+        .await
         .error_while("finding related key")?;
 
-    let key_id = verifier_did.verification_method_id(key);
+    let key_id = verifier_did.verification_method_id(&key);
 
     let expires_at = Some(crate::clock::now_utc().add(Duration::hours(1)));
 
@@ -829,9 +830,10 @@ pub(crate) async fn format_authorization_request_client_id_scheme_did<T: Seriali
 
     let key = verifier_did
         .find_key(&verifier_key.id, &Default::default())
+        .await
         .error_while("finding related key")?;
 
-    let key_id = verifier_did.verification_method_id(key);
+    let key_id = verifier_did.verification_method_id(&key);
 
     let expires_at = Some(crate::clock::now_utc().add(Duration::hours(1)));
 
@@ -896,13 +898,14 @@ pub(crate) async fn format_authorization_request_client_id_scheme_redirect_uri<T
         .error_while("creating request JWT")?)
 }
 
-pub(crate) fn generate_client_metadata_draft(
+pub(crate) async fn generate_client_metadata_draft(
     proof: &Proof,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
     config: &CoreConfig,
 ) -> Result<OpenID4VPDraftClientMetadata, VerificationProtocolError> {
     let vp_formats = create_open_id_for_vp_formats();
     let jwk = get_encryption_key_jwk_from_proof(proof, key_algorithm_provider, config)
+        .await
         .error_while("getting encryption key")?;
 
     Ok(create_open_id_for_vp_client_metadata_draft(jwk, vp_formats))

@@ -7,8 +7,8 @@ use super::common::GetListResponse;
 use super::key::Key;
 use super::list_filter::{ListFilterValue, StringMatch};
 use super::list_query::ListQuery;
-use super::organisation::{Organisation, OrganisationRelations};
-use crate::model::key::KeyRelations;
+use super::organisation::Organisation;
+use super::relation::{Related, RelatedVec};
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -55,9 +55,8 @@ pub struct Did {
     pub deactivated: bool,
     pub log: Option<String>,
 
-    // Relations:
-    pub keys: Option<Vec<RelatedKey>>,
-    pub organisation: Option<Organisation>,
+    pub keys: RelatedVec<RelatedKey>,
+    pub organisation: Option<Related<Organisation>>,
 }
 
 impl Did {
@@ -115,10 +114,7 @@ pub type GetDidList = GetListResponse<Did>;
 pub type DidListQuery = ListQuery<SortableDidColumn, DidFilterValue>;
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
-pub struct DidRelations {
-    pub keys: Option<KeyRelations>,
-    pub organisation: Option<OrganisationRelations>,
-}
+pub struct DidRelations {}
 
 #[derive(Clone)]
 pub struct UpdateDidRequest {

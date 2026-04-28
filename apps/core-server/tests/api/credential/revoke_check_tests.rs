@@ -2071,7 +2071,7 @@ async fn minimal_mdoc_credential(params: Params) -> String {
                 did_method: "KEY".to_string(),
                 deactivated: false,
                 log: None,
-                keys: None,
+                keys: Default::default(),
                 organisation: None,
             }),
             key: None,

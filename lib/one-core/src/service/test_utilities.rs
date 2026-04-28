@@ -411,8 +411,8 @@ pub fn dummy_did() -> Did {
         did: "did:example:123".parse().unwrap(),
         did_type: DidType::Local,
         did_method: "INTERNAL".to_string(),
-        keys: None,
-        organisation: Some(dummy_organisation(None)),
+        keys: Default::default(),
+        organisation: Some(dummy_organisation(None).into()),
         deactivated: false,
         log: None,
     }

@@ -169,7 +169,7 @@ async fn test_handle_invitation_success() {
                     did_type: DidType::Remote,
                     did_method: "KEY".to_string(),
                     deactivated: false,
-                    keys: None,
+                    keys: Default::default(),
                     organisation: None,
                     log: None,
                 }),

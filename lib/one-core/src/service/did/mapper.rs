@@ -9,6 +9,7 @@ use super::dto::{
     DidResponseKeysDTO, GetDidListResponseDTO,
 };
 use super::error::DidServiceError;
+use crate::error::ContextWithErrorCode;
 use crate::model::did::{
     Did, DidFilterValue, DidType, ExactDidFilterColumn, GetDidList, KeyRole, RelatedKey,
     UpdateDidRequest,
@@ -22,40 +23,35 @@ use crate::provider::did_method::dto::{DidDocumentDTO, DidVerificationMethodDTO}
 use crate::provider::did_method::{DidCreated, DidKeys, DidUpdate};
 use crate::service::key::dto::KeyListItemResponseDTO;
 
-impl TryFrom<Did> for DidResponseDTO {
-    type Error = DidServiceError;
-    fn try_from(value: Did) -> Result<Self, Self::Error> {
-        let organisation_id = value.organisation.map(|value| value.id);
+pub(crate) async fn response_from_did(value: Did) -> Result<DidResponseDTO, DidServiceError> {
+    let organisation_id = value.organisation.map(|value| value.id());
 
-        let keys = value
-            .keys
-            .ok_or(DidServiceError::MappingError("keys is None".to_string()))?;
-        let filter_keys = |role: KeyRole| -> Vec<KeyListItemResponseDTO> {
-            keys.iter()
-                .filter(|key| key.role == role)
-                .map(|key| key.key.to_owned().into())
-                .collect()
-        };
+    let keys = value.keys.get().await.error_while("getting did keys")?;
+    let filter_keys = |role: KeyRole| -> Vec<KeyListItemResponseDTO> {
+        keys.iter()
+            .filter(|key| key.role == role)
+            .map(|key| key.key.to_owned().into())
+            .collect()
+    };
 
-        Ok(Self {
-            id: value.id,
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-            name: value.name,
-            organisation_id,
-            did: value.did,
-            did_type: value.did_type,
-            did_method: value.did_method,
-            keys: DidResponseKeysDTO {
-                authentication: filter_keys(KeyRole::Authentication),
-                assertion_method: filter_keys(KeyRole::AssertionMethod),
-                key_agreement: filter_keys(KeyRole::KeyAgreement),
-                capability_invocation: filter_keys(KeyRole::CapabilityInvocation),
-                capability_delegation: filter_keys(KeyRole::CapabilityDelegation),
-            },
-            deactivated: value.deactivated,
-        })
-    }
+    Ok(DidResponseDTO {
+        id: value.id,
+        created_date: value.created_date,
+        last_modified: value.last_modified,
+        name: value.name,
+        organisation_id,
+        did: value.did,
+        did_type: value.did_type,
+        did_method: value.did_method,
+        keys: DidResponseKeysDTO {
+            authentication: filter_keys(KeyRole::Authentication),
+            assertion_method: filter_keys(KeyRole::AssertionMethod),
+            key_agreement: filter_keys(KeyRole::KeyAgreement),
+            capability_invocation: filter_keys(KeyRole::CapabilityInvocation),
+            capability_delegation: filter_keys(KeyRole::CapabilityDelegation),
+        },
+        deactivated: value.deactivated,
+    })
 }
 
 impl From<GetDidList> for GetDidListResponseDTO {
@@ -126,18 +122,18 @@ pub(crate) fn did_from_did_request(
                 key,
             })
         })
-        .collect::<Result<_, _>>()?;
+        .collect::<Result<Vec<_>, _>>()?;
 
     Ok(Did {
         id: did_id,
         created_date: now,
         last_modified: now,
         name: request.name,
-        organisation: Some(organisation),
+        organisation: Some(organisation.into()),
         did: did_create.did,
         did_type: DidType::Local,
         did_method: request.did_method,
-        keys: Some(keys),
+        keys: keys.into(),
         deactivated: false,
         log: did_create.log,
     })
@@ -198,13 +194,11 @@ impl From<DidListItemResponseDTO> for DidValue {
     }
 }
 
-pub(super) fn map_did_to_did_keys(did: &Did) -> Result<DidKeys, DidServiceError> {
-    let Some(ref related_keys) = did.keys else {
-        return Err(DidServiceError::MappingError("Missing keys".to_string()));
-    };
+pub(super) async fn map_did_to_did_keys(did: &Did) -> Result<DidKeys, DidServiceError> {
+    let related_keys = did.keys.get().await.error_while("getting did keys")?;
     let mut did_keys = DidKeys::default();
     for related_key in related_keys {
-        let key = related_key.key.clone();
+        let key = related_key.key;
         match related_key.role {
             KeyRole::Authentication => did_keys.authentication.push(key),
             KeyRole::AssertionMethod => did_keys.assertion_method.push(key),

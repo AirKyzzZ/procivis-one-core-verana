@@ -15,7 +15,6 @@ use crate::error::ErrorCode::BR_0000;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::get_encryption_key_jwk_from_proof;
 use crate::model::blob::{Blob, BlobType};
-use crate::model::did::DidRelations;
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::identifier::IdentifierRelations;
 use crate::model::interaction::InteractionRelations;
@@ -64,10 +63,7 @@ impl OID4VPDraft20Service {
                 &ProofRelations {
                     interaction: Some(Default::default()),
                     verifier_identifier: Some(IdentifierRelations {
-                        did: Some(DidRelations {
-                            keys: Some(KeyRelations::default()),
-                            ..Default::default()
-                        }),
+                        did: Some(Default::default()),
                         ..Default::default()
                     }),
                     verifier_key: Some(Default::default()),
@@ -128,6 +124,7 @@ impl OID4VPDraft20Service {
 
         let client_metadata = create_open_id_for_vp_client_metadata_draft(
             get_encryption_key_jwk_from_proof(&proof, &*self.key_algorithm_provider, &self.config)
+                .await
                 .error_while("getting encryption key")?,
             create_open_id_for_vp_formats(),
         );
@@ -203,10 +200,7 @@ impl OID4VPDraft20Service {
                 &id,
                 &ProofRelations {
                     verifier_identifier: Some(IdentifierRelations {
-                        did: Some(DidRelations {
-                            keys: Some(KeyRelations::default()),
-                            ..Default::default()
-                        }),
+                        did: Some(Default::default()),
                         ..Default::default()
                     }),
                     verifier_key: Some(Default::default()),
@@ -226,6 +220,7 @@ impl OID4VPDraft20Service {
         let formats = create_open_id_for_vp_formats();
         let jwk =
             get_encryption_key_jwk_from_proof(&proof, &*self.key_algorithm_provider, &self.config)
+                .await
                 .error_while("getting encryption key")?;
 
         Ok(create_open_id_for_vp_client_metadata_draft(jwk, formats))

@@ -214,15 +214,16 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 name: "did".to_string(),
-                organisation: Some(dummy_organisation(None)),
+                organisation: Some(dummy_organisation(None).into()),
                 did: "did:example:123".parse().unwrap(),
                 did_type: DidType::Local,
                 did_method: "KEY".to_string(),
-                keys: Some(vec![RelatedKey {
+                keys: vec![RelatedKey {
                     role: KeyRole::KeyAgreement,
                     key: key.to_owned(),
                     reference: "1".to_string(),
-                }]),
+                }]
+                .into(),
                 deactivated: false,
                 log: None,
             }),
@@ -335,7 +336,7 @@ async fn test_get_presentation_definition_proof_role_verifier() {
                 did_type: DidType::Local,
                 did_method: "KEY".to_string(),
                 organisation: None,
-                keys: None,
+                keys: Default::default(),
                 deactivated: false,
                 log: None,
             }),
@@ -460,7 +461,7 @@ async fn test_get_proof_exists() {
                 did_type: DidType::Local,
                 did_method: "KEY".to_string(),
                 organisation: None,
-                keys: None,
+                keys: Default::default(),
                 deactivated: false,
                 log: None,
             }),
@@ -674,7 +675,7 @@ async fn test_get_proof_with_array_holder() {
                 did_type: DidType::Local,
                 did_method: "KEY".to_string(),
                 organisation: None,
-                keys: None,
+                keys: Default::default(),
                 deactivated: false,
                 log: None,
             }),
@@ -934,7 +935,7 @@ async fn test_get_proof_with_array_in_object_holder() {
                 did_type: DidType::Local,
                 did_method: "KEY".to_string(),
                 organisation: None,
-                keys: None,
+                keys: Default::default(),
                 deactivated: false,
                 log: None,
             }),
@@ -1209,7 +1210,7 @@ async fn test_get_proof_with_object_array_holder() {
                 did_type: DidType::Local,
                 did_method: "KEY".to_string(),
                 organisation: None,
-                keys: None,
+                keys: Default::default(),
                 deactivated: false,
                 log: None,
             }),
@@ -1477,7 +1478,7 @@ async fn test_get_proof_with_array() {
                 did_type: DidType::Local,
                 did_method: "KEY".to_string(),
                 organisation: None,
-                keys: None,
+                keys: Default::default(),
                 deactivated: false,
                 log: None,
             }),
@@ -1744,7 +1745,7 @@ async fn test_get_proof_with_array_in_object() {
                 did_type: DidType::Local,
                 did_method: "KEY".to_string(),
                 organisation: None,
-                keys: None,
+                keys: Default::default(),
                 deactivated: false,
                 log: None,
             }),
@@ -2027,7 +2028,7 @@ async fn test_get_proof_with_object_array() {
                 did_type: DidType::Local,
                 did_method: "KEY".to_string(),
                 organisation: None,
-                keys: None,
+                keys: Default::default(),
                 deactivated: false,
                 log: None,
             }),
@@ -2199,7 +2200,7 @@ async fn test_get_proof_list_success() {
                 did_type: DidType::Local,
                 did_method: "KEY".to_string(),
                 organisation: None,
-                keys: None,
+                keys: Default::default(),
                 deactivated: false,
                 log: None,
             }),
@@ -2423,7 +2424,7 @@ async fn test_create_proof_using_invalid_did_method() {
         did_type: DidType::Local,
         did_method: "INVALID".to_string(),
         organisation: None,
-        keys: Some(vec![RelatedKey {
+        keys: vec![RelatedKey {
             role: KeyRole::Authentication,
             key: Key {
                 id: verifier_key_id.into(),
@@ -2437,7 +2438,8 @@ async fn test_create_proof_using_invalid_did_method() {
                 organisation: dummy_organisation(None).into(),
             },
             reference: "1".to_string(),
-        }]),
+        }]
+        .into(),
         deactivated: false,
         log: None,
     };
@@ -2545,7 +2547,7 @@ async fn test_create_proof_using_identifier() {
         did_type: DidType::Local,
         did_method: "KEY".to_string(),
         organisation: None,
-        keys: Some(vec![RelatedKey {
+        keys: vec![RelatedKey {
             role: KeyRole::Authentication,
             key: Key {
                 id: Uuid::new_v4().into(),
@@ -2559,7 +2561,8 @@ async fn test_create_proof_using_identifier() {
                 organisation: dummy_organisation(None).into(),
             },
             reference: "1".to_string(),
-        }]),
+        }]
+        .into(),
         deactivated: false,
         log: None,
     };
@@ -2681,7 +2684,7 @@ async fn test_create_proof_without_related_key() {
         did_type: DidType::Local,
         did_method: "KEY".to_string(),
         organisation: None,
-        keys: Some(vec![RelatedKey {
+        keys: vec![RelatedKey {
             role: KeyRole::Authentication,
             key: Key {
                 id: verifier_key_id.into(),
@@ -2695,7 +2698,8 @@ async fn test_create_proof_without_related_key() {
                 organisation: dummy_organisation(None).into(),
             },
             reference: "1".to_string(),
-        }]),
+        }]
+        .into(),
         deactivated: false,
         log: None,
     };
@@ -2815,7 +2819,7 @@ async fn test_create_proof_with_related_key() {
         did_type: DidType::Local,
         did_method: "KEY".to_string(),
         organisation: None,
-        keys: Some(vec![RelatedKey {
+        keys: vec![RelatedKey {
             role: KeyRole::Authentication,
             key: Key {
                 id: verifier_key_id,
@@ -2829,7 +2833,8 @@ async fn test_create_proof_with_related_key() {
                 organisation: dummy_organisation(None).into(),
             },
             reference: "1".to_string(),
-        }]),
+        }]
+        .into(),
         deactivated: false,
         log: None,
     };
@@ -2954,7 +2959,7 @@ async fn test_create_proof_fail_unsupported_wallet_storage_type() {
         did_type: DidType::Local,
         did_method: "KEY".to_string(),
         organisation: None,
-        keys: Some(vec![RelatedKey {
+        keys: vec![RelatedKey {
             role: KeyRole::Authentication,
             key: Key {
                 id: Uuid::new_v4().into(),
@@ -2968,7 +2973,8 @@ async fn test_create_proof_fail_unsupported_wallet_storage_type() {
                 organisation: dummy_organisation(None).into(),
             },
             reference: "1".to_string(),
-        }]),
+        }]
+        .into(),
         deactivated: false,
         log: None,
     };
@@ -3078,7 +3084,7 @@ async fn test_create_proof_failed_no_key_with_authentication_method_role() {
         did_type: DidType::Local,
         did_method: "KEY".to_string(),
         organisation: None,
-        keys: Some(vec![]),
+        keys: Default::default(),
         deactivated: false,
         log: None,
     };
@@ -3246,7 +3252,7 @@ async fn test_create_proof_did_deactivated_error() {
         did_type: DidType::Local,
         did_method: "KEY".to_string(),
         organisation: None,
-        keys: None,
+        keys: Default::default(),
         deactivated: true,
         log: None,
     };
@@ -3401,7 +3407,7 @@ async fn test_create_proof_failed_incompatible_verification_key_storage() {
         did_type: DidType::Local,
         did_method: "KEY".to_string(),
         organisation: None,
-        keys: Some(vec![RelatedKey {
+        keys: vec![RelatedKey {
             role: KeyRole::Authentication,
             key: Key {
                 id: verifier_key_id.into(),
@@ -3415,7 +3421,8 @@ async fn test_create_proof_failed_incompatible_verification_key_storage() {
                 organisation: dummy_organisation(None).into(),
             },
             reference: "1".to_string(),
-        }]),
+        }]
+        .into(),
         deactivated: false,
         log: None,
     };

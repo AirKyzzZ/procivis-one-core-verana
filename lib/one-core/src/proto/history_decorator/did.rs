@@ -4,9 +4,10 @@ use anyhow::Context;
 use shared_types::{DidId, DidValue, OrganisationId};
 use uuid::Uuid;
 
-use crate::model::did::{Did, DidListQuery, DidRelations, GetDidList, UpdateDidRequest};
+use crate::model::did::{Did, DidListQuery, GetDidList, UpdateDidRequest};
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::organisation::Organisation;
+use crate::model::relation::Related;
 use crate::proto::session_provider::{SessionExt, SessionProvider};
 use crate::repository::did_repository::DidRepository;
 use crate::repository::error::DataLayerError;
@@ -24,9 +25,9 @@ impl DidHistoryDecorator {
         id: DidId,
         name: String,
         action: HistoryAction,
-        organisation: Option<Organisation>,
+        organisation: Option<&Related<Organisation>>,
     ) {
-        let Some(organisation_id) = organisation.map(|o| o.id) else {
+        let Some(organisation_id) = organisation.map(|o| o.id()) else {
             tracing::warn!("did (id: {id}) missing organisation");
             return;
         };
@@ -62,29 +63,22 @@ impl DidRepository for DidHistoryDecorator {
         let organisation = request.organisation.to_owned();
         let did_id = self.inner.create_did(request).await?;
 
-        self.create_history(did_id, name, HistoryAction::Created, organisation)
+        self.create_history(did_id, name, HistoryAction::Created, organisation.as_ref())
             .await;
 
         Ok(did_id)
     }
 
-    async fn get_did(
-        &self,
-        id: &DidId,
-        relations: &DidRelations,
-    ) -> Result<Option<Did>, DataLayerError> {
-        self.inner.get_did(id, relations).await
+    async fn get_did(&self, id: &DidId) -> Result<Option<Did>, DataLayerError> {
+        self.inner.get_did(id).await
     }
 
     async fn get_did_by_value(
         &self,
         value: &DidValue,
         organisation: Option<Option<OrganisationId>>,
-        relations: &DidRelations,
     ) -> Result<Option<Did>, DataLayerError> {
-        self.inner
-            .get_did_by_value(value, organisation, relations)
-            .await
+        self.inner.get_did_by_value(value, organisation).await
     }
 
     async fn get_did_list(&self, query: DidListQuery) -> Result<GetDidList, DataLayerError> {
@@ -97,13 +91,7 @@ impl DidRepository for DidHistoryDecorator {
         if let Some(deactivated) = request.deactivated {
             let did = self
                 .inner
-                .get_did(
-                    &request.id,
-                    &DidRelations {
-                        organisation: Some(Default::default()),
-                        ..Default::default()
-                    },
-                )
+                .get_did(&request.id)
                 .await?
                 .context("did is missing")?;
 
@@ -115,7 +103,7 @@ impl DidRepository for DidHistoryDecorator {
                 } else {
                     HistoryAction::Reactivated
                 },
-                did.organisation,
+                did.organisation.as_ref(),
             )
             .await;
         };

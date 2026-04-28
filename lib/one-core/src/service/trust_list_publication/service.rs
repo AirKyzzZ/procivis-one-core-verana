@@ -54,7 +54,8 @@ impl TrustListPublicationService {
             request.key_id,
             request.certificate_id,
             trust_list_publisher.get_capabilities(),
-        )?;
+        )
+        .await?;
         let trust_list_publication_id = trust_list_publisher
             .create_trust_list(CreateTrustListRequest {
                 name: request.name.clone(),
@@ -416,7 +417,7 @@ fn validate_trust_list_role_capabilities(
     Ok(())
 }
 
-fn validate_publication_identifier_capabilities(
+async fn validate_publication_identifier_capabilities(
     identifier: &Identifier,
     key_id: Option<KeyId>,
     certificate_id: Option<CertificateId>,
@@ -439,6 +440,7 @@ fn validate_publication_identifier_capabilities(
             certificate: certificate_id,
             ..Default::default()
         })
+        .await
         .error_while("selecting key")?;
 
     let SelectedKey::Certificate { key, .. } = &selected else {
@@ -745,8 +747,8 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_validate_publication_identifier_capabilities_success() {
+    #[tokio::test]
+    async fn test_validate_publication_identifier_capabilities_success() {
         // given
         let identifier = create_test_certificate_identifier("EDDSA");
         let certificate_id = identifier.certificates.as_ref().unwrap()[0].id;
@@ -766,14 +768,15 @@ mod tests {
             None,
             Some(certificate_id),
             capabilities,
-        );
+        )
+        .await;
 
         // then
         assert!(result.is_ok());
     }
 
-    #[test]
-    fn test_validate_publication_identifier_capabilities_invalid_identifier_type() {
+    #[tokio::test]
+    async fn test_validate_publication_identifier_capabilities_invalid_identifier_type() {
         // given
         let identifier = create_test_key_identifier("EDDSA");
         let capabilities = TrustListPublisherCapabilities {
@@ -786,7 +789,8 @@ mod tests {
 
         // when
         let result =
-            validate_publication_identifier_capabilities(&identifier, None, None, capabilities);
+            validate_publication_identifier_capabilities(&identifier, None, None, capabilities)
+                .await;
 
         // then
         assert!(result.is_err());
@@ -808,8 +812,8 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_validate_publication_identifier_capabilities_missing_key() {
+    #[tokio::test]
+    async fn test_validate_publication_identifier_capabilities_missing_key() {
         // given
         let mut identifier = create_test_key_identifier("EDDSA");
         identifier.key = None;
@@ -828,14 +832,15 @@ mod tests {
             Some(key_id),
             None,
             capabilities,
-        );
+        )
+        .await;
 
         // then
         assert!(result.is_err());
     }
 
-    #[test]
-    fn test_validate_publication_identifier_capabilities_missing_certificate() {
+    #[tokio::test]
+    async fn test_validate_publication_identifier_capabilities_missing_certificate() {
         // given
         let mut identifier = create_test_certificate_identifier("EDDSA");
         identifier.certificates = None;
@@ -856,14 +861,15 @@ mod tests {
             None,
             Some(certificate_id),
             capabilities,
-        );
+        )
+        .await;
 
         // then
         assert!(result.is_err());
     }
 
-    #[test]
-    fn test_validate_publication_identifier_capabilities_invalid_selected_key_type() {
+    #[tokio::test]
+    async fn test_validate_publication_identifier_capabilities_invalid_selected_key_type() {
         // given
         let identifier = create_test_key_identifier("EDDSA");
         let key_id = identifier.key.as_ref().unwrap().id;
@@ -882,7 +888,8 @@ mod tests {
             Some(key_id),
             None,
             capabilities,
-        );
+        )
+        .await;
 
         // then
         assert!(result.is_err());
@@ -893,8 +900,8 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_validate_publication_identifier_capabilities_unknown_key_algorithm() {
+    #[tokio::test]
+    async fn test_validate_publication_identifier_capabilities_unknown_key_algorithm() {
         // given
         let identifier = create_test_certificate_identifier("UNKNOWN_ALGO");
         let certificate_id = identifier.certificates.as_ref().unwrap()[0].id;
@@ -914,15 +921,16 @@ mod tests {
             None,
             Some(certificate_id),
             capabilities,
-        );
+        )
+        .await;
 
         // then
         assert!(result.is_err());
         assert_eq!(result.err().unwrap().error_code(), ErrorCode::BR_0432)
     }
 
-    #[test]
-    fn test_validate_publication_identifier_capabilities_invalid_key_algorithm() {
+    #[tokio::test]
+    async fn test_validate_publication_identifier_capabilities_invalid_key_algorithm() {
         // given
         let identifier = create_test_certificate_identifier("ECDSA");
         let certificate_id = identifier.certificates.as_ref().unwrap()[0].id;
@@ -942,7 +950,8 @@ mod tests {
             None,
             Some(certificate_id),
             capabilities,
-        );
+        )
+        .await;
 
         // then
         match result {

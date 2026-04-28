@@ -12,7 +12,6 @@ use crate::model::credential::{
     Clearable, CredentialRelations, CredentialRole, CredentialStateEnum, UpdateCredentialRequest,
 };
 use crate::model::credential_schema::CredentialSchema;
-use crate::model::did::DidRelations;
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierType};
 use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
@@ -169,10 +168,7 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
                 credential_id,
                 &CredentialRelations {
                     issuer_identifier: Some(IdentifierRelations {
-                        did: Some(DidRelations {
-                            keys: Some(KeyRelations::default()),
-                            ..Default::default()
-                        }),
+                        did: Some(Default::default()),
                         certificates: Some(CertificateRelations {
                             key: Some(KeyRelations::default()),
                             ..Default::default()
@@ -181,10 +177,7 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
                     }),
                     issuer_certificate: Some(Default::default()),
                     holder_identifier: Some(IdentifierRelations {
-                        did: Some(DidRelations {
-                            keys: Some(KeyRelations::default()),
-                            ..Default::default()
-                        }),
+                        did: Some(Default::default()),
                         key: Some(KeyRelations::default()),
                         ..Default::default()
                     }),
@@ -267,10 +260,7 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
                 &CredentialRelations {
                     schema: Some(Default::default()),
                     issuer_identifier: Some(IdentifierRelations {
-                        did: Some(DidRelations {
-                            keys: Some(KeyRelations::default()),
-                            ..Default::default()
-                        }),
+                        did: Some(Default::default()),
                         certificates: Some(CertificateRelations {
                             key: Some(KeyRelations::default()),
                             ..Default::default()
@@ -278,10 +268,7 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
                         ..Default::default()
                     }),
                     holder_identifier: Some(IdentifierRelations {
-                        did: Some(DidRelations {
-                            keys: Some(KeyRelations::default()),
-                            ..Default::default()
-                        }),
+                        did: Some(Default::default()),
                         key: Some(KeyRelations::default()),
                         ..Default::default()
                     }),

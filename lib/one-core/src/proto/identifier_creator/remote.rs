@@ -8,7 +8,7 @@ use crate::error::ContextWithErrorCode;
 use crate::model::certificate::{
     Certificate, CertificateFilterValue, CertificateListQuery, CertificateState,
 };
-use crate::model::did::{Did, DidRelations, DidType};
+use crate::model::did::{Did, DidType};
 use crate::model::identifier::{
     Identifier, IdentifierFilterValue, IdentifierListQuery, IdentifierRelations, IdentifierState,
     IdentifierType,
@@ -32,11 +32,7 @@ impl IdentifierCreatorProto {
 
         let did = match self
             .did_repository
-            .get_did_by_value(
-                did_value,
-                organisation.as_ref().map(|org| Some(org.id)),
-                &DidRelations::default(),
-            )
+            .get_did_by_value(did_value, organisation.as_ref().map(|org| Some(org.id)))
             .await
             .error_while("getting did")?
         {
@@ -55,11 +51,11 @@ impl IdentifierCreatorProto {
                     created_date: now,
                     last_modified: now,
                     name: format!("{role} {id}"),
-                    organisation: organisation.to_owned(),
+                    organisation: organisation.to_owned().map(Into::into),
                     did: did_value.to_owned(),
                     did_method,
                     did_type: DidType::Remote,
-                    keys: None,
+                    keys: Default::default(),
                     deactivated: false,
                     log: None,
                 };
@@ -321,11 +317,7 @@ impl IdentifierCreatorProto {
             IdentifierDetails::Did(did_value) => {
                 let did = self
                     .did_repository
-                    .get_did_by_value(
-                        did_value,
-                        organisation.as_ref().map(|org| Some(org.id)),
-                        &DidRelations::default(),
-                    )
+                    .get_did_by_value(did_value, organisation.as_ref().map(|org| Some(org.id)))
                     .await
                     .error_while("getting did")?
                     .ok_or(Error::MappingError("Did not found".to_string()))?;

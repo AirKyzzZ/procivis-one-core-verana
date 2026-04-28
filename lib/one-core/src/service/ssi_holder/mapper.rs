@@ -8,7 +8,7 @@ use crate::model::identifier::{Identifier, IdentifierType};
 use crate::model::key::Key;
 use crate::util::key_selection::KeyFilter;
 
-pub(super) fn holder_did_key_jwk_from_credential(
+pub(super) async fn holder_did_key_jwk_from_credential(
     credential: &Credential,
 ) -> Result<(Option<Did>, Key, Option<String>), HolderServiceError> {
     let key = credential
@@ -38,8 +38,9 @@ pub(super) fn holder_did_key_jwk_from_credential(
         // There should probably be a nicer error if a key is rotated out from a did
         let related_key = holder_did
             .find_key(&key.id, &KeyFilter::default())
+            .await
             .error_while("finding key")?;
-        let holder_jwk_key_id = holder_did.verification_method_id(related_key);
+        let holder_jwk_key_id = holder_did.verification_method_id(&related_key);
 
         (Some(holder_did), Some(holder_jwk_key_id))
     } else {
@@ -49,7 +50,7 @@ pub(super) fn holder_did_key_jwk_from_credential(
     Ok((holder_did, key, holder_jwk_key_id))
 }
 
-pub(super) fn select_holder_key(
+pub(super) async fn select_holder_key(
     identifier: &Identifier,
     key_id: Option<KeyId>,
 ) -> Result<Key, HolderServiceError> {
@@ -74,7 +75,7 @@ pub(super) fn select_holder_key(
         IdentifierType::Did => {
             let did = identifier
                 .did
-                .to_owned()
+                .as_ref()
                 .ok_or(HolderServiceError::MappingError(
                     "Missing identifier did".to_string(),
                 ))?;
@@ -83,15 +84,17 @@ pub(super) fn select_holder_key(
             let selected_key = match key_id {
                 Some(key_id) => did
                     .find_key(&key_id, &key_filter)
+                    .await
                     .error_while("finding key")?,
                 None => did
                     .find_first_matching_key(&key_filter)
+                    .await
                     .error_while("finding matching key")?
                     .ok_or(HolderServiceError::InvalidKey(
                         "No key with role authentication available".to_string(),
                     ))?,
             };
-            selected_key.key.to_owned()
+            selected_key.key
         }
         _ => {
             return Err(HolderServiceError::IncompatibleHolderIdentifier);

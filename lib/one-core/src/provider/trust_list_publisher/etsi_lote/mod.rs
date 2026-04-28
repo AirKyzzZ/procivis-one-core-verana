@@ -121,6 +121,7 @@ impl TrustListPublisher for EtsiLotePublisher {
                 certificate: request.certificate_id,
                 ..Default::default()
             })
+            .await
             .error_while("selecting key")?;
 
         let SelectedKey::Certificate { certificate, key } = &selected else {

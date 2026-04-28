@@ -265,8 +265,8 @@ pub fn prepare_identifier(
                 did_method: did.method().to_string(),
                 deactivated: false,
                 log: None,
-                keys: None,
-                organisation: Some(organisation.clone()),
+                keys: Default::default(),
+                organisation: Some(organisation.clone().into()),
             };
             (
                 None,

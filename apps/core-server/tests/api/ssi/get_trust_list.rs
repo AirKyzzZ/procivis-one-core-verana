@@ -39,7 +39,7 @@ pub async fn new_with_trust_list() -> (
             TrustEntityType::Did,
             did.did.into(),
             None,
-            did.organisation,
+            Some(did.organisation.unwrap().get().await.unwrap()),
         )
         .await;
 
@@ -59,7 +59,7 @@ pub async fn new_with_trust_list() -> (
             TrustEntityType::Did,
             did2.did.into(),
             None,
-            did2.organisation,
+            Some(did2.organisation.unwrap().get().await.unwrap()),
         )
         .await;
 
@@ -152,7 +152,7 @@ async fn test_get_trust_list_filters_not_active() {
             TrustEntityType::Did,
             did3.did.into(),
             None,
-            did3.organisation,
+            Some(did3.organisation.unwrap().get().await.unwrap()),
         )
         .await;
     let did4 = context
@@ -171,7 +171,7 @@ async fn test_get_trust_list_filters_not_active() {
             TrustEntityType::Did,
             did4.did.into(),
             None,
-            did4.organisation,
+            Some(did4.organisation.unwrap().get().await.unwrap()),
         )
         .await;
     let did5 = context
@@ -190,7 +190,7 @@ async fn test_get_trust_list_filters_not_active() {
             TrustEntityType::Did,
             did5.did.into(),
             None,
-            did5.organisation,
+            Some(did5.organisation.unwrap().get().await.unwrap()),
         )
         .await;
 

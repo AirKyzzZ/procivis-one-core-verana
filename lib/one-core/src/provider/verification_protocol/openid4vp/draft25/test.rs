@@ -272,7 +272,7 @@ fn test_proof(proof_id: Uuid, credential_format: CredentialFormat) -> Proof {
                 did_type: DidType::Local,
                 did_method: "KEY".to_string(),
                 deactivated: false,
-                keys: Some(vec![RelatedKey {
+                keys: vec![RelatedKey {
                     role: KeyRole::Authentication,
                     key: Key {
                         id: Uuid::new_v4().into(),
@@ -286,7 +286,8 @@ fn test_proof(proof_id: Uuid, credential_format: CredentialFormat) -> Proof {
                         organisation: dummy_organisation(None).into(),
                     },
                     reference: "1".to_string(),
-                }]),
+                }]
+                .into(),
                 organisation: None,
                 log: None,
             }),
