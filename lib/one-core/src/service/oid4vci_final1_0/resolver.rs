@@ -2,10 +2,10 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use shared_types::{CredentialSchemaId, IdentifierId};
-use time::{Duration, OffsetDateTime};
+use time::OffsetDateTime;
 
 use crate::clock::now_utc;
-use crate::config::core_config::{CacheEntityCacheType, CacheEntityConfig, CoreConfig};
+use crate::config::core_config::{CacheEntityCacheType, CoreConfig};
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::x509::pem_chain_into_x5c;
 use crate::model::certificate::CertificateRole;
@@ -236,12 +236,7 @@ pub(crate) fn initialize_credential_issuer_metadata_cache_from_config(
         .entities
         .get("CREDENTIAL_ISSUER_METADATA")
         .cloned()
-        .unwrap_or(CacheEntityConfig {
-            cache_refresh_timeout: Duration::days(1),
-            cache_size: 100,
-            cache_type: CacheEntityCacheType::Db,
-            refresh_after: Duration::minutes(5),
-        });
+        .unwrap_or_default();
 
     let storage: Arc<dyn RemoteEntityStorage> = match config.cache_type {
         CacheEntityCacheType::Db => Arc::new(DbStorage::new(remote_entity_cache_repository)),

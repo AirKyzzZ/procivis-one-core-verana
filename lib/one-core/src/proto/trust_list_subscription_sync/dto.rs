@@ -6,14 +6,14 @@ use crate::model::trust_list_role::TrustListRoleEnum;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub(super) struct RemoteTrustCollection {
+pub struct RemoteTrustCollection {
     pub name: String,
     pub trust_lists: Vec<RemoteTrustList>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub(super) struct RemoteTrustList {
+pub struct RemoteTrustList {
     pub name: String,
     pub id: TrustListSubscriptionId,
     pub role: RemoteTrustListRole,
@@ -24,7 +24,7 @@ pub(super) struct RemoteTrustList {
 #[derive(Clone, Debug, Eq, PartialEq, Into, Serialize, Deserialize)]
 #[into(TrustListRoleEnum)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub(super) enum RemoteTrustListRole {
+pub enum RemoteTrustListRole {
     PidProvider,
     WalletProvider,
     WrpAcProvider,

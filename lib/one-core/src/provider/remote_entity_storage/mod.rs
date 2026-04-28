@@ -73,6 +73,8 @@ pub enum RemoteEntityType {
     AndroidAttestationCrl,
     OpenIdMetadataHolder,
     OpenIdMetadataIssuer,
+    WalletProviderMetadata,
+    RemoteTrustCollection,
 }
 
 #[derive(Clone, Error, Debug)]

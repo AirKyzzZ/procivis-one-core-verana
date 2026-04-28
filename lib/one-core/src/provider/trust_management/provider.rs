@@ -2,14 +2,11 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use serde_json::json;
-use time::Duration;
 
 use super::simple_list::SimpleList;
 use super::{TrustManagement, simple_list};
 use crate::config::ConfigValidationError;
-use crate::config::core_config::{
-    CacheEntityCacheType, CacheEntityConfig, CoreConfig, TrustManagementType,
-};
+use crate::config::core_config::{CacheEntityCacheType, CoreConfig, TrustManagementType};
 use crate::model::credential::Credential;
 use crate::model::interaction::Interaction;
 use crate::model::trust_entity::TrustEntityRole;
@@ -104,12 +101,7 @@ fn initialize_trust_list_cache(
         .entities
         .get("TRUST_LIST")
         .cloned()
-        .unwrap_or(CacheEntityConfig {
-            cache_refresh_timeout: Duration::days(1),
-            cache_size: 100,
-            cache_type: CacheEntityCacheType::Db,
-            refresh_after: Duration::minutes(5),
-        });
+        .unwrap_or_default();
 
     let storage: Arc<dyn RemoteEntityStorage> = match config.cache_type {
         CacheEntityCacheType::Db => Arc::new(DbStorage::new(remote_entity_cache_repository)),

@@ -4,7 +4,7 @@ use std::sync::Arc;
 use time::Duration;
 use x509_parser::certificate::X509Certificate;
 
-use crate::config::core_config::{CacheEntityCacheType, CacheEntityConfig, CoreConfig};
+use crate::config::core_config::{CacheEntityCacheType, CoreConfig};
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 use crate::proto::clock::{Clock, DefaultClock};
 use crate::proto::http_client::HttpClient;
@@ -281,12 +281,7 @@ fn initialize_x509_crl_cache(
         .entities
         .get("X509_CRL")
         .cloned()
-        .unwrap_or(CacheEntityConfig {
-            cache_refresh_timeout: Duration::days(1),
-            cache_size: 100,
-            cache_type: CacheEntityCacheType::Db,
-            refresh_after: Duration::minutes(5),
-        });
+        .unwrap_or_default();
 
     let storage: Arc<dyn RemoteEntityStorage> = match config.cache_type {
         CacheEntityCacheType::Db => Arc::new(DbStorage::new(remote_entity_cache_repository)),

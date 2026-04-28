@@ -44,7 +44,9 @@ use crate::provider::caching_loader::json_ld_context::{
     ContextCache, initialize_jsonld_cache_from_config,
 };
 use crate::provider::caching_loader::openid_metadata::openid_metadata_cache_from_config;
+use crate::provider::caching_loader::remote_trust_collection::remote_trust_collection_cache_from_config;
 use crate::provider::caching_loader::vct::initialize_vct_type_metadata_cache_from_config;
+use crate::provider::caching_loader::wallet_provider_metadata::wallet_provider_metadata_cache_from_config;
 use crate::provider::credential_formatter::provider::credential_formatter_provider_from_config;
 use crate::provider::data_type::provider::data_type_provider_from_config;
 use crate::provider::did_method::provider::did_method_provider_from_config;
@@ -304,7 +306,15 @@ impl OneCore {
             data_provider.get_credential_schema_repository(),
         ));
 
-        let wallet_unit_client = Arc::new(HTTPWalletProviderClient::new(client.clone()));
+        let wallet_provider_metadata_cache = Arc::new(wallet_provider_metadata_cache_from_config(
+            client.clone(),
+            data_provider.get_remote_entity_cache_repository(),
+            &config,
+        ));
+        let wallet_unit_client = Arc::new(HTTPWalletProviderClient::new(
+            client.clone(),
+            wallet_provider_metadata_cache,
+        ));
         let verifier_provider_client = Arc::new(HTTPVerifierProviderClient::new(client.clone()));
         let wallet_unit_proto = Arc::new(HolderWalletUnitProtoImpl::new(
             key_provider.clone(),
@@ -511,9 +521,14 @@ impl OneCore {
             trust_information_provider.clone(),
         );
 
+        let remote_trust_collection_cache = Arc::new(remote_trust_collection_cache_from_config(
+            client.clone(),
+            data_provider.get_remote_entity_cache_repository(),
+            &config,
+        ));
         let trust_list_subscription_sync: Arc<dyn TrustListSubscriptionSync> =
             Arc::new(TrustListSubscriptionSyncImpl::new(
-                client.clone(),
+                remote_trust_collection_cache,
                 data_provider.get_trust_list_subscription_repository(),
                 data_provider.get_tx_manager(),
             ));
@@ -539,7 +554,7 @@ impl OneCore {
             trust_list_subscriber_provider.clone(),
             trust_collection_manager.clone(),
             trust_list_subscription_sync.clone(),
-            wallet_unit_client,
+            wallet_unit_client.clone(),
             data_provider.get_verifier_instance_repository(),
             verifier_provider_client.clone(),
         )?;
@@ -855,7 +870,7 @@ impl OneCore {
                 data_provider.get_key_repository(),
                 key_provider,
                 key_algorithm_provider,
-                Arc::new(HTTPWalletProviderClient::new(client)),
+                wallet_unit_client,
                 wallet_unit_proto,
                 Arc::new(OSInfoProviderImpl),
                 trust_collection_manager.clone(),

@@ -70,10 +70,10 @@ pub(super) struct IssueWalletUnitAttestationResponseRestDTO {
     pub wua: Vec<String>,
 }
 
-#[derive(Clone, Debug, Deserialize, Into)]
+#[derive(Clone, Debug, Serialize, Deserialize, Into)]
 #[serde(rename_all = "camelCase")]
 #[into(dto::WalletProviderMetadataResponseDTO)]
-pub(super) struct WalletProviderMetadataResponseRestDTO {
+pub struct WalletProviderMetadataResponseRestDTO {
     wallet_unit_attestation: WalletUnitAttestationMetadataRestDTO,
     name: String,
     #[into(with_fn = convert_inner)]
@@ -82,19 +82,19 @@ pub(super) struct WalletProviderMetadataResponseRestDTO {
     feature_flags: FeatureFlags,
 }
 
-#[derive(Clone, Debug, Deserialize, Into)]
+#[derive(Clone, Debug, Serialize, Deserialize, Into)]
 #[serde(rename_all = "camelCase")]
 #[into(dto::WalletUnitAttestationMetadataDTO)]
-pub(super) struct WalletUnitAttestationMetadataRestDTO {
+pub struct WalletUnitAttestationMetadataRestDTO {
     app_integrity_check_required: bool,
     enabled: bool,
     required: bool,
 }
 
-#[derive(Clone, Debug, Deserialize, Into)]
+#[derive(Clone, Debug, Serialize, Deserialize, Into)]
 #[serde(rename_all = "camelCase")]
 #[into(dto::AppVersionDTO)]
-pub(super) struct AppVersionRestDTO {
+pub struct AppVersionRestDTO {
     minimum: String,
     minimum_recommended: Option<String>,
     #[serde(default)]
@@ -103,9 +103,9 @@ pub(super) struct AppVersionRestDTO {
     update_screen: Option<UpdateScreenRestDTO>,
 }
 
-#[derive(Clone, Debug, Deserialize, Into)]
+#[derive(Clone, Debug, Serialize, Deserialize, Into)]
 #[serde(rename_all = "camelCase")]
 #[into(dto::UpdateScreenDTO)]
-pub(super) struct UpdateScreenRestDTO {
+pub struct UpdateScreenRestDTO {
     pub link: Option<String>,
 }

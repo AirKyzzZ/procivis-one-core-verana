@@ -6,7 +6,7 @@ use super::HTTPWalletProviderClient;
 use super::dto::{
     ActivateWalletUnitRequestRestDTO, IssueWalletUnitAttestationRequestRestDTO,
     IssueWalletUnitAttestationResponseRestDTO, RegisterWalletUnitRequestRestDTO,
-    RegisterWalletUnitResponseRestDTO, WalletProviderMetadataResponseRestDTO,
+    RegisterWalletUnitResponseRestDTO,
 };
 use crate::error::{ContextWithErrorCode, ErrorCode};
 use crate::model::wallet_instance::WalletProviderType;
@@ -28,16 +28,11 @@ impl WalletProviderClient for HTTPWalletProviderClient {
             return Err(WalletProviderClientError::UnsupportedType(target.r#type));
         }
 
-        let response: WalletProviderMetadataResponseRestDTO = async {
-            self.http_client
-                .get(&target.metadata_url)
-                .send()
-                .await?
-                .error_for_status()?
-                .json::<WalletProviderMetadataResponseRestDTO>()
-        }
-        .await
-        .error_while("fetching wallet provider metadata")?;
+        let response = self
+            .cache
+            .get(&target.metadata_url)
+            .await
+            .error_while("fetching wallet provider metadata")?;
 
         Ok(response.into())
     }

@@ -30,8 +30,10 @@ pub mod android_attestation_crl;
 pub mod etsi_lote;
 pub mod json_ld_context;
 pub mod openid_metadata;
+pub mod remote_trust_collection;
 pub mod trust_list;
 pub mod vct;
+pub mod wallet_provider_metadata;
 pub mod x509_crl;
 
 #[async_trait]

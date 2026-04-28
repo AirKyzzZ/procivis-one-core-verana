@@ -19,6 +19,8 @@ pub(crate) enum CacheTypeRestEnum {
     OpenIdMetadataHolder,
     #[serde(rename = "OPENID_METADATA_ISSUER")]
     OpenIdMetadataIssuer,
+    WalletProviderMetadata,
+    RemoteTrustCollection,
 }
 
 #[derive(Clone, Deserialize, Debug, Default, IntoParams, PartialEq, Eq)]

@@ -3,7 +3,6 @@ use std::sync::Arc;
 
 use serde_json::json;
 use shared_types::RevocationMethodId;
-use time::Duration;
 
 use super::bitstring_status_list::BitstringStatusList;
 use super::bitstring_status_list::resolver::StatusListCachingLoader;
@@ -12,7 +11,7 @@ use super::status_list_2021::StatusList2021;
 use super::token_status_list::TokenStatusList;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{
-    CacheEntitiesConfig, CacheEntityCacheType, CacheEntityConfig, CoreConfig, RevocationType,
+    CacheEntitiesConfig, CacheEntityCacheType, CoreConfig, RevocationType,
 };
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::http_client::HttpClient;
@@ -189,12 +188,7 @@ fn initialize_statuslist_loader(
         .entities
         .get("STATUS_LIST_CREDENTIAL")
         .cloned()
-        .unwrap_or(CacheEntityConfig {
-            cache_refresh_timeout: Duration::days(1),
-            cache_size: 100,
-            cache_type: CacheEntityCacheType::Db,
-            refresh_after: Duration::minutes(5),
-        });
+        .unwrap_or_default();
 
     let storage: Arc<dyn RemoteEntityStorage> = match config.cache_type {
         CacheEntityCacheType::Db => Arc::new(DbStorage::new(remote_entity_cache_repository)),

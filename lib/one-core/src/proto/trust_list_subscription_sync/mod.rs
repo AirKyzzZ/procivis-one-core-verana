@@ -11,12 +11,11 @@ use crate::model::trust_list_subscription::{
     GetTrustListSubscriptionList, TrustListSubscription, TrustListSubscriptionFilterValue,
     TrustListSubscriptionListQuery, TrustListSubscriptionState,
 };
-use crate::proto::http_client::HttpClient;
 use crate::proto::transaction_manager::TransactionManager;
-use crate::proto::trust_list_subscription_sync::dto::RemoteTrustCollection;
+use crate::provider::caching_loader::remote_trust_collection::RemoteTrustCollectionCache;
 use crate::repository::trust_list_subscription_repository::TrustListSubscriptionRepository;
 
-mod dto;
+pub(crate) mod dto;
 #[cfg(test)]
 mod test;
 
@@ -47,19 +46,19 @@ impl ErrorCodeMixin for TrustListSubscriptionSyncError {
 }
 
 pub struct TrustListSubscriptionSyncImpl {
-    client: Arc<dyn HttpClient>,
+    cache: Arc<dyn RemoteTrustCollectionCache>,
     subscription_repository: Arc<dyn TrustListSubscriptionRepository>,
     transaction_manager: Arc<dyn TransactionManager>,
 }
 
 impl TrustListSubscriptionSyncImpl {
     pub fn new(
-        client: Arc<dyn HttpClient>,
+        cache: Arc<dyn RemoteTrustCollectionCache>,
         subscription_repository: Arc<dyn TrustListSubscriptionRepository>,
         transaction_manager: Arc<dyn TransactionManager>,
     ) -> Self {
         Self {
-            client,
+            cache,
             subscription_repository,
             transaction_manager,
         }
@@ -78,17 +77,11 @@ impl TrustListSubscriptionSync for TrustListSubscriptionSyncImpl {
             ));
         };
 
-        let remote_collection: RemoteTrustCollection = async {
-            self.client
-                .get(url.as_str())
-                .send()
-                .await?
-                .error_for_status()
-        }
-        .await
-        .error_while("fetching remote trust collection")?
-        .json()
-        .error_while("parsing response")?;
+        let remote_collection = self
+            .cache
+            .get(url.as_str())
+            .await
+            .error_while("getting remote trust collection from cache")?;
 
         self.transaction_manager
             .tx(async {

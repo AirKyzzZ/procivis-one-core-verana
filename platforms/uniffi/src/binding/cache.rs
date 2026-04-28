@@ -36,4 +36,6 @@ pub enum CacheTypeBindingDTO {
     AndroidAttestationCrl,
     OpenIdMetadataHolder,
     OpenIdMetadataIssuer,
+    WalletProviderMetadata,
+    RemoteTrustCollection,
 }

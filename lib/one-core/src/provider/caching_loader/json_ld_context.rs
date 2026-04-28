@@ -2,11 +2,11 @@ use std::string::FromUtf8Error;
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use time::OffsetDateTime;
 use time::format_description::well_known::Rfc2822;
 use time::macros::offset;
-use time::{Duration, OffsetDateTime};
 
-use crate::config::core_config::{CacheEntityCacheType, CacheEntityConfig, CoreConfig};
+use crate::config::core_config::{CacheEntityCacheType, CoreConfig};
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 use crate::proto::http_client::HttpClient;
 use crate::provider::caching_loader::{CachingLoader, ResolveResult, Resolver};
@@ -178,12 +178,7 @@ pub(crate) fn initialize_jsonld_cache_from_config(
         .entities
         .get("JSON_LD_CONTEXT")
         .cloned()
-        .unwrap_or(CacheEntityConfig {
-            cache_refresh_timeout: Duration::days(1),
-            cache_size: 100,
-            cache_type: CacheEntityCacheType::Db,
-            refresh_after: Duration::minutes(5),
-        });
+        .unwrap_or_default();
 
     let storage: Arc<dyn RemoteEntityStorage> = match config.cache_type {
         CacheEntityCacheType::Db => Arc::new(DbStorage::new(remote_entity_cache_repository)),

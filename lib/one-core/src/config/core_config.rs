@@ -19,6 +19,7 @@ use serde_json::{Value, json};
 use serde_with::{DurationSeconds, serde_as, skip_serializing_none};
 use shared_types::{CredentialFormat, RevocationMethodId, TaskId, TrustListSubscriberId};
 use strum::{AsRefStr, Display, EnumString};
+use time::Duration;
 
 use super::{ConfigParsingError, ConfigValidationError};
 use crate::model::credential_schema::KeyStorageSecurity;
@@ -101,7 +102,7 @@ pub enum CacheEntityCacheType {
 }
 
 #[serde_as]
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CacheEntityConfig {
     pub cache_type: CacheEntityCacheType,
@@ -124,6 +125,17 @@ pub struct CacheEntityConfig {
     /// (if refresh fails, the cached value is ignored and fetching fails)
     #[serde_as(as = "DurationSeconds<i64>")]
     pub cache_refresh_timeout: time::Duration,
+}
+
+impl Default for CacheEntityConfig {
+    fn default() -> Self {
+        Self {
+            cache_refresh_timeout: Duration::days(1),
+            cache_size: 100,
+            cache_type: CacheEntityCacheType::Db,
+            refresh_after: Duration::minutes(5),
+        }
+    }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]

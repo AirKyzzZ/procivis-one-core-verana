@@ -10,7 +10,6 @@ use crate::model::trust_list_role::TrustListRoleEnum;
 use crate::model::trust_list_subscription::{
     GetTrustListSubscriptionList, TrustListSubscription, TrustListSubscriptionState,
 };
-use crate::proto::http_client::{Method, MockHttpClient, Request, Response, StatusCode};
 use crate::proto::transaction_manager::NoTransactionManager;
 use crate::proto::trust_list_subscription_sync::dto::{
     RemoteTrustCollection, RemoteTrustList, RemoteTrustListRole,
@@ -18,8 +17,8 @@ use crate::proto::trust_list_subscription_sync::dto::{
 use crate::proto::trust_list_subscription_sync::{
     TrustListSubscriptionSync, TrustListSubscriptionSyncImpl,
 };
+use crate::provider::caching_loader::remote_trust_collection::MockRemoteTrustCollectionCache;
 use crate::repository::trust_list_subscription_repository::MockTrustListSubscriptionRepository;
-use crate::util::test_utilities::mock_http_get_request;
 
 const DUMMY_URL: &str = "https://example.com/trust-list";
 
@@ -27,7 +26,7 @@ const DUMMY_URL: &str = "https://example.com/trust-list";
 async fn test_sync_subscriptions_not_remote() {
     let trust_collection = test_collection(false);
     let proto = TrustListSubscriptionSyncImpl::new(
-        Arc::new(MockHttpClient::new()),
+        Arc::new(MockRemoteTrustCollectionCache::new()),
         Arc::new(MockTrustListSubscriptionRepository::new()),
         Arc::new(NoTransactionManager),
     );
@@ -57,23 +56,11 @@ async fn test_sync_subscriptions() {
         ],
     };
 
-    let mut client = MockHttpClient::new();
-    mock_http_get_request(
-        &mut client,
-        DUMMY_URL.to_string(),
-        Response {
-            body: serde_json::to_vec(&remote_list).unwrap(),
-            headers: Default::default(),
-            status: StatusCode(200),
-            request: Request {
-                body: None,
-                headers: Default::default(),
-                method: Method::Get,
-                url: DUMMY_URL.to_string(),
-                timeout: None,
-            },
-        },
-    );
+    let mut cache = MockRemoteTrustCollectionCache::new();
+    cache
+        .expect_get()
+        .once()
+        .returning(move |_| Ok(remote_list.clone()));
     let trust_collection = test_collection(true);
     let to_be_deleted = Uuid::new_v4().into();
     let local_collection_id = trust_collection.id;
@@ -126,7 +113,7 @@ async fn test_sync_subscriptions() {
         });
 
     let proto = TrustListSubscriptionSyncImpl::new(
-        Arc::new(client),
+        Arc::new(cache),
         Arc::new(repository),
         Arc::new(NoTransactionManager),
     );

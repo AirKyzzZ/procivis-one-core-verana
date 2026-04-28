@@ -6,7 +6,6 @@ use std::sync::Arc;
 use indexmap::IndexMap;
 use serde_json::json;
 use shared_types::DidValue;
-use time::Duration;
 
 use super::dto::DidDocumentDTO;
 use super::error::DidMethodProviderError;
@@ -18,7 +17,7 @@ use super::universal::UniversalDidMethod;
 use super::web::WebDidMethod;
 use super::{DidMethod, universal, web, webvh};
 use crate::config::core_config::{
-    CacheEntitiesConfig, CacheEntityCacheType, CacheEntityConfig, CoreConfig, DidType, Fields,
+    CacheEntitiesConfig, CacheEntityCacheType, CoreConfig, DidType, Fields,
 };
 use crate::config::{ConfigValidationError, core_config};
 use crate::error::ContextWithErrorCode;
@@ -216,12 +215,7 @@ fn initialize_did_caching_loader(
         .entities
         .get("DID_DOCUMENT")
         .cloned()
-        .unwrap_or(CacheEntityConfig {
-            cache_refresh_timeout: Duration::days(1),
-            cache_size: 100,
-            cache_type: CacheEntityCacheType::Db,
-            refresh_after: Duration::minutes(5),
-        });
+        .unwrap_or_default();
 
     let storage: Arc<dyn RemoteEntityStorage> = match config.cache_type {
         CacheEntityCacheType::Db => Arc::new(DbStorage::new(remote_entity_cache_repository)),

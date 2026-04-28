@@ -62,4 +62,10 @@ pub enum CacheType {
 
     #[sea_orm(string_value = "OPENID_METADATA_ISSUER")]
     OpenIdMetadataIssuer,
+
+    #[sea_orm(string_value = "WALLET_PROVIDER_METADATA")]
+    WalletProviderMetadata,
+
+    #[sea_orm(string_value = "REMOTE_TRUST_COLLECTION")]
+    RemoteTrustCollection,
 }

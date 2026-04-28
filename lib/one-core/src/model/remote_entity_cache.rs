@@ -36,6 +36,8 @@ pub enum CacheType {
     AndroidAttestationCrl,
     OpenIdMetadataHolder,
     OpenIdMetadataIssuer,
+    WalletProviderMetadata,
+    RemoteTrustCollection,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]

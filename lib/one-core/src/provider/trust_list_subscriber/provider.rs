@@ -3,12 +3,9 @@ use std::sync::Arc;
 
 use serde_json::json;
 use shared_types::TrustListSubscriberId;
-use time::Duration;
 
 use crate::config::ConfigValidationError;
-use crate::config::core_config::{
-    CacheEntityCacheType, CacheEntityConfig, CoreConfig, TrustListSubscriberType,
-};
+use crate::config::core_config::{CacheEntityCacheType, CoreConfig, TrustListSubscriberType};
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::clock::Clock;
 use crate::proto::http_client::HttpClient;
@@ -105,12 +102,7 @@ fn initialize_etsi_lote_cache(
         .entities
         .get("TRUST_LIST")
         .cloned()
-        .unwrap_or(CacheEntityConfig {
-            cache_refresh_timeout: Duration::days(1),
-            cache_size: 100,
-            cache_type: CacheEntityCacheType::Db,
-            refresh_after: Duration::minutes(5),
-        });
+        .unwrap_or_default();
 
     let storage: Arc<dyn RemoteEntityStorage> = match config.cache_type {
         CacheEntityCacheType::Db => Arc::new(DbStorage::new(remote_entity_cache_repository)),

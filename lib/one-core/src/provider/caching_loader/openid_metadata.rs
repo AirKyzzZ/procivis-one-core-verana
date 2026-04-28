@@ -3,11 +3,11 @@ use std::fmt::Debug;
 use std::sync::Arc;
 
 use serde::de::DeserializeOwned;
-use time::{Duration, OffsetDateTime};
+use time::OffsetDateTime;
 use url::Url;
 
 use super::{CacheError, CachingLoader, ResolveResult, Resolver, ResolverError};
-use crate::config::core_config::{CacheEntityCacheType, CacheEntityConfig, CoreConfig};
+use crate::config::core_config::{CacheEntityCacheType, CoreConfig};
 use crate::error::ContextWithErrorCode;
 use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::Jwt;
@@ -152,12 +152,7 @@ pub(crate) fn openid_metadata_cache_from_config(
         .entities
         .get("OPENID_METADATA")
         .cloned()
-        .unwrap_or(CacheEntityConfig {
-            cache_refresh_timeout: Duration::days(1),
-            cache_size: 100,
-            cache_type: CacheEntityCacheType::Db,
-            refresh_after: Duration::minutes(5),
-        });
+        .unwrap_or_default();
 
     let storage: Arc<dyn RemoteEntityStorage> = match config.cache_type {
         CacheEntityCacheType::Db => Arc::new(DbStorage::new(remote_entity_cache_repository)),

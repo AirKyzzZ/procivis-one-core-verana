@@ -4,10 +4,10 @@ use std::sync::Arc;
 use anyhow::Context;
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
-use time::{Duration, OffsetDateTime};
+use time::OffsetDateTime;
 
 use super::{CacheError, CachingLoader, ResolveResult, Resolver, ResolverError};
-use crate::config::core_config::{CacheEntityCacheType, CacheEntityConfig, CoreConfig};
+use crate::config::core_config::{CacheEntityCacheType, CoreConfig};
 use crate::error::ContextWithErrorCode;
 use crate::proto::http_client::HttpClient;
 use crate::provider::remote_entity_storage::db_storage::DbStorage;
@@ -171,12 +171,7 @@ pub(crate) async fn initialize_vct_type_metadata_cache_from_config(
         .entities
         .get("VCT_METADATA")
         .cloned()
-        .unwrap_or(CacheEntityConfig {
-            cache_refresh_timeout: Duration::days(1),
-            cache_size: 100,
-            cache_type: CacheEntityCacheType::Db,
-            refresh_after: Duration::minutes(5),
-        });
+        .unwrap_or_default();
 
     let storage: Arc<dyn RemoteEntityStorage> = match config.cache_type {
         CacheEntityCacheType::Db => Arc::new(DbStorage::new(remote_entity_cache_repository)),

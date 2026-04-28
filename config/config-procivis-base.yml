@@ -743,6 +743,18 @@ cacheEntities:
     refreshAfter: 86400
     cacheRefreshTimeout: 86400
     cacheSize: 1000
+  # Caching of REMOTE_TRUST_COLLECTION and WALLET_PROVIDER_METADATA is done only for the trust collection sync task for
+  # org wallets. Generally the information should be fresh, so cache refresh time is short.
+  REMOTE_TRUST_COLLECTION:
+    cacheType: DB
+    refreshAfter: 300
+    cacheRefreshTimeout: 86400
+    cacheSize: 1000
+  WALLET_PROVIDER_METADATA:
+    cacheType: DB
+    refreshAfter: 300
+    cacheRefreshTimeout: 86400
+    cacheSize: 1000
 trustManagement:
   SIMPLE_TRUST_LIST:
     display: "trustManagement.simpleTrustList"

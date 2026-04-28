@@ -265,7 +265,7 @@ pub struct WalletProviderMetadataResponseDTO {
     pub feature_flags: FeatureFlags,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProviderTrustCollectionDTO {
     pub id: TrustCollectionId,
@@ -275,7 +275,7 @@ pub struct ProviderTrustCollectionDTO {
     pub description: Vec<DisplayNameDTO>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DisplayNameDTO {
     pub lang: String,
