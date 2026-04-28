@@ -99,6 +99,7 @@ impl VerifierInstanceService {
                         provider_type: request.r#type,
                         provider_name: metadata.verifier_name.to_owned(),
                         provider_url,
+                        trusted_issuer_required: false,
                         organisation: Some(organisation),
                     })
                     .await

@@ -19,6 +19,7 @@ async fn test_db_schema_wallet_instance() {
             "wallet_provider_type",
             "wallet_provider_name",
             "authentication_key_jwk",
+            "trusted_rp_required",
         ])
         .index(
             "index-WalletUnit-Organisation-AuthenticationKey-Unique",
@@ -84,6 +85,11 @@ async fn test_db_schema_wallet_instance() {
         .column("authentication_key_jwk")
         .r#type(ColumnType::Text)
         .nullable(true);
+    wallet_instance
+        .column("trusted_rp_required")
+        .r#type(ColumnType::Boolean)
+        .nullable(false)
+        .default(None);
 }
 
 #[tokio::test]

@@ -228,6 +228,9 @@ impl From<DefaultValue> for DefaultType {
         match value {
             DefaultValue::String(text) => Self::String(text),
             DefaultValue::Integer(number) => Self::Integer(number),
+            DefaultValue::Boolean(bool) => {
+                Self::String(if bool { "TRUE" } else { "FALSE" }.to_string())
+            }
         }
     }
 }

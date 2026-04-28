@@ -36,6 +36,7 @@ impl TryFrom<wallet_instance::Model> for WalletInstance {
             name: value.name,
             organisation: None,
             nonce: value.nonce,
+            trusted_rp_required: value.trusted_rp_required,
             attested_keys: None,
         })
     }

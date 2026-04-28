@@ -12,6 +12,7 @@ pub struct VerifierInstance {
     pub provider_type: String,
     pub provider_name: String,
     pub provider_url: String,
+    pub trusted_issuer_required: bool,
 
     // Relations:
     pub organisation: Option<Organisation>,

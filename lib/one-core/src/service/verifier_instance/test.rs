@@ -162,6 +162,7 @@ async fn test_get_trust_collections() {
                 provider_type: "PROCIVIS_ONE".to_string(),
                 provider_name: "provider-name".to_string(),
                 provider_url: "http://provider.url".to_string(),
+                trusted_issuer_required: false,
                 organisation: Some(dummy_organisation(Some(organisation_id))),
             }))
         });

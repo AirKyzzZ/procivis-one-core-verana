@@ -399,6 +399,7 @@ async fn provider_get_wallet_unit_session_org_mismatch() {
         authentication_key_jwk: None,
         last_issuance: None,
         nonce: None,
+        trusted_rp_required: false,
         organisation: Some(dummy_organisation(None)),
         attested_keys: None,
     };

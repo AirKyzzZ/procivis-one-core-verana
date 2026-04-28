@@ -37,6 +37,7 @@ impl VerifierInstancesDB {
             provider_url: params
                 .provider_url
                 .unwrap_or("http://provider.url".to_string()),
+            trusted_issuer_required: false,
             organisation: Some(organisation),
         };
 

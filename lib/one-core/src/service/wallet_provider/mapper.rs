@@ -55,6 +55,7 @@ pub(crate) fn wallet_unit_from_request(
         wallet_provider_type: wallet_provider_type.into(),
         authentication_key_jwk: public_key.cloned(),
         nonce,
+        trusted_rp_required: false,
         organisation: Some(organisation),
         attested_keys: None,
     })

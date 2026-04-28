@@ -247,6 +247,7 @@ fn dummy_verifier_instance() -> VerifierInstance {
         provider_type: "provider-type".to_string(),
         provider_name: "verifier-provider".to_string(),
         provider_url: "https://verifier-provider.org".to_string(),
+        trusted_issuer_required: false,
         organisation: Some(dummy_organisation(None)),
     }
 }

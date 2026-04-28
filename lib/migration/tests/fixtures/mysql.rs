@@ -247,6 +247,7 @@ impl From<DefaultValue> for ColumnDefault {
         match value {
             DefaultValue::String(text) => Self::String(text),
             DefaultValue::Integer(number) => Self::Int(number),
+            DefaultValue::Boolean(bool) => Self::Int(if bool { 1 } else { 0 }),
         }
     }
 }

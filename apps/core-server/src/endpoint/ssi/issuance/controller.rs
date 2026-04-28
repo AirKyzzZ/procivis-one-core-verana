@@ -21,10 +21,7 @@ use crate::router::AppState;
         ("credential_schema_id" = CredentialSchemaId, Path, description = "Credential schema id")
     ),
     responses(
-        (status = 200, description = "OK", content(
-            (SdJwtVcIssuerMetadataRestDTO = "application/json"),
-            (String = "application/jwt")
-        )),
+        (status = 200, description = "OK", body = SdJwtVcIssuerMetadataRestDTO),
         (status = 404, description = "Issuer not found"),
         (status = 500, description = "Server error"),
     ),

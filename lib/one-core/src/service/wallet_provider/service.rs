@@ -501,6 +501,7 @@ impl WalletProviderService {
                     last_issuance: Some(self.clock.now_utc()),
                     authentication_key_jwk: Some(jwk),
                     attested_keys: None,
+                    trusted_rp_required: None,
                 },
             )
             .await
@@ -592,6 +593,7 @@ impl WalletProviderService {
                     last_issuance: None,
                     authentication_key_jwk: None,
                     attested_keys: None,
+                    trusted_rp_required: None,
                 },
             )
             .await

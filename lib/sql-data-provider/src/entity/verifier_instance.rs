@@ -15,6 +15,7 @@ pub struct Model {
     pub provider_name: String,
     pub provider_type: String,
     pub provider_url: String,
+    pub trusted_issuer_required: bool,
     pub organisation_id: OrganisationId,
 }
 

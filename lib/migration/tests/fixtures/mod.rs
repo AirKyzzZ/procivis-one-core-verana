@@ -67,4 +67,5 @@ pub(super) enum ColumnType {
 pub(super) enum DefaultValue {
     String(String),
     Integer(i64),
+    Boolean(bool),
 }

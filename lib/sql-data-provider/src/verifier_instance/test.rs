@@ -88,6 +88,7 @@ fn test_verifier_instance(id: VerifierInstanceId, organisation: Organisation) ->
         provider_type: "test_type".to_string(),
         provider_name: "test_name".to_string(),
         provider_url: "test_url".to_string(),
+        trusted_issuer_required: false,
         organisation: Some(organisation),
     }
 }

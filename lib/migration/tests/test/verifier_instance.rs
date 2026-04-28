@@ -14,6 +14,7 @@ async fn test_db_schema_verifier_instance() {
             "provider_name",
             "provider_type",
             "provider_url",
+            "trusted_issuer_required",
         ])
         .index(
             "index-VerifierInstance-OrganisationId-Unique",
@@ -55,6 +56,11 @@ async fn test_db_schema_verifier_instance() {
     verifier_instance
         .column("provider_url")
         .r#type(ColumnType::String(None))
+        .nullable(false)
+        .default(None);
+    verifier_instance
+        .column("trusted_issuer_required")
+        .r#type(ColumnType::Boolean)
         .nullable(false)
         .default(None);
 }

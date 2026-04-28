@@ -300,6 +300,7 @@ impl From<DefaultValue> for ColumnExpression {
         match value {
             DefaultValue::String(text) => Self(text),
             DefaultValue::Integer(number) => Self(number.to_string()),
+            DefaultValue::Boolean(bool) => Self(if bool { "true" } else { "false" }.to_string()),
         }
     }
 }

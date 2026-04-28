@@ -13,6 +13,7 @@ impl From<Model> for VerifierInstance {
             provider_type: value.provider_type,
             provider_name: value.provider_name,
             provider_url: value.provider_url,
+            trusted_issuer_required: value.trusted_issuer_required,
             organisation: None,
         }
     }
@@ -30,6 +31,7 @@ impl TryFrom<VerifierInstance> for ActiveModel {
             provider_name: Set(value.provider_name),
             provider_type: Set(value.provider_type),
             provider_url: Set(value.provider_url),
+            trusted_issuer_required: Set(value.trusted_issuer_required),
             organisation_id: Set(value.organisation.ok_or(DataLayerError::MappingError)?.id),
         })
     }

@@ -61,6 +61,7 @@ impl WalletInstancesDB {
                 .last_issuance
                 .unwrap_or(Some(six_hours_ago)),
             nonce: test_wallet_instance.nonce,
+            trusted_rp_required: false,
             organisation: Some(organisation),
             attested_keys: test_wallet_instance.attested_keys,
         };

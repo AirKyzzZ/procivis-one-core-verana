@@ -262,6 +262,7 @@ impl MigratorTrait for Migrator {
             Box::new(
                 migrations::m20260423_110000_migrate_history_target_to_identifier_id::Migration,
             ),
+            Box::new(migrations::m20260427_113000_add_trusted_requirements::Migration),
         ]
     }
 }
