@@ -5,6 +5,8 @@ use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 
 pub(crate) mod dto;
 pub(crate) mod manager;
+#[cfg(test)]
+mod test;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]

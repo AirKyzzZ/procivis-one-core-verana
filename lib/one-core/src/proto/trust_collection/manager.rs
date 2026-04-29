@@ -54,7 +54,7 @@ impl TrustCollectionManager for TrustCollectionManagerImpl {
                         self.repository
                             .create(TrustCollection {
                                 id: Uuid::new_v4().into(),
-                                name: collection.name,
+                                name: collection.name.clone(),
                                 created_date: now,
                                 last_modified: now,
                                 deactivated_at: None,
@@ -63,7 +63,10 @@ impl TrustCollectionManager for TrustCollectionManagerImpl {
                                 organisation: None,
                             })
                             .await
-                            .error_while("creating trust collection")?,
+                            .error_while(format!(
+                                "creating trust collection with name `{}` in organisation {organisation_id}",
+                                collection.name,
+                            ))?,
                     );
                 }
 
@@ -92,8 +95,7 @@ impl TrustCollectionManager for TrustCollectionManagerImpl {
                                 id: organisation_id,
                                 include_inherited_collections: false,
                             }
-                            .condition()
-                                & TrustCollectionFilterValue::Remote(true),
+                            .condition(),
                         ),
                         ..Default::default()
                     })
@@ -101,9 +103,10 @@ impl TrustCollectionManager for TrustCollectionManagerImpl {
                     .error_while("listing existing trust collections")?;
                 let (to_keep, to_delete): (Vec<_>, Vec<_>) =
                     existing_collections.values.iter().partition(|existing| {
-                        remote_collections
-                            .iter()
-                            .any(|remote| existing.name == remote.name)
+                        remote_collections.iter().any(|remote| {
+                            existing.name == remote.name
+                                || existing.remote_trust_collection_url.is_none()
+                        })
                     });
                 for collection_to_delete in to_delete {
                     self.repository
@@ -123,7 +126,13 @@ impl TrustCollectionManager for TrustCollectionManagerImpl {
                 let mut created = self
                     .create_empty_trust_collections(provider_url, to_create, organisation_id)
                     .await?;
-                created.extend(to_keep.iter().map(|c| c.id));
+                created.extend(
+                    to_keep
+                        .iter()
+                        // do not return local collections
+                        .filter(|c| c.remote_trust_collection_url.is_some())
+                        .map(|c| c.id),
+                );
                 Ok(created)
             }
             .boxed())

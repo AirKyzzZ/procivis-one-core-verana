@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use mockall::Sequence;
 use similar_asserts::assert_eq;
+use url::Url;
 use uuid::Uuid;
 
 use crate::model::common::GetListResponse;
@@ -269,7 +270,7 @@ fn dummy_collection(name: String) -> TrustCollection {
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         deactivated_at: None,
-        remote_trust_collection_url: None,
+        remote_trust_collection_url: Some(Url::parse("https://remote.collection").unwrap()),
         organisation_id: Uuid::new_v4().into(),
         organisation: None,
     }

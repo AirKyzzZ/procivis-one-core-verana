@@ -190,7 +190,7 @@ impl TrustCollectionSyncTask {
                 .trust_collection_sync
                 .sync_remote_trust_collections(&provider_url, remote_collections, organisation_id)
                 .await
-                .error_while("creating empty trust collections")?;
+                .error_while("syncing trust collections")?;
 
             let collections = self
                 .trust_collection_repository
