@@ -102,6 +102,7 @@ indexing_slicing        = "deny"
 let_underscore_must_use = "warn"
 panic                   = "deny"
 print_stderr            = "deny"
+print_stdout            = "deny"
 redundant_clone         = "warn"
 unwrap_used             = "deny"
 

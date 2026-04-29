@@ -120,7 +120,7 @@ async fn run_server(config: ServerConfig, core: OneCore) {
     start_server(listener, config, core).await
 }
 
-#[expect(clippy::expect_used)]
+#[expect(clippy::expect_used, clippy::print_stdout)]
 async fn run_task(task: String, params: Option<serde_json::Value>, core: OneCore) {
     match core.task_service.run(&task.into(), params).await {
         Ok(result) => {

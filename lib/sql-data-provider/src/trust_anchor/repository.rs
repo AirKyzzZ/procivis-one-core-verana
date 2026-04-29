@@ -9,8 +9,8 @@ use one_dto_mapper::convert_inner;
 use sea_orm::prelude::Expr;
 use sea_orm::sea_query::Func;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseBackend, EntityTrait, PaginatorTrait, QueryFilter,
-    QueryOrder, QuerySelect, QueryTrait,
+    ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
+    QuerySelect,
 };
 use shared_types::TrustAnchorId;
 
@@ -70,10 +70,6 @@ impl TrustAnchorRepository for TrustAnchorProvider {
             .with_list_query(&filters)
             .order_by_desc(trust_anchor::Column::CreatedDate)
             .order_by_desc(trust_anchor::Column::Id);
-
-        println!();
-        println!("{}", query.build(DatabaseBackend::Postgres));
-        println!();
 
         let (items_count, trust_anchors) = tokio::join!(
             query.to_owned().count(&self.db),
