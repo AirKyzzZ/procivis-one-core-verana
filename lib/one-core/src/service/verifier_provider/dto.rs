@@ -4,7 +4,7 @@ use crate::provider::verifier::model::{FeatureFlags, VerifierAppVersion};
 
 #[derive(Clone, Debug)]
 pub struct VerifierProviderMetadataResponseDTO {
-    pub verifier_name: String,
+    pub name: String,
     pub app_version: Option<VerifierAppVersion>,
     pub trust_collections: Vec<ProviderTrustCollectionDTO>,
     pub feature_flags: FeatureFlags,

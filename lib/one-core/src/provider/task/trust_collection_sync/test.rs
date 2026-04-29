@@ -338,7 +338,7 @@ fn dummy_verifier_provider_metadata(
     collections: &[TrustCollection],
 ) -> VerifierProviderMetadataResponseDTO {
     VerifierProviderMetadataResponseDTO {
-        verifier_name: "verifier-provider".to_string(),
+        name: "verifier-provider".to_string(),
         app_version: None,
         trust_collections: collections
             .iter()

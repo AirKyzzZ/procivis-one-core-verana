@@ -13,7 +13,13 @@ use utoipa::ToSchema;
 #[from(VerifierProviderMetadataResponseDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct VerifierProviderResponseDTO {
+    // ONE-9505: only present for backwards compatibility with old verifier apps
+    // can be removed once all verifier apps updated with latest core
+    #[deprecated]
+    #[from(replace = "\"PROCIVIS_ONE\"")]
     pub verifier_name: String,
+
+    pub name: String,
     #[from(with_fn = convert_inner)]
     pub app_version: Option<VerifierProviderAppVersionResponseDTO>,
     #[from(with_fn = convert_inner)]

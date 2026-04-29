@@ -9,7 +9,7 @@ use crate::service::verifier_provider::dto;
 #[serde(rename_all = "camelCase")]
 #[into(dto::VerifierProviderMetadataResponseDTO)]
 pub(super) struct VerifierProviderMetadataResponseRestDTO {
-    pub verifier_name: String,
+    pub name: String,
     #[into(with_fn = convert_inner)]
     pub app_version: Option<VerifierAppVersion>,
     #[into(with_fn = convert_inner)]

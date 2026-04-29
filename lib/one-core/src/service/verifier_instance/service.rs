@@ -86,7 +86,7 @@ impl VerifierInstanceService {
         let verifier_instance_id = Uuid::new_v4().into();
         let success_log = format!(
             "Registered verifier instance `{}`({verifier_instance_id}) using provider `{provider_url}`",
-            metadata.verifier_name
+            metadata.name
         );
 
         self.tx_manager
@@ -97,7 +97,7 @@ impl VerifierInstanceService {
                         created_date: now,
                         last_modified: now,
                         provider_type: request.r#type,
-                        provider_name: metadata.verifier_name.to_owned(),
+                        provider_name: metadata.name.to_owned(),
                         provider_url,
                         trusted_issuer_required: false,
                         organisation: organisation.into(),
@@ -110,7 +110,7 @@ impl VerifierInstanceService {
                         id: Uuid::new_v4().into(),
                         created_date: now,
                         action: HistoryAction::Created,
-                        name: metadata.verifier_name,
+                        name: metadata.name,
                         source: HistorySource::Core,
                         target: None,
                         entity_id: Some(verifier_instance_id.into()),

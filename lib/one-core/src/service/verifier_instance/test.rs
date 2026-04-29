@@ -109,7 +109,7 @@ async fn test_register_verifier_instance_success() {
         ))
         .return_once(|_| {
             Ok(VerifierProviderMetadataResponseDTO {
-                verifier_name: "provider-name".to_string(),
+                name: "provider-name".to_string(),
                 app_version: None,
                 trust_collections: vec![],
                 feature_flags: FeatureFlags {
@@ -176,7 +176,7 @@ async fn test_get_trust_collections() {
         ))
         .return_once(|_| {
             Ok(VerifierProviderMetadataResponseDTO {
-                verifier_name: "provider-name".to_string(),
+                name: "provider-name".to_string(),
                 app_version: None,
                 trust_collections: vec![ProviderTrustCollectionDTO {
                     id: Uuid::new_v4().into(),

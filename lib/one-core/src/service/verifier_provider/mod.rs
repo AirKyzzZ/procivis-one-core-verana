@@ -80,7 +80,7 @@ impl VerifierProviderService {
         };
 
         Ok(VerifierProviderMetadataResponseDTO {
-            verifier_name: verifier.verifier_name,
+            name: id.to_string(),
             app_version: verifier.app_version,
             trust_collections,
             feature_flags: verifier.feature_flags,

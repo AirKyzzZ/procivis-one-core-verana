@@ -16,7 +16,7 @@ async fn test_get_verifier_provider_success() {
     // THEN
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
-    assert_eq!(body["verifierName"], "Procivis One Verifier");
+    assert_eq!(body["name"], "PROCIVIS_ONE");
     assert_eq!(body["appVersion"]["minimum"], "v1.50.0");
     assert_eq!(body["appVersion"]["minimumRecommended"], "v1.55.0");
 

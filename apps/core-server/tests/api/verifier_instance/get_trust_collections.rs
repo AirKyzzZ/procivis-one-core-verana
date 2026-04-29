@@ -18,7 +18,7 @@ async fn get_verifier_instance_trust_collections_empty() {
     Mock::given(method(Method::GET))
         .and(path("/ssi/verifier-provider/v1/PROCIVIS_ONE"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
-          "verifierName": "verifier-name",
+          "name": "verifier-name",
           "featureFlags": {
             "trustEcosystemsEnabled": true
           },
@@ -65,7 +65,7 @@ async fn get_verifier_instance_trust_collections_one_collection() {
     Mock::given(method(Method::GET))
         .and(path("/ssi/verifier-provider/v1/PROCIVIS_ONE"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
-          "verifierName": "verifier-name",
+          "name": "verifier-name",
           "featureFlags": {
             "trustEcosystemsEnabled": true
           },

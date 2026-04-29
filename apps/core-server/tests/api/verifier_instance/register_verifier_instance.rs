@@ -20,7 +20,7 @@ async fn register_verifier_instance_successfully() {
     Mock::given(method(Method::GET))
         .and(path("/ssi/verifier-provider/v1/PROCIVIS_ONE"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
-          "verifierName": "verifier-name",
+          "name": "verifier-name",
           "featureFlags": {
             "trustEcosystemsEnabled": true
           },
