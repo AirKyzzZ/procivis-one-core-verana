@@ -35,23 +35,24 @@ impl CertificateSerial {
     }
 }
 
+/// Used for the Authority Key Identifier or Subject Key Identifier extensions
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
-pub struct AuthorityKeyIdentifier(Vec<u8>);
+pub struct KeyIdentifier(Vec<u8>);
 
-impl From<Vec<u8>> for AuthorityKeyIdentifier {
+impl From<Vec<u8>> for KeyIdentifier {
     fn from(value: Vec<u8>) -> Self {
         Self(value)
     }
 }
 
-impl AuthorityKeyIdentifier {
+impl KeyIdentifier {
     pub fn from_base64url(value: &str) -> Result<Self, ct_codecs::Error> {
         Ok(Self(Base64UrlSafeNoPadding::decode_to_vec(value, None)?))
     }
 }
 
-impl core::fmt::LowerHex for AuthorityKeyIdentifier {
+impl core::fmt::LowerHex for KeyIdentifier {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let bytes: Vec<_> = self.0.iter().map(|b| format!("{b:02x}")).collect();
         f.write_str(&bytes.join(":"))
@@ -59,7 +60,7 @@ impl core::fmt::LowerHex for AuthorityKeyIdentifier {
 }
 
 // serialization from/into base64url string
-impl Serialize for AuthorityKeyIdentifier {
+impl Serialize for KeyIdentifier {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -70,7 +71,7 @@ impl Serialize for AuthorityKeyIdentifier {
     }
 }
 
-impl<'de> Deserialize<'de> for AuthorityKeyIdentifier {
+impl<'de> Deserialize<'de> for KeyIdentifier {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: de::Deserializer<'de>,

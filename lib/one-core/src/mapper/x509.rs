@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use ct_codecs::{Base64, Decoder, Encoder};
 use one_crypto::signer::ecdsa::ECDSASigner;
-use standardized_types::x509::AuthorityKeyIdentifier;
+use standardized_types::x509::KeyIdentifier;
 use x509_parser::certificate::X509Certificate;
 use x509_parser::extensions::ParsedExtension;
 use x509_parser::oid_registry::{
@@ -83,7 +83,7 @@ pub(crate) fn subject_key_identifier(
 
 pub(crate) fn authority_key_identifier(
     cert: &X509Certificate,
-) -> Result<Option<AuthorityKeyIdentifier>, CertificateParsingError> {
+) -> Result<Option<KeyIdentifier>, CertificateParsingError> {
     Ok(cert
         .get_extension_unique(&OID_X509_EXT_AUTHORITY_KEY_IDENTIFIER)?
         .map(|ext| ext.parsed_extension())
@@ -99,13 +99,13 @@ pub(crate) fn authority_key_identifier(
                 .ok_or(CertificateParsingError::MissingAuthorityKeyIdentifier)
         })
         .transpose()?
-        .map(|key_id| AuthorityKeyIdentifier::from(key_id.0.to_owned())))
+        .map(|key_id| KeyIdentifier::from(key_id.0.to_owned())))
 }
 
 /// For each certificate in the chain, retrieve the authority key identifier.
 pub fn pem_chain_to_authority_key_identifiers(
     pem_chain: &str,
-) -> Result<Vec<AuthorityKeyIdentifier>, CertificateParsingError> {
+) -> Result<Vec<KeyIdentifier>, CertificateParsingError> {
     Pem::iter_from_buffer(pem_chain.as_bytes())
         .map(|pem| {
             let pem = pem?;
@@ -117,6 +117,33 @@ pub fn pem_chain_to_authority_key_identifiers(
         // hence filter out the empty values.
         .filter_map(Result::transpose)
         .collect()
+}
+
+/// Extracts the Subject key identifier from the leaf certificate (if any)
+/// Consumes either PEM chain or a single PEM certificate
+pub fn pem_to_subject_key_identifier(
+    pem: &str,
+) -> Result<Option<KeyIdentifier>, CertificateParsingError> {
+    let leaf = Pem::iter_from_buffer(pem.as_bytes()).next();
+    let Some(leaf) = leaf else {
+        return Ok(None);
+    };
+
+    let pem = leaf?;
+    let cert = pem.parse_x509()?;
+    let Some(ski) = cert
+        .get_extension_unique(&OID_X509_EXT_SUBJECT_KEY_IDENTIFIER)?
+        .map(|ext| ext.parsed_extension())
+        .map(|ext| match ext {
+            ParsedExtension::SubjectKeyIdentifier(key_identifier) => Ok(key_identifier),
+            _ => Err(CertificateParsingError::UnexpectedExtension),
+        })
+        .transpose()?
+    else {
+        return Ok(None);
+    };
+
+    Ok(Some(ski.0.to_vec().into()))
 }
 
 #[derive(Debug, thiserror::Error)]

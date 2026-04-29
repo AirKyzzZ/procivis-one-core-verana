@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use dcql::{CredentialFormat, CredentialQuery, TrustedAuthority};
 use shared_types::DidValue;
 use standardized_types::jwk::PublicJwk;
-use standardized_types::x509::AuthorityKeyIdentifier;
+use standardized_types::x509::KeyIdentifier;
 
 use crate::config::core_config::{DidType, FormatType, VerificationProtocolType};
 use crate::mapper::NESTED_CLAIM_MARKER;
@@ -869,7 +869,7 @@ fn check_issuer_is_trusted_authority(
     ))
 }
 
-pub(crate) fn get_trusted_akis(authorities: &[TrustedAuthority]) -> Vec<AuthorityKeyIdentifier> {
+pub(crate) fn get_trusted_akis(authorities: &[TrustedAuthority]) -> Vec<KeyIdentifier> {
     let mut result = vec![];
     for authority in authorities {
         if let TrustedAuthority::AuthorityKeyId { values } = authority {

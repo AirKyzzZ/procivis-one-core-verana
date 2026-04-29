@@ -133,8 +133,8 @@ impl Resolver for EtsiLoteResolver {
 
         let preprocessed_list = preprocess_lote(
             lote,
-            &*self.certificate_validator,
-            &*self.key_algorithm_provider,
+            self.certificate_validator.as_ref(),
+            self.key_algorithm_provider.as_ref(),
         )
         .await
         .error_while("preprocessing ETSI LoTE")?;

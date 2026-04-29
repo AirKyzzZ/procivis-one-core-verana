@@ -7,14 +7,17 @@ use standardized_types::etsi_119_602::{
     LoTEPayload, MultiLangString, ServiceDigitalIdentity, TrustedEntity, TrustedEntityInformation,
 };
 use standardized_types::jwk::PublicJwk;
+use standardized_types::x509::KeyIdentifier;
 use x509_parser::error::X509Error;
 use x509_parser::oid_registry::OID_X509_EXT_SUBJECT_KEY_IDENTIFIER;
 
-use super::model::PreprocessedLote;
+use super::model::{CertificateEntry, PreprocessedLote};
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, NestedError};
-use crate::mapper::x509::x5c_into_pem_chain;
+use crate::mapper::x509::{pem_to_subject_key_identifier, x5c_into_pem_chain};
 use crate::proto::certificate_validator::parse::extract_leaf_pem_from_chain;
-use crate::proto::certificate_validator::{CertificateValidationOptions, CertificateValidator};
+use crate::proto::certificate_validator::{
+    CertificateValidationOptions, CertificateValidator, ParsedCertificate,
+};
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
 #[derive(Debug, thiserror::Error)]
@@ -84,28 +87,54 @@ pub(super) async fn preprocess_lote(
         role: lote_type,
         trusted_entities: Vec::new(),
         certificate_fingerprints: HashMap::new(),
+        certificate_by_subject_key_identifier: HashMap::new(),
         public_keys: HashMap::new(),
     };
+
     let Some(trusted_entities) = lote.trusted_entities_list else {
         return Ok(preprocessed_lote);
     };
-    for (idx, trusted_entity) in trusted_entities.into_iter().enumerate() {
+
+    for trusted_entity in trusted_entities {
         let PreprocessingResult {
             entity,
-            fingerprints,
+            certificates,
             public_keys,
-        } = preprocess_trusted_entity(
+        } = match preprocess_trusted_entity(
             trusted_entity,
             certificate_validator,
             key_algorithm_provider,
         )
-        .await?;
+        .await
+        {
+            Ok(res) => res,
+            Err(err) => {
+                tracing::warn!(%err, "Failed to preprocess trusted entity, skipping");
+                continue;
+            }
+        };
+
         preprocessed_lote.trusted_entities.push(entity);
-        for fingerprint in fingerprints {
+        let idx = preprocessed_lote.trusted_entities.len() - 1;
+
+        for certificate in certificates {
             preprocessed_lote
                 .certificate_fingerprints
-                .insert(fingerprint, idx);
+                .insert(certificate.fingerprint, idx);
+
+            if let Some(subject_key_identifier) = certificate.subject_key_identifier {
+                preprocessed_lote
+                    .certificate_by_subject_key_identifier
+                    .insert(
+                        subject_key_identifier,
+                        CertificateEntry {
+                            idx,
+                            pem: certificate.pem,
+                        },
+                    );
+            }
         }
+
         for public_key in public_keys {
             preprocessed_lote.public_keys.insert(public_key, idx);
         }
@@ -115,8 +144,14 @@ pub(super) async fn preprocess_lote(
 
 struct PreprocessingResult {
     entity: TrustedEntityInformation,
-    fingerprints: Vec<String>,
+    certificates: Vec<PreprocessedCertificate>,
     public_keys: Vec<String>,
+}
+
+struct PreprocessedCertificate {
+    subject_key_identifier: Option<KeyIdentifier>,
+    fingerprint: String,
+    pem: String,
 }
 
 async fn preprocess_trusted_entity(
@@ -124,7 +159,7 @@ async fn preprocess_trusted_entity(
     certificate_validator: &dyn CertificateValidator,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> Result<PreprocessingResult, LotePreprocessingError> {
-    let mut fingerprints = HashSet::new();
+    let mut certificates = vec![];
     let mut public_keys = HashSet::new();
 
     for service in trusted_entity.trusted_entity_services {
@@ -136,7 +171,7 @@ async fn preprocess_trusted_entity(
         let service_name = &service.service_information.service_name;
 
         if identity.x509_certificates.is_some() {
-            fingerprints.extend(
+            certificates.extend(
                 preprocess_certificate_identity(
                     &identity,
                     entity_name,
@@ -161,7 +196,7 @@ async fn preprocess_trusted_entity(
         }
     }
 
-    if fingerprints.is_empty() && public_keys.is_empty() {
+    if certificates.is_empty() && public_keys.is_empty() {
         return Err(LotePreprocessingError::InvalidContent(
             format!(
                 "No digital identity information for entity `{:?}`",
@@ -173,7 +208,7 @@ async fn preprocess_trusted_entity(
 
     Ok(PreprocessingResult {
         entity: trusted_entity.trusted_entity_information,
-        fingerprints: fingerprints.into_iter().collect(),
+        certificates,
         public_keys: public_keys.into_iter().collect(),
     })
 }
@@ -184,8 +219,8 @@ async fn preprocess_certificate_identity(
     service_name: &[MultiLangString],
     certificate_validator: &dyn CertificateValidator,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
-) -> Result<HashSet<String>, LotePreprocessingError> {
-    let mut fingerprints = HashSet::new();
+) -> Result<Vec<PreprocessedCertificate>, LotePreprocessingError> {
+    let mut result = vec![];
 
     let mut subject_key_identifiers = HashSet::new();
     let mut subject_names = HashSet::new();
@@ -204,19 +239,26 @@ async fn preprocess_certificate_identity(
         });
     }
 
-    for cert in lote_certs {
-        let pem_chain =
-            x5c_into_pem_chain(from_ref(&cert.val)).error_while("encoding certificate to PEM")?;
+    for lote_cert in lote_certs {
+        let pem_chain = x5c_into_pem_chain(from_ref(&lote_cert.val))
+            .error_while("encoding certificate to PEM")?;
 
-        // General validation
-        let validated_cert = certificate_validator
+        let subject_key_identifier =
+            pem_to_subject_key_identifier(&pem_chain).error_while("parsing PEM chain SKI")?;
+
+        let fingerprint = match certificate_validator
             .parse_pem_chain(
                 &pem_chain,
                 CertificateValidationOptions::signature_and_revocation(None),
             )
             .await
-            .error_while("validating certificate")?;
-        fingerprints.insert(validated_cert.attributes.fingerprint);
+        {
+            Ok(ParsedCertificate { attributes, .. }) => attributes.fingerprint,
+            Err(err) => {
+                tracing::warn!(%err, "Failed to validate certificate on trust-list, skipping");
+                continue;
+            }
+        };
 
         let pem = extract_leaf_pem_from_chain(pem_chain.as_bytes())
             .error_while("parsing certificate value")?;
@@ -228,6 +270,12 @@ async fn preprocess_certificate_identity(
             subject_key_identifiers.insert(subject_key_identifier);
         }
         subject_names.insert(cert.subject.to_string());
+
+        result.push(PreprocessedCertificate {
+            subject_key_identifier,
+            fingerprint,
+            pem: pem_chain,
+        });
     }
 
     // validate consistency
@@ -273,7 +321,7 @@ async fn preprocess_certificate_identity(
         }
     }
 
-    Ok(fingerprints)
+    Ok(result)
 }
 
 fn preprocess_public_key_identity(

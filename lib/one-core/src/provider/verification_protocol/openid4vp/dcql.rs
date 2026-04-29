@@ -9,7 +9,7 @@ use dcql::{
 use itertools::Itertools;
 use one_dto_mapper::convert_inner;
 use shared_types::{ClaimId, CredentialId, OrganisationId};
-use standardized_types::x509::AuthorityKeyIdentifier;
+use standardized_types::x509::KeyIdentifier;
 
 use crate::config::core_config::{CoreConfig, FormatType};
 use crate::error::ContextWithErrorCode;
@@ -365,7 +365,7 @@ pub(super) async fn filter_credentials_by_trusted_authorities(
     credentials.retain(|cred| credential_issuer_in_aki_list(cred, trusted_akis.as_slice()));
 }
 
-fn credential_issuer_in_aki_list(credential: &Credential, list: &[AuthorityKeyIdentifier]) -> bool {
+fn credential_issuer_in_aki_list(credential: &Credential, list: &[KeyIdentifier]) -> bool {
     let Some(issuer_cert) = credential.issuer_certificate.as_ref() else {
         return false;
     };

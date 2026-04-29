@@ -1,3 +1,4 @@
+use hex_literal::hex;
 use one_core::model::certificate::CertificateState;
 use one_core::model::identifier::IdentifierType;
 use one_core::model::remote_entity_cache::{CacheType, RemoteEntityCacheEntry};
@@ -6,6 +7,7 @@ use one_core::model::trust_list_subscription::TrustListSubscriptionState;
 use shared_types::TrustListSubscriberId;
 use similar_asserts::assert_eq;
 use standardized_types::etsi_119_602::{MultiLangString, TrustedEntityInformation};
+use standardized_types::x509::KeyIdentifier;
 use uuid::Uuid;
 use wiremock::matchers::method;
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -75,7 +77,19 @@ trustListSubscriber:
     "#;
     let context = TestContext::new(Some(additional_config.to_string())).await;
     let organisation = context.db.organisations.create().await;
-    let fingerprint = "test-fingerprint";
+
+    let pem = r#"-----BEGIN CERTIFICATE-----
+MIHkMIGXoAMCAQICFGplpJ84r+DSD8MnjFLdyhcQiGc8MAUGAytlcDAAMCAXDTI1
+MDYxNjE1MDQxMloYDzQ3NjMwNTEzMTUwNDEyWjAAMCowBQYDK2VwAyEADPgdSzff
+JD51EE4P8hvRxcwsuVAbfbn/6XozFbn4GT+jITAfMB0GA1UdDgQWBBRsnYgGqNo/
+0Yrapt79gdzc258hbTAFBgMrZXADQQAGooxtr6luOPyLyhJLDTZMz75hzhbokc4Q
+X2qJiGDrkN4Lr/85kRw7KHlsHq/w1aXLp0/Eg/c5aMur6qSWBjMD
+-----END CERTIFICATE-----
+"#;
+    let ski: KeyIdentifier = hex!("6C9D8806A8DA3FD18ADAA6DEFD81DCDCDB9F216D")
+        .to_vec()
+        .into();
+    let fingerprint = "6d10f03019ebbf6eb5eb50a85664dcd81ab162f178657f76adc2b8885a9bdb5a";
 
     // 1. Prepare PreprocessedLote
     let trusted_entity = TrustedEntityInformation {
@@ -86,12 +100,20 @@ trustListSubscriber:
         ..Default::default()
     };
 
+    let ski = serde_json::to_string(&ski).unwrap();
+    let ski = ski.trim_matches('"');
     let preprocessed_lote = serde_json::json!({
         "role": "ISSUER",
         "trusted_entities": [trusted_entity],
         "certificate_fingerprints": {
             fingerprint: 0
         },
+        "certificate_by_subject_key_identifier": {
+            ski: {
+                "idx": 0,
+                "pem": pem
+            }
+        }
     });
 
     let value = serde_json::to_vec(&preprocessed_lote).unwrap();
@@ -138,8 +160,9 @@ trustListSubscriber:
         .create(
             identifier.id,
             TestingCertificateParams {
-                fingerprint: Some(fingerprint.to_string()),
                 state: Some(CertificateState::Active),
+                chain: Some(pem.to_string()),
+                fingerprint: Some(fingerprint.to_string()),
                 ..Default::default()
             },
         )

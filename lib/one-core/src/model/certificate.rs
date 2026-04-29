@@ -20,6 +20,7 @@ pub struct Certificate {
     pub deleted_at: Option<OffsetDateTime>,
     pub expiry_date: OffsetDateTime,
     pub name: String,
+    /// PEM chain
     pub chain: String,
     pub fingerprint: String,
     pub state: CertificateState,

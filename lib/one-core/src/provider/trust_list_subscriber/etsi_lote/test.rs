@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use ct_codecs::Decoder as _;
 use maplit::hashmap;
+use mockall::predicate::{always, eq, ne};
 use similar_asserts::assert_eq;
 use time::macros::datetime;
 use time::{Duration, OffsetDateTime};
@@ -173,7 +174,7 @@ async fn resolve_untrusted_identifier() {
         .resolve_entries(&reference, &[identifier])
         .await
         .unwrap();
-    assert!(result.is_empty());
+    assert_eq!(result, HashMap::new());
 }
 
 #[tokio::test]
@@ -260,29 +261,45 @@ fn setup_subscriber(time: OffsetDateTime, reference: &Url) -> EtsiLoteSubscriber
     let cache_storage = Arc::new(InMemoryStorage::new(HashMap::new()));
 
     let mut certificate_validator = MockCertificateValidator::new();
+    let certificate = {
+        let mut handle = MockSignaturePublicKeyHandle::new();
+        handle.expect_verify().returning(|_, _| Ok(()));
+        ParsedCertificate {
+            attributes: CertificateX509AttributesDTO {
+                serial_number: "1F:24:63:13:8E:BA:60:0E:ED:73:CF:3C:93:4D:CE:BB:64:28:74:5E"
+                    .to_string(),
+                not_before: datetime!(2025-03-01 00:00 UTC),
+                not_after: datetime!(2028-03-01 00:00 UTC),
+                issuer: "CN=German Registrar, C=DE".to_string(),
+                subject: "CN=German Registrar, C=DE".to_string(),
+                fingerprint: TRUSTED_FINGERPRINT.to_string(),
+                extensions: vec![],
+            },
+            subject_common_name: None,
+            subject_key_identifier: None,
+            public_key: KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(Arc::new(
+                handle,
+            ))),
+        }
+    };
     certificate_validator
         .expect_parse_pem_chain()
-        .returning(|_, _| {
-            let mut handle = MockSignaturePublicKeyHandle::new();
-            handle.expect_verify().returning(|_, _| Ok(()));
-            Ok(ParsedCertificate {
-                attributes: CertificateX509AttributesDTO {
-                    serial_number: "1F:24:63:13:8E:BA:60:0E:ED:73:CF:3C:93:4D:CE:BB:64:28:74:5E"
-                        .to_string(),
-                    not_before: datetime!(2025-03-01 00:00 UTC),
-                    not_after: datetime!(2028-03-01 00:00 UTC),
-                    issuer: "CN=German Registrar, C=DE".to_string(),
-                    subject: "CN=German Registrar, C=DE".to_string(),
-                    fingerprint: TRUSTED_FINGERPRINT.to_string(),
-                    extensions: vec![],
-                },
-                subject_common_name: None,
-                subject_key_identifier: None,
-                public_key: KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(Arc::new(
-                    handle,
-                ))),
-            })
+        .with(eq(TRUSTED_CERT), always())
+        .returning({
+            let certificate = certificate.clone();
+            move |_, _| Ok(certificate.clone())
         });
+    certificate_validator
+        .expect_parse_pem_chain()
+        .with(ne(TRUSTED_CERT), always())
+        .returning({
+            let mut certificate = certificate.clone();
+            certificate.attributes.fingerprint = "unknown fingerprint".to_string();
+            move |_, _| Ok(certificate.clone())
+        });
+    certificate_validator
+        .expect_validate_chain_against_ca_chain()
+        .returning(move |_, _, _, _| Ok(certificate.clone()));
 
     let certificate_validator = Arc::new(certificate_validator);
     let resolver = EtsiLoteResolver::new(
@@ -355,25 +372,41 @@ fn setup_subscriber_xml(time: OffsetDateTime, reference: &Url) -> EtsiLoteSubscr
         .unwrap();
 
     let mut cert_validator = MockCertificateValidator::new();
+    let certificate = {
+        let now = OffsetDateTime::now_utc();
+        ParsedCertificate {
+            attributes: CertificateX509AttributesDTO {
+                serial_number: "test".to_string(),
+                not_before: now,
+                not_after: now,
+                issuer: "XAdES Test CA".to_string(),
+                subject: "XAdES Test CA".to_string(),
+                fingerprint: TRUSTED_FINGERPRINT.to_string(),
+                extensions: vec![],
+            },
+            subject_common_name: Some("XAdES Test CA".to_string()),
+            subject_key_identifier: None,
+            public_key: key_handle,
+        }
+    };
     cert_validator
         .expect_parse_pem_chain()
-        .returning(move |_, _| {
-            let now = OffsetDateTime::now_utc();
-            Ok(crate::proto::certificate_validator::ParsedCertificate {
-                attributes: CertificateX509AttributesDTO {
-                    serial_number: "test".to_string(),
-                    not_before: now,
-                    not_after: now,
-                    issuer: "XAdES Test CA".to_string(),
-                    subject: "XAdES Test CA".to_string(),
-                    fingerprint: TRUSTED_FINGERPRINT.to_string(),
-                    extensions: vec![],
-                },
-                subject_common_name: Some("XAdES Test CA".to_string()),
-                subject_key_identifier: None,
-                public_key: key_handle.clone(),
-            })
+        .with(eq(TRUSTED_CERT), always())
+        .returning({
+            let certificate = certificate.clone();
+            move |_, _| Ok(certificate.clone())
         });
+    cert_validator
+        .expect_parse_pem_chain()
+        .with(ne(TRUSTED_CERT), always())
+        .returning({
+            let mut certificate = certificate.clone();
+            certificate.attributes.fingerprint = "unknown fingerprint".to_string();
+            move |_, _| Ok(certificate.clone())
+        });
+    cert_validator
+        .expect_validate_chain_against_ca_chain()
+        .returning(move |_, _, _, _| Ok(certificate.clone()));
 
     let cert_validator = Arc::new(cert_validator);
     let crypto = one_crypto::initialize_crypto_provider();
@@ -384,7 +417,7 @@ fn setup_subscriber_xml(time: OffsetDateTime, reference: &Url) -> EtsiLoteSubscr
         client,
         Arc::new(MockDidMethodProvider::new()),
         key_algorithm_provider.clone(),
-        cert_validator,
+        cert_validator.clone(),
         Arc::new(xades),
         LoteContentType::Xml,
         Duration::seconds(0),
@@ -397,12 +430,7 @@ fn setup_subscriber_xml(time: OffsetDateTime, reference: &Url) -> EtsiLoteSubscr
         Duration::seconds(60),
     );
 
-    EtsiLoteSubscriber::new(
-        cache,
-        Arc::new(MockCertificateValidator::new()),
-        key_algorithm_provider,
-        vec![],
-    )
+    EtsiLoteSubscriber::new(cache, cert_validator, key_algorithm_provider, vec![])
 }
 
 #[tokio::test]

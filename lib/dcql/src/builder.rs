@@ -63,7 +63,7 @@ where
 #[cfg(test)]
 mod tests {
     use similar_asserts::assert_eq;
-    use standardized_types::x509::AuthorityKeyIdentifier;
+    use standardized_types::x509::KeyIdentifier;
 
     use crate::{
         ClaimQuery, ClaimQueryId, CredentialFormat, CredentialMeta, CredentialQuery,
@@ -282,8 +282,7 @@ mod tests {
                 },
                 TrustedAuthority::AuthorityKeyId {
                     values: vec![
-                        AuthorityKeyIdentifier::from_base64url("s9tIpPmhxdiuNkHMEWNpYim8S8Y")
-                            .unwrap(),
+                        KeyIdentifier::from_base64url("s9tIpPmhxdiuNkHMEWNpYim8S8Y").unwrap(),
                     ],
                 },
                 TrustedAuthority::Custom {

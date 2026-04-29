@@ -3,3 +3,4 @@ pub mod m20260423_072243_unsigned_to_signed;
 pub mod m20260423_100000_migrate_history_backup_metadata;
 pub mod m20260423_110000_migrate_history_target_to_identifier_id;
 pub mod m20260427_113000_add_trusted_requirements;
+pub mod m20260429_030600_clear_trust_list_cache;

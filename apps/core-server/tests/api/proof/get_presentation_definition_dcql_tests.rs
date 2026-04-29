@@ -2333,7 +2333,7 @@ mod trusted_authorities {
     use one_core::model::certificate::Certificate;
     use one_core::model::organisation::Organisation;
     use similar_asserts::assert_eq;
-    use standardized_types::x509::AuthorityKeyIdentifier;
+    use standardized_types::x509::KeyIdentifier;
 
     use super::*;
     use crate::fixtures::certificate::{
@@ -2342,7 +2342,7 @@ mod trusted_authorities {
 
     struct CertificateInfo {
         pub cert: Certificate,
-        pub aki: AuthorityKeyIdentifier,
+        pub aki: KeyIdentifier,
     }
 
     async fn create_cert_chain(
@@ -2371,7 +2371,7 @@ mod trusted_authorities {
         )
     }
 
-    fn aki_for_cert(cert: &Certificate) -> AuthorityKeyIdentifier {
+    fn aki_for_cert(cert: &Certificate) -> KeyIdentifier {
         let vec = pem_chain_to_authority_key_identifiers(&cert.chain).unwrap();
         vec.into_iter().next().unwrap()
     }

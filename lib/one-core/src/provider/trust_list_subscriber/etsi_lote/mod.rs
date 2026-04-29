@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use model::{CertificateEntry, PreprocessedLote};
+use preprocessing::jwk_to_der_b64;
 use serde::Deserialize;
 use serde_with::DurationSeconds;
 use shared_types::IdentifierId;
@@ -10,16 +12,15 @@ use strum::Display;
 use url::Url;
 
 use crate::error::ContextWithErrorCode;
+use crate::mapper::x509::pem_chain_to_authority_key_identifiers;
 use crate::model::identifier::{Identifier, IdentifierType};
 use crate::model::trust_list_role::TrustListRoleEnum;
 use crate::proto::certificate_validator::{
-    CertificateValidationOptions, CertificateValidator, ParsedCertificate,
+    CertSelection, CertificateValidationOptions, CertificateValidator, ParsedCertificate,
 };
 use crate::provider::caching_loader::etsi_lote::EtsiLoteCache;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::trust_list_subscriber::error::TrustListSubscriberError;
-use crate::provider::trust_list_subscriber::etsi_lote::model::PreprocessedLote;
-use crate::provider::trust_list_subscriber::etsi_lote::preprocessing::jwk_to_der_b64;
 use crate::provider::trust_list_subscriber::{
     Feature, TrustEntityResponse, TrustListSubscriber, TrustListSubscriberCapabilities,
     TrustListValidationSuccess,
@@ -130,7 +131,13 @@ impl TrustListSubscriber for EtsiLoteSubscriber {
         let list = self.get_list(reference).await?;
         let mut result = HashMap::new();
         for identifier in identifiers {
-            if let Some(entity) = find_matching_trusted_entity_for_identifier(identifier, &list)? {
+            if let Some(entity) = find_matching_trusted_entity_for_identifier(
+                identifier,
+                &list,
+                self.certificate_validator.as_ref(),
+            )
+            .await?
+            {
                 result.insert(identifier.id, TrustEntityResponse::LOTE(entity));
             }
         }
@@ -144,13 +151,10 @@ impl TrustListSubscriber for EtsiLoteSubscriber {
     ) -> Result<Option<TrustEntityResponse>, TrustListSubscriberError> {
         let list = self.get_list(reference).await?;
 
-        let ParsedCertificate { attributes, .. } = self
-            .certificate_validator
-            .parse_pem_chain(pem_chain, CertificateValidationOptions::no_validation())
-            .await
-            .error_while("parsing PEM")?;
-
-        if let Some(result) = find_matching_for_certificate(&list, &attributes.fingerprint)? {
+        if let Some(result) =
+            find_matching_for_certificate(&list, pem_chain, self.certificate_validator.as_ref())
+                .await?
+        {
             return Ok(Some(TrustEntityResponse::LOTE(result)));
         };
         Ok(None)
@@ -176,9 +180,10 @@ impl TrustListSubscriber for EtsiLoteSubscriber {
     }
 }
 
-fn find_matching_trusted_entity_for_identifier(
+async fn find_matching_trusted_entity_for_identifier(
     identifier: &Identifier,
     preprocessed_lote: &PreprocessedLote,
+    certificate_validator: &dyn CertificateValidator,
 ) -> Result<Option<TrustedEntityInformation>, TrustListSubscriberError> {
     match identifier.r#type {
         r#type @ IdentifierType::Did | r#type @ IdentifierType::Key => {
@@ -197,8 +202,12 @@ fn find_matching_trusted_entity_for_identifier(
                 return Ok(None);
             };
 
-            if let Some(result) =
-                find_matching_for_certificate(preprocessed_lote, &active_cert.fingerprint)?
+            if let Some(result) = find_matching_for_certificate(
+                preprocessed_lote,
+                &active_cert.chain,
+                certificate_validator,
+            )
+            .await?
             {
                 return Ok(Some(result));
             }
@@ -208,16 +217,77 @@ fn find_matching_trusted_entity_for_identifier(
     }
 }
 
-fn find_matching_for_certificate(
+async fn find_matching_for_certificate(
     preprocessed_lote: &PreprocessedLote,
-    fingerprint: &str,
+    pem_chain: &str,
+    certificate_validator: &dyn CertificateValidator,
 ) -> Result<Option<TrustedEntityInformation>, TrustListSubscriberError> {
-    // check fingerprint
-    let Some(idx) = preprocessed_lote.certificate_fingerprints.get(fingerprint) else {
-        // the certificate must be known
+    let chain_authority_key_identifers =
+        pem_chain_to_authority_key_identifiers(pem_chain).error_while("parsing PEM chain")?;
+
+    // try matching via trusted CA SKI == input AKI
+    let mut idx = if let Some(CertificateEntry {
+        idx,
+        pem: ca_pem_chain,
+    }) = chain_authority_key_identifers
+        .iter()
+        .find_map(|key_identifier| {
+            preprocessed_lote
+                .certificate_by_subject_key_identifier
+                .get(key_identifier)
+        }) {
+        // matching via CA hierarchy, check consistency of the whole chain
+        match certificate_validator
+            .validate_chain_against_ca_chain(
+                pem_chain,
+                ca_pem_chain,
+                CertificateValidationOptions::signature_and_revocation(None),
+                CertSelection::Leaf,
+            )
+            .await
+        {
+            Err(err) => {
+                tracing::warn!(%err, "Trust entity found via AKI, but consistency checking failed");
+                None
+            }
+            Ok(_) => {
+                tracing::debug!(
+                    "Found matching trusted certificate anchor via SKI, entry index: {idx}"
+                );
+                Some(*idx)
+            }
+        }
+    } else {
+        None
+    };
+
+    // fallback, try matching the leaf certificate directly via fingerprint
+    if idx.is_none() {
+        let ParsedCertificate { attributes, .. } = certificate_validator
+            .parse_pem_chain(
+                pem_chain,
+                CertificateValidationOptions::signature_and_revocation(None),
+            )
+            .await
+            .error_while("parsing input PEM chain")?;
+
+        if let Some(idx_by_fingerprint) = preprocessed_lote
+            .certificate_fingerprints
+            .get(&attributes.fingerprint)
+        {
+            tracing::debug!(
+                "Found matching trusted certificate anchor via fingerprint, entry index: {idx_by_fingerprint}"
+            );
+            idx = Some(*idx_by_fingerprint);
+        }
+    }
+
+    let Some(idx) = idx else {
+        // no match
         return Ok(None);
     };
-    get(&preprocessed_lote.trusted_entities, *idx).map(Some)
+
+    get(&preprocessed_lote.trusted_entities, idx).map(Some)
 }
 
 fn get(

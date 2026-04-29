@@ -9,7 +9,7 @@ use std::fmt::Debug;
 
 use bon::Builder;
 use serde::{Deserialize, Serialize};
-use standardized_types::x509::AuthorityKeyIdentifier;
+use standardized_types::x509::KeyIdentifier;
 use strum::EnumString;
 use thiserror::Error;
 
@@ -164,7 +164,7 @@ pub enum TrustedAuthority {
     /// AuthorityKeyIdentifier base64url values
     /// <https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#section-6.1.1.1>
     #[serde(rename = "aki")]
-    AuthorityKeyId { values: Vec<AuthorityKeyIdentifier> },
+    AuthorityKeyId { values: Vec<KeyIdentifier> },
 
     /// Unknown / custom authority type, preserving original type string and values.
     #[serde(untagged)]
@@ -715,7 +715,7 @@ mod tests {
         };
         assert_eq!(
             values,
-            &vec![AuthorityKeyIdentifier::from_base64url("s9tIpPmhxdiuNkHMEWNpYim8S8Y").unwrap()]
+            &vec![KeyIdentifier::from_base64url("s9tIpPmhxdiuNkHMEWNpYim8S8Y").unwrap()]
         );
 
         let ta3 = &ta[3];
