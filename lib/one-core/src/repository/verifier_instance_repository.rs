@@ -1,6 +1,8 @@
 use shared_types::{OrganisationId, VerifierInstanceId};
 
-use crate::model::verifier_instance::VerifierInstance;
+use crate::model::verifier_instance::{
+    GetVerifierInstanceList, VerifierInstance, VerifierInstanceListQuery,
+};
 use crate::repository::error::DataLayerError;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
@@ -18,4 +20,9 @@ pub trait VerifierInstanceRepository: Send + Sync {
         &self,
         organisation_id: &OrganisationId,
     ) -> Result<Option<VerifierInstance>, DataLayerError>;
+
+    async fn list(
+        &self,
+        query: VerifierInstanceListQuery,
+    ) -> Result<GetVerifierInstanceList, DataLayerError>;
 }

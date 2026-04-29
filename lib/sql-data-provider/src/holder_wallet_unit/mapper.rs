@@ -1,14 +1,20 @@
 use std::sync::Arc;
 
+use entity::{holder_wallet_instance, wallet_instance};
 use one_core::model::holder_wallet_instance::{
-    CreateHolderWalletInstanceRequest, HolderWalletInstance,
+    CreateHolderWalletInstanceRequest, HolderWalletInstance, HolderWalletInstanceFilterValue,
+    SortableHolderWalletInstanceColumn,
 };
+use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::relation::Related;
 use one_core::model::wallet_instance::{WalletInstanceStatus, WalletProviderType};
 use one_core::repository::organisation_repository::OrganisationRepository;
-use sea_orm::Set;
+use sea_orm::sea_query::SimpleExpr;
+use sea_orm::{Condition, Set};
 
+use crate::entity;
 use crate::entity::holder_wallet_instance::{ActiveModel, Model};
+use crate::list_query_generic::{IntoFilterCondition, IntoSortingColumn, get_equals_condition};
 
 pub(crate) fn holder_wallet_instance_from_model(
     value: Model,
@@ -43,6 +49,23 @@ impl From<CreateHolderWalletInstanceRequest> for ActiveModel {
             provider_wallet_unit_id: Set(value.provider_wallet_unit_id),
             organisation_id: Set(value.organisation.id),
             authentication_key_id: Set(value.authentication_key.map(|key| key.id)),
+        }
+    }
+}
+
+impl IntoSortingColumn for SortableHolderWalletInstanceColumn {
+    fn get_column(&self) -> SimpleExpr {
+        match *self {}
+    }
+}
+
+impl IntoFilterCondition for HolderWalletInstanceFilterValue {
+    fn get_condition(self, _entire_filter: &ListFilterCondition<Self>) -> Condition {
+        match self {
+            HolderWalletInstanceFilterValue::Status(status) => get_equals_condition(
+                holder_wallet_instance::Column::Status,
+                wallet_instance::WalletInstanceStatus::from(status),
+            ),
         }
     }
 }

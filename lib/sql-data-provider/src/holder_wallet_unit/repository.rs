@@ -1,17 +1,22 @@
 use async_trait::async_trait;
 use futures::FutureExt;
 use one_core::model::holder_wallet_instance::{
-    CreateHolderWalletInstanceRequest, HolderWalletInstance, HolderWalletInstanceRelations,
+    CreateHolderWalletInstanceRequest, GetHolderWalletInstanceList, HolderWalletInstance,
+    HolderWalletInstanceListQuery, HolderWalletInstanceRelations,
     UpdateHolderWalletInstanceRequest,
 };
 use one_core::repository::error::DataLayerError;
 use one_core::repository::holder_wallet_instance_repository::HolderWalletInstanceRepository;
-use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set, Unchanged};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set, Unchanged,
+};
 use shared_types::{HolderWalletInstanceId, OrganisationId};
 
+use crate::common::list_query_with_custom_model;
 use crate::entity::holder_wallet_instance;
 use crate::holder_wallet_unit::HolderWalletInstanceProvider;
 use crate::holder_wallet_unit::mapper::holder_wallet_instance_from_model;
+use crate::list_query_generic::SelectWithListQuery;
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 
 #[async_trait]
@@ -126,5 +131,23 @@ impl HolderWalletInstanceRepository for HolderWalletInstanceProvider {
         }
         .boxed();
         self.db.tx(action).await?
+    }
+
+    async fn list_holder_wallet_instance(
+        &self,
+        query_params: HolderWalletInstanceListQuery,
+    ) -> Result<GetHolderWalletInstanceList, DataLayerError> {
+        let query = holder_wallet_instance::Entity::find()
+            .with_list_query(&query_params)
+            .order_by_desc(holder_wallet_instance::Column::CreatedDate)
+            .order_by_desc(holder_wallet_instance::Column::Id);
+
+        list_query_with_custom_model(query, query_params, &self.db, |m| {
+            Ok(holder_wallet_instance_from_model(
+                m,
+                &self.organisation_repository,
+            ))
+        })
+        .await
     }
 }

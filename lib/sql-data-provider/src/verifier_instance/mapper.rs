@@ -1,11 +1,16 @@
 use std::sync::Arc;
 
+use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::relation::Related;
-use one_core::model::verifier_instance::VerifierInstance;
+use one_core::model::verifier_instance::{
+    SortableVerifierInstanceColumn, VerifierInstance, VerifierInstanceFilterValue,
+};
 use one_core::repository::organisation_repository::OrganisationRepository;
-use sea_orm::Set;
+use sea_orm::sea_query::SimpleExpr;
+use sea_orm::{Condition, Set};
 
 use crate::entity::verifier_instance::{ActiveModel, Model};
+use crate::list_query_generic::{IntoFilterCondition, IntoSortingColumn};
 
 pub(crate) fn verifier_instance_from_model(
     model: Model,
@@ -36,5 +41,16 @@ impl From<VerifierInstance> for ActiveModel {
             trusted_issuer_required: Set(value.trusted_issuer_required),
             organisation_id: Set(value.organisation.id()),
         }
+    }
+}
+
+impl IntoSortingColumn for SortableVerifierInstanceColumn {
+    fn get_column(&self) -> SimpleExpr {
+        match *self {}
+    }
+}
+impl IntoFilterCondition for VerifierInstanceFilterValue {
+    fn get_condition(self, _entire_filter: &ListFilterCondition<Self>) -> Condition {
+        match self {}
     }
 }

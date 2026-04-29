@@ -1,7 +1,10 @@
 use shared_types::{HolderWalletInstanceId, WalletInstanceId};
 use time::OffsetDateTime;
 
+use crate::model::common::GetListResponse;
 use crate::model::key::{Key, KeyRelations};
+use crate::model::list_filter::ListFilterValue;
+use crate::model::list_query::ListQuery;
 use crate::model::organisation::Organisation;
 use crate::model::relation::Related;
 use crate::model::wallet_instance::{WalletInstanceStatus, WalletProviderType};
@@ -52,3 +55,18 @@ pub struct UpdateHolderWalletInstanceRequest {
     pub status: Option<WalletInstanceStatus>,
     pub wallet_unit_attestations: Option<Vec<WalletInstanceAttestation>>,
 }
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum SortableHolderWalletInstanceColumn {}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum HolderWalletInstanceFilterValue {
+    Status(WalletInstanceStatus),
+}
+
+impl ListFilterValue for HolderWalletInstanceFilterValue {}
+
+pub type HolderWalletInstanceListQuery =
+    ListQuery<SortableHolderWalletInstanceColumn, HolderWalletInstanceFilterValue>;
+
+pub type GetHolderWalletInstanceList = GetListResponse<HolderWalletInstance>;

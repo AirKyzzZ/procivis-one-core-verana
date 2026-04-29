@@ -1,7 +1,8 @@
 use shared_types::{HolderWalletInstanceId, OrganisationId};
 
 use crate::model::holder_wallet_instance::{
-    CreateHolderWalletInstanceRequest, HolderWalletInstance, HolderWalletInstanceRelations,
+    CreateHolderWalletInstanceRequest, GetHolderWalletInstanceList, HolderWalletInstance,
+    HolderWalletInstanceListQuery, HolderWalletInstanceRelations,
     UpdateHolderWalletInstanceRequest,
 };
 use crate::repository::error::DataLayerError;
@@ -30,4 +31,9 @@ pub trait HolderWalletInstanceRepository: Send + Sync {
         id: &HolderWalletInstanceId,
         request: UpdateHolderWalletInstanceRequest,
     ) -> Result<(), DataLayerError>;
+
+    async fn list_holder_wallet_instance(
+        &self,
+        query: HolderWalletInstanceListQuery,
+    ) -> Result<GetHolderWalletInstanceList, DataLayerError>;
 }

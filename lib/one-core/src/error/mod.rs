@@ -851,9 +851,6 @@ pub enum ErrorCode {
     #[strum(message = "Trust list subscription already exists")]
     BR_0403,
 
-    #[strum(message = "Missing task params")]
-    BR_0404,
-
     #[strum(message = "Invalid task params")]
     BR_0405,
 

@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
 use mockall::Sequence;
-use serde_json::json;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
+use crate::model::common::GetListResponse;
 use crate::model::holder_wallet_instance::HolderWalletInstance;
 use crate::model::trust_collection::{GetTrustCollectionList, TrustCollection};
 use crate::model::verifier_instance::VerifierInstance;
@@ -30,11 +30,41 @@ use crate::service::wallet_provider::dto::{
 
 #[tokio::test]
 async fn test_sync_trust_collections_wallet() {
-    let mut wallet_unit_repository = MockHolderWalletInstanceRepository::new();
-    wallet_unit_repository
-        .expect_get_holder_wallet_instance()
+    let mut seq = Sequence::new();
+    let mut wallet_instance_repository = MockHolderWalletInstanceRepository::new();
+    wallet_instance_repository
+        .expect_list_holder_wallet_instance()
         .once()
-        .returning(|_, _| Ok(Some(dummy_wallet_unit())));
+        .returning(|_| {
+            Ok(GetListResponse {
+                values: vec![dummy_wallet_unit()],
+                total_pages: 1,
+                total_items: 1,
+            })
+        })
+        .in_sequence(&mut seq);
+    wallet_instance_repository
+        .expect_list_holder_wallet_instance()
+        .once()
+        .returning(|_| {
+            Ok(GetListResponse {
+                values: vec![],
+                total_pages: 1,
+                total_items: 1,
+            })
+        })
+        .in_sequence(&mut seq);
+    let mut verifier_instance_repository = MockVerifierInstanceRepository::new();
+    verifier_instance_repository
+        .expect_list()
+        .once()
+        .returning(|_| {
+            Ok(GetListResponse {
+                values: vec![],
+                total_pages: 0,
+                total_items: 0,
+            })
+        });
     let mut wallet_unit_client = MockWalletProviderClient::new();
     let collection_to_keep = dummy_collection("to be kept".to_string());
     let collection_to_delete = dummy_collection("to be deleted".to_string());
@@ -69,29 +99,56 @@ async fn test_sync_trust_collections_wallet() {
         Arc::new(NoTransactionManager),
     );
     let task = TrustCollectionSyncTask::new(
-        Arc::new(wallet_unit_repository),
+        Arc::new(wallet_instance_repository),
         Arc::new(wallet_unit_client),
-        Arc::new(MockVerifierInstanceRepository::new()),
+        Arc::new(verifier_instance_repository),
         Arc::new(MockVerifierProviderClient::new()),
         Arc::new(collection_sync),
         collection_repository,
         Arc::new(subscription_sync),
     );
 
-    let result = task
-        .run(Some(json!({"holderWalletUnitId": Uuid::new_v4()})))
-        .await
-        .unwrap();
-    assert_eq!(result["trustCollectionIds"].as_array().unwrap().len(), 2);
+    let result = task.run(None).await.unwrap();
+    assert_eq!(result["syncedTrustCollectionsCount"], 2);
 }
 
 #[tokio::test]
 async fn test_sync_trust_collections_verifier() {
+    let mut seq = Sequence::new();
+    let mut wallet_instance_repository = MockHolderWalletInstanceRepository::new();
+    wallet_instance_repository
+        .expect_list_holder_wallet_instance()
+        .once()
+        .returning(|_| {
+            Ok(GetListResponse {
+                values: vec![],
+                total_pages: 0,
+                total_items: 0,
+            })
+        });
     let mut verifier_instance_repository = MockVerifierInstanceRepository::new();
     verifier_instance_repository
-        .expect_get()
+        .expect_list()
         .once()
-        .returning(|_| Ok(Some(dummy_verifier_instance())));
+        .returning(|_| {
+            Ok(GetListResponse {
+                values: vec![dummy_verifier_instance()],
+                total_pages: 1,
+                total_items: 1,
+            })
+        })
+        .in_sequence(&mut seq);
+    verifier_instance_repository
+        .expect_list()
+        .once()
+        .returning(|_| {
+            Ok(GetListResponse {
+                values: vec![],
+                total_pages: 1,
+                total_items: 1,
+            })
+        })
+        .in_sequence(&mut seq);
     let mut verifier_client = MockVerifierProviderClient::new();
     let collection_to_keep = dummy_collection("to be kept".to_string());
     let collection_to_delete = dummy_collection("to be deleted".to_string());
@@ -125,7 +182,7 @@ async fn test_sync_trust_collections_verifier() {
         Arc::new(NoTransactionManager),
     );
     let task = TrustCollectionSyncTask::new(
-        Arc::new(MockHolderWalletInstanceRepository::new()),
+        Arc::new(wallet_instance_repository),
         Arc::new(MockWalletProviderClient::new()),
         Arc::new(verifier_instance_repository),
         Arc::new(verifier_client),
@@ -134,11 +191,8 @@ async fn test_sync_trust_collections_verifier() {
         Arc::new(subscription_sync),
     );
 
-    let result = task
-        .run(Some(json!({"verifierInstanceId": Uuid::new_v4()})))
-        .await
-        .unwrap();
-    assert_eq!(result["trustCollectionIds"].as_array().unwrap().len(), 2);
+    let result = task.run(None).await.unwrap();
+    assert_eq!(result["syncedTrustCollectionsCount"], 2);
 }
 
 fn setup_mocks(
