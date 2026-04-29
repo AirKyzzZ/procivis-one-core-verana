@@ -23,6 +23,7 @@ pub struct HolderWalletInstance {
     pub wallet_provider_url: String,
     pub provider_wallet_unit_id: WalletInstanceId,
     pub status: WalletInstanceStatus,
+    pub trusted_rp_required: bool,
 
     // Relations:
     pub organisation: Related<Organisation>,
@@ -47,6 +48,7 @@ pub struct CreateHolderWalletInstanceRequest {
     pub status: WalletInstanceStatus,
     pub organisation: Organisation,
     pub authentication_key: Option<Key>,
+    pub trusted_rp_required: bool,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -54,6 +56,7 @@ pub struct CreateHolderWalletInstanceRequest {
 pub struct UpdateHolderWalletInstanceRequest {
     pub status: Option<WalletInstanceStatus>,
     pub wallet_unit_attestations: Option<Vec<WalletInstanceAttestation>>,
+    pub trusted_rp_required: Option<bool>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

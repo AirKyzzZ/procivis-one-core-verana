@@ -31,16 +31,16 @@ use crate::model::wallet_instance_attestation::WalletInstanceAttestationRelation
 use crate::proto::jwt::model::JWTPayload;
 use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
 use crate::proto::session_provider::SessionExt;
-use crate::proto::wallet_unit::WalletUnitStatusCheckResponse;
+use crate::proto::wallet_instance::WalletUnitStatusCheckResponse;
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::key_storage::KeyStorage;
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::repository::error::DataLayerError;
 use crate::service::error::MissingProviderError;
+use crate::service::wallet_instance::mapper::set_active_trust_collections;
 use crate::service::wallet_provider::dto::{
     ActivateWalletUnitRequestDTO, RegisterWalletUnitRequestDTO, RegisterWalletUnitResponseDTO,
 };
-use crate::service::wallet_unit::mapper::set_active_trust_collections;
 use crate::validator::throw_if_org_id_not_matching_session;
 
 impl WalletUnitService {
@@ -161,6 +161,7 @@ impl WalletUnitService {
             organisation: organisation.clone(),
             authentication_key: registration.key,
             provider_wallet_unit_id: registration.wallet_unit_id,
+            trusted_rp_required: false,
         };
         let holder_wallet_unit_id = self
             .holder_wallet_unit_repository

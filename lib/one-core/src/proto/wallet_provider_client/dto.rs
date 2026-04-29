@@ -1,7 +1,7 @@
 use crate::model::holder_wallet_instance::HolderWalletInstance;
 use crate::model::wallet_instance::WalletProviderType;
+use crate::service::wallet_instance::dto::WalletProviderDTO;
 use crate::service::wallet_provider::dto::IssueWalletUnitAttestationResponseDTO;
-use crate::service::wallet_unit::dto::WalletProviderDTO;
 
 #[derive(Clone, Debug)]
 pub enum IssueWalletAttestationResponse {

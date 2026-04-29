@@ -22,8 +22,8 @@ use crate::proto::session_provider::NoSessionProvider;
 use crate::proto::transaction_manager::NoTransactionManager;
 use crate::proto::trust_collection::MockTrustCollectionManager;
 use crate::proto::trust_list_subscription_sync::MockTrustListSubscriptionSync;
+use crate::proto::wallet_instance::{MockHolderWalletUnitProto, WalletUnitStatusCheckResponse};
 use crate::proto::wallet_provider_client::MockWalletProviderClient;
-use crate::proto::wallet_unit::{MockHolderWalletUnitProto, WalletUnitStatusCheckResponse};
 use crate::provider::credential_formatter::model::MockSignatureProvider;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::MockKeyStorage;
@@ -384,6 +384,7 @@ async fn holder_wallet_unit_status_check_still_valid() {
                     organisation: dummy_organisation(None).into(),
                     authentication_key: None,
                     wallet_unit_attestations: None,
+                    trusted_rp_required: false,
                 },
             ))
         });
@@ -441,6 +442,7 @@ async fn holder_wallet_unit_status_check_revocation() {
                 .into(),
                 authentication_key: None,
                 wallet_unit_attestations: None,
+                trusted_rp_required: false,
             }))
         });
 
@@ -528,6 +530,7 @@ async fn holder_wallet_unit_status_check_already_revoked() {
                     organisation: dummy_organisation(None).into(),
                     authentication_key: None,
                     wallet_unit_attestations: None,
+                    trusted_rp_required: false,
                 },
             ))
         });
@@ -590,6 +593,7 @@ async fn holder_register_already_exists() {
                 organisation: dummy_organisation(None).into(),
                 authentication_key: None,
                 wallet_unit_attestations: None,
+                trusted_rp_required: false,
             }))
         });
 

@@ -26,7 +26,7 @@ pub mod trust_information;
 
 pub(crate) mod trust_list_subscription_sync;
 pub(crate) mod verifier_provider_client;
+pub(crate) mod wallet_instance;
 pub(crate) mod wallet_provider_client;
-pub(crate) mod wallet_unit;
 pub(crate) mod wrp_validator;
 pub(crate) mod xades;

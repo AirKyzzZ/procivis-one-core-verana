@@ -1,9 +1,9 @@
 use one_core::model::wallet_instance::{WalletInstanceStatus, WalletProviderType};
-use one_core::service::wallet_provider::dto::DisplayNameDTO;
-use one_core::service::wallet_unit::dto::{
+use one_core::service::wallet_instance::dto::{
     HolderRegisterWalletUnitRequestDTO, HolderWalletUnitRegisterResponseDTO,
     HolderWalletUnitResponseDTO, TrustCollectionsDetailResponseDTO, WalletProviderDTO,
 };
+use one_core::service::wallet_provider::dto::DisplayNameDTO;
 use one_dto_mapper::{From, Into, TryInto, convert_inner};
 
 use super::OneCore;

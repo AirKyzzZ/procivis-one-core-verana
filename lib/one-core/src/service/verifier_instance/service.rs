@@ -16,8 +16,8 @@ use crate::error::ContextWithErrorCode;
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::verifier_instance::VerifierInstance;
 use crate::proto::session_provider::SessionExt;
-use crate::service::wallet_unit::dto::TrustCollectionsDetailResponseDTO;
-use crate::service::wallet_unit::mapper::{
+use crate::service::wallet_instance::dto::TrustCollectionsDetailResponseDTO;
+use crate::service::wallet_instance::mapper::{
     prepare_trust_collection_info, set_active_trust_collections,
 };
 use crate::validator::throw_if_org_id_not_matching_session;

@@ -289,6 +289,7 @@ fn dummy_wallet_unit() -> HolderWalletInstance {
         organisation: dummy_organisation(None).into(),
         authentication_key: None,
         wallet_unit_attestations: None,
+        trusted_rp_required: false,
     }
 }
 

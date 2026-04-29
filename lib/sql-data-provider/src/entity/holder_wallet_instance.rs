@@ -23,6 +23,7 @@ pub struct Model {
     pub provider_wallet_unit_id: WalletInstanceId,
     pub organisation_id: OrganisationId,
     pub authentication_key_id: Option<KeyId>,
+    pub trusted_rp_required: bool,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

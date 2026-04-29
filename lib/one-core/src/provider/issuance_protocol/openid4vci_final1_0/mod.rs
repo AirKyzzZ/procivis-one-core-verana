@@ -85,7 +85,7 @@ use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::{DecomposedJwt, JWTPayload};
 use crate::proto::key_verification::KeyVerification;
 use crate::proto::session_provider::SessionProvider;
-use crate::proto::wallet_unit::{HolderWalletUnitProto, IssueWalletAttestationRequest};
+use crate::proto::wallet_instance::{HolderWalletUnitProto, IssueWalletAttestationRequest};
 use crate::proto::wrp_validator::WRPValidator;
 use crate::proto::wrp_validator::error::WRPValidatorError;
 use crate::proto::wrp_validator::model::AccessCertificateResult;

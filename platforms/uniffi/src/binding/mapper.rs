@@ -47,7 +47,9 @@ use one_core::service::trust_entity::dto::{
     TrustEntityFilterParamsDTO, TrustListLogo, UpdateTrustEntityFromDidRequestDTO,
 };
 use one_core::service::verifier_instance::dto::EditVerifierInstanceRequestDTO;
-use one_core::service::wallet_unit::dto::{EditHolderWalletUnitRequestDTO, TrustCollectionInfoDTO};
+use one_core::service::wallet_instance::dto::{
+    EditHolderWalletUnitRequestDTO, TrustCollectionInfoDTO,
+};
 use one_dto_mapper::{convert_inner, convert_inner_of_inner, try_convert_inner};
 use serde_json::json;
 use shared_types::KeyId;

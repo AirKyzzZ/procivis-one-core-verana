@@ -13,7 +13,7 @@ use shared_types::HolderWalletInstanceId;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
-use crate::holder_wallet_unit::HolderWalletInstanceProvider;
+use crate::holder_wallet_instance::HolderWalletInstanceProvider;
 use crate::test_utilities::{
     dummy_organisation, get_dummy_date, insert_key_to_database, insert_organisation_to_database,
     setup_test_data_layer_and_connection,
@@ -108,6 +108,7 @@ async fn update_holder_wallet_instance_success() {
             revocation_list_index: None,
             attested_key: Some(key.clone()),
         }]),
+        trusted_rp_required: None,
     };
 
     provider
@@ -152,6 +153,7 @@ fn test_wallet_instance(
         authentication_key: Some(key),
         provider_wallet_unit_id: Uuid::new_v4().into(),
         wallet_unit_attestations: None,
+        trusted_rp_required: false,
     }
 }
 
@@ -167,6 +169,7 @@ async fn instance_to_create_request(
         status: instance.status,
         organisation: instance.organisation.get().await.unwrap(),
         authentication_key: instance.authentication_key,
+        trusted_rp_required: instance.trusted_rp_required,
     }
 }
 

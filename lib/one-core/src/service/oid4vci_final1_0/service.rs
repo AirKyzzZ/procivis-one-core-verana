@@ -46,7 +46,7 @@ use crate::proto::identifier_creator::{IdentifierRole, RemoteIdentifierRelation}
 use crate::proto::jwt::Jwt;
 use crate::proto::key_verification::KeyVerification;
 use crate::proto::transaction_manager::IsolationLevel;
-use crate::proto::wallet_unit::WalletUnitStatusCheckResponse;
+use crate::proto::wallet_instance::WalletUnitStatusCheckResponse;
 use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::credential_formatter::model::IdentifierDetails;
 use crate::provider::issuance_protocol::error::{IssuanceProtocolError, OpenID4VCIError};

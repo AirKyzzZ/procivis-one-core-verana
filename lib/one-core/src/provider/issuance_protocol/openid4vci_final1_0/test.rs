@@ -48,7 +48,7 @@ use crate::proto::identifier_creator::{
 };
 use crate::proto::jwt::model::JWTPayload;
 use crate::proto::session_provider::NoSessionProvider;
-use crate::proto::wallet_unit::MockHolderWalletUnitProto;
+use crate::proto::wallet_instance::MockHolderWalletUnitProto;
 use crate::proto::wrp_validator::MockWRPValidator;
 use crate::proto::wrp_validator::model::{AccessCertificateResult, RegistrationCertificateResult};
 use crate::provider::blob_storage_provider::MockBlobStorageProvider;
@@ -2395,6 +2395,7 @@ async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_att
                 organisation: dummy_organisation(None).into(),
                 authentication_key: None,
                 wallet_unit_attestations: None,
+                trusted_rp_required: false,
             }))
         });
 

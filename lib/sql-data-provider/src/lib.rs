@@ -58,7 +58,7 @@ use crate::blob::BlobProvider;
 use crate::credential::CredentialProvider;
 use crate::credential_schema::CredentialSchemaProvider;
 use crate::history::HistoryProvider;
-use crate::holder_wallet_unit::HolderWalletInstanceProvider;
+use crate::holder_wallet_instance::HolderWalletInstanceProvider;
 use crate::identifier_trust_information::IdentifierTrustInformationProvider;
 use crate::key::KeyProvider;
 use crate::notification::NotificationProvider;
@@ -490,7 +490,7 @@ pub async fn db_conn(
 }
 
 mod blob;
-mod holder_wallet_unit;
+mod holder_wallet_instance;
 mod identifier_trust_information;
 #[cfg(any(test, feature = "test_utils"))]
 pub mod test_utilities;

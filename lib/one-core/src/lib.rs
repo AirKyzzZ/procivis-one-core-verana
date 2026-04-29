@@ -35,8 +35,8 @@ use crate::proto::trust_list_subscription_sync::{
     TrustListSubscriptionSync, TrustListSubscriptionSyncImpl,
 };
 use crate::proto::verifier_provider_client::http_client::HTTPVerifierProviderClient;
+use crate::proto::wallet_instance::HolderWalletUnitProtoImpl;
 use crate::proto::wallet_provider_client::http_client::HTTPWalletProviderClient;
-use crate::proto::wallet_unit::HolderWalletUnitProtoImpl;
 use crate::proto::wrp_validator::validator::WRPValidatorImpl;
 use crate::proto::xades::XAdES;
 use crate::provider::blob_storage_provider::blob_storage_provider_from_config;
@@ -100,8 +100,8 @@ use crate::service::trust_list_publication::TrustListPublicationService;
 use crate::service::vc_api::VCAPIService;
 use crate::service::verifier_instance::VerifierInstanceService;
 use crate::service::verifier_provider::VerifierProviderService;
+use crate::service::wallet_instance::WalletUnitService;
 use crate::service::wallet_provider::WalletProviderService;
-use crate::service::wallet_unit::WalletUnitService;
 
 pub mod clock;
 pub mod config;

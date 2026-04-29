@@ -1,5 +1,5 @@
 use one_core::service::error::ServiceError;
-use one_core::service::wallet_unit::dto;
+use one_core::service::wallet_instance::dto;
 use one_dto_mapper::{From, Into, TryFrom, TryInto, convert_inner, try_convert_inner};
 use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};

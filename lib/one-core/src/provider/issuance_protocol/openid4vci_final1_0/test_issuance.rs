@@ -25,7 +25,7 @@ use crate::proto::credential_schema::importer::MockCredentialSchemaImporter;
 use crate::proto::http_client::MockHttpClient;
 use crate::proto::identifier_creator::MockIdentifierCreator;
 use crate::proto::session_provider::NoSessionProvider;
-use crate::proto::wallet_unit::MockHolderWalletUnitProto;
+use crate::proto::wallet_instance::MockHolderWalletUnitProto;
 use crate::proto::wrp_validator::MockWRPValidator;
 use crate::provider::blob_storage_provider::{MockBlobStorage, MockBlobStorageProvider};
 use crate::provider::caching_loader::openid_metadata::MockOpenIDMetadataFetcher;

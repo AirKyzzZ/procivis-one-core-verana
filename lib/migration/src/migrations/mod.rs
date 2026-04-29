@@ -4,3 +4,4 @@ pub mod m20260423_100000_migrate_history_backup_metadata;
 pub mod m20260423_110000_migrate_history_target_to_identifier_id;
 pub mod m20260427_113000_add_trusted_requirements;
 pub mod m20260429_030600_clear_trust_list_cache;
+pub mod m20260429_083200_move_trusted_rp_required_to_holder_wallet_instance;

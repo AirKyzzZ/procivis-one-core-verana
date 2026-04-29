@@ -26,7 +26,6 @@ pub struct Model {
     pub wallet_provider_name: String,
     pub authentication_key_jwk: Option<String>,
     pub nonce: Option<String>,
-    pub trusted_rp_required: bool,
     pub organisation_id: OrganisationId,
 }
 
@@ -117,7 +116,6 @@ impl TryFrom<WalletInstance> for ActiveModel {
             wallet_provider_name: Set(wallet_unit.wallet_provider_name),
             authentication_key_jwk: Set(authentication_key_jwk),
             nonce: Set(wallet_unit.nonce),
-            trusted_rp_required: Set(wallet_unit.trusted_rp_required),
             organisation_id: Set(wallet_unit
                 .organisation
                 .as_ref()

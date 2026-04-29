@@ -53,6 +53,7 @@ impl HolderWalletUnitsDB {
             provider_wallet_unit_id: test_holder_wallet_unit
                 .provider_wallet_unit_id
                 .unwrap_or(Uuid::new_v4().into()),
+            trusted_rp_required: false,
         };
 
         let id = self

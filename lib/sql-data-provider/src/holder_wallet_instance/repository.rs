@@ -14,8 +14,8 @@ use shared_types::{HolderWalletInstanceId, OrganisationId};
 
 use crate::common::list_query_with_custom_model;
 use crate::entity::holder_wallet_instance;
-use crate::holder_wallet_unit::HolderWalletInstanceProvider;
-use crate::holder_wallet_unit::mapper::holder_wallet_instance_from_model;
+use crate::holder_wallet_instance::HolderWalletInstanceProvider;
+use crate::holder_wallet_instance::mapper::holder_wallet_instance_from_model;
 use crate::list_query_generic::SelectWithListQuery;
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 
@@ -99,6 +99,7 @@ impl HolderWalletInstanceRepository for HolderWalletInstanceProvider {
                     .status
                     .map(|status| Set(status.into()))
                     .unwrap_or_default(),
+                trusted_rp_required: request.trusted_rp_required.map(Set).unwrap_or_default(),
                 ..Default::default()
             };
             update_model

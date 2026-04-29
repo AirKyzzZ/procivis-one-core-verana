@@ -264,6 +264,7 @@ impl MigratorTrait for Migrator {
             ),
             Box::new(migrations::m20260427_113000_add_trusted_requirements::Migration),
             Box::new(migrations::m20260429_030600_clear_trust_list_cache::Migration),
+            Box::new(migrations::m20260429_083200_move_trusted_rp_required_to_holder_wallet_instance::Migration),
         ]
     }
 }
