@@ -322,6 +322,7 @@ async fn test_import_proof_schema_nested_array() {
     let now = one_core::clock::now_utc().format(&Rfc3339).unwrap();
 
     let root_object_array_claim = ClaimSchema {
+        business_key: None,
         id: Uuid::new_v4().into(),
         key: "root".to_string(),
         data_type: "OBJECT".to_string(),
@@ -343,6 +344,7 @@ async fn test_import_proof_schema_nested_array() {
                 claim_schemas: Some(vec![
                     root_object_array_claim.clone(),
                     ClaimSchema {
+                        business_key: None,
                         id: Uuid::new_v4().into(),
                         key: "root/field".to_string(),
                         data_type: "STRING".to_string(),

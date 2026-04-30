@@ -317,6 +317,8 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                         allow_suspension: false,
                         requires_wallet_instance_attestation: false,
                         transaction_code: None,
+                        batch_size: None,
+                        allow_revocation: None,
                     };
 
                     let schema = self

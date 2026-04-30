@@ -94,6 +94,7 @@ fn generic_credential() -> Credential {
     let now = crate::clock::now_utc();
 
     let claim_schema = ClaimSchema {
+        business_key: None,
         array: false,
         id: Uuid::new_v4().into(),
         key: "NUMBER".to_string(),
@@ -174,6 +175,8 @@ fn generic_credential() -> Credential {
         issuer_certificate: None,
         holder_identifier: None,
         schema: Some(CredentialSchema {
+            batch_size: None,
+            allow_revocation: None,
             id: Uuid::new_v4().into(),
             deleted_at: None,
             imported_source_url: "CORE_URL".to_string(),
@@ -247,6 +250,8 @@ fn generic_credential_list_entity() -> Credential {
         issuer_certificate: None,
         holder_identifier: None,
         schema: Some(CredentialSchema {
+            batch_size: None,
+            allow_revocation: None,
             id: Uuid::new_v4().into(),
             deleted_at: None,
             imported_source_url: "CORE_URL".to_string(),
@@ -1257,6 +1262,7 @@ async fn test_create_credential_one_required_claim_missing_success() {
     let credential_schema = CredentialSchema {
         claim_schemas: vec![
             ClaimSchema {
+                business_key: None,
                 array: false,
                 id: Uuid::new_v4().into(),
                 key: "required".to_string(),
@@ -1267,6 +1273,7 @@ async fn test_create_credential_one_required_claim_missing_success() {
                 required: true,
             },
             ClaimSchema {
+                business_key: None,
                 array: false,
                 id: Uuid::new_v4().into(),
                 key: "optional".to_string(),
@@ -1392,6 +1399,7 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
     let credential_schema = CredentialSchema {
         claim_schemas: vec![
             ClaimSchema {
+                business_key: None,
                 array: false,
                 id: Uuid::new_v4().into(),
                 key: "required".to_string(),
@@ -1402,6 +1410,7 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
                 required: true,
             },
             ClaimSchema {
+                business_key: None,
                 array: false,
                 id: Uuid::new_v4().into(),
                 key: "optional".to_string(),
@@ -2607,6 +2616,8 @@ fn generate_credential_schema_with_claim_schemas(
 ) -> CredentialSchema {
     let now = crate::clock::now_utc();
     CredentialSchema {
+        batch_size: None,
+        allow_revocation: None,
         id: Uuid::new_v4().into(),
         deleted_at: None,
         imported_source_url: "CORE_URL".to_string(),
@@ -2637,6 +2648,7 @@ async fn test_validate_create_request_all_nested_claims_are_required() {
     let now = crate::clock::now_utc();
     let schema = generate_credential_schema_with_claim_schemas(vec![
         ClaimSchema {
+            business_key: None,
             array: false,
             id: address_claim_id,
             key: "address".to_string(),
@@ -2647,6 +2659,7 @@ async fn test_validate_create_request_all_nested_claims_are_required() {
             required: true,
         },
         ClaimSchema {
+            business_key: None,
             array: false,
             id: location_claim_id,
             key: "location".to_string(),
@@ -2657,6 +2670,7 @@ async fn test_validate_create_request_all_nested_claims_are_required() {
             required: true,
         },
         ClaimSchema {
+            business_key: None,
             array: false,
             id: location_x_claim_id,
             key: "location/x".to_string(),
@@ -2667,6 +2681,7 @@ async fn test_validate_create_request_all_nested_claims_are_required() {
             required: true,
         },
         ClaimSchema {
+            business_key: None,
             array: false,
             id: location_y_claim_id,
             key: "location/y".to_string(),
@@ -2722,6 +2737,7 @@ async fn test_validate_create_request_all_optional_nested_object_with_required_c
     let now = crate::clock::now_utc();
     let schema = generate_credential_schema_with_claim_schemas(vec![
         ClaimSchema {
+            business_key: None,
             array: false,
             id: address_claim_id,
             key: "address".to_string(),
@@ -2732,6 +2748,7 @@ async fn test_validate_create_request_all_optional_nested_object_with_required_c
             required: true,
         },
         ClaimSchema {
+            business_key: None,
             array: false,
             id: location_claim_id,
             key: "location".to_string(),
@@ -2742,6 +2759,7 @@ async fn test_validate_create_request_all_optional_nested_object_with_required_c
             required: false,
         },
         ClaimSchema {
+            business_key: None,
             array: false,
             id: location_x_claim_id,
             key: "location/x".to_string(),
@@ -2752,6 +2770,7 @@ async fn test_validate_create_request_all_optional_nested_object_with_required_c
             required: true,
         },
         ClaimSchema {
+            business_key: None,
             array: false,
             id: location_y_claim_id,
             key: "location/y".to_string(),
@@ -2838,6 +2857,7 @@ async fn test_validate_create_request_all_required_nested_object_with_optional_c
     let now = crate::clock::now_utc();
     let schema = generate_credential_schema_with_claim_schemas(vec![
         ClaimSchema {
+            business_key: None,
             array: false,
             id: address_claim_id,
             key: "address".to_string(),
@@ -2848,6 +2868,7 @@ async fn test_validate_create_request_all_required_nested_object_with_optional_c
             required: true,
         },
         ClaimSchema {
+            business_key: None,
             array: false,
             id: location_claim_id,
             key: "location".to_string(),
@@ -2858,6 +2879,7 @@ async fn test_validate_create_request_all_required_nested_object_with_optional_c
             required: true,
         },
         ClaimSchema {
+            business_key: None,
             array: false,
             id: location_x_claim_id,
             key: "location/x".to_string(),
@@ -2868,6 +2890,7 @@ async fn test_validate_create_request_all_required_nested_object_with_optional_c
             required: true,
         },
         ClaimSchema {
+            business_key: None,
             array: false,
             id: location_y_claim_id,
             key: "location/y".to_string(),
@@ -2951,6 +2974,7 @@ async fn test_get_credential_success_with_non_required_nested_object() {
     let now = crate::clock::now_utc();
 
     let location_claim_schema = ClaimSchema {
+        business_key: None,
         array: false,
         id: Uuid::new_v4().into(),
         key: "location".to_string(),
@@ -2961,6 +2985,7 @@ async fn test_get_credential_success_with_non_required_nested_object() {
         required: false,
     };
     let location_x_claim_schema = ClaimSchema {
+        business_key: None,
         array: false,
         id: Uuid::new_v4().into(),
         key: "location/X".to_string(),
@@ -3017,6 +3042,7 @@ async fn test_get_credential_success_with_non_required_nested_object() {
 fn generate_claim_schema(key: &str, datatype: &str, array: bool) -> ClaimSchema {
     let now = get_dummy_date();
     ClaimSchema {
+        business_key: None,
         array,
         id: Uuid::new_v4().into(),
         key: key.to_string(),
@@ -3161,6 +3187,8 @@ async fn test_get_credential_success_array_complex_nested_all() {
         issuer_certificate: None,
         holder_identifier: None,
         schema: Some(CredentialSchema {
+            batch_size: None,
+            allow_revocation: None,
             id: Uuid::new_v4().into(),
             deleted_at: None,
             created_date: now,
@@ -3726,6 +3754,8 @@ async fn test_get_credential_success_array_index_sorting() {
         issuer_certificate: None,
         holder_identifier: None,
         schema: Some(CredentialSchema {
+            batch_size: None,
+            allow_revocation: None,
             id: Uuid::new_v4().into(),
             imported_source_url: "CORE_URL".to_string(),
             deleted_at: None,
@@ -4040,6 +4070,8 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
         issuer_certificate: None,
         holder_identifier: None,
         schema: Some(CredentialSchema {
+            batch_size: None,
+            allow_revocation: None,
             id: Uuid::new_v4().into(),
             deleted_at: None,
             imported_source_url: "CORE_URL".to_string(),
@@ -4257,6 +4289,8 @@ async fn test_get_credential_success_array_single_element() {
         issuer_certificate: None,
         holder_identifier: None,
         schema: Some(CredentialSchema {
+            batch_size: None,
+            allow_revocation: None,
             id: Uuid::new_v4().into(),
             deleted_at: None,
             created_date: now,
@@ -4377,6 +4411,8 @@ async fn test_create_credential_array(
     let organisation = dummy_organisation(None);
 
     let credential_schema = CredentialSchema {
+        batch_size: None,
+        allow_revocation: None,
         id: Uuid::new_v4().into(),
         deleted_at: None,
         created_date: crate::clock::now_utc(),
@@ -4755,6 +4791,8 @@ async fn test_create_credential_invalid_certificate_role() {
     let schema_00 = generate_claim_schema("root/00", "STRING", false);
     let claim_schemas = vec![schema_root.to_owned(), schema_00.to_owned()];
     let credential_schema = CredentialSchema {
+        batch_size: None,
+        allow_revocation: None,
         id: Uuid::new_v4().into(),
         deleted_at: None,
         created_date: crate::clock::now_utc(),

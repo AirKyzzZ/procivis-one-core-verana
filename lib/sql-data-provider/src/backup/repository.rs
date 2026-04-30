@@ -258,6 +258,14 @@ impl BackupRepository for BackupProvider {
                 credential_schema::Column::TransactionCodeDescription,
                 "credential_schema_transaction_code_description",
             )
+            .column_as(
+                credential_schema::Column::BatchSize,
+                "credential_schema_batch_size",
+            )
+            .column_as(
+                credential_schema::Column::AllowRevocation,
+                "credential_schema_allow_revocation",
+            )
             .column_as(organisation::Column::Id, "organisation_id")
             .column_as(
                 organisation::Column::CreatedDate,

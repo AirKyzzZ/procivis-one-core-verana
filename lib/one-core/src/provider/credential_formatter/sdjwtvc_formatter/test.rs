@@ -645,6 +645,8 @@ async fn test_extract_credentials_swiyu() {
 
     let now = crate::clock::now_utc();
     let credential_schema = crate::model::credential_schema::CredentialSchema {
+        batch_size: None,
+        allow_revocation: None,
         id: Uuid::new_v4().into(),
         deleted_at: None,
         created_date: now,
@@ -660,6 +662,7 @@ async fn test_extract_credentials_swiyu() {
         allow_suspension: false,
         requires_wallet_instance_attestation: false,
         claim_schemas: vec![ClaimSchema {
+            business_key: None,
             id: Uuid::new_v4().into(),
             key: "portrait".to_string(),
             data_type: "SWIYU_PICTURE".to_string(),

@@ -317,6 +317,14 @@ fn get_credential_list_query(query_params: CredentialListQuery) -> Select<creden
             credential_schema::Column::TransactionCodeDescription,
             "credential_schema_transaction_code_description",
         )
+        .column_as(
+            credential_schema::Column::BatchSize,
+            "credential_schema_batch_size",
+        )
+        .column_as(
+            credential_schema::Column::AllowRevocation,
+            "credential_schema_allow_revocation",
+        )
         .join(
             JoinType::LeftJoin,
             credential::Relation::IssuerIdentifier.def(),

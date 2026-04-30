@@ -7,6 +7,7 @@ pub mod certificate_repository;
 pub mod claim_repository;
 pub mod claim_schema_repository;
 pub mod credential_repository;
+pub mod credential_schema_format_repository;
 pub mod credential_schema_repository;
 pub mod did_repository;
 pub mod history_repository;
@@ -42,6 +43,7 @@ use certificate_repository::CertificateRepository;
 use claim_repository::ClaimRepository;
 use claim_schema_repository::ClaimSchemaRepository;
 use credential_repository::CredentialRepository;
+use credential_schema_format_repository::CredentialSchemaFormatRepository;
 use credential_schema_repository::CredentialSchemaRepository;
 use did_repository::DidRepository;
 use history_repository::HistoryRepository;
@@ -78,6 +80,7 @@ pub trait DataRepository: Send + Sync {
     fn get_claim_schema_repository(&self) -> Arc<dyn ClaimSchemaRepository>;
     fn get_credential_repository(&self) -> Arc<dyn CredentialRepository>;
     fn get_credential_schema_repository(&self) -> Arc<dyn CredentialSchemaRepository>;
+    fn get_credential_schema_format_repository(&self) -> Arc<dyn CredentialSchemaFormatRepository>;
     fn get_history_repository(&self) -> Arc<dyn HistoryRepository>;
     fn get_identifier_repository(&self) -> Arc<dyn IdentifierRepository>;
     fn get_identifier_trust_information_repository(

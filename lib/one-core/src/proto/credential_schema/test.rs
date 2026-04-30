@@ -194,6 +194,8 @@ async fn test_parse_import_with_nested_claims_success() {
 async fn test_importer_import_credential_schema_success() {
     // given
     let credential_schema = CredentialSchema {
+        batch_size: None,
+        allow_revocation: None,
         id: Uuid::new_v4().into(),
         deleted_at: None,
         imported_source_url: "http://source.com".to_string(),
@@ -204,6 +206,7 @@ async fn test_importer_import_credential_schema_success() {
         format: "JWT".into(),
         revocation_method: None,
         claim_schemas: vec![ClaimSchema {
+            business_key: None,
             id: Uuid::new_v4().into(),
             key: "claim1".to_string(),
             data_type: "STRING".to_string(),
@@ -263,6 +266,8 @@ async fn test_importer_import_credential_schema_success() {
 async fn test_importer_import_credential_schema_success_duplicate_name() {
     // given
     let mut existing_schema = CredentialSchema {
+        batch_size: None,
+        allow_revocation: None,
         id: Uuid::new_v4().into(),
         deleted_at: None,
         imported_source_url: "http://source.com".to_string(),
@@ -329,6 +334,8 @@ async fn test_importer_import_credential_schema_success_duplicate_name() {
 async fn test_importer_import_credential_schema_failure_duplicate_schema_id() {
     // given
     let existing_schema = CredentialSchema {
+        batch_size: None,
+        allow_revocation: None,
         id: Uuid::new_v4().into(),
         deleted_at: None,
         imported_source_url: "http://source.com".to_string(),

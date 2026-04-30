@@ -25,6 +25,8 @@ async fn test_db_schema_credential_schema() {
         "transaction_code_type",
         "transaction_code_length",
         "transaction_code_description",
+        "batch_size",
+        "allow_revocation",
     ];
     if schema.backend() == DbBackend::MySql {
         columns.push("deleted_at_materialized");
@@ -47,7 +49,7 @@ async fn test_db_schema_credential_schema() {
         .table("credential_schema")
         .columns(&columns)
         .index(
-            "index-Organisation-SchemaId-DeletedAt_Unique",
+            "index-Organisation-SchemaId-DeletedAt-Partial_Unique",
             true,
             &index_columns1,
         )
@@ -89,8 +91,7 @@ async fn test_db_schema_credential_schema() {
     credential_schema
         .column("format")
         .r#type(ColumnType::String(None))
-        .nullable(false)
-        .default(None);
+        .nullable(true);
     credential_schema
         .column("revocation_method")
         .r#type(ColumnType::String(None))
@@ -104,8 +105,7 @@ async fn test_db_schema_credential_schema() {
     credential_schema
         .column("schema_id")
         .r#type(ColumnType::String(None))
-        .nullable(false)
-        .default(None);
+        .nullable(true);
     credential_schema
         .column("layout_properties")
         .r#type(ColumnType::Json)
@@ -146,6 +146,10 @@ async fn test_db_schema_credential_schema() {
         .column("transaction_code_description")
         .r#type(ColumnType::String(Some(300)))
         .nullable(true);
+    credential_schema
+        .column("batch_size")
+        .r#type(ColumnType::Integer)
+        .nullable(true);
 }
 
 #[tokio::test]
@@ -157,6 +161,7 @@ async fn test_db_schema_claim_schema() {
         "created_date",
         "last_modified",
         "key",
+        "business_key",
         "datatype",
         "array",
         "metadata",
@@ -185,6 +190,10 @@ async fn test_db_schema_claim_schema() {
         .r#type(ColumnType::String(None))
         .nullable(false)
         .default(None);
+    claim_schema
+        .column("business_key")
+        .r#type(ColumnType::String(None))
+        .nullable(true);
     claim_schema
         .column("datatype")
         .r#type(ColumnType::String(None))
@@ -220,4 +229,137 @@ async fn test_db_schema_claim_schema() {
         .r#type(ColumnType::Integer)
         .nullable(false)
         .default(None);
+}
+
+#[tokio::test]
+async fn test_db_schema_credential_schema_format() {
+    let schema = get_schema().await;
+
+    let columns = vec![
+        "id",
+        "created_date",
+        "last_modified",
+        "credential_schema_id",
+        "format",
+        "schema_id",
+    ];
+
+    let credential_schema_format = schema
+        .table("credential_schema_format")
+        .columns(&columns)
+        .index(
+            "index-CredentialSchemaFormat-CredentialSchemaId-Format_Unique",
+            true,
+            &["credential_schema_id", "format"],
+        )
+        .index(
+            "index-CredentialSchemaFormat-CredentialSchemaId-SchemaId_Unique",
+            true,
+            &["credential_schema_id", "schema_id"],
+        );
+    credential_schema_format
+        .column("id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .primary_key();
+    credential_schema_format
+        .column("created_date")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(false)
+        .default(None);
+    credential_schema_format
+        .column("last_modified")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(false)
+        .default(None);
+    credential_schema_format
+        .column("credential_schema_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .foreign_key(
+            "fk-CredentialSchemaFormat-CredentialSchemaId",
+            "credential_schema",
+            "id",
+        );
+    credential_schema_format
+        .column("format")
+        .r#type(ColumnType::String(None))
+        .nullable(false)
+        .default(None);
+    credential_schema_format
+        .column("schema_id")
+        .r#type(ColumnType::String(None))
+        .nullable(false)
+        .default(None);
+}
+
+#[tokio::test]
+async fn test_db_schema_credential_schema_format_claim_schema() {
+    let schema = get_schema().await;
+
+    let columns = vec![
+        "id",
+        "created_date",
+        "last_modified",
+        "credential_schema_format_id",
+        "claim_schema_id",
+        "technical_key",
+        "namespace",
+    ];
+
+    let cs_format_claim = schema
+        .table("credential_schema_format_claim_schema")
+        .columns(&columns)
+        .index(
+            "index-FormatClaimSchema-FormatId-ClaimSchemaId_Unique",
+            true,
+            &["credential_schema_format_id", "claim_schema_id"],
+        );
+    cs_format_claim
+        .column("id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .primary_key();
+    cs_format_claim
+        .column("created_date")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(false)
+        .default(None);
+    cs_format_claim
+        .column("last_modified")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(false)
+        .default(None);
+    cs_format_claim
+        .column("credential_schema_format_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .foreign_key(
+            "fk-CredentialSchemaFormatClaimSchema-CredentialSchemaFormatId",
+            "credential_schema_format",
+            "id",
+        );
+    cs_format_claim
+        .column("claim_schema_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .foreign_key(
+            "fk-CredentialSchemaFormatClaimSchema-ClaimSchemaId",
+            "claim_schema",
+            "id",
+        );
+    cs_format_claim
+        .column("technical_key")
+        .r#type(ColumnType::String(None))
+        .nullable(false)
+        .default(None);
+    cs_format_claim
+        .column("namespace")
+        .r#type(ColumnType::String(None))
+        .nullable(true);
 }

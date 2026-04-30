@@ -62,6 +62,7 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
                 path: "key".into(),
                 selectively_disclosable: false,
                 schema: Some(ClaimSchema {
+                    business_key: None,
                     id: claim_schema_id,
                     key: "key".into(),
                     data_type: "STRING".into(),
@@ -76,6 +77,8 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
             issuer_certificate: None,
             holder_identifier: None,
             schema: Some(CredentialSchema {
+                batch_size: None,
+                allow_revocation: None,
                 id: Uuid::new_v4().into(),
                 deleted_at: None,
                 imported_source_url: "CORE_URL".to_string(),
@@ -86,6 +89,7 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
                 format: "format".into(),
                 revocation_method: Some("revocation_method".into()),
                 claim_schemas: vec![ClaimSchema {
+                    business_key: None,
                     id: claim_schema_id,
                     key: "key".into(),
                     data_type: "STRING".into(),

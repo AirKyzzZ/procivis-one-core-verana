@@ -93,18 +93,20 @@ impl From<CredentialSchema> for credential_schema::ActiveModel {
             last_modified: Set(value.last_modified),
             name: Set(value.name),
             imported_source_url: Set(value.imported_source_url),
-            format: Set(value.format),
+            format: Set(Some(value.format)),
             revocation_method: Set(value.revocation_method),
             organisation_id: Set(value.organisation.id()),
             key_storage_security: Set(convert_inner(value.key_storage_security)),
             layout_type: Set(value.layout_type.into()),
             layout_properties: Set(convert_inner(value.layout_properties)),
-            schema_id: Set(value.schema_id),
+            schema_id: Set(Some(value.schema_id)),
             allow_suspension: Set(value.allow_suspension),
             requires_wallet_instance_attestation: Set(value.requires_wallet_instance_attestation),
             transaction_code_type: Set(transaction_code_type),
             transaction_code_length: Set(transaction_code_length.map(|l| l as i32)),
             transaction_code_description: Set(transaction_code_description),
+            batch_size: Set(value.batch_size),
+            allow_revocation: Set(value.allow_revocation),
         }
     }
 }
@@ -121,6 +123,7 @@ pub(super) fn claim_schemas_to_model_vec(
             created_date: Set(claim_schema.created_date),
             last_modified: Set(claim_schema.last_modified),
             key: Set(claim_schema.key),
+            business_key: Set(claim_schema.business_key),
             datatype: Set(claim_schema.data_type),
             array: Set(claim_schema.array),
             metadata: Set(claim_schema.metadata),
@@ -150,6 +153,13 @@ pub(super) fn credential_schema_from_models(
         _ => return Err(DataLayerError::MappingError),
     };
 
+    let format = credential_schema
+        .format
+        .ok_or(DataLayerError::MappingError)?;
+    let schema_id = credential_schema
+        .schema_id
+        .ok_or(DataLayerError::MappingError)?;
+
     let id = credential_schema.id;
     Ok(CredentialSchema {
         id,
@@ -158,7 +168,7 @@ pub(super) fn credential_schema_from_models(
         last_modified: credential_schema.last_modified,
         name: credential_schema.name,
         key_storage_security: convert_inner(credential_schema.key_storage_security),
-        format: credential_schema.format,
+        format,
         revocation_method: credential_schema.revocation_method,
         claim_schemas: RelatedVec::new(ClaimSchemasLoader { id, db }),
         organisation: Related::new(
@@ -172,11 +182,13 @@ pub(super) fn credential_schema_from_models(
             convert_inner(credential_schema.layout_properties)
         },
         imported_source_url: credential_schema.imported_source_url,
-        schema_id: credential_schema.schema_id,
+        schema_id,
         allow_suspension: credential_schema.allow_suspension,
         requires_wallet_instance_attestation: credential_schema
             .requires_wallet_instance_attestation,
         transaction_code,
+        batch_size: credential_schema.batch_size,
+        allow_revocation: credential_schema.allow_revocation,
     })
 }
 

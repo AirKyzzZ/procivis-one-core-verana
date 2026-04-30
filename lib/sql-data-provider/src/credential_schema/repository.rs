@@ -161,8 +161,8 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
         };
 
         let format = match request.format {
-            None => Unchanged("".into()), // Previously default empty string
-            Some(format) => Set(format),
+            None => Unchanged(Some("".into())), // Previously default empty string
+            Some(format) => Set(Some(format)),
         };
 
         let layout_type = match request.layout_type {

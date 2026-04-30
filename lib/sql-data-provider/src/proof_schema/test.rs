@@ -174,6 +174,7 @@ async fn test_create_proof_schema_already_exists() {
             input_schemas: Some(vec![ProofInputSchema {
                 claim_schemas: Some(vec![ProofInputClaimSchema {
                     schema: ClaimSchema {
+                        business_key: None,
                         id: Uuid::new_v4().into(),
                         key: "key".to_string(),
                         data_type: "STRING".to_string(),
@@ -187,6 +188,8 @@ async fn test_create_proof_schema_already_exists() {
                     order: 0,
                 }]),
                 credential_schema: Some(CredentialSchema {
+                    batch_size: None,
+                    allow_revocation: None,
                     id: Uuid::new_v4().into(),
                     deleted_at: None,
                     key_storage_security: Some(KeyStorageSecurity::Basic),
@@ -273,6 +276,7 @@ async fn test_create_proof_schema_success() {
             input_schemas: Some(vec![ProofInputSchema {
                 claim_schemas: Some(vec![ProofInputClaimSchema {
                     schema: ClaimSchema {
+                        business_key: None,
                         id: new_claim_schemas[0].id,
                         key: "TestKey".to_string(),
                         data_type: new_claim_schemas[0].datatype.to_string(),
@@ -286,6 +290,8 @@ async fn test_create_proof_schema_success() {
                     order: 0,
                 }]),
                 credential_schema: Some(CredentialSchema {
+                    batch_size: None,
+                    allow_revocation: None,
                     id: credential_schema_id,
                     deleted_at: None,
                     key_storage_security: Some(KeyStorageSecurity::Basic),
@@ -472,6 +478,7 @@ async fn test_get_proof_schema_with_relations() {
             Ok(ids
                 .into_iter()
                 .map(|id| ClaimSchema {
+                    business_key: None,
                     id,
                     key: "key".to_string(),
                     data_type: "STRING".to_string(),
@@ -496,6 +503,8 @@ async fn test_get_proof_schema_with_relations() {
         .times(1)
         .returning(|id| {
             Ok(Some(CredentialSchema {
+                batch_size: None,
+                allow_revocation: None,
                 id: id.to_owned(),
                 deleted_at: None,
                 key_storage_security: Some(KeyStorageSecurity::Basic),
@@ -612,6 +621,7 @@ async fn test_get_proof_schema_with_input_proof_relations() {
             Ok(ids
                 .into_iter()
                 .map(|id| ClaimSchema {
+                    business_key: None,
                     id,
                     key: "key".to_string(),
                     data_type: "STRING".to_string(),
@@ -634,6 +644,8 @@ async fn test_get_proof_schema_with_input_proof_relations() {
         .expect_get_credential_schema()
         .returning(|id| {
             Ok(Some(CredentialSchema {
+                batch_size: None,
+                allow_revocation: None,
                 id: id.to_owned(),
                 deleted_at: None,
                 key_storage_security: Some(KeyStorageSecurity::Basic),
@@ -1092,18 +1104,20 @@ async fn test_get_proof_schema_list_filter_formats() {
 
     let date_now = one_core::clock::now_utc();
     let cred_schema_jwt_id = crate::entity::credential_schema::ActiveModel {
+        batch_size: Set(None),
+        allow_revocation: Set(None),
         id: Set(Uuid::new_v4().into()),
         created_date: Set(date_now),
         last_modified: Set(date_now),
         name: Set("jwt".to_string()),
-        format: Set("JWT".into()),
+        format: Set(Some("JWT".into())),
         organisation_id: Set(organisation_id),
         deleted_at: Set(None),
         revocation_method: Set(None),
         key_storage_security: Set(None),
         layout_type: Set(LayoutType::Card.into()),
         layout_properties: Set(None),
-        schema_id: Set("JWT".to_string()),
+        schema_id: Set(Some("JWT".to_string())),
         imported_source_url: Set("URL".to_string()),
         allow_suspension: Set(false),
         requires_wallet_instance_attestation: Set(false),
@@ -1117,18 +1131,20 @@ async fn test_get_proof_schema_list_filter_formats() {
     .id;
 
     let cred_schema_mdoc_id = crate::entity::credential_schema::ActiveModel {
+        batch_size: Set(None),
+        allow_revocation: Set(None),
         id: Set(Uuid::new_v4().into()),
         created_date: Set(date_now),
         last_modified: Set(date_now),
         name: Set("mdoc".to_string()),
-        format: Set("MDOC".into()),
+        format: Set(Some("MDOC".into())),
         organisation_id: Set(organisation_id),
         deleted_at: Set(None),
         revocation_method: Set(None),
         key_storage_security: Set(None),
         layout_type: Set(LayoutType::Card.into()),
         layout_properties: Set(None),
-        schema_id: Set("MDOC".to_string()),
+        schema_id: Set(Some("MDOC".to_string())),
         imported_source_url: Set("URL".to_string()),
         allow_suspension: Set(false),
         requires_wallet_instance_attestation: Set(false),

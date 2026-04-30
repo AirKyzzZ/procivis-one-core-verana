@@ -16,6 +16,7 @@ use one_core::repository::certificate_repository::CertificateRepository;
 use one_core::repository::claim_repository::ClaimRepository;
 use one_core::repository::claim_schema_repository::ClaimSchemaRepository;
 use one_core::repository::credential_repository::CredentialRepository;
+use one_core::repository::credential_schema_format_repository::CredentialSchemaFormatRepository;
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
 use one_core::repository::did_repository::DidRepository;
 use one_core::repository::history_repository::HistoryRepository;
@@ -57,6 +58,7 @@ use wallet_instance::WalletInstanceProvider;
 use crate::blob::BlobProvider;
 use crate::credential::CredentialProvider;
 use crate::credential_schema::CredentialSchemaProvider;
+use crate::credential_schema_format::CredentialSchemaFormatProvider;
 use crate::history::HistoryProvider;
 use crate::holder_wallet_instance::HolderWalletInstanceProvider;
 use crate::identifier_trust_information::IdentifierTrustInformationProvider;
@@ -82,6 +84,7 @@ pub mod claim;
 pub mod claim_schema;
 pub mod credential;
 pub mod credential_schema;
+pub mod credential_schema_format;
 pub mod did;
 pub mod history;
 pub mod identifier;
@@ -118,6 +121,7 @@ pub struct DataLayer {
     claim_schema_repository: Arc<dyn ClaimSchemaRepository>,
     credential_repository: Arc<dyn CredentialRepository>,
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
+    credential_schema_format_repository: Arc<dyn CredentialSchemaFormatRepository>,
     history_repository: Arc<dyn HistoryRepository>,
     identifier_repository: Arc<dyn IdentifierRepository>,
     identifier_trust_information_repository: Arc<dyn IdentifierTrustInformationRepository>,
@@ -178,6 +182,10 @@ impl DataLayer {
         let credential_schema_repository = Arc::new(CredentialSchemaProvider {
             db: transaction_manager.clone(),
             organisation_repository: organisation_repository.clone(),
+        });
+
+        let credential_schema_format_repository = Arc::new(CredentialSchemaFormatProvider {
+            db: transaction_manager.clone(),
         });
 
         let key_repository = Arc::new(KeyProvider {
@@ -331,6 +339,7 @@ impl DataLayer {
             organisation_repository,
             credential_repository,
             credential_schema_repository,
+            credential_schema_format_repository,
             key_repository,
             json_ld_context_repository,
             history_repository,
@@ -386,6 +395,9 @@ impl DataRepository for DataLayer {
     }
     fn get_credential_schema_repository(&self) -> Arc<dyn CredentialSchemaRepository> {
         self.credential_schema_repository.clone()
+    }
+    fn get_credential_schema_format_repository(&self) -> Arc<dyn CredentialSchemaFormatRepository> {
+        self.credential_schema_format_repository.clone()
     }
     fn get_history_repository(&self) -> Arc<dyn HistoryRepository> {
         self.history_repository.clone()

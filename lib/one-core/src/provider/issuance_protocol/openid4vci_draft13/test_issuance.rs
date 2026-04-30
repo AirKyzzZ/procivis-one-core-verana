@@ -658,6 +658,7 @@ fn dummy_credential() -> Credential {
             path: "key".to_string(),
             selectively_disclosable: false,
             schema: Some(ClaimSchema {
+                business_key: None,
                 id: claim_schema_id,
                 key: "key".to_string(),
                 data_type: "STRING".to_string(),
@@ -672,6 +673,8 @@ fn dummy_credential() -> Credential {
         issuer_certificate: None,
         holder_identifier: None,
         schema: Some(CredentialSchema {
+            batch_size: None,
+            allow_revocation: None,
             id: Uuid::new_v4().into(),
             imported_source_url: "CORE_URL".to_string(),
             deleted_at: None,
@@ -682,6 +685,7 @@ fn dummy_credential() -> Credential {
             format: "JWT".into(),
             revocation_method: None,
             claim_schemas: vec![ClaimSchema {
+                business_key: None,
                 id: claim_schema_id,
                 key: "key".to_string(),
                 data_type: "STRING".to_string(),

@@ -693,6 +693,7 @@ fn generic_credential() -> Credential {
     let now = crate::clock::now_utc();
 
     let claim_schema = ClaimSchema {
+        business_key: None,
         array: false,
         id: Uuid::new_v4().into(),
         key: "NUMBER".to_string(),
@@ -773,6 +774,8 @@ fn generic_credential() -> Credential {
         issuer_certificate: None,
         holder_identifier: None,
         schema: Some(CredentialSchema {
+            batch_size: None,
+            allow_revocation: None,
             id: Uuid::new_v4().into(),
             deleted_at: None,
             imported_source_url: "CORE_URL".to_string(),

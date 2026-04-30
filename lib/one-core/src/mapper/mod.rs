@@ -499,6 +499,7 @@ mod tests {
     #[test]
     fn test_extracted_credential_to_model_mdoc() {
         let namespace_claim_schema = ClaimSchema {
+            business_key: None,
             id: Uuid::new_v4().into(),
             key: "namespace".to_string(),
             data_type: "OBJECT".to_string(),
@@ -510,6 +511,7 @@ mod tests {
         };
 
         let element_claim_schema = ClaimSchema {
+            business_key: None,
             id: Uuid::new_v4().into(),
             key: "namespace/element".to_string(),
             data_type: "STRING".to_string(),
@@ -540,6 +542,8 @@ mod tests {
         let credential = extracted_credential_to_model(
             &claim_schemas,
             CredentialSchema {
+                batch_size: None,
+                allow_revocation: None,
                 id: Uuid::new_v4().into(),
                 deleted_at: None,
                 created_date: crate::clock::now_utc(),

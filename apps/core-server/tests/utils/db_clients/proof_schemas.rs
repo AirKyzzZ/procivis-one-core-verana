@@ -48,6 +48,7 @@ impl ProofSchemasDB {
                 .enumerate()
                 .map(|(order, claim)| ProofInputClaimSchema {
                     schema: ClaimSchema {
+                        business_key: None,
                         id: claim.id,
                         key: claim.key.to_owned(),
                         data_type: claim.data_type.to_owned(),

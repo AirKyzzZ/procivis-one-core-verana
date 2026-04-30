@@ -112,6 +112,8 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
 
     TestSetupWithCredentialSchema {
         credential_schema: CredentialSchema {
+            batch_size: None,
+            allow_revocation: None,
             id: credential_schema_id,
             deleted_at: None,
             key_storage_security: None,
@@ -124,6 +126,7 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
             claim_schemas: new_claim_schemas
                 .into_iter()
                 .map(|claim| ClaimSchema {
+                    business_key: None,
                     id: claim.id,
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
@@ -161,6 +164,7 @@ async fn test_create_credential_schema_success() {
     let credential_schema_id: CredentialSchemaId = Uuid::new_v4().into();
     let claim_schemas = vec![
         ClaimSchema {
+            business_key: None,
             id: Uuid::new_v4().into(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
@@ -171,6 +175,7 @@ async fn test_create_credential_schema_success() {
             required: true,
         },
         ClaimSchema {
+            business_key: None,
             id: Uuid::new_v4().into(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
@@ -184,6 +189,8 @@ async fn test_create_credential_schema_success() {
 
     let result = repository
         .create_credential_schema(CredentialSchema {
+            batch_size: None,
+            allow_revocation: None,
             id: credential_schema_id,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
@@ -395,6 +402,8 @@ async fn test_delete_credential_schema_not_found() {
 
     let result = repository
         .delete_credential_schema(&CredentialSchema {
+            batch_size: None,
+            allow_revocation: None,
             id: Uuid::new_v4().into(),
             deleted_at: None,
             created_date: one_core::clock::now_utc(),
@@ -452,7 +461,10 @@ async fn test_update_credential_schema_success() {
         .unwrap();
     assert_eq!(db_schemas.len(), 1);
     assert_eq!(db_schemas[0].revocation_method, Some(new_revocation_method));
-    assert_eq!(db_schemas[0].format.as_ref(), new_format);
+    assert_eq!(
+        db_schemas[0].format.as_ref().map(|f| f.as_ref()),
+        Some(new_format)
+    );
     assert_eq!(db_schemas[0].layout_type, LayoutType::Document.into());
     assert_eq!(
         &db_schemas[0]
@@ -485,4 +497,46 @@ async fn test_get_by_schema_id_and_organisation() {
         .unwrap();
 
     assert_eq!(res, credential_schema);
+}
+
+#[tokio::test]
+async fn test_partial_unique_index_allows_multiple_null_schema_ids() {
+    let setup = setup_empty(Repositories::default()).await;
+
+    insert_null_schema_id_credential_schema(&setup.db, setup.organisation.id, "schema-a")
+        .await
+        .expect("first NULL-schema_id insert should succeed");
+    insert_null_schema_id_credential_schema(&setup.db, setup.organisation.id, "schema-b")
+        .await
+        .expect("second NULL-schema_id insert should also succeed");
+}
+
+async fn insert_null_schema_id_credential_schema(
+    db: &DatabaseConnection,
+    organisation_id: shared_types::OrganisationId,
+    name: &str,
+) -> Result<(), sea_orm::DbErr> {
+    let model = credential_schema::ActiveModel {
+        id: Set(Uuid::new_v4().into()),
+        deleted_at: Set(None),
+        created_date: Set(get_dummy_date()),
+        last_modified: Set(get_dummy_date()),
+        name: Set(name.to_string()),
+        format: Set(None),
+        schema_id: Set(None),
+        revocation_method: Set(None),
+        organisation_id: Set(organisation_id),
+        layout_type: Set(crate::entity::credential_schema::LayoutType::Card),
+        layout_properties: Set(None),
+        imported_source_url: Set("CORE_URL".into()),
+        allow_suspension: Set(false),
+        requires_wallet_instance_attestation: Set(false),
+        key_storage_security: Set(None),
+        transaction_code_type: Set(None),
+        transaction_code_length: Set(None),
+        transaction_code_description: Set(None),
+        batch_size: Set(None),
+        allow_revocation: Set(None),
+    };
+    model.insert(db).await.map(|_| ())
 }

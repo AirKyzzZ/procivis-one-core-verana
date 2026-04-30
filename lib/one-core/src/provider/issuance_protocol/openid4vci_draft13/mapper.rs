@@ -261,6 +261,7 @@ pub(super) fn create_claims_from_credential_definition(
         let new_schema_claim = ClaimSchema {
             id: Uuid::new_v4().into(),
             key: key.to_string(),
+            business_key: None,
             data_type: value_details.value_type.to_string(),
             created_date: now,
             last_modified: now,
@@ -299,6 +300,7 @@ pub(super) fn create_claims_from_credential_definition(
         claim_schemas.push(ClaimSchema {
             id: Uuid::new_v4().into(),
             key: object_claim.into(),
+            business_key: None,
             data_type: DatatypeType::Object.to_string(),
             created_date: now,
             last_modified: now,
@@ -416,6 +418,7 @@ fn from_jwt_request_claim_schema(
     ClaimSchema {
         id,
         key,
+        business_key: None,
         data_type: datatype,
         created_date: now,
         last_modified: now,
@@ -490,6 +493,8 @@ fn from_create_request_with_id(
         allow_suspension: false,
         requires_wallet_instance_attestation: false,
         transaction_code: None,
+        batch_size: None,
+        allow_revocation: None,
     })
 }
 

@@ -35,6 +35,8 @@ pub struct CredentialSchema {
     pub allow_suspension: bool,
     pub requires_wallet_instance_attestation: bool,
     pub transaction_code: Option<TransactionCode>,
+    pub batch_size: Option<i32>,
+    pub allow_revocation: Option<bool>,
 
     pub claim_schemas: RelatedVec<ClaimSchema>,
     pub organisation: Related<Organisation>,

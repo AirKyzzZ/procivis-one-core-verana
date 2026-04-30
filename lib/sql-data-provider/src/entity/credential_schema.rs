@@ -18,7 +18,7 @@ pub struct Model {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub name: String,
-    pub format: CredentialFormat,
+    pub format: Option<CredentialFormat>,
     pub revocation_method: Option<RevocationMethodId>,
     pub key_storage_security: Option<KeyStorageSecurity>,
     pub organisation_id: OrganisationId,
@@ -26,7 +26,7 @@ pub struct Model {
     pub layout_type: LayoutType,
     #[sea_orm(column_type = "Json")]
     pub layout_properties: Option<LayoutProperties>,
-    pub schema_id: String,
+    pub schema_id: Option<String>,
     pub imported_source_url: String,
     #[serde(deserialize_with = "bool_from_int")]
     pub allow_suspension: bool,
@@ -35,6 +35,8 @@ pub struct Model {
     pub transaction_code_type: Option<TransactionCodeType>,
     pub transaction_code_length: Option<i32>,
     pub transaction_code_description: Option<String>,
+    pub batch_size: Option<i32>,
+    pub allow_revocation: Option<bool>,
 }
 
 #[derive(
@@ -148,6 +150,8 @@ pub enum Relation {
     Organisation,
     #[sea_orm(has_many = "super::proof_input_schema::Entity")]
     ProofInputSchema,
+    #[sea_orm(has_many = "super::credential_schema_format::Entity")]
+    CredentialSchemaFormat,
 }
 
 impl Related<super::credential::Entity> for Entity {
@@ -171,6 +175,12 @@ impl Related<super::organisation::Entity> for Entity {
 impl Related<super::proof_input_schema::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::ProofInputSchema.def()
+    }
+}
+
+impl Related<super::credential_schema_format::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::CredentialSchemaFormat.def()
     }
 }
 

@@ -180,6 +180,8 @@ pub(super) fn from_create_request_with_id(
         allow_suspension: request.allow_suspension.unwrap_or_default(),
         requires_wallet_instance_attestation: request.requires_wallet_instance_attestation,
         transaction_code: convert_inner(request.transaction_code),
+        batch_size: None,
+        allow_revocation: None,
     })
 }
 

@@ -131,6 +131,7 @@ async fn test_issuance_accept_openid4vc() {
             TestingCreateSchemaParams {
                 claim_schemas: Some(vec![
                     ClaimSchema {
+                        business_key: None,
                         id: schema_id.into(),
                         key: "string".to_string(),
                         data_type: "STRING".to_string(),
@@ -141,6 +142,7 @@ async fn test_issuance_accept_openid4vc() {
                         required: true,
                     },
                     ClaimSchema {
+                        business_key: None,
                         id: metadata_schema_id.into(),
                         key: "iss".to_string(),
                         data_type: "STRING".to_string(),
@@ -353,6 +355,7 @@ async fn test_issuance_accept_schema_name_already_exists() {
             TestingCreateSchemaParams {
                 claim_schemas: Some(vec![
                     ClaimSchema {
+                        business_key: None,
                         id: schema_id.into(),
                         key: "string".to_string(),
                         data_type: "STRING".to_string(),
@@ -363,6 +366,7 @@ async fn test_issuance_accept_schema_name_already_exists() {
                         required: true,
                     },
                     ClaimSchema {
+                        business_key: None,
                         id: metadata_schema_id.into(),
                         key: "iss".to_string(),
                         data_type: "STRING".to_string(),
@@ -548,6 +552,7 @@ async fn test_issuance_accept_openid4vc_issuer_did_mismatch() {
             None,
             TestingCreateSchemaParams {
                 claim_schemas: Some(vec![ClaimSchema {
+                    business_key: None,
                     id: schema_id.into(),
                     key: "string".to_string(),
                     data_type: "STRING".to_string(),
@@ -721,6 +726,7 @@ async fn test_issuance_accept_openid4vc_issuer_certificate_mismatch() {
             None,
             TestingCreateSchemaParams {
                 claim_schemas: Some(vec![ClaimSchema {
+                    business_key: None,
                     id: schema_id.into(),
                     key: "string".to_string(),
                     data_type: "STRING".to_string(),
@@ -888,6 +894,7 @@ async fn test_issuance_accept_openid4vc_issuer_invalid_signature() {
             None,
             TestingCreateSchemaParams {
                 claim_schemas: Some(vec![ClaimSchema {
+                    business_key: None,
                     id: schema_id.into(),
                     key: "string".to_string(),
                     data_type: "STRING".to_string(),
@@ -1057,6 +1064,7 @@ async fn test_issuance_accept_openid4vc_with_key_id() {
             None,
             TestingCreateSchemaParams {
                 claim_schemas: Some(vec![ClaimSchema {
+                    business_key: None,
                     id: schema_id.into(),
                     key: "string".to_string(),
                     data_type: "STRING".to_string(),
@@ -1193,6 +1201,7 @@ async fn test_issuance_accept_autogenerate_holder_binding() {
             None,
             TestingCreateSchemaParams {
                 claim_schemas: Some(vec![ClaimSchema {
+                    business_key: None,
                     id: schema_id.into(),
                     key: "string".to_string(),
                     data_type: "STRING".to_string(),
@@ -2075,6 +2084,7 @@ async fn test_issuance_accept_openid4vc_with_tx_code() {
             None,
             TestingCreateSchemaParams {
                 claim_schemas: Some(vec![ClaimSchema {
+                    business_key: None,
                     id: schema_id.into(),
                     key: "string".to_string(),
                     data_type: "STRING".to_string(),
@@ -2254,6 +2264,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc() {
             None,
             TestingCreateSchemaParams {
                 claim_schemas: Some(vec![ClaimSchema {
+                    business_key: None,
                     id: schema_id.into(),
                     key: "string".to_string(),
                     data_type: "STRING".to_string(),
@@ -2438,6 +2449,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
                 format: Some("JSON_LD_CLASSIC".into()),
                 claim_schemas: Some(vec![
                     ClaimSchema {
+                        business_key: None,
                         id: Uuid::new_v4().into(),
                         key: "first name".to_string(),
                         data_type: "STRING".to_string(),
@@ -2448,6 +2460,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
                         required: true,
                     },
                     ClaimSchema {
+                        business_key: None,
                         id: Uuid::new_v4().into(),
                         key: "last name".to_string(),
                         data_type: "STRING".to_string(),
@@ -2458,6 +2471,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
                         required: true,
                     },
                     ClaimSchema {
+                        business_key: None,
                         id: Uuid::new_v4().into(),
                         key: "address".to_string(),
                         data_type: "OBJECT".to_string(),
@@ -2468,6 +2482,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
                         required: true,
                     },
                     ClaimSchema {
+                        business_key: None,
                         id: Uuid::new_v4().into(),
                         key: "address/postal code".to_string(),
                         data_type: "STRING".to_string(),
@@ -2478,6 +2493,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
                         required: true,
                     },
                     ClaimSchema {
+                        business_key: None,
                         id: Uuid::new_v4().into(),
                         key: "address/street".to_string(),
                         data_type: "STRING".to_string(),
@@ -2814,6 +2830,7 @@ async fn test_wia_pop_iss_equals_wia_sub() {
             None,
             TestingCreateSchemaParams {
                 claim_schemas: Some(vec![ClaimSchema {
+                    business_key: None,
                     id: schema_id.into(),
                     key: "string".to_string(),
                     data_type: "STRING".to_string(),

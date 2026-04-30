@@ -16,6 +16,7 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: ClaimSchemaId,
     pub key: String,
+    pub business_key: Option<String>,
 
     #[serde(with = "time::serde::rfc3339")]
     pub created_date: OffsetDateTime,
@@ -47,6 +48,8 @@ pub enum Relation {
     CredentialSchema,
     #[sea_orm(has_many = "super::proof_input_claim_schema::Entity")]
     ProofInputClaimSchema,
+    #[sea_orm(has_many = "super::credential_schema_format_claim_schema::Entity")]
+    CredentialSchemaFormatClaimSchema,
 }
 
 impl Related<super::claim::Entity> for Entity {
@@ -77,6 +80,12 @@ impl Related<super::proof_input_schema::Entity> for Entity {
                 .def()
                 .rev(),
         )
+    }
+}
+
+impl Related<super::credential_schema_format_claim_schema::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::CredentialSchemaFormatClaimSchema.def()
     }
 }
 

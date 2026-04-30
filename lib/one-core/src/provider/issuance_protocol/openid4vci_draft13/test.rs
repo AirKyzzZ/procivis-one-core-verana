@@ -258,6 +258,7 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
     let now = crate::clock::now_utc();
 
     let claim_schema = ClaimSchema {
+        business_key: None,
         id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
             .unwrap()
             .into(),
@@ -304,6 +305,8 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
         issuer_identifier: Some(issuer_identifier),
         holder_identifier: None,
         schema: Some(CredentialSchema {
+            batch_size: None,
+            allow_revocation: None,
             id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
                 .unwrap()
                 .into(),
@@ -1911,6 +1914,8 @@ fn test_get_parent_claim_paths() {
 
 fn generic_schema() -> CredentialSchema {
     CredentialSchema {
+        batch_size: None,
+        allow_revocation: None,
         id: Uuid::new_v4().into(),
         deleted_at: None,
         imported_source_url: "CORE_URL".to_string(),
@@ -1925,6 +1930,7 @@ fn generic_schema() -> CredentialSchema {
         schema_id: "http://127.0.0.1/ssi/schema/v1/id".to_string(),
         claim_schemas: vec![
             ClaimSchema {
+                business_key: None,
                 id: Uuid::new_v4().into(),
                 key: "First Name".to_string(),
                 data_type: "STRING".to_string(),
@@ -1935,6 +1941,7 @@ fn generic_schema() -> CredentialSchema {
                 required: true,
             },
             ClaimSchema {
+                business_key: None,
                 id: Uuid::new_v4().into(),
                 key: "Last Name".to_string(),
                 data_type: "STRING".to_string(),
@@ -1945,6 +1952,7 @@ fn generic_schema() -> CredentialSchema {
                 required: true,
             },
             ClaimSchema {
+                business_key: None,
                 id: Uuid::new_v4().into(),
                 key: "Address".to_string(),
                 data_type: "OBJECT".to_string(),
@@ -1955,6 +1963,7 @@ fn generic_schema() -> CredentialSchema {
                 required: false,
             },
             ClaimSchema {
+                business_key: None,
                 id: Uuid::new_v4().into(),
                 key: "Address/Street".to_string(),
                 data_type: "STRING".to_string(),
@@ -1965,6 +1974,7 @@ fn generic_schema() -> CredentialSchema {
                 required: true,
             },
             ClaimSchema {
+                business_key: None,
                 id: Uuid::new_v4().into(),
                 key: "Address/Number".to_string(),
                 data_type: "STRING".to_string(),
@@ -1975,6 +1985,7 @@ fn generic_schema() -> CredentialSchema {
                 required: true,
             },
             ClaimSchema {
+                business_key: None,
                 id: Uuid::new_v4().into(),
                 key: "Address/Apartment".to_string(),
                 data_type: "STRING".to_string(),
@@ -1985,6 +1996,7 @@ fn generic_schema() -> CredentialSchema {
                 required: false,
             },
             ClaimSchema {
+                business_key: None,
                 id: Uuid::new_v4().into(),
                 key: "Address/Zip".to_string(),
                 data_type: "STRING".to_string(),
@@ -1995,6 +2007,7 @@ fn generic_schema() -> CredentialSchema {
                 required: true,
             },
             ClaimSchema {
+                business_key: None,
                 id: Uuid::new_v4().into(),
                 key: "Address/City".to_string(),
                 data_type: "STRING".to_string(),
@@ -2015,6 +2028,8 @@ fn generic_schema() -> CredentialSchema {
 
 fn generic_schema_array_object() -> CredentialSchema {
     CredentialSchema {
+        batch_size: None,
+        allow_revocation: None,
         id: Uuid::new_v4().into(),
         deleted_at: None,
         created_date: get_dummy_date(),
@@ -2029,6 +2044,7 @@ fn generic_schema_array_object() -> CredentialSchema {
         schema_id: "http://127.0.0.1/ssi/schema/v1/id".to_string(),
         claim_schemas: vec![
             ClaimSchema {
+                business_key: None,
                 id: Uuid::new_v4().into(),
                 key: "array_string".to_string(),
                 data_type: "STRING".to_string(),
@@ -2039,6 +2055,7 @@ fn generic_schema_array_object() -> CredentialSchema {
                 required: true,
             },
             ClaimSchema {
+                business_key: None,
                 id: Uuid::new_v4().into(),
                 key: "optional_array_string".to_string(),
                 data_type: "STRING".to_string(),
@@ -2049,6 +2066,7 @@ fn generic_schema_array_object() -> CredentialSchema {
                 required: false,
             },
             ClaimSchema {
+                business_key: None,
                 id: Uuid::new_v4().into(),
                 key: "array_object".to_string(),
                 data_type: "OBJECT".to_string(),
@@ -2059,6 +2077,7 @@ fn generic_schema_array_object() -> CredentialSchema {
                 required: true,
             },
             ClaimSchema {
+                business_key: None,
                 id: Uuid::new_v4().into(),
                 key: "array_object/Field 1".to_string(),
                 data_type: "STRING".to_string(),
@@ -2069,6 +2088,7 @@ fn generic_schema_array_object() -> CredentialSchema {
                 required: true,
             },
             ClaimSchema {
+                business_key: None,
                 id: Uuid::new_v4().into(),
                 key: "array_object/Field 2".to_string(),
                 data_type: "STRING".to_string(),
@@ -2079,6 +2099,7 @@ fn generic_schema_array_object() -> CredentialSchema {
                 required: false,
             },
             ClaimSchema {
+                business_key: None,
                 id: Uuid::new_v4().into(),
                 key: "array_object/Field array".to_string(),
                 data_type: "STRING".to_string(),
@@ -2089,6 +2110,7 @@ fn generic_schema_array_object() -> CredentialSchema {
                 required: false,
             },
             ClaimSchema {
+                business_key: None,
                 id: Uuid::new_v4().into(),
                 key: "Address".to_string(),
                 data_type: "OBJECT".to_string(),
@@ -2099,6 +2121,7 @@ fn generic_schema_array_object() -> CredentialSchema {
                 required: true,
             },
             ClaimSchema {
+                business_key: None,
                 id: Uuid::new_v4().into(),
                 key: "Address/Street".to_string(),
                 data_type: "STRING".to_string(),
@@ -2119,6 +2142,8 @@ fn generic_schema_array_object() -> CredentialSchema {
 
 fn generic_schema_object_hell() -> CredentialSchema {
     CredentialSchema {
+        batch_size: None,
+        allow_revocation: None,
         id: Uuid::new_v4().into(),
         deleted_at: None,
         created_date: get_dummy_date(),
@@ -2133,6 +2158,7 @@ fn generic_schema_object_hell() -> CredentialSchema {
         schema_id: "http://127.0.0.1/ssi/schema/v1/id".to_string(),
         claim_schemas: vec![
             ClaimSchema {
+                business_key: None,
                 id: Uuid::new_v4().into(),
                 key: "opt_obj".to_string(),
                 data_type: "OBJECT".to_string(),
@@ -2143,6 +2169,7 @@ fn generic_schema_object_hell() -> CredentialSchema {
                 required: false,
             },
             ClaimSchema {
+                business_key: None,
                 id: Uuid::new_v4().into(),
                 key: "opt_obj/obj_str".to_string(),
                 data_type: "STRING".to_string(),
@@ -2153,6 +2180,7 @@ fn generic_schema_object_hell() -> CredentialSchema {
                 required: true,
             },
             ClaimSchema {
+                business_key: None,
                 id: Uuid::new_v4().into(),
                 key: "opt_obj/opt_obj".to_string(),
                 data_type: "OBJECT".to_string(),
@@ -2163,6 +2191,7 @@ fn generic_schema_object_hell() -> CredentialSchema {
                 required: false,
             },
             ClaimSchema {
+                business_key: None,
                 id: Uuid::new_v4().into(),
                 key: "opt_obj/opt_obj/field_man".to_string(),
                 data_type: "STRING".to_string(),
@@ -2173,6 +2202,7 @@ fn generic_schema_object_hell() -> CredentialSchema {
                 required: true,
             },
             ClaimSchema {
+                business_key: None,
                 id: Uuid::new_v4().into(),
                 key: "opt_obj/opt_obj/field_opt".to_string(),
                 data_type: "STRING".to_string(),

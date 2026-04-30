@@ -1420,6 +1420,7 @@ async fn test_get_presentation_definition_dcql_metadata_value_matching() {
                 format: Some("SD_JWT_VC".into()),
                 claim_schemas: Some(vec![
                     ClaimSchema {
+                        business_key: None,
                         id: claim_schema_id.into(),
                         key: "string_claim".to_string(),
                         data_type: "STRING".to_string(),
@@ -1430,6 +1431,7 @@ async fn test_get_presentation_definition_dcql_metadata_value_matching() {
                         required: true,
                     },
                     ClaimSchema {
+                        business_key: None,
                         id: metadata_claim_schema_id.into(),
                         key: "iss".to_string(),
                         data_type: "STRING".to_string(),

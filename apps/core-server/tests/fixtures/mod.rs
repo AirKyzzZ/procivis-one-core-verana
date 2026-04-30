@@ -626,6 +626,7 @@ pub async fn create_credential_schema(
     let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
     let claim_schema = ClaimSchema {
+        business_key: None,
         id: Uuid::new_v4().into(),
         key: "firstName".to_string(),
         data_type: "STRING".to_string(),
@@ -643,6 +644,8 @@ pub async fn create_credential_schema(
         .id
         .unwrap_or(CredentialSchemaId::from(Uuid::new_v4()));
     let credential_schema = CredentialSchema {
+        batch_size: None,
+        allow_revocation: None,
         id,
         created_date: params.created_date.unwrap_or(now),
         imported_source_url: "CORE_URL".to_string(),
@@ -683,6 +686,7 @@ pub async fn create_credential_schema_with_claims(
     let claim_schemas: Vec<_> = claims
         .iter()
         .map(|(id, key, required, data_type, array)| ClaimSchema {
+            business_key: None,
             id: (*id).into(),
             key: key.to_string(),
             data_type: data_type.to_string(),
@@ -695,6 +699,8 @@ pub async fn create_credential_schema_with_claims(
         .collect();
     let id = Uuid::new_v4();
     let credential_schema = CredentialSchema {
+        batch_size: None,
+        allow_revocation: None,
         id: id.into(),
         imported_source_url: "CORE_URL".to_string(),
         created_date: get_dummy_date(),
@@ -740,6 +746,7 @@ pub async fn create_proof_schema(
                 .enumerate()
                 .map(|(order, claim)| ProofInputClaimSchema {
                     schema: ClaimSchema {
+                        business_key: None,
                         id: claim.id.to_owned(),
                         key: claim.key.to_string(),
                         data_type: claim.data_type.to_string(),

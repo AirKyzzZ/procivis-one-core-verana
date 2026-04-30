@@ -91,6 +91,8 @@ async fn setup_empty() -> TestSetup {
         .unwrap();
 
     let credential_schema = CredentialSchema {
+        batch_size: None,
+        allow_revocation: None,
         id: credential_schema_id,
         deleted_at: None,
         imported_source_url: "CORE_URL".to_string(),
@@ -103,6 +105,7 @@ async fn setup_empty() -> TestSetup {
         claim_schemas: new_claim_schemas
             .into_iter()
             .map(|schema| ClaimSchema {
+                business_key: None,
                 id: schema.id,
                 key: schema.key.to_string(),
                 data_type: schema.datatype.to_string(),

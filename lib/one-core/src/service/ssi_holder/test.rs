@@ -751,6 +751,7 @@ async fn test_submit_proof_repeating_claims() {
                     path: "claim1".to_string(),
                     selectively_disclosable: false,
                     schema: Some(ClaimSchema {
+                        business_key: None,
                         id: claim_id.into(),
                         key: "claim1".to_string(),
                         data_type: "STRING".to_string(),
@@ -1673,6 +1674,8 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
         issuer_certificate: None,
         holder_identifier: None,
         schema: Some(crate::model::credential_schema::CredentialSchema {
+            batch_size: None,
+            allow_revocation: None,
             id: Uuid::new_v4().into(),
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
@@ -1682,6 +1685,7 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
             format: "JWT".into(),
             revocation_method: None,
             claim_schemas: vec![ClaimSchema {
+                business_key: None,
                 id: Uuid::new_v4().into(),
                 key: "key1".to_string(),
                 data_type: "STRING".to_string(),

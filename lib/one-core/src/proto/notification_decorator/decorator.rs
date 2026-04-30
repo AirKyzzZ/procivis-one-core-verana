@@ -12,6 +12,7 @@ use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::claim_repository::ClaimRepository;
 use crate::repository::claim_schema_repository::ClaimSchemaRepository;
 use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::credential_schema_format_repository::CredentialSchemaFormatRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::history_repository::HistoryRepository;
@@ -69,6 +70,9 @@ impl DataRepository for DecoratedDataProvider {
     }
     fn get_credential_schema_repository(&self) -> Arc<dyn CredentialSchemaRepository> {
         self.data_provider.get_credential_schema_repository()
+    }
+    fn get_credential_schema_format_repository(&self) -> Arc<dyn CredentialSchemaFormatRepository> {
+        self.data_provider.get_credential_schema_format_repository()
     }
     fn get_identifier_repository(&self) -> Arc<dyn IdentifierRepository> {
         self.data_provider.get_identifier_repository()

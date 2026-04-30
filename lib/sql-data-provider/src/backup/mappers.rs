@@ -71,7 +71,9 @@ pub(super) fn credential_from_unexportable_model(
             last_modified: value.credential_schema_last_modified,
             imported_source_url: value.credential_schema_imported_source_url,
             name: value.credential_schema_name,
-            format: value.credential_schema_format,
+            format: value
+                .credential_schema_format
+                .ok_or(DataLayerError::MappingError)?,
             key_storage_security: convert_inner(value.credential_schema_key_storage_security),
             revocation_method: value.credential_schema_revocation_method,
             claim_schemas: claim_schemas.into(),
@@ -95,6 +97,8 @@ pub(super) fn credential_from_unexportable_model(
             requires_wallet_instance_attestation: value
                 .credential_schema_requires_wallet_instance_attestation,
             transaction_code,
+            batch_size: value.credential_schema_batch_size,
+            allow_revocation: value.credential_schema_allow_revocation,
         }),
         interaction: None,
         key: None,

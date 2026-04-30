@@ -336,6 +336,8 @@ impl CredentialFormatter for JsonLdClassic {
             claim_schemas: claim_schemas.into(),
             organisation: organisation.clone().into(),
             transaction_code: None,
+            batch_size: None,
+            allow_revocation: None,
         };
 
         let issuer_identifier = prepare_identifier(

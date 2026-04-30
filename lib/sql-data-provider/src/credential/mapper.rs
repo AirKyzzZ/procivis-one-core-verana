@@ -220,10 +220,14 @@ pub(super) fn credential_list_model_to_repository_model(
         last_modified: credential.credential_schema_last_modified,
         key_storage_security: convert_inner(credential.credential_schema_key_storage_security),
         name: credential.credential_schema_name,
-        format: credential.credential_schema_format,
+        format: credential
+            .credential_schema_format
+            .ok_or(DataLayerError::MappingError)?,
         revocation_method: credential.credential_schema_revocation_method,
         imported_source_url: credential.credential_schema_imported_source_url,
-        schema_id: credential.credential_schema_schema_id,
+        schema_id: credential
+            .credential_schema_schema_id
+            .ok_or(DataLayerError::MappingError)?,
         claim_schemas: RelatedVec::new(ClaimSchemasLoader {
             id: credential.credential_schema_id,
             db: db.to_owned(),
@@ -241,6 +245,8 @@ pub(super) fn credential_list_model_to_repository_model(
         requires_wallet_instance_attestation: credential
             .credential_schema_requires_wallet_instance_attestation,
         transaction_code,
+        batch_size: credential.credential_schema_batch_size,
+        allow_revocation: credential.credential_schema_allow_revocation,
     };
 
     let issuer_identifier = match credential.issuer_identifier_id {

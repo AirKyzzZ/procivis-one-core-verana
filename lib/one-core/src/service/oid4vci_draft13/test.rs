@@ -96,6 +96,8 @@ fn generic_organisation() -> Organisation {
 fn generic_credential_schema() -> CredentialSchema {
     let now = crate::clock::now_utc();
     CredentialSchema {
+        batch_size: None,
+        allow_revocation: None,
         id: Uuid::new_v4().into(),
         deleted_at: None,
         imported_source_url: "CORE_URL".to_string(),
@@ -106,6 +108,7 @@ fn generic_credential_schema() -> CredentialSchema {
         format: "JWT".into(),
         revocation_method: None,
         claim_schemas: vec![ClaimSchema {
+            business_key: None,
             array: false,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
@@ -441,6 +444,7 @@ async fn test_get_issuer_metadata_mdoc() {
     let now = crate::clock::now_utc();
     schema.claim_schemas = vec![
         ClaimSchema {
+            business_key: None,
             id: Uuid::new_v4().into(),
             key: "location".to_string(),
             data_type: "OBJECT".to_string(),
@@ -451,6 +455,7 @@ async fn test_get_issuer_metadata_mdoc() {
             required: true,
         },
         ClaimSchema {
+            business_key: None,
             id: Uuid::new_v4().into(),
             key: "location/X".to_string(),
             data_type: "STRING".to_string(),

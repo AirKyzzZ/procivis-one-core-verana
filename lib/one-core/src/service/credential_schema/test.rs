@@ -84,6 +84,8 @@ fn setup_service(
 fn generic_credential_schema() -> CredentialSchema {
     let now = crate::clock::now_utc();
     CredentialSchema {
+        batch_size: None,
+        allow_revocation: None,
         id: Uuid::new_v4().into(),
         deleted_at: None,
         imported_source_url: "CORE_URL".to_string(),
@@ -94,6 +96,7 @@ fn generic_credential_schema() -> CredentialSchema {
         format: "".into(),
         revocation_method: None,
         claim_schemas: vec![ClaimSchema {
+            business_key: None,
             id: Uuid::new_v4().into(),
             key: "".to_string(),
             data_type: "".to_string(),

@@ -245,6 +245,8 @@ fn generic_proof_input_schema() -> ProofInputSchema {
     ProofInputSchema {
         claim_schemas: None,
         credential_schema: Some(CredentialSchema {
+            batch_size: None,
+            allow_revocation: None,
             id: Uuid::new_v4().into(),
             deleted_at: None,
             created_date: now,
@@ -292,6 +294,7 @@ async fn test_get_presentation_definition_proof_role_verifier() {
             input_schemas: Some(vec![ProofInputSchema {
                 claim_schemas: Some(vec![ProofInputClaimSchema {
                     schema: ClaimSchema {
+                        business_key: None,
                         id: Uuid::new_v4().into(),
                         key: "key_123".to_string(),
                         data_type: "STRING".to_string(),
@@ -305,6 +308,8 @@ async fn test_get_presentation_definition_proof_role_verifier() {
                     order: 0,
                 }]),
                 credential_schema: Some(CredentialSchema {
+                    batch_size: None,
+                    allow_revocation: None,
                     id: Uuid::new_v4().into(),
                     imported_source_url: "CORE_URL".to_string(),
                     deleted_at: None,
@@ -407,6 +412,7 @@ async fn test_get_proof_exists() {
             input_schemas: Some(vec![ProofInputSchema {
                 claim_schemas: Some(vec![ProofInputClaimSchema {
                     schema: ClaimSchema {
+                        business_key: None,
                         id: Uuid::new_v4().into(),
                         key: "key".to_string(),
                         data_type: "STRING".to_string(),
@@ -420,6 +426,8 @@ async fn test_get_proof_exists() {
                     order: 0,
                 }]),
                 credential_schema: Some(CredentialSchema {
+                    batch_size: None,
+                    allow_revocation: None,
                     id: Uuid::new_v4().into(),
                     deleted_at: None,
                     created_date: crate::clock::now_utc(),
@@ -430,6 +438,7 @@ async fn test_get_proof_exists() {
                     format: "JWT".into(),
                     revocation_method: None,
                     claim_schemas: vec![ClaimSchema {
+                        business_key: None,
                         id: Uuid::new_v4().into(),
                         key: "ClaimKey".to_owned(),
                         data_type: "STRING".to_owned(),
@@ -557,6 +566,7 @@ async fn test_get_proof_with_array_holder() {
 
     let organisation = dummy_organisation(None);
     let claim_schema = ClaimSchema {
+        business_key: None,
         id: Uuid::new_v4().into(),
         key: "key".to_string(),
         data_type: "STRING".to_string(),
@@ -568,6 +578,8 @@ async fn test_get_proof_with_array_holder() {
     };
 
     let credential_schema = CredentialSchema {
+        batch_size: None,
+        allow_revocation: None,
         id: Uuid::new_v4().into(),
         deleted_at: None,
         imported_source_url: "CORE_URL".to_string(),
@@ -796,6 +808,7 @@ async fn test_get_proof_with_array_in_object_holder() {
     let organisation = dummy_organisation(None);
     let claim_schemas = vec![
         ClaimSchema {
+            business_key: None,
             id: Uuid::new_v4().into(),
             key: "key".to_string(),
             data_type: "OBJECT".to_string(),
@@ -806,6 +819,7 @@ async fn test_get_proof_with_array_in_object_holder() {
             required: true,
         },
         ClaimSchema {
+            business_key: None,
             id: Uuid::new_v4().into(),
             key: "key/address".to_string(),
             data_type: "STRING".to_string(),
@@ -818,6 +832,8 @@ async fn test_get_proof_with_array_in_object_holder() {
     ];
 
     let credential_schema = CredentialSchema {
+        batch_size: None,
+        allow_revocation: None,
         id: Uuid::new_v4().into(),
         deleted_at: None,
         imported_source_url: "CORE_URL".to_string(),
@@ -1061,6 +1077,7 @@ async fn test_get_proof_with_object_array_holder() {
     let organisation = dummy_organisation(None);
     let claim_schemas = vec![
         ClaimSchema {
+            business_key: None,
             id: Uuid::new_v4().into(),
             key: "key".to_string(),
             data_type: "OBJECT".to_string(),
@@ -1071,6 +1088,7 @@ async fn test_get_proof_with_object_array_holder() {
             required: true,
         },
         ClaimSchema {
+            business_key: None,
             id: Uuid::new_v4().into(),
             key: "key/address".to_string(),
             data_type: "STRING".to_string(),
@@ -1083,6 +1101,8 @@ async fn test_get_proof_with_object_array_holder() {
     ];
 
     let credential_schema = CredentialSchema {
+        batch_size: None,
+        allow_revocation: None,
         id: Uuid::new_v4().into(),
         deleted_at: None,
         created_date: crate::clock::now_utc(),
@@ -1343,6 +1363,7 @@ async fn test_get_proof_with_array() {
     let organisation = dummy_organisation(None);
 
     let claim_schema = ClaimSchema {
+        business_key: None,
         id: Uuid::new_v4().into(),
         key: "key".to_string(),
         data_type: "STRING".to_string(),
@@ -1354,6 +1375,8 @@ async fn test_get_proof_with_array() {
     };
 
     let credential_schema = CredentialSchema {
+        batch_size: None,
+        allow_revocation: None,
         id: Uuid::new_v4().into(),
         deleted_at: None,
         created_date: crate::clock::now_utc(),
@@ -1589,6 +1612,7 @@ async fn test_get_proof_with_array_in_object() {
     let organisation = dummy_organisation(None);
     let claim_schemas = vec![
         ClaimSchema {
+            business_key: None,
             id: Uuid::new_v4().into(),
             key: "key".to_string(),
             data_type: "OBJECT".to_string(),
@@ -1599,6 +1623,7 @@ async fn test_get_proof_with_array_in_object() {
             required: true,
         },
         ClaimSchema {
+            business_key: None,
             id: Uuid::new_v4().into(),
             key: "key/address".to_string(),
             data_type: "STRING".to_string(),
@@ -1611,6 +1636,8 @@ async fn test_get_proof_with_array_in_object() {
     ];
 
     let credential_schema = CredentialSchema {
+        batch_size: None,
+        allow_revocation: None,
         id: Uuid::new_v4().into(),
         deleted_at: None,
         imported_source_url: "CORE_URL".to_string(),
@@ -1862,6 +1889,7 @@ async fn test_get_proof_with_object_array() {
     let organisation = dummy_organisation(None);
     let claim_schemas = vec![
         ClaimSchema {
+            business_key: None,
             id: Uuid::new_v4().into(),
             key: "key".to_string(),
             data_type: "OBJECT".to_string(),
@@ -1872,6 +1900,7 @@ async fn test_get_proof_with_object_array() {
             required: true,
         },
         ClaimSchema {
+            business_key: None,
             id: Uuid::new_v4().into(),
             key: "key/address".to_string(),
             data_type: "STRING".to_string(),
@@ -1884,6 +1913,8 @@ async fn test_get_proof_with_object_array() {
     ];
 
     let credential_schema = CredentialSchema {
+        batch_size: None,
+        allow_revocation: None,
         id: Uuid::new_v4().into(),
         deleted_at: None,
         created_date: crate::clock::now_utc(),

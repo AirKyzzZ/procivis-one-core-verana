@@ -241,6 +241,8 @@ fn test_proof(proof_id: Uuid, credential_format: CredentialFormat) -> Proof {
             input_schemas: Some(vec![ProofInputSchema {
                 claim_schemas: None,
                 credential_schema: Some(CredentialSchema {
+                    batch_size: None,
+                    allow_revocation: None,
                     id: Uuid::new_v4().into(),
                     deleted_at: None,
                     created_date: crate::clock::now_utc(),

@@ -101,6 +101,8 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
             claim_schemas: claim_schemas.into(),
             organisation: dto.organisation.into(),
             transaction_code: convert_inner(dto.schema.transaction_code),
+            batch_size: None,
+            allow_revocation: None,
         })
     }
 }
@@ -285,6 +287,7 @@ impl CredentialSchemaImportParserImpl {
         let claim_schema = ClaimSchema {
             id: Uuid::new_v4().into(),
             key: flattened_key.clone(),
+            business_key: None,
             data_type: self.parse_claim_schema_datatype(
                 &key,
                 &claim_schema_dto.claims,
@@ -853,6 +856,7 @@ mod test {
 
         let now = crate::clock::now_utc();
         let claim_schemas = vec![ClaimSchema {
+            business_key: None,
             id: Uuid::new_v4().into(),
             key: "claim1".to_string(),
             data_type: "STRING".to_string(),
@@ -921,6 +925,7 @@ mod test {
 
         let now = crate::clock::now_utc();
         let claim_schemas = vec![ClaimSchema {
+            business_key: None,
             id: Uuid::new_v4().into(),
             key: "claim1".to_string(),
             data_type: "STRING".to_string(),
@@ -1130,6 +1135,7 @@ mod test {
 
         let now = crate::clock::now_utc();
         let claim_schemas = vec![ClaimSchema {
+            business_key: None,
             id: Uuid::new_v4().into(),
             key: "code_claim".to_string(),
             data_type: "STRING".to_string(),

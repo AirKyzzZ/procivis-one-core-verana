@@ -139,6 +139,8 @@ fn generate_credential_matching_detail(
             trust_information: None,
         }),
         schema: Some(CredentialSchema {
+            batch_size: None,
+            allow_revocation: None,
             id: detail.schema.id,
             deleted_at: None,
             created_date: detail.schema.created_date,
