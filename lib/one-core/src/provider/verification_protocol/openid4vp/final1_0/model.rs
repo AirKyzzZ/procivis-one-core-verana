@@ -5,7 +5,6 @@ use standardized_types::openid4vp::ResponseMode;
 use time::Duration;
 use url::Url;
 
-use crate::config::core_config::default_true;
 use crate::provider::verification_protocol::model::CommonParams;
 use crate::provider::verification_protocol::openid4vp::mapper::deserialize_with_serde_json;
 use crate::provider::verification_protocol::openid4vp::model::{
@@ -38,8 +37,6 @@ pub(crate) struct Params {
 pub(crate) struct HolderParams {
     pub supported_client_id_schemes: Vec<ClientIdScheme>,
 
-    #[serde(default = "default_true")]
-    pub trust_ecosystems_enabled: bool,
     #[serde(default)]
     #[serde_as(as = "DurationSeconds<i64>")]
     pub trust_ecosystems_leeway: Duration,

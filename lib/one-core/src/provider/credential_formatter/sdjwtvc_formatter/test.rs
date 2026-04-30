@@ -134,6 +134,7 @@ async fn test_format_credential() {
             swiyu_mode: false,
             sd_array_elements: true,
             ecosystem_schema_ids: vec![],
+            pid_schema_ids: vec![],
             expiration_time,
         },
         Arc::new(crypto),
@@ -322,6 +323,7 @@ async fn test_format_credential_swiyu() {
             swiyu_mode: true,
             sd_array_elements: true,
             ecosystem_schema_ids: vec![],
+            pid_schema_ids: vec![],
             expiration_time: Duration::days(1),
         },
         Arc::new(crypto),
@@ -459,6 +461,7 @@ async fn test_extract_credentials() {
             swiyu_mode: false,
             sd_array_elements: true,
             ecosystem_schema_ids: vec![],
+            pid_schema_ids: vec![],
             expiration_time: Duration::days(1),
         },
         Arc::new(crypto),
@@ -604,6 +607,7 @@ async fn test_extract_credentials_swiyu() {
             swiyu_mode: true,
             sd_array_elements: true,
             ecosystem_schema_ids: vec![],
+            pid_schema_ids: vec![],
             expiration_time: Duration::days(1),
         },
         Arc::new(crypto),
@@ -804,6 +808,7 @@ async fn test_extract_credentials_with_cnf_no_subject() {
             swiyu_mode: false,
             sd_array_elements: true,
             ecosystem_schema_ids: vec![],
+            pid_schema_ids: vec![],
             expiration_time: Duration::days(1),
         },
         Arc::new(crypto),
@@ -921,6 +926,7 @@ async fn test_extract_credentials_example_b1() {
             swiyu_mode: false,
             sd_array_elements: true,
             ecosystem_schema_ids: vec![],
+            pid_schema_ids: vec![],
             expiration_time: Duration::days(1),
         },
         Arc::new(crypto),
@@ -1067,6 +1073,7 @@ fn test_schema_id() {
             swiyu_mode: false,
             sd_array_elements: true,
             ecosystem_schema_ids: vec![],
+            pid_schema_ids: vec![],
             expiration_time: Duration::days(1),
         },
         Arc::new(MockCryptoProvider::default()),
@@ -1115,6 +1122,7 @@ async fn test_format_extract_round_trip_non_sd_array_elements() {
         swiyu_mode: false,
         sd_array_elements: false,
         ecosystem_schema_ids: vec![],
+        pid_schema_ids: vec![],
         expiration_time: Duration::days(1),
     };
 
@@ -1328,6 +1336,7 @@ async fn test_format_extract_round_trip_sd_array_elements() {
         swiyu_mode: false,
         sd_array_elements: true,
         ecosystem_schema_ids: vec![],
+        pid_schema_ids: vec![],
         expiration_time: Duration::days(1),
     };
 
@@ -1629,6 +1638,7 @@ async fn test_parse_credential_eudi() {
         swiyu_mode: false,
         sd_array_elements: true,
         ecosystem_schema_ids: vec![],
+        pid_schema_ids: vec![],
         expiration_time: Duration::days(1),
     };
     let hashers = hashmap! {
@@ -1902,6 +1912,7 @@ async fn test_parse_credential() {
         swiyu_mode: false,
         sd_array_elements: true,
         ecosystem_schema_ids: vec![],
+        pid_schema_ids: vec![],
         expiration_time: Duration::days(1),
     };
     let hashers = hashmap! {
@@ -2118,6 +2129,7 @@ async fn test_format_presentation_mixed_sd_array_claim() {
         swiyu_mode: false,
         sd_array_elements: true,
         ecosystem_schema_ids: vec![],
+        pid_schema_ids: vec![],
         expiration_time: Duration::days(1),
     };
     let hashers = hashmap! {
@@ -2167,6 +2179,7 @@ async fn test_format_presentation_complex_test_vector_sd_array_element() {
         swiyu_mode: false,
         sd_array_elements: true,
         ecosystem_schema_ids: vec![],
+        pid_schema_ids: vec![],
         expiration_time: Duration::days(1),
     };
     let hashers = hashmap! {

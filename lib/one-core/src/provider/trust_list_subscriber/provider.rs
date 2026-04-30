@@ -76,7 +76,6 @@ pub(crate) fn trust_list_subscriber_provider_from_config(
                     etsi_lote_cache,
                     certificate_validator.clone(),
                     key_algorithm_provider.clone(),
-                    params.supported_pid_provider_role_schema_ids,
                 )) as _
             }
         };

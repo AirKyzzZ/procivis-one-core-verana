@@ -462,11 +462,15 @@ async fn test_issuance_accept_schema_name_already_exists() {
         .histories
         .get_by_entity_id(&credential.id.into())
         .await;
-    assert_eq!(history.values.len(), 2); // one per state: Accepted + Issued
+    assert_eq!(history.values.len(), 3); // Accepted + Issued + TrustResolved
     let actions = HashSet::from_iter(history.values.iter().map(|value| value.action));
     assert_eq!(
         actions,
-        HashSet::from([HistoryAction::Accepted, HistoryAction::Issued])
+        HashSet::from([
+            HistoryAction::Accepted,
+            HistoryAction::Issued,
+            HistoryAction::TrustResolved
+        ])
     );
 
     // Assert credential schema has been automatically renamed due to clash with existing schema

@@ -2007,6 +2007,7 @@ async fn valid_mdoc_credential() -> String {
         mso_minimum_refresh_time: Duration::seconds(300),
         leeway: Duration::seconds(60),
         ecosystem_schema_ids: vec![],
+        pid_schema_ids: vec![],
     };
     minimal_mdoc_credential(params).await
 }
@@ -2018,6 +2019,7 @@ async fn expired_mdoc_credential() -> String {
         mso_minimum_refresh_time: Duration::seconds(0), // refresh immediately
         leeway: Duration::seconds(60),
         ecosystem_schema_ids: vec![],
+        pid_schema_ids: vec![],
     };
     minimal_mdoc_credential(params).await
 }

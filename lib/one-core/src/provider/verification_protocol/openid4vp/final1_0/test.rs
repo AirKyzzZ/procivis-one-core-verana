@@ -114,7 +114,6 @@ fn generic_params() -> Params {
                 ClientIdScheme::RedirectUri,
                 ClientIdScheme::VerifierAttestation,
             ],
-            trust_ecosystems_enabled: false,
             trust_ecosystems_leeway: Duration::seconds(45),
         },
         verifier: PresentationVerifierParams {

@@ -1,8 +1,14 @@
 use error::WRPValidatorError;
-use model::{AccessCertificateResult, FetchRegistryResult, RegistrationCertificateResult};
+use model::{
+    AccessCertificateResult, FetchRegistryResult, RegistrationCertificateResult, TrustMode,
+};
 use shared_types::OrganisationId;
 use time::Duration;
 use url::Url;
+
+use crate::model::certificate::Certificate;
+use crate::model::credential_schema::CredentialSchema;
+use crate::provider::trust_list_subscriber::TrustEntityResponse;
 
 pub(crate) mod error;
 pub(crate) mod model;
@@ -12,7 +18,7 @@ pub(crate) mod validator;
 #[async_trait::async_trait]
 pub(crate) trait WRPValidator: Send + Sync {
     /// Validate and optionally resolve WRPAC trust information
-    async fn validate_access_certificate_trust(
+    async fn validate_access_certificate(
         &self,
         pem_chain: &str,
         validate_trust: Option<OrganisationId>,
@@ -34,4 +40,24 @@ pub(crate) trait WRPValidator: Send + Sync {
         validate_trust: Option<OrganisationId>,
         leeway: Duration,
     ) -> Result<FetchRegistryResult, WRPValidatorError>;
+
+    async fn validate_credential_issuer<'a>(
+        &self,
+        issuer: Option<&'a Certificate>,
+        credential_schema: &CredentialSchema,
+        organisation_id: OrganisationId,
+    ) -> Result<Option<TrustEntityResponse>, WRPValidatorError>;
+
+    /// Decide on the current trust settings for the given wallet organisation
+    async fn wallet_trust_mode(
+        &self,
+        organisation_id: OrganisationId,
+    ) -> Result<TrustMode, WRPValidatorError>;
+
+    /// Decide on the current trust settings for the given verifier organisation
+    #[expect(unused)]
+    async fn verifier_trust_mode(
+        &self,
+        organisation_id: OrganisationId,
+    ) -> Result<TrustMode, WRPValidatorError>;
 }

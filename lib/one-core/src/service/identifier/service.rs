@@ -358,7 +358,7 @@ impl IdentifierService {
         for cert in identifier.certificates.iter().flatten() {
             let result = self
                 .wrp_validator
-                .validate_access_certificate_trust(&cert.chain, None)
+                .validate_access_certificate(&cert.chain, None)
                 .await;
             match result {
                 Ok(ac_info) => {

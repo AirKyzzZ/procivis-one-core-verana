@@ -21,6 +21,8 @@ use crate::config::core_config::default_true;
 use crate::mapper::opt_secret_string;
 use crate::mapper::params::deserialize_encryption_key;
 use crate::model::credential_schema::{CodeTypeEnum, CredentialSchema, LayoutProperties};
+use crate::model::history::TrustResolutionResult;
+use crate::proto::wrp_validator::model::TrustMode;
 use crate::provider::credential_formatter::vcdm::ContextType;
 
 #[serde_as]
@@ -174,6 +176,10 @@ pub(crate) struct HolderInteractionData {
     pub national_registry_data: Option<String>,
     #[serde(default)]
     pub relying_party_name: Option<String>,
+    #[serde(default = "TrustResolutionResult::unknown")]
+    pub trust_resolution: TrustResolutionResult,
+    #[serde(default = "TrustMode::optional")]
+    pub trust_mode: TrustMode,
 }
 
 // https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#section-12.2.4

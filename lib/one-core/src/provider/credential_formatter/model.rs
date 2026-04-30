@@ -125,6 +125,14 @@ impl IdentifierDetails {
             _ => None,
         }
     }
+
+    pub(crate) fn identifier_type(&self) -> IdentifierType {
+        match &self {
+            IdentifierDetails::Key(_) => IdentifierType::Key,
+            IdentifierDetails::Certificate(_) => IdentifierType::Certificate,
+            IdentifierDetails::Did(_) => IdentifierType::Did,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -394,6 +402,7 @@ pub struct FormatterCapabilities {
     pub holder_key_algorithms: Vec<KeyAlgorithmType>,
     pub holder_did_methods: Vec<DidType>,
     pub ecosystem_schema_ids: Vec<String>,
+    pub pid_schema_ids: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]

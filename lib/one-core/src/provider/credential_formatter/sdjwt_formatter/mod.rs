@@ -185,6 +185,7 @@ impl CredentialFormatter for SDJWTFormatter {
                 KeyAlgorithmType::MlDsa,
             ],
             ecosystem_schema_ids: vec![],
+            pid_schema_ids: vec![],
             datatypes: vec![
                 "STRING".to_string(),
                 "BOOLEAN".to_string(),

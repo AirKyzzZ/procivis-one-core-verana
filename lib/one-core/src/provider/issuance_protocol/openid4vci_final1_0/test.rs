@@ -35,6 +35,7 @@ use crate::model::common::GetListResponse;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, LayoutType};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
+use crate::model::history::{HistoryAction, TrustResolutionResult};
 use crate::model::holder_wallet_instance::HolderWalletInstance;
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::{Interaction, InteractionType};
@@ -51,7 +52,9 @@ use crate::proto::jwt::model::JWTPayload;
 use crate::proto::session_provider::NoSessionProvider;
 use crate::proto::wallet_instance::MockHolderWalletUnitProto;
 use crate::proto::wrp_validator::MockWRPValidator;
-use crate::proto::wrp_validator::model::{AccessCertificateResult, RegistrationCertificateResult};
+use crate::proto::wrp_validator::model::{
+    AccessCertificateResult, RegistrationCertificateResult, TrustMode,
+};
 use crate::provider::blob_storage_provider::MockBlobStorageProvider;
 use crate::provider::caching_loader::openid_metadata::MockOpenIDMetadataFetcher;
 use crate::provider::credential_formatter::MockCredentialFormatter;
@@ -447,6 +450,8 @@ async fn test_holder_accept_credential_success() {
         registration_certificate: None,
         national_registry_data: None,
         relying_party_name: None,
+        trust_resolution: TrustResolutionResult::Unknown,
+        trust_mode: TrustMode::Disabled,
     };
 
     let interaction = Interaction {
@@ -607,6 +612,16 @@ async fn test_holder_accept_credential_success() {
         .once()
         .return_once(|_| Ok(GetListResponse::empty()));
 
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .once()
+        .withf(|history| {
+            assert_eq!(history.action, HistoryAction::TrustResolved);
+            true
+        })
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
     let openid_provider = setup_protocol(TestInputs {
         formatter_provider,
         key_provider,
@@ -615,6 +630,7 @@ async fn test_holder_accept_credential_success() {
         credential_schema_repository,
         holder_wallet_unit_repository,
         interaction_repository,
+        history_repository,
         config: dummy_config(),
         ..Default::default()
     });
@@ -691,6 +707,8 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         registration_certificate: None,
         national_registry_data: None,
         relying_party_name: None,
+        trust_resolution: TrustResolutionResult::Unknown,
+        trust_mode: TrustMode::Disabled,
     };
 
     let interaction = Interaction {
@@ -853,6 +871,16 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         .once()
         .return_once(|_| Ok(GetListResponse::empty()));
 
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .once()
+        .withf(|history| {
+            assert_eq!(history.action, HistoryAction::TrustResolved);
+            true
+        })
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
     let openid_provider = setup_protocol(TestInputs {
         formatter_provider,
         key_provider,
@@ -861,6 +889,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         credential_schema_repository,
         holder_wallet_unit_repository,
         interaction_repository,
+        history_repository,
         config: dummy_config(),
         ..Default::default()
     });
@@ -944,6 +973,8 @@ async fn test_holder_accept_credential_autogenerate_holder_binding() {
         registration_certificate: None,
         national_registry_data: None,
         relying_party_name: None,
+        trust_resolution: TrustResolutionResult::Unknown,
+        trust_mode: TrustMode::Disabled,
     };
 
     let interaction = Interaction {
@@ -1155,6 +1186,16 @@ async fn test_holder_accept_credential_autogenerate_holder_binding() {
         .once()
         .return_once(|_| Ok(GetListResponse::empty()));
 
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .once()
+        .withf(|history| {
+            assert_eq!(history.action, HistoryAction::TrustResolved);
+            true
+        })
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
     let openid_provider = setup_protocol(TestInputs {
         formatter_provider,
         key_provider,
@@ -1165,6 +1206,7 @@ async fn test_holder_accept_credential_autogenerate_holder_binding() {
         credential_schema_repository,
         holder_wallet_unit_repository,
         interaction_repository,
+        history_repository,
         config: dummy_config(),
         ..Default::default()
     });
@@ -1233,6 +1275,8 @@ async fn test_holder_reject_credential() {
             registration_certificate: None,
             national_registry_data: None,
             relying_party_name: None,
+            trust_resolution: TrustResolutionResult::Unknown,
+            trust_mode: TrustMode::Disabled,
         };
 
         credential.interaction = Some(Interaction {
@@ -1664,7 +1708,11 @@ async fn test_handle_invitation_signed_metadata() {
     let rp_id = "rp_id";
     let mut wrp_validator = MockWRPValidator::new();
     wrp_validator
-        .expect_validate_access_certificate_trust()
+        .expect_wallet_trust_mode()
+        .once()
+        .return_once(|_| Ok(TrustMode::TrustMandatory));
+    wrp_validator
+        .expect_validate_access_certificate()
         .once()
         .return_once(|_, _| {
             Ok(AccessCertificateResult {
@@ -2086,6 +2134,8 @@ async fn test_holder_accept_credential_fails_without_wallet_unit_id_when_key_att
         registration_certificate: None,
         national_registry_data: None,
         relying_party_name: None,
+        trust_resolution: TrustResolutionResult::Unknown,
+        trust_mode: TrustMode::Disabled,
     };
 
     let interaction = Interaction {
@@ -2222,6 +2272,8 @@ async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_att
         registration_certificate: None,
         national_registry_data: None,
         relying_party_name: None,
+        trust_resolution: TrustResolutionResult::Unknown,
+        trust_mode: TrustMode::Disabled,
     };
 
     let interaction = Interaction {
@@ -2425,6 +2477,16 @@ async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_att
             move |_, _, _| Ok((identifier, RemoteIdentifierRelation::Key(dummy_key())))
         });
 
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .once()
+        .withf(|history| {
+            assert_eq!(history.action, HistoryAction::TrustResolved);
+            true
+        })
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
     let openid_provider = setup_protocol(TestInputs {
         formatter_provider,
         key_provider,
@@ -2435,6 +2497,7 @@ async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_att
         credential_schema_repository,
         holder_wallet_unit_repository,
         interaction_repository,
+        history_repository,
         config: dummy_config(),
         ..Default::default()
     });

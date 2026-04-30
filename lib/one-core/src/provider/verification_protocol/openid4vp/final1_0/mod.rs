@@ -78,6 +78,7 @@ pub mod mappers;
 pub mod model;
 #[cfg(test)]
 mod test;
+mod trust;
 mod utils;
 
 const DCQL_QUERY_VALUE_QUERY_PARAM_KEY: &str = "dcql_query";

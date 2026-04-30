@@ -258,7 +258,6 @@ async fn test_resolve_trust_entries_success() {
                 IdentifierType::CertificateAuthority,
             ],
             features: vec![Feature::SupportsRemoteIdentifiers],
-            pid_provider_role_schema_ids: vec![],
         });
     trust_list_subscriber
         .expect_resolve_entries()
@@ -346,7 +345,6 @@ async fn test_resolve_trust_entries_filters_local() {
                 IdentifierType::CertificateAuthority,
             ],
             features: vec![Feature::SupportsRemoteIdentifiers],
-            pid_provider_role_schema_ids: vec![],
         });
     // Should be called with empty identifiers list
     trust_list_subscriber
@@ -486,7 +484,6 @@ async fn test_resolve_trust_entries_subscriber_error() {
                 IdentifierType::CertificateAuthority,
             ],
             features: vec![Feature::SupportsRemoteIdentifiers],
-            pid_provider_role_schema_ids: vec![],
         });
     trust_list_subscriber
         .expect_resolve_entries()
@@ -570,7 +567,6 @@ async fn test_resolve_trust_entries_filters_key_type() {
                 IdentifierType::CertificateAuthority,
             ],
             features: vec![Feature::SupportsRemoteIdentifiers],
-            pid_provider_role_schema_ids: vec![],
         });
 
     // Should be called with empty identifiers list because Key type is filtered out
@@ -651,7 +647,7 @@ async fn test_create_identifier_with_trust_information() {
         .returning(move |_, _, _| Ok(identifier.clone()));
     let mut wrp_validator = MockWRPValidator::new();
     wrp_validator
-        .expect_validate_access_certificate_trust()
+        .expect_validate_access_certificate()
         .once()
         .returning(|_, _| {
             Ok(AccessCertificateResult {

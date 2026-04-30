@@ -1,42 +1,25 @@
 use core::str;
-use std::collections::{BTreeSet, HashMap};
+use std::collections::BTreeSet;
 
-use dcql::DcqlQuery;
-use one_dto_mapper::convert_inner;
 use serde_json::json;
 use shared_types::{DidValue, OrganisationId, ProofId};
-use standardized_types::etsi_119_602::MultiLangString;
 use standardized_types::openid4vp::PresentationFormat;
 use url::Url;
-use uuid::Uuid;
 
-use super::mappers::{credential_query_matches_reg_cert_credential, decode_client_id_with_scheme};
-use super::model::{
-    AuthorizationRequest, AuthorizationRequestQueryParams, VerifierInfoAttestation,
-};
+use super::mappers::decode_client_id_with_scheme;
+use super::model::{AuthorizationRequest, AuthorizationRequestQueryParams};
 use super::{OpenID4VPFinal1_0, encode_client_id_with_scheme};
-use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
+use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::x5c_into_pem_chain;
-use crate::model::blob::{Blob, BlobType};
 use crate::model::did::KeyRole;
-use crate::model::history::{
-    History, HistoryAction, HistoryEntityType, HistoryMetadata, HistorySource,
-    WalletRelyingPartyMetadata,
-};
 use crate::proto::certificate_validator::{CertificateValidationOptions, ParsedCertificate};
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::DecomposedJwt;
 use crate::proto::key_verification::KeyVerification;
-use crate::proto::session_provider::SessionExt;
-use crate::proto::wrp_validator;
-use crate::proto::wrp_validator::error::WRPValidatorError;
-use crate::proto::wrp_validator::model::AccessCertificateResult;
-use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::credential_formatter::model::{
     CertificateDetails, IdentifierDetails, TokenVerifier,
 };
 use crate::provider::did_method::error::DidMethodError;
-use crate::provider::signer::registration_certificate;
 use crate::provider::verification_protocol::openid4vp::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, OpenID4VCVerifierAttestationPayload, OpenID4VPClientMetadata,
@@ -46,7 +29,6 @@ use crate::provider::verification_protocol::openid4vp::validator::{
     validate_against_redirect_uris, validate_san_dns_matching_client_id,
     validate_x509_hash_matching_client_id,
 };
-use crate::service::error::MissingProviderError;
 use crate::validator::x509::is_dns_name_matching;
 
 impl OpenID4VPFinal1_0 {
@@ -423,46 +405,13 @@ impl OpenID4VPFinal1_0 {
             ));
         }
 
-        if self.params.holder.trust_ecosystems_enabled {
-            // check access certificate trust
-            if let Some(IdentifierDetails::Certificate(access_certificate)) = &verifier_details
-                && let Some(access_certificate_trust) = self
-                    .handle_access_certificate(access_certificate, proof_id, organisation_id)
-                    .await?
-            {
-                let relying_party_id = &access_certificate_trust.relying_party_id;
-                let dcql_query = referenced_params.dcql_query.as_ref().ok_or(
-                    VerificationProtocolError::InvalidRequest("missing dcql_query".to_string()),
-                )?;
-
-                if referenced_params.verifier_info.is_empty() {
-                    let registry_url = access_certificate_trust.registry_url.as_ref().ok_or(
-                        VerificationProtocolError::InvalidRequest(
-                            "missing registry URL".to_string(),
-                        ),
-                    )?;
-
-                    self.handle_registry_info(
-                        &access_certificate_trust.relying_party_id,
-                        registry_url,
-                        dcql_query,
-                        proof_id,
-                        organisation_id,
-                    )
-                    .await?;
-                } else {
-                    // check query against registration certificates
-                    self.handle_registration_certificates(
-                        &referenced_params.verifier_info,
-                        dcql_query,
-                        relying_party_id,
-                        proof_id,
-                        organisation_id,
-                    )
-                    .await?;
-                }
-            }
-        }
+        self.handle_trust(
+            verifier_details.as_ref(),
+            proof_id,
+            organisation_id,
+            &referenced_params,
+        )
+        .await?;
 
         Ok((referenced_params, verifier_details))
     }
@@ -519,270 +468,6 @@ impl OpenID4VPFinal1_0 {
                 }
             }?;
         Ok((authorization_request, verifier_details))
-    }
-
-    async fn handle_access_certificate(
-        &self,
-        certificate: &CertificateDetails,
-        proof_id: ProofId,
-        organisation_id: OrganisationId,
-    ) -> Result<Option<AccessCertificateResult>, VerificationProtocolError> {
-        let result = match self
-            .wrp_validator
-            .validate_access_certificate_trust(&certificate.chain, Some(organisation_id))
-            .await
-        {
-            Ok(result) => result,
-            Err(WRPValidatorError::TrustManagementDisabled) => {
-                // trust management disabled, skipping other checks and history creation
-                return Ok(None);
-            }
-            Err(err) => {
-                return Err(err.error_while("checking access certificate trust").into());
-            }
-        };
-
-        self.store_certificate_history_event(
-            HistoryAction::WrpAcReceived,
-            proof_id,
-            organisation_id,
-            certificate.chain.to_owned(),
-            None,
-        )
-        .await?;
-
-        Ok(Some(result))
-    }
-
-    async fn handle_registration_certificates(
-        &self,
-        verifier_info: &[VerifierInfoAttestation],
-        dcql_query: &DcqlQuery,
-        expected_rp_id: &str,
-        proof_id: ProofId,
-        organisation_id: OrganisationId,
-    ) -> Result<(), VerificationProtocolError> {
-        #[derive(Clone)]
-        struct RefCertCredentialInfo<'a> {
-            credential_def: registration_certificate::model::Credential,
-            reg_cert: &'a VerifierInfoAttestation,
-            purpose: Vec<registration_certificate::model::MultiLangString>,
-            relying_party_name: String,
-        }
-
-        let mut allowed_credentials: HashMap<
-            Option<dcql::CredentialQueryId>,
-            Vec<RefCertCredentialInfo>,
-        > = HashMap::new();
-        for reg_cert in verifier_info {
-            if let Ok(trusted) = self
-                .wrp_validator
-                .validate_registration_certificate(
-                    &reg_cert.data,
-                    expected_rp_id,
-                    Some(organisation_id),
-                    self.params.holder.trust_ecosystems_leeway,
-                )
-                .await
-                .inspect_err(|err| {
-                    tracing::warn!(%err, "Provided registration certificate validation failure");
-                })
-                && let (Some(credentials), Some(purpose)) = (
-                    trusted.payload.custom.credentials,
-                    trusted.payload.custom.purpose,
-                )
-            {
-                let creds_with_reg_cert: Vec<_> = credentials
-                    .into_iter()
-                    .map(|credential_def| RefCertCredentialInfo {
-                        credential_def,
-                        reg_cert,
-                        purpose: purpose.to_owned(),
-                        relying_party_name: trusted.payload.custom.name.to_owned(),
-                    })
-                    .collect();
-
-                if reg_cert.credential_ids.is_empty() {
-                    allowed_credentials
-                        .entry(None)
-                        .or_default()
-                        .extend(creds_with_reg_cert);
-                } else {
-                    for credential_id in &reg_cert.credential_ids {
-                        allowed_credentials
-                            .entry(Some(credential_id.to_owned()))
-                            .or_default()
-                            .extend(creds_with_reg_cert.to_owned());
-                    }
-                }
-            }
-        }
-
-        struct RegCertInfo {
-            relying_party_name: String,
-            purpose: HashMap<dcql::CredentialQueryId, Vec<MultiLangString>>,
-        }
-        let mut used_reg_certs: HashMap<String, RegCertInfo> = HashMap::new();
-        for credential_query in &dcql_query.credentials {
-            let empty = vec![];
-            let mut related_reg_cert_credentials = allowed_credentials
-                .get(&None)
-                .unwrap_or(&empty)
-                .iter()
-                .chain(
-                    allowed_credentials
-                        .get(&Some(credential_query.id.to_owned()))
-                        .unwrap_or(&empty),
-                );
-
-            let Some(RefCertCredentialInfo {
-                reg_cert,
-                purpose,
-                relying_party_name,
-                ..
-            }) = related_reg_cert_credentials.find(
-                |RefCertCredentialInfo { credential_def, .. }| {
-                    credential_query_matches_reg_cert_credential(credential_query, credential_def)
-                },
-            )
-            else {
-                return Err(VerificationProtocolError::DisallowedQuery(
-                    credential_query.id.to_owned(),
-                ));
-            };
-
-            used_reg_certs
-                .entry(reg_cert.data.to_owned())
-                .or_insert(RegCertInfo {
-                    relying_party_name: relying_party_name.to_owned(),
-                    purpose: Default::default(),
-                })
-                .purpose
-                .insert(
-                    credential_query.id.to_owned(),
-                    convert_inner(purpose.to_owned()),
-                );
-        }
-
-        for (
-            used_reg_cert,
-            RegCertInfo {
-                relying_party_name,
-                purpose,
-            },
-        ) in used_reg_certs
-        {
-            self.store_certificate_history_event(
-                HistoryAction::WrpRcReceived,
-                proof_id,
-                organisation_id,
-                used_reg_cert,
-                Some(HistoryMetadata::WalletRelyingParty(
-                    WalletRelyingPartyMetadata {
-                        name: relying_party_name,
-                        purpose,
-                    },
-                )),
-            )
-            .await?;
-        }
-
-        Ok(())
-    }
-
-    async fn handle_registry_info(
-        &self,
-        relying_party_id: &str,
-        registry_url: &Url,
-        dcql_query: &DcqlQuery,
-        proof_id: ProofId,
-        organisation_id: OrganisationId,
-    ) -> Result<(), VerificationProtocolError> {
-        let info = self
-            .wrp_validator
-            .fetch_from_registry(
-                relying_party_id,
-                registry_url,
-                Some(organisation_id),
-                self.params.holder.trust_ecosystems_leeway,
-            )
-            .await
-            .error_while("fetching from WRP registry")?;
-
-        let mut purpose: HashMap<dcql::CredentialQueryId, Vec<MultiLangString>> =
-            Default::default();
-        for credential_query in &dcql_query.credentials {
-            let Some(applied_purpose) = find_matching_intended_use(
-                credential_query,
-                &info.payload.custom.data.intended_use,
-            ) else {
-                return Err(VerificationProtocolError::DisallowedQuery(
-                    credential_query.id.to_owned(),
-                ));
-            };
-
-            purpose.insert(credential_query.id.to_owned(), applied_purpose);
-        }
-
-        self.store_certificate_history_event(
-            HistoryAction::WrpNrReceived,
-            proof_id,
-            organisation_id,
-            info.jwt,
-            Some(HistoryMetadata::WalletRelyingParty(
-                WalletRelyingPartyMetadata {
-                    name: info.payload.custom.data.trade_name.unwrap_or_default(),
-                    purpose,
-                },
-            )),
-        )
-        .await?;
-
-        Ok(())
-    }
-
-    async fn store_certificate_history_event(
-        &self,
-        action: HistoryAction,
-        proof_id: ProofId,
-        organisation_id: OrganisationId,
-        certificate_content: String,
-        metadata: Option<HistoryMetadata>,
-    ) -> Result<(), VerificationProtocolError> {
-        let blob_storage = self
-            .blob_storage_provider
-            .get_blob_storage(BlobStorageType::Db)
-            .await
-            .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))
-            .error_while("getting blob storage")?;
-
-        let blob = Blob::new(certificate_content, BlobType::HistoryMetadata);
-
-        let blob_id = blob.id;
-        blob_storage
-            .create(blob)
-            .await
-            .error_while("creating history metadata blob")?;
-
-        self.history_repository
-            .create_history(History {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                action,
-                name: Default::default(),
-                target: None,
-                source: HistorySource::Core,
-                entity_id: Some(proof_id.into()),
-                entity_type: HistoryEntityType::Proof,
-                metadata,
-                metadata_blob_id: Some(blob_id),
-                organisation_id: Some(organisation_id),
-                user: self.session_provider.session().user(),
-            })
-            .await
-            .error_while("storing history")?;
-
-        Ok(())
     }
 }
 
@@ -1009,18 +694,4 @@ fn assert_query_param(
         )));
     }
     Ok(())
-}
-
-fn find_matching_intended_use(
-    credential_query: &dcql::CredentialQuery,
-    among_uses: &[wrp_validator::model::IntendedUse],
-) -> Option<Vec<MultiLangString>> {
-    for intended_use in among_uses {
-        if intended_use.credential.iter().any(|c| {
-            credential_query_matches_reg_cert_credential(credential_query, &c.clone().into())
-        }) {
-            return Some(convert_inner(intended_use.purpose.to_owned()));
-        }
-    }
-    None
 }

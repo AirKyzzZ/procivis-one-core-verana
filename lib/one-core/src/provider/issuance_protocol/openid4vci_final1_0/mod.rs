@@ -66,7 +66,10 @@ use crate::model::credential_schema::{
     CredentialSchema, KeyStorageSecurity, LayoutType, UpdateCredentialSchemaRequest,
 };
 use crate::model::did::KeyRole;
-use crate::model::history::{HistoryAction, HistoryMetadata, WalletRelyingPartyMetadata};
+use crate::model::history::{
+    HistoryAction, HistoryMetadata, TrustResolutionMetadata, TrustResolutionResult,
+    WalletRelyingPartyMetadata,
+};
 use crate::model::holder_wallet_instance::HolderWalletInstance;
 use crate::model::holder_wallet_instance::HolderWalletInstanceFilterValue::OrganisationIds;
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierType};
@@ -90,8 +93,7 @@ use crate::proto::key_verification::KeyVerification;
 use crate::proto::session_provider::SessionProvider;
 use crate::proto::wallet_instance::{HolderWalletUnitProto, IssueWalletAttestationRequest};
 use crate::proto::wrp_validator::WRPValidator;
-use crate::proto::wrp_validator::error::WRPValidatorError;
-use crate::proto::wrp_validator::model::AccessCertificateResult;
+use crate::proto::wrp_validator::model::{AccessCertificateResult, TrustMode};
 use crate::provider::blob_storage_provider::{BlobStorageProvider, BlobStorageType};
 use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
 use crate::provider::credential_formatter::mapper::credential_data_from_credential_detail_response;
@@ -922,7 +924,7 @@ impl OpenID4VCIFinal1_0 {
             }
         };
 
-        let (issuer_identifer, issuer_identifier_relation) = self
+        let (issuer_identifier, issuer_identifier_relation) = self
             .identifier_creator
             .get_or_create_remote_identifier(
                 &Some(organisation.to_owned()),
@@ -939,7 +941,18 @@ impl OpenID4VCIFinal1_0 {
             None
         };
 
-        credential.issuer_identifier = Some(issuer_identifer);
+        let mut trust_resolution = interaction_data.trust_resolution;
+        if trust_resolution == TrustResolutionResult::Trusted
+            && let Err(err) = self
+                .wrp_validator
+                .validate_credential_issuer(issuer_certificate.as_ref(), schema, organisation.id)
+                .await
+        {
+            tracing::info!(%err, "Credential issuer trust not verified");
+            trust_resolution = TrustResolutionResult::Untrusted;
+        }
+
+        credential.issuer_identifier = Some(issuer_identifier);
         credential.issuer_certificate = issuer_certificate;
         credential.redirect_uri = issuer_response.redirect_uri.clone();
         credential.state = CredentialStateEnum::Accepted;
@@ -958,11 +971,11 @@ impl OpenID4VCIFinal1_0 {
         .await?;
 
         if let Some(access_certificate) = &interaction_data.access_certificate {
-            self.store_certificate_history_event(
+            self.store_trust_history_event(
                 HistoryAction::WrpAcReceived,
                 credential.id,
                 organisation.id,
-                access_certificate.to_owned(),
+                Some(access_certificate.to_owned()),
                 None,
             )
             .await?;
@@ -972,11 +985,11 @@ impl OpenID4VCIFinal1_0 {
             &interaction_data.registration_certificate,
             &interaction_data.relying_party_name,
         ) {
-            self.store_certificate_history_event(
+            self.store_trust_history_event(
                 HistoryAction::WrpRcReceived,
                 credential.id,
                 organisation.id,
-                registration_certificate.to_owned(),
+                Some(registration_certificate.to_owned()),
                 Some(HistoryMetadata::WalletRelyingParty(
                     WalletRelyingPartyMetadata {
                         name: relying_party_name.to_string(),
@@ -991,11 +1004,11 @@ impl OpenID4VCIFinal1_0 {
             &interaction_data.national_registry_data,
             &interaction_data.relying_party_name,
         ) {
-            self.store_certificate_history_event(
+            self.store_trust_history_event(
                 HistoryAction::WrpNrReceived,
                 credential.id,
                 organisation.id,
-                national_registry_data.to_owned(),
+                Some(national_registry_data.to_owned()),
                 Some(HistoryMetadata::WalletRelyingParty(
                     WalletRelyingPartyMetadata {
                         name: relying_party_name.to_string(),
@@ -1005,6 +1018,17 @@ impl OpenID4VCIFinal1_0 {
             )
             .await?;
         }
+
+        self.store_trust_history_event(
+            HistoryAction::TrustResolved,
+            credential.id,
+            organisation.id,
+            None,
+            Some(HistoryMetadata::TrustResolution(TrustResolutionMetadata {
+                result: trust_resolution,
+            })),
+        )
+        .await?;
 
         Ok(UpdateResponse {
             result: issuer_response,
@@ -1184,7 +1208,7 @@ impl OpenID4VCIFinal1_0 {
         &self,
         credential_issuer: &str,
         validate_trust: Option<OrganisationId>,
-    ) -> Result<IssuerMetadataRepresentation, IssuanceProtocolError> {
+    ) -> Result<(IssuerMetadataRepresentation, TrustMode), IssuanceProtocolError> {
         let credential_issuer_endpoint: Url = credential_issuer.parse().map_err(|_| {
             IssuanceProtocolError::InvalidRequest(format!(
                 "Invalid credential issuer url {credential_issuer}",
@@ -1192,13 +1216,16 @@ impl OpenID4VCIFinal1_0 {
         })?;
 
         if !self.params.request_signed_metadata {
-            return Ok(IssuerMetadataRepresentation::Unsigned(
-                fetch_metadata_json_with_fallback(
-                    self.metadata_cache.as_ref(),
-                    &credential_issuer_endpoint,
-                    "openid-credential-issuer",
-                )
-                .await?,
+            return Ok((
+                IssuerMetadataRepresentation::Unsigned(
+                    fetch_metadata_json_with_fallback(
+                        self.metadata_cache.as_ref(),
+                        &credential_issuer_endpoint,
+                        "openid-credential-issuer",
+                    )
+                    .await?,
+                ),
+                TrustMode::Disabled,
             ));
         }
 
@@ -1213,21 +1240,41 @@ impl OpenID4VCIFinal1_0 {
             .await
             .error_while("validating issuer metadata JWT")?;
 
-        let Some(x5c) = jwt.header.x5c.as_ref() else {
-            tracing::debug!("Issuer metadata signed via DID or JWK, skipping trust check");
-            return Ok(IssuerMetadataRepresentation::Signed(jwt, None));
+        let trust_mode = if let Some(organisation_id) = validate_trust {
+            self.wrp_validator
+                .wallet_trust_mode(organisation_id)
+                .await
+                .error_while("checking wallet trust mode")?
+        } else {
+            TrustMode::Disabled
         };
 
-        let access_certificate = if let Some(organsation_id) = validate_trust {
+        let Some(x5c) = jwt.header.x5c.as_ref() else {
+            tracing::debug!("Issuer metadata signed via DID or JWK");
+
+            if trust_mode == TrustMode::TrustMandatory {
+                return Err(IssuanceProtocolError::Untrusted);
+            }
+
+            return Ok((IssuerMetadataRepresentation::Signed(jwt, None), trust_mode));
+        };
+
+        let access_certificate = if trust_mode != TrustMode::Disabled
+            && let Some(organisation_id) = validate_trust
+        {
             let pem_chain = x5c_into_pem_chain(x5c).error_while("converting x5c")?;
             match self
                 .wrp_validator
-                .validate_access_certificate_trust(&pem_chain, Some(organsation_id))
+                .validate_access_certificate(&pem_chain, Some(organisation_id))
                 .await
             {
                 Ok(result) => Some((result, pem_chain)),
-                Err(WRPValidatorError::TrustManagementDisabled) => {
-                    // trust management disabled, skipping other checks
+                // untrusted
+                Err(err) if err.error_code() == ErrorCode::BR_0410 => {
+                    if trust_mode == TrustMode::TrustMandatory {
+                        return Err(IssuanceProtocolError::Untrusted);
+                    }
+
                     None
                 }
                 Err(err) => {
@@ -1238,9 +1285,9 @@ impl OpenID4VCIFinal1_0 {
             None
         };
 
-        Ok(IssuerMetadataRepresentation::Signed(
-            jwt,
-            access_certificate,
+        Ok((
+            IssuerMetadataRepresentation::Signed(jwt, access_certificate),
+            trust_mode,
         ))
     }
 
@@ -1277,6 +1324,7 @@ impl OpenID4VCIFinal1_0 {
         grants: OpenID4VCIGrants,
         configuration_ids: &[String],
         continue_issuance: Option<ContinueIssuanceDTO>,
+        trust_mode: TrustMode,
     ) -> Result<PrepareIssuanceSuccess, IssuanceProtocolError> {
         // We only support one credential at a time currently
         let configuration_id = configuration_ids.first().ok_or_else(|| {
@@ -1298,30 +1346,49 @@ impl OpenID4VCIFinal1_0 {
             registration_certificate,
             national_registry_data,
             relying_party_name,
-        ) = if let IssuerMetadataRepresentation::Signed(jwt, Some(access_certificate)) =
-            &issuer_metadata
+            trust_resolution,
+        ) = if trust_mode != TrustMode::Disabled
+            && let IssuerMetadataRepresentation::Signed(jwt, Some(access_certificate)) =
+                &issuer_metadata
         {
-            let trust::TrustInfo {
-                registration_certificate,
-                national_registry_data,
-                relying_party_name,
-            } = self
+            match self
                 .validate_trust(
                     credential_config,
                     &jwt.payload.custom,
                     organisation.id,
                     &access_certificate.0,
                 )
-                .await?;
-
-            (
-                Some(access_certificate.1.to_owned()),
-                registration_certificate,
-                national_registry_data,
-                Some(relying_party_name),
-            )
+                .await
+            {
+                Ok(trust::TrustInfo {
+                    registration_certificate,
+                    national_registry_data,
+                    relying_party_name,
+                }) => (
+                    Some(access_certificate.1.to_owned()),
+                    registration_certificate,
+                    national_registry_data,
+                    Some(relying_party_name),
+                    TrustResolutionResult::Trusted,
+                ),
+                Err(err) => {
+                    if trust_mode == TrustMode::TrustMandatory {
+                        return Err(err);
+                    } else {
+                        tracing::info!(%err, "Trust validation failure");
+                        (None, None, None, None, TrustResolutionResult::Untrusted)
+                    }
+                }
+            }
         } else {
-            (None, None, None, None)
+            let trust_resolution = match trust_mode {
+                TrustMode::TrustMandatory => {
+                    return Err(IssuanceProtocolError::Untrusted);
+                }
+                TrustMode::TrustOptional => TrustResolutionResult::Untrusted,
+                TrustMode::Disabled => TrustResolutionResult::Unknown,
+            };
+            (None, None, None, None, trust_resolution)
         };
 
         // https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#section-12.2.4-2.2
@@ -1375,6 +1442,8 @@ impl OpenID4VCIFinal1_0 {
             registration_certificate,
             national_registry_data,
             relying_party_name,
+            trust_resolution,
+            trust_mode,
         };
         let data = serialize_interaction_data(&holder_data)?;
 
@@ -1559,7 +1628,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
     ) -> Result<InvitationResponseEnum, IssuanceProtocolError> {
         let credential_offer = resolve_credential_offer(self.client.as_ref(), url).await?;
 
-        let issuer_metadata = self
+        let (issuer_metadata, trust_mode) = self
             .fetch_issuer_metadata(&credential_offer.credential_issuer, Some(organisation.id))
             .await?;
 
@@ -1648,6 +1717,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 credential_offer.grants,
                 &credential_offer.credential_configuration_ids,
                 None,
+                trust_mode,
             )
             .await?;
 
@@ -2181,7 +2251,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         continue_issuance_dto: ContinueIssuanceDTO,
         organisation: Organisation,
     ) -> Result<ContinueIssuanceResponseDTO, IssuanceProtocolError> {
-        let issuer_metadata = self
+        let (issuer_metadata, trust_mode) = self
             .fetch_issuer_metadata(
                 &continue_issuance_dto.credential_issuer,
                 Some(organisation.id),
@@ -2245,6 +2315,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 }),
                 &all_credential_configuration_ids,
                 Some(continue_issuance_dto),
+                trust_mode,
             )
             .await?;
 

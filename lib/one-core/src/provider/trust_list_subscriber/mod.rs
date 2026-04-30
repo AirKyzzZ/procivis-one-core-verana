@@ -49,7 +49,6 @@ pub struct TrustListSubscriberCapabilities {
     pub roles: Vec<TrustListRoleEnum>,
     pub resolvable_identifier_types: Vec<IdentifierType>,
     pub features: Vec<Feature>,
-    pub pid_provider_role_schema_ids: Vec<String>,
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]

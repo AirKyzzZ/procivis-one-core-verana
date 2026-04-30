@@ -88,6 +88,8 @@ pub struct Params {
     pub sd_array_elements: bool,
     #[serde(default)]
     ecosystem_schema_ids: Vec<String>,
+    #[serde(default)]
+    pid_schema_ids: Vec<String>,
     #[serde_as(as = "DurationSeconds<i64>")]
     #[serde(default = "default_2_years")]
     pub expiration_time: Duration,
@@ -397,6 +399,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
         FormatterCapabilities {
             signing_key_algorithms: signing_algorithms.clone(),
             ecosystem_schema_ids: self.params.ecosystem_schema_ids.to_owned(),
+            pid_schema_ids: self.params.pid_schema_ids.to_owned(),
             datatypes,
             features,
             selective_disclosure: vec![SelectiveDisclosure::AnyLevel],

@@ -320,7 +320,7 @@ fn setup_subscriber(time: OffsetDateTime, reference: &Url) -> EtsiLoteSubscriber
         Duration::seconds(60),
     );
 
-    EtsiLoteSubscriber::new(cache, certificate_validator, key_algorithm_provider, vec![])
+    EtsiLoteSubscriber::new(cache, certificate_validator, key_algorithm_provider)
 }
 
 // XAdES-signed XML LoTE containing the same TRUSTED_CERT entity.
@@ -430,7 +430,7 @@ fn setup_subscriber_xml(time: OffsetDateTime, reference: &Url) -> EtsiLoteSubscr
         Duration::seconds(60),
     );
 
-    EtsiLoteSubscriber::new(cache, cert_validator, key_algorithm_provider, vec![])
+    EtsiLoteSubscriber::new(cache, cert_validator, key_algorithm_provider)
 }
 
 #[tokio::test]

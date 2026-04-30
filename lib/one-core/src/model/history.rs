@@ -51,6 +51,12 @@ pub enum TrustResolutionResult {
     Unknown,
 }
 
+impl TrustResolutionResult {
+    pub fn unknown() -> Self {
+        Self::Unknown
+    }
+}
+
 impl<T: ErrorCodeMixin> From<T> for HistoryMetadata {
     fn from(value: T) -> Self {
         Self::ErrorMetadata(HistoryErrorMetadata {

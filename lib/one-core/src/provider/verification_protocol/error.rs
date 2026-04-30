@@ -17,6 +17,8 @@ pub enum VerificationProtocolError {
     InvalidDcqlQueryOrPresentationDefinition(String),
     #[error("Query not allowed by trust ecosystem: `{0}`")]
     DisallowedQuery(CredentialQueryId),
+    #[error("Interaction not allowed - untrusted")]
+    Untrusted,
     #[error(transparent)]
     Other(anyhow::Error),
 
@@ -48,6 +50,7 @@ impl ErrorCodeMixin for VerificationProtocolError {
             | Self::CBORSerialization(_)
             | Self::CBORParsing(_)
             | Self::Encoding(_) => ErrorCode::BR_0062,
+            Self::Untrusted => ErrorCode::BR_0433,
             Self::InvalidDcqlQueryOrPresentationDefinition(_) => ErrorCode::BR_0083,
             Self::DisallowedQuery(_) => ErrorCode::BR_0411,
             Self::InvalidRequest(_) | Self::Disabled(_) | Self::DcqlError(_) => ErrorCode::BR_0085,

@@ -4,13 +4,12 @@ use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum WRPValidatorError {
-    #[error("Trust management disabled")]
-    TrustManagementDisabled,
-
     #[error("Access certificate not trusted")]
     AccessCertificateNotTrusted,
     #[error("Registration certificate not trusted")]
     RegistrationCertificateNotTrusted,
+    #[error("Credential issuer not trusted")]
+    IssuerNotTrusted,
     #[error("Registry not trusted")]
     RegistryNotTrusted,
     #[error("Certificate revoked")]
@@ -38,9 +37,9 @@ pub(crate) enum WRPValidatorError {
 impl ErrorCodeMixin for WRPValidatorError {
     fn error_code(&self) -> ErrorCode {
         match self {
-            Self::TrustManagementDisabled => ErrorCode::BR_0412,
             Self::AccessCertificateNotTrusted
             | Self::RegistrationCertificateNotTrusted
+            | Self::IssuerNotTrusted
             | Self::RegistryNotTrusted
             | Self::CertificateRevoked => ErrorCode::BR_0410,
             Self::InvalidOrganisationIdentifier

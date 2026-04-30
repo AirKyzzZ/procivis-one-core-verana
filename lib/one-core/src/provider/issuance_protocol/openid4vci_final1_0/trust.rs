@@ -163,28 +163,33 @@ impl OpenID4VCIFinal1_0 {
         }
     }
 
-    pub(super) async fn store_certificate_history_event(
+    pub(super) async fn store_trust_history_event(
         &self,
         action: HistoryAction,
         credential_id: CredentialId,
         organisation_id: OrganisationId,
-        certificate_content: String,
+        blob_content: Option<String>,
         metadata: Option<HistoryMetadata>,
     ) -> Result<(), IssuanceProtocolError> {
-        let blob_storage = self
-            .blob_storage_provider
-            .get_blob_storage(BlobStorageType::Db)
-            .await
-            .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))
-            .error_while("getting blob storage")?;
+        let metadata_blob_id = if let Some(blob_content) = blob_content {
+            let blob_storage = self
+                .blob_storage_provider
+                .get_blob_storage(BlobStorageType::Db)
+                .await
+                .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))
+                .error_while("getting blob storage")?;
 
-        let blob = Blob::new(certificate_content, BlobType::HistoryMetadata);
+            let blob = Blob::new(blob_content, BlobType::HistoryMetadata);
 
-        let blob_id = blob.id;
-        blob_storage
-            .create(blob)
-            .await
-            .error_while("creating history metadata blob")?;
+            let blob_id = blob.id;
+            blob_storage
+                .create(blob)
+                .await
+                .error_while("creating history metadata blob")?;
+            Some(blob_id)
+        } else {
+            None
+        };
 
         self.history_repository
             .create_history(History {
@@ -197,7 +202,7 @@ impl OpenID4VCIFinal1_0 {
                 entity_id: Some(credential_id.into()),
                 entity_type: HistoryEntityType::Credential,
                 metadata,
-                metadata_blob_id: Some(blob_id),
+                metadata_blob_id,
                 organisation_id: Some(organisation_id),
                 user: self.session_provider.session().user(),
             })

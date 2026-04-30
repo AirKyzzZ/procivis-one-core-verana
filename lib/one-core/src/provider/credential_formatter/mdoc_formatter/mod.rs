@@ -92,6 +92,8 @@ pub struct Params {
     pub leeway: Duration,
     #[serde(default)]
     pub ecosystem_schema_ids: Vec<String>,
+    #[serde(default)]
+    pub pid_schema_ids: Vec<String>,
 }
 
 impl MdocFormatter {
@@ -354,6 +356,7 @@ impl CredentialFormatter for MdocFormatter {
                 Features::SupportsTxCode,
             ],
             ecosystem_schema_ids: self.params.ecosystem_schema_ids.to_owned(),
+            pid_schema_ids: self.params.pid_schema_ids.to_owned(),
             selective_disclosure: vec![SelectiveDisclosure::SecondLevel],
             issuance_did_methods: vec![],
             issuance_exchange_protocols: vec![

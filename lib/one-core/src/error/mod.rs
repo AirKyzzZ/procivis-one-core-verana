@@ -918,6 +918,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Unsupported key algorithm")]
     BR_0432,
+
+    #[strum(message = "Interaction not allowed - untrusted")]
+    BR_0433,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

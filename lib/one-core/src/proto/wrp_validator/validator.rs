@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 use std::sync::Arc;
 
-use HolderWalletInstanceFilterValue::OrganisationIds;
 use shared_types::OrganisationId;
 use standardized_types::jwk::PublicJwk;
 use time::Duration;
@@ -11,20 +10,24 @@ use super::WRPValidator;
 use super::error::WRPValidatorError;
 use super::model::{
     AccessCertificateResult, FetchRegistryResult, RegistrationCertificateResult, RegistryKeys,
-    WRPPayload,
+    TrustMode, WRPPayload,
 };
 use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::x5c_into_pem_chain;
+use crate::model::certificate::Certificate;
+use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::KeyRole;
-use crate::model::holder_wallet_instance::HolderWalletInstanceFilterValue;
+use crate::model::holder_wallet_instance::{
+    HolderWalletInstanceFilterValue, HolderWalletInstanceListQuery,
+};
 use crate::model::list_filter::ListFilterValue;
-use crate::model::list_query::ListQuery;
 use crate::model::trust_collection::{TrustCollectionFilterValue, TrustCollectionListQuery};
 use crate::model::trust_list_role::TrustListRoleEnum;
 use crate::model::trust_list_subscription::{
     TrustListSubscription, TrustListSubscriptionFilterValue, TrustListSubscriptionListQuery,
     TrustListSubscriptionState,
 };
+use crate::model::verifier_instance::{VerifierInstanceFilterValue, VerifierInstanceListQuery};
 use crate::proto::certificate_validator::{
     CertificateValidationOptions, CertificateValidator, ParsedCertificate,
 };
@@ -32,10 +35,12 @@ use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::JWTPayload;
 use crate::proto::key_verification::KeyVerification;
+use crate::proto::verifier_provider_client::VerifierProviderClient;
 use crate::proto::wallet_provider_client::WalletProviderClient;
 use crate::provider::credential_formatter::model::{
     CertificateDetails, CredentialStatus, IdentifierDetails, PublicKeySource, VerificationFn,
 };
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::model::RevocationState;
@@ -46,6 +51,7 @@ use crate::provider::trust_list_subscriber::provider::TrustListSubscriberProvide
 use crate::repository::holder_wallet_instance_repository::HolderWalletInstanceRepository;
 use crate::repository::trust_collection_repository::TrustCollectionRepository;
 use crate::repository::trust_list_subscription_repository::TrustListSubscriptionRepository;
+use crate::repository::verifier_instance_repository::VerifierInstanceRepository;
 use crate::service::error::MissingProviderError;
 use crate::util::access_cert_parser::{EtsiParsedAccessCert, etsi_access_cert_from_pem_chain};
 use crate::validator::{validate_expiration_time, validate_not_before_time};
@@ -54,18 +60,23 @@ pub(crate) struct WRPValidatorImpl {
     trust_collection_repository: Arc<dyn TrustCollectionRepository>,
     trust_list_subscription_repository: Arc<dyn TrustListSubscriptionRepository>,
     trust_list_subscriber_provider: Arc<dyn TrustListSubscriberProvider>,
-    holder_wallet_unit_repository: Arc<dyn HolderWalletInstanceRepository>,
+    holder_wallet_instance_repository: Arc<dyn HolderWalletInstanceRepository>,
     wallet_provider_client: Arc<dyn WalletProviderClient>,
+    #[expect(unused)]
+    verifier_instance_repository: Arc<dyn VerifierInstanceRepository>,
+    #[expect(unused)]
+    verifier_provider_client: Arc<dyn VerifierProviderClient>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     certificate_validator: Arc<dyn CertificateValidator>,
     client: Arc<dyn HttpClient>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
+    credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
 }
 
 #[async_trait::async_trait]
 impl WRPValidator for WRPValidatorImpl {
-    async fn validate_access_certificate_trust(
+    async fn validate_access_certificate(
         &self,
         pem_chain: &str,
         validate_trust: Option<OrganisationId>,
@@ -231,6 +242,130 @@ impl WRPValidator for WRPValidatorImpl {
             jwt,
         })
     }
+
+    async fn validate_credential_issuer<'a>(
+        &self,
+        issuer: Option<&'a Certificate>,
+        credential_schema: &CredentialSchema,
+        organisation_id: OrganisationId,
+    ) -> Result<Option<TrustEntityResponse>, WRPValidatorError> {
+        let formatter_capabilities = self
+            .credential_formatter_provider
+            .get_credential_formatter(&credential_schema.format)
+            .ok_or(MissingProviderError::Formatter(
+                credential_schema.format.to_string(),
+            ))
+            .error_while("getting formatter")?
+            .get_capabilities();
+
+        if !formatter_capabilities
+            .pid_schema_ids
+            .contains(&credential_schema.schema_id)
+        {
+            tracing::debug!("Credential not a PID, skipping issuer trust checks");
+            return Ok(None);
+        }
+
+        let Some(issuer) = issuer else {
+            return Err(WRPValidatorError::IssuerNotTrusted);
+        };
+
+        let trusted_entity = self
+            .perform_trust_validation(
+                TrustEntityIdentifier::PemChain(&issuer.chain),
+                TrustListRoleEnum::PidProvider,
+                organisation_id,
+            )
+            .await?
+            .ok_or(WRPValidatorError::IssuerNotTrusted)?;
+
+        Ok(Some(trusted_entity))
+    }
+
+    async fn wallet_trust_mode(
+        &self,
+        organisation_id: OrganisationId,
+    ) -> Result<TrustMode, WRPValidatorError> {
+        let list = self
+            .holder_wallet_instance_repository
+            .list(HolderWalletInstanceListQuery {
+                filtering: Some(
+                    HolderWalletInstanceFilterValue::OrganisationIds(vec![organisation_id])
+                        .condition(),
+                ),
+                ..Default::default()
+            })
+            .await
+            .error_while("getting holder wallet instance")?;
+
+        let Some(holder_wallet_instance) = list.values.into_iter().next() else {
+            // if no holder wallet instance registered, it means the trust management was not setup
+            // defaulting to optional trust
+            return Ok(TrustMode::TrustOptional);
+        };
+
+        let trusted_rp_required = holder_wallet_instance.trusted_rp_required;
+
+        let metadata = self
+            .wallet_provider_client
+            .get_wallet_provider_metadata(holder_wallet_instance.into())
+            .await
+            .error_while("getting wallet provider metadata")?;
+
+        if !metadata.feature_flags.trust_ecosystems_enabled {
+            // trust management disabled via provider metadata
+            return Ok(TrustMode::Disabled);
+        }
+
+        Ok(if trusted_rp_required {
+            TrustMode::TrustMandatory
+        } else {
+            TrustMode::TrustOptional
+        })
+    }
+
+    async fn verifier_trust_mode(
+        &self,
+        organisation_id: OrganisationId,
+    ) -> Result<TrustMode, WRPValidatorError> {
+        let list = self
+            .verifier_instance_repository
+            .list(VerifierInstanceListQuery {
+                filtering: Some(
+                    VerifierInstanceFilterValue::OrganisationIds(vec![organisation_id]).condition(),
+                ),
+                ..Default::default()
+            })
+            .await
+            .error_while("getting verifier instance")?;
+
+        let Some(verifier_instance) = list.values.into_iter().next() else {
+            // if no verifier instance registered, it means the trust management was not setup
+            // defaulting to optional trust
+            return Ok(TrustMode::TrustOptional);
+        };
+
+        let metadata_url = format!(
+            "{}/ssi/verifier-provider/v1/{}",
+            verifier_instance.provider_url, verifier_instance.provider_name
+        );
+        let metadata = self
+            .verifier_provider_client
+            .get_verifier_provider_metadata(&metadata_url)
+            .await
+            .error_while("getting verifier provider metadata")?;
+
+        if !metadata.feature_flags.trust_ecosystems_enabled {
+            // trust management disabled via provider metadata
+            return Ok(TrustMode::Disabled);
+        }
+
+        Ok(if verifier_instance.trusted_issuer_required {
+            TrustMode::TrustMandatory
+        } else {
+            TrustMode::TrustOptional
+        })
+    }
 }
 
 enum TrustEntityIdentifier<'a> {
@@ -244,25 +379,31 @@ impl WRPValidatorImpl {
         trust_collection_repository: Arc<dyn TrustCollectionRepository>,
         trust_list_subscription_repository: Arc<dyn TrustListSubscriptionRepository>,
         trust_list_subscriber_provider: Arc<dyn TrustListSubscriberProvider>,
-        holder_wallet_unit_repository: Arc<dyn HolderWalletInstanceRepository>,
+        holder_wallet_instance_repository: Arc<dyn HolderWalletInstanceRepository>,
         wallet_provider_client: Arc<dyn WalletProviderClient>,
+        verifier_instance_repository: Arc<dyn VerifierInstanceRepository>,
+        verifier_provider_client: Arc<dyn VerifierProviderClient>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         certificate_validator: Arc<dyn CertificateValidator>,
         client: Arc<dyn HttpClient>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
+        credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
     ) -> Self {
         Self {
             trust_collection_repository,
             trust_list_subscription_repository,
             trust_list_subscriber_provider,
-            holder_wallet_unit_repository,
+            holder_wallet_instance_repository,
             wallet_provider_client,
+            verifier_instance_repository,
+            verifier_provider_client,
             did_method_provider,
             key_algorithm_provider,
             certificate_validator,
             client,
             revocation_method_provider,
+            credential_formatter_provider,
         }
     }
 
@@ -272,8 +413,6 @@ impl WRPValidatorImpl {
         role: TrustListRoleEnum,
         organisation_id: OrganisationId,
     ) -> Result<Option<TrustEntityResponse>, WRPValidatorError> {
-        self.check_trust_management_enabled(organisation_id).await?;
-
         let subscriptions = self
             .get_trust_subscriptions_for_role(role, organisation_id)
             .await?;
@@ -313,36 +452,6 @@ impl WRPValidatorImpl {
         }
 
         Ok(None)
-    }
-
-    async fn check_trust_management_enabled(
-        &self,
-        organisation_id: OrganisationId,
-    ) -> Result<(), WRPValidatorError> {
-        let list = self
-            .holder_wallet_unit_repository
-            .list(ListQuery {
-                filtering: Some(OrganisationIds(vec![organisation_id]).condition()),
-                ..Default::default()
-            })
-            .await
-            .error_while("getting holder wallet instance")?;
-        let Some(holder_wallet_instance) = list.values.into_iter().next() else {
-            return Err(WRPValidatorError::TrustManagementDisabled);
-        };
-
-        let metadata = self
-            .wallet_provider_client
-            .get_wallet_provider_metadata(holder_wallet_instance.into())
-            .await
-            .error_while("getting wallet provider metadata")?;
-
-        if !metadata.feature_flags.trust_ecosystems_enabled {
-            // trust management disabled via provider metadata
-            return Err(WRPValidatorError::TrustManagementDisabled);
-        }
-
-        Ok(())
     }
 
     async fn get_trust_subscriptions_for_role(

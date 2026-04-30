@@ -56,6 +56,7 @@ format:
             "eu.europa.ec.eudi.por.1",
             "eu.europa.ec.eudi.tax.1",
           ]
+        pidSchemaIds: ["eu.europa.ec.eudi.pid.1"]
   SD_JWT_VC:
     type: "SD_JWT_VC"
     display: "format.sdjwtVc"
@@ -77,6 +78,7 @@ format:
             "urn:eu.europa.ec.eudi:iban:1",
             "urn:eu.europa.ec.eudi:hiid:1",
           ]
+        pidSchemaIds: ["urn:eudi:pid:1"]
   SD_JWT_VC_SWIYU:
     type: "SD_JWT_VC"
     display:
@@ -347,7 +349,6 @@ verificationProtocol:
               x509_hash,
               x509_san_dns,
             ]
-          trustEcosystemsEnabled: false
         redirectUri:
           enabled: true
           allowedSchemes: ["https"]
@@ -783,8 +784,6 @@ trustListSubscriber:
       private:
         accepts: "application/jwt"
         leeway: 60
-        supportedPidProviderRoleSchemaIds:
-          ["eu.europa.ec.eudi.pid.1", "urn:eudi:pid:1"]
 blobStorage:
   DB:
     enabled: true

@@ -205,6 +205,7 @@ impl CredentialFormatter for JsonLdClassic {
             ],
             revocation_methods: vec![RevocationType::BitstringStatusList],
             ecosystem_schema_ids: vec![],
+            pid_schema_ids: vec![],
             datatypes: vec![
                 "STRING".to_string(),
                 "BOOLEAN".to_string(),

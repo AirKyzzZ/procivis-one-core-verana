@@ -403,11 +403,14 @@ impl OneCore {
             trust_list_subscriber_provider.clone(),
             data_provider.get_holder_wallet_instance_repository(),
             wallet_unit_client.clone(),
+            data_provider.get_verifier_instance_repository(),
+            verifier_provider_client.clone(),
             did_method_provider.clone(),
             key_algorithm_provider.clone(),
             certificate_validator.clone(),
             client.clone(),
             revocation_method_provider.clone(),
+            credential_formatter_provider.clone(),
         ));
 
         let trust_collection_manager = Arc::new(TrustCollectionManagerImpl::new(

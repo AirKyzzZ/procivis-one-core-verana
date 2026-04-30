@@ -1,5 +1,5 @@
 use one_dto_mapper::Into;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_with::{OneOrMany, serde_as};
 use standardized_types::jwk::PublicJwk;
 use time::OffsetDateTime;
@@ -21,6 +21,26 @@ pub(crate) struct RegistrationCertificateResult {
     #[expect(unused)]
     pub trust_entity: Option<TrustEntityResponse>,
     pub payload: JWTPayload<registration_certificate::model::Payload>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub(crate) enum TrustMode {
+    /// Only interactions with trusted parties allowed, untrusted operations result in failure
+    TrustMandatory,
+
+    /// Both trusted and untrusted operations allowed,
+    /// trusted operations will result in additional history events describing validated trust information
+    TrustOptional,
+
+    /// No trust checking performed, operations will result in `Unknown` trust results
+    Disabled,
+}
+
+impl TrustMode {
+    pub fn optional() -> Self {
+        Self::TrustOptional
+    }
 }
 
 pub(crate) struct FetchRegistryResult {

@@ -73,7 +73,6 @@ trustListSubscriber:
       public:
         accepts: application/jwt
         leeway: 0
-        supportedPidProviderRoleSchemaIds: []
     "#;
     let context = TestContext::new(Some(additional_config.to_string())).await;
     let organisation = context.db.organisations.create().await;
@@ -341,7 +340,6 @@ trustListSubscriber:
       public:
         accepts: application/jwt
         leeway: 0
-        supportedPidProviderRoleSchemaIds: []
     "#;
     let context = TestContext::new(Some(additional_config.to_string())).await;
     let organisation = context.db.organisations.create().await;
