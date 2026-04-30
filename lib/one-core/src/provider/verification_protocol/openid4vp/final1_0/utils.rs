@@ -316,29 +316,15 @@ impl OpenID4VPFinal1_0 {
         ))
     }
 
-    async fn retrieve_authorization_params_by_reference(
+    async fn authorization_params_from_token(
         &self,
+        request_token: String,
         query_params: AuthorizationRequestQueryParams,
-        url: Url,
         proof_id: ProofId,
         organisation_id: OrganisationId,
     ) -> Result<(AuthorizationRequest, Option<IdentifierDetails>), VerificationProtocolError> {
-        let response = async {
-            self.client
-                .get(url.as_str())
-                .header("Accept", "application/oauth-authz-req+jwt")
-                .send()
-                .await?
-                .error_for_status()
-        }
-        .await
-        .error_while("fetching authorization request")?;
-
-        let token = String::from_utf8(response.body)
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-
         let request_token: DecomposedJwt<AuthorizationRequest> =
-            Jwt::decompose_token(&token).error_while("parsing request JWT")?;
+            Jwt::decompose_token(&request_token).error_while("parsing request JWT")?;
 
         if let Some(audience) = &request_token.payload.audience {
             if audience.len() != 1 {
@@ -425,49 +411,46 @@ impl OpenID4VPFinal1_0 {
         let query_params: AuthorizationRequestQueryParams = serde_qs::from_str(query)
             .map_err(|e| VerificationProtocolError::InvalidRequest(e.to_string()))?;
 
-        let (authorization_request, verifier_details) =
-            match (&query_params.request_uri, &query_params.request) {
-                (Some(_), Some(_)) => {
+        let request_token = match (&query_params.request_uri, &query_params.request) {
+            (Some(_), Some(_)) => {
+                return Err(VerificationProtocolError::InvalidRequest(
+                    "request and request_uri cannot be set together".to_string(),
+                ));
+            }
+            (Some(request_uri), None) => {
+                let request_url = Url::parse(request_uri)
+                    .map_err(|e| VerificationProtocolError::InvalidRequest(e.to_string()))?;
+
+                if !self.params.allow_insecure_http_transport && request_url.scheme() != "https" {
                     return Err(VerificationProtocolError::InvalidRequest(
-                        "request and request_uri cannot be set together".to_string(),
+                        "request_uri must use HTTPS scheme".to_string(),
                     ));
                 }
-                (Some(request_uri), None) => {
-                    let request_uri = Url::parse(request_uri)
-                        .map_err(|e| VerificationProtocolError::InvalidRequest(e.to_string()))?;
 
-                    if !self.params.allow_insecure_http_transport && request_uri.scheme() != "https"
-                    {
-                        return Err(VerificationProtocolError::InvalidRequest(
-                            "request_uri must use HTTPS scheme".to_string(),
-                        ));
-                    }
+                let response = async {
+                    self.client
+                        .get(request_uri)
+                        .header("Accept", "application/oauth-authz-req+jwt")
+                        .send()
+                        .await?
+                        .error_for_status()
+                }
+                .await
+                .error_while("fetching authorization request")?;
 
-                    Ok::<_, VerificationProtocolError>(
-                        self.retrieve_authorization_params_by_reference(
-                            query_params,
-                            request_uri,
-                            proof_id,
-                            organisation_id,
-                        )
-                        .await?,
-                    )
-                }
-                (None, Some(request)) => {
-                    let authorization_request = serde_json::from_str(request).map_err(|e| {
-                        VerificationProtocolError::InvalidRequest(format!(
-                            "Failed to parse request: {e}"
-                        ))
-                    })?;
-                    Ok((authorization_request, None))
-                }
-                (None, None) => {
-                    return Err(VerificationProtocolError::InvalidRequest(
-                        "request or request_uri is required".to_string(),
-                    ));
-                }
-            }?;
-        Ok((authorization_request, verifier_details))
+                String::from_utf8(response.body)
+                    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
+            }
+            (None, Some(request)) => request.to_string(),
+            (None, None) => {
+                return Err(VerificationProtocolError::InvalidRequest(
+                    "request or request_uri is required".to_string(),
+                ));
+            }
+        };
+
+        self.authorization_params_from_token(request_token, query_params, proof_id, organisation_id)
+            .await
     }
 }
 
