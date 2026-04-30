@@ -23,6 +23,7 @@ impl OAuthClient {
         authorization_server: Url,
         request: OAuthAuthorizationRequest,
     ) -> Result<OAuthAuthorizationResponse, OAuthClientError> {
+        // TODO ONE-9131: Use metadata cache here
         let metadata = self
             .fetch_authorization_server_metadata(authorization_server.clone())
             .await?;

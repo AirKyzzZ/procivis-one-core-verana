@@ -152,7 +152,7 @@ async fn test_revoke_credential_with_webhook() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &identifier,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             TestingCredentialParams {
                 webhook_url: Some(webhook_url.to_string()),
                 ..Default::default()

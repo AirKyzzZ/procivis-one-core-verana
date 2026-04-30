@@ -170,9 +170,6 @@ pub enum ValidationError {
         required_security_levels: Vec<KeyStorageSecurity>,
     },
 
-    #[error("Key storage security level `{0}` not supported")]
-    KeyStorageSecurityDisabled(KeyStorageSecurity),
-
     #[error("Invalid transaction code length")]
     InvalidTransactionCodeLength,
 
@@ -292,7 +289,6 @@ impl ErrorCodeMixin for ValidationError {
             Self::InvalidImage(_) => ErrorCode::BR_0193,
             Self::IdentifierTypeDisabled(_) => ErrorCode::BR_0227,
             Self::InvalidWalletProviderUrl(_) => ErrorCode::BR_0295,
-            Self::KeyStorageSecurityDisabled(_) => ErrorCode::BR_0309,
             Self::UnfulfilledKeyStorageSecurityLevel { .. } => ErrorCode::BR_0310,
             Self::InvalidTransactionCodeLength => ErrorCode::BR_0338,
             Self::NotificationsNotAllowed { .. } => ErrorCode::BR_0372,

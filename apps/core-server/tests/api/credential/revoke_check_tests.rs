@@ -1,5 +1,4 @@
 use one_core::model::credential::{Credential, CredentialRole, CredentialStateEnum};
-use one_core::model::credential_schema::CredentialSchema;
 use one_core::model::did::{Did, DidType, KeyRole, RelatedKey};
 use one_core::model::history::HistoryAction;
 use one_core::model::identifier::{Identifier, IdentifierState, IdentifierType};
@@ -15,16 +14,14 @@ use one_crypto::signer::eddsa::{EDDSASigner, KeyPair};
 use serde_json::{Value, json};
 use similar_asserts::assert_eq;
 use time::Duration;
-use time::macros::format_description;
 use uuid::Uuid;
 use wiremock::http::Method;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
+use crate::fixtures::interaction::{InteractionDataParams, dummy_interaction_data};
 use crate::fixtures::mdoc::format_mdoc_credential;
-use crate::fixtures::{
-    TestingCredentialParams, TestingDidParams, TestingIdentifierParams, encrypted_token,
-};
+use crate::fixtures::{TestingCredentialParams, TestingDidParams, TestingIdentifierParams};
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::blobs::TestingBlobParams;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
@@ -677,7 +674,7 @@ async fn test_revoke_check_mdoc_update() {
     let interaction_data = dummy_interaction_data(
         &context,
         &credential_schema,
-        TestInteractionParams::default(),
+        InteractionDataParams::with_format("mso_mdoc".to_string()),
     );
     let interaction = context
         .db
@@ -726,7 +723,7 @@ async fn test_revoke_check_mdoc_update() {
     let valid_credential = valid_mdoc_credential().await;
     context
         .server_mock
-        .ssi_credential_endpoint_final1(&credential_schema.id, "123", &valid_credential, 1, None)
+        .ssi_credential_endpoint(&credential_schema.id, "123", &valid_credential, 1, None)
         .await;
 
     // WHEN
@@ -817,7 +814,7 @@ async fn test_revoke_check_mdoc_update_invalid() {
     let interaction_data = dummy_interaction_data(
         &context,
         &credential_schema,
-        TestInteractionParams::default(),
+        InteractionDataParams::with_format("mso_mdoc".to_string()),
     );
     let interaction = context
         .db
@@ -864,7 +861,7 @@ async fn test_revoke_check_mdoc_update_invalid() {
         .await;
     context
         .server_mock
-        .ssi_credential_endpoint_final1(
+        .ssi_credential_endpoint(
             &credential_schema.id,
             "123",
             "this is not a valid mdoc",
@@ -963,7 +960,7 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
     let interaction_data = dummy_interaction_data(
         &context,
         &credential_schema,
-        TestInteractionParams::default(),
+        InteractionDataParams::with_format("mso_mdoc".to_string()),
     );
 
     let interaction = context
@@ -1014,7 +1011,7 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
     let valid_credential2 = valid_mdoc_credential().await;
     context
         .server_mock
-        .ssi_credential_endpoint_final1(&credential_schema.id, "123", &valid_credential2, 2, None)
+        .ssi_credential_endpoint(&credential_schema.id, "123", &valid_credential2, 2, None)
         .await;
 
     // WHEN
@@ -1104,9 +1101,10 @@ async fn test_revoke_check_token_update() {
     let interaction_data = dummy_interaction_data(
         &context,
         &credential_schema,
-        TestInteractionParams {
+        InteractionDataParams {
+            format: Some("mso_mdoc".to_string()),
             access_token_expired: true,
-            refresh_token_expired: false,
+            ..Default::default()
         },
     );
     let interaction = context
@@ -1235,9 +1233,11 @@ async fn test_revoke_check_mdoc_tokens_expired() {
     let interaction_data = dummy_interaction_data(
         &context,
         &credential_schema,
-        TestInteractionParams {
+        InteractionDataParams {
+            format: Some("mso_mdoc".to_string()),
             access_token_expired: true,
             refresh_token_expired: true,
+            ..Default::default()
         },
     );
     let interaction = context
@@ -1368,7 +1368,7 @@ async fn test_revoke_check_mdoc_fail_to_update_token_valid_mso() {
     let interaction_data = dummy_interaction_data(
         &context,
         &credential_schema,
-        TestInteractionParams::default(),
+        InteractionDataParams::with_format("mso_mdoc".to_string()),
     );
 
     let interaction = context
@@ -1494,9 +1494,10 @@ async fn test_suspended_to_valid_mdoc() {
     let interaction_data = dummy_interaction_data(
         &context,
         &credential_schema,
-        TestInteractionParams {
+        InteractionDataParams {
+            format: Some("mso_mdoc".to_string()),
             access_token_expired: true,
-            refresh_token_expired: false,
+            ..Default::default()
         },
     );
     let interaction = context
@@ -1551,7 +1552,7 @@ async fn test_suspended_to_valid_mdoc() {
     let valid_credential = valid_mdoc_credential().await;
     context
         .server_mock
-        .ssi_credential_endpoint_final1(&credential_schema.id, "321", &valid_credential, 1, None)
+        .ssi_credential_endpoint(&credential_schema.id, "321", &valid_credential, 1, None)
         .await;
     let history_previous = context
         .db
@@ -1666,9 +1667,10 @@ async fn test_suspended_to_suspended_update_failed() {
     let interaction_data = dummy_interaction_data(
         &context,
         &credential_schema,
-        TestInteractionParams {
+        InteractionDataParams {
+            format: Some("mso_mdoc".to_string()),
             access_token_expired: true,
-            refresh_token_expired: false,
+            ..Default::default()
         },
     );
     let interaction = context
@@ -1829,69 +1831,6 @@ async fn test_revoke_check_failed_deleted_credential() {
 
     // THEN
     assert_eq!(resp.status(), 404);
-}
-
-#[derive(Default)]
-struct TestInteractionParams {
-    access_token_expired: bool,
-    refresh_token_expired: bool,
-}
-
-fn dummy_interaction_data(
-    context: &TestContext,
-    credential_schema: &CredentialSchema,
-    params: TestInteractionParams,
-) -> Vec<u8> {
-    let format = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
-    let now = one_core::clock::now_utc();
-    let at_expiry = match params.access_token_expired {
-        true => now - Duration::seconds(20),
-        false => now + Duration::seconds(20),
-    };
-    let rt_expiry = match params.refresh_token_expired {
-        true => now - Duration::seconds(20),
-        false => now + Duration::seconds(20),
-    };
-    let issuer_url = format!(
-        "{}/ssi/openid4vci/final-1.0/{}",
-        context.server_mock.uri(),
-        credential_schema.id,
-    );
-    serde_json::to_vec(&json!({
-        "issuer_url": issuer_url,
-        "credential_endpoint": format!("{}/credential", issuer_url),
-        "token_endpoint": format!("{}/token", issuer_url),
-        "nonce_endpoint": format!("{}/ssi/openid4vci/final-1.0/OPENID4VCI_FINAL1/nonce", context.server_mock.uri()),
-        "grants":{
-            "urn:ietf:params:oauth:grant-type:pre-authorized_code":{
-                "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
-            }
-        },
-        "access_token": encrypted_token("123"),
-        "access_token_expires_at": at_expiry.format(&format).unwrap(),
-        "refresh_token": encrypted_token("123"),
-        "refresh_token_expires_at": rt_expiry.format(&format).unwrap(),
-        "cryptographic_binding_methods_supported": [
-            "cose_key"
-        ],
-        "proof_types_supported": {
-            "jwt": {
-                "proof_signing_alg_values_supported": [
-                    "EdDSA",
-                    "ES256",
-                ]
-            }
-        },
-        "token_endpoint_auth_methods_supported": [
-            "none"
-        ],
-        "credential_configuration_id": "01ee2044-2e75-4a3b-a575-b48669bd8254",
-        "protocol": "OPENID4VCI_FINAL1",
-        "format": "mso_mdoc",
-        "trust_resolution": "UNTRUSTED",
-        "trust_mode": "TRUST_OPTIONAL"
-        }))
-        .unwrap()
 }
 
 async fn valid_mdoc_credential() -> String {

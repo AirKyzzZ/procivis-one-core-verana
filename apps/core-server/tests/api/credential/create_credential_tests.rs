@@ -32,7 +32,7 @@ async fn test_create_credential_success() {
         .credentials
         .create(
             credential_schema.id,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             serde_json::json!([
                 {
                     "claimId": claim_id.to_string(),
@@ -59,7 +59,7 @@ async fn test_create_credential_success() {
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
     assert_eq!(CredentialStateEnum::Created, credential.state);
     assert_eq!(2, credential.claims.unwrap().len());
-    assert_eq!("OPENID4VCI_DRAFT13", credential.protocol);
+    assert_eq!("OPENID4VCI_FINAL1", credential.protocol);
     assert_eq!(credential.profile, None);
 }
 
@@ -100,7 +100,7 @@ async fn test_create_credential_with_array_success() {
         .credentials
         .create(
             credential_schema.id,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             serde_json::json!([
                 {
                     "claimId": claim_id_root_field.to_string(),
@@ -232,7 +232,7 @@ async fn test_create_credential_success_with_nested_claims() {
         .credentials
         .create(
             credential_schema.id,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             serde_json::json!([
                 {
                     "claimId": street_claim_id.to_string(),
@@ -264,7 +264,7 @@ async fn test_create_credential_success_with_nested_claims() {
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
     assert_eq!(CredentialStateEnum::Created, credential.state);
     assert_eq!(5, credential.claims.unwrap().len());
-    assert_eq!("OPENID4VCI_DRAFT13", credential.protocol);
+    assert_eq!("OPENID4VCI_FINAL1", credential.protocol);
 }
 
 #[tokio::test]
@@ -345,7 +345,7 @@ async fn test_create_credential_with_issuer_key() {
         .credentials
         .create(
             credential_schema.id,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             serde_json::json!([
                 {
                     "claimId": claim_id.to_string(),
@@ -423,7 +423,7 @@ async fn test_fail_to_create_credential_invalid_key_role() {
         .credentials
         .create(
             credential_schema.id,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             serde_json::json!([
                 {
                     "claimId": claim_id.to_string(),
@@ -461,7 +461,7 @@ async fn test_fail_to_create_credential_unknown_key_id() {
         .credentials
         .create(
             credential_schema.id,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             serde_json::json!([
                 {
                     "claimId": claim_id.to_string(),
@@ -531,7 +531,7 @@ async fn test_create_credential_with_certificate_identifier() {
         .credentials
         .create(
             credential_schema.id,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             serde_json::json!([
                 {
                     "claimId": claim_id.to_string(),
@@ -622,7 +622,7 @@ async fn test_create_credential_with_certificate_selection() {
         .credentials
         .create(
             credential_schema.id,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             serde_json::json!([
                 {
                     "claimId": claim_id.to_string(),
@@ -695,7 +695,7 @@ async fn test_create_credential_with_invalid_certificate_id() {
         .credentials
         .create(
             credential_schema.id,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             serde_json::json!([
                 {
                     "claimId": claim_id.to_string(),
@@ -764,7 +764,7 @@ async fn test_create_credential_fail_with_only_certificate_id() {
         .credentials
         .create(
             credential_schema.id,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             serde_json::json!([
                 {
                     "claimId": claim_id.to_string(),
@@ -804,7 +804,7 @@ async fn test_create_credential_with_big_picture_success() {
         .credentials
         .create(
             credential_schema.id,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             serde_json::json!([
                 {
                     "claimId": claim_id.to_string(),
@@ -826,7 +826,7 @@ async fn test_create_credential_with_big_picture_success() {
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
     assert_eq!(CredentialStateEnum::Created, credential.state);
     assert_eq!(1, credential.claims.unwrap().len());
-    assert_eq!("OPENID4VCI_DRAFT13", credential.protocol);
+    assert_eq!("OPENID4VCI_FINAL1", credential.protocol);
 }
 
 #[tokio::test]
@@ -849,7 +849,7 @@ async fn test_create_credential_failed_specified_object_claim() {
         .credentials
         .create(
             credential_schema.id,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             serde_json::json!([
                 {
                     "claimId": object_claim_id.to_string(),
@@ -887,7 +887,7 @@ async fn test_create_credential_boolean_value_wrong() {
         .credentials
         .create(
             credential_schema.id,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             serde_json::json!([
                 {
                     "claimId": claim_id.to_string(),
@@ -941,7 +941,7 @@ async fn test_fail_create_credential_with_empty_value() {
         .credentials
         .create(
             credential_schema.id,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             serde_json::json!([{
                 "claimId": claim_id.to_string(),
                 "value": "",
@@ -959,7 +959,7 @@ async fn test_fail_create_credential_with_empty_value() {
         .credentials
         .create(
             credential_schema.id,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             serde_json::json!([{
                 "claimId": claim_id.to_string(),
                 "path": "root"
@@ -1010,7 +1010,7 @@ async fn test_fail_create_credential_with_empty_array_value() {
         .credentials
         .create(
             credential_schema.id,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             serde_json::json!([
                 {
                     "claimId": str_array_claim_id.to_string(),
@@ -1035,7 +1035,7 @@ async fn test_fail_create_credential_with_empty_array_value() {
         .credentials
         .create(
             credential_schema.id,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             serde_json::json!([
                 {
                     "claimId": str_array_claim_id.to_string(),
@@ -1109,7 +1109,7 @@ async fn test_fail_create_credential_with_empty_object_value() {
         .credentials
         .create(
             credential_schema.id,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             serde_json::json!([
                 {
                     "claimId": name_claim_id.to_string(),
@@ -1129,7 +1129,7 @@ async fn test_fail_create_credential_with_empty_object_value() {
         .credentials
         .create(
             credential_schema.id,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             serde_json::json!([
                 {
                     "claimId": name_claim_id.to_string(),
@@ -1148,7 +1148,7 @@ async fn test_fail_create_credential_with_empty_object_value() {
         .credentials
         .create(
             credential_schema.id,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             serde_json::json!([
                 {
                     "claimId": nested_object_name_claim_id.to_string(),
@@ -1168,7 +1168,7 @@ async fn test_fail_create_credential_with_empty_object_value() {
         .credentials
         .create(
             credential_schema.id,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             serde_json::json!([
                 {
                     "claimId": nested_object_name_claim_id.to_string(),
@@ -1216,7 +1216,7 @@ async fn test_create_credential_success_with_profile() {
         .credentials
         .create(
             credential_schema.id,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             serde_json::json!([
                 {
                     "claimId": claim_id.to_string(),
@@ -1244,7 +1244,7 @@ async fn test_create_credential_success_with_profile() {
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
     assert_eq!(CredentialStateEnum::Created, credential.state);
     assert_eq!(2, credential.claims.unwrap().len());
-    assert_eq!("OPENID4VCI_DRAFT13", credential.protocol);
+    assert_eq!("OPENID4VCI_FINAL1", credential.protocol);
 
     // Verify the profile is correctly stored
     assert_eq!(credential.profile.as_ref().unwrap(), test_profile);
@@ -1270,7 +1270,7 @@ async fn test_create_credential_success_with_webhook_url() {
         .credentials
         .create(
             credential_schema.id,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             serde_json::json!([
                 {
                     "claimId": claim_id.to_string(),

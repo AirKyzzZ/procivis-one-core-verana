@@ -289,7 +289,7 @@ mod test {
         assert!(
             capabilities
                 .issuance_exchange_protocols
-                .contains(&IssuanceProtocolType::OpenId4VciDraft13) // not swiyu mode
+                .contains(&IssuanceProtocolType::OpenId4VciFinal1_0) // not swiyu mode
         )
     }
 }

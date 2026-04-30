@@ -13,16 +13,7 @@ use crate::utils::context::TestContext;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 
 #[tokio::test]
-async fn test_get_sd_jwt_vc_issuer_metadata_success_with_did_draft13() {
-    test_get_sd_jwt_vc_issuer_metadata_success_with_did("OPENID4VCI_DRAFT13").await;
-}
-
-#[tokio::test]
-async fn test_get_sd_jwt_vc_issuer_metadata_success_with_did_final1() {
-    test_get_sd_jwt_vc_issuer_metadata_success_with_did("OPENID4VCI_FINAL1").await;
-}
-
-async fn test_get_sd_jwt_vc_issuer_metadata_success_with_did(protocol_id: &str) {
+async fn test_get_sd_jwt_vc_issuer_metadata_success_with_did() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;
 
@@ -74,7 +65,7 @@ async fn test_get_sd_jwt_vc_issuer_metadata_success_with_did(protocol_id: &str) 
     let resp = context
         .api
         .ssi
-        .get_sd_jwt_vc_issuer_metadata(protocol_id, identifier.id, schema.id)
+        .get_sd_jwt_vc_issuer_metadata("OPENID4VCI_FINAL1", identifier.id, schema.id)
         .await;
 
     // THEN
@@ -92,16 +83,7 @@ async fn test_get_sd_jwt_vc_issuer_metadata_success_with_did(protocol_id: &str) 
 }
 
 #[tokio::test]
-async fn test_get_sd_jwt_vc_issuer_metadata_success_with_key_draft13() {
-    test_get_sd_jwt_vc_issuer_metadata_success_with_key("OPENID4VCI_DRAFT13").await;
-}
-
-#[tokio::test]
-async fn test_get_sd_jwt_vc_issuer_metadata_success_with_key_final1() {
-    test_get_sd_jwt_vc_issuer_metadata_success_with_key("OPENID4VCI_FINAL1").await;
-}
-
-async fn test_get_sd_jwt_vc_issuer_metadata_success_with_key(protocol_id: &str) {
+async fn test_get_sd_jwt_vc_issuer_metadata_success_with_key() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;
 
@@ -135,14 +117,14 @@ async fn test_get_sd_jwt_vc_issuer_metadata_success_with_key(protocol_id: &str) 
     let resp = context
         .api
         .ssi
-        .get_sd_jwt_vc_issuer_metadata(protocol_id, identifier.id, schema.id)
+        .get_sd_jwt_vc_issuer_metadata("OPENID4VCI_FINAL1", identifier.id, schema.id)
         .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
     let body: Value = resp.json_value().await;
     let expected_issuer = format!(
-        "{}/ssi/openid4vci/{protocol_id}/{}/{}",
+        "{}/ssi/openid4vci/OPENID4VCI_FINAL1/{}/{}",
         context.config.app.core_base_url, identifier.id, schema.id
     );
     assert_eq!(body["issuer"], expected_issuer);
@@ -157,16 +139,7 @@ async fn test_get_sd_jwt_vc_issuer_metadata_success_with_key(protocol_id: &str) 
 }
 
 #[tokio::test]
-async fn test_get_sd_jwt_vc_issuer_metadata_success_with_certificate_draft13() {
-    test_get_sd_jwt_vc_issuer_metadata_success_with_certificate("OPENID4VCI_DRAFT13").await;
-}
-
-#[tokio::test]
-async fn test_get_sd_jwt_vc_issuer_metadata_success_with_certificate_final1() {
-    test_get_sd_jwt_vc_issuer_metadata_success_with_certificate("OPENID4VCI_FINAL1").await;
-}
-
-async fn test_get_sd_jwt_vc_issuer_metadata_success_with_certificate(protocol_id: &str) {
+async fn test_get_sd_jwt_vc_issuer_metadata_success_with_certificate() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;
 
@@ -187,14 +160,14 @@ async fn test_get_sd_jwt_vc_issuer_metadata_success_with_certificate(protocol_id
     let resp = context
         .api
         .ssi
-        .get_sd_jwt_vc_issuer_metadata(protocol_id, identifier.id, schema.id)
+        .get_sd_jwt_vc_issuer_metadata("OPENID4VCI_FINAL1", identifier.id, schema.id)
         .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
     let body: Value = resp.json_value().await;
     let expected_issuer = format!(
-        "{}/ssi/openid4vci/{protocol_id}/{}/{}",
+        "{}/ssi/openid4vci/OPENID4VCI_FINAL1/{}/{}",
         context.config.app.core_base_url, identifier.id, schema.id
     );
     assert_eq!(body["issuer"], expected_issuer);

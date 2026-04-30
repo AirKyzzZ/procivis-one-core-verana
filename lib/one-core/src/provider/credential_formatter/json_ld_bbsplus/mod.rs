@@ -326,10 +326,7 @@ impl CredentialFormatter for JsonLdBbsplus {
                 "OBJECT".to_string(),
                 "ARRAY".to_string(),
             ],
-            issuance_exchange_protocols: vec![
-                IssuanceProtocolType::OpenId4VciDraft13,
-                IssuanceProtocolType::OpenId4VciFinal1_0,
-            ],
+            issuance_exchange_protocols: vec![IssuanceProtocolType::OpenId4VciFinal1_0],
             proof_exchange_protocols: vec![
                 VerificationProtocolType::OpenId4VpDraft20,
                 VerificationProtocolType::OpenId4VpDraft25,

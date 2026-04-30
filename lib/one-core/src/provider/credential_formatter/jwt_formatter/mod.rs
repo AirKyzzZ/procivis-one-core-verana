@@ -238,10 +238,7 @@ impl CredentialFormatter for JWTFormatter {
             ],
             selective_disclosure: vec![],
             issuance_did_methods: vec![DidType::Key, DidType::Web, DidType::Jwk, DidType::WebVh],
-            issuance_exchange_protocols: vec![
-                IssuanceProtocolType::OpenId4VciDraft13,
-                IssuanceProtocolType::OpenId4VciFinal1_0,
-            ],
+            issuance_exchange_protocols: vec![IssuanceProtocolType::OpenId4VciFinal1_0],
             proof_exchange_protocols: vec![
                 VerificationProtocolType::OpenId4VpDraft20,
                 VerificationProtocolType::OpenId4VpDraft25,

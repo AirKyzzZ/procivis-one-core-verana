@@ -54,22 +54,6 @@ impl MockServer {
 
     pub async fn token_endpoint(&self, schema_id: impl Display, test_token: impl Serialize) {
         Mock::given(method(Method::POST))
-            .and(path(format!("/ssi/openid4vci/draft-13/{schema_id}/token")))
-            .respond_with(ResponseTemplate::new(200).set_body_json(json!(
-                {
-                    "access_token": test_token,
-                    "expires_in": one_core::clock::now_utc().unix_timestamp() + 3600,
-                    "refresh_token": test_token,
-                    "refresh_token_expires_in": one_core::clock::now_utc().unix_timestamp() + 3600,
-                    "token_type": "bearer"
-                }
-            )))
-            .mount(&self.mock)
-            .await;
-    }
-
-    pub async fn token_endpoint_final1(&self, schema_id: impl Display, test_token: impl Serialize) {
-        Mock::given(method(Method::POST))
             .and(path(format!("/ssi/openid4vci/final-1.0/{schema_id}/token")))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!(
                 {
@@ -91,7 +75,7 @@ impl MockServer {
         tx_code: impl Display,
     ) {
         Mock::given(method(Method::POST))
-            .and(path(format!("/ssi/openid4vci/draft-13/{schema_id}/token")))
+            .and(path(format!("/ssi/openid4vci/final-1.0/{schema_id}/token")))
             .and(body_string_contains(format!("tx_code={tx_code}")))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!(
                 {
@@ -107,30 +91,6 @@ impl MockServer {
     }
 
     pub async fn ssi_credential_endpoint(
-        &self,
-        schema_id: impl Display,
-        bearer_auth: impl Display,
-        credential: impl Display,
-        format: impl Display,
-        expected_calls: u64,
-        notification_id: Option<&str>,
-    ) {
-        Mock::given(method(Method::POST))
-            .and(path(format!(
-                "/ssi/openid4vci/draft-13/{schema_id}/credential"
-            )))
-            .and(header(AUTHORIZATION, format!("Bearer {bearer_auth}")))
-            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
-                "credential": credential.to_string(),
-                "format": format.to_string(),
-                "notification_id": notification_id
-            })))
-            .expect(expected_calls)
-            .mount(&self.mock)
-            .await;
-    }
-
-    pub async fn ssi_credential_endpoint_final1(
         &self,
         schema_id: impl Display,
         bearer_auth: impl Display,
@@ -179,7 +139,7 @@ impl MockServer {
     ) {
         Mock::given(method(Method::POST))
             .and(path(format!(
-                "/ssi/openid4vci/draft-13/{schema_id}/notification"
+                "/ssi/openid4vci/final-1.0/{schema_id}/notification"
             )))
             .and(header(AUTHORIZATION, format!("Bearer {bearer_auth}")))
             .and(body_partial_json(json!({

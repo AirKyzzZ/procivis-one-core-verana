@@ -31,7 +31,7 @@ async fn test_initiate_issuance_endpoint() {
         .interactions
         .initiate_issuance(
             organisation.id,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             "clientId",
             issuer,
             vec!["scope".to_string()],

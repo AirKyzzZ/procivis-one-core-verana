@@ -83,8 +83,9 @@ in `/config`.
 - Set a new server authorization token: `ONE_app__authToken=yourTokenHere`
 - Provide new encryption tokens for OpenID4VCI and private keys (default
   configuration has placeholder values allowing the server to start):
-  - `ONE_issuanceProtocol__OPENID4VCI_DRAFT13__params__private__encryption=yourTokenHere`
-  - `ONE_issuanceProtocol__OPENID4VCI_DRAFT13_SWIYU__params__private__encryption=yourTokenHere`
+  - `ONE_issuanceProtocol__OPENID4VCI_FINAL1__params__private__encryption=yourTokenHere`
+  - `ONE_issuanceProtocol__OPENID4VCI_FINAL1_HAIP__params__private__encryption=yourTokenHere`
+  - `ONE_issuanceProtocol__OPENID4VCI_FINAL1_SWIYU__params__private__encryption=yourTokenHere`
   - `ONE_keyStorage__INTERNAL__params__private__encryption=yourTokenHere`
 
 Encryption keys must be a 32 byte hex-encoded value. Use

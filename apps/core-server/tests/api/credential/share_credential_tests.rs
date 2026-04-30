@@ -23,7 +23,7 @@ async fn test_share_credential_success() {
             &credential_schema,
             CredentialStateEnum::Created,
             &identifier,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             TestingCredentialParams::default(),
         )
         .await;
@@ -61,7 +61,7 @@ async fn test_share_credential_failed_deleted_credential() {
             &credential_schema,
             CredentialStateEnum::Created,
             &identifier,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             TestingCredentialParams {
                 deleted_at: Some(one_core::clock::now_utc()),
                 ..Default::default()

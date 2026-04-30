@@ -5,15 +5,13 @@ use itertools::Itertools;
 use serde_json::json;
 use url::Url;
 
-use super::openid4vci_draft13::OpenID4VCI13;
+use super::IssuanceProtocol;
 use super::openid4vci_final1_0::OpenID4VCIFinal1_0;
 use super::openid4vci_final1_0_swiyu::OpenID4VCISwiyu;
-use super::{IssuanceProtocol, openid4vci_draft13};
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, IssuanceProtocolConfig, IssuanceProtocolType};
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::credential_schema::importer::CredentialSchemaImporter;
-use crate::proto::credential_schema::parser::CredentialSchemaImportParser;
 use crate::proto::http_client::HttpClient;
 use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::session_provider::SessionProvider;
@@ -21,7 +19,6 @@ use crate::proto::wallet_instance::HolderWalletUnitProto;
 use crate::proto::wrp_validator::WRPValidator;
 use crate::provider::blob_storage_provider::BlobStorageProvider;
 use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
-use crate::provider::caching_loader::vct::VctTypeMetadataFetcher;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -85,7 +82,6 @@ pub(crate) fn issuance_protocol_provider_from_config(
     key_repository: Arc<dyn KeyRepository>,
     validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
-    vct_type_metadata_cache: Arc<dyn VctTypeMetadataFetcher>,
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     key_security_level_provider: Arc<dyn KeySecurityLevelProvider>,
@@ -97,7 +93,6 @@ pub(crate) fn issuance_protocol_provider_from_config(
     openid_metadata_cache: Arc<dyn OpenIDMetadataFetcher>,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
     credential_schema_importer: Arc<dyn CredentialSchemaImporter>,
-    credential_schema_import_parser: Arc<dyn CredentialSchemaImportParser>,
     wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
     holder_wallet_unit_repository: Arc<dyn HolderWalletInstanceRepository>,
     wrp_validator: Arc<dyn WRPValidator>,
@@ -147,45 +142,6 @@ pub(crate) fn issuance_protocol_provider_from_config(
                     history_repository.clone(),
                     session_provider.clone(),
                     interaction_repository.clone(),
-                ))
-            }
-            IssuanceProtocolType::OpenId4VciDraft13 => {
-                let params = fields.deserialize().map_err(|source| {
-                    ConfigValidationError::FieldsDeserialization {
-                        key: name.to_owned(),
-                        source,
-                    }
-                })?;
-
-                let handle_invitation_operations = openid4vci_draft13::handle_invitation_operations::HandleInvitationOperationsImpl::new(
-                    vct_type_metadata_cache.clone(),
-                    client.clone(),
-                    credential_schema_importer.clone(),
-                    credential_schema_import_parser.clone(),
-                    core_config.clone(),
-                );
-
-                Arc::new(OpenID4VCI13::new(
-                    client.clone(),
-                    openid_metadata_cache.clone(),
-                    credential_repository.clone(),
-                    credential_schema_repository.clone(),
-                    interaction_repository.clone(),
-                    key_repository.clone(),
-                    validity_credential_repository.clone(),
-                    formatter_provider.clone(),
-                    revocation_provider.clone(),
-                    did_method_provider.clone(),
-                    key_algorithm_provider.clone(),
-                    key_security_level_provider.clone(),
-                    key_provider.clone(),
-                    certificate_validator.clone(),
-                    identifier_creator.clone(),
-                    blob_storage_provider.clone(),
-                    core_base_url.clone(),
-                    core_config.clone(),
-                    params,
-                    Arc::new(handle_invitation_operations),
                 ))
             }
             IssuanceProtocolType::OpenId4vciFinal1_0Swiyu => {

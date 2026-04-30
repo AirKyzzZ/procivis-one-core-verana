@@ -3,7 +3,7 @@ use std::fmt::Display;
 use axum::http::HeaderMap;
 use core_server::extractor::Accept;
 use headers::HeaderMapExt;
-use one_core::provider::issuance_protocol::openid4vci_draft13::model::OpenID4VCINotificationEvent;
+use one_core::provider::issuance_protocol::openid4vci_final1_0::model::OpenID4VCINotificationEvent;
 use serde_json::json;
 use shared_types::{CredentialSchemaId, OrganisationId, TrustListPublicationId};
 use uuid::Uuid;
@@ -34,7 +34,7 @@ impl SSIApi {
         credential_id: impl Into<Uuid>,
     ) -> Response {
         let url = format!(
-            "/ssi/openid4vci/draft-13/{}/offer/{}",
+            "/ssi/openid4vci/final-1.0/{}/offer/{}",
             credential_schema_id.into(),
             credential_id.into()
         );
@@ -79,35 +79,6 @@ impl SSIApi {
     pub async fn issuer_create_credential(
         &self,
         credential_schema_id: impl Into<Uuid>,
-        format: &str,
-        jwt: &str,
-        vct: Option<&str>,
-    ) -> Response {
-        let credential_schema_id = credential_schema_id.into();
-        let url = format!("/ssi/openid4vci/draft-13/{credential_schema_id}/credential");
-
-        let mut body = json!({
-            "format": format,
-            "proof": {
-                "proof_type": "jwt",
-                "jwt": jwt
-            },
-        });
-
-        if let Some(vct) = vct {
-            body["vct"] = vct.into();
-        } else {
-            body["credential_definition"] = json!({
-                "type": ["VerifiableCredential"]
-            });
-        }
-
-        self.client.post(&url, body).await
-    }
-
-    pub async fn issuer_create_credential_vci_final(
-        &self,
-        credential_schema_id: impl Into<Uuid>,
         credential_configuration_id: &str,
         jwt: &str,
     ) -> Response {
@@ -124,30 +95,6 @@ impl SSIApi {
         self.client.post(&url, body).await
     }
 
-    pub async fn issuer_create_credential_mdoc(
-        &self,
-        credential_schema_id: impl Into<Uuid>,
-        doctype: &str,
-        jwt: &str,
-    ) -> Response {
-        let credential_schema_id = credential_schema_id.into();
-        let url = format!("/ssi/openid4vci/draft-13/{credential_schema_id}/credential");
-
-        let body = json!({
-            "format": "mso_mdoc",
-            "credential_definition": {
-                "type": ["VerifiableCredential"]
-            },
-            "proof": {
-                "proof_type": "jwt",
-                "jwt": jwt
-            },
-            "doctype": doctype
-        });
-
-        self.client.post(&url, body).await
-    }
-
     pub async fn openid4vci_notification(
         &self,
         credential_schema_id: impl Into<Uuid>,
@@ -155,7 +102,7 @@ impl SSIApi {
         event: OpenID4VCINotificationEvent,
     ) -> Response {
         let credential_schema_id = credential_schema_id.into();
-        let url = format!("/ssi/openid4vci/draft-13/{credential_schema_id}/notification");
+        let url = format!("/ssi/openid4vci/final-1.0/{credential_schema_id}/notification");
 
         let body = json!({
             "notification_id": notification_id,
@@ -163,17 +110,6 @@ impl SSIApi {
         });
 
         self.client.post(&url, body).await
-    }
-
-    pub async fn openid_credential_issuer_draft13(
-        &self,
-        credential_schema_id: impl Into<Uuid>,
-    ) -> Response {
-        let credential_schema_id = credential_schema_id.into();
-        let url = format!(
-            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-credential-issuer"
-        );
-        self.client.get(&url).await
     }
 
     pub async fn openid_credential_issuer_final1(
@@ -241,12 +177,7 @@ impl SSIApi {
         self.client.get(&url).await
     }
 
-    pub async fn create_token(
-        &self,
-        id: CredentialSchemaId,
-        protocol: &str,
-        request: TokenRequest,
-    ) -> Response {
+    pub async fn create_token(&self, id: CredentialSchemaId, request: TokenRequest) -> Response {
         let form_data = match &request {
             TokenRequest::PreAuthorizedCode { code, tx_code } => {
                 let mut data = vec![
@@ -267,7 +198,7 @@ impl SSIApi {
             ],
         };
 
-        let url = format!("/ssi/openid4vci/{protocol}/{id}/token");
+        let url = format!("/ssi/openid4vci/final-1.0/{id}/token");
 
         self.client.post_form(&url, &form_data).await
     }

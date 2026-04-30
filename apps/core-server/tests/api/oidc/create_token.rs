@@ -53,7 +53,7 @@ async fn test_oidc_issuer_create_token() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &identifier,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             TestingCredentialParams {
                 interaction: Some(interaction),
                 ..TestingCredentialParams::default()
@@ -67,7 +67,6 @@ async fn test_oidc_issuer_create_token() {
         .ssi
         .create_token(
             credential_schema.id,
-            "draft-13",
             TokenRequest::PreAuthorizedCode {
                 code: pre_authorized_code,
                 tx_code: None,
@@ -139,7 +138,6 @@ async fn test_oidc_issuer_create_token_parallel_collision() {
     for _ in 0..2 {
         multiple_attempts.push(context.api.ssi.create_token(
             credential_schema.id,
-            "final-1.0",
             TokenRequest::PreAuthorizedCode {
                 code: pre_authorized_code.to_owned(),
                 tx_code: None,
@@ -197,7 +195,7 @@ async fn test_oidc_issuer_create_token_for_mdoc_creates_refresh_token() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &identifier,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             TestingCredentialParams {
                 interaction: Some(interaction),
                 ..TestingCredentialParams::default()
@@ -211,7 +209,6 @@ async fn test_oidc_issuer_create_token_for_mdoc_creates_refresh_token() {
         .ssi
         .create_token(
             credential_schema.id,
-            "draft-13",
             TokenRequest::PreAuthorizedCode {
                 code: pre_authorized_code,
                 tx_code: None,
@@ -279,7 +276,7 @@ async fn test_oidc_issuer_create_token_for_refresh_token_grant_updates_both_acce
             &credential_schema,
             CredentialStateEnum::Pending,
             &identifier,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             TestingCredentialParams {
                 interaction: Some(interaction),
                 ..TestingCredentialParams::default()
@@ -293,7 +290,6 @@ async fn test_oidc_issuer_create_token_for_refresh_token_grant_updates_both_acce
         .ssi
         .create_token(
             credential_schema.id,
-            "draft-13",
             TokenRequest::PreAuthorizedCode {
                 code: pre_authorized_code,
                 tx_code: None,
@@ -366,7 +362,7 @@ async fn test_oidc_issuer_create_token_with_tx_code_success() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &identifier,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             TestingCredentialParams {
                 interaction: Some(interaction),
                 ..TestingCredentialParams::default()
@@ -380,7 +376,6 @@ async fn test_oidc_issuer_create_token_with_tx_code_success() {
         .ssi
         .create_token(
             credential_schema.id,
-            "draft-13",
             TokenRequest::PreAuthorizedCode {
                 code: pre_authorized_code,
                 tx_code: Some("correct".to_string()),
@@ -445,7 +440,7 @@ async fn test_oidc_issuer_create_token_wrong_tx_code() {
             &credential_schema,
             CredentialStateEnum::Pending,
             &identifier,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             TestingCredentialParams {
                 interaction: Some(interaction),
                 ..TestingCredentialParams::default()
@@ -459,7 +454,6 @@ async fn test_oidc_issuer_create_token_wrong_tx_code() {
         .ssi
         .create_token(
             credential_schema.id,
-            "draft-13",
             TokenRequest::PreAuthorizedCode {
                 code: pre_authorized_code,
                 tx_code: Some("wrong".to_string()),
@@ -540,7 +534,6 @@ async fn test_oidc_issuer_create_token_tx_code_missing() {
         .ssi
         .create_token(
             credential_schema.id,
-            "final-1.0",
             TokenRequest::PreAuthorizedCode {
                 code: pre_authorized_code,
                 tx_code: None,

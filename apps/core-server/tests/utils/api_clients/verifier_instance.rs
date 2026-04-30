@@ -54,7 +54,6 @@ impl VerifierIntanceApi {
             body["trustedIssuerRequired"] = json!(trusted_issuer_required);
         }
 
-        println!("{}", serde_json::to_string_pretty(&body).unwrap());
         self.client
             .patch(&format!("/api/verifier-instance/v1/{id}"), body)
             .await

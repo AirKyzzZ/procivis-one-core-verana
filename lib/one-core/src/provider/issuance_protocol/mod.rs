@@ -19,7 +19,6 @@ pub mod dto;
 pub mod error;
 mod mapper;
 pub mod model;
-pub mod openid4vci_draft13;
 pub mod openid4vci_final1_0;
 pub mod openid4vci_final1_0_swiyu;
 pub(crate) mod provider;
@@ -38,12 +37,6 @@ pub(crate) fn serialize_interaction_data<DataDTO: ?Sized + Serialize>(
     dto: &DataDTO,
 ) -> Result<Vec<u8>, IssuanceProtocolError> {
     Ok(serde_json::to_vec(&dto)?)
-}
-
-#[derive(Debug)]
-pub(crate) struct BasicSchemaData {
-    pub id: String,
-    pub offer_id: String,
 }
 
 #[derive(Debug, Clone)]

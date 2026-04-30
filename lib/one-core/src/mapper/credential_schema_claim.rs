@@ -4,6 +4,7 @@ use uuid::Uuid;
 
 use crate::model::claim_schema::ClaimSchema;
 use crate::provider::credential_formatter::MetadataClaimSchema;
+use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
 
 pub(crate) fn claim_schema_from_metadata_claim_schema(
     metadata_claim: MetadataClaimSchema,
@@ -40,5 +41,20 @@ pub(crate) fn from_jwt_request_claim_schema(
         array: array.unwrap_or(false),
         metadata: false,
         required,
+    }
+}
+
+impl From<ClaimSchema> for CredentialClaimSchemaDTO {
+    fn from(value: ClaimSchema) -> Self {
+        Self {
+            id: value.id,
+            created_date: value.created_date,
+            last_modified: value.last_modified,
+            key: value.key,
+            datatype: value.data_type,
+            required: value.required,
+            array: value.array,
+            claims: vec![],
+        }
     }
 }

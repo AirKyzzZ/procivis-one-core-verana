@@ -109,20 +109,6 @@ identifier:
     enabled: true
     order: 3
 issuanceProtocol:
-  OPENID4VCI_DRAFT13:
-    display: "exchange.openid4vciDraft13"
-    order: 1
-    type: "OPENID4VCI_DRAFT13"
-    params:
-      public:
-        webhookTask: "WEBHOOK_NOTIFY"
-        urlScheme: openid-credential-offer
-        preAuthorizedCodeExpiresIn: 300
-        tokenExpiresIn: 86400
-        refreshExpiresIn: 7776000 # 90 days in seconds
-        redirectUri:
-          enabled: true
-          allowedSchemes: ["https"]
   OPENID4VCI_FINAL1_SWIYU:
     display:
       en: "OpenID4VCI (SWIYU)"

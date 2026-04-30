@@ -13,7 +13,6 @@ pub mod identifier;
 pub mod jsonld;
 pub mod key;
 pub mod nfc;
-pub mod oid4vci_draft13;
 pub mod oid4vci_final1_0;
 pub mod oid4vci_final1_0_swiyu;
 pub mod oid4vp_draft20;

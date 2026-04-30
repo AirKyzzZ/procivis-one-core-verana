@@ -3,7 +3,7 @@ use one_core::model::credential_schema::CredentialSchema;
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::identifier::IdentifierType;
 use one_core::model::interaction::InteractionType;
-use one_core::provider::issuance_protocol::openid4vci_draft13::model::OpenID4VCINotificationEvent;
+use one_core::provider::issuance_protocol::openid4vci_final1_0::model::OpenID4VCINotificationEvent;
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use serde_json::json;
@@ -169,7 +169,7 @@ async fn setup_accepted_credential() -> (TestContext, Credential, CredentialSche
             &credential_schema,
             CredentialStateEnum::Accepted,
             &issuer_identifier,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             TestingCredentialParams {
                 interaction: Some(interaction),
                 key: Some(key),

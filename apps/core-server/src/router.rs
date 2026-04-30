@@ -617,30 +617,6 @@ fn get_external_endpoints(
                 get(ssi::issuance::controller::oid4vci_get_jwt_vc_issuer_metadata)
             )
             .route(
-                "/ssi/openid4vci/draft-13/{id}/.well-known/openid-credential-issuer",
-                get(ssi::issuance::draft13::controller::oid4vci_draft13_get_issuer_metadata),
-            )
-            .route(
-                "/ssi/openid4vci/draft-13/{id}/.well-known/oauth-authorization-server",
-                get(ssi::issuance::draft13::controller::oid4vci_draft13_oauth_authorization_server),
-            )
-            .route(
-                "/ssi/openid4vci/draft-13/{credential_schema_id}/offer/{credential_id}",
-                get(ssi::issuance::draft13::controller::oid4vci_draft13_get_credential_offer),
-            )
-            .route(
-                "/ssi/openid4vci/draft-13/{id}/token",
-                post(ssi::issuance::draft13::controller::oid4vci_draft13_create_token),
-            )
-            .route(
-                "/ssi/openid4vci/draft-13/{id}/credential",
-                post(ssi::issuance::draft13::controller::oid4vci_draft13_create_credential),
-            )
-            .route(
-                "/ssi/openid4vci/draft-13/{id}/notification",
-                post(ssi::issuance::draft13::controller::oid4vci_draft13_credential_notification),
-            )
-            .route(
                 "/.well-known/openid-credential-issuer/ssi/openid4vci/final-1.0/{protocol_id}/{identifier_id}/{credential_schema_id}",
                 get(ssi::issuance::final1_0::controller::oid4vci_final1_0_get_issuer_metadata),
             )

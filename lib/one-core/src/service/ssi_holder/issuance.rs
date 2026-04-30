@@ -16,14 +16,11 @@ use super::validator::{
     validate_initiate_issuance_request,
 };
 use crate::config::core_config::FormatType;
-use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin};
-use crate::mapper::value_to_model_claims;
-use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
-use crate::model::claim::Claim;
+use crate::error::ContextWithErrorCode;
+use crate::model::blob::{Blob, BlobType};
 use crate::model::credential::{
     Credential, CredentialRelations, CredentialStateEnum, UpdateCredentialRequest,
 };
-use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::IdentifierRelations;
 use crate::model::interaction::{Interaction, InteractionRelations, InteractionType};
 use crate::model::organisation::{Organisation, OrganisationRelations};
@@ -40,9 +37,7 @@ use crate::provider::issuance_protocol::{
     serialize_interaction_data,
 };
 use crate::service::error::MissingProviderError;
-use crate::validator::key_security::{
-    match_key_security_level, validate_key_storage_supports_security_requirement,
-};
+use crate::validator::key_security::match_key_security_level;
 use crate::validator::{
     throw_if_credential_state_not_eq, throw_if_org_id_not_matching_session,
     throw_if_org_not_matching_session,
@@ -60,21 +55,6 @@ impl SSIHolderService {
         key_id: Option<KeyId>,
         tx_code: Option<String>,
     ) -> Result<CredentialId, HolderServiceError> {
-        let credentials = self
-            .credential_repository
-            .get_credentials_by_interaction_id(
-                &interaction_id,
-                &CredentialRelations {
-                    interaction: Some(InteractionRelations {
-                        organisation: Some(OrganisationRelations::default()),
-                    }),
-                    schema: Some(Default::default()),
-                    ..Default::default()
-                },
-            )
-            .await
-            .error_while("getting credentials")?;
-
         let identifier = match (did_id, identifier_id) {
             (Some(did_id), None) => Some(
                 self.identifier_repository
@@ -127,13 +107,9 @@ impl SSIHolderService {
             None
         };
 
-        let credential_id = if credentials.is_empty() {
-            self.accept_credential_final1(interaction_id, holder_binding_input, tx_code)
-                .await
-        } else {
-            self.accept_credentials_draft13(credentials, holder_binding_input, tx_code)
-                .await
-        }?;
+        let credential_id = self
+            .accept_credential_final1(interaction_id, holder_binding_input, tx_code)
+            .await?;
 
         tracing::info!(
             "Accepted issuance of credential {credential_id} for interaction {interaction_id}"
@@ -162,6 +138,11 @@ impl SSIHolderService {
             .ok_or(HolderServiceError::MissingCredentialsForInteraction(
                 interaction_id,
             ))?;
+        throw_if_org_not_matching_session(
+            interaction.organisation.as_ref(),
+            &*self.session_provider,
+        )
+        .error_while("checking interaction organisation")?;
 
         if interaction.interaction_type != InteractionType::Issuance {
             return Err(HolderServiceError::MissingCredentialsForInteraction(
@@ -276,229 +257,6 @@ impl SSIHolderService {
             .error_while("creating credential")?;
 
         Ok(credential_id)
-    }
-
-    async fn accept_credentials_draft13(
-        &self,
-        credentials: Vec<Credential>,
-        holder_binding_input: Option<HolderBindingInput>,
-        tx_code: Option<String>,
-    ) -> Result<CredentialId, HolderServiceError> {
-        validate_credentials_match_session_organisation(&credentials, &*self.session_provider)?;
-
-        // Errors are gathered into vec, so we can try to accept all credentials.
-        let mut errors = vec![];
-
-        let mut credential_id = None;
-        for credential in credentials {
-            credential_id = Some(credential.id);
-            if let Err(error) = self
-                .accept_and_save_credential_draft13(
-                    &credential,
-                    holder_binding_input.clone(),
-                    tx_code.clone(),
-                )
-                .await
-            {
-                tracing::warn!("Failed to accept credential: {error}");
-
-                // do not change credential state if wrong TX-code entry
-                if !matches!(error.error_code(), ErrorCode::BR_0169 | ErrorCode::BR_0170) {
-                    let _result = self
-                        .credential_repository
-                        .update_credential(
-                            credential.id,
-                            UpdateCredentialRequest {
-                                state: Some(CredentialStateEnum::Error),
-                                ..Default::default()
-                            },
-                        )
-                        .await;
-                }
-
-                errors.push(error);
-            }
-        }
-
-        if let Some(error) = errors.into_iter().next() {
-            return Err(error);
-        }
-
-        credential_id.ok_or(HolderServiceError::MappingError(
-            "No credential issued".to_string(),
-        ))
-    }
-
-    async fn accept_and_save_credential_draft13(
-        &self,
-        credential: &Credential,
-        holder_binding: Option<HolderBindingInput>,
-        tx_code: Option<String>,
-    ) -> Result<(), HolderServiceError> {
-        throw_if_credential_state_not_eq(credential, CredentialStateEnum::Pending)
-            .error_while("checking credential state")?;
-
-        let schema = credential
-            .schema
-            .as_ref()
-            .ok_or(HolderServiceError::MappingError(
-                "schema is None".to_string(),
-            ))?;
-
-        if let Some(holder_binding) = &holder_binding {
-            validate_key_storage_supports_security_requirement(
-                &holder_binding.key.storage_type,
-                &schema.key_storage_security,
-                &*self.key_security_level_provider,
-            )
-            .error_while("validating key security")?;
-        }
-
-        let format = schema.format().await?;
-        let formatter = self
-            .formatter_provider
-            .get_credential_formatter(&format)
-            .ok_or(MissingProviderError::Formatter(format.to_string()))
-            .error_while("getting formatter")?;
-
-        if let Some(holder_binding) = &holder_binding {
-            validate_holder_capabilities(
-                &self.config,
-                holder_binding,
-                &formatter.get_capabilities(),
-                self.key_algorithm_provider.as_ref(),
-            )?;
-        }
-
-        let interaction = credential
-            .interaction
-            .as_ref()
-            .ok_or(HolderServiceError::MappingError(
-                "interaction is None".to_string(),
-            ))?
-            .to_owned();
-
-        let issuer_response = self
-            .issuance_protocol_provider
-            .get_protocol(&credential.protocol)
-            .ok_or(MissingProviderError::ExchangeProtocol(
-                credential.protocol.clone(),
-            ))
-            .error_while("getting protocol")?
-            .holder_accept_credential(interaction, holder_binding, tx_code)
-            .await
-            .error_while("accepting credential")?;
-
-        let issuer_response = self.resolve_update_issuer_response(issuer_response).await?;
-        let claims = self
-            .extract_claims(&credential.id, &issuer_response.credential, schema)
-            .await?;
-
-        let db_blob_storage = self
-            .blob_storage_provider
-            .get_blob_storage(BlobStorageType::Db)
-            .await
-            .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))
-            .error_while("getting blob storage")?;
-
-        let blob_id = match credential.credential_blob_id {
-            None => {
-                let blob = Blob::new(
-                    issuer_response.credential.as_bytes().to_vec(),
-                    BlobType::Credential,
-                );
-                db_blob_storage
-                    .create(blob.clone())
-                    .await
-                    .error_while("creating credential blob")?;
-                blob.id
-            }
-            Some(blob_id) => {
-                db_blob_storage
-                    .update(
-                        &blob_id,
-                        UpdateBlobRequest {
-                            value: Some(issuer_response.credential.as_bytes().to_vec()),
-                        },
-                    )
-                    .await
-                    .error_while("updating credential blob")?;
-                blob_id
-            }
-        };
-
-        self.credential_repository
-            .update_credential(
-                credential.id,
-                UpdateCredentialRequest {
-                    state: Some(CredentialStateEnum::Accepted),
-                    claims: Some(claims),
-                    credential_blob_id: Some(blob_id),
-                    ..Default::default()
-                },
-            )
-            .await
-            .error_while("updating credential")?;
-
-        Ok(())
-    }
-
-    async fn extract_claims(
-        &self,
-        credential_id: &CredentialId,
-        credential: &str,
-        schema: &CredentialSchema,
-    ) -> Result<Vec<Claim>, HolderServiceError> {
-        let schema_format = schema.format().await?;
-        let formatter = self
-            .formatter_provider
-            .get_credential_formatter(&schema_format)
-            .ok_or(MissingProviderError::Formatter(schema_format.to_string()))
-            .error_while("getting formatter")?;
-
-        let credential = formatter
-            .extract_credentials_unverified(credential, Some(schema))
-            .await
-            .error_while("parsing credential")?;
-
-        let mut collected_claims: Vec<Claim> = Vec::new();
-
-        let claim_schemas = schema
-            .claim_schemas
-            .get()
-            .await
-            .error_while("getting claim schemas")?;
-        let now = crate::clock::now_utc();
-
-        for (key, value) in credential.claims.claims {
-            let claim_schema = claim_schemas
-                .iter()
-                .find(|claim_schema| claim_schema.key == key);
-            let Some(claim_schema) = claim_schema else {
-                // Legacy compatibility shim: extra metadata claims are allowed, if not in the
-                // schema they are also not stored.
-                if value.metadata {
-                    continue;
-                }
-                return Err(HolderServiceError::MappingError(
-                    "missing clam_schemas".to_string(),
-                ));
-            };
-
-            collected_claims.extend(
-                value_to_model_claims(
-                    *credential_id,
-                    &claim_schemas,
-                    value,
-                    now,
-                    claim_schema,
-                    &key,
-                )
-                .error_while("converting claims")?,
-            );
-        }
-
-        Ok(collected_claims)
     }
 
     pub async fn reject_credential(

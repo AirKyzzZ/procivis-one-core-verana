@@ -58,10 +58,10 @@ rusty_fork_test! {
                 enabled: true
                 order: 0
             issuanceProtocol:
-                OPENID4VCI_DRAFT13:
+                OPENID4VCI_FINAL1:
                     display: 'display'
                     order: 1
-                    type: 'OPENID4VCI_DRAFT13'
+                    type: 'OPENID4VCI_FINAL1'
                     params:
                         public:
                             preAuthorizedCodeExpiresIn: 300

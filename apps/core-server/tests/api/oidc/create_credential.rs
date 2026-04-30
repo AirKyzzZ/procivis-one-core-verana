@@ -23,6 +23,7 @@ use time::macros::format_description;
 use uuid::Uuid;
 
 use crate::api_oidc_tests::common::{proof_jwt, proof_jwt_for};
+use crate::fixtures::interaction::{IssuerInteractionDataParams, dummy_issuer_interaction_data};
 use crate::fixtures::{
     ClaimData, TestingCredentialParams, TestingDidParams, TestingIdentifierParams,
 };
@@ -45,20 +46,7 @@ async fn test_post_issuer_credential() {
 #[tokio::test]
 async fn test_post_issuer_credential_sd_jwt_vc() {
     let params = PostCredentialTestParams {
-        schema_id: Some("some-vct-value".to_string()),
         credential_format: Some("SD_JWT_VC".into()),
-        format: Some("vc+sd-jwt"),
-        ..Default::default()
-    };
-    test_post_issuer_credential_with(params, None).await;
-}
-
-#[tokio::test]
-async fn test_post_issuer_credential_sd_jwt_vc_invalid_format() {
-    let params = PostCredentialTestParams {
-        schema_id: Some("some-vct-value".to_string()),
-        credential_format: Some("SD_JWT_VC".into()),
-        expect_failure: true,
         ..Default::default()
     };
     test_post_issuer_credential_with(params, None).await;
@@ -70,22 +58,9 @@ async fn test_post_issuer_credential_jwk_proof() {
 }
 
 #[tokio::test]
-async fn test_post_issuer_credential_with_nonce() {
-    let nonce = "pop_nonce1234";
-    let params = PostCredentialTestParams {
-        use_kid_in_proof: true,
-        pop_nonce: Some(nonce),
-        interaction_nonce: Some(nonce),
-        ..Default::default()
-    };
-    test_post_issuer_credential_with(params, None).await;
-}
-
-#[tokio::test]
 async fn test_post_issuer_credential_in_parallel() {
     let params = PostCredentialTestParams {
         use_kid_in_proof: true,
-        schema_id: Some("some-schema-id".to_string()),
         ..Default::default()
     };
     let TestIssuerSetup {
@@ -101,11 +76,11 @@ async fn test_post_issuer_credential_in_parallel() {
     let PostCredentialTestParams {
         revocation_method,
         use_kid_in_proof,
-        schema_id,
         credential_format,
         ..
     } = params;
 
+    let schema_id = "test_schema_id".to_string();
     let credential_schema = context
         .db
         .credential_schemas
@@ -115,7 +90,7 @@ async fn test_post_issuer_credential_in_parallel() {
             revocation_method.map(|v| v.into()),
             TestingCreateSchemaParams {
                 format: credential_format,
-                schema_id: schema_id.clone(),
+                schema_id: Some(schema_id.clone()),
                 key_storage_security: None,
                 ..Default::default()
             },
@@ -170,9 +145,9 @@ async fn test_post_issuer_credential_in_parallel() {
     let mut multiple_attempts = vec![];
     let num_credentials = 10;
     for _ in 0..num_credentials {
-        multiple_attempts.push(context.api.ssi.issuer_create_credential_vci_final(
+        multiple_attempts.push(context.api.ssi.issuer_create_credential(
             credential_schema.id,
-            schema_id.as_ref().unwrap(),
+            &schema_id,
             &jwt,
         ));
     }
@@ -187,33 +162,29 @@ async fn test_post_issuer_credential_in_parallel() {
 
 #[tokio::test]
 async fn test_post_issuer_credential_fail_missing_nonce() {
-    let nonce = "pop_nonce1234";
     let params = PostCredentialTestParams {
-        interaction_nonce: Some(nonce),
-        expect_failure: true, // no nonce in proof
+        expect_failure: true,
+        nonce_mode: NonceMode::Missing,
         ..Default::default()
     };
     test_post_issuer_credential_with(params, None).await;
 }
 
 #[tokio::test]
-async fn test_post_issuer_credential_nonce_not_required() {
-    let nonce = "pop_nonce1234";
+async fn test_post_issuer_credential_fail_invalid_nonce() {
     let params = PostCredentialTestParams {
-        // Nonce is present but not asked for --> success
-        // Simply adding additional unexpected claims to the proof jwt should not make the verification fail
-        pop_nonce: Some(nonce),
+        expect_failure: true,
+        nonce_mode: NonceMode::Invalid,
         ..Default::default()
     };
     test_post_issuer_credential_with(params, None).await;
 }
 
 #[tokio::test]
-async fn test_post_issuer_credential_jwk_proof_with_nonce() {
-    let nonce = "pop_nonce1234";
+async fn test_post_issuer_credential_fail_expired_access_token() {
     let params = PostCredentialTestParams {
-        pop_nonce: Some(nonce),
-        interaction_nonce: Some(nonce),
+        expect_failure: true,
+        access_token_expired: true,
         ..Default::default()
     };
     test_post_issuer_credential_with(params, None).await;
@@ -254,27 +225,23 @@ async fn test_post_issuer_credential_with_bitstring_in_parallel() {
         )
         .await;
 
-    let date_format =
-        format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
-
     let mut issuances = vec![];
     const NUM_CREDENTIALS: usize = 10;
     for _ in 0..NUM_CREDENTIALS {
         let schema_id = schema_id.clone();
         let interaction_id: InteractionId = Uuid::new_v4().into();
         let access_token = format!("{interaction_id}.test");
-        let interaction_data = json!({
-            "pre_authorized_code_used": true,
-            "access_token_hash": SHA256.hash(access_token.as_bytes()).unwrap(),
-            "access_token_expires_at": (one_core::clock::now_utc() + time::Duration::seconds(20)).format(&date_format).unwrap(),
-        });
+        let interaction_data = dummy_issuer_interaction_data(
+            access_token.as_str(),
+            IssuerInteractionDataParams::default(),
+        );
 
         let interaction = context
             .db
             .interactions
             .create(
                 Some(interaction_id),
-                &serde_json::to_vec(&interaction_data).unwrap(),
+                &interaction_data,
                 &organisation,
                 InteractionType::Issuance,
                 None,
@@ -311,7 +278,7 @@ async fn test_post_issuer_credential_with_bitstring_in_parallel() {
 
         issuances.push(async move {
             api.ssi
-                .issuer_create_credential_vci_final(credential_schema.id, &schema_id, &jwt)
+                .issuer_create_credential(credential_schema.id, &schema_id, &jwt)
                 .await
         });
     }
@@ -363,27 +330,21 @@ async fn test_post_issuer_credential_with_tokenstatuslist_in_parallel() {
         )
         .await;
 
-    let date_format =
-        format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
-
     let mut issuances = vec![];
     const NUM_CREDENTIALS: usize = 10;
     for _ in 0..NUM_CREDENTIALS {
         let schema_id = schema_id.clone();
         let interaction_id: InteractionId = Uuid::new_v4().into();
         let access_token = format!("{interaction_id}.test");
-        let interaction_data = json!({
-            "pre_authorized_code_used": true,
-            "access_token_hash": SHA256.hash(access_token.as_bytes()).unwrap(),
-            "access_token_expires_at": (one_core::clock::now_utc() + time::Duration::seconds(20)).format(&date_format).unwrap(),
-        });
+        let interaction_data =
+            dummy_issuer_interaction_data(&access_token, IssuerInteractionDataParams::default());
 
         let interaction = context
             .db
             .interactions
             .create(
                 Some(interaction_id),
-                &serde_json::to_vec(&interaction_data).unwrap(),
+                &interaction_data,
                 &organisation,
                 InteractionType::Issuance,
                 None,
@@ -420,7 +381,7 @@ async fn test_post_issuer_credential_with_tokenstatuslist_in_parallel() {
 
         issuances.push(async move {
             api.ssi
-                .issuer_create_credential_vci_final(credential_schema.id, &schema_id, &jwt)
+                .issuer_create_credential(credential_schema.id, &schema_id, &jwt)
                 .await
         });
     }
@@ -612,15 +573,21 @@ async fn issuer_setup(additional_config: Option<String>) -> TestIssuerSetup {
 }
 
 #[derive(Default)]
+enum NonceMode {
+    #[default]
+    Valid,
+    Invalid,
+    Missing,
+}
+
+#[derive(Default)]
 struct PostCredentialTestParams<'a> {
     revocation_method: Option<&'a str>,
     use_kid_in_proof: bool,
-    interaction_nonce: Option<&'a str>,
-    pop_nonce: Option<&'a str>,
+    nonce_mode: NonceMode,
     expect_failure: bool,
-    schema_id: Option<String>,
+    access_token_expired: bool,
     credential_format: Option<CredentialFormat>,
-    format: Option<&'a str>,
 }
 
 async fn test_post_issuer_credential_with(
@@ -643,14 +610,13 @@ async fn test_post_issuer_credential_with(
     let PostCredentialTestParams {
         revocation_method,
         use_kid_in_proof,
-        interaction_nonce,
-        pop_nonce,
+        nonce_mode,
         expect_failure,
-        schema_id,
         credential_format,
-        format,
+        access_token_expired,
     } = test_params;
 
+    let schema_id = "test-schema-id".to_string();
     let credential_schema = context
         .db
         .credential_schemas
@@ -660,30 +626,24 @@ async fn test_post_issuer_credential_with(
             revocation_method.map(|v| v.into()),
             TestingCreateSchemaParams {
                 format: credential_format,
-                schema_id: schema_id.clone(),
+                schema_id: Some(schema_id.clone()),
                 ..Default::default()
             },
         )
         .await;
 
-    let date_format =
-        format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
-    let mut interaction_data = json!({
-        "pre_authorized_code_used": true,
-        "access_token_hash": SHA256.hash(access_token.as_bytes()).unwrap(),
-        "access_token_expires_at": (one_core::clock::now_utc() + time::Duration::seconds(20)).format(&date_format).unwrap(),
-    });
-
-    if let Some(interaction_nonce) = interaction_nonce {
-        interaction_data["nonce"] = interaction_nonce.into();
-    }
-
+    let interaction_data = dummy_issuer_interaction_data(
+        &access_token,
+        IssuerInteractionDataParams {
+            access_token_expired,
+        },
+    );
     let interaction = context
         .db
         .interactions
         .create(
             Some(interaction_id),
-            &serde_json::to_vec(&interaction_data).unwrap(),
+            &interaction_data,
             &organisation,
             InteractionType::Issuance,
             None,
@@ -697,7 +657,7 @@ async fn test_post_issuer_credential_with(
             &credential_schema,
             CredentialStateEnum::Offered,
             &issuer_identifier,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             TestingCredentialParams {
                 interaction: Some(interaction),
                 key: Some(key),
@@ -706,16 +666,28 @@ async fn test_post_issuer_credential_with(
         )
         .await;
 
-    let jwt = proof_jwt(use_kid_in_proof, pop_nonce).await;
+    let nonce = match nonce_mode {
+        NonceMode::Valid => Some(
+            context
+                .api
+                .ssi
+                .generate_nonce("OPENID4VCI_FINAL1")
+                .await
+                .json_value()
+                .await["c_nonce"]
+                .as_str()
+                .unwrap()
+                .to_string(),
+        ),
+        NonceMode::Invalid => Some("invalid-nonce".to_string()),
+        NonceMode::Missing => None,
+    };
+
+    let jwt = proof_jwt(use_kid_in_proof, nonce.as_deref()).await;
     let resp = context
         .api
         .ssi
-        .issuer_create_credential(
-            credential_schema.id,
-            format.unwrap_or("jwt_vc_json"),
-            &jwt,
-            schema_id.as_deref(),
-        )
+        .issuer_create_credential(credential_schema.id, &schema_id, &jwt)
         .await;
 
     if expect_failure {
@@ -849,20 +821,14 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         )
         .await;
 
-    let date_format =
-        format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
-    let data = serde_json::to_vec(&json!({
-        "pre_authorized_code_used": true,
-        "access_token_hash": SHA256.hash(access_token.as_bytes()).unwrap(),
-        "access_token_expires_at": (one_core::clock::now_utc() + time::Duration::seconds(20)).format(&date_format).unwrap(),
-    })).unwrap();
-
+    let interaction_data =
+        dummy_issuer_interaction_data(&access_token, IssuerInteractionDataParams::default());
     let interaction = context
         .db
         .interactions
         .create(
             Some(interaction_id),
-            &data,
+            &interaction_data,
             &organisation,
             InteractionType::Issuance,
             None,
@@ -876,7 +842,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
             &credential_schema,
             CredentialStateEnum::Offered,
             &issuer_identifier,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             TestingCredentialParams {
                 interaction: Some(interaction),
                 key: Some(key),
@@ -911,11 +877,19 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         )
         .await;
 
-    let jwt = proof_jwt(true, None).await;
+    let value = context
+        .api
+        .ssi
+        .generate_nonce("OPENID4VCI_FINAL1")
+        .await
+        .json_value()
+        .await;
+    let nonce = value["c_nonce"].as_str().unwrap();
+    let jwt = proof_jwt(true, Some(nonce)).await;
     let resp = context
         .api
         .ssi
-        .issuer_create_credential_mdoc(
+        .issuer_create_credential(
             credential_schema.id,
             &credential_schema.schema_id().await.unwrap(),
             &jwt,

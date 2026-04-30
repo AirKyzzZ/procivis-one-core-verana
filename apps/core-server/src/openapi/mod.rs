@@ -485,24 +485,6 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                 ))
                 .build(),
             Tag::builder()
-                .name("openid4vci-draft13")
-                .description(Some(indoc::formatdoc! {"
-
-                :::warning
-
-                These endpoints handle low-level mechanisms in interactions between agents.
-                Deep understanding of the involved protocols is recommended.
-
-                :::
-
-            "}))
-                .extensions(Some(
-                    Extensions::builder()
-                        .add("x-displayName", "(Advanced) OID4VCI Draft 13")
-                        .build(),
-                ))
-                .build(),
-            Tag::builder()
                 .name("openid4vci-final1_0")
                 .description(Some(indoc::formatdoc! {"
 
@@ -588,7 +570,7 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
             "}))
                 .extensions(Some(
                     Extensions::builder()
-                        .add("x-displayName", "(Advanced) OID4VCI Draft 13 - swiyu")
+                        .add("x-displayName", "(Advanced) OID4VCI Final 1.0 - swiyu")
                         .build(),
                 ))
                 .build(),

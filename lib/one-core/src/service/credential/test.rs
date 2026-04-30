@@ -144,7 +144,7 @@ fn generic_credential() -> Credential {
         issuance_date: None,
         last_modified: now,
         deleted_at: None,
-        protocol: "OPENID4VCI_DRAFT13".to_string(),
+        protocol: "OPENID4VCI_FINAL1".to_string(),
         redirect_uri: None,
         role: CredentialRole::Holder,
         state: CredentialStateEnum::Created,
@@ -225,7 +225,7 @@ fn generic_credential_list_entity() -> Credential {
         issuance_date: None,
         last_modified: now,
         deleted_at: None,
-        protocol: "OPENID4VCI_DRAFT13".to_string(),
+        protocol: "OPENID4VCI_FINAL1".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
         state: CredentialStateEnum::Created,
@@ -797,7 +797,7 @@ async fn test_create_credential_based_on_issuer_did_success() {
             ),
             issuer_key: None,
             issuer_certificate: None,
-            protocol: "OPENID4VCI_DRAFT13".to_string(),
+            protocol: "OPENID4VCI_FINAL1".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
                     .schema
@@ -894,7 +894,7 @@ async fn test_create_credential_based_on_issuer_identifier_success() {
             issuer_did: None,
             issuer_key: None,
             issuer_certificate: None,
-            protocol: "OPENID4VCI_DRAFT13".to_string(),
+            protocol: "OPENID4VCI_FINAL1".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
                     .schema
@@ -962,7 +962,7 @@ async fn test_create_credential_failed_unsupported_wallet_storage_type() {
             issuer_did: None,
             issuer_key: None,
             issuer_certificate: None,
-            protocol: "OPENID4VCI_DRAFT13".to_string(),
+            protocol: "OPENID4VCI_FINAL1".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: claims[0].schema.as_ref().unwrap().id.to_owned(),
                 value: claims[0].value.to_owned().unwrap(),
@@ -1067,7 +1067,7 @@ async fn test_create_credential_failed_formatter_doesnt_support_did_identifiers(
             ),
             issuer_key: None,
             issuer_certificate: None,
-            protocol: "OPENID4VCI_DRAFT13".to_string(),
+            protocol: "OPENID4VCI_FINAL1".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
                     .schema
@@ -1183,7 +1183,7 @@ async fn test_create_credential_failed_issuance_did_method_incompatible() {
             ),
             issuer_key: None,
             issuer_certificate: None,
-            protocol: "OPENID4VCI_DRAFT13".to_string(),
+            protocol: "OPENID4VCI_FINAL1".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
                     .schema
@@ -1290,7 +1290,7 @@ async fn test_create_credential_fails_if_did_is_deactivated() {
             issuer_did: Some(did_id.into()),
             issuer_key: None,
             issuer_certificate: None,
-            protocol: "OPENID4VCI_DRAFT13".to_string(),
+            protocol: "OPENID4VCI_FINAL1".to_string(),
             claim_values: vec![],
             redirect_uri: None,
             profile: None,
@@ -1416,7 +1416,7 @@ async fn test_create_credential_one_required_claim_missing_success() {
         ),
         issuer_key: None,
         issuer_certificate: None,
-        protocol: "OPENID4VCI_DRAFT13".to_string(),
+        protocol: "OPENID4VCI_FINAL1".to_string(),
         claim_values: vec![],
         redirect_uri: None,
         profile: None,
@@ -1546,7 +1546,7 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
         ),
         issuer_key: None,
         issuer_certificate: None,
-        protocol: "OPENID4VCI_DRAFT13".to_string(),
+        protocol: "OPENID4VCI_FINAL1".to_string(),
         claim_values: vec![],
         redirect_uri: None,
         profile: None,
@@ -1657,7 +1657,7 @@ async fn test_create_credential_schema_deleted() {
             ),
             issuer_key: None,
             issuer_certificate: None,
-            protocol: "OPENID4VCI_DRAFT13".to_string(),
+            protocol: "OPENID4VCI_FINAL1".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id,
                 value: "value".to_string(),
@@ -1772,7 +1772,7 @@ async fn test_create_credential_key_with_issuer_key() {
             ),
             issuer_key: Some(issuer_did.keys.get().await.unwrap()[0].key.id),
             issuer_certificate: None,
-            protocol: "OPENID4VCI_DRAFT13".to_string(),
+            protocol: "OPENID4VCI_FINAL1".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
                     .schema
@@ -1919,7 +1919,7 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
             ),
             issuer_key: Some(key_id.into()),
             issuer_certificate: None,
-            protocol: "OPENID4VCI_DRAFT13".to_string(),
+            protocol: "OPENID4VCI_FINAL1".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
                     .schema
@@ -2039,7 +2039,7 @@ async fn test_fail_to_create_credential_no_assertion_key() {
             ),
             issuer_key: None,
             issuer_certificate: None,
-            protocol: "OPENID4VCI_DRAFT13".to_string(),
+            protocol: "OPENID4VCI_FINAL1".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
                     .schema
@@ -2147,7 +2147,7 @@ async fn test_fail_to_create_credential_unknown_key_id() {
             ),
             issuer_key: Some(Uuid::new_v4().into()),
             issuer_certificate: None,
-            protocol: "OPENID4VCI_DRAFT13".to_string(),
+            protocol: "OPENID4VCI_FINAL1".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
                     .schema
@@ -2267,7 +2267,7 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
             ),
             issuer_key: Some(key_id.into()),
             issuer_certificate: None,
-            protocol: "OPENID4VCI_DRAFT13".to_string(),
+            protocol: "OPENID4VCI_FINAL1".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
                     .schema
@@ -2387,7 +2387,7 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
             ),
             issuer_key: Some(key_id.into()),
             issuer_certificate: None,
-            protocol: "OPENID4VCI_DRAFT13".to_string(),
+            protocol: "OPENID4VCI_FINAL1".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
                     .schema
@@ -2492,7 +2492,7 @@ async fn test_create_credential_fail_incompatible_format_and_tranposrt_protocol(
             ),
             issuer_key: None,
             issuer_certificate: None,
-            protocol: "OPENID4VCI_DRAFT13".to_string(),
+            protocol: "OPENID4VCI_FINAL1".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
                     .schema
@@ -2597,7 +2597,7 @@ async fn test_create_credential_fail_invalid_redirect_uri() {
             ),
             issuer_key: Some(issuer_did.keys.get().await.unwrap()[0].key.id),
             issuer_certificate: None,
-            protocol: "OPENID4VCI_DRAFT13".to_string(),
+            protocol: "OPENID4VCI_FINAL1".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
                     .schema
@@ -2689,7 +2689,7 @@ async fn test_create_credential_fail_webhook_not_allowed() {
             issuer_did: None,
             issuer_key: None,
             issuer_certificate: None,
-            protocol: "OPENID4VCI_DRAFT13".to_string(),
+            protocol: "OPENID4VCI_FINAL1".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
                     .schema
@@ -2806,7 +2806,7 @@ async fn test_validate_create_request_all_nested_claims_are_required() {
     ]);
 
     validate_create_request(
-        "OPENID4VCI_DRAFT13",
+        "OPENID4VCI_FINAL1",
         &[
             CredentialRequestClaimDTO {
                 claim_schema_id: address_claim_id,
@@ -2895,7 +2895,7 @@ async fn test_validate_create_request_all_optional_nested_object_with_required_c
     ]);
 
     validate_create_request(
-        "OPENID4VCI_DRAFT13",
+        "OPENID4VCI_FINAL1",
         &[
             CredentialRequestClaimDTO {
                 claim_schema_id: address_claim_id,
@@ -2921,7 +2921,7 @@ async fn test_validate_create_request_all_optional_nested_object_with_required_c
     .unwrap();
 
     validate_create_request(
-        "OPENID4VCI_DRAFT13",
+        "OPENID4VCI_FINAL1",
         &[CredentialRequestClaimDTO {
             claim_schema_id: address_claim_id,
             value: "Somewhere".to_string(),
@@ -2935,7 +2935,7 @@ async fn test_validate_create_request_all_optional_nested_object_with_required_c
     .unwrap();
 
     let result = validate_create_request(
-        "OPENID4VCI_DRAFT13",
+        "OPENID4VCI_FINAL1",
         &[
             CredentialRequestClaimDTO {
                 claim_schema_id: address_claim_id,
@@ -3015,7 +3015,7 @@ async fn test_validate_create_request_all_required_nested_object_with_optional_c
     ]);
 
     validate_create_request(
-        "OPENID4VCI_DRAFT13",
+        "OPENID4VCI_FINAL1",
         &[
             CredentialRequestClaimDTO {
                 claim_schema_id: address_claim_id,
@@ -3041,7 +3041,7 @@ async fn test_validate_create_request_all_required_nested_object_with_optional_c
     .unwrap();
 
     let result = validate_create_request(
-        "OPENID4VCI_DRAFT13",
+        "OPENID4VCI_FINAL1",
         &[CredentialRequestClaimDTO {
             claim_schema_id: address_claim_id,
             value: "Somewhere".to_string(),
@@ -3058,7 +3058,7 @@ async fn test_validate_create_request_all_required_nested_object_with_optional_c
     ));
 
     validate_create_request(
-        "OPENID4VCI_DRAFT13",
+        "OPENID4VCI_FINAL1",
         &[
             CredentialRequestClaimDTO {
                 claim_schema_id: address_claim_id,
@@ -3249,7 +3249,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
         issuance_date: None,
         last_modified: now,
         deleted_at: None,
-        protocol: "OPENID4VCI_DRAFT13".to_string(),
+        protocol: "OPENID4VCI_FINAL1".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
         state: CredentialStateEnum::Created,
@@ -3825,7 +3825,7 @@ async fn test_get_credential_success_array_index_sorting() {
         issuance_date: None,
         last_modified: now,
         deleted_at: None,
-        protocol: "OPENID4VCI_DRAFT13".to_string(),
+        protocol: "OPENID4VCI_FINAL1".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
         state: CredentialStateEnum::Created,
@@ -4150,7 +4150,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
         issuance_date: None,
         last_modified: now,
         deleted_at: None,
-        protocol: "OPENID4VCI_DRAFT13".to_string(),
+        protocol: "OPENID4VCI_FINAL1".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
         state: CredentialStateEnum::Created,
@@ -4378,7 +4378,7 @@ async fn test_get_credential_success_array_single_element() {
         issuance_date: None,
         last_modified: now,
         deleted_at: None,
-        protocol: "OPENID4VCI_DRAFT13".to_string(),
+        protocol: "OPENID4VCI_FINAL1".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
         state: CredentialStateEnum::Created,
@@ -4659,7 +4659,7 @@ async fn test_create_credential_array(
             issuer_did: Some(did.id),
             issuer_key: None,
             issuer_certificate: None,
-            protocol: "OPENID4VCI_DRAFT13".to_string(),
+            protocol: "OPENID4VCI_FINAL1".to_string(),
             claim_values: claims
                 .iter()
                 .map(|claim| CredentialRequestClaimDTO {
@@ -4925,7 +4925,7 @@ async fn test_create_credential_session_org_mismatch() {
             issuer_did: None,
             issuer_key: None,
             issuer_certificate: None,
-            protocol: "OPENID4VCI_DRAFT13".to_string(),
+            protocol: "OPENID4VCI_FINAL1".to_string(),
             claim_values: vec![],
             redirect_uri: None,
             profile: None,
@@ -5055,7 +5055,7 @@ async fn test_create_credential_invalid_certificate_role() {
             issuer_did: None,
             issuer_key: None,
             issuer_certificate: Some(certificate_id),
-            protocol: "OPENID4VCI_DRAFT13".to_string(),
+            protocol: "OPENID4VCI_FINAL1".to_string(),
             claim_values: vec![],
             redirect_uri: None,
             profile: None,

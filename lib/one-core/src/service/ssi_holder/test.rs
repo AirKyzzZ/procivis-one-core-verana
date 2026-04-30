@@ -1,14 +1,12 @@
 use std::collections::HashMap;
+use std::str::FromStr;
 use std::sync::Arc;
 use std::vec;
 
 use mockall::predicate::eq;
-use one_dto_mapper::try_convert_inner;
 use regex::Regex;
-use serde_json::json;
-use shared_types::{InteractionId, OrganisationId};
+use shared_types::{CredentialFormat, InteractionId, OrganisationId};
 use similar_asserts::assert_eq;
-use time::Duration;
 use url::Url;
 use uuid::Uuid;
 use wiremock::http::Method;
@@ -24,6 +22,7 @@ use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{KeyStorageSecurity, LayoutType};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
+use crate::model::history::TrustResolutionResult;
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::proof::{Proof, ProofStateEnum};
@@ -31,11 +30,9 @@ use crate::proto::http_client::reqwest_client::ReqwestClient;
 use crate::proto::identifier_creator::MockIdentifierCreator;
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::proto::session_provider::{NoSessionProvider, Session};
+use crate::proto::wrp_validator::model::TrustMode;
 use crate::provider::blob_storage_provider::{MockBlobStorage, MockBlobStorageProvider};
 use crate::provider::credential_formatter::MockCredentialFormatter;
-use crate::provider::credential_formatter::model::{
-    CredentialSubject, DetailCredential, IdentifierDetails,
-};
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::issuance_protocol::MockIssuanceProtocol;
 use crate::provider::issuance_protocol::dto::{Features, IssuanceProtocolCapabilities};
@@ -44,7 +41,7 @@ use crate::provider::issuance_protocol::model::{
     ContinueIssuanceResponseDTO, SubmitIssuerResponse, UpdateResponse,
 };
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
-    OAuthAuthorizationServerMetadata, OAuthCodeChallengeMethod,
+    HolderInteractionData, OAuthAuthorizationServerMetadata, OAuthCodeChallengeMethod,
 };
 use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProvider;
 use crate::provider::key_algorithm::ecdsa::Ecdsa;
@@ -956,13 +953,9 @@ async fn test_accept_credential() {
 
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository
-        .expect_get_credentials_by_interaction_id()
+        .expect_create_credential()
         .once()
-        .return_once(move |_, _| Ok(vec![dummy_credential(None)]));
-    credential_repository
-        .expect_update_credential()
-        .once()
-        .returning(|_, _| Ok(()));
+        .returning(|_| Ok(Uuid::new_v4().into()));
 
     let mut exchange_protocol_mock = MockIssuanceProtocol::default();
     exchange_protocol_mock
@@ -977,7 +970,7 @@ async fn test_accept_credential() {
                 },
                 update_credential: None,
                 update_credential_schema: None,
-                create_credential: None,
+                create_credential: Some(dummy_credential(None)),
             })
         });
 
@@ -988,39 +981,6 @@ async fn test_accept_credential() {
         .return_once(move |_| Some(Arc::new(exchange_protocol_mock)));
 
     let mut formatter = MockCredentialFormatter::new();
-
-    formatter
-        .expect_extract_credentials_unverified()
-        .once()
-        .returning(move |_, _| {
-            Ok(DetailCredential {
-                id: None,
-                issuance_date: None,
-                valid_from: Some(crate::clock::now_utc()),
-                valid_until: Some(crate::clock::now_utc() + Duration::days(10)),
-                update_at: None,
-                invalid_before: Some(crate::clock::now_utc()),
-                issuer: IdentifierDetails::Did("did:test:123".parse().unwrap()),
-                subject: None,
-                claims: CredentialSubject {
-                    claims: try_convert_inner(HashMap::from([(
-                        "key1".to_string(),
-                        json!("key1_value"),
-                    )]))
-                    .unwrap(),
-                    id: None,
-                },
-                status: vec![],
-                credential_schema: Some(
-                    crate::provider::credential_formatter::model::CredentialSchema {
-                        id: "SchemaId".to_string(),
-                        r#type: "Mdoc".to_string(),
-                        metadata: None,
-                    },
-                ),
-            })
-        });
-
     formatter
         .expect_get_capabilities()
         .once()
@@ -1029,15 +989,17 @@ async fn test_accept_credential() {
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     let formatter = Arc::new(formatter);
     formatter_provider
-        .expect_get_credential_formatter()
-        .times(2)
-        .returning(move |_| Some(formatter.clone()));
+        .expect_get_formatter_by_type()
+        .times(1)
+        .returning(move |_| {
+            Some((
+                CredentialFormat::from_str("SD_JWT_VC").unwrap(),
+                formatter.clone(),
+            ))
+        });
 
     let mut blob_storage = MockBlobStorage::new();
-    blob_storage
-        .expect_update()
-        .once()
-        .return_once(|_, _| Ok(()));
+    blob_storage.expect_create().once().return_once(|_| Ok(()));
     let blob_storage = Arc::new(blob_storage);
     let mut blob_storage_provider = MockBlobStorageProvider::new();
     blob_storage_provider
@@ -1056,6 +1018,24 @@ async fn test_accept_credential() {
                 },
             })))
         });
+    let organisation = dummy_organisation(None);
+    let interaction_id = Uuid::new_v4().into();
+
+    let mut interaction_repository = MockInteractionRepository::new();
+    interaction_repository
+        .expect_get_interaction()
+        .return_once(move |_, _, _| {
+            Ok(Some(Interaction {
+                id: Uuid::new_v4().into(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                data: Some(serde_json::to_vec(&dummy_interaction()).unwrap()),
+                organisation: Some(organisation),
+                nonce_id: None,
+                interaction_type: InteractionType::Issuance,
+                expires_at: None,
+            }))
+        });
 
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
@@ -1065,10 +1045,10 @@ async fn test_accept_credential() {
         formatter_provider: Arc::new(formatter_provider),
         blob_storage_provider: Arc::new(blob_storage_provider),
         key_security_level_provider: Arc::new(key_security_level_provider),
+        interaction_repository: Arc::new(interaction_repository),
         ..mock_ssi_holder_service()
     };
 
-    let interaction_id = Uuid::new_v4().into();
     service
         .accept_credential(interaction_id, None, Some(identifier_id), None, None)
         .await
@@ -1108,13 +1088,9 @@ async fn test_accept_credential_with_did() {
 
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository
-        .expect_get_credentials_by_interaction_id()
+        .expect_create_credential()
         .once()
-        .return_once(move |_, _| Ok(vec![dummy_credential(None)]));
-    credential_repository
-        .expect_update_credential()
-        .once()
-        .returning(|_, _| Ok(()));
+        .returning(|_| Ok(Uuid::new_v4().into()));
 
     let mut exchange_protocol_mock = MockIssuanceProtocol::default();
     exchange_protocol_mock
@@ -1129,7 +1105,7 @@ async fn test_accept_credential_with_did() {
                 },
                 update_credential: None,
                 update_credential_schema: None,
-                create_credential: None,
+                create_credential: Some(dummy_credential(None)),
             })
         });
 
@@ -1140,39 +1116,6 @@ async fn test_accept_credential_with_did() {
         .return_once(move |_| Some(Arc::new(exchange_protocol_mock)));
 
     let mut formatter = MockCredentialFormatter::new();
-
-    formatter
-        .expect_extract_credentials_unverified()
-        .once()
-        .returning(move |_, _| {
-            Ok(DetailCredential {
-                id: None,
-                issuance_date: None,
-                valid_from: Some(crate::clock::now_utc()),
-                valid_until: Some(crate::clock::now_utc() + Duration::days(10)),
-                update_at: None,
-                invalid_before: Some(crate::clock::now_utc()),
-                issuer: IdentifierDetails::Did("did:test:123".parse().unwrap()),
-                subject: None,
-                claims: CredentialSubject {
-                    claims: try_convert_inner(HashMap::from([(
-                        "key1".to_string(),
-                        json!("key1_value"),
-                    )]))
-                    .unwrap(),
-                    id: None,
-                },
-                status: vec![],
-                credential_schema: Some(
-                    crate::provider::credential_formatter::model::CredentialSchema {
-                        id: "SchemaId".to_string(),
-                        r#type: "Mdoc".to_string(),
-                        metadata: None,
-                    },
-                ),
-            })
-        });
-
     formatter
         .expect_get_capabilities()
         .once()
@@ -1181,15 +1124,17 @@ async fn test_accept_credential_with_did() {
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     let formatter = Arc::new(formatter);
     formatter_provider
-        .expect_get_credential_formatter()
-        .times(2)
-        .returning(move |_| Some(formatter.clone()));
+        .expect_get_formatter_by_type()
+        .times(1)
+        .returning(move |_| {
+            Some((
+                CredentialFormat::from_str("SD_JWT_VC").unwrap(),
+                formatter.clone(),
+            ))
+        });
 
     let mut blob_storage = MockBlobStorage::new();
-    blob_storage
-        .expect_update()
-        .once()
-        .return_once(|_, _| Ok(()));
+    blob_storage.expect_create().once().return_once(|_| Ok(()));
     let blob_storage = Arc::new(blob_storage);
     let mut blob_storage_provider = MockBlobStorageProvider::new();
     blob_storage_provider
@@ -1209,6 +1154,25 @@ async fn test_accept_credential_with_did() {
             })))
         });
 
+    let organisation = dummy_organisation(None);
+    let interaction_id = Uuid::new_v4().into();
+
+    let mut interaction_repository = MockInteractionRepository::new();
+    interaction_repository
+        .expect_get_interaction()
+        .return_once(move |_, _, _| {
+            Ok(Some(Interaction {
+                id: Uuid::new_v4().into(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                data: Some(serde_json::to_vec(&dummy_interaction()).unwrap()),
+                organisation: Some(organisation),
+                nonce_id: None,
+                interaction_type: InteractionType::Issuance,
+                expires_at: None,
+            }))
+        });
+
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
         issuance_protocol_provider: Arc::new(issuance_protocol_provider),
@@ -1217,10 +1181,10 @@ async fn test_accept_credential_with_did() {
         formatter_provider: Arc::new(formatter_provider),
         blob_storage_provider: Arc::new(blob_storage_provider),
         key_security_level_provider: Arc::new(key_security_level_provider),
+        interaction_repository: Arc::new(interaction_repository),
         ..mock_ssi_holder_service()
     };
 
-    let interaction_id = Uuid::new_v4().into();
     service
         .accept_credential(interaction_id, Some(did_id), None, None, None)
         .await
@@ -1259,12 +1223,6 @@ async fn test_accept_credential_wrong_tx_code() {
         .once()
         .returning(|_| Ok(Arc::new(Ecdsa)));
 
-    let mut credential_repository = MockCredentialRepository::new();
-    credential_repository
-        .expect_get_credentials_by_interaction_id()
-        .once()
-        .return_once(move |_, _| Ok(vec![dummy_credential(None)]));
-
     let mut exchange_protocol_mock = MockIssuanceProtocol::default();
     exchange_protocol_mock
         .expect_holder_accept_credential()
@@ -1286,34 +1244,43 @@ async fn test_accept_credential_wrong_tx_code() {
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     let formatter = Arc::new(formatter);
     formatter_provider
-        .expect_get_credential_formatter()
-        .once()
-        .returning(move |_| Some(formatter.clone()));
+        .expect_get_formatter_by_type()
+        .times(1)
+        .returning(move |_| {
+            Some((
+                CredentialFormat::from_str("SD_JWT_VC").unwrap(),
+                formatter.clone(),
+            ))
+        });
 
-    let mut key_security_level_provider = MockKeySecurityLevelProvider::new();
-    key_security_level_provider
-        .expect_get_from_type()
-        .once()
-        .returning(|_| {
-            Some(Arc::new(Basic::new(Params {
-                holder: HolderParams {
-                    priority: 0,
-                    key_storages: vec!["foo".to_string()],
-                },
-            })))
+    let organisation = dummy_organisation(None);
+    let interaction_id = Uuid::new_v4().into();
+
+    let mut interaction_repository = MockInteractionRepository::new();
+    interaction_repository
+        .expect_get_interaction()
+        .return_once(move |_, _, _| {
+            Ok(Some(Interaction {
+                id: Uuid::new_v4().into(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                data: Some(serde_json::to_vec(&dummy_interaction()).unwrap()),
+                organisation: Some(organisation),
+                nonce_id: None,
+                interaction_type: InteractionType::Issuance,
+                expires_at: None,
+            }))
         });
 
     let service = SSIHolderService {
-        credential_repository: Arc::new(credential_repository),
         issuance_protocol_provider: Arc::new(issuance_protocol_provider),
         identifier_repository: Arc::new(identifier_repository),
         key_algorithm_provider: Arc::new(key_algorithm_provider),
         formatter_provider: Arc::new(formatter_provider),
-        key_security_level_provider: Arc::new(key_security_level_provider),
+        interaction_repository: Arc::new(interaction_repository),
         ..mock_ssi_holder_service()
     };
 
-    let interaction_id = Uuid::new_v4().into();
     let result = service
         .accept_credential(interaction_id, None, Some(identifier_id), None, None)
         .await
@@ -1414,7 +1381,7 @@ async fn test_initiate_issuance() {
     let result = service
         .initiate_issuance(InitiateIssuanceRequestDTO {
             organisation_id: Uuid::new_v4().into(),
-            protocol: "OPENID4VCI_DRAFT13".to_string(),
+            protocol: "OPENID4VCI_FINAL1".to_string(),
             issuer,
             client_id: "clientId".to_string(),
             redirect_uri: Some("http://redirect.uri".to_string()),
@@ -1592,7 +1559,7 @@ async fn test_initiate_issuance_pkce() {
     let result = service
         .initiate_issuance(InitiateIssuanceRequestDTO {
             organisation_id: Uuid::new_v4().into(),
-            protocol: "OPENID4VCI_DRAFT13".to_string(),
+            protocol: "OPENID4VCI_FINAL1".to_string(),
             issuer,
             client_id: "clientId".to_string(),
             redirect_uri: Some("http://redirect.uri".to_string()),
@@ -1639,7 +1606,7 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
         issuance_date: None,
         last_modified: crate::clock::now_utc(),
         deleted_at: None,
-        protocol: "OPENID4VCI_DRAFT13".to_string(),
+        protocol: "OPENID4VCI_FINAL1".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
         state: CredentialStateEnum::Pending,
@@ -1779,13 +1746,7 @@ async fn test_accept_credential_identifier_org_mismatch() {
             ..dummy_identifier()
         }))
     });
-    let mut credential_repository = MockCredentialRepository::new();
-    credential_repository
-        .expect_get_credentials_by_interaction_id()
-        .once()
-        .return_once(move |_, _| Ok(vec![dummy_credential(Some(session_organisation_id))]));
     let service = SSIHolderService {
-        credential_repository: Arc::new(credential_repository),
         identifier_repository: Arc::new(identifier_repository),
         session_provider: Arc::new(StaticSessionProvider(Session {
             organisation_id: Some(session_organisation_id),
@@ -1803,7 +1764,7 @@ async fn test_accept_credential_identifier_org_mismatch() {
 }
 
 #[tokio::test]
-async fn test_accept_credential_credential_org_mismatch() {
+async fn test_accept_interaction_credential_org_mismatch() {
     let identifier_id = Uuid::new_v4().into();
     let organisation_id = Uuid::new_v4().into();
     let session_organisation_id = Uuid::new_v4().into();
@@ -1826,14 +1787,26 @@ async fn test_accept_credential_credential_org_mismatch() {
             ..dummy_identifier()
         }))
     });
-    let mut credential_repository = MockCredentialRepository::new();
-    credential_repository
-        .expect_get_credentials_by_interaction_id()
-        .once()
-        .return_once(move |_, _| Ok(vec![dummy_credential(Some(organisation_id))]));
+    let organisation = dummy_organisation(Some(organisation_id));
+    let interaction_id = Uuid::new_v4().into();
+
+    let mut interaction_repository = MockInteractionRepository::new();
+    interaction_repository
+        .expect_get_interaction()
+        .return_once(move |_, _, _| {
+            Ok(Some(Interaction {
+                id: Uuid::new_v4().into(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                data: Some(serde_json::to_vec(&dummy_interaction()).unwrap()),
+                organisation: Some(organisation),
+                nonce_id: None,
+                interaction_type: InteractionType::Issuance,
+                expires_at: None,
+            }))
+        });
 
     let service = SSIHolderService {
-        credential_repository: Arc::new(credential_repository),
         identifier_repository: Arc::new(identifier_repository),
         session_provider: Arc::new(StaticSessionProvider(Session {
             organisation_id: Some(session_organisation_id),
@@ -1841,11 +1814,12 @@ async fn test_accept_credential_credential_org_mismatch() {
             user_id: "test-user".to_string(),
             actor: None,
         })),
+        interaction_repository: Arc::new(interaction_repository),
         ..mock_ssi_holder_service()
     };
 
     let result = service
-        .accept_credential(Uuid::new_v4().into(), None, Some(identifier_id), None, None)
+        .accept_credential(interaction_id, None, Some(identifier_id), None, None)
         .await;
     assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 }
@@ -1920,4 +1894,36 @@ async fn test_initiate_issuance_session_org_mismatch() {
 
     // then
     assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
+}
+
+fn dummy_interaction() -> HolderInteractionData {
+    HolderInteractionData {
+        issuer_url: "".to_string(),
+        credential_endpoint: "".to_string(),
+        token_endpoint: None,
+        notification_endpoint: None,
+        nonce_endpoint: None,
+        challenge_endpoint: None,
+        grants: None,
+        continue_issuance: None,
+        access_token: None,
+        access_token_expires_at: None,
+        refresh_token: None,
+        refresh_token_expires_at: None,
+        cryptographic_binding_methods_supported: None,
+        credential_signing_alg_values_supported: None,
+        proof_types_supported: None,
+        token_endpoint_auth_methods_supported: None,
+        credential_metadata: None,
+        credential_configuration_id: "".to_string(),
+        notification_id: None,
+        protocol: "".to_string(),
+        format: "dc+sd-jwt".to_string(),
+        access_certificate: None,
+        registration_certificate: None,
+        national_registry_data: None,
+        relying_party_name: None,
+        trust_resolution: TrustResolutionResult::Trusted,
+        trust_mode: TrustMode::TrustOptional,
+    }
 }

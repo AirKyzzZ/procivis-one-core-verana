@@ -359,10 +359,7 @@ impl CredentialFormatter for MdocFormatter {
             pid_schema_ids: self.params.pid_schema_ids.to_owned(),
             selective_disclosure: vec![SelectiveDisclosure::SecondLevel],
             issuance_did_methods: vec![],
-            issuance_exchange_protocols: vec![
-                IssuanceProtocolType::OpenId4VciDraft13,
-                IssuanceProtocolType::OpenId4VciFinal1_0,
-            ],
+            issuance_exchange_protocols: vec![IssuanceProtocolType::OpenId4VciFinal1_0],
             proof_exchange_protocols: vec![
                 VerificationProtocolType::OpenId4VpDraft20,
                 VerificationProtocolType::OpenId4VpDraft25,

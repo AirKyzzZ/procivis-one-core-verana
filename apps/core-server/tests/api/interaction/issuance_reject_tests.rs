@@ -1,13 +1,13 @@
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::interaction::InteractionType;
-use serde_json::json;
 use similar_asserts::assert_eq;
 
-use crate::fixtures::{TestingCredentialParams, encrypted_token};
+use crate::fixtures::TestingCredentialParams;
+use crate::fixtures::interaction::{InteractionDataParams, dummy_interaction_data};
 use crate::utils::context::TestContext;
 
 #[tokio::test]
-async fn test_issuance_reject_openid4vci_draft13_notification_not_supported_by_issuer() {
+async fn test_issuance_reject_openid4vci_notification_not_supported_by_issuer() {
     // GIVEN
     let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
 
@@ -17,14 +17,7 @@ async fn test_issuance_reject_openid4vci_draft13_notification_not_supported_by_i
         .create("test", &organisation, None, Default::default())
         .await;
 
-    let interaction_data = serde_json::to_vec(&json!({
-        "issuer_url": "http://127.0.0.1",
-        "credential_endpoint": format!("{}/credential", context.server_mock.uri()),
-        "access_token": encrypted_token("123"),
-        "access_token_expires_at": null,
-    }))
-    .unwrap();
-
+    let interaction_data = dummy_interaction_data(&context, &credential_schema, Default::default());
     let interaction = context
         .db
         .interactions
@@ -43,7 +36,7 @@ async fn test_issuance_reject_openid4vci_draft13_notification_not_supported_by_i
             &credential_schema,
             CredentialStateEnum::Accepted,
             &identifier,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
                 ..Default::default()
@@ -60,15 +53,14 @@ async fn test_issuance_reject_openid4vci_draft13_notification_not_supported_by_i
 
     // THEN
     assert_eq!(resp.status(), 204);
-
     let credential = context.db.credentials.get(&credential.id).await;
     assert_eq!(CredentialStateEnum::Rejected, credential.state);
 }
 
 #[tokio::test]
-async fn test_issuance_reject_openid4vci_draft13_with_notification() {
+async fn test_issuance_reject_openid4vci_with_notification() {
     // GIVEN
-    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+    let (context, organisation, _, identifier, key) = TestContext::new_with_did(None).await;
 
     let credential_schema = context
         .db
@@ -76,22 +68,19 @@ async fn test_issuance_reject_openid4vci_draft13_with_notification() {
         .create("test", &organisation, None, Default::default())
         .await;
 
-    let interaction_data = serde_json::to_vec(&json!({
-        "issuer_url": "http://127.0.0.1",
-        "credential_endpoint": format!("{}/ssi/openid4vci/draft-13/{}/credential", context.server_mock.uri(), credential_schema.id),
-        "access_token": encrypted_token("123"),
-        "access_token_expires_at": null,
-        "token_endpoint": format!("{}/ssi/openid4vci/draft-13/{}/token", context.server_mock.uri(), credential_schema.id),
-        "grants":{
-            "urn:ietf:params:oauth:grant-type:pre-authorized_code":{
-                "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
-            }
+    let interaction_data = dummy_interaction_data(
+        &context,
+        &credential_schema,
+        InteractionDataParams {
+            notification_endpoint: Some(format!(
+                "{}/ssi/openid4vci/final-1.0/{}/notification",
+                context.server_mock.uri(),
+                credential_schema.id
+            )),
+            notification_id: Some("notification_id".to_string()),
+            ..Default::default()
         },
-        "notification_endpoint": format!("{}/ssi/openid4vci/draft-13/{}/notification", context.server_mock.uri(), credential_schema.id),
-        "notification_id": "notification_id"
-    }))
-    .unwrap();
-
+    );
     let interaction = context
         .db
         .interactions
@@ -110,17 +99,13 @@ async fn test_issuance_reject_openid4vci_draft13_with_notification() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &identifier,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
+                key: Some(key),
                 ..Default::default()
             },
         )
-        .await;
-
-    context
-        .server_mock
-        .token_endpoint(credential_schema.schema_id().await.unwrap(), "123")
         .await;
 
     context
@@ -137,7 +122,6 @@ async fn test_issuance_reject_openid4vci_draft13_with_notification() {
 
     // THEN
     assert_eq!(resp.status(), 204);
-
     let credential = context.db.credentials.get(&credential.id).await;
     assert_eq!(CredentialStateEnum::Rejected, credential.state);
 }

@@ -103,20 +103,6 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
             enabled: true
             order: 2
         issuanceProtocol:
-            OPENID4VCI_DRAFT13:
-                display: 'display'
-                order: 1
-                type: 'OPENID4VCI_DRAFT13'
-                params:
-                    public:
-                        preAuthorizedCodeExpiresIn: 300
-                        tokenExpiresIn: 86400
-                        refreshExpiresIn: 886400
-                        redirectUri:
-                            enabled: true
-                            allowedSchemes: [ https ]
-                    private:
-                        encryption: '93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e'
             OPENID4VCI_FINAL1:
                 display: 'display.openid4vciFinal1'
                 order: 2
@@ -613,10 +599,7 @@ pub fn generic_formatter_capabilities() -> FormatterCapabilities {
             crate::config::core_config::DidType::Jwk,
             crate::config::core_config::DidType::WebVh,
         ],
-        issuance_exchange_protocols: vec![
-            IssuanceProtocolType::OpenId4VciDraft13,
-            IssuanceProtocolType::OpenId4VciFinal1_0,
-        ],
+        issuance_exchange_protocols: vec![IssuanceProtocolType::OpenId4VciFinal1_0],
         proof_exchange_protocols: vec![
             VerificationProtocolType::OpenId4VpDraft20,
             VerificationProtocolType::OpenId4VpDraft25,

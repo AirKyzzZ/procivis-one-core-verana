@@ -21,10 +21,6 @@ pub(super) fn default_issuance_url_scheme() -> String {
     "openid-credential-offer".to_string()
 }
 
-pub(super) fn default_enable_credential_preview() -> bool {
-    true
-}
-
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CommonParams {
