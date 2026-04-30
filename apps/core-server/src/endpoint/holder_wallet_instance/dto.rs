@@ -16,7 +16,7 @@ use crate::serialize::front_time;
 
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
-#[try_into(T = dto::HolderRegisterWalletUnitRequestDTO, Error = ServiceError)]
+#[try_into(T = dto::HolderRegisterWalletInstanceRequestDTO, Error = ServiceError)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct HolderRegisterWalletInstanceRequestRestDTO {
     /// Required when not using STS authentication mode. Specifies the
@@ -31,10 +31,13 @@ pub(crate) struct HolderRegisterWalletInstanceRequestRestDTO {
     /// registration.
     #[try_into(infallible)]
     pub key_type: String,
+    #[try_into(infallible)]
+    #[serde(default)]
+    pub trusted_rp_required: bool,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(dto::HolderWalletUnitRegisterResponseDTO)]
+#[from(dto::HolderWalletInstanceRegisterResponseDTO)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct HolderRegisterWalletInstanceResponseRestDTO {
     pub id: HolderWalletInstanceId,
@@ -63,7 +66,7 @@ pub(crate) enum WalletProviderTypeRestEnum {
 
 #[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, TryFrom)]
-#[try_from(T = dto::HolderWalletUnitResponseDTO, Error = MapperError)]
+#[try_from(T = dto::HolderWalletInstanceResponseDTO, Error = MapperError)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct HolderWalletInstanceDetailRestDTO {
     #[try_from(infallible)]
@@ -86,13 +89,17 @@ pub(crate) struct HolderWalletInstanceDetailRestDTO {
     pub status: WalletInstanceStatusRestEnum,
     #[try_from(with_fn = try_convert_inner)]
     pub authentication_key: Option<KeyListItemResponseRestDTO>,
+    #[try_from(infallible)]
+    pub trusted_rp_required: bool,
 }
 
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
-#[into(dto::EditHolderWalletUnitRequestDTO)]
+#[into(dto::EditHolderWalletInstanceRequestDTO)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct EditHolderWalletInstanceRequestRestDTO {
-    pub trust_collections: Vec<TrustCollectionId>,
+    pub trust_collections: Option<Vec<TrustCollectionId>>,
+    pub trusted_rp_required: Option<bool>,
 }
 
 #[options_not_nullable]

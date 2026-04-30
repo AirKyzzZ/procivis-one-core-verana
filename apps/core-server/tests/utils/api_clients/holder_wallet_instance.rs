@@ -76,14 +76,16 @@ impl HolderWalletInstancesApi {
     pub async fn holder_wallet_instance_edit(
         &self,
         wallet_unit_id: &HolderWalletInstanceId,
-        trust_collections: &[TrustCollectionId],
+        trust_collections: Option<&[TrustCollectionId]>,
+        trusted_rp_required: Option<bool>,
     ) -> Response {
-        let body = json!(
-            {
-            "trustCollections": trust_collections,
-            }
-        );
-
+        let mut body = json!({});
+        if let Some(trust_collections) = trust_collections {
+            body["trustCollections"] = json!(trust_collections);
+        }
+        if let Some(trusted_rp_required) = trusted_rp_required {
+            body["trustedRpRequired"] = json!(trusted_rp_required);
+        }
         self.client
             .patch(
                 &format!("/api/holder-wallet-instance/v1/{wallet_unit_id}"),

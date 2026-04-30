@@ -16,6 +16,7 @@ pub struct TestVerifierInstanceParams {
     pub provider_type: Option<String>,
     pub provider_name: Option<String>,
     pub provider_url: Option<String>,
+    pub trusted_issuer_required: Option<bool>,
 }
 
 impl VerifierInstancesDB {
@@ -37,7 +38,7 @@ impl VerifierInstancesDB {
             provider_url: params
                 .provider_url
                 .unwrap_or("http://provider.url".to_string()),
-            trusted_issuer_required: false,
+            trusted_issuer_required: params.trusted_issuer_required.unwrap_or_default(),
             organisation: organisation.into(),
         };
 

@@ -11,8 +11,8 @@ use uuid::Uuid;
 
 use super::WalletUnitService;
 use super::dto::{
-    EditHolderWalletUnitRequestDTO, HolderRegisterWalletUnitRequestDTO,
-    HolderWalletUnitRegisterResponseDTO, HolderWalletUnitResponseDTO, NoncePayload,
+    EditHolderWalletInstanceRequestDTO, HolderRegisterWalletInstanceRequestDTO,
+    HolderWalletInstanceRegisterResponseDTO, HolderWalletInstanceResponseDTO, NoncePayload,
     TrustCollectionsDetailResponseDTO,
 };
 use super::error::HolderWalletInstanceError;
@@ -49,8 +49,8 @@ use crate::validator::throw_if_org_id_not_matching_session;
 impl WalletUnitService {
     pub async fn holder_register(
         &self,
-        request: HolderRegisterWalletUnitRequestDTO,
-    ) -> Result<HolderWalletUnitRegisterResponseDTO, HolderWalletInstanceError> {
+        request: HolderRegisterWalletInstanceRequestDTO,
+    ) -> Result<HolderWalletInstanceRegisterResponseDTO, HolderWalletInstanceError> {
         throw_if_org_id_not_matching_session(&request.organisation_id, &*self.session_provider)
             .error_while("checking session")?;
         let organisation = self
@@ -69,7 +69,7 @@ impl WalletUnitService {
         }
 
         if let Some(wallet_unit) = self
-            .holder_wallet_unit_repository
+            .holder_wallet_instance_repository
             .list(ListQuery {
                 filtering: Some(OrganisationIds(vec![request.organisation_id]).condition()),
                 ..Default::default()
@@ -160,7 +160,7 @@ impl WalletUnitService {
         } else {
             WalletInstanceStatus::Unattested
         };
-        let wallet_unit_request = CreateHolderWalletInstanceRequest {
+        let wallet_instance_request = CreateHolderWalletInstanceRequest {
             id: Uuid::new_v4().into(),
             status,
             wallet_provider_url,
@@ -169,11 +169,11 @@ impl WalletUnitService {
             organisation: organisation.clone(),
             authentication_key: registration.key,
             provider_wallet_unit_id: registration.wallet_unit_id,
-            trusted_rp_required: false,
+            trusted_rp_required: request.trusted_rp_required,
         };
         let holder_wallet_unit_id = self
-            .holder_wallet_unit_repository
-            .create(wallet_unit_request)
+            .holder_wallet_instance_repository
+            .create(wallet_instance_request)
             .await
             .error_while("creating holder wallet unit")?;
 
@@ -216,7 +216,7 @@ impl WalletUnitService {
             .error_while("creating empty trust collections")?;
 
         tracing::info!(message = success_log);
-        Ok(HolderWalletUnitRegisterResponseDTO {
+        Ok(HolderWalletInstanceRegisterResponseDTO {
             id: holder_wallet_unit_id,
             status,
         })
@@ -225,9 +225,9 @@ impl WalletUnitService {
     pub async fn holder_get_wallet_unit_details(
         &self,
         id: HolderWalletInstanceId,
-    ) -> Result<HolderWalletUnitResponseDTO, HolderWalletInstanceError> {
+    ) -> Result<HolderWalletInstanceResponseDTO, HolderWalletInstanceError> {
         let result = self
-            .holder_wallet_unit_repository
+            .holder_wallet_instance_repository
             .get(
                 &id,
                 &HolderWalletInstanceRelations {
@@ -247,7 +247,7 @@ impl WalletUnitService {
         id: HolderWalletInstanceId,
     ) -> Result<TrustCollectionsDetailResponseDTO, HolderWalletInstanceError> {
         let unit = self
-            .holder_wallet_unit_repository
+            .holder_wallet_instance_repository
             .get(&id, &HolderWalletInstanceRelations::default())
             .await
             .error_while("getting holder wallet unit")?
@@ -285,7 +285,7 @@ impl WalletUnitService {
         id: HolderWalletInstanceId,
     ) -> Result<(), HolderWalletInstanceError> {
         let holder_wallet_unit = self
-            .holder_wallet_unit_repository
+            .holder_wallet_instance_repository
             .get(
                 &id,
                 &HolderWalletInstanceRelations {
@@ -308,7 +308,7 @@ impl WalletUnitService {
             .error_while("checking wallet unit status")?;
 
         if wallet_unit_status == WalletUnitStatusCheckResponse::Revoked {
-            self.holder_wallet_unit_repository
+            self.holder_wallet_instance_repository
                 .update(
                     &id,
                     UpdateHolderWalletInstanceRequest {
@@ -343,16 +343,16 @@ impl WalletUnitService {
     pub async fn edit_holder_wallet_unit(
         &self,
         id: HolderWalletInstanceId,
-        request: EditHolderWalletUnitRequestDTO,
+        request: EditHolderWalletInstanceRequestDTO,
     ) -> Result<(), HolderWalletInstanceError> {
-        let holder_wallet_unit = self
-            .holder_wallet_unit_repository
+        let holder_wallet_instance = self
+            .holder_wallet_instance_repository
             .get(&id, &HolderWalletInstanceRelations::default())
             .await
             .error_while("getting holder wallet unit")?
             .ok_or(HolderWalletInstanceError::HolderWalletUnitNotFound(id))?;
 
-        let organisation = holder_wallet_unit
+        let organisation = holder_wallet_instance
             .organisation
             .get()
             .await
@@ -363,18 +363,36 @@ impl WalletUnitService {
 
         self.tx_manager
             .tx(async {
-                set_active_trust_collections(
-                    request.trust_collections,
-                    organisation.id,
-                    self.trust_collection_repository.as_ref(),
-                    self.trust_subscription_repository.as_ref(),
-                    self.trust_list_subscription_sync.as_ref(),
-                )
-                .await
+                if let Some(trusted_rp_required) = request.trusted_rp_required
+                    && trusted_rp_required != holder_wallet_instance.trusted_rp_required
+                {
+                    self.holder_wallet_instance_repository
+                        .update(
+                            &id,
+                            UpdateHolderWalletInstanceRequest {
+                                trusted_rp_required: Some(trusted_rp_required),
+                                ..Default::default()
+                            },
+                        )
+                        .await
+                        .error_while("updating trusted_rp_required")?;
+                }
+                if let Some(trust_collections) = request.trust_collections {
+                    set_active_trust_collections(
+                        trust_collections,
+                        organisation.id,
+                        self.trust_collection_repository.as_ref(),
+                        self.trust_subscription_repository.as_ref(),
+                        self.trust_list_subscription_sync.as_ref(),
+                    )
+                    .await
+                    .error_while("updating collections")?;
+                };
+                Ok::<_, HolderWalletInstanceError>(())
             }
             .boxed())
             .await
-            .error_while("updating collections")??;
+            .error_while("updating holder wallet instance")??;
 
         tracing::info!("Modified holder wallet unit ({id})");
         Ok(())

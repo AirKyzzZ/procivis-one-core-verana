@@ -43,12 +43,18 @@ impl VerifierIntanceApi {
     pub async fn patch_verifier_instance(
         &self,
         id: &VerifierInstanceId,
-        trust_collections: &[TrustCollectionId],
+        trust_collections: Option<&[TrustCollectionId]>,
+        trusted_issuer_required: Option<bool>,
     ) -> Response {
-        let body = json!({
-            "trustCollections": trust_collections,
-        });
+        let mut body = json!({});
+        if let Some(trust_collections) = trust_collections {
+            body["trustCollections"] = json!(trust_collections);
+        }
+        if let Some(trusted_issuer_required) = trusted_issuer_required {
+            body["trustedIssuerRequired"] = json!(trusted_issuer_required);
+        }
 
+        println!("{}", serde_json::to_string_pretty(&body).unwrap());
         self.client
             .patch(&format!("/api/verifier-instance/v1/{id}"), body)
             .await

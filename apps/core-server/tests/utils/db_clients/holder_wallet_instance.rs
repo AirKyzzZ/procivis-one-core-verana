@@ -21,6 +21,7 @@ pub struct TestHolderWalletInstanceParams {
     pub wallet_provider_name: Option<String>,
     pub wallet_provider_url: Option<String>,
     pub provider_wallet_unit_id: Option<WalletInstanceId>,
+    pub trusted_rp_required: Option<bool>,
 }
 
 impl HolderWalletInstancesDB {
@@ -53,7 +54,9 @@ impl HolderWalletInstancesDB {
             provider_wallet_unit_id: test_holder_wallet_instance
                 .provider_wallet_unit_id
                 .unwrap_or(Uuid::new_v4().into()),
-            trusted_rp_required: false,
+            trusted_rp_required: test_holder_wallet_instance
+                .trusted_rp_required
+                .unwrap_or_default(),
         };
 
         let id = self.repository.create(wallet_instance).await.unwrap();

@@ -20,6 +20,12 @@ pub struct VerifierInstance {
     pub organisation: Related<Organisation>,
 }
 
+#[derive(Clone, Debug, Default)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
+pub struct UpdateVerifierInstanceRequest {
+    pub trusted_issuer_required: Option<bool>,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SortableVerifierInstanceColumn {}
 

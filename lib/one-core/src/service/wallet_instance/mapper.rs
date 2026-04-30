@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use one_dto_mapper::convert_inner;
 use shared_types::{KeyId, OrganisationId, TrustCollectionId};
 
-use super::dto::{HolderWalletUnitResponseDTO, TrustCollectionInfoDTO};
+use super::dto::{HolderWalletInstanceResponseDTO, TrustCollectionInfoDTO};
 use super::error::HolderWalletInstanceError;
 use crate::error::ContextWithErrorCode;
 use crate::model::holder_wallet_instance::HolderWalletInstance;
@@ -44,7 +44,7 @@ pub(super) fn key_from_generated_key(
     }
 }
 
-impl From<HolderWalletInstance> for HolderWalletUnitResponseDTO {
+impl From<HolderWalletInstance> for HolderWalletInstanceResponseDTO {
     fn from(value: HolderWalletInstance) -> Self {
         Self {
             id: value.id,
@@ -56,6 +56,7 @@ impl From<HolderWalletInstance> for HolderWalletUnitResponseDTO {
             wallet_provider_name: value.wallet_provider_name,
             status: value.status,
             authentication_key: convert_inner(value.authentication_key),
+            trusted_rp_required: value.trusted_rp_required,
         }
     }
 }

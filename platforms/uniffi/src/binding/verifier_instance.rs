@@ -64,6 +64,7 @@ pub struct RegisterVerifierInstanceRequestBindingDTO {
     pub verifier_provider_url: String,
     /// Reference a configured `verifierProvider` instance.
     pub r#type: String,
+    pub trusted_issuer_required: bool,
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]
@@ -77,5 +78,6 @@ pub struct RegisterVerifierInstanceResponseBindingDTO {
 #[derive(Clone, Debug, uniffi::Record)]
 #[uniffi(name = "UpdateVerifierInstanceRequest")]
 pub struct EditVerifierInstanceRequestBindingDTO {
-    pub trust_collections: Vec<String>,
+    pub trust_collections: Option<Vec<String>>,
+    pub trusted_issuer_required: Option<bool>,
 }

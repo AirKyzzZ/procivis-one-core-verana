@@ -1,7 +1,8 @@
 use shared_types::VerifierInstanceId;
 
 use crate::model::verifier_instance::{
-    GetVerifierInstanceList, VerifierInstance, VerifierInstanceListQuery,
+    GetVerifierInstanceList, UpdateVerifierInstanceRequest, VerifierInstance,
+    VerifierInstanceListQuery,
 };
 use crate::repository::error::DataLayerError;
 
@@ -10,6 +11,12 @@ use crate::repository::error::DataLayerError;
 pub trait VerifierInstanceRepository: Send + Sync {
     async fn create(&self, request: VerifierInstance)
     -> Result<VerifierInstanceId, DataLayerError>;
+
+    async fn update(
+        &self,
+        id: &VerifierInstanceId,
+        request: UpdateVerifierInstanceRequest,
+    ) -> Result<(), DataLayerError>;
 
     async fn get(
         &self,

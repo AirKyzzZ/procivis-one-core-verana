@@ -9,6 +9,7 @@ pub struct RegisterVerifierInstanceRequestDTO {
     pub organisation_id: OrganisationId,
     pub verifier_provider_url: String,
     pub r#type: String,
+    pub trusted_issuer_required: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -18,5 +19,6 @@ pub struct RegisterVerifierInstanceResponseDTO {
 
 #[derive(Debug, Clone)]
 pub struct EditVerifierInstanceRequestDTO {
-    pub trust_collections: Vec<TrustCollectionId>,
+    pub trust_collections: Option<Vec<TrustCollectionId>>,
+    pub trusted_issuer_required: Option<bool>,
 }

@@ -62,7 +62,7 @@ async fn test_edit_verifier_instance() {
     let resp = context
         .api
         .verifier_instances
-        .patch_verifier_instance(&verifier_instance.id, &[collection.id])
+        .patch_verifier_instance(&verifier_instance.id, Some(&[collection.id]), None)
         .await;
 
     // THEN
@@ -83,7 +83,7 @@ async fn test_edit_verifier_instance() {
     let resp = context
         .api
         .verifier_instances
-        .patch_verifier_instance(&verifier_instance.id, &[])
+        .patch_verifier_instance(&verifier_instance.id, Some(&[]), None)
         .await;
 
     // THEN
@@ -94,4 +94,40 @@ async fn test_edit_verifier_instance() {
         .list(Default::default())
         .await;
     assert_eq!(subscriptions.len(), 0);
+}
+
+#[tokio::test]
+async fn test_edit_verifier_instance_trusted_issuer_flag() {
+    // GIVEN
+    let (context, org) = TestContext::new_with_organisation(None).await;
+
+    let verifier_instance = context
+        .db
+        .verifier_instances
+        .create(
+            org.clone(),
+            TestVerifierInstanceParams {
+                provider_type: Some("PROCIVIS_ONE".to_string()),
+                provider_url: Some("https://verifier.provider".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .verifier_instances
+        .patch_verifier_instance(&verifier_instance.id, None, Some(true))
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 204);
+    let instance = context
+        .db
+        .verifier_instances
+        .get(verifier_instance.id)
+        .await
+        .unwrap();
+    assert_eq!(instance.trusted_issuer_required, true);
 }

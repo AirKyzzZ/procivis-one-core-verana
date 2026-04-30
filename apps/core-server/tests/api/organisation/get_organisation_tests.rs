@@ -76,6 +76,7 @@ async fn test_get_organisation_returns_wallet_instance() {
                 wallet_provider_name: Some("PROCIVIS_ONE".to_string()),
                 wallet_provider_url: Some("https://wallet.provider".to_string()),
                 provider_wallet_unit_id: Some(Uuid::new_v4().into()),
+                ..Default::default()
             },
         )
         .await;
@@ -140,15 +141,7 @@ async fn test_get_organisation_with_verifier_instance_success() {
     let verifier_instance = context
         .db
         .verifier_instances
-        .create(
-            organisation.clone(),
-            TestVerifierInstanceParams {
-                id: None,
-                provider_type: None,
-                provider_name: None,
-                provider_url: None,
-            },
-        )
+        .create(organisation.clone(), TestVerifierInstanceParams::default())
         .await;
     // WHEN
     let resp = context.api.organisations.get(&organisation.id).await;

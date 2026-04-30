@@ -1,7 +1,7 @@
 use one_core::model::wallet_instance::{WalletInstanceStatus, WalletProviderType};
 use one_core::service::wallet_instance::dto::{
-    HolderRegisterWalletUnitRequestDTO, HolderWalletUnitRegisterResponseDTO,
-    HolderWalletUnitResponseDTO, TrustCollectionsDetailResponseDTO, WalletProviderDTO,
+    HolderRegisterWalletInstanceRequestDTO, HolderWalletInstanceRegisterResponseDTO,
+    HolderWalletInstanceResponseDTO, TrustCollectionsDetailResponseDTO, WalletProviderDTO,
 };
 use one_core::service::wallet_provider::dto::DisplayNameDTO;
 use one_dto_mapper::{From, Into, TryInto, convert_inner};
@@ -94,7 +94,7 @@ pub enum WalletProviderTypeBindingEnum {
 }
 
 #[derive(Clone, Debug, TryInto, uniffi::Record)]
-#[try_into(T=HolderRegisterWalletUnitRequestDTO, Error=ServiceError)]
+#[try_into(T=HolderRegisterWalletInstanceRequestDTO, Error=ServiceError)]
 #[uniffi(name = "HolderRegisterWalletUnitRequest")]
 pub struct HolderRegisterWalletUnitRequestBindingDTO {
     /// The wallet unit's organization.
@@ -107,10 +107,12 @@ pub struct HolderRegisterWalletUnitRequestBindingDTO {
     /// registration.
     #[try_into(infallible)]
     key_type: String,
+    #[try_into(infallible)]
+    trusted_rp_required: bool,
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]
-#[from(HolderWalletUnitRegisterResponseDTO)]
+#[from(HolderWalletInstanceRegisterResponseDTO)]
 #[uniffi(name = "HolderRegisterWalletUnitResponse")]
 pub struct HolderRegisterWalletUnitResponseBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
@@ -130,7 +132,7 @@ struct WalletProviderBindingDTO {
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]
-#[from(HolderWalletUnitResponseDTO)]
+#[from(HolderWalletInstanceResponseDTO)]
 #[uniffi(name = "HolderWalletUnit")]
 pub struct HolderWalletUnitResponseBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
@@ -147,6 +149,7 @@ pub struct HolderWalletUnitResponseBindingDTO {
     pub status: WalletUnitStatusBindingEnum,
     #[from(with_fn = convert_inner)]
     pub authentication_key: Option<KeyListItemBindingDTO>,
+    pub trusted_rp_required: bool,
 }
 
 #[derive(Clone, Debug, uniffi::Enum, From)]
@@ -163,7 +166,8 @@ pub enum WalletUnitStatusBindingEnum {
 #[derive(Clone, Debug, uniffi::Record)]
 #[uniffi(name = "HolderWalletUnitUpdateRequest")]
 pub struct EditHolderWalletUnitRequestBindingDTO {
-    pub trust_collections: Vec<String>,
+    pub trust_collections: Option<Vec<String>>,
+    pub trusted_rp_required: Option<bool>,
 }
 
 #[derive(Clone, Debug, uniffi::Record, From)]

@@ -17,7 +17,9 @@ use crate::error::ContextWithErrorCode;
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListQuery;
-use crate::model::verifier_instance::{VerifierInstance, VerifierInstanceFilterValue};
+use crate::model::verifier_instance::{
+    UpdateVerifierInstanceRequest, VerifierInstance, VerifierInstanceFilterValue,
+};
 use crate::proto::session_provider::SessionExt;
 use crate::service::wallet_instance::dto::TrustCollectionsDetailResponseDTO;
 use crate::service::wallet_instance::mapper::{
@@ -107,7 +109,7 @@ impl VerifierInstanceService {
                         provider_type: request.r#type,
                         provider_name: metadata.name.to_owned(),
                         provider_url,
-                        trusted_issuer_required: false,
+                        trusted_issuer_required: request.trusted_issuer_required,
                         organisation: organisation.into(),
                     })
                     .await
@@ -217,19 +219,35 @@ impl VerifierInstanceService {
 
         self.tx_manager
             .tx(async {
-                set_active_trust_collections(
-                    request.trust_collections,
-                    organisation.id,
-                    self.trust_collection_repository.as_ref(),
-                    self.trust_subscription_repository.as_ref(),
-                    self.trust_list_subscription_sync.as_ref(),
-                )
-                .await
+                if let Some(trusted_issuer_required) = request.trusted_issuer_required
+                    && trusted_issuer_required != instance.trusted_issuer_required
+                {
+                    self.verifier_instance_repository
+                        .update(
+                            &id,
+                            UpdateVerifierInstanceRequest {
+                                trusted_issuer_required: Some(trusted_issuer_required),
+                            },
+                        )
+                        .await
+                        .error_while("updating trusted issuer required")?;
+                }
+                if let Some(trust_collections) = request.trust_collections {
+                    set_active_trust_collections(
+                        trust_collections,
+                        organisation.id,
+                        self.trust_collection_repository.as_ref(),
+                        self.trust_subscription_repository.as_ref(),
+                        self.trust_list_subscription_sync.as_ref(),
+                    )
+                    .await
+                    .error_while("updating trust collections")?;
+                };
+                Ok::<_, VerifierInstanceServiceError>(())
             }
             .boxed())
             .await
-            .error_while("updating collections")?
-            .error_while("updating collections")?;
+            .error_while("updating verifier instance")??;
 
         tracing::info!("Modified verifier instance ({id})");
         Ok(())

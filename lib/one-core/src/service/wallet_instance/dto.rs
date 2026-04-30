@@ -9,10 +9,11 @@ use crate::service::key::dto::KeyListItemResponseDTO;
 use crate::service::wallet_provider::dto::ProviderTrustCollectionDTO;
 
 #[derive(Debug, Clone)]
-pub struct HolderRegisterWalletUnitRequestDTO {
+pub struct HolderRegisterWalletInstanceRequestDTO {
     pub organisation_id: OrganisationId,
     pub key_type: String,
     pub wallet_provider: WalletProviderDTO,
+    pub trusted_rp_required: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -28,7 +29,7 @@ pub(super) struct NoncePayload {
 }
 
 #[derive(Debug, Clone)]
-pub struct HolderWalletUnitResponseDTO {
+pub struct HolderWalletInstanceResponseDTO {
     pub id: HolderWalletInstanceId,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
@@ -38,17 +39,19 @@ pub struct HolderWalletUnitResponseDTO {
     pub wallet_provider_name: String,
     pub status: WalletInstanceStatus,
     pub authentication_key: Option<KeyListItemResponseDTO>,
+    pub trusted_rp_required: bool,
 }
 
 #[derive(Debug, Clone)]
-pub struct HolderWalletUnitRegisterResponseDTO {
+pub struct HolderWalletInstanceRegisterResponseDTO {
     pub id: HolderWalletInstanceId,
     pub status: WalletInstanceStatus,
 }
 
 #[derive(Debug, Clone)]
-pub struct EditHolderWalletUnitRequestDTO {
-    pub trust_collections: Vec<TrustCollectionId>,
+pub struct EditHolderWalletInstanceRequestDTO {
+    pub trust_collections: Option<Vec<TrustCollectionId>>,
+    pub trusted_rp_required: Option<bool>,
 }
 
 #[derive(Debug, Clone)]

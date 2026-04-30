@@ -48,7 +48,7 @@ use one_core::service::trust_entity::dto::{
 };
 use one_core::service::verifier_instance::dto::EditVerifierInstanceRequestDTO;
 use one_core::service::wallet_instance::dto::{
-    EditHolderWalletUnitRequestDTO, TrustCollectionInfoDTO,
+    EditHolderWalletInstanceRequestDTO, TrustCollectionInfoDTO,
 };
 use one_dto_mapper::{convert_inner, convert_inner_of_inner, try_convert_inner};
 use serde_json::json;
@@ -843,16 +843,16 @@ impl From<ResolvedIdentifierTrustEntityResponseDTO>
     }
 }
 
-impl TryFrom<EditHolderWalletUnitRequestBindingDTO> for EditHolderWalletUnitRequestDTO {
+impl TryFrom<EditHolderWalletUnitRequestBindingDTO> for EditHolderWalletInstanceRequestDTO {
     type Error = ErrorResponseBindingDTO;
 
     fn try_from(value: EditHolderWalletUnitRequestBindingDTO) -> Result<Self, Self::Error> {
         Ok(Self {
             trust_collections: value
                 .trust_collections
-                .into_iter()
-                .map(into_id)
-                .collect::<Result<_, _>>()?,
+                .map(|c| c.into_iter().map(into_id).collect::<Result<_, _>>())
+                .transpose()?,
+            trusted_rp_required: value.trusted_rp_required,
         })
     }
 }
@@ -864,9 +864,9 @@ impl TryFrom<EditVerifierInstanceRequestBindingDTO> for EditVerifierInstanceRequ
         Ok(Self {
             trust_collections: value
                 .trust_collections
-                .into_iter()
-                .map(into_id)
-                .collect::<Result<_, _>>()?,
+                .map(|c| c.into_iter().map(into_id).collect::<Result<_, _>>())
+                .transpose()?,
+            trusted_issuer_required: value.trusted_issuer_required,
         })
     }
 }

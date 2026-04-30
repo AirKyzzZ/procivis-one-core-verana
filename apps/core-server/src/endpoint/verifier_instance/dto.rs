@@ -16,6 +16,8 @@ pub struct RegisterVerifierInstanceRequestRestDTO {
     pub verifier_provider_url: String,
     /// Reference a configured `verifierProvider` instance.
     pub r#type: String,
+    #[serde(default)]
+    pub trusted_issuer_required: bool,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
@@ -25,9 +27,11 @@ pub struct RegisterVerifierInstanceResponseRestDTO {
     pub id: VerifierInstanceId,
 }
 
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(dto::EditVerifierInstanceRequestDTO)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct EditVerifierInstanceRequestRestDTO {
-    pub trust_collections: Vec<TrustCollectionId>,
+    pub trust_collections: Option<Vec<TrustCollectionId>>,
+    pub trusted_issuer_required: Option<bool>,
 }

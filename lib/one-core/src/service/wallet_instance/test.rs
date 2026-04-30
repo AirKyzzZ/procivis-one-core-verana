@@ -7,7 +7,7 @@ use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use super::WalletUnitService;
-use super::dto::{HolderRegisterWalletUnitRequestDTO, WalletProviderDTO};
+use super::dto::{HolderRegisterWalletInstanceRequestDTO, WalletProviderDTO};
 use super::error::HolderWalletInstanceError;
 use crate::config::core_config::CoreConfig;
 use crate::model::common::GetListResponse;
@@ -50,7 +50,7 @@ fn mock_wallet_unit_service() -> WalletUnitService {
         organisation_repository: Arc::new(MockOrganisationRepository::default()),
         key_repository: Arc::new(MockKeyRepository::default()),
         wallet_provider_client: Arc::new(MockWalletProviderClient::default()),
-        holder_wallet_unit_repository: Arc::new(MockHolderWalletInstanceRepository::default()),
+        holder_wallet_instance_repository: Arc::new(MockHolderWalletInstanceRepository::default()),
         history_repository: Arc::new(MockHistoryRepository::default()),
         key_provider: Arc::new(MockKeyProvider::default()),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::default()),
@@ -210,7 +210,7 @@ async fn holder_register_success() {
         organisation_repository: Arc::new(organisation_repository),
         key_repository: Arc::new(key_repository),
         wallet_provider_client: Arc::new(wallet_provider_client),
-        holder_wallet_unit_repository: Arc::new(holder_wallet_unit_repository),
+        holder_wallet_instance_repository: Arc::new(holder_wallet_unit_repository),
         history_repository: Arc::new(history_repository),
         key_provider: Arc::new(key_provider),
         os_info_provider: Arc::new(os_info_provider),
@@ -219,13 +219,14 @@ async fn holder_register_success() {
         ..mock_wallet_unit_service()
     };
 
-    let request = HolderRegisterWalletUnitRequestDTO {
+    let request = HolderRegisterWalletInstanceRequestDTO {
         organisation_id,
         key_type: "EDDSA".to_string(),
         wallet_provider: WalletProviderDTO {
             r#type: WalletProviderType::ProcivisOne,
             url: "https://wallet.provider/register".to_string(),
         },
+        trusted_rp_required: false,
     };
 
     // when
@@ -337,7 +338,7 @@ async fn holder_register_key_attestation_not_supported() {
     let service = WalletUnitService {
         organisation_repository: Arc::new(organisation_repository),
         wallet_provider_client: Arc::new(wallet_provider_client),
-        holder_wallet_unit_repository: Arc::new(holder_wallet_unit_repository),
+        holder_wallet_instance_repository: Arc::new(holder_wallet_unit_repository),
         history_repository: Arc::new(history_repository),
         key_provider: Arc::new(key_provider),
         os_info_provider: Arc::new(os_info_provider),
@@ -346,13 +347,14 @@ async fn holder_register_key_attestation_not_supported() {
         ..mock_wallet_unit_service()
     };
 
-    let request = HolderRegisterWalletUnitRequestDTO {
+    let request = HolderRegisterWalletInstanceRequestDTO {
         organisation_id,
         key_type: "EDDSA".to_string(),
         wallet_provider: WalletProviderDTO {
             r#type: WalletProviderType::ProcivisOne,
             url: "https://wallet.provider/register".to_string(),
         },
+        trusted_rp_required: false,
     };
 
     // when
@@ -397,7 +399,7 @@ async fn holder_wallet_unit_status_check_still_valid() {
         .return_once(|_| Ok(WalletUnitStatusCheckResponse::Active));
 
     let service = WalletUnitService {
-        holder_wallet_unit_repository: Arc::new(holder_wallet_unit_repository),
+        holder_wallet_instance_repository: Arc::new(holder_wallet_unit_repository),
         wallet_unit_proto: Arc::new(wallet_unit_proto),
         ..mock_wallet_unit_service()
     };
@@ -469,7 +471,7 @@ async fn holder_wallet_unit_status_check_revocation() {
         .return_once(|_| Ok(Uuid::new_v4().into()));
 
     let service = WalletUnitService {
-        holder_wallet_unit_repository: Arc::new(holder_wallet_unit_repository),
+        holder_wallet_instance_repository: Arc::new(holder_wallet_unit_repository),
         wallet_unit_proto: Arc::new(wallet_unit_proto),
         history_repository: Arc::new(history_repository),
         ..mock_wallet_unit_service()
@@ -497,7 +499,7 @@ async fn holder_wallet_unit_status_check_not_found() {
         .return_once(|_, _| Ok(None));
 
     let service = WalletUnitService {
-        holder_wallet_unit_repository: Arc::new(holder_wallet_unit_repository),
+        holder_wallet_instance_repository: Arc::new(holder_wallet_unit_repository),
         ..mock_wallet_unit_service()
     };
 
@@ -540,7 +542,7 @@ async fn holder_wallet_unit_status_check_already_revoked() {
     let wallet_unit_proto = MockHolderWalletUnitProto::new();
 
     let service = WalletUnitService {
-        holder_wallet_unit_repository: Arc::new(holder_wallet_unit_repository),
+        holder_wallet_instance_repository: Arc::new(holder_wallet_unit_repository),
         wallet_unit_proto: Arc::new(wallet_unit_proto),
         ..mock_wallet_unit_service()
     };
@@ -600,18 +602,19 @@ async fn holder_register_already_exists() {
 
     let service = WalletUnitService {
         organisation_repository: Arc::new(organisation_repository),
-        holder_wallet_unit_repository: Arc::new(holder_wallet_unit_repository),
+        holder_wallet_instance_repository: Arc::new(holder_wallet_unit_repository),
         config: Arc::new(generic_config().core),
         ..mock_wallet_unit_service()
     };
 
-    let request = HolderRegisterWalletUnitRequestDTO {
+    let request = HolderRegisterWalletInstanceRequestDTO {
         organisation_id,
         key_type: "EDDSA".to_string(),
         wallet_provider: WalletProviderDTO {
             r#type: WalletProviderType::ProcivisOne,
             url: "https://wallet.provider/register".to_string(),
         },
+        trusted_rp_required: false,
     };
 
     // when

@@ -29,7 +29,7 @@ mod test;
 pub struct WalletUnitService {
     key_repository: Arc<dyn KeyRepository>,
     organisation_repository: Arc<dyn OrganisationRepository>,
-    holder_wallet_unit_repository: Arc<dyn HolderWalletInstanceRepository>,
+    holder_wallet_instance_repository: Arc<dyn HolderWalletInstanceRepository>,
     history_repository: Arc<dyn HistoryRepository>,
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -82,7 +82,7 @@ impl WalletUnitService {
             trust_subscription_repository,
             tx_manager,
             organisation_repository,
-            holder_wallet_unit_repository,
+            holder_wallet_instance_repository: holder_wallet_unit_repository,
             history_repository,
             clock,
             base_url,

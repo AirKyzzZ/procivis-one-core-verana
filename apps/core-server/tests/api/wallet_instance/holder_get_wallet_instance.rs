@@ -41,6 +41,7 @@ async fn test_get_wallet_unit_holder_details_successfully() {
                 wallet_provider_name: Some("PROCIVIS_ONE".to_string()),
                 wallet_provider_url: Some("https://wallet.provider".to_string()),
                 provider_wallet_unit_id: Some(Uuid::new_v4().into()),
+                ..Default::default()
             },
         )
         .await;

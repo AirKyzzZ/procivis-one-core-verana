@@ -129,6 +129,7 @@ async fn test_register_verifier_instance_success() {
         organisation_id,
         r#type: "PROCIVIS_ONE".to_string(),
         verifier_provider_url: "https://verifier.provider".to_string(),
+        trusted_issuer_required: false,
     };
 
     // when
