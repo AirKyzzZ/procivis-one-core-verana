@@ -196,7 +196,7 @@ pub enum ErrorCode {
     #[strum(message = "Engagement missing for ISO mDL flow")]
     BR_0079,
 
-    #[strum(message = "Wallet unit must be active")]
+    #[strum(message = "Wallet instance must be active")]
     BR_0081,
 
     #[strum(message = "Invalid DCQL query or presentation definition")]
@@ -343,7 +343,7 @@ pub enum ErrorCode {
     #[strum(message = "Invalid mdl request")]
     BR_0147,
 
-    #[strum(message = "Invalid wallet unit attestation nonce")]
+    #[strum(message = "Invalid wallet instance attestation nonce")]
     BR_0153,
 
     #[strum(message = "Key storage not supported for proof request")]
@@ -364,7 +364,7 @@ pub enum ErrorCode {
     #[strum(message = "Proof schema: claim schemas empty")]
     BR_0164,
 
-    #[strum(message = "Wallet unit must be in pending")]
+    #[strum(message = "Wallet instance must be in pending state")]
     BR_0168,
 
     #[strum(message = "User Provided incorrect user code")]
@@ -561,19 +561,19 @@ pub enum ErrorCode {
     #[strum(message = "Minimum refresh time not reached")]
     BR_0258,
 
-    #[strum(message = "Wallet unit not found")]
+    #[strum(message = "Wallet instance not found")]
     BR_0259,
 
     #[strum(message = "Wallet provider not enabled in config")]
     BR_0260,
 
-    #[strum(message = "Wallet unit revoked")]
+    #[strum(message = "Wallet instance revoked")]
     BR_0261,
 
-    #[strum(message = "Cannot fetch wallet unit attestation")]
+    #[strum(message = "Cannot fetch wallet instance attestation")]
     BR_0264,
 
-    #[strum(message = "Invalid wallet unit state")]
+    #[strum(message = "Invalid wallet instance state")]
     BR_0265,
 
     #[strum(message = "App integrity validation failed")]
@@ -586,11 +586,11 @@ pub enum ErrorCode {
     BR_0269,
 
     #[strum(
-        message = "App integrity check required: proof and public key must only be provided on wallet unit activation"
+        message = "App integrity check required: proof and public key must only be provided on wallet instance activation"
     )]
     BR_0270,
 
-    #[strum(message = "Wallet unit already exists")]
+    #[strum(message = "Wallet instance already exists")]
     BR_0271,
 
     #[strum(message = "Engagement provided for non ISO mDL flow")]
@@ -647,7 +647,7 @@ pub enum ErrorCode {
     #[strum(message = "Invalid wallet provider Url")]
     BR_0295,
 
-    #[strum(message = "Holder wallet unit not found")]
+    #[strum(message = "Holder wallet instance not found")]
     BR_0296,
 
     #[strum(message = "Insufficient security level")]

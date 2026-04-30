@@ -37,9 +37,7 @@ async fn create_holder_wallet_instance_success() {
 
     let id = Uuid::new_v4().into();
     let result = provider
-        .create_holder_wallet_instance(
-            instance_to_create_request(test_wallet_instance(id, organisation, key)).await,
-        )
+        .create(instance_to_create_request(test_wallet_instance(id, organisation, key)).await)
         .await;
 
     assert!(result.is_ok());
@@ -59,14 +57,12 @@ async fn get_holder_wallet_instance_success() {
 
     let id = Uuid::new_v4().into();
     provider
-        .create_holder_wallet_instance(
-            instance_to_create_request(test_wallet_instance(id, organisation, key)).await,
-        )
+        .create(instance_to_create_request(test_wallet_instance(id, organisation, key)).await)
         .await
         .unwrap();
 
     let result = provider
-        .get_holder_wallet_instance(&id, &HolderWalletInstanceRelations::default())
+        .get(&id, &HolderWalletInstanceRelations::default())
         .await
         .unwrap()
         .unwrap();
@@ -87,7 +83,7 @@ async fn update_holder_wallet_instance_success() {
 
     let id = Uuid::new_v4().into();
     provider
-        .create_holder_wallet_instance(
+        .create(
             instance_to_create_request(test_wallet_instance(id, organisation.clone(), key.clone()))
                 .await,
         )
@@ -111,13 +107,10 @@ async fn update_holder_wallet_instance_success() {
         trusted_rp_required: None,
     };
 
-    provider
-        .update_holder_wallet_instance(&id, update_request)
-        .await
-        .unwrap();
+    provider.update(&id, update_request).await.unwrap();
 
     let reloaded = provider
-        .get_holder_wallet_instance(
+        .get(
             &id,
             &HolderWalletInstanceRelations {
                 wallet_unit_attestations: Some(WalletInstanceAttestationRelations {

@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use VerifierInstanceFilterValue::OrganisationIds;
 use futures::FutureExt;
 use one_dto_mapper::convert_inner;
 use shared_types::VerifierInstanceId;
@@ -14,7 +15,9 @@ use super::dto::{
 use super::error::VerifierInstanceServiceError;
 use crate::error::ContextWithErrorCode;
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
-use crate::model::verifier_instance::VerifierInstance;
+use crate::model::list_filter::ListFilterValue;
+use crate::model::list_query::ListQuery;
+use crate::model::verifier_instance::{VerifierInstance, VerifierInstanceFilterValue};
 use crate::proto::session_provider::SessionExt;
 use crate::service::wallet_instance::dto::TrustCollectionsDetailResponseDTO;
 use crate::service::wallet_instance::mapper::{
@@ -48,9 +51,14 @@ impl VerifierInstanceService {
 
         if let Some(verifier_instance) = self
             .verifier_instance_repository
-            .get_by_org_id(&request.organisation_id)
+            .list(ListQuery {
+                filtering: Some(OrganisationIds(vec![organisation_id]).condition()),
+                ..Default::default()
+            })
             .await
             .error_while("checking presence of verifier instance")?
+            .values
+            .first()
         {
             return Err(VerifierInstanceServiceError::VerifierInstanceAlreadyExists(
                 verifier_instance.id,

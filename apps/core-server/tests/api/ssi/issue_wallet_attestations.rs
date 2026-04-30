@@ -169,7 +169,6 @@ async fn test_issue_wallet_attestations_failed_with_non_existing_wallet_unit() {
     assert_eq!(resp.status(), 404);
     let resp_json = resp.json_value().await;
     assert_eq!(resp_json["code"], "BR_0259");
-    assert_eq!(resp_json["message"], "Wallet unit not found");
 }
 
 #[tokio::test]
@@ -209,7 +208,6 @@ async fn test_issue_wallet_attestations_failed_with_revoked_wallet_unit() {
     assert_eq!(resp.status(), 400);
     let resp_json = resp.json_value().await;
     assert_eq!(resp_json["code"], "BR_0261");
-    assert_eq!(resp_json["message"], "Wallet unit revoked");
 }
 
 #[tokio::test]

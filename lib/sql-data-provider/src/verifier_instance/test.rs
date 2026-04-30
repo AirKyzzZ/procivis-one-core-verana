@@ -50,29 +50,6 @@ async fn get_verifier_instance_success() {
     assert_eq!(result.id, id);
 }
 
-#[tokio::test]
-async fn get_by_org_id_success() {
-    let TestSetup {
-        provider,
-        organisation,
-    } = setup_empty().await;
-
-    let id = Uuid::new_v4().into();
-    provider
-        .create(test_verifier_instance(id, organisation.clone()))
-        .await
-        .unwrap();
-
-    let result = provider
-        .get_by_org_id(&organisation.id)
-        .await
-        .unwrap()
-        .unwrap();
-
-    // no relations
-    assert_eq!(result.id, id);
-}
-
 fn test_verifier_instance(id: VerifierInstanceId, organisation: Organisation) -> VerifierInstance {
     let now = one_core::clock::now_utc();
     VerifierInstance {

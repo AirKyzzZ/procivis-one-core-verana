@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::sync::Arc;
 
+use HolderWalletInstanceFilterValue::OrganisationIds;
 use shared_types::OrganisationId;
 use standardized_types::jwk::PublicJwk;
 use time::Duration;
@@ -15,7 +16,9 @@ use super::model::{
 use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::x5c_into_pem_chain;
 use crate::model::did::KeyRole;
+use crate::model::holder_wallet_instance::HolderWalletInstanceFilterValue;
 use crate::model::list_filter::ListFilterValue;
+use crate::model::list_query::ListQuery;
 use crate::model::trust_collection::{TrustCollectionFilterValue, TrustCollectionListQuery};
 use crate::model::trust_list_role::TrustListRoleEnum;
 use crate::model::trust_list_subscription::{
@@ -316,17 +319,21 @@ impl WRPValidatorImpl {
         &self,
         organisation_id: OrganisationId,
     ) -> Result<(), WRPValidatorError> {
-        let holder_wallet_unit = self
+        let list = self
             .holder_wallet_unit_repository
-            .get_holder_wallet_instance_by_org_id(&organisation_id)
+            .list(ListQuery {
+                filtering: Some(OrganisationIds(vec![organisation_id]).condition()),
+                ..Default::default()
+            })
             .await
-            .error_while("getting holder wallet unit")?
-            // if holder wallet unit not registered, it means the trust management was not setup, thus disabled
-            .ok_or(WRPValidatorError::TrustManagementDisabled)?;
+            .error_while("getting holder wallet instance")?;
+        let Some(holder_wallet_instance) = list.values.into_iter().next() else {
+            return Err(WRPValidatorError::TrustManagementDisabled);
+        };
 
         let metadata = self
             .wallet_provider_client
-            .get_wallet_provider_metadata(holder_wallet_unit.into())
+            .get_wallet_provider_metadata(holder_wallet_instance.into())
             .await
             .error_while("getting wallet provider metadata")?;
 

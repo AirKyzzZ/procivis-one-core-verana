@@ -4,8 +4,8 @@ use one_core::model::verifier_instance::{
 };
 use one_core::repository::error::DataLayerError;
 use one_core::repository::verifier_instance_repository::VerifierInstanceRepository;
-use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder};
-use shared_types::{OrganisationId, VerifierInstanceId};
+use sea_orm::{ActiveModelTrait, EntityTrait, QueryOrder};
+use shared_types::VerifierInstanceId;
 
 use super::VerifierInstanceProvider;
 use crate::common::list_query_with_custom_model;
@@ -42,18 +42,6 @@ impl VerifierInstanceRepository for VerifierInstanceProvider {
             model,
             &self.organisation_repository,
         )))
-    }
-
-    async fn get_by_org_id(
-        &self,
-        organisation_id: &OrganisationId,
-    ) -> Result<Option<VerifierInstance>, DataLayerError> {
-        let model = verifier_instance::Entity::find()
-            .filter(verifier_instance::Column::OrganisationId.eq(organisation_id))
-            .one(&self.db)
-            .await
-            .map_err(to_data_layer_error)?;
-        Ok(model.map(|m| verifier_instance_from_model(m, &self.organisation_repository)))
     }
 
     async fn list(

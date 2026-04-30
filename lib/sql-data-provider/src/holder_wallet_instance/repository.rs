@@ -7,10 +7,8 @@ use one_core::model::holder_wallet_instance::{
 };
 use one_core::repository::error::DataLayerError;
 use one_core::repository::holder_wallet_instance_repository::HolderWalletInstanceRepository;
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set, Unchanged,
-};
-use shared_types::{HolderWalletInstanceId, OrganisationId};
+use sea_orm::{ActiveModelTrait, EntityTrait, QueryOrder, Set, Unchanged};
+use shared_types::HolderWalletInstanceId;
 
 use crate::common::list_query_with_custom_model;
 use crate::entity::holder_wallet_instance;
@@ -21,7 +19,7 @@ use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 
 #[async_trait]
 impl HolderWalletInstanceRepository for HolderWalletInstanceProvider {
-    async fn create_holder_wallet_instance(
+    async fn create(
         &self,
         request: CreateHolderWalletInstanceRequest,
     ) -> Result<HolderWalletInstanceId, DataLayerError> {
@@ -33,7 +31,7 @@ impl HolderWalletInstanceRepository for HolderWalletInstanceProvider {
         Ok(model.id)
     }
 
-    async fn get_holder_wallet_instance(
+    async fn get(
         &self,
         id: &HolderWalletInstanceId,
         relations: &HolderWalletInstanceRelations,
@@ -74,19 +72,7 @@ impl HolderWalletInstanceRepository for HolderWalletInstanceProvider {
         Ok(Some(holder_wallet_unit))
     }
 
-    async fn get_holder_wallet_instance_by_org_id(
-        &self,
-        organisation_id: &OrganisationId,
-    ) -> Result<Option<HolderWalletInstance>, DataLayerError> {
-        let model = holder_wallet_instance::Entity::find()
-            .filter(holder_wallet_instance::Column::OrganisationId.eq(organisation_id))
-            .one(&self.db)
-            .await
-            .map_err(to_data_layer_error)?;
-        Ok(model.map(|m| holder_wallet_instance_from_model(m, &self.organisation_repository)))
-    }
-
-    async fn update_holder_wallet_instance(
+    async fn update(
         &self,
         id: &HolderWalletInstanceId,
         request: UpdateHolderWalletInstanceRequest,
@@ -134,7 +120,7 @@ impl HolderWalletInstanceRepository for HolderWalletInstanceProvider {
         self.db.tx(action).await?
     }
 
-    async fn list_holder_wallet_instance(
+    async fn list(
         &self,
         query_params: HolderWalletInstanceListQuery,
     ) -> Result<GetHolderWalletInstanceList, DataLayerError> {

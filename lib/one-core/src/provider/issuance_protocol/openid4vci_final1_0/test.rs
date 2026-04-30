@@ -31,6 +31,7 @@ use crate::config::core_config::{
 use crate::mapper::x509::x5c_into_pem_chain;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
+use crate::model::common::GetListResponse;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, LayoutType};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
@@ -599,9 +600,9 @@ async fn test_holder_accept_credential_success() {
 
     let mut holder_wallet_unit_repository = MockHolderWalletInstanceRepository::new();
     holder_wallet_unit_repository
-        .expect_get_holder_wallet_instance_by_org_id()
+        .expect_list()
         .once()
-        .return_once(|_| Ok(None));
+        .return_once(|_| Ok(GetListResponse::empty()));
 
     let openid_provider = setup_protocol(TestInputs {
         formatter_provider,
@@ -845,9 +846,9 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
 
     let mut holder_wallet_unit_repository = MockHolderWalletInstanceRepository::new();
     holder_wallet_unit_repository
-        .expect_get_holder_wallet_instance_by_org_id()
+        .expect_list()
         .once()
-        .return_once(|_| Ok(None));
+        .return_once(|_| Ok(GetListResponse::empty()));
 
     let openid_provider = setup_protocol(TestInputs {
         formatter_provider,
@@ -1147,9 +1148,9 @@ async fn test_holder_accept_credential_autogenerate_holder_binding() {
 
     let mut holder_wallet_unit_repository = MockHolderWalletInstanceRepository::new();
     holder_wallet_unit_repository
-        .expect_get_holder_wallet_instance_by_org_id()
+        .expect_list()
         .once()
-        .return_once(|_| Ok(None));
+        .return_once(|_| Ok(GetListResponse::empty()));
 
     let openid_provider = setup_protocol(TestInputs {
         formatter_provider,
@@ -2125,9 +2126,9 @@ async fn test_holder_accept_credential_fails_without_wallet_unit_id_when_key_att
 
     let mut holder_wallet_unit_repository = MockHolderWalletInstanceRepository::new();
     holder_wallet_unit_repository
-        .expect_get_holder_wallet_instance_by_org_id()
+        .expect_list()
         .once()
-        .return_once(|_| Ok(None));
+        .return_once(|_| Ok(GetListResponse::empty()));
 
     let openid_provider = setup_protocol(TestInputs {
         key_security_level_provider,
@@ -2380,10 +2381,10 @@ async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_att
 
     let mut holder_wallet_unit_repository = MockHolderWalletInstanceRepository::new();
     holder_wallet_unit_repository
-        .expect_get_holder_wallet_instance_by_org_id()
+        .expect_list()
         .once()
         .return_once(|_| {
-            Ok(Some(HolderWalletInstance {
+            Ok(GetListResponse::one(HolderWalletInstance {
                 id: Uuid::new_v4().into(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),

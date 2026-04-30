@@ -98,7 +98,7 @@ pub struct HolderWalletUnitProtoImpl {
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     wallet_provider_client: Arc<dyn WalletProviderClient>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
-    holder_wallet_unit_repository: Arc<dyn HolderWalletInstanceRepository>,
+    holder_wallet_instance_repository: Arc<dyn HolderWalletInstanceRepository>,
     certificate_validator: Arc<dyn CertificateValidator>,
 }
 
@@ -116,7 +116,7 @@ impl HolderWalletUnitProtoImpl {
             key_algorithm_provider,
             wallet_provider_client,
             revocation_method_provider,
-            holder_wallet_unit_repository,
+            holder_wallet_instance_repository: holder_wallet_unit_repository,
             certificate_validator,
         }
     }
@@ -326,9 +326,9 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
         &self,
         holder_wallet_unit_id: &HolderWalletInstanceId,
     ) -> Result<Key, Error> {
-        let holder_wallet_unit = self
-            .holder_wallet_unit_repository
-            .get_holder_wallet_instance(
+        let holder_wallet_instance = self
+            .holder_wallet_instance_repository
+            .get(
                 holder_wallet_unit_id,
                 &HolderWalletInstanceRelations {
                     authentication_key: Some(KeyRelations::default()),
@@ -341,7 +341,7 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
                 "holder wallet unit not found".to_string(),
             ))?;
 
-        holder_wallet_unit
+        holder_wallet_instance
             .authentication_key
             .ok_or(Error::MappingError(
                 "holder wallet unit authentication key not found".to_string(),
@@ -353,9 +353,9 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
         holder_wallet_unit_id: &HolderWalletInstanceId,
         request: IssueWalletAttestationRequest<'a>,
     ) -> Result<IssueWalletUnitAttestationResponseDTO, Error> {
-        let holder_wallet_unit = self
-            .holder_wallet_unit_repository
-            .get_holder_wallet_instance(
+        let holder_wallet_instance = self
+            .holder_wallet_instance_repository
+            .get(
                 holder_wallet_unit_id,
                 &HolderWalletInstanceRelations {
                     authentication_key: Some(KeyRelations::default()),
@@ -369,7 +369,7 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
             ))?;
 
         let authentication_key =
-            holder_wallet_unit
+            holder_wallet_instance
                 .authentication_key
                 .as_ref()
                 .ok_or(Error::MappingError(
@@ -380,7 +380,7 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
             IssueWalletAttestationRequest::Wia | IssueWalletAttestationRequest::WuaAndWia(_, _) => {
                 let proof = self
                     .create_proof_of_key_possesion(
-                        &holder_wallet_unit.wallet_provider_url,
+                        &holder_wallet_instance.wallet_provider_url,
                         authentication_key,
                     )
                     .await?;
@@ -396,7 +396,7 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
             | IssueWalletAttestationRequest::Wua(attested_key, security_level) => {
                 let proof = self
                     .create_proof_of_key_possesion(
-                        &holder_wallet_unit.wallet_provider_url,
+                        &holder_wallet_instance.wallet_provider_url,
                         attested_key,
                     )
                     .await?;
@@ -410,7 +410,7 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
 
         let bearer_token = self
             .create_proof_of_key_possesion(
-                &holder_wallet_unit.wallet_provider_url,
+                &holder_wallet_instance.wallet_provider_url,
                 authentication_key,
             )
             .await?;
@@ -418,8 +418,8 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
         let issuance_result = self
             .wallet_provider_client
             .issue_attestation(
-                &holder_wallet_unit.wallet_provider_url,
-                holder_wallet_unit.provider_wallet_unit_id,
+                &holder_wallet_instance.wallet_provider_url,
+                holder_wallet_instance.provider_wallet_unit_id,
                 &bearer_token,
                 IssueWalletUnitAttestationRequestDTO {
                     wia: wia_proof,

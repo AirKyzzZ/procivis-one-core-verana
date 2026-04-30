@@ -727,13 +727,9 @@ async fn test_add_entry_includes_certificate_in_digital_identity() {
         Ok(id)
     });
     let se = stored_entries.clone();
-    entry_repo.expect_list().returning(move |_, _| {
-        Ok(GetListResponse {
-            values: se.lock().unwrap().clone(),
-            total_pages: 1,
-            total_items: 0,
-        })
-    });
+    entry_repo
+        .expect_list()
+        .returning(move |_, _| Ok(GetListResponse::one_page_of(se.lock().unwrap().clone())));
 
     let mut identifier_repo = MockIdentifierRepository::new();
     identifier_repo

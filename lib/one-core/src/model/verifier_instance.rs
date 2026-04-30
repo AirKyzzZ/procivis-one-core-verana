@@ -1,4 +1,4 @@
-use shared_types::VerifierInstanceId;
+use shared_types::{OrganisationId, VerifierInstanceId};
 use time::OffsetDateTime;
 
 use crate::model::common::GetListResponse;
@@ -24,7 +24,9 @@ pub struct VerifierInstance {
 pub enum SortableVerifierInstanceColumn {}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub enum VerifierInstanceFilterValue {}
+pub enum VerifierInstanceFilterValue {
+    OrganisationIds(Vec<OrganisationId>),
+}
 
 impl ListFilterValue for VerifierInstanceFilterValue {}
 

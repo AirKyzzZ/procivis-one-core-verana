@@ -68,10 +68,13 @@ use crate::model::credential_schema::{
 use crate::model::did::KeyRole;
 use crate::model::history::{HistoryAction, HistoryMetadata, WalletRelyingPartyMetadata};
 use crate::model::holder_wallet_instance::HolderWalletInstance;
+use crate::model::holder_wallet_instance::HolderWalletInstanceFilterValue::OrganisationIds;
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierType};
 use crate::model::identifier_trust_information::{IdentifierTrustInformation, SchemaFormat};
 use crate::model::interaction::{Interaction, UpdateInteractionRequest};
 use crate::model::key::{Key, KeyRelations};
+use crate::model::list_filter::ListFilterValue;
+use crate::model::list_query::ListQuery;
 use crate::model::organisation::Organisation;
 use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
 use crate::model::wallet_instance::WalletInstanceStatus;
@@ -797,12 +800,15 @@ impl OpenID4VCIFinal1_0 {
         &self,
         organisation_id: OrganisationId,
     ) -> Result<Option<HolderWalletInstance>, IssuanceProtocolError> {
-        let wallet_unit = self
+        let list = self
             .holder_wallet_unit_repository
-            .get_holder_wallet_instance_by_org_id(&organisation_id)
+            .list(ListQuery {
+                filtering: Some(OrganisationIds(vec![organisation_id]).condition()),
+                ..Default::default()
+            })
             .await
-            .error_while("fetching wallet unit")?;
-        Ok(wallet_unit)
+            .error_while("getting holder wallet instance")?;
+        Ok(list.values.into_iter().next())
     }
 
     async fn holder_process_accepted_credential(

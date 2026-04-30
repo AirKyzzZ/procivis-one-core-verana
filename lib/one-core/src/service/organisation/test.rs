@@ -9,6 +9,7 @@ use super::OrganisationService;
 use super::dto::{CreateOrganisationRequestDTO, OrganisationFilterParamsDTO};
 use super::error::OrganisationServiceError;
 use crate::error::{ErrorCode, ErrorCodeMixin};
+use crate::model::common::GetListResponse;
 use crate::model::organisation::{GetOrganisationList, OrganisationListQuery};
 use crate::repository::error::DataLayerError;
 use crate::repository::holder_wallet_instance_repository::MockHolderWalletInstanceRepository;
@@ -110,9 +111,9 @@ async fn test_get_organisation_success() {
 
     let mut holder_wallet_instance_repository = MockHolderWalletInstanceRepository::new();
     holder_wallet_instance_repository
-        .expect_get_holder_wallet_instance_by_org_id()
+        .expect_list()
         .times(1)
-        .returning(|_| Ok(None));
+        .returning(|_| Ok(GetListResponse::empty()));
 
     let service =
         setup_service_with_mocks(organisation_repository, holder_wallet_instance_repository);

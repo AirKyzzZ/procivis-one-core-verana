@@ -8,6 +8,7 @@ use uuid::Uuid;
 
 use super::VerifierInstanceService;
 use super::dto::RegisterVerifierInstanceRequestDTO;
+use crate::model::common::GetListResponse;
 use crate::model::trust_collection::{GetTrustCollectionList, TrustCollection};
 use crate::model::trust_list_subscription::GetTrustListSubscriptionList;
 use crate::model::verifier_instance::VerifierInstance;
@@ -70,12 +71,9 @@ async fn test_register_verifier_instance_success() {
 
     let mut verifier_instance_repository = MockVerifierInstanceRepository::new();
     verifier_instance_repository
-        .expect_get_by_org_id()
+        .expect_list()
         .once()
-        .return_once(move |id| {
-            check!(id == &organisation_id);
-            Ok(None)
-        });
+        .return_once(|_| Ok(GetListResponse::empty()));
     verifier_instance_repository
         .expect_create()
         .once()

@@ -6,9 +6,10 @@ use one_core::model::verifier_instance::{
     SortableVerifierInstanceColumn, VerifierInstance, VerifierInstanceFilterValue,
 };
 use one_core::repository::organisation_repository::OrganisationRepository;
-use sea_orm::sea_query::SimpleExpr;
-use sea_orm::{Condition, Set};
+use sea_orm::sea_query::{IntoCondition, SimpleExpr};
+use sea_orm::{ColumnTrait, Condition, Set};
 
+use crate::entity::verifier_instance;
 use crate::entity::verifier_instance::{ActiveModel, Model};
 use crate::list_query_generic::{IntoFilterCondition, IntoSortingColumn};
 
@@ -51,6 +52,10 @@ impl IntoSortingColumn for SortableVerifierInstanceColumn {
 }
 impl IntoFilterCondition for VerifierInstanceFilterValue {
     fn get_condition(self, _entire_filter: &ListFilterCondition<Self>) -> Condition {
-        match self {}
+        match self {
+            Self::OrganisationIds(organisation_ids) => verifier_instance::Column::OrganisationId
+                .is_in(organisation_ids)
+                .into_condition(),
+        }
     }
 }

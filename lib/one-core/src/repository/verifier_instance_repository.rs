@@ -1,4 +1,4 @@
-use shared_types::{OrganisationId, VerifierInstanceId};
+use shared_types::VerifierInstanceId;
 
 use crate::model::verifier_instance::{
     GetVerifierInstanceList, VerifierInstance, VerifierInstanceListQuery,
@@ -14,11 +14,6 @@ pub trait VerifierInstanceRepository: Send + Sync {
     async fn get(
         &self,
         id: &VerifierInstanceId,
-    ) -> Result<Option<VerifierInstance>, DataLayerError>;
-
-    async fn get_by_org_id(
-        &self,
-        organisation_id: &OrganisationId,
     ) -> Result<Option<VerifierInstance>, DataLayerError>;
 
     async fn list(

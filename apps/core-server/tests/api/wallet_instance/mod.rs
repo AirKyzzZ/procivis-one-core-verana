@@ -9,11 +9,11 @@ use standardized_types::jwk::PublicJwk;
 use time::Duration;
 
 pub mod get_wallet_instance_tests;
-pub mod holder_edit_wallet_unit;
-pub mod holder_get_wallet_unit;
-pub mod holder_register_wallet_unit;
-pub mod holder_wallet_unit_status_tests;
-pub mod holder_wallet_unit_trust_collections;
+pub mod holder_edit_wallet_instance;
+pub mod holder_get_wallet_instance;
+pub mod holder_register_wallet_instance;
+pub mod holder_wallet_instance_status_tests;
+pub mod holder_wallet_instance_trust_collections;
 pub mod list_wallet_instance_tests;
 pub mod revoke_wallet_instance_tests;
 

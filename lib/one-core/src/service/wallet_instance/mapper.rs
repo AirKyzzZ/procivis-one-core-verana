@@ -4,7 +4,7 @@ use one_dto_mapper::convert_inner;
 use shared_types::{KeyId, OrganisationId, TrustCollectionId};
 
 use super::dto::{HolderWalletUnitResponseDTO, TrustCollectionInfoDTO};
-use super::error::HolderWalletUnitError;
+use super::error::HolderWalletInstanceError;
 use crate::error::ContextWithErrorCode;
 use crate::model::holder_wallet_instance::HolderWalletInstance;
 use crate::model::key::Key;
@@ -74,7 +74,7 @@ pub(crate) async fn prepare_trust_collection_info(
     trust_subscription_repository: &dyn TrustListSubscriptionRepository,
     provider_metadata_trust_collections: Vec<ProviderTrustCollectionDTO>,
     organisation_id: OrganisationId,
-) -> Result<Vec<TrustCollectionInfoDTO>, HolderWalletUnitError> {
+) -> Result<Vec<TrustCollectionInfoDTO>, HolderWalletInstanceError> {
     let local_trust_collections = trust_collection_repository
         .list(TrustCollectionListQuery {
             filtering: Some(
@@ -91,7 +91,7 @@ pub(crate) async fn prepare_trust_collection_info(
         .values;
 
     if provider_metadata_trust_collections.len() != local_trust_collections.len() {
-        return Err(HolderWalletUnitError::TrustCollectionsNotInSync);
+        return Err(HolderWalletInstanceError::TrustCollectionsNotInSync);
     }
 
     let mut local_id_to_metadata = HashMap::<TrustCollectionId, ProviderTrustCollectionDTO>::new();
@@ -99,7 +99,7 @@ pub(crate) async fn prepare_trust_collection_info(
         let local_collection = local_trust_collections
             .iter()
             .find(|lc| lc.name == metadata_collection.name)
-            .ok_or(HolderWalletUnitError::TrustCollectionsNotInSync)?;
+            .ok_or(HolderWalletInstanceError::TrustCollectionsNotInSync)?;
 
         local_id_to_metadata.insert(local_collection.id, metadata_collection);
     }
@@ -138,7 +138,7 @@ pub(crate) async fn set_active_trust_collections(
     trust_collection_repository: &dyn TrustCollectionRepository,
     trust_subscription_repository: &dyn TrustListSubscriptionRepository,
     trust_list_subscription_sync: &dyn TrustListSubscriptionSync,
-) -> Result<(), HolderWalletUnitError> {
+) -> Result<(), HolderWalletInstanceError> {
     let all_trust_collections = trust_collection_repository
         .list(TrustCollectionListQuery {
             filtering: Some(
@@ -188,7 +188,7 @@ pub(crate) async fn set_active_trust_collections(
         let collection = all_trust_collections
             .iter()
             .find(|c| c.id == requested)
-            .ok_or(HolderWalletUnitError::MissingTrustCollection(requested))?;
+            .ok_or(HolderWalletInstanceError::MissingTrustCollection(requested))?;
 
         trust_list_subscription_sync
             .sync_subscriptions(collection)

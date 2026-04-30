@@ -1,4 +1,4 @@
-use shared_types::{HolderWalletInstanceId, WalletInstanceId};
+use shared_types::{HolderWalletInstanceId, OrganisationId, WalletInstanceId};
 use time::OffsetDateTime;
 
 use crate::model::common::GetListResponse;
@@ -64,6 +64,7 @@ pub enum SortableHolderWalletInstanceColumn {}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum HolderWalletInstanceFilterValue {
+    OrganisationIds(Vec<OrganisationId>),
     Status(WalletInstanceStatus),
 }
 

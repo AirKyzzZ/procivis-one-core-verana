@@ -15,16 +15,19 @@ use super::dto::{
     HolderWalletUnitRegisterResponseDTO, HolderWalletUnitResponseDTO, NoncePayload,
     TrustCollectionsDetailResponseDTO,
 };
-use super::error::HolderWalletUnitError;
+use super::error::HolderWalletInstanceError;
 use super::mapper::{key_from_generated_key, prepare_trust_collection_info};
 use crate::config::core_config::{KeyAlgorithmType, KeyStorageType};
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
+use crate::model::holder_wallet_instance::HolderWalletInstanceFilterValue::OrganisationIds;
 use crate::model::holder_wallet_instance::{
     CreateHolderWalletInstanceRequest, HolderWalletInstanceRelations,
     UpdateHolderWalletInstanceRequest,
 };
 use crate::model::key::{Key, KeyRelations};
+use crate::model::list_filter::ListFilterValue;
+use crate::model::list_query::ListQuery;
 use crate::model::organisation::Organisation;
 use crate::model::wallet_instance::{WalletInstanceOs, WalletInstanceStatus};
 use crate::model::wallet_instance_attestation::WalletInstanceAttestationRelations;
@@ -47,7 +50,7 @@ impl WalletUnitService {
     pub async fn holder_register(
         &self,
         request: HolderRegisterWalletUnitRequestDTO,
-    ) -> Result<HolderWalletUnitRegisterResponseDTO, HolderWalletUnitError> {
+    ) -> Result<HolderWalletUnitRegisterResponseDTO, HolderWalletInstanceError> {
         throw_if_org_id_not_matching_session(&request.organisation_id, &*self.session_provider)
             .error_while("checking session")?;
         let organisation = self
@@ -55,23 +58,28 @@ impl WalletUnitService {
             .get_organisation(&request.organisation_id)
             .await
             .error_while("getting organisation")?
-            .ok_or(HolderWalletUnitError::MissingOrganisation(
+            .ok_or(HolderWalletInstanceError::MissingOrganisation(
                 request.organisation_id,
             ))?;
 
         if organisation.deactivated_at.is_some() {
-            return Err(HolderWalletUnitError::OrganisationIsDeactivated(
+            return Err(HolderWalletInstanceError::OrganisationIsDeactivated(
                 request.organisation_id,
             ));
         }
 
         if let Some(wallet_unit) = self
             .holder_wallet_unit_repository
-            .get_holder_wallet_instance_by_org_id(&request.organisation_id)
+            .list(ListQuery {
+                filtering: Some(OrganisationIds(vec![request.organisation_id]).condition()),
+                ..Default::default()
+            })
             .await
-            .error_while("checking presence of wallet unit")?
+            .error_while("checking presence of wallet instance")?
+            .values
+            .first()
         {
-            return Err(HolderWalletUnitError::WalletUnitAlreadyExists(
+            return Err(HolderWalletInstanceError::WalletInstanceAlreadyExists(
                 wallet_unit.id,
             ));
         }
@@ -94,23 +102,23 @@ impl WalletUnitService {
             .error_while("finding key storage")?;
 
         let key_type = KeyAlgorithmType::from_str(&request.key_type)
-            .map_err(|err| HolderWalletUnitError::InvalidKeyAlgorithm(err.to_string()))?;
+            .map_err(|err| HolderWalletInstanceError::InvalidKeyAlgorithm(err.to_string()))?;
 
         // Ensure the key type is known and enabled
         if let Some(key_algorithm) = self.config.key_algorithm.get(&key_type) {
             if !key_algorithm.enabled {
-                return Err(HolderWalletUnitError::InvalidKeyAlgorithm(
+                return Err(HolderWalletInstanceError::InvalidKeyAlgorithm(
                     request.key_type.clone(),
                 ));
             }
         } else {
-            return Err(HolderWalletUnitError::InvalidKeyAlgorithm(
+            return Err(HolderWalletInstanceError::InvalidKeyAlgorithm(
                 request.key_type.clone(),
             ));
         }
 
         let wallet_provider_url = Url::from_str(&request.wallet_provider.url)
-            .map_err(HolderWalletUnitError::InvalidWalletProviderUrl)?
+            .map_err(HolderWalletInstanceError::InvalidWalletProviderUrl)?
             .origin()
             .ascii_serialization();
         let metadata = self
@@ -165,7 +173,7 @@ impl WalletUnitService {
         };
         let holder_wallet_unit_id = self
             .holder_wallet_unit_repository
-            .create_holder_wallet_instance(wallet_unit_request)
+            .create(wallet_unit_request)
             .await
             .error_while("creating holder wallet unit")?;
 
@@ -217,10 +225,10 @@ impl WalletUnitService {
     pub async fn holder_get_wallet_unit_details(
         &self,
         id: HolderWalletInstanceId,
-    ) -> Result<HolderWalletUnitResponseDTO, HolderWalletUnitError> {
+    ) -> Result<HolderWalletUnitResponseDTO, HolderWalletInstanceError> {
         let result = self
             .holder_wallet_unit_repository
-            .get_holder_wallet_instance(
+            .get(
                 &id,
                 &HolderWalletInstanceRelations {
                     authentication_key: Some(KeyRelations::default()),
@@ -229,7 +237,7 @@ impl WalletUnitService {
             )
             .await
             .error_while("getting holder wallet unit")?
-            .ok_or(HolderWalletUnitError::HolderWalletUnitNotFound(id))?;
+            .ok_or(HolderWalletInstanceError::HolderWalletUnitNotFound(id))?;
 
         Ok(result.into())
     }
@@ -237,13 +245,13 @@ impl WalletUnitService {
     pub async fn holder_get_wallet_unit_trust_collections(
         &self,
         id: HolderWalletInstanceId,
-    ) -> Result<TrustCollectionsDetailResponseDTO, HolderWalletUnitError> {
+    ) -> Result<TrustCollectionsDetailResponseDTO, HolderWalletInstanceError> {
         let unit = self
             .holder_wallet_unit_repository
-            .get_holder_wallet_instance(&id, &HolderWalletInstanceRelations::default())
+            .get(&id, &HolderWalletInstanceRelations::default())
             .await
             .error_while("getting holder wallet unit")?
-            .ok_or(HolderWalletUnitError::HolderWalletUnitNotFound(id))?;
+            .ok_or(HolderWalletInstanceError::HolderWalletUnitNotFound(id))?;
 
         let organisation = unit
             .organisation
@@ -275,10 +283,10 @@ impl WalletUnitService {
     pub async fn holder_wallet_unit_status(
         &self,
         id: HolderWalletInstanceId,
-    ) -> Result<(), HolderWalletUnitError> {
+    ) -> Result<(), HolderWalletInstanceError> {
         let holder_wallet_unit = self
             .holder_wallet_unit_repository
-            .get_holder_wallet_instance(
+            .get(
                 &id,
                 &HolderWalletInstanceRelations {
                     authentication_key: Some(KeyRelations::default()),
@@ -287,7 +295,7 @@ impl WalletUnitService {
             )
             .await
             .error_while("getting holder wallet unit")?
-            .ok_or(HolderWalletUnitError::HolderWalletUnitNotFound(id))?;
+            .ok_or(HolderWalletInstanceError::HolderWalletUnitNotFound(id))?;
 
         if holder_wallet_unit.status != WalletInstanceStatus::Active {
             return Ok(());
@@ -301,7 +309,7 @@ impl WalletUnitService {
 
         if wallet_unit_status == WalletUnitStatusCheckResponse::Revoked {
             self.holder_wallet_unit_repository
-                .update_holder_wallet_instance(
+                .update(
                     &id,
                     UpdateHolderWalletInstanceRequest {
                         status: Some(WalletInstanceStatus::Revoked),
@@ -336,13 +344,13 @@ impl WalletUnitService {
         &self,
         id: HolderWalletInstanceId,
         request: EditHolderWalletUnitRequestDTO,
-    ) -> Result<(), HolderWalletUnitError> {
+    ) -> Result<(), HolderWalletInstanceError> {
         let holder_wallet_unit = self
             .holder_wallet_unit_repository
-            .get_holder_wallet_instance(&id, &HolderWalletInstanceRelations::default())
+            .get(&id, &HolderWalletInstanceRelations::default())
             .await
             .error_while("getting holder wallet unit")?
-            .ok_or(HolderWalletUnitError::HolderWalletUnitNotFound(id))?;
+            .ok_or(HolderWalletInstanceError::HolderWalletUnitNotFound(id))?;
 
         let organisation = holder_wallet_unit
             .organisation
@@ -379,7 +387,7 @@ impl WalletUnitService {
         key_type: KeyAlgorithmType,
         os: WalletInstanceOs,
         organisation: Organisation,
-    ) -> Result<Registration, HolderWalletUnitError> {
+    ) -> Result<Registration, HolderWalletInstanceError> {
         let key_storage = self
             .key_provider
             .get_key_storage(key_storage_id)
@@ -431,7 +439,7 @@ impl WalletUnitService {
         key_type: KeyAlgorithmType,
         os: WalletInstanceOs,
         organisation: Organisation,
-    ) -> Result<Registration, HolderWalletUnitError> {
+    ) -> Result<Registration, HolderWalletInstanceError> {
         let register_request = RegisterWalletUnitRequestDTO {
             wallet_provider: provider_info.name.clone(),
             os,
@@ -445,7 +453,7 @@ impl WalletUnitService {
 
         let Some(nonce) = register_response.nonce else {
             // integrity check was expected, but is not required
-            return Err(HolderWalletUnitError::AppIntegrityCheckNotRequired);
+            return Err(HolderWalletInstanceError::AppIntegrityCheckNotRequired);
         };
 
         let key_storage = self
@@ -569,7 +577,7 @@ impl WalletUnitService {
         key_type: KeyAlgorithmType,
         organisation: Organisation,
         key_storage: &Arc<dyn KeyStorage>,
-    ) -> Result<Key, HolderWalletUnitError> {
+    ) -> Result<Key, HolderWalletInstanceError> {
         let key_id = Uuid::new_v4().into();
         let key = key_storage
             .generate(key_id, key_type)
@@ -585,7 +593,7 @@ impl WalletUnitService {
         &self,
         url: &str,
         register_request: RegisterWalletUnitRequestDTO,
-    ) -> Result<RegisterWalletUnitResponseDTO, HolderWalletUnitError> {
+    ) -> Result<RegisterWalletUnitResponseDTO, HolderWalletInstanceError> {
         Ok(self
             .wallet_provider_client
             .register(url, register_request)
@@ -593,12 +601,12 @@ impl WalletUnitService {
             .error_while("registering wallet unit")?)
     }
 
-    async fn store_key(&self, key: &Key) -> Result<(), HolderWalletUnitError> {
+    async fn store_key(&self, key: &Key) -> Result<(), HolderWalletInstanceError> {
         self.key_repository
             .create_key(key.clone())
             .await
             .map_err(|err| match err {
-                DataLayerError::AlreadyExists => HolderWalletUnitError::KeyAlreadyExists,
+                DataLayerError::AlreadyExists => HolderWalletInstanceError::KeyAlreadyExists,
                 err => err.error_while("creating key").into(),
             })?;
         Ok(())
@@ -611,7 +619,7 @@ impl WalletUnitService {
         auth_fn: AuthenticationFn,
         audience: &str,
         nonce: Option<String>,
-    ) -> Result<String, HolderWalletUnitError> {
+    ) -> Result<String, HolderWalletInstanceError> {
         let proof = Jwt::new(
             "jwt".to_string(),
             auth_fn
@@ -650,7 +658,7 @@ impl WalletUnitService {
         wallet_provider_name: &str,
         audience: &str,
         nonce: String,
-    ) -> Result<String, HolderWalletUnitError> {
+    ) -> Result<String, HolderWalletInstanceError> {
         let proof = Jwt::new(
             "jwt".to_string(),
             auth_fn

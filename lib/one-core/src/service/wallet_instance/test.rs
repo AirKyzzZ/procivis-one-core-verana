@@ -8,8 +8,9 @@ use uuid::Uuid;
 
 use super::WalletUnitService;
 use super::dto::{HolderRegisterWalletUnitRequestDTO, WalletProviderDTO};
-use super::error::HolderWalletUnitError;
+use super::error::HolderWalletInstanceError;
 use crate::config::core_config::CoreConfig;
+use crate::model::common::GetListResponse;
 use crate::model::holder_wallet_instance::{
     CreateHolderWalletInstanceRequest, HolderWalletInstance,
 };
@@ -181,11 +182,11 @@ async fn holder_register_success() {
 
     let mut holder_wallet_unit_repository = MockHolderWalletInstanceRepository::new();
     holder_wallet_unit_repository
-        .expect_get_holder_wallet_instance_by_org_id()
+        .expect_list()
         .once()
-        .return_once(|_| Ok(None));
+        .return_once(|_| Ok(GetListResponse::empty()));
     holder_wallet_unit_repository
-        .expect_create_holder_wallet_instance()
+        .expect_create()
         .once()
         .return_once(move |att: CreateHolderWalletInstanceRequest| {
             check!(att.status == WalletInstanceStatus::Active);
@@ -309,11 +310,11 @@ async fn holder_register_key_attestation_not_supported() {
 
     let mut holder_wallet_unit_repository = MockHolderWalletInstanceRepository::new();
     holder_wallet_unit_repository
-        .expect_get_holder_wallet_instance_by_org_id()
+        .expect_list()
         .once()
-        .return_once(|_| Ok(None));
+        .return_once(|_| Ok(GetListResponse::empty()));
     holder_wallet_unit_repository
-        .expect_create_holder_wallet_instance()
+        .expect_create()
         .once()
         .return_once(move |att: CreateHolderWalletInstanceRequest| {
             check!(att.status == WalletInstanceStatus::Unattested);
@@ -368,7 +369,7 @@ async fn holder_wallet_unit_status_check_still_valid() {
 
     let mut holder_wallet_unit_repository = MockHolderWalletInstanceRepository::new();
     holder_wallet_unit_repository
-        .expect_get_holder_wallet_instance()
+        .expect_get()
         .once()
         .return_once(move |_, _| {
             Ok(Some(
@@ -418,7 +419,7 @@ async fn holder_wallet_unit_status_check_revocation() {
 
     let mut holder_wallet_unit_repository = MockHolderWalletInstanceRepository::new();
     holder_wallet_unit_repository
-        .expect_get_holder_wallet_instance()
+        .expect_get()
         .once()
         .return_once(move |_, _| {
             Ok(Some(HolderWalletInstance {
@@ -453,7 +454,7 @@ async fn holder_wallet_unit_status_check_revocation() {
         .return_once(|_| Ok(WalletUnitStatusCheckResponse::Revoked));
 
     holder_wallet_unit_repository
-        .expect_update_holder_wallet_instance()
+        .expect_update()
         .once()
         .return_once(move |id, request| {
             check!(id == &wallet_unit_id);
@@ -491,7 +492,7 @@ async fn holder_wallet_unit_status_check_not_found() {
 
     let mut holder_wallet_unit_repository = MockHolderWalletInstanceRepository::new();
     holder_wallet_unit_repository
-        .expect_get_holder_wallet_instance()
+        .expect_get()
         .once()
         .return_once(|_, _| Ok(None));
 
@@ -514,7 +515,7 @@ async fn holder_wallet_unit_status_check_already_revoked() {
 
     let mut holder_wallet_unit_repository = MockHolderWalletInstanceRepository::new();
     holder_wallet_unit_repository
-        .expect_get_holder_wallet_instance()
+        .expect_get()
         .once()
         .return_once(move |_, _| {
             Ok(Some(
@@ -578,10 +579,10 @@ async fn holder_register_already_exists() {
 
     let mut holder_wallet_unit_repository = MockHolderWalletInstanceRepository::new();
     holder_wallet_unit_repository
-        .expect_get_holder_wallet_instance_by_org_id()
+        .expect_list()
         .once()
         .return_once(|_| {
-            Ok(Some(HolderWalletInstance {
+            Ok(GetListResponse::one(HolderWalletInstance {
                 id: Uuid::new_v4().into(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
@@ -619,6 +620,6 @@ async fn holder_register_already_exists() {
     // then
     assert!(matches!(
         result.unwrap_err(),
-        HolderWalletUnitError::WalletUnitAlreadyExists(_)
+        HolderWalletInstanceError::WalletInstanceAlreadyExists(_)
     ));
 }

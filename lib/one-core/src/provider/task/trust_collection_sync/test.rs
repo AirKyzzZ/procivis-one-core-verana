@@ -34,38 +34,20 @@ async fn test_sync_trust_collections_wallet() {
     let mut seq = Sequence::new();
     let mut wallet_instance_repository = MockHolderWalletInstanceRepository::new();
     wallet_instance_repository
-        .expect_list_holder_wallet_instance()
+        .expect_list()
         .once()
-        .returning(|_| {
-            Ok(GetListResponse {
-                values: vec![dummy_wallet_unit()],
-                total_pages: 1,
-                total_items: 1,
-            })
-        })
+        .returning(|_| Ok(GetListResponse::one(dummy_wallet_unit())))
         .in_sequence(&mut seq);
     wallet_instance_repository
-        .expect_list_holder_wallet_instance()
+        .expect_list()
         .once()
-        .returning(|_| {
-            Ok(GetListResponse {
-                values: vec![],
-                total_pages: 1,
-                total_items: 1,
-            })
-        })
+        .returning(|_| Ok(GetListResponse::empty()))
         .in_sequence(&mut seq);
     let mut verifier_instance_repository = MockVerifierInstanceRepository::new();
     verifier_instance_repository
         .expect_list()
         .once()
-        .returning(|_| {
-            Ok(GetListResponse {
-                values: vec![],
-                total_pages: 0,
-                total_items: 0,
-            })
-        });
+        .returning(|_| Ok(GetListResponse::empty()));
     let mut wallet_unit_client = MockWalletProviderClient::new();
     let collection_to_keep = dummy_collection("to be kept".to_string());
     let collection_to_delete = dummy_collection("to be deleted".to_string());
@@ -118,26 +100,14 @@ async fn test_sync_trust_collections_verifier() {
     let mut seq = Sequence::new();
     let mut wallet_instance_repository = MockHolderWalletInstanceRepository::new();
     wallet_instance_repository
-        .expect_list_holder_wallet_instance()
+        .expect_list()
         .once()
-        .returning(|_| {
-            Ok(GetListResponse {
-                values: vec![],
-                total_pages: 0,
-                total_items: 0,
-            })
-        });
+        .returning(|_| Ok(GetListResponse::empty()));
     let mut verifier_instance_repository = MockVerifierInstanceRepository::new();
     verifier_instance_repository
         .expect_list()
         .once()
-        .returning(|_| {
-            Ok(GetListResponse {
-                values: vec![dummy_verifier_instance()],
-                total_pages: 1,
-                total_items: 1,
-            })
-        })
+        .returning(|_| Ok(GetListResponse::one(dummy_verifier_instance())))
         .in_sequence(&mut seq);
     verifier_instance_repository
         .expect_list()

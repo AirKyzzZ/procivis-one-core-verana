@@ -116,7 +116,7 @@ impl TrustCollectionSyncTask {
             let mut data_to_sync = vec![];
             let wallet_instances = self
                 .wallet_instance_repository
-                .list_holder_wallet_instance(HolderWalletInstanceListQuery {
+                .list(HolderWalletInstanceListQuery {
                     pagination: Some(ListPagination {
                         page,
                         page_size: 1000,

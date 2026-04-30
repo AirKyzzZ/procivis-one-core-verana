@@ -9,8 +9,8 @@ use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::relation::Related;
 use one_core::model::wallet_instance::{WalletInstanceStatus, WalletProviderType};
 use one_core::repository::organisation_repository::OrganisationRepository;
-use sea_orm::sea_query::SimpleExpr;
-use sea_orm::{Condition, Set};
+use sea_orm::sea_query::{IntoCondition, SimpleExpr};
+use sea_orm::{ColumnTrait, Condition, Set};
 
 use crate::entity;
 use crate::entity::holder_wallet_instance::{ActiveModel, Model};
@@ -64,7 +64,12 @@ impl IntoSortingColumn for SortableHolderWalletInstanceColumn {
 impl IntoFilterCondition for HolderWalletInstanceFilterValue {
     fn get_condition(self, _entire_filter: &ListFilterCondition<Self>) -> Condition {
         match self {
-            HolderWalletInstanceFilterValue::Status(status) => get_equals_condition(
+            Self::OrganisationIds(organisation_ids) => {
+                holder_wallet_instance::Column::OrganisationId
+                    .is_in(organisation_ids)
+                    .into_condition()
+            }
+            Self::Status(status) => get_equals_condition(
                 holder_wallet_instance::Column::Status,
                 wallet_instance::WalletInstanceStatus::from(status),
             ),

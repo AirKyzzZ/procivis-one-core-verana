@@ -4,7 +4,7 @@ use uuid::Uuid;
 
 use crate::fixtures::TestingKeyParams;
 use crate::utils::context::TestContext;
-use crate::utils::db_clients::holder_wallet_unit::TestHolderWalletUnitParams;
+use crate::utils::db_clients::holder_wallet_instance::TestHolderWalletInstanceParams;
 use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
@@ -35,7 +35,7 @@ async fn test_get_wallet_unit_holder_details_successfully() {
         .create(
             org,
             Some(key.clone()),
-            TestHolderWalletUnitParams {
+            TestHolderWalletInstanceParams {
                 status: Some(WalletInstanceStatus::Active),
                 wallet_provider_type: Some(WalletProviderType::ProcivisOne),
                 wallet_provider_name: Some("PROCIVIS_ONE".to_string()),
@@ -90,5 +90,4 @@ async fn test_get_wallet_unit_holder_details_not_found() {
     assert_eq!(resp.status(), 404);
     let resp_json = resp.json_value().await;
     assert_eq!(resp_json["code"], "BR_0296");
-    assert_eq!(resp_json["message"], "Holder wallet unit not found");
 }

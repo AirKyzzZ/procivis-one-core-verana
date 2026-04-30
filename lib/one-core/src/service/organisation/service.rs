@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use HolderWalletInstanceFilterValue::OrganisationIds;
 use shared_types::{IdentifierId, OrganisationId};
 
 use super::OrganisationService;
@@ -14,10 +15,13 @@ use super::validator::{
     validate_parent_organisation, validate_wallet_provider, validate_wallet_provider_issuer,
 };
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
-use crate::model::holder_wallet_instance::HolderWalletInstanceRelations;
+use crate::model::holder_wallet_instance::{
+    HolderWalletInstanceFilterValue, HolderWalletInstanceRelations,
+};
 use crate::model::identifier::{Identifier, IdentifierFilterValue, IdentifierListQuery};
 use crate::model::key::KeyRelations;
 use crate::model::list_filter::ListFilterValue;
+use crate::model::list_query::ListQuery;
 use crate::model::organisation::SortableOrganisationColumn;
 use crate::repository::error::DataLayerError;
 use crate::service::common_dto::ListQueryDTO;
@@ -129,12 +133,15 @@ impl OrganisationService {
         &self,
         organisation_id: &OrganisationId,
     ) -> Result<Option<WalletInstanceDetailResponseDTO>, OrganisationServiceError> {
-        let Some(instance) = self
+        let list = self
             .holder_wallet_instance_repository
-            .get_holder_wallet_instance_by_org_id(organisation_id)
+            .list(ListQuery {
+                filtering: Some(OrganisationIds(vec![*organisation_id]).condition()),
+                ..Default::default()
+            })
             .await
-            .error_while("getting holder wallet instance")?
-        else {
+            .error_while("getting holder wallet instance")?;
+        let Some(instance) = list.values.first() else {
             return Ok(None);
         };
 
@@ -144,7 +151,7 @@ impl OrganisationService {
         };
         let Some(with_key) = self
             .holder_wallet_instance_repository
-            .get_holder_wallet_instance(&instance.id, &relations)
+            .get(&instance.id, &relations)
             .await
             .error_while("getting holder wallet instance with authentication key")?
         else {

@@ -4,7 +4,7 @@ use uuid::Uuid;
 
 use crate::fixtures::TestingKeyParams;
 use crate::utils::context::TestContext;
-use crate::utils::db_clients::holder_wallet_unit::TestHolderWalletUnitParams;
+use crate::utils::db_clients::holder_wallet_instance::TestHolderWalletInstanceParams;
 use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
@@ -69,7 +69,7 @@ async fn test_get_organisation_returns_wallet_instance() {
         .create(
             organisation.clone(),
             Some(key.clone()),
-            TestHolderWalletUnitParams {
+            TestHolderWalletInstanceParams {
                 status: Some(WalletInstanceStatus::Active),
                 wallet_provider_type: Some(WalletProviderType::ProcivisOne),
                 wallet_provider_name: Some("PROCIVIS_ONE".to_string()),
