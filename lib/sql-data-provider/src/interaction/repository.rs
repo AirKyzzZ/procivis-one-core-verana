@@ -88,13 +88,19 @@ impl InteractionRepository for InteractionProvider {
         &self,
         interaction_id: &InteractionId,
         nonce_id: NonceId,
+        previous_nonce: Option<NonceId>,
     ) -> Result<(), DataLayerError> {
+        let nonce_filter = if let Some(previous_nonce) = previous_nonce {
+            Expr::col(interaction::Column::NonceId).eq(previous_nonce)
+        } else {
+            Expr::col(interaction::Column::NonceId).is_null()
+        };
         let stmt = self.db.get_database_backend().build(
             Query::update()
                 .table(interaction::Entity)
                 .value(interaction::Column::NonceId, nonce_id)
                 .and_where(Expr::col(interaction::Column::Id).eq(interaction_id.to_string()))
-                .and_where(Expr::col(interaction::Column::NonceId).is_null()),
+                .and_where(nonce_filter),
         );
         let result = self.db.execute(stmt).await.map_err(to_data_layer_error)?;
         if result.rows_affected() == 0 {

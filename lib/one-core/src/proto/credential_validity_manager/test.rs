@@ -19,11 +19,9 @@ use crate::model::credential_schema::{CredentialSchema, LayoutType};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::key::Key;
-use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::credential_validity_manager::{
     CredentialValidityManager, CredentialValidityManagerImpl, Error,
 };
-use crate::proto::http_client::MockHttpClient;
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::proto::session_provider::{NoSessionProvider, SessionProvider};
 use crate::provider::blob_storage_provider::MockBlobStorageProvider;
@@ -32,41 +30,28 @@ use crate::provider::credential_formatter::model::{
     CredentialStatus, CredentialSubject, DetailCredential, IdentifierDetails,
 };
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
-use crate::provider::did_method::provider::MockDidMethodProvider;
-use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
-use crate::provider::key_storage::provider::MockKeyProvider;
+use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProvider;
 use crate::provider::revocation::MockRevocationMethod;
 use crate::provider::revocation::model::RevocationState;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
-use crate::repository::interaction_repository::MockInteractionRepository;
-use crate::service::test_utilities::{dummy_did_document, dummy_organisation, generic_config};
+use crate::service::test_utilities::{dummy_organisation, generic_config};
 
 #[derive(Default)]
 struct Repositories {
     pub credential_repository: MockCredentialRepository,
-    pub interaction_repository: MockInteractionRepository,
     pub revocation_method_provider: MockRevocationMethodProvider,
     pub formatter_provider: MockCredentialFormatterProvider,
-    pub did_method_provider: MockDidMethodProvider,
-    pub key_provider: MockKeyProvider,
-    pub key_algorithm_provider: MockKeyAlgorithmProvider,
-    pub certificate_validator: MockCertificateValidator,
+    pub issuance_protocol_provider: MockIssuanceProtocolProvider,
     pub config: CoreConfig,
     pub blob_storage_provider: MockBlobStorageProvider,
-    pub client: MockHttpClient,
     pub session_provider: Option<Arc<dyn SessionProvider>>,
 }
 
 fn setup_validity_manager(repositories: Repositories) -> CredentialValidityManagerImpl {
     CredentialValidityManagerImpl::new(
         Arc::new(repositories.credential_repository),
-        Arc::new(repositories.interaction_repository),
-        Arc::new(repositories.client),
-        Arc::new(repositories.key_provider),
-        Arc::new(repositories.key_algorithm_provider),
-        Arc::new(repositories.certificate_validator),
-        Arc::new(repositories.did_method_provider),
+        Arc::new(repositories.issuance_protocol_provider),
         Arc::new(repositories.revocation_method_provider),
         Arc::new(repositories.formatter_provider),
         Arc::new(repositories.blob_storage_provider),
@@ -582,19 +567,11 @@ async fn test_reactivate_credential_success() {
     credential.schema.as_mut().unwrap().revocation_method = Some("mock".into());
 
     let mut credential_repository = MockCredentialRepository::default();
-    let mut did_method_provider = MockDidMethodProvider::default();
-
-    did_method_provider
-        .expect_resolve()
-        .returning(|did| Ok(dummy_did_document(did)));
-    {
-        let clone = credential.clone();
-        credential_repository
-            .expect_get_credential()
-            .times(1)
-            .with(eq(clone.id), always())
-            .returning(move |_, _| Ok(Some(clone.clone())));
-    }
+    let cred_clone = credential.clone();
+    credential_repository
+        .expect_get_credential()
+        .times(1)
+        .returning(move |_, _| Ok(Some(cred_clone.clone())));
 
     let mut revocation_method = MockRevocationMethod::default();
     revocation_method

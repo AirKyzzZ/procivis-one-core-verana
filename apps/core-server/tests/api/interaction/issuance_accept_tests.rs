@@ -4,7 +4,7 @@ use std::str::FromStr;
 use one_core::model::certificate::CertificateState;
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential::{CredentialRole, CredentialStateEnum};
-use one_core::model::credential_schema::KeyStorageSecurity;
+use one_core::model::credential_schema::{CredentialSchema, KeyStorageSecurity};
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::history::HistoryAction;
 use one_core::model::identifier::IdentifierType;
@@ -16,7 +16,8 @@ use rcgen::CertificateParams;
 use serde_json::json;
 use shared_types::DidValue;
 use similar_asserts::assert_eq;
-use time::macros::datetime;
+use time::Duration;
+use time::macros::{datetime, format_description};
 use uuid::Uuid;
 
 use crate::fixtures::certificate::{create_ca_cert, create_cert, ecdsa, eddsa, fingerprint};
@@ -382,31 +383,7 @@ async fn test_issuance_accept_schema_name_already_exists() {
         )
         .await;
 
-    let interaction_data = serde_json::to_vec(&json!({
-        "issuer_url": "http://127.0.0.1",
-        "credential_endpoint": format!("{}/ssi/openid4vci/final-1.0/{}/credential", context.server_mock.uri(), credential_schema.id),
-        "access_token": encrypted_token("123"),
-        "access_token_expires_at": null,
-        "token_endpoint": format!("{}/ssi/openid4vci/draft-13/{}/token", context.server_mock.uri(), credential_schema.id),
-        "nonce_endpoint": format!("{}/ssi/openid4vci/final-1.0/OPENID4VCI_FINAL1/nonce", context.server_mock.uri()),
-        "grants":{
-            "urn:ietf:params:oauth:grant-type:pre-authorized_code":{
-                "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
-            }
-        },
-        "credential_metadata": {
-            "display": [
-                {
-                    "lang": "en",
-                    "name": "test"
-                }
-            ]
-        },
-        "credential_configuration_id": "dummy-config-id",
-        "protocol": "OPENID4VCI_FINAL1",
-        "format": "jwt_vc_json"
-    }))
-        .unwrap();
+    let interaction_data = dummy_interaction_data(&context, &credential_schema);
 
     let interaction = context
         .db
@@ -441,7 +418,7 @@ async fn test_issuance_accept_schema_name_already_exists() {
 
     context
         .server_mock
-        .token_endpoint(credential_schema.schema_id, "123")
+        .token_endpoint_final1(credential_schema.schema_id, "123")
         .await;
 
     // WHEN
@@ -2861,6 +2838,18 @@ async fn test_wia_pop_iss_equals_wia_sub() {
                 "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
             }
         },
+        "cryptographic_binding_methods_supported": [
+            "jwk",
+            "cose_key"
+        ],
+        "proof_types_supported": {
+            "jwt": {
+                "proof_signing_alg_values_supported": [
+                    "EdDSA",
+                    "ES256",
+                ]
+            }
+        },
         "credential_metadata": {
             "display": [
                 {
@@ -2958,4 +2947,61 @@ async fn test_wia_pop_iss_equals_wia_sub() {
         Some("eudiw-abca".to_string()),
         "WIA 'sub' should be wallet_client_id from config"
     );
+}
+
+fn dummy_interaction_data(context: &TestContext, credential_schema: &CredentialSchema) -> Vec<u8> {
+    let format = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
+    let expiry = (one_core::clock::now_utc() + Duration::seconds(20))
+        .format(&format)
+        .unwrap();
+
+    let issuer_url = format!(
+        "{}/ssi/openid4vci/final-1.0/{}",
+        context.server_mock.uri(),
+        credential_schema.id,
+    );
+    serde_json::to_vec(&json!({
+        "issuer_url": issuer_url,
+        "credential_endpoint": format!("{}/credential", issuer_url),
+        "token_endpoint": format!("{}/token", issuer_url),
+        "nonce_endpoint": format!("{}/ssi/openid4vci/final-1.0/OPENID4VCI_FINAL1/nonce", context.server_mock.uri()),
+        "grants":{
+            "urn:ietf:params:oauth:grant-type:pre-authorized_code":{
+                "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
+            }
+        },
+        "access_token": encrypted_token("123"),
+        "access_token_expires_at": expiry,
+        "refresh_token": encrypted_token("123"),
+        "refresh_token_expires_at": expiry,
+        "cryptographic_binding_methods_supported": [
+            "jwk",
+            "cose_key"
+        ],
+        "proof_types_supported": {
+            "jwt": {
+                "proof_signing_alg_values_supported": [
+                    "EdDSA",
+                    "ES256",
+                ]
+            }
+        },
+        "token_endpoint_auth_methods_supported": [
+            "none"
+        ],
+        "credential_metadata": {
+            "display": [
+                {
+                    "lang": "en",
+                    "name": "test"
+                }
+            ]
+        },
+        "credential_configuration_id": "01ee2044-2e75-4a3b-a575-b48669bd8254",
+        "protocol": "OPENID4VCI_FINAL1",
+        "format": "jwt_vc_json",
+        "trust_resolution": "UNTRUSTED",
+        "trust_mode": "TRUST_OPTIONAL"
+        }))
+        .unwrap()
 }

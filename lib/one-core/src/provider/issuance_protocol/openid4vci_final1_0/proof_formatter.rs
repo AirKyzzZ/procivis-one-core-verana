@@ -36,6 +36,11 @@ pub(crate) struct OpenID4VCIVerifiedProof {
     pub key_attestation: Option<String>,
 }
 
+pub(crate) enum PublicKeyInfo {
+    KeyId(String),
+    Jwk(PublicJwk),
+}
+
 impl OpenID4VCIProofJWTFormatter {
     pub(crate) async fn verify_proof(
         jwt: &str,
@@ -116,7 +121,7 @@ impl OpenID4VCIProofJWTFormatter {
                         .attested_keys
                         .get(attested_key_index)
                         .ok_or(FormatterError::CouldNotVerify(
-                          format!("Invalid key attestation: missing attested key, index: {attested_key_index}")
+                            format!("Invalid key attestation: missing attested key, index: {attested_key_index}")
                         ))?
                         .to_owned();
 
@@ -148,7 +153,7 @@ impl OpenID4VCIProofJWTFormatter {
 
     pub(crate) async fn format_proof(
         issuer_url: String,
-        jwk: Option<PublicJwk>,
+        public_key_info: PublicKeyInfo,
         nonce: Option<String>,
         key_attestation: Option<String>,
         auth_fn: AuthenticationFn,
@@ -168,17 +173,16 @@ impl OpenID4VCIProofJWTFormatter {
             ..Default::default()
         };
 
-        let key_id = match jwk {
-            Some(_) => None,
-            None => auth_fn.get_key_id(),
+        let (key_id, key_info) = match public_key_info {
+            PublicKeyInfo::KeyId(key_id) => (Some(key_id), None),
+            PublicKeyInfo::Jwk(jwk) => (None, Some(JwtPublicKeyInfo::Jwk(jwk))),
         };
-        let jwk = jwk.map(JwtPublicKeyInfo::Jwk);
 
         let jwt = Jwt::new_with_attestation(
             JWT_PROOF_TYPE.to_string(),
             auth_fn.jose_alg().error_while("getting JOSE alg")?,
             key_id,
-            jwk,
+            key_info,
             key_attestation,
             payload,
         );
@@ -215,14 +219,14 @@ mod test {
     #[tokio::test]
     async fn test_format_then_verify_proof_with_holder_key_id() {
         let holder_key_id = did_key();
-        let auth_fn = auth_fn(Some(format!("{holder_key_id}#key-1")));
+        let pub_key_info = PublicKeyInfo::KeyId(format!("{holder_key_id}#key-1"));
 
         let proof = OpenID4VCIProofJWTFormatter::format_proof(
             "https://example.com".to_string(),
+            pub_key_info,
             None,
             None,
-            None,
-            auth_fn,
+            auth_fn(),
             None,
         )
         .await
@@ -238,15 +242,14 @@ mod test {
 
     #[tokio::test]
     async fn test_format_then_verify_proof_with_jwk() {
-        let auth_fn = auth_fn(None);
-        let jwk = pk_jwk();
+        let pub_key_info = PublicKeyInfo::Jwk(pk_jwk());
 
         let proof = OpenID4VCIProofJWTFormatter::format_proof(
             "https://example.com".to_string(),
-            Some(jwk),
+            pub_key_info,
             Some("nonce".to_string()),
             None,
-            auth_fn,
+            auth_fn(),
             None,
         )
         .await
@@ -313,7 +316,7 @@ mod test {
         Box::new(key_verification)
     }
 
-    fn auth_fn(key_id: Option<String>) -> Box<dyn SignatureProvider> {
+    fn auth_fn() -> Box<dyn SignatureProvider> {
         let key_algorithm = Eddsa;
         let key_handle = key_algorithm
             .reconstruct_key(&public_key(), Some(private_key().into()), None)
@@ -337,7 +340,7 @@ mod test {
                 organisation: dummy_organisation(None).into(),
             },
             key_handle,
-            jwk_key_id: key_id,
+            jwk_key_id: None,
             key_algorithm_provider: Arc::new(key_algorithm_provider),
         };
 

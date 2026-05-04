@@ -1011,7 +1011,7 @@ async fn test_create_credential_success() {
             });
         interaction_repository
             .expect_mark_nonce_as_used()
-            .return_once(|_, _| Ok(()));
+            .return_once(|_, _, _| Ok(()));
 
         interaction_repository
             .expect_update_interaction()
@@ -1195,7 +1195,7 @@ async fn test_create_credential_success_sd_jwt_vc() {
             });
         interaction_repository
             .expect_mark_nonce_as_used()
-            .return_once(|_, _| Ok(()));
+            .return_once(|_, _, _| Ok(()));
 
         let mut issuance_protocol = MockIssuanceProtocol::default();
         issuance_protocol
@@ -1377,7 +1377,7 @@ async fn test_create_credential_success_mdoc() {
             });
         interaction_repository
             .expect_mark_nonce_as_used()
-            .return_once(|_, _| Ok(()));
+            .return_once(|_, _, _| Ok(()));
         interaction_repository
             .expect_update_interaction()
             .return_once(|_, _| Ok(()));
@@ -1814,7 +1814,7 @@ async fn test_create_credential_issuer_failed() {
             });
         interaction_repository
             .expect_mark_nonce_as_used()
-            .return_once(|_, _| Ok(()));
+            .return_once(|_, _, _| Ok(()));
 
         let mut issuance_protocol = MockIssuanceProtocol::default();
         issuance_protocol
@@ -1981,7 +1981,7 @@ async fn test_create_credential_nonce_reused() {
             });
         interaction_repository
             .expect_mark_nonce_as_used()
-            .return_once(|_, _| Err(DataLayerError::RecordNotUpdated));
+            .return_once(|_, _, _| Err(DataLayerError::RecordNotUpdated));
     }
 
     let key_algorithm = mock_key_algorithm();

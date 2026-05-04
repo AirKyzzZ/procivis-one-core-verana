@@ -32,6 +32,7 @@ pub trait InteractionRepository: Send + Sync {
         &self,
         interaction_id: &InteractionId,
         nonce_id: NonceId,
+        previous_nonce: Option<NonceId>,
     ) -> Result<(), DataLayerError>;
 
     async fn delete_interaction(&self, id: &InteractionId) -> Result<(), DataLayerError>;

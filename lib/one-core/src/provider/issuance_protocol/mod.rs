@@ -5,7 +5,7 @@ use serde::de::Deserialize;
 use shared_types::{CredentialId, CredentialSchemaId};
 use url::Url;
 
-use crate::model::credential::Credential;
+use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::identifier::Identifier;
 use crate::model::interaction::Interaction;
 use crate::model::key::Key;
@@ -88,6 +88,13 @@ pub(crate) trait IssuanceProtocol: Send + Sync {
         continue_issuance_dto: ContinueIssuanceDTO,
         organisation: Organisation,
     ) -> Result<ContinueIssuanceResponseDTO, IssuanceProtocolError>;
+
+    /// Refreshes a credential.
+    async fn holder_refresh_credential(
+        &self,
+        credential: &Credential,
+        force_refresh: bool,
+    ) -> Result<CredentialStateEnum, IssuanceProtocolError>;
 
     /// Generates QR-code content to start the credential issuance flow.
     async fn issuer_share_credential(

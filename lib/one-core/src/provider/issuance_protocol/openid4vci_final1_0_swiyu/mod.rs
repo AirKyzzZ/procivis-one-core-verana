@@ -21,7 +21,7 @@ use crate::config::core_config::CoreConfig;
 use crate::config::core_config::DidType::WebVh;
 use crate::error::ContextWithErrorCode;
 use crate::mapper::params::deserialize_encryption_key;
-use crate::model::credential::Credential;
+use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::identifier::Identifier;
 use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
@@ -329,5 +329,15 @@ impl IssuanceProtocol for OpenID4VCISwiyu {
             features,
             did_methods: vec![WebVh],
         }
+    }
+
+    async fn holder_refresh_credential(
+        &self,
+        credential: &Credential,
+        force_refresh: bool,
+    ) -> Result<CredentialStateEnum, IssuanceProtocolError> {
+        self.inner
+            .holder_refresh_credential(credential, force_refresh)
+            .await
     }
 }

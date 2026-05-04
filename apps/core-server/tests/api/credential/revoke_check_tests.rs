@@ -1,11 +1,12 @@
 use one_core::model::credential::{Credential, CredentialRole, CredentialStateEnum};
+use one_core::model::credential_schema::CredentialSchema;
 use one_core::model::did::{Did, DidType, KeyRole, RelatedKey};
 use one_core::model::history::HistoryAction;
 use one_core::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use one_core::model::interaction::InteractionType;
 use one_core::proto::jwt::mapper::{bin_to_b64url_string, string_to_b64url_string};
 use one_core::provider::credential_formatter::mdoc_formatter::Params;
-use one_core::provider::credential_formatter::model::{CredentialData, CredentialSchema, Issuer};
+use one_core::provider::credential_formatter::model::{CredentialData, Issuer};
 use one_core::provider::credential_formatter::vcdm::VcdmCredential;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::eddsa::Eddsa;
@@ -673,32 +674,11 @@ async fn test_revoke_check_mdoc_update() {
         )
         .await;
 
-    let format = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
-    // Token is up to date
-    let a_couple_of_seconds_in_future = (one_core::clock::now_utc() + time::Duration::seconds(20))
-        .format(&format)
-        .unwrap();
-    let issuer_url = format!(
-        "{}/ssi/openid4vci/draft-13/{}",
-        context.server_mock.uri(),
-        credential_schema.id,
+    let interaction_data = dummy_interaction_data(
+        &context,
+        &credential_schema,
+        TestInteractionParams::default(),
     );
-    let interaction_data = serde_json::to_vec(&json!({
-        "issuer_url": issuer_url,
-        "credential_endpoint": format!("{}/credential", issuer_url),
-        "token_endpoint": format!("{}/token", issuer_url),
-        "grants":{
-            "urn:ietf:params:oauth:grant-type:pre-authorized_code":{
-                "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
-            }
-        },
-        "access_token": encrypted_token("123"),
-        "access_token_expires_at": a_couple_of_seconds_in_future,
-        "refresh_token": encrypted_token("123"),
-        "refresh_token_expires_at": a_couple_of_seconds_in_future,
-    }))
-    .unwrap();
-
     let interaction = context
         .db
         .interactions
@@ -727,7 +707,7 @@ async fn test_revoke_check_mdoc_update() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &identifier,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             TestingCredentialParams {
                 interaction: Some(interaction),
                 key: Some(local_key),
@@ -739,17 +719,14 @@ async fn test_revoke_check_mdoc_update() {
         )
         .await;
 
+    context
+        .server_mock
+        .ssi_nonce_endpoint("OPENID4VCI_FINAL1", "123", 1)
+        .await;
     let valid_credential = valid_mdoc_credential().await;
     context
         .server_mock
-        .ssi_credential_endpoint(
-            &credential_schema.id,
-            "123",
-            &valid_credential,
-            "mso_mdoc",
-            1,
-            None,
-        )
+        .ssi_credential_endpoint_final1(&credential_schema.id, "123", &valid_credential, 1, None)
         .await;
 
     // WHEN
@@ -837,32 +814,11 @@ async fn test_revoke_check_mdoc_update_invalid() {
         )
         .await;
 
-    let format = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
-    // Token is up to date
-    let a_couple_of_seconds_in_future = (one_core::clock::now_utc() + Duration::seconds(20))
-        .format(&format)
-        .unwrap();
-    let issuer_url = format!(
-        "{}/ssi/openid4vci/draft-13/{}",
-        context.server_mock.uri(),
-        credential_schema.id,
+    let interaction_data = dummy_interaction_data(
+        &context,
+        &credential_schema,
+        TestInteractionParams::default(),
     );
-    let interaction_data = serde_json::to_vec(&json!({
-        "issuer_url": issuer_url,
-        "credential_endpoint": format!("{}/credential", issuer_url),
-        "token_endpoint": format!("{}/token", issuer_url),
-        "grants":{
-            "urn:ietf:params:oauth:grant-type:pre-authorized_code":{
-                "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
-            }
-        },
-        "access_token": encrypted_token("123"),
-        "access_token_expires_at": a_couple_of_seconds_in_future,
-        "refresh_token": encrypted_token("123"),
-        "refresh_token_expires_at": a_couple_of_seconds_in_future,
-    }))
-    .unwrap();
-
     let interaction = context
         .db
         .interactions
@@ -890,7 +846,7 @@ async fn test_revoke_check_mdoc_update_invalid() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &identifier,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             TestingCredentialParams {
                 credential_blob_id: Some(blob.id),
                 interaction: Some(interaction),
@@ -904,11 +860,14 @@ async fn test_revoke_check_mdoc_update_invalid() {
 
     context
         .server_mock
-        .ssi_credential_endpoint(
+        .ssi_nonce_endpoint("OPENID4VCI_FINAL1", "123", 1)
+        .await;
+    context
+        .server_mock
+        .ssi_credential_endpoint_final1(
             &credential_schema.id,
             "123",
             "this is not a valid mdoc",
-            "mso_mdoc",
             1,
             None,
         )
@@ -1001,31 +960,11 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
         )
         .await;
 
-    let format = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
-    // Token is up to date
-    let a_couple_of_seconds_in_future = (one_core::clock::now_utc() + time::Duration::seconds(20))
-        .format(&format)
-        .unwrap();
-    let issuer_url = format!(
-        "{}/ssi/openid4vci/draft-13/{}",
-        context.server_mock.uri(),
-        credential_schema.id,
+    let interaction_data = dummy_interaction_data(
+        &context,
+        &credential_schema,
+        TestInteractionParams::default(),
     );
-    let interaction_data = serde_json::to_vec(&json!({
-        "issuer_url": issuer_url,
-        "credential_endpoint": format!("{}/credential", issuer_url),
-        "token_endpoint": format!("{}/token", issuer_url),
-        "grants":{
-            "urn:ietf:params:oauth:grant-type:pre-authorized_code":{
-                "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
-            }
-        },
-        "access_token": encrypted_token("123"),
-        "access_token_expires_at": a_couple_of_seconds_in_future,
-        "refresh_token": encrypted_token("123"),
-        "refresh_token_expires_at": a_couple_of_seconds_in_future,
-    }))
-    .unwrap();
 
     let interaction = context
         .db
@@ -1056,7 +995,7 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &identifier,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             TestingCredentialParams {
                 credential_blob_id: Some(blob.id),
                 interaction: Some(interaction),
@@ -1068,17 +1007,14 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
         )
         .await;
 
+    context
+        .server_mock
+        .ssi_nonce_endpoint("OPENID4VCI_FINAL1", "123", 2)
+        .await;
     let valid_credential2 = valid_mdoc_credential().await;
     context
         .server_mock
-        .ssi_credential_endpoint(
-            &credential_schema.id,
-            "123",
-            &valid_credential2,
-            "mso_mdoc",
-            2,
-            None,
-        )
+        .ssi_credential_endpoint_final1(&credential_schema.id, "123", &valid_credential2, 2, None)
         .await;
 
     // WHEN
@@ -1165,36 +1101,14 @@ async fn test_revoke_check_token_update() {
         )
         .await;
 
-    let format = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
-    // Token is up outdated
-    let a_couple_of_seconds_ago = (one_core::clock::now_utc() - time::Duration::seconds(20))
-        .format(&format)
-        .unwrap();
-    let a_couple_of_seconds_in_future = (one_core::clock::now_utc() + time::Duration::seconds(20))
-        .format(&format)
-        .unwrap();
-    let issuer_url = format!(
-        "{}/ssi/openid4vci/draft-13/{}",
-        context.server_mock.uri(),
-        credential_schema.id,
-    );
-
-    let interaction_data = serde_json::to_vec(&json!({
-        "issuer_url": issuer_url,
-        "credential_endpoint": format!("{}/credential", issuer_url),
-        "token_endpoint": format!("{}/token", issuer_url),
-        "grants":{
-            "urn:ietf:params:oauth:grant-type:pre-authorized_code":{
-                "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
-            }
+    let interaction_data = dummy_interaction_data(
+        &context,
+        &credential_schema,
+        TestInteractionParams {
+            access_token_expired: true,
+            refresh_token_expired: false,
         },
-        "access_token": encrypted_token("123"),
-        "access_token_expires_at": a_couple_of_seconds_ago,
-        "refresh_token": encrypted_token("123"),
-        "refresh_token_expires_at": a_couple_of_seconds_in_future,
-    }))
-    .unwrap();
-
+    );
     let interaction = context
         .db
         .interactions
@@ -1223,7 +1137,7 @@ async fn test_revoke_check_token_update() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &identifier,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             TestingCredentialParams {
                 credential_blob_id: Some(blob.id),
                 interaction: Some(interaction),
@@ -1318,32 +1232,14 @@ async fn test_revoke_check_mdoc_tokens_expired() {
         )
         .await;
 
-    let format = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
-    // Token is outdated
-    let a_couple_of_seconds_ago = (one_core::clock::now_utc() - time::Duration::seconds(20))
-        .format(&format)
-        .unwrap();
-    let issuer_url = format!(
-        "{}/ssi/openid4vci/draft-13/{}",
-        context.server_mock.uri(),
-        credential_schema.id,
-    );
-    let interaction_data = serde_json::to_vec(&json!({
-        "issuer_url": issuer_url,
-        "credential_endpoint": format!("{}/credential", issuer_url),
-        "token_endpoint": format!("{}/token", issuer_url),
-        "grants":{
-            "urn:ietf:params:oauth:grant-type:pre-authorized_code":{
-                "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
-            }
+    let interaction_data = dummy_interaction_data(
+        &context,
+        &credential_schema,
+        TestInteractionParams {
+            access_token_expired: true,
+            refresh_token_expired: true,
         },
-        "access_token": encrypted_token("invalid"),
-        "access_token_expires_at": a_couple_of_seconds_ago,
-        "refresh_token": encrypted_token("invalid"),
-        "refresh_token_expires_at": a_couple_of_seconds_ago,
-    }))
-    .unwrap();
-
+    );
     let interaction = context
         .db
         .interactions
@@ -1372,7 +1268,7 @@ async fn test_revoke_check_mdoc_tokens_expired() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &identifier,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             TestingCredentialParams {
                 credential_blob_id: Some(blob.id),
                 interaction: Some(interaction),
@@ -1469,31 +1365,11 @@ async fn test_revoke_check_mdoc_fail_to_update_token_valid_mso() {
         )
         .await;
 
-    let format = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
-    // Token is up outdated
-    let a_couple_of_seconds_ago = (one_core::clock::now_utc() - time::Duration::seconds(20))
-        .format(&format)
-        .unwrap();
-    let issuer_url = format!(
-        "{}/ssi/openid4vci/draft-13/{}",
-        context.server_mock.uri(),
-        credential_schema.id,
+    let interaction_data = dummy_interaction_data(
+        &context,
+        &credential_schema,
+        TestInteractionParams::default(),
     );
-    let interaction_data = serde_json::to_vec(&json!({
-        "issuer_url": issuer_url,
-        "credential_endpoint": format!("{}/credential", issuer_url),
-        "token_endpoint": format!("{}/token", issuer_url),
-        "grants":{
-            "urn:ietf:params:oauth:grant-type:pre-authorized_code":{
-                "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
-            }
-        },
-        "access_token": encrypted_token("invalid"),
-        "access_token_expires_at": a_couple_of_seconds_ago,
-        "refresh_token": encrypted_token("invalid"),
-        "refresh_token_expires_at": a_couple_of_seconds_ago,
-    }))
-    .unwrap();
 
     let interaction = context
         .db
@@ -1523,7 +1399,7 @@ async fn test_revoke_check_mdoc_fail_to_update_token_valid_mso() {
             &credential_schema,
             CredentialStateEnum::Accepted,
             &identifier,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             TestingCredentialParams {
                 credential_blob_id: Some(blob.id),
                 interaction: Some(interaction),
@@ -1615,35 +1491,14 @@ async fn test_suspended_to_valid_mdoc() {
         )
         .await;
 
-    let format = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
-    // Token is up outdated
-    let a_couple_of_seconds_ago = (one_core::clock::now_utc() - time::Duration::seconds(20))
-        .format(&format)
-        .unwrap();
-    let a_couple_of_seconds_in_future = (one_core::clock::now_utc() + time::Duration::seconds(20))
-        .format(&format)
-        .unwrap();
-    let issuer_url = format!(
-        "{}/ssi/openid4vci/draft-13/{}",
-        context.server_mock.uri(),
-        credential_schema.id,
-    );
-    let interaction_data = serde_json::to_vec(&json!({
-        "issuer_url": issuer_url,
-        "credential_endpoint": format!("{}/credential", issuer_url),
-        "token_endpoint": format!("{}/token", issuer_url),
-        "grants":{
-            "urn:ietf:params:oauth:grant-type:pre-authorized_code":{
-                "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
-            }
+    let interaction_data = dummy_interaction_data(
+        &context,
+        &credential_schema,
+        TestInteractionParams {
+            access_token_expired: true,
+            refresh_token_expired: false,
         },
-        "access_token": encrypted_token("invalid"),
-        "access_token_expires_at": a_couple_of_seconds_ago,
-        "refresh_token": encrypted_token("valid"),
-        "refresh_token_expires_at": a_couple_of_seconds_in_future,
-    }))
-    .unwrap();
-
+    );
     let interaction = context
         .db
         .interactions
@@ -1672,7 +1527,7 @@ async fn test_suspended_to_valid_mdoc() {
             &credential_schema,
             CredentialStateEnum::Suspended,
             &identifier,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             TestingCredentialParams {
                 credential_blob_id: Some(blob.id),
                 interaction: Some(interaction),
@@ -1689,17 +1544,14 @@ async fn test_suspended_to_valid_mdoc() {
         .refresh_token(&credential_schema.id)
         .await;
 
+    context
+        .server_mock
+        .ssi_nonce_endpoint("OPENID4VCI_FINAL1", "123", 1)
+        .await;
     let valid_credential = valid_mdoc_credential().await;
     context
         .server_mock
-        .ssi_credential_endpoint(
-            &credential_schema.id,
-            "321",
-            &valid_credential,
-            "mso_mdoc",
-            1,
-            None,
-        )
+        .ssi_credential_endpoint_final1(&credential_schema.id, "321", &valid_credential, 1, None)
         .await;
     let history_previous = context
         .db
@@ -1811,35 +1663,14 @@ async fn test_suspended_to_suspended_update_failed() {
         )
         .await;
 
-    let format = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
-    // Token is up outdated
-    let a_couple_of_seconds_ago = (one_core::clock::now_utc() - time::Duration::seconds(20))
-        .format(&format)
-        .unwrap();
-    let a_couple_of_seconds_in_future = (one_core::clock::now_utc() + time::Duration::seconds(20))
-        .format(&format)
-        .unwrap();
-    let issuer_url = format!(
-        "{}/ssi/openid4vci/draft-13/{}",
-        context.server_mock.uri(),
-        credential_schema.id,
-    );
-    let interaction_data = serde_json::to_vec(&json!({
-        "issuer_url": issuer_url,
-        "credential_endpoint": format!("{}/credential", issuer_url),
-        "token_endpoint": format!("{}/token", issuer_url),
-        "grants":{
-            "urn:ietf:params:oauth:grant-type:pre-authorized_code":{
-                "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
-            }
+    let interaction_data = dummy_interaction_data(
+        &context,
+        &credential_schema,
+        TestInteractionParams {
+            access_token_expired: true,
+            refresh_token_expired: false,
         },
-        "access_token": encrypted_token("invalid"),
-        "access_token_expires_at": a_couple_of_seconds_ago,
-        "refresh_token": encrypted_token("valid"),
-        "refresh_token_expires_at": a_couple_of_seconds_in_future,
-    }))
-    .unwrap();
-
+    );
     let interaction = context
         .db
         .interactions
@@ -1868,7 +1699,7 @@ async fn test_suspended_to_suspended_update_failed() {
             &credential_schema,
             CredentialStateEnum::Suspended,
             &identifier,
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             TestingCredentialParams {
                 credential_blob_id: Some(blob.id),
                 interaction: Some(interaction),
@@ -2000,6 +1831,69 @@ async fn test_revoke_check_failed_deleted_credential() {
     assert_eq!(resp.status(), 404);
 }
 
+#[derive(Default)]
+struct TestInteractionParams {
+    access_token_expired: bool,
+    refresh_token_expired: bool,
+}
+
+fn dummy_interaction_data(
+    context: &TestContext,
+    credential_schema: &CredentialSchema,
+    params: TestInteractionParams,
+) -> Vec<u8> {
+    let format = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
+    let now = one_core::clock::now_utc();
+    let at_expiry = match params.access_token_expired {
+        true => now - Duration::seconds(20),
+        false => now + Duration::seconds(20),
+    };
+    let rt_expiry = match params.refresh_token_expired {
+        true => now - Duration::seconds(20),
+        false => now + Duration::seconds(20),
+    };
+    let issuer_url = format!(
+        "{}/ssi/openid4vci/final-1.0/{}",
+        context.server_mock.uri(),
+        credential_schema.id,
+    );
+    serde_json::to_vec(&json!({
+        "issuer_url": issuer_url,
+        "credential_endpoint": format!("{}/credential", issuer_url),
+        "token_endpoint": format!("{}/token", issuer_url),
+        "nonce_endpoint": format!("{}/ssi/openid4vci/final-1.0/OPENID4VCI_FINAL1/nonce", context.server_mock.uri()),
+        "grants":{
+            "urn:ietf:params:oauth:grant-type:pre-authorized_code":{
+                "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
+            }
+        },
+        "access_token": encrypted_token("123"),
+        "access_token_expires_at": at_expiry.format(&format).unwrap(),
+        "refresh_token": encrypted_token("123"),
+        "refresh_token_expires_at": rt_expiry.format(&format).unwrap(),
+        "cryptographic_binding_methods_supported": [
+            "cose_key"
+        ],
+        "proof_types_supported": {
+            "jwt": {
+                "proof_signing_alg_values_supported": [
+                    "EdDSA",
+                    "ES256",
+                ]
+            }
+        },
+        "token_endpoint_auth_methods_supported": [
+            "none"
+        ],
+        "credential_configuration_id": "01ee2044-2e75-4a3b-a575-b48669bd8254",
+        "protocol": "OPENID4VCI_FINAL1",
+        "format": "mso_mdoc",
+        "trust_resolution": "UNTRUSTED",
+        "trust_mode": "TRUST_OPTIONAL"
+        }))
+        .unwrap()
+}
+
 async fn valid_mdoc_credential() -> String {
     let params = Params {
         mso_expires_in: Duration::days(1),
@@ -2038,11 +1932,13 @@ async fn minimal_mdoc_credential(params: Params) -> String {
             credential_subject: vec![],
             credential_status: vec![],
             proof: None,
-            credential_schema: Some(vec![CredentialSchema {
-                id: "schema".to_string(),
-                r#type: "schema".to_string(),
-                metadata: None,
-            }]),
+            credential_schema: Some(vec![
+                one_core::provider::credential_formatter::model::CredentialSchema {
+                    id: "schema".to_string(),
+                    r#type: "schema".to_string(),
+                    metadata: None,
+                },
+            ]),
             refresh_service: None,
             name: None,
             description: None,

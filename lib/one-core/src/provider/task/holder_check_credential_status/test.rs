@@ -15,11 +15,9 @@ use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, Layo
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::key::Key;
-use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::credential_validity_manager::{
     CredentialValidityManager, CredentialValidityManagerImpl,
 };
-use crate::proto::http_client::MockHttpClient;
 use crate::proto::session_provider::NoSessionProvider;
 use crate::provider::blob_storage_provider::{MockBlobStorage, MockBlobStorageProvider};
 use crate::provider::credential_formatter::MockCredentialFormatter;
@@ -27,9 +25,7 @@ use crate::provider::credential_formatter::model::{
     CredentialStatus, CredentialSubject, DetailCredential, IdentifierDetails,
 };
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
-use crate::provider::did_method::provider::MockDidMethodProvider;
-use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
-use crate::provider::key_storage::provider::MockKeyProvider;
+use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProvider;
 use crate::provider::revocation::MockRevocationMethod;
 use crate::provider::revocation::model::RevocationState;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
@@ -37,7 +33,6 @@ use crate::provider::task::Task;
 use crate::provider::task::holder_check_credential_status::dto::HolderCheckCredentialStatusResultDTO;
 use crate::provider::task::holder_check_credential_status::{HolderCheckCredentialStatus, Params};
 use crate::repository::credential_repository::MockCredentialRepository;
-use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::service::test_utilities::{dummy_organisation, generic_config, get_dummy_date};
 
 #[tokio::test]
@@ -175,27 +170,17 @@ async fn test_task_holder_check_credential_status_being_revoked() {
 #[derive(Default)]
 struct Repositories {
     pub credential_repository: Arc<MockCredentialRepository>,
-    pub interaction_repository: Arc<MockInteractionRepository>,
     pub revocation_method_provider: Arc<MockRevocationMethodProvider>,
     pub formatter_provider: Arc<MockCredentialFormatterProvider>,
-    pub did_method_provider: Arc<MockDidMethodProvider>,
-    pub key_provider: Arc<MockKeyProvider>,
-    pub key_algorithm_provider: Arc<MockKeyAlgorithmProvider>,
-    pub certificate_validator: Arc<MockCertificateValidator>,
+    pub issuance_protocol_provider: Arc<MockIssuanceProtocolProvider>,
     pub config: Arc<CoreConfig>,
     pub blob_storage_provider: Arc<MockBlobStorageProvider>,
-    pub client: Arc<MockHttpClient>,
 }
 
 fn setup_validity_manager(repositories: Repositories) -> Arc<dyn CredentialValidityManager> {
     Arc::new(CredentialValidityManagerImpl::new(
         repositories.credential_repository,
-        repositories.interaction_repository,
-        repositories.client,
-        repositories.key_provider,
-        repositories.key_algorithm_provider,
-        repositories.certificate_validator,
-        repositories.did_method_provider,
+        repositories.issuance_protocol_provider,
         repositories.revocation_method_provider,
         repositories.formatter_provider,
         repositories.blob_storage_provider,

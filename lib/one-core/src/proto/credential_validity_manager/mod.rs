@@ -15,19 +15,14 @@ use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierType};
 use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
-use crate::proto::certificate_validator::CertificateValidator;
-use crate::proto::http_client::HttpClient;
 use crate::proto::session_provider::SessionProvider;
 use crate::provider::blob_storage_provider::{BlobStorageProvider, BlobStorageType};
 use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::issuance_protocol::provider::IssuanceProtocolProvider;
 use crate::provider::revocation::model::{CredentialDataByRole, RevocationState};
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
-use crate::repository::interaction_repository::InteractionRepository;
 use crate::service::error::{EntityNotFoundError, MissingProviderError};
 use crate::validator::{
     throw_if_credential_schema_not_in_session_org, throw_if_org_id_not_matching_session,
@@ -66,6 +61,8 @@ pub struct CredentialValidityCheckResult {
 pub enum Error {
     #[error("Mapping error: `{0}`")]
     MappingError(String),
+    #[error("Missing issuance protocol `{0}`")]
+    MissingIssuanceProtocol(String),
     #[error("Json error: {0}")]
     JsonError(#[from] serde_json::Error),
     #[error("No revocation method configured on credential schema {0}")]
@@ -96,6 +93,7 @@ impl ErrorCodeMixin for Error {
             Self::MappingError(_) => ErrorCode::BR_0047,
             Self::JsonError(_) => ErrorCode::BR_0189,
             Self::NoRevocationMethod(_) => ErrorCode::BR_0098,
+            Self::MissingIssuanceProtocol(_) => ErrorCode::BR_0046,
             Self::SuspensionNotSupported { .. } => ErrorCode::BR_0162,
             Self::InvalidCredentialStateTransition { .. } => ErrorCode::BR_0366,
             Self::IncompatibleIssuerIdentifier => ErrorCode::BR_0218,
@@ -108,12 +106,7 @@ impl ErrorCodeMixin for Error {
 
 pub struct CredentialValidityManagerImpl {
     credential_repository: Arc<dyn CredentialRepository>,
-    interaction_repository: Arc<dyn InteractionRepository>,
-    client: Arc<dyn HttpClient>,
-    key_provider: Arc<dyn KeyProvider>,
-    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-    certificate_validator: Arc<dyn CertificateValidator>,
-    did_method_provider: Arc<dyn DidMethodProvider>,
+    issuance_protocol_provider: Arc<dyn IssuanceProtocolProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
@@ -122,15 +115,9 @@ pub struct CredentialValidityManagerImpl {
 }
 
 impl CredentialValidityManagerImpl {
-    #[expect(clippy::too_many_arguments)]
     pub fn new(
         credential_repository: Arc<dyn CredentialRepository>,
-        interaction_repository: Arc<dyn InteractionRepository>,
-        client: Arc<dyn HttpClient>,
-        key_provider: Arc<dyn KeyProvider>,
-        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-        certificate_validator: Arc<dyn CertificateValidator>,
-        did_method_provider: Arc<dyn DidMethodProvider>,
+        issuance_protocol_provider: Arc<dyn IssuanceProtocolProvider>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
@@ -139,12 +126,7 @@ impl CredentialValidityManagerImpl {
     ) -> Self {
         Self {
             credential_repository,
-            interaction_repository,
-            client,
-            key_provider,
-            key_algorithm_provider,
-            certificate_validator,
-            did_method_provider,
+            issuance_protocol_provider,
             revocation_method_provider,
             formatter_provider,
             blob_storage_provider,
@@ -323,6 +305,18 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
             .ok_or(Error::MappingError("schema is None".to_string()))?
             .clone();
 
+        let format_type = self
+            .config
+            .format
+            .get_fields(&credential_schema.format)
+            .error_while("getting credential format type")?
+            .r#type;
+
+        if format_type == FormatType::Mdoc {
+            // Mdoc flow ends here. Nothing else to do for MDOC, since it does not have revocation mechanism
+            return self.update_mdoc(&credential, force_refresh).await;
+        }
+
         let credentials = if let Some(credential_blob_id) = credential.credential_blob_id {
             let blob_storage = self
                 .blob_storage_provider
@@ -356,19 +350,6 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
             .extract_credentials_unverified(&credential_str, Some(&credential_schema))
             .await
             .error_while("extracting credential")?;
-
-        let format_type = self
-            .config
-            .format
-            .get_fields(&credential_schema.format)
-            .error_while("getting credential format type")?
-            .r#type;
-        if format_type == FormatType::Mdoc {
-            // Mdoc flow ends here. Nothing else to do for MDOC, since it does not have revocation mechanism
-            return self
-                .update_mdoc(&credential, &detail_credential, force_refresh)
-                .await;
-        }
 
         let credential_status = if !detail_credential.status.is_empty() {
             detail_credential.status

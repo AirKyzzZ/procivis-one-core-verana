@@ -34,6 +34,8 @@ pub enum IssuanceProtocolError {
     MissingCredentialSchema(CredentialSchemaId),
     #[error("Interaction not allowed - untrusted")]
     Untrusted,
+    #[error("Refresh not possible: refresh token missing or expired")]
+    RefreshNotPossible,
 
     #[error("JSON error: `{0}`")]
     Json(#[from] serde_json::Error),
@@ -64,7 +66,7 @@ impl ErrorCodeMixin for IssuanceProtocolError {
             | Self::CredentialVerificationFailed(_) => ErrorCode::BR_0173,
             Self::BindingAutogenerationFailure(_) => ErrorCode::BR_0217,
             Self::DisallowedCredentialConfiguration => ErrorCode::BR_0411,
-            Self::Suspended | Self::RefreshTooSoon => ErrorCode::BR_0238,
+            Self::Suspended | Self::RefreshTooSoon | Self::RefreshNotPossible => ErrorCode::BR_0238,
             Self::FromUtf8Error(_) | Self::TrustInformationError(_) => ErrorCode::BR_0047,
             Self::MissingCredentialSchema(_) => ErrorCode::BR_0006,
             Self::Nested(nested) => nested.error_code(),

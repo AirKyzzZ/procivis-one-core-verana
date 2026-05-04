@@ -495,12 +495,7 @@ impl OneCore {
 
         let credential_validity_manager = Arc::new(CredentialValidityManagerImpl::new(
             data_provider.get_credential_repository(),
-            data_provider.get_interaction_repository(),
-            client.clone(),
-            key_provider.clone(),
-            key_algorithm_provider.clone(),
-            certificate_validator.clone(),
-            did_method_provider.clone(),
+            issuance_provider.clone(),
             revocation_method_provider.clone(),
             credential_formatter_provider.clone(),
             blob_storage_provider.clone(),

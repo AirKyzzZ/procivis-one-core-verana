@@ -14,10 +14,8 @@ use secrecy::{ExposeSecret, SecretString};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use shared_types::{
-    BlobId, CredentialFormat, CredentialId, CredentialSchemaId, DidValue, InteractionId,
-    OrganisationId,
+    BlobId, CredentialFormat, CredentialId, CredentialSchemaId, InteractionId, OrganisationId,
 };
-use standardized_types::jwk::PublicJwk;
 use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
 use time::{Duration, OffsetDateTime};
 use url::Url;
@@ -43,7 +41,7 @@ use super::openid4vci_final1_0::model::{
     OpenID4VCINonceResponseDTO, OpenID4VCINotificationEvent, OpenID4VCINotificationRequestDTO,
     OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO, PreparedMetadata,
 };
-use super::openid4vci_final1_0::proof_formatter::OpenID4VCIProofJWTFormatter;
+use super::openid4vci_final1_0::proof_formatter::{OpenID4VCIProofJWTFormatter, PublicKeyInfo};
 use super::openid4vci_final1_0::service::{
     create_credential_offer, create_issuer_metadata_response, credential_configurations_supported,
     get_protocol_base_url,
@@ -99,7 +97,7 @@ use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
 use crate::provider::credential_formatter::mapper::credential_data_from_credential_detail_response;
 use crate::provider::credential_formatter::mdoc_formatter;
 use crate::provider::credential_formatter::model::{
-    AuthenticationFn, CertificateDetails, IdentifierDetails, VerificationFn,
+    CertificateDetails, DetailCredential, IdentifierDetails, VerificationFn,
 };
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -480,7 +478,7 @@ impl OpenID4VCIFinal1_0 {
         key: &Key,
         interaction_data: &mut HolderInteractionData,
     ) -> Result<SecretString, IssuanceProtocolError> {
-        let now = crate::clock::now_utc();
+        let now = now_utc();
         if let Some(encrypted_token) = &interaction_data.access_token {
             let token_valid = interaction_data
                 .access_token_expires_at
@@ -503,9 +501,8 @@ impl OpenID4VCIFinal1_0 {
                 IssuanceProtocolError::Failed(format!("failed to decrypt refresh token: {err}"))
             })?
         } else {
-            return Err(IssuanceProtocolError::Failed(
-                "no refresh token saved".to_owned(),
-            ));
+            // No refresh token saved
+            return Err(IssuanceProtocolError::RefreshNotPossible);
         };
 
         if interaction_data
@@ -513,9 +510,7 @@ impl OpenID4VCIFinal1_0 {
             .is_some_and(|expires_at| expires_at <= now)
         {
             // Expired refresh token
-            return Err(IssuanceProtocolError::Failed(
-                "expired refresh token".to_owned(),
-            ));
+            return Err(IssuanceProtocolError::RefreshNotPossible);
         }
 
         // Refresh the WIA
@@ -1078,35 +1073,23 @@ impl OpenID4VCIFinal1_0 {
         Ok(())
     }
 
-    #[expect(clippy::too_many_arguments)]
     async fn holder_request_credential(
         &self,
         interaction_data: &HolderInteractionData,
-        holder_did: Option<&DidValue>,
-        holder_key: PublicJwk,
-        nonce: Option<String>,
-        auth_fn: AuthenticationFn,
-        access_token: &str,
+        identifier: &Identifier,
+        key: &Key,
+        access_token: &SecretString,
         key_attestation: Option<String>,
     ) -> Result<SubmitIssuerResponse, IssuanceProtocolError> {
-        let jwk = interaction_data
-            .cryptographic_binding_methods_supported
-            .as_ref()
-            .and_then(|methods| {
-                if let Some(holder_did) = holder_did
-                    && methods
-                        .iter()
-                        .any(|method| &format!("did:{}", holder_did.method()) == method)
-                {
-                    None
-                } else if methods.contains(&"jwk".to_string())
-                    | methods.contains(&"cose_key".to_string())
-                {
-                    Some(holder_key)
-                } else {
-                    None
-                }
-            });
+        let nonce = self.holder_fetch_nonce(interaction_data).await?;
+        let public_key_info = self
+            .public_key_info_from_meta_and_holder_binding(interaction_data, identifier, key)
+            .await?;
+
+        let auth_fn = self
+            .key_provider
+            .get_signature_provider(key, None, self.key_algorithm_provider.clone())
+            .error_while("getting signature provider")?;
 
         let client_id = interaction_data
             .continue_issuance
@@ -1118,8 +1101,8 @@ impl OpenID4VCIFinal1_0 {
         // This claim MUST be omitted if the access token authorizing the issuance call was obtained from a Pre-Authorized Code
         let proof_jwt = OpenID4VCIProofJWTFormatter::format_proof(
             interaction_data.issuer_url.to_owned(),
-            jwk,
-            nonce,
+            public_key_info,
+            Some(nonce),
             key_attestation,
             auth_fn,
             client_id,
@@ -1137,7 +1120,7 @@ impl OpenID4VCIFinal1_0 {
         let response: OpenID4VCICredentialResponseDTO = async {
             self.client
                 .post(interaction_data.credential_endpoint.as_str())
-                .bearer_auth(access_token)
+                .bearer_auth(access_token.expose_secret())
                 .json(&body)?
                 .send()
                 .await?
@@ -1162,6 +1145,80 @@ impl OpenID4VCIFinal1_0 {
             redirect_uri: response.redirect_uri,
             notification_id: response.notification_id,
         })
+    }
+
+    async fn public_key_info_from_meta_and_holder_binding(
+        &self,
+        interaction_data: &HolderInteractionData,
+        identifier: &Identifier,
+        key: &Key,
+    ) -> Result<PublicKeyInfo, IssuanceProtocolError> {
+        // Should be optional, but currently not supported by core.
+        //
+        // https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#section-12.2.4-2.11.2.4:
+        // It MUST be present when Cryptographic Key Binding is required for a Credential, and omitted otherwise.
+        // If absent, Cryptographic Key Binding is not required for this credential.
+        let Some(methods) = &interaction_data.cryptographic_binding_methods_supported else {
+            return Err(IssuanceProtocolError::Failed("No cryptographic_binding_methods_supported available in metadata. Credentials without holder binding are not supported.".to_string()));
+        };
+        let info = match &identifier.r#type {
+            IdentifierType::Did => {
+                let did = identifier
+                    .did
+                    .as_ref()
+                    .ok_or(IssuanceProtocolError::Failed(
+                        "Missing identifier did".to_string(),
+                    ))?;
+                if methods
+                    .iter()
+                    .any(|method| &format!("did:{}", did.did.method()) == method)
+                {
+                    let related_key = did
+                        .find_key(&key.id, &KeyFilter::role_filter(KeyRole::Authentication))
+                        .await
+                        .error_while("finding related key")?;
+
+                    PublicKeyInfo::KeyId(did.verification_method_id(&related_key))
+                } else {
+                    self.jwk_proof_info_from_key(identifier, key, methods)?
+                }
+            }
+            IdentifierType::Key => self.jwk_proof_info_from_key(identifier, key, methods)?,
+            r#type => {
+                return Err(IssuanceProtocolError::Failed(format!(
+                    "Unsupported identifier type: {}",
+                    r#type
+                )));
+            }
+        };
+        Ok(info)
+    }
+
+    fn jwk_proof_info_from_key(
+        &self,
+        identifier: &Identifier,
+        key: &Key,
+        methods: &Vec<String>,
+    ) -> Result<PublicKeyInfo, IssuanceProtocolError> {
+        if !methods.contains(&"jwk".to_string()) && !methods.contains(&"cose_key".to_string()) {
+            return Err(IssuanceProtocolError::Failed(format!(
+                "No matching cryptographic binding method found for identifier {} and key {}. Options supported by the issue: `{methods:?}`",
+                identifier.id, key.id
+            )));
+        }
+        let jwk = self
+            .key_algorithm_provider
+            .reconstruct_key(
+                key.key_algorithm_type()
+                    .error_while("getting key algorithm type")?,
+                &key.public_key,
+                None,
+                None,
+            )
+            .error_while("reconstructing key")?
+            .public_key_as_jwk()
+            .error_while("getting JWK")?;
+        Ok(PublicKeyInfo::Jwk(jwk))
     }
 
     async fn upsert_credential_blob(
@@ -1613,6 +1670,121 @@ impl OpenID4VCIFinal1_0 {
             credential_configurations_supported,
         })
     }
+
+    async fn process_credential_refresh(
+        &self,
+        credential: &Credential,
+        response: SubmitIssuerResponse,
+        organisation_id: OrganisationId,
+        check_trust: bool,
+    ) -> Result<(), IssuanceProtocolError> {
+        let schema = credential
+            .schema
+            .as_ref()
+            .ok_or(IssuanceProtocolError::Failed(
+                "Missing credential schema".to_string(),
+            ))?;
+        let formatter = self
+            .formatter_provider
+            .get_credential_formatter(&schema.format)
+            .ok_or_else(|| MissingProviderError::Formatter(schema.format.to_string()))
+            .error_while("getting credential formatter")?;
+
+        let verification_fn = Box::new(KeyVerification {
+            key_algorithm_provider: self.key_algorithm_provider.clone(),
+            did_method_provider: self.did_method_provider.clone(),
+            key_role: KeyRole::AssertionMethod,
+            certificate_validator: self.certificate_validator.clone(),
+        });
+        let extracted = formatter
+            .extract_credentials(&response.credential, Some(schema), verification_fn)
+            .await
+            .error_while("extracting credential")?;
+
+        let issuer_certificate =
+            if let IdentifierDetails::Certificate(certificate) = extracted.issuer {
+                Some(certificate)
+            } else {
+                None
+            };
+
+        if check_trust {
+            self.wrp_validator
+                .validate_credential_issuer(
+                    issuer_certificate
+                        .as_ref()
+                        .map(|certificate| certificate.chain.as_str()),
+                    schema,
+                    organisation_id,
+                )
+                .await
+                .error_while("validating credential issuer trust")?;
+        }
+
+        let db_blob_storage = self
+            .blob_storage_provider
+            .get_blob_storage(BlobStorageType::Db)
+            .await
+            .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))
+            .error_while("getting blob storage")?;
+
+        let blob_id = credential
+            .credential_blob_id
+            .ok_or(IssuanceProtocolError::Failed(
+                "Missing credential blob id".to_string(),
+            ))?;
+        db_blob_storage
+            .update(
+                &blob_id,
+                UpdateBlobRequest {
+                    value: Some(response.credential.into()),
+                },
+            )
+            .await
+            .error_while("updating credential blob")?;
+        Ok(())
+    }
+
+    async fn credential_to_detail_credential(
+        &self,
+        credential: &Credential,
+        credential_schema: &CredentialSchema,
+    ) -> Result<DetailCredential, IssuanceProtocolError> {
+        let credentials = if let Some(credential_blob_id) = credential.credential_blob_id {
+            let blob_storage = self
+                .blob_storage_provider
+                .get_blob_storage(BlobStorageType::Db)
+                .await
+                .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))
+                .error_while("getting blob storage")?;
+
+            blob_storage
+                .get(&credential_blob_id)
+                .await
+                .error_while("getting credential blob")?
+                .ok_or(IssuanceProtocolError::Failed(
+                    "credential blob is None".to_string(),
+                ))?
+                .value
+        } else {
+            vec![]
+        };
+        let credential_str = String::from_utf8(credentials)?;
+
+        let formatter = self
+            .formatter_provider
+            .get_credential_formatter(&credential_schema.format)
+            .ok_or(MissingProviderError::Formatter(
+                credential_schema.format.to_string(),
+            ))
+            .error_while("getting credential formatter")?;
+
+        let detail_credential = formatter
+            .extract_credentials_unverified(&credential_str, Some(credential_schema))
+            .await
+            .error_while("extracting credential")?;
+        Ok(detail_credential)
+    }
 }
 
 #[async_trait]
@@ -1773,16 +1945,13 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 .await?
         };
 
-        let key = &holder_binding.key;
-
         let attestation_result = self
-            .prepare_wallet_attestations(&interaction_data, key, organisation.id)
+            .prepare_wallet_attestations(&interaction_data, &holder_binding.key, organisation.id)
             .await?;
 
         let token_response = self
             .holder_fetch_token(&interaction_data, tx_code, attestation_result.wia_request)
             .await?;
-        let nonce = self.holder_fetch_nonce(&interaction_data).await?;
 
         let encrypted_access_token =
             encrypt_string(&token_response.access_token, &self.params.encryption).map_err(
@@ -1808,55 +1977,12 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 .and_then(|expires_in| OffsetDateTime::from_unix_timestamp(expires_in.0).ok());
         }
 
-        let holder_jwk_key_id = if holder_binding.identifier.r#type == IdentifierType::Did {
-            let did =
-                holder_binding
-                    .identifier
-                    .did
-                    .as_ref()
-                    .ok_or(IssuanceProtocolError::Failed(
-                        "Missing identifier did".to_string(),
-                    ))?;
-
-            let related_key = did
-                .find_key(
-                    &holder_binding.key.id,
-                    &KeyFilter::role_filter(KeyRole::Authentication),
-                )
-                .await
-                .error_while("finding related key")?;
-
-            Some(did.verification_method_id(&related_key))
-        } else {
-            None
-        };
-
-        let auth_fn = self
-            .key_provider
-            .get_signature_provider(key, holder_jwk_key_id, self.key_algorithm_provider.clone())
-            .error_while("getting signature provider")?;
-
-        let key = self
-            .key_algorithm_provider
-            .reconstruct_key(
-                key.key_algorithm_type()
-                    .error_while("getting key algorithm type")?,
-                &key.public_key,
-                None,
-                None,
-            )
-            .error_while("reconstructing key")?
-            .public_key_as_jwk()
-            .error_while("getting JWK")?;
-
         let credential_response = self
             .holder_request_credential(
                 &interaction_data,
-                holder_binding.identifier.did.as_ref().map(|did| &did.did),
-                key,
-                Some(nonce),
-                auth_fn,
-                token_response.access_token.expose_secret(),
+                &holder_binding.identifier,
+                &holder_binding.key,
+                &token_response.access_token,
                 attestation_result.wua_proof,
             )
             .await?;
@@ -2398,6 +2524,125 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         .map_err(OpenIDIssuanceError::OpenID4VCI)
         .map_err(Into::into)
     }
+
+    async fn holder_refresh_credential(
+        &self,
+        credential: &Credential,
+        force_refresh: bool,
+    ) -> Result<CredentialStateEnum, IssuanceProtocolError> {
+        let credential_schema = credential
+            .schema
+            .as_ref()
+            .ok_or(IssuanceProtocolError::Failed("schema is None".to_string()))?
+            .clone();
+        let detail_credential = self
+            .credential_to_detail_credential(credential, &credential_schema)
+            .await?;
+
+        let new_state = if credential_expired(&detail_credential) {
+            CredentialStateEnum::Suspended
+        } else {
+            CredentialStateEnum::Accepted
+        };
+
+        let interaction = credential
+            .interaction
+            .as_ref()
+            .ok_or(IssuanceProtocolError::Failed(
+                "Missing interaction".to_string(),
+            ))?;
+        let organisation =
+            interaction
+                .organisation
+                .as_ref()
+                .ok_or(IssuanceProtocolError::Failed(
+                    "Missing organisation".to_string(),
+                ))?;
+        let mut interaction_data: HolderInteractionData = deserialize_interaction_data(
+            credential
+                .interaction
+                .as_ref()
+                .and_then(|i| i.data.as_ref()),
+        )
+        .error_while("deserializing interaction data")?;
+        let key = credential
+            .key
+            .as_ref()
+            .ok_or(IssuanceProtocolError::Failed("Missing key".to_string()))?;
+
+        let result = self
+            .holder_reuse_or_refresh_token(
+                interaction.id,
+                organisation.id,
+                key,
+                &mut interaction_data,
+            )
+            .await;
+
+        let new_state =
+            match result {
+                Ok(access_token)
+                    if force_refresh || credential_requires_update(&detail_credential) =>
+                {
+                    let identifier = credential.holder_identifier.as_ref().ok_or(
+                        IssuanceProtocolError::Failed("Missing identifier".to_string()),
+                    )?;
+                    let result = async {
+                        let response = self
+                            .holder_request_credential(
+                                &interaction_data,
+                                identifier,
+                                key,
+                                &access_token,
+                                None,
+                            )
+                            .await?;
+                        self.process_credential_refresh(
+                            credential,
+                            response,
+                            organisation.id,
+                            interaction_data.trust_mode == TrustMode::TrustMandatory,
+                        )
+                        .await
+                    }
+                    .await;
+
+                    // If we have managed to refresh credential
+                    if result.is_ok() {
+                        CredentialStateEnum::Accepted
+                    } else {
+                        new_state
+                    }
+                }
+                Err(IssuanceProtocolError::RefreshNotPossible)
+                    if credential_expired(&detail_credential) =>
+                {
+                    CredentialStateEnum::Revoked
+                }
+                Err(_) | Ok(_) => new_state,
+            };
+        Ok(new_state)
+    }
+}
+
+fn credential_expired(detail_credential: &DetailCredential) -> bool {
+    let now = now_utc();
+
+    if let Some(valid_until) = detail_credential.valid_until {
+        return valid_until < now;
+    }
+
+    false
+}
+
+fn credential_requires_update(detail_credential: &DetailCredential) -> bool {
+    let now = now_utc();
+
+    if let Some(valid_until) = detail_credential.update_at {
+        return valid_until < now;
+    }
+
+    credential_expired(detail_credential)
 }
 
 fn requires_wia(token_endpoint_auth_methods: &[TokenEndpointAuthMethod]) -> bool {

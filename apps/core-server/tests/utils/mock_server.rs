@@ -37,7 +37,7 @@ impl MockServer {
 
     pub async fn refresh_token(&self, schema_id: impl Display) {
         Mock::given(method(Method::POST))
-            .and(path(format!("/ssi/openid4vci/draft-13/{schema_id}/token")))
+            .and(path(format!("/ssi/openid4vci/final-1.0/{schema_id}/token")))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!(
                 {
                    "access_token": "321",
@@ -47,6 +47,7 @@ impl MockServer {
                    "refresh_token_expires_in": one_core::clock::now_utc().unix_timestamp() + 3600,
                 }
             )))
+            .expect(1)
             .mount(&self.mock)
             .await;
     }

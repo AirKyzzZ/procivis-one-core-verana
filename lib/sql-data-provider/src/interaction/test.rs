@@ -147,7 +147,7 @@ async fn test_mark_nonce_as_used() {
     let nonce_id = Uuid::new_v4().into();
     setup
         .provider
-        .mark_nonce_as_used(&interaction_id, nonce_id)
+        .mark_nonce_as_used(&interaction_id, nonce_id, None)
         .await
         .unwrap();
 
@@ -180,7 +180,7 @@ async fn test_mark_nonce_as_used_already_used() {
 
     let result = setup
         .provider
-        .mark_nonce_as_used(&interaction_id, nonce_id)
+        .mark_nonce_as_used(&interaction_id, nonce_id, None)
         .await;
     assert!(matches!(result, Err(DataLayerError::RecordNotUpdated)));
 }
@@ -214,7 +214,7 @@ async fn test_mark_nonce_as_used_already_used_different_interaction() {
 
     let result = setup
         .provider
-        .mark_nonce_as_used(&interaction_id, nonce_id)
+        .mark_nonce_as_used(&interaction_id, nonce_id, None)
         .await;
     assert!(matches!(result, Err(DataLayerError::AlreadyExists)));
 }

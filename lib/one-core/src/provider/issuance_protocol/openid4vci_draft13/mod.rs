@@ -1060,6 +1060,14 @@ impl IssuanceProtocol for OpenID4VCI13 {
         .await
     }
 
+    async fn holder_refresh_credential(
+        &self,
+        _credential: &Credential,
+        _force_refresh: bool,
+    ) -> Result<CredentialStateEnum, IssuanceProtocolError> {
+        unimplemented!("will be deleted anyway")
+    }
+
     async fn issuer_share_credential(
         &self,
         credential: &Credential,

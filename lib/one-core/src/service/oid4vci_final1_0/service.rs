@@ -421,8 +421,18 @@ impl OID4VCIFinal1_0Service {
                 OpenID4VCIError::InvalidNonce
             })?;
 
+        // TODO: Properly keep track of _all_ the used nonces
+        // Should be changed when batch issuance is implemented
+        // For now we allow the nonce to be rotated on credential refresh
+        let previous_nonce_id = if credential.state == CredentialStateEnum::Accepted
+            && interaction.nonce_id.is_some_and(|prev| prev != nonce_id)
+        {
+            interaction.nonce_id
+        } else {
+            None
+        };
         self.interaction_repository
-            .mark_nonce_as_used(&interaction.id, nonce_id.into())
+            .mark_nonce_as_used(&interaction.id, nonce_id.into(), previous_nonce_id)
             .await
             .map_err(|e| match e {
                 DataLayerError::RecordNotUpdated | DataLayerError::AlreadyExists => {
