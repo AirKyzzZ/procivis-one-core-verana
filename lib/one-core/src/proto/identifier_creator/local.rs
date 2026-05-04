@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::ops::Deref;
 
+use one_dto_mapper::convert_inner;
 use shared_types::{DidId, IdentifierId, KeyId, OrganisationId};
 use uuid::Uuid;
 
@@ -417,7 +418,9 @@ impl IdentifierCreatorProto {
                         GenerateCsrRequest {
                             profile: content.profile.into(),
                             subject: content.subject.into(),
-                            subject_alternative_name: None,
+                            subject_alternative_name: convert_inner(
+                                content.subject_alternative_name,
+                            ),
                         },
                     )
                     .await

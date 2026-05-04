@@ -1,9 +1,9 @@
 use assert2::let_assert;
 use indoc::indoc;
 use one_core::provider::signer::registration_certificate::model::WRPRegistrationCertificate;
-use rcgen::{CertificateParams, KeyUsagePurpose};
+use rcgen::{CertificateParams, KeyUsagePurpose, SanType};
 use similar_asserts::assert_eq;
-use x509_parser::extensions::ParsedExtension;
+use x509_parser::extensions::{GeneralName, ParsedExtension};
 use x509_parser::oid_registry::{OID_X509_EXT_CRL_DISTRIBUTION_POINTS, OID_X509_EXT_KEY_USAGE};
 use x509_parser::pem::Pem;
 use x509_parser::time::ASN1Time;
@@ -385,6 +385,51 @@ async fn test_create_signature_x509_success_no_crl() {
         .get_extension_unique(&OID_X509_EXT_CRL_DISTRIBUTION_POINTS)
         .unwrap();
     assert!(crl_ext.is_none());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_create_signature_x509_san_dns() {
+    let (context, _org, identifier, ..) = TestContext::new_with_ca_identifier(None).await;
+
+    let mut params = CertificateParams::default();
+    params.subject_alt_names = vec![SanType::DnsName("procivis.ch".try_into().unwrap())];
+
+    let resp = context
+        .api
+        .signatures
+        .create(
+            TestCreateSignatureRequest {
+                issuer: identifier.id,
+                issuer_key: None,
+                issuer_certificate: None,
+                signer: "X509_CERTIFICATE".to_string(),
+                data: test_csr_payload(Some(params)),
+                validity_start: None,
+                validity_end: None,
+            },
+            None,
+        )
+        .await;
+
+    assert_eq!(resp.status(), 201);
+    let resp = resp.json_value().await;
+    let pem = resp["result"].as_str().unwrap();
+
+    let items = Pem::iter_from_buffer(pem.as_bytes())
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap();
+
+    assert_eq!(items.len(), 2); // leaf + CA cert
+    let certs = items
+        .iter()
+        .map(|pem| pem.parse_x509())
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap();
+    let leaf_cert = certs.first().unwrap();
+
+    let san_ext = leaf_cert.subject_alternative_name().unwrap().unwrap();
+    let dns_name = san_ext.value.general_names.first().unwrap();
+    assert2::assert!(let GeneralName::DNSName("procivis.ch") = dns_name);
 }
 
 #[tokio::test]

@@ -4,8 +4,9 @@ use one_crypto::hasher::sha1::SHA1;
 use rcgen::string::{BmpString, UniversalString};
 use rcgen::{
     CertificateParams, DistinguishedName, DnType, DnValue, KeyIdMethod, KeyUsagePurpose,
-    PublicKeyData, SignatureAlgorithm,
+    PublicKeyData, SanType, SignatureAlgorithm,
 };
+use x509_parser::extensions::GeneralName;
 use x509_parser::prelude::{KeyUsage, ParsedExtension};
 use x509_parser::x509::X509Name;
 
@@ -177,6 +178,25 @@ fn parse_extension<'a>(
                 } else {
                     return Err(CSRError::DisallowedExtension(format!("{extension:?}")));
                 }
+            }
+        }
+
+        // Subject alternative name (certain types only)
+        ParsedExtension::SubjectAlternativeName(san) => {
+            for name in &san.general_names {
+                let san_type = match name {
+                    GeneralName::RFC822Name(email) => {
+                        SanType::Rfc822Name(email.to_string().try_into()?)
+                    }
+                    GeneralName::DNSName(dns_name) => {
+                        SanType::DnsName(dns_name.to_string().try_into()?)
+                    }
+                    GeneralName::URI(uri) => SanType::URI(uri.to_string().try_into()?),
+                    _ => {
+                        return Err(CSRError::DisallowedExtension(format!("{extension:?}")));
+                    }
+                };
+                output.subject_alt_names.push(san_type);
             }
         }
 

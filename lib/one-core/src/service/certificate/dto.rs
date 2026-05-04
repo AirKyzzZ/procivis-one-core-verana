@@ -3,7 +3,8 @@ use time::OffsetDateTime;
 
 use crate::model::certificate::{CertificateRole, CertificateState};
 use crate::service::key::dto::{
-    KeyGenerateCSRRequestProfile, KeyGenerateCSRRequestSubjectDTO, KeyListItemResponseDTO,
+    KeyGenerateCSRRequestProfile, KeyGenerateCSRRequestSubjectAlternativeNameDTO,
+    KeyGenerateCSRRequestSubjectDTO, KeyListItemResponseDTO,
 };
 
 #[derive(Clone, Debug)]
@@ -19,6 +20,7 @@ pub struct CreateCertificateRequestDTO {
 pub struct CreateCertificateContentDTO {
     pub profile: KeyGenerateCSRRequestProfile,
     pub subject: KeyGenerateCSRRequestSubjectDTO,
+    pub subject_alternative_name: Option<KeyGenerateCSRRequestSubjectAlternativeNameDTO>,
     pub certificate_authority: CreateCertificateCaDTO,
     pub signer: String,
     pub validity_start: Option<OffsetDateTime>,

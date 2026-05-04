@@ -46,7 +46,8 @@ use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::endpoint::certificate::dto::{CertificateResponseRestDTO, CertificateRoleRestEnum};
 use crate::endpoint::did::dto::{CreateDidRequestKeysRestDTO, DidResponseRestDTO, KeyRoleRestEnum};
 use crate::endpoint::key::dto::{
-    KeyGenerateCSRRequestProfileRest, KeyGenerateCSRRequestSubjectRestDTO, KeyResponseRestDTO,
+    KeyGenerateCSRRequestProfileRest, KeyGenerateCSRRequestSubjectAlternativeNameRestDTO,
+    KeyGenerateCSRRequestSubjectRestDTO, KeyResponseRestDTO,
 };
 use crate::endpoint::trust_collection::dto::{
     TrustCollectionListItemResponseRestDTO, TrustListRoleRestEnum,
@@ -166,6 +167,8 @@ pub(crate) struct CreateCertificateContentRestDTO {
     pub profile: KeyGenerateCSRRequestProfileRest,
     /// Certificate subject details (for example, common name, organization).
     pub subject: KeyGenerateCSRRequestSubjectRestDTO,
+    #[into(with_fn = convert_inner)]
+    pub subject_alternative_name: Option<KeyGenerateCSRRequestSubjectAlternativeNameRestDTO>,
     /// The CA to sign the new certificate.
     pub certificate_authority: CreateCertificateCaRestDTO,
     /// Signer instance to use for certificate signing. Must reference
