@@ -18,6 +18,7 @@ use crate::repository::validity_credential_repository::ValidityCredentialReposit
 pub mod error;
 pub(crate) mod proof_request;
 pub mod service;
+mod trust;
 
 #[derive(Clone)]
 pub struct OID4VPFinal1_0Service {
