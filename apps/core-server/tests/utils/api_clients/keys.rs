@@ -1,3 +1,4 @@
+use core_server::endpoint::key::dto::KeyGenerateCSRRequestProfileRest;
 use serde_json::{Value, json};
 use shared_types::{KeyId, OrganisationId};
 use time::OffsetDateTime;
@@ -21,6 +22,12 @@ pub struct KeyFilters {
     pub created_date_before: Option<OffsetDateTime>,
     pub last_modified_after: Option<OffsetDateTime>,
     pub last_modified_before: Option<OffsetDateTime>,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct CsrParams {
+    pub subject: Option<serde_json::Value>,
+    pub subject_alternative_name: Option<serde_json::Value>,
 }
 
 pub struct KeysApi {
@@ -134,39 +141,25 @@ impl KeysApi {
         self.client.get(&url).await
     }
 
-    pub async fn generate_mdl_csr(&self, key_id: &str) -> Response {
-        let body = json!({
-            "profile": "MDL",
-            "subject": {
-                "commonName": "test",
-                "countryName": "CH",
-            }
+    pub async fn generate_csr(
+        &self,
+        key_id: &str,
+        profile: KeyGenerateCSRRequestProfileRest,
+        params: CsrParams,
+    ) -> Response {
+        let subject = params.subject.unwrap_or(json!({
+            "commonName": "test",
+            "countryName": "CH",
+        }));
+
+        let mut body = json!({
+            "profile": profile,
+            "subject": subject
         });
 
-        self.client
-            .post(&format!("/api/key/v1/{key_id}/generate-csr"), body)
-            .await
-    }
-
-    pub async fn generate_generic_csr(&self, key_id: &str) -> Response {
-        let body = json!({
-            "profile": "GENERIC",
-            "subject": {}
-        });
-
-        self.client
-            .post(&format!("/api/key/v1/{key_id}/generate-csr"), body)
-            .await
-    }
-
-    pub async fn generate_ca_csr(&self, key_id: &str) -> Response {
-        let body = json!({
-            "profile": "CA",
-            "subject": {
-                "commonName": "test",
-                "countryName": "CH",
-            }
-        });
+        if let Some(subject_alternative_name) = params.subject_alternative_name {
+            body["subjectAlternativeName"] = subject_alternative_name;
+        }
 
         self.client
             .post(&format!("/api/key/v1/{key_id}/generate-csr"), body)

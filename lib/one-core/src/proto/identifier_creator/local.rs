@@ -417,6 +417,7 @@ impl IdentifierCreatorProto {
                         GenerateCsrRequest {
                             profile: content.profile.into(),
                             subject: content.subject.into(),
+                            subject_alternative_name: None,
                         },
                     )
                     .await

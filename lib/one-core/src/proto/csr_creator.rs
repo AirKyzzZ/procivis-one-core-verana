@@ -2,7 +2,9 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use error::ErrorCode;
-use rcgen::{CertificateParams, CustomExtension, DistinguishedName, DnType, KeyUsagePurpose};
+use rcgen::{
+    CertificateParams, CustomExtension, DistinguishedName, DnType, KeyUsagePurpose, SanType,
+};
 use yasna::models::ObjectIdentifier;
 
 use crate::config::core_config::KeyAlgorithmType;
@@ -28,6 +30,7 @@ pub trait CsrCreator: Send + Sync {
 pub struct GenerateCsrRequest {
     pub profile: CsrRequestProfile,
     pub subject: CsrRequestSubject,
+    pub subject_alternative_name: Option<CsrRequestSubjectAlternativeName>,
 }
 
 #[derive(Debug, Clone)]
@@ -72,6 +75,11 @@ pub struct CsrRequestSubject {
     pub organisation_name: Option<String>,
     pub locality_name: Option<String>,
     pub serial_number: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct CsrRequestSubjectAlternativeName {
+    pub dns_name: Vec<String>,
 }
 
 pub(crate) struct CsrCreatorImpl {
@@ -131,14 +139,16 @@ impl CsrCreator for CsrCreatorImpl {
             SigningKeyAdapter::new(key, key_storage, tokio::runtime::Handle::current())
                 .error_while("creating signing key adapter")?;
 
-        request_to_certificate_params(request)
+        request_to_certificate_params(request)?
             .serialize_request(&signing_key)?
             .pem()
             .map_err(Into::into)
     }
 }
 
-fn request_to_certificate_params(request: GenerateCsrRequest) -> CertificateParams {
+fn request_to_certificate_params(
+    request: GenerateCsrRequest,
+) -> Result<CertificateParams, CsrCreationError> {
     let mut params = CertificateParams::default();
 
     params.distinguished_name = prepare_distinguished_name(request.subject);
@@ -159,7 +169,17 @@ fn request_to_certificate_params(request: GenerateCsrRequest) -> CertificatePara
         }
     }
 
-    params
+    if let Some(subject_alternative_name) = request.subject_alternative_name {
+        let dns_names = subject_alternative_name
+            .dns_name
+            .into_iter()
+            .map(|dns_name| Ok(SanType::DnsName(dns_name.try_into()?)))
+            .collect::<Result<Vec<_>, rcgen::Error>>()?;
+
+        params.subject_alt_names.extend(dns_names);
+    }
+
+    Ok(params)
 }
 
 pub(crate) fn prepare_distinguished_name(subject: CsrRequestSubject) -> DistinguishedName {

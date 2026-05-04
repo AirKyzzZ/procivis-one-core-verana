@@ -1,4 +1,4 @@
-use one_dto_mapper::{From, Into};
+use one_dto_mapper::{From, Into, convert_inner};
 use serde::{Deserialize, Serialize};
 use shared_types::{KeyId, OrganisationId};
 use time::OffsetDateTime;
@@ -67,6 +67,8 @@ pub struct KeyFilterParamsDTO {
 pub struct KeyGenerateCSRRequestDTO {
     pub profile: KeyGenerateCSRRequestProfile,
     pub subject: KeyGenerateCSRRequestSubjectDTO,
+    #[into(with_fn = convert_inner)]
+    pub subject_alternative_name: Option<KeyGenerateCSRRequestSubjectAlternativeNameDTO>,
 }
 
 #[derive(Debug, Clone, Into, PartialEq, Eq)]
@@ -87,6 +89,12 @@ pub struct KeyGenerateCSRRequestSubjectDTO {
     pub organisation_name: Option<String>,
     pub locality_name: Option<String>,
     pub serial_number: Option<String>,
+}
+
+#[derive(Debug, Clone, Into)]
+#[into(crate::proto::csr_creator::CsrRequestSubjectAlternativeName)]
+pub struct KeyGenerateCSRRequestSubjectAlternativeNameDTO {
+    pub dns_name: Vec<String>,
 }
 
 #[derive(Debug)]

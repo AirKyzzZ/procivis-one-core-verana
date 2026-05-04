@@ -3,8 +3,8 @@ use one_core::model::key::ExactKeyFilterColumn;
 use one_core::service::error::ServiceError;
 use one_core::service::key::dto::{
     KeyFilterParamsDTO, KeyGenerateCSRRequestDTO, KeyGenerateCSRRequestProfile,
-    KeyGenerateCSRRequestSubjectDTO, KeyGenerateCSRResponseDTO, KeyListItemResponseDTO,
-    KeyRequestDTO, KeyResponseDTO,
+    KeyGenerateCSRRequestSubjectAlternativeNameDTO, KeyGenerateCSRRequestSubjectDTO,
+    KeyGenerateCSRResponseDTO, KeyListItemResponseDTO, KeyRequestDTO, KeyResponseDTO,
 };
 use one_dto_mapper::{From, Into, TryFrom, TryInto, convert_inner, convert_inner_of_inner};
 use proc_macros::{ModifySchema, options_not_nullable};
@@ -190,18 +190,21 @@ pub(crate) enum ExactKeyFilterColumnRestEnum {
 pub(crate) type GetKeyQuery =
     ListQueryParamsRest<KeyFilterQueryParamsRest, SortableKeyColumnRestDTO>;
 
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(KeyGenerateCSRRequestDTO)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct KeyGenerateCSRRequestRestDTO {
     pub profile: KeyGenerateCSRRequestProfileRest,
     pub subject: KeyGenerateCSRRequestSubjectRestDTO,
+    #[into(with_fn = convert_inner)]
+    pub subject_alternative_name: Option<KeyGenerateCSRRequestSubjectAlternativeNameRestDTO>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into)]
 #[into(KeyGenerateCSRRequestProfile)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub(crate) enum KeyGenerateCSRRequestProfileRest {
+pub enum KeyGenerateCSRRequestProfileRest {
     Generic,
     Mdl,
     Ca,
@@ -221,6 +224,14 @@ pub(crate) struct KeyGenerateCSRRequestSubjectRestDTO {
     pub organisation_name: Option<String>,
     pub locality_name: Option<String>,
     pub serial_number: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[into(KeyGenerateCSRRequestSubjectAlternativeNameDTO)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct KeyGenerateCSRRequestSubjectAlternativeNameRestDTO {
+    #[serde(default, rename = "DNSName")]
+    pub dns_name: Vec<String>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

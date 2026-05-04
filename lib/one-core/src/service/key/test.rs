@@ -244,6 +244,7 @@ fn generic_csr_request() -> KeyGenerateCSRRequestDTO {
             locality_name: None,
             serial_number: None,
         },
+        subject_alternative_name: None,
     }
 }
 

@@ -1,5 +1,8 @@
+use core_server::endpoint::key::dto::KeyGenerateCSRRequestProfileRest;
+use serde_json::json;
 use similar_asserts::assert_eq;
 
+use crate::utils::api_clients::keys::CsrParams;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::keys::{ecdsa_testing_params, eddsa_testing_params};
 
@@ -13,7 +16,15 @@ async fn test_generate_mdl_csr_for_eddsa_success() {
         .create(&organisation, eddsa_testing_params())
         .await;
 
-    let resp = context.api.keys.generate_mdl_csr(&key.id.to_string()).await;
+    let resp = context
+        .api
+        .keys
+        .generate_csr(
+            &key.id.to_string(),
+            KeyGenerateCSRRequestProfileRest::Mdl,
+            Default::default(),
+        )
+        .await;
     assert_eq!(201, resp.status());
 
     let value = resp.json_value().await;
@@ -40,7 +51,15 @@ async fn test_generate_mdl_csr_for_ecdsa_success() {
         .create(&organisation, ecdsa_testing_params())
         .await;
 
-    let resp = context.api.keys.generate_mdl_csr(&key.id.to_string()).await;
+    let resp = context
+        .api
+        .keys
+        .generate_csr(
+            &key.id.to_string(),
+            KeyGenerateCSRRequestProfileRest::Mdl,
+            Default::default(),
+        )
+        .await;
     assert_eq!(201, resp.status());
 
     let value = resp.json_value().await;
@@ -71,17 +90,26 @@ async fn test_generate_generic_csr_for_eddsa_success() {
     let resp = context
         .api
         .keys
-        .generate_generic_csr(&key.id.to_string())
+        .generate_csr(
+            &key.id.to_string(),
+            KeyGenerateCSRRequestProfileRest::Generic,
+            CsrParams {
+                subject: Some(json!({})),
+                subject_alternative_name: Some(json!({
+                    "DNSName": ["*.procivis.ch"]
+                })),
+            },
+        )
         .await;
     assert_eq!(201, resp.status());
 
     let value = resp.json_value().await;
 
     let expected = r#"-----BEGIN CERTIFICATE REQUEST-----
-MIGgMFQCAQAwADAqMAUGAytlcAMhAEoEScmT7ovJTy1wxJgjDya+jToTZbglVNJl
-E/Ulq+9foCEwHwYJKoZIhvcNAQkOMRIwEDAOBgNVHQ8BAf8EBAMCB4AwBQYDK2Vw
-A0EA51Drn3m5rhmagKmShYhiPj1yu5Yul2MTJ4XrGF1jBjriMoHvpkoeVp2rYoLO
-Jqoes8/uLKBLmVisv5rmxJbGDg==
+MIG9MHECAQAwADAqMAUGAytlcAMhAEoEScmT7ovJTy1wxJgjDya+jToTZbglVNJl
+E/Ulq+9foD4wPAYJKoZIhvcNAQkOMS8wLTAOBgNVHQ8BAf8EBAMCB4AwGwYDVR0R
+AQH/BBEwD4INKi5wcm9jaXZpcy5jaDAFBgMrZXADQQBVcehDAOrDwrglsYOGH+ZZ
+ugPFYjvqaNMtbPZ+py3CBzuttWme+MaQFshTyJ6A5WH2PW2gSMK+A2kiRM8sh1IL
 -----END CERTIFICATE REQUEST-----
 "#;
 
@@ -98,7 +126,15 @@ async fn test_generate_ca_csr_for_eddsa_success() {
         .create(&organisation, eddsa_testing_params())
         .await;
 
-    let resp = context.api.keys.generate_ca_csr(&key.id.to_string()).await;
+    let resp = context
+        .api
+        .keys
+        .generate_csr(
+            &key.id.to_string(),
+            KeyGenerateCSRRequestProfileRest::Ca,
+            Default::default(),
+        )
+        .await;
     assert_eq!(201, resp.status());
 
     let value = resp.json_value().await;
