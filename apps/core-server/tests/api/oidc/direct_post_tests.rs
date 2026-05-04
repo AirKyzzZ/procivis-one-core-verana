@@ -1605,3 +1605,37 @@ async fn test_direct_post_with_profile_verification() {
         true
     );
 }
+
+#[tokio::test]
+async fn test_direct_post_oversized_body_returns_413() {
+    let context = TestContext::new(Some(
+        indoc::indoc! {"
+            app:
+                maxOid4vpResponseBodyBytes: 1024
+        "}
+        .to_string(),
+    ))
+    .await;
+
+    let oversized_token = "x".repeat(2048);
+    let params = [("vp_token", oversized_token)];
+
+    for path in [
+        "/ssi/openid4vp/draft-20/response",
+        "/ssi/openid4vp/draft-25/response",
+        "/ssi/openid4vp/final-1.0/response",
+    ] {
+        let url = format!("{}{path}", context.config.app.core_base_url);
+        let resp = utils::client()
+            .post(url)
+            .form(&params)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(
+            resp.status(),
+            413,
+            "expected 413 Payload Too Large from {path}",
+        );
+    }
+}

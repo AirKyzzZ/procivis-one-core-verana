@@ -36,6 +36,7 @@ impl ErrorResponse {
                 cause: Some(Cause {
                     message: panic_cause,
                 }),
+                status: None,
             }
             .hide_cause(hide_cause),
         )

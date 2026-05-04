@@ -608,6 +608,8 @@ fn get_external_endpoints(
     config: &ServerConfig,
     openapi_paths: &mut Option<&mut IndexMap<String, PathItem>>,
 ) -> Router<AppState> {
+    let oid4vp_response_body_limit = config.max_oid4vp_response_body_bytes;
+
     if config.enable_external_endpoints {
         Router::new()
             .route(
@@ -704,7 +706,7 @@ fn get_external_endpoints(
             .route(
                 "/ssi/openid4vp/draft-20/response",
                 post(ssi::verification::draft20::controller::oid4vp_draft20_direct_post)
-                    .layer(DefaultBodyLimit::disable()),
+                    .layer(DefaultBodyLimit::max(oid4vp_response_body_limit)),
             )
             .route(
                 "/ssi/openid4vp/draft-20/{id}/presentation-definition",
@@ -721,12 +723,12 @@ fn get_external_endpoints(
             .route(
                 "/ssi/openid4vp/draft-20-swiyu/response/{id}",
                 post(ssi::verification::draft20_swiyu::controller::oid4vp_draft20_swiyu_direct_post)
-                    .layer(DefaultBodyLimit::disable()),
+                    .layer(DefaultBodyLimit::max(oid4vp_response_body_limit)),
             )
             .route(
                 "/ssi/openid4vp/draft-25/response",
                 post(ssi::verification::draft25::controller::oid4vp_draft25_direct_post)
-                    .layer(DefaultBodyLimit::disable()),
+                    .layer(DefaultBodyLimit::max(oid4vp_response_body_limit)),
             )
             .route(
                 "/ssi/openid4vp/draft-25/{id}/presentation-definition",
@@ -743,7 +745,7 @@ fn get_external_endpoints(
             .route(
                 "/ssi/openid4vp/final-1.0/response",
                 post(ssi::verification::final1_0::controller::oid4vp_final1_0_direct_post)
-                    .layer(DefaultBodyLimit::disable()),
+                    .layer(DefaultBodyLimit::max(oid4vp_response_body_limit)),
             )
             .route(
                 "/ssi/openid4vp/final-1.0/{id}/client-metadata",

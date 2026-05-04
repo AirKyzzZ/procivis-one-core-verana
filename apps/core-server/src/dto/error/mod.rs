@@ -16,6 +16,10 @@ pub(crate) struct ErrorResponseRestDTO {
     pub code: &'static str,
     pub message: String,
     pub cause: Option<Cause>,
+    /// HTTP status to use with [`IntoResponse`].
+    /// `None` falls back to 400
+    #[serde(skip)]
+    pub status: Option<StatusCode>,
 }
 
 impl ErrorResponseRestDTO {
@@ -43,7 +47,8 @@ impl Cause {
 
 impl IntoResponse for ErrorResponseRestDTO {
     fn into_response(self) -> axum::response::Response {
-        (StatusCode::BAD_REQUEST, Json(self)).into_response()
+        let status = self.status.unwrap_or(StatusCode::BAD_REQUEST);
+        (status, Json(self)).into_response()
     }
 }
 
@@ -54,6 +59,7 @@ impl From<(StatusCode, String)> for ErrorResponseRestDTO {
             code: ErrorCode::BR_0084.into(),
             message: "General input validation error".to_string(),
             cause: Some(Cause { message: value.1 }),
+            status: Some(value.0),
         }
     }
 }
@@ -66,6 +72,7 @@ impl From<TypedHeaderRejection> for ErrorResponseRestDTO {
             cause: Some(Cause {
                 message: format!("{:?}", value.reason()),
             }),
+            status: None,
         }
     }
 }
@@ -74,12 +81,17 @@ macro_rules! gen_from_rejection {
     ($from:ty, $rejection:ty ) => {
         impl From<$from> for $rejection {
             fn from(value: $from) -> Self {
+                // Only 413 is propagated for now;
+                // All other extractor rejections keep the existing 400 default
+                let status = (value.status() == StatusCode::PAYLOAD_TOO_LARGE)
+                    .then_some(StatusCode::PAYLOAD_TOO_LARGE);
                 Self {
                     code: ErrorCode::BR_0084.into(),
                     message: "General input validation error".to_string(),
                     cause: Some(Cause {
                         message: value.body_text(),
                     }),
+                    status,
                 }
             }
         }

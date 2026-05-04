@@ -70,7 +70,14 @@ pub struct ServerConfig {
     pub enable_history_create_endpoint: bool,
     #[serde(default)]
     pub enable_signature_endpoints: bool,
+    #[serde(default = "default_oid4vp_response_body_bytes")]
+    pub max_oid4vp_response_body_bytes: usize,
     pub auth: AuthMode,
+}
+
+/// Default cap for OID4VP `/response` POSTs (10 MiB).
+fn default_oid4vp_response_body_bytes() -> usize {
+    10 * 1024 * 1024
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
