@@ -20,6 +20,10 @@ impl TimestampFormat for OffsetDateTime {
     }
 }
 
+pub(crate) fn from_timestamp_opt(input: Option<OffsetDateTime>) -> Option<String> {
+    input.map(|f| f.format_timestamp())
+}
+
 pub(crate) fn from_id_opt<T: Into<Uuid>>(input: Option<T>) -> Option<String> {
     input.map(|f| f.into().to_string())
 }
