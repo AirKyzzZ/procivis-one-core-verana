@@ -1,13 +1,16 @@
 use std::sync::Arc;
 
+use crate::SessionProvider;
 use crate::config::core_config;
 use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::openid4vp_proof_validator::OpenId4VpProofValidator;
 use crate::proto::transaction_manager::TransactionManager;
+use crate::proto::wrp_validator::WRPValidator;
 use crate::provider::blob_storage_provider::BlobStorageProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::history_repository::HistoryRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
@@ -29,6 +32,9 @@ pub struct OID4VPFinal1_0Service {
     identifier_creator: Arc<dyn IdentifierCreator>,
     transaction_manager: Arc<dyn TransactionManager>,
     proof_validator: Arc<dyn OpenId4VpProofValidator>,
+    wrp_validator: Arc<dyn WRPValidator>,
+    history_repository: Arc<dyn HistoryRepository>,
+    session_provider: Arc<dyn SessionProvider>,
 }
 
 #[expect(clippy::too_many_arguments)]
@@ -45,6 +51,9 @@ impl OID4VPFinal1_0Service {
         identifier_creator: Arc<dyn IdentifierCreator>,
         transaction_manager: Arc<dyn TransactionManager>,
         proof_validator: Arc<dyn OpenId4VpProofValidator>,
+        wrp_validator: Arc<dyn WRPValidator>,
+        history_repository: Arc<dyn HistoryRepository>,
+        session_provider: Arc<dyn SessionProvider>,
     ) -> Self {
         Self {
             credential_repository,
@@ -58,6 +67,9 @@ impl OID4VPFinal1_0Service {
             identifier_creator,
             transaction_manager,
             proof_validator,
+            wrp_validator,
+            history_repository,
+            session_provider,
         }
     }
 }

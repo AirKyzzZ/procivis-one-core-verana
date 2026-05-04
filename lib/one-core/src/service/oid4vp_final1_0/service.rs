@@ -1,9 +1,10 @@
 use std::str::FromStr;
 
 use one_crypto::jwe::{decrypt_jwe_payload, extract_jwe_header};
-use shared_types::{BlobId, KeyId, ProofId};
+use shared_types::{BlobId, KeyId, OrganisationId, ProofId};
 use standardized_types::openid4vp::ClientMetadata;
 use tracing::warn;
+use uuid::Uuid;
 
 use super::OID4VPFinal1_0Service;
 use super::error::OID4VPFinal1_0ServiceError;
@@ -12,11 +13,14 @@ use super::proof_request::{
 };
 use crate::clock::now_utc;
 use crate::config::core_config::VerificationProtocolType;
-use crate::error::ContextWithErrorCode;
 use crate::error::ErrorCode::BR_0000;
+use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::blob::{Blob, BlobType};
 use crate::model::certificate::CertificateRelations;
-use crate::model::history::HistoryErrorMetadata;
+use crate::model::history::{
+    History, HistoryAction, HistoryEntityType, HistoryErrorMetadata, HistoryMetadata,
+    HistorySource, TrustResolutionMetadata, TrustResolutionResult,
+};
 use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::identifier_trust_information::{
     IdentifierTrustInformation, IdentifierTrustInformationRelations,
@@ -28,7 +32,12 @@ use crate::model::proof::{Proof, ProofRelations, ProofStateEnum, UpdateProofRequ
 use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
+use crate::proto::openid4vp_proof_validator::ValidatedProofResult;
+use crate::proto::session_provider::SessionExt;
+use crate::proto::wrp_validator::model::TrustMode;
 use crate::provider::blob_storage_provider::BlobStorageType;
+use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
+use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::final1_0::mappers::{
     create_open_id_for_vp_client_metadata_final1_0, decode_client_id_with_scheme,
@@ -44,8 +53,8 @@ use crate::provider::verification_protocol::openid4vp::mapper::{
 };
 use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, JwePayload, OpenID4VPDirectPostRequestDTO, OpenID4VPDirectPostResponseDTO,
-    OpenID4VPVerifierInteractionContent, ResponseSubmission, SubmissionRequestData,
-    VpSubmissionData,
+    OpenID4VPVerifierInteractionContent, ProvedCredential, ResponseSubmission,
+    SubmissionRequestData, VpSubmissionData,
 };
 use crate::service::error::MissingProviderError;
 use crate::service::ssi_validator::validate_verification_protocol_type;
@@ -361,20 +370,69 @@ impl OID4VPFinal1_0Service {
             .await
             .error_while("creating proof blob")?;
 
-        match self
-            .proof_validator
-            .validate_submission(
-                unpacked_request.clone(),
-                proof.to_owned(),
-                interaction_data,
-                VerificationProtocolType::OpenId4VpFinal1_0,
-            )
-            .await
-        {
-            Ok((accept_proof_result, response)) => {
+        let validation_result: Result<
+            (ValidatedProofResult, OpenID4VPDirectPostResponseDTO),
+            OID4VPFinal1_0ServiceError,
+        > = async {
+            let (proof_result, response) = self
+                .proof_validator
+                .validate_submission(
+                    unpacked_request,
+                    proof.to_owned(),
+                    interaction_data,
+                    VerificationProtocolType::OpenId4VpFinal1_0,
+                )
+                .await
+                .map_err(Into::<OID4VPFinal1_0ServiceError>::into)?;
+
+            let trust_mode = self
+                .wrp_validator
+                .verifier_trust_mode(organisation.id)
+                .await
+                .error_while("getting verifier trust mode")?;
+
+            let trust_resolution = match trust_mode {
+                TrustMode::Disabled => TrustResolutionResult::Unknown,
+                _ => self.resolve_trust(&proof_result, organisation.id).await,
+            };
+
+            self.history_repository
+                .create_history(History {
+                    id: Uuid::new_v4().into(),
+                    created_date: crate::clock::now_utc(),
+                    action: HistoryAction::TrustResolved,
+                    name: Default::default(),
+                    target: None,
+                    source: HistorySource::Core,
+                    entity_id: Some(proof.id.into()),
+                    entity_type: HistoryEntityType::Proof,
+                    metadata: Some(HistoryMetadata::TrustResolution(TrustResolutionMetadata {
+                        result: trust_resolution,
+                    })),
+                    metadata_blob_id: None,
+                    organisation_id: Some(organisation.id),
+                    user: self.session_provider.session().user(),
+                })
+                .await
+                .error_while("storing history")?;
+
+            if trust_resolution != TrustResolutionResult::Trusted
+                && trust_mode == TrustMode::TrustMandatory
+            {
+                return Err(VerificationProtocolError::Untrusted
+                    .error_while("validating trust")
+                    .into());
+            }
+
+            Ok((proof_result, response))
+        }
+        .await;
+
+        match validation_result {
+            Ok((validated_proof_result, response)) => {
                 persist_accepted_proof(
                     &proof,
-                    accept_proof_result,
+                    validated_proof_result,
                     organisation,
                     proof_blob_id,
                     &*self.proof_repository,
@@ -396,9 +454,60 @@ impl OID4VPFinal1_0Service {
                 };
                 self.mark_proof_as_failed(&proof.id, proof_blob_id, error_metadata)
                     .await;
-                Err(err.into())
+                Err(err)
             }
         }
+    }
+
+    async fn resolve_trust(
+        &self,
+        proof_result: &ValidatedProofResult,
+        organisation_id: OrganisationId,
+    ) -> TrustResolutionResult {
+        for credential in &proof_result.proved_credentials {
+            if let Err(err) = self
+                .validate_credential_trust(credential, organisation_id)
+                .await
+            {
+                tracing::info!(%err, "Credential issuer untrusted");
+                return TrustResolutionResult::Untrusted;
+            }
+        }
+
+        TrustResolutionResult::Trusted
+    }
+
+    async fn validate_credential_trust(
+        &self,
+        credential: &ProvedCredential,
+        organisation_id: OrganisationId,
+    ) -> Result<(), VerificationProtocolError> {
+        let credential_schema =
+            credential
+                .credential
+                .schema
+                .as_ref()
+                .ok_or(VerificationProtocolError::Failed(
+                    "missing credential schema".to_string(),
+                ))?;
+
+        let issuer_certificate_pem_chain = match &credential.issuer_details {
+            IdentifierDetails::Certificate(CertificateDetails { chain, .. }) => {
+                Some(chain.as_str())
+            }
+            _ => None,
+        };
+
+        self.wrp_validator
+            .validate_credential_issuer(
+                issuer_certificate_pem_chain,
+                credential_schema,
+                organisation_id,
+            )
+            .await
+            .error_while("validating credential issuer")?;
+
+        Ok(())
     }
 
     async fn mark_proof_as_failed(

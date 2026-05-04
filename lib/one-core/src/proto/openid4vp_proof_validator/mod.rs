@@ -27,6 +27,6 @@ pub(crate) trait OpenId4VpProofValidator: Send + Sync {
 
 #[derive(Debug)]
 pub(crate) struct ValidatedProofResult {
-    proved_credentials: Vec<ProvedCredential>,
-    proved_claims: Vec<Claim>,
+    pub proved_credentials: Vec<ProvedCredential>,
+    pub proved_claims: Vec<Claim>,
 }

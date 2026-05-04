@@ -945,7 +945,13 @@ impl OpenID4VCIFinal1_0 {
         if trust_resolution == TrustResolutionResult::Trusted
             && let Err(err) = self
                 .wrp_validator
-                .validate_credential_issuer(issuer_certificate.as_ref(), schema, organisation.id)
+                .validate_credential_issuer(
+                    issuer_certificate
+                        .as_ref()
+                        .map(|certificate| certificate.chain.as_str()),
+                    schema,
+                    organisation.id,
+                )
                 .await
         {
             tracing::info!(%err, "Credential issuer trust not verified");

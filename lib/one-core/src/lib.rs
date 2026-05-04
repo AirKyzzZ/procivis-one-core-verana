@@ -723,6 +723,9 @@ impl OneCore {
                 identifier_creator.clone(),
                 data_provider.get_tx_manager(),
                 openid4vp_proof_validator.clone(),
+                wrp_validator.clone(),
+                data_provider.get_history_repository(),
+                session_provider.clone(),
             ),
             credential_schema_service: CredentialSchemaService::new(
                 core_base_url.clone(),

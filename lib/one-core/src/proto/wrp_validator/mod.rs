@@ -6,7 +6,6 @@ use shared_types::OrganisationId;
 use time::Duration;
 use url::Url;
 
-use crate::model::certificate::Certificate;
 use crate::model::credential_schema::CredentialSchema;
 use crate::provider::trust_list_subscriber::TrustEntityResponse;
 
@@ -43,7 +42,7 @@ pub(crate) trait WRPValidator: Send + Sync {
 
     async fn validate_credential_issuer<'a>(
         &self,
-        issuer: Option<&'a Certificate>,
+        issuer_certificate_pem_chain: Option<&'a str>,
         credential_schema: &CredentialSchema,
         organisation_id: OrganisationId,
     ) -> Result<Option<TrustEntityResponse>, WRPValidatorError>;
@@ -55,7 +54,6 @@ pub(crate) trait WRPValidator: Send + Sync {
     ) -> Result<TrustMode, WRPValidatorError>;
 
     /// Decide on the current trust settings for the given verifier organisation
-    #[expect(unused)]
     async fn verifier_trust_mode(
         &self,
         organisation_id: OrganisationId,

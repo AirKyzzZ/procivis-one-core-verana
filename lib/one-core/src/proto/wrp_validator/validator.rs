@@ -14,7 +14,6 @@ use super::model::{
 };
 use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::x5c_into_pem_chain;
-use crate::model::certificate::Certificate;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::KeyRole;
 use crate::model::holder_wallet_instance::{
@@ -62,9 +61,7 @@ pub(crate) struct WRPValidatorImpl {
     trust_list_subscriber_provider: Arc<dyn TrustListSubscriberProvider>,
     holder_wallet_instance_repository: Arc<dyn HolderWalletInstanceRepository>,
     wallet_provider_client: Arc<dyn WalletProviderClient>,
-    #[expect(unused)]
     verifier_instance_repository: Arc<dyn VerifierInstanceRepository>,
-    #[expect(unused)]
     verifier_provider_client: Arc<dyn VerifierProviderClient>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -245,7 +242,7 @@ impl WRPValidator for WRPValidatorImpl {
 
     async fn validate_credential_issuer<'a>(
         &self,
-        issuer: Option<&'a Certificate>,
+        issuer_certificate_pem_chain: Option<&'a str>,
         credential_schema: &CredentialSchema,
         organisation_id: OrganisationId,
     ) -> Result<Option<TrustEntityResponse>, WRPValidatorError> {
@@ -266,13 +263,13 @@ impl WRPValidator for WRPValidatorImpl {
             return Ok(None);
         }
 
-        let Some(issuer) = issuer else {
+        let Some(pem_chain) = issuer_certificate_pem_chain else {
             return Err(WRPValidatorError::IssuerNotTrusted);
         };
 
         let trusted_entity = self
             .perform_trust_validation(
-                TrustEntityIdentifier::PemChain(&issuer.chain),
+                TrustEntityIdentifier::PemChain(pem_chain),
                 TrustListRoleEnum::PidProvider,
                 organisation_id,
             )

@@ -15,17 +15,26 @@ use uuid::Uuid;
 use super::OID4VPFinal1_0Service;
 use super::error::OID4VPFinal1_0ServiceError;
 use crate::config::core_config::{CoreConfig, VerificationProtocolType};
+use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
+use crate::model::history::{
+    HistoryAction, HistoryMetadata, TrustResolutionMetadata, TrustResolutionResult,
+};
 use crate::model::identifier::Identifier;
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::Key;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
 use crate::proto::identifier_creator::MockIdentifierCreator;
-use crate::proto::openid4vp_proof_validator::MockOpenId4VpProofValidator;
+use crate::proto::openid4vp_proof_validator::{MockOpenId4VpProofValidator, ValidatedProofResult};
+use crate::proto::session_provider::NoSessionProvider;
 use crate::proto::transaction_manager::NoTransactionManager;
+use crate::proto::wrp_validator::MockWRPValidator;
+use crate::proto::wrp_validator::error::WRPValidatorError;
+use crate::proto::wrp_validator::model::TrustMode;
 use crate::provider::blob_storage_provider::{MockBlobStorage, MockBlobStorageProvider};
+use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::key::{
     KeyAgreementHandle, KeyHandle, MockPublicKeyAgreementHandle, MockSignaturePublicKeyHandle,
@@ -38,6 +47,7 @@ use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::model::*;
 use crate::repository::credential_repository::MockCredentialRepository;
+use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::proof_repository::MockProofRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
@@ -55,6 +65,8 @@ struct Mocks {
     pub blob_storage_provider: MockBlobStorageProvider,
     pub identifier_creator: MockIdentifierCreator,
     pub proof_validator: MockOpenId4VpProofValidator,
+    pub wrp_validator: MockWRPValidator,
+    pub history_repository: MockHistoryRepository,
 }
 
 fn setup_service(mocks: Mocks) -> OID4VPFinal1_0Service {
@@ -70,6 +82,9 @@ fn setup_service(mocks: Mocks) -> OID4VPFinal1_0Service {
         Arc::new(mocks.identifier_creator),
         Arc::new(NoTransactionManager),
         Arc::new(mocks.proof_validator),
+        Arc::new(mocks.wrp_validator),
+        Arc::new(mocks.history_repository),
+        Arc::new(NoSessionProvider),
     )
 }
 
@@ -438,6 +453,228 @@ async fn test_submit_proof_failed_on_validator_failure() {
         err,
         OID4VPFinal1_0ServiceError::OpenID4VCError(OpenID4VCError::ValidationError(_))
     ));
+}
+
+#[tokio::test]
+async fn test_submit_proof_failed_on_trust_failure() {
+    let proof_id: ProofId = Uuid::new_v4().into();
+    let verifier_did = "did:verifier:123".parse().unwrap();
+    let mut proof_repository = MockProofRepository::new();
+    let interaction_id: InteractionId = Uuid::parse_str("a83dabc3-1601-4642-84ec-7a5ad8a70d36")
+        .unwrap()
+        .into();
+    let nonce = "7QqBfOcEcydceH6ZrXtu9fhDCvXjtLBv".to_string();
+
+    let claim_id = Uuid::new_v4().into();
+    let credential_schema = dummy_credential_schema();
+    let interaction_data = OpenID4VPVerifierInteractionContent {
+        nonce: nonce.to_owned(),
+        encryption_key: None,
+        dcql_query: None,
+        presentation_definition: Some(OpenID4VPPresentationDefinition {
+            id: interaction_id.to_string(),
+            input_descriptors: vec![OpenID4VPPresentationDefinitionInputDescriptor {
+                id: "input_0".to_string(),
+                name: None,
+                purpose: None,
+                format: jwt_format_map(),
+                constraints: OpenID4VPPresentationDefinitionConstraint {
+                    fields: vec![
+                        OpenID4VPPresentationDefinitionConstraintField {
+                            id: None,
+                            name: None,
+                            purpose: None,
+                            path: vec!["$.credentialSchema.id".to_string()],
+                            optional: None,
+                            filter: Some(OpenID4VPPresentationDefinitionConstraintFieldFilter {
+                                r#type: "string".to_string(),
+                                r#const: credential_schema.schema_id.to_owned(),
+                            }),
+                            intent_to_retain: None,
+                        },
+                        OpenID4VPPresentationDefinitionConstraintField {
+                            id: Some(claim_id),
+                            name: None,
+                            purpose: None,
+                            path: vec!["$.vc.credentialSubject.string".to_string()],
+                            optional: Some(false),
+                            filter: None,
+                            intent_to_retain: None,
+                        },
+                    ],
+                    limit_disclosure: None,
+                },
+            }],
+        }),
+        client_id: "client_id".to_string(),
+        client_id_scheme: Some(ClientIdScheme::RedirectUri),
+        response_uri: None,
+    };
+    let interaction_data_serialized = serde_json::to_vec(&interaction_data).unwrap();
+    let now = crate::clock::now_utc();
+    let interaction = Interaction {
+        id: interaction_id,
+        created_date: now,
+        last_modified: now,
+        data: Some(interaction_data_serialized),
+        organisation: None,
+        nonce_id: None,
+        interaction_type: InteractionType::Verification,
+        expires_at: None,
+    };
+
+    let interaction_id_copy = interaction_id.to_owned();
+    proof_repository
+        .expect_get_proof_by_interaction_id()
+        .withf(move |interaction_id, _| {
+            assert_eq!(*interaction_id, interaction_id_copy);
+            true
+        })
+        .once()
+        .return_once(move |_, _| {
+            Ok(Some(Proof {
+                id: proof_id,
+                verifier_identifier: Some(Identifier {
+                    did: Some(Did {
+                        did: verifier_did,
+                        ..dummy_did()
+                    }),
+                    ..dummy_identifier()
+                }),
+                state: ProofStateEnum::Pending,
+                schema: Some(ProofSchema {
+                    input_schemas: Some(vec![ProofInputSchema {
+                        claim_schemas: Some(vec![
+                            ProofInputClaimSchema {
+                                schema: ClaimSchema {
+                                    id: shared_types::ClaimSchemaId::from(Into::<Uuid>::into(
+                                        claim_id,
+                                    )),
+                                    key: "required_key".to_string(),
+                                    ..dummy_claim_schema()
+                                },
+                                required: true,
+                                order: 0,
+                            },
+                            ProofInputClaimSchema {
+                                schema: ClaimSchema {
+                                    key: "optional_key".to_string(),
+                                    ..dummy_claim_schema()
+                                },
+                                required: false,
+                                order: 1,
+                            },
+                        ]),
+                        credential_schema: Some(credential_schema),
+                    }]),
+                    organisation: Some(dummy_organisation(None)),
+                    ..dummy_proof_schema()
+                }),
+                interaction: Some(interaction),
+                ..dummy_proof_with_protocol("OPENID4VP_FINAL1")
+            }))
+        });
+
+    proof_repository
+        .expect_update_proof()
+        .withf(move |id, _, _| {
+            assert_eq!(id, &proof_id);
+            true
+        })
+        .once()
+        .returning(|_, _, _| Ok(()));
+
+    let mut blob_storage = MockBlobStorage::new();
+    blob_storage.expect_create().returning(|_| Ok(()));
+
+    let blob_storage = Arc::new(blob_storage);
+    let mut blob_storage_provider = MockBlobStorageProvider::new();
+    blob_storage_provider
+        .expect_get_blob_storage()
+        .returning(move |_| Some(blob_storage.clone()));
+
+    let mut proof_validator = MockOpenId4VpProofValidator::new();
+    proof_validator
+        .expect_validate_submission()
+        .returning(|_, _, _, _| {
+            Ok((
+                ValidatedProofResult {
+                    proved_credentials: vec![ProvedCredential {
+                        credential: dummy_credential(),
+                        issuer_details: IdentifierDetails::Certificate(CertificateDetails {
+                            chain: "chain".to_string(),
+                            fingerprint: "fingerprint".to_string(),
+                            expiry: get_dummy_date(),
+                            subject_common_name: None,
+                        }),
+                        holder_details: IdentifierDetails::Did("did:holder:123".parse().unwrap()),
+                        mdoc_mso: None,
+                    }],
+                    proved_claims: vec![],
+                },
+                OpenID4VPDirectPostResponseDTO { redirect_uri: None },
+            ))
+        });
+
+    let mut wrp_validator = MockWRPValidator::new();
+    wrp_validator
+        .expect_verifier_trust_mode()
+        .once()
+        .return_once(|_| Ok(TrustMode::TrustMandatory));
+    wrp_validator
+        .expect_validate_credential_issuer()
+        .once()
+        .return_once(|_, _, _| Err(WRPValidatorError::IssuerNotTrusted));
+
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .once()
+        .withf(|history| {
+            assert_eq!(history.action, HistoryAction::TrustResolved);
+            assert2::assert!(
+                let Some(HistoryMetadata::TrustResolution(TrustResolutionMetadata{
+                   result: TrustResolutionResult::Untrusted
+                })) = &history.metadata
+            );
+            true
+        })
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
+    let service = setup_service(Mocks {
+        proof_repository,
+        blob_storage_provider,
+        proof_validator,
+        wrp_validator,
+        history_repository,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let err = service
+        .direct_post(OpenID4VPDirectPostRequestDTO {
+            submission_data: VpSubmissionData::Pex(PexSubmission {
+                vp_token: vec!["vp_token".to_string()],
+                presentation_submission: PresentationSubmissionMappingDTO {
+                    id: "25f5a42c-6850-49a0-b842-c7b2411021a5".to_string(),
+                    definition_id: interaction_id.to_string(),
+                    descriptor_map: vec![PresentationSubmissionDescriptorDTO {
+                        id: "input_0".to_string(),
+                        format: "jwt_vp_json".to_string(),
+                        path: "$".to_string(),
+                        path_nested: Some(NestedPresentationSubmissionDescriptorDTO {
+                            format: "jwt_vc_json".to_string(),
+                            path: "$.vp.verifiableCredential[0]".to_string(),
+                        }),
+                    }],
+                },
+            }),
+            state: Some("a83dabc3-1601-4642-84ec-7a5ad8a70d36".parse().unwrap()),
+        })
+        .await
+        .unwrap_err();
+
+    assert_eq!(err.error_code(), ErrorCode::BR_0433);
 }
 
 #[tokio::test]
