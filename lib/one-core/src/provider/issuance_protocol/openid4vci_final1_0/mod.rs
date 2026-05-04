@@ -476,6 +476,8 @@ impl OpenID4VCIFinal1_0 {
     async fn holder_reuse_or_refresh_token(
         &self,
         interaction_id: InteractionId,
+        organisation_id: OrganisationId,
+        key: &Key,
         interaction_data: &mut HolderInteractionData,
     ) -> Result<SecretString, IssuanceProtocolError> {
         let now = crate::clock::now_utc();
@@ -516,6 +518,15 @@ impl OpenID4VCIFinal1_0 {
             ));
         }
 
+        // Refresh the WIA
+        // https://drafts.oauth.net/draft-ietf-oauth-attestation-based-client-auth/draft-ietf-oauth-attestation-based-client-auth.html#section-9.3:
+        // [...]
+        // To prove this binding, the Client Instance MUST use the client attestation mechanism when refreshing an access token.
+        // The client MUST also use the same key that was present in the "cnf" claim of the client attestation that was used when the refresh token was issued.
+        let attestation_result = self
+            .prepare_wallet_attestations(interaction_data, key, organisation_id)
+            .await?;
+
         let token_endpoint =
             interaction_data
                 .token_endpoint
@@ -525,16 +536,18 @@ impl OpenID4VCIFinal1_0 {
                 ))?;
 
         let token_response: OpenID4VCITokenResponseDTO = async {
-            self.client
-                .post(token_endpoint)
-                .form(&[
-                    ("refresh_token", refresh_token.expose_secret().to_string()),
-                    ("grant_type", "refresh_token".to_string()),
-                ])?
-                .send()
-                .await?
-                .error_for_status()?
-                .json()
+            let mut request = self.client.post(token_endpoint).form(&[
+                ("refresh_token", refresh_token.expose_secret().to_string()),
+                ("grant_type", "refresh_token".to_string()),
+            ])?;
+
+            if let Some(wia) = attestation_result.wia_request {
+                request = request
+                    .header("OAuth-Client-Attestation", &wia.wallet_attestation)
+                    .header("OAuth-Client-Attestation-PoP", &wia.wallet_attestation_pop);
+            }
+
+            request.send().await?.error_for_status()?.json()
         }
         .await
         .error_while("requesting token")?;
@@ -1934,8 +1947,25 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             }
         };
 
+        let organisation_id = interaction
+            .organisation
+            .as_ref()
+            .ok_or(IssuanceProtocolError::Failed(
+                "organisation is None".to_string(),
+            ))?
+            .id;
+        let key = credential
+            .key
+            .as_ref()
+            .ok_or(IssuanceProtocolError::Failed("key is None".to_string()))?;
+
         let access_token = self
-            .holder_reuse_or_refresh_token(interaction.id, &mut interaction_data)
+            .holder_reuse_or_refresh_token(
+                interaction.id,
+                organisation_id,
+                key,
+                &mut interaction_data,
+            )
             .await?;
 
         self.send_notification(

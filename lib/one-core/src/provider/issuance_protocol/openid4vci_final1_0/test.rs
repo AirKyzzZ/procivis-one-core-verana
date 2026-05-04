@@ -1240,6 +1240,7 @@ async fn test_holder_reject_credential() {
     let credential = {
         let mut credential = generic_credential_did();
         credential.state = CredentialStateEnum::Accepted;
+        credential.key = Some(dummy_key());
 
         let interaction_data = HolderInteractionData {
             issuer_url: mock_server.uri(),
@@ -1286,7 +1287,7 @@ async fn test_holder_reject_credential() {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             data: Some(serde_json::to_vec(&interaction_data).unwrap()),
-            organisation: None,
+            organisation: Some(dummy_organisation(None)),
             nonce_id: None,
             interaction_type: InteractionType::Issuance,
             expires_at: None,
@@ -1381,10 +1382,17 @@ async fn test_holder_reject_credential() {
         .once()
         .returning(move |_, _| Ok(()));
 
+    let mut holder_wallet_unit_repository = MockHolderWalletInstanceRepository::new();
+    holder_wallet_unit_repository
+        .expect_list()
+        .once()
+        .return_once(|_| Ok(GetListResponse::empty()));
+
     let openid_provider = setup_protocol(TestInputs {
         did_method_provider,
         key_algorithm_provider,
         interaction_repository,
+        holder_wallet_unit_repository,
         config: dummy_config(),
         ..Default::default()
     });
