@@ -73,7 +73,7 @@ impl IdentifierProvider {
 
         if (model.r#type == identifier::IdentifierType::Certificate
             || model.r#type == identifier::IdentifierType::CertificateAuthority)
-            && let Some(certificate_relations) = &relations.certificates
+            && let Some(_certificate_relations) = &relations.certificates
         {
             let certificate_ids: Vec<CertificateId> = certificate::Entity::find()
                 .select_only()
@@ -90,7 +90,7 @@ impl IdentifierProvider {
             for certificate_id in certificate_ids {
                 certs.push(
                     self.certificate_repository
-                        .get(certificate_id, certificate_relations)
+                        .get(certificate_id)
                         .await?
                         .ok_or(DataLayerError::MissingRequiredRelation {
                             relation: "identifier-certificate",

@@ -34,6 +34,7 @@ use crate::model::list_filter::{
 use crate::model::validity_credential::ValidityCredential;
 use crate::proto::trust_information::dto::TrustInformation;
 use crate::provider::credential_formatter::mdoc_formatter;
+use crate::service::certificate::mapper::certificate_to_response_dto;
 
 pub(crate) async fn credential_detail_response_from_model(
     value: Credential,
@@ -70,12 +71,14 @@ pub(crate) async fn credential_detail_response_from_model(
         None
     };
 
-    let issuer_certificate = value
-        .issuer_certificate
-        .clone()
-        .map(TryInto::try_into)
-        .transpose()
-        .error_while("converting certificate")?;
+    let issuer_certificate = match value.issuer_certificate {
+        None => None,
+        Some(certificate) => Some(
+            certificate_to_response_dto(certificate)
+                .await
+                .error_while("converting certificate")?,
+        ),
+    };
 
     Ok(CredentialDetailResponseDTO {
         id: value.id,

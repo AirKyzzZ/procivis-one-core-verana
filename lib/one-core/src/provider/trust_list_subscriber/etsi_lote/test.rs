@@ -155,7 +155,7 @@ async fn resolve_untrusted_identifier() {
         certificates: Some(vec![Certificate {
             id: Uuid::new_v4().into(),
             identifier_id,
-            organisation_id: None,
+            organisation: None,
             created_date: now,
             last_modified: now,
             deleted_at: None,
@@ -165,7 +165,7 @@ async fn resolve_untrusted_identifier() {
             fingerprint: "unknown fingerprint".to_string(),
             state: CertificateState::Active,
             roles: vec![],
-            key: Some(dummy_key()),
+            key: Some(dummy_key().into()),
         }]),
         trust_information: None,
     };
@@ -201,7 +201,7 @@ async fn resolve_trusted_identifier() {
         certificates: Some(vec![Certificate {
             id: Uuid::new_v4().into(),
             identifier_id,
-            organisation_id: None,
+            organisation: None,
             created_date: now,
             last_modified: now,
             deleted_at: None,
@@ -211,7 +211,7 @@ async fn resolve_trusted_identifier() {
             fingerprint: TRUSTED_FINGERPRINT.to_string(),
             state: CertificateState::Active,
             roles: vec![],
-            key: Some(dummy_key()),
+            key: Some(dummy_key().into()),
         }]),
         trust_information: None,
     };
@@ -489,7 +489,7 @@ async fn resolve_trusted_identifier_xml() {
         certificates: Some(vec![Certificate {
             id: Uuid::new_v4().into(),
             identifier_id,
-            organisation_id: None,
+            organisation: None,
             created_date: now,
             last_modified: now,
             deleted_at: None,
@@ -499,7 +499,7 @@ async fn resolve_trusted_identifier_xml() {
             fingerprint: TRUSTED_FINGERPRINT.to_string(),
             state: CertificateState::Active,
             roles: vec![],
-            key: Some(dummy_key()),
+            key: Some(dummy_key().into()),
         }]),
         trust_information: None,
     };
@@ -536,7 +536,7 @@ async fn resolve_untrusted_identifier_xml() {
         certificates: Some(vec![Certificate {
             id: Uuid::new_v4().into(),
             identifier_id,
-            organisation_id: None,
+            organisation: None,
             created_date: now,
             last_modified: now,
             deleted_at: None,
@@ -546,7 +546,7 @@ async fn resolve_untrusted_identifier_xml() {
             fingerprint: "unknown fingerprint".to_string(),
             state: CertificateState::Active,
             roles: vec![],
-            key: Some(dummy_key()),
+            key: Some(dummy_key().into()),
         }]),
         trust_information: None,
     };

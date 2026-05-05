@@ -1,11 +1,10 @@
 use std::sync::Arc;
 
-use one_core::model::certificate::{
-    Certificate, CertificateRelations, CertificateRole, CertificateState,
-};
+use one_core::model::certificate::{Certificate, CertificateRole, CertificateState};
 use one_core::model::key::Key;
+use one_core::model::organisation::Organisation;
 use one_core::repository::certificate_repository::CertificateRepository;
-use shared_types::{CertificateId, IdentifierId, OrganisationId};
+use shared_types::{CertificateId, IdentifierId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -22,12 +21,20 @@ pub struct TestingCertificateParams {
     pub fingerprint: Option<String>,
     pub state: Option<CertificateState>,
     pub key: Option<Key>,
-    pub organisation_id: Option<OrganisationId>,
+    pub organisation: Option<Organisation>,
     pub roles: Option<Vec<CertificateRole>>,
 }
 
-impl From<Certificate> for TestingCertificateParams {
-    fn from(certificate: Certificate) -> Self {
+impl TestingCertificateParams {
+    pub(crate) async fn from(certificate: Certificate) -> Self {
+        let key = match certificate.key {
+            None => None,
+            Some(key) => Some(key.get().await.unwrap()),
+        };
+        let organisation = match certificate.organisation {
+            None => None,
+            Some(organisation) => Some(organisation.get().await.unwrap()),
+        };
         Self {
             id: Some(certificate.id),
             created_date: Some(certificate.created_date),
@@ -37,8 +44,8 @@ impl From<Certificate> for TestingCertificateParams {
             chain: Some(certificate.chain),
             fingerprint: Some(certificate.fingerprint),
             state: Some(certificate.state),
-            key: certificate.key,
-            organisation_id: certificate.organisation_id,
+            key,
+            organisation,
             roles: Some(certificate.roles),
         }
     }
@@ -74,8 +81,8 @@ impl CertificatesDB {
                 CertificateRole::Authentication,
                 CertificateRole::AssertionMethod,
             ]),
-            key: params.key,
-            organisation_id: params.organisation_id,
+            key: params.key.map(Into::into),
+            organisation: params.organisation.map(Into::into),
             deleted_at: None,
         };
 
@@ -85,16 +92,6 @@ impl CertificatesDB {
     }
 
     pub async fn get(&self, certificate_id: CertificateId) -> Certificate {
-        self.repository
-            .get(
-                certificate_id,
-                &CertificateRelations {
-                    key: Some(Default::default()),
-                    organisation: Some(Default::default()),
-                },
-            )
-            .await
-            .unwrap()
-            .unwrap()
+        self.repository.get(certificate_id).await.unwrap().unwrap()
     }
 }

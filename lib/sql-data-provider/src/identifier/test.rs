@@ -545,7 +545,7 @@ async fn test_list_identifier_filter_certificate_role() {
         .create(Certificate {
             id: Uuid::new_v4().into(),
             identifier_id: id,
-            organisation_id: Some(setup.organisation.id),
+            organisation: Some(setup.organisation.into()),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             deleted_at: None,
@@ -612,7 +612,7 @@ async fn test_get_returns_soft_deleted_certificates_in_relation() {
     let certificate = Certificate {
         id: cert_id,
         identifier_id,
-        organisation_id: Some(setup.organisation.id),
+        organisation: Some(setup.organisation.into()),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         deleted_at: None,

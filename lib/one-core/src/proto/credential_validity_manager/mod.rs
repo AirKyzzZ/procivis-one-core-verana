@@ -7,7 +7,6 @@ use crate::config::core_config::{CoreConfig, FormatType};
 use crate::error::{
     ContextWithErrorCode, ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt, NestedError,
 };
-use crate::model::certificate::CertificateRelations;
 use crate::model::credential::{
     Clearable, CredentialRelations, CredentialRole, CredentialStateEnum, UpdateCredentialRequest,
 };
@@ -169,10 +168,7 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
                 &CredentialRelations {
                     issuer_identifier: Some(IdentifierRelations {
                         did: Some(Default::default()),
-                        certificates: Some(CertificateRelations {
-                            key: Some(KeyRelations::default()),
-                            ..Default::default()
-                        }),
+                        certificates: Some(Default::default()),
                         ..Default::default()
                     }),
                     issuer_certificate: Some(Default::default()),
@@ -261,10 +257,7 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
                     schema: Some(Default::default()),
                     issuer_identifier: Some(IdentifierRelations {
                         did: Some(Default::default()),
-                        certificates: Some(CertificateRelations {
-                            key: Some(KeyRelations::default()),
-                            ..Default::default()
-                        }),
+                        certificates: Some(Default::default()),
                         ..Default::default()
                     }),
                     holder_identifier: Some(IdentifierRelations {

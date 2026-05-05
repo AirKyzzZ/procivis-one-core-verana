@@ -88,11 +88,11 @@ impl TrustListPublicationRepository for TrustListPublicationProvider {
         }
 
         if let Some(certificate_id) = certificate_id
-            && let Some(certificate_relations) = &relations.certificate
+            && let Some(_certificate_relations) = &relations.certificate
         {
             result.certificate = Some(
                 self.certificate_repository
-                    .get(certificate_id, certificate_relations)
+                    .get(certificate_id)
                     .await?
                     .ok_or(DataLayerError::MissingRequiredRelation {
                         relation: "trust_list_publication-certificate",

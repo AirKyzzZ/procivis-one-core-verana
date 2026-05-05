@@ -567,7 +567,7 @@ pub async fn create_cert_identifier(
     let certificate = Certificate {
         id: Uuid::new_v4().into(),
         identifier_id,
-        organisation_id: Some(organisation.id),
+        organisation: Some(organisation.clone().into()),
         created_date: cert_params.created_date.unwrap_or(now),
         last_modified: cert_params.last_modified.unwrap_or(now),
         expiry_date: cert_params
@@ -581,7 +581,7 @@ pub async fn create_cert_identifier(
         fingerprint: cert_params.fingerprint.unwrap_or("ffffaaaa22".to_string()),
         state: cert_params.state.unwrap_or(CertificateState::Active),
         roles: cert_params.roles,
-        key: Some(key.clone()),
+        key: Some(key.clone().into()),
     };
     let identifier = context
         .db
@@ -598,7 +598,10 @@ pub async fn create_cert_identifier(
     context
         .db
         .certificates
-        .create(identifier.id, TestingCertificateParams::from(certificate))
+        .create(
+            identifier.id,
+            TestingCertificateParams::from(certificate).await,
+        )
         .await;
     identifier
 }

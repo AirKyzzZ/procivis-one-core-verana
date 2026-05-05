@@ -80,7 +80,7 @@ pub(super) async fn prepare_params_and_ca_issuer<'a>(
             .await?
         }
     };
-    let signing_key = signing_key_adapter(key.clone(), &*key_provider)?;
+    let signing_key = signing_key_adapter(key.into_owned(), &*key_provider)?;
     let (cert_issuer, issuer_alternative_name) = issuer_from_cert(certificate, signing_key)?;
 
     if let Some(issuer_alternative_name) = &issuer_alternative_name {

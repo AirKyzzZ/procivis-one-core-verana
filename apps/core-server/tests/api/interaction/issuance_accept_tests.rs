@@ -676,7 +676,7 @@ async fn test_issuance_accept_openid4vc_issuer_certificate_mismatch() {
                 chain: Some(chain),
                 fingerprint: Some(fingerprint(&cert)),
                 state: Some(CertificateState::Active),
-                organisation_id: Some(organisation.id),
+                organisation: Some(organisation.clone()),
                 ..Default::default()
             },
         )

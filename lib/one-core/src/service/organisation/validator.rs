@@ -3,7 +3,6 @@ use shared_types::{IdentifierId, OrganisationId};
 use super::error::OrganisationServiceError;
 use crate::config::core_config::{ConfigExt, CoreConfig, KeyAlgorithmType};
 use crate::error::ContextWithErrorCode;
-use crate::model::certificate::CertificateRelations;
 use crate::model::identifier::IdentifierRelations;
 use crate::model::key::KeyRelations;
 use crate::model::list_filter::ListFilterCondition;
@@ -30,10 +29,7 @@ pub(super) async fn validate_wallet_provider_issuer(
                 organisation: Default::default(),
                 did: Some(Default::default()),
                 key: Some(KeyRelations::default()),
-                certificates: Some(CertificateRelations {
-                    key: Some(KeyRelations::default()),
-                    ..Default::default()
-                }),
+                certificates: Some(Default::default()),
                 ..Default::default()
             },
         )

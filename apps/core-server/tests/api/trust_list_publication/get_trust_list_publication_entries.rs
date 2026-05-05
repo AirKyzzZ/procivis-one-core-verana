@@ -219,7 +219,7 @@ async fn create_dummy_certificate_identifier(
     let certificate = Certificate {
         id: Uuid::new_v4().into(),
         identifier_id,
-        organisation_id: Some(organisation.id),
+        organisation: Some(organisation.clone().into()),
         created_date: now,
         last_modified: now,
         expiry_date: now.add(Duration::minutes(10)),
@@ -228,7 +228,7 @@ async fn create_dummy_certificate_identifier(
         fingerprint: Uuid::new_v4().to_string(),
         state: CertificateState::Active,
         roles: vec![],
-        key: Some(key.clone()),
+        key: Some(key.clone().into()),
         deleted_at: None,
     };
 
@@ -249,7 +249,10 @@ async fn create_dummy_certificate_identifier(
     let certificate = context
         .db
         .certificates
-        .create(identifier.id, TestingCertificateParams::from(certificate))
+        .create(
+            identifier.id,
+            TestingCertificateParams::from(certificate).await,
+        )
         .await;
     (identifier, certificate)
 }

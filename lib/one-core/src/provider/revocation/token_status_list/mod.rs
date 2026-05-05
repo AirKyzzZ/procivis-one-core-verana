@@ -15,7 +15,7 @@ use self::resolver::StatusListCachingLoader;
 use self::util::{PREFERRED_ENTRY_SIZE, calculate_preferred_token_size};
 use crate::config::core_config::{FormatType, RevocationType};
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
-use crate::model::certificate::{Certificate, CertificateRelations, CertificateState};
+use crate::model::certificate::{Certificate, CertificateState};
 use crate::model::common::LockType;
 use crate::model::credential::Credential;
 use crate::model::did::KeyRole;
@@ -361,10 +361,7 @@ impl RevocationMethod for TokenStatusList {
                 &IdentifierRelations {
                     did: Some(Default::default()),
                     key: Some(Default::default()),
-                    certificates: Some(CertificateRelations {
-                        key: Some(Default::default()),
-                        ..Default::default()
-                    }),
+                    certificates: Some(Default::default()),
                     ..Default::default()
                 },
             )
@@ -510,10 +507,7 @@ impl RevocationMethod for TokenStatusList {
                         signature_id,
                         &RevocationListRelations {
                             issuer_identifier: Some(IdentifierRelations {
-                                certificates: Some(CertificateRelations {
-                                    key: Some(Default::default()),
-                                    ..Default::default()
-                                }),
+                                certificates: Some(Default::default()),
                                 did: Some(Default::default()),
                                 key: Some(Default::default()),
                                 ..Default::default()

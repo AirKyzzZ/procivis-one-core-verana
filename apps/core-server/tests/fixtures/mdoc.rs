@@ -25,7 +25,7 @@ pub(crate) async fn format_mdoc_credential(
     credential_data.issuer_certificate = Some(Certificate {
         id: Uuid::new_v4().into(),
         identifier_id: Uuid::new_v4().into(),
-        organisation_id: None,
+        organisation: None,
         created_date: one_core::clock::now_utc(),
         last_modified: one_core::clock::now_utc(),
         expiry_date: one_core::clock::now_utc(),

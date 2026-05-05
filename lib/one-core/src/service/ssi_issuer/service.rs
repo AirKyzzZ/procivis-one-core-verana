@@ -20,7 +20,6 @@ use super::mapper::{
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{FormatType, KeyStorageType, Params};
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
-use crate::model::certificate::CertificateRelations;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaListQuery};
 use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::key::Key;
@@ -308,10 +307,7 @@ impl SSIIssuerService {
                 &IdentifierRelations {
                     did: Some(Default::default()),
                     key: Some(Default::default()),
-                    certificates: Some(CertificateRelations {
-                        key: Some(Default::default()),
-                        ..Default::default()
-                    }),
+                    certificates: Some(Default::default()),
                     ..Default::default()
                 },
             )

@@ -25,14 +25,11 @@ use crate::config::core_config;
 use crate::error::ErrorCode::BR_0224;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
 use crate::model::blob::Blob;
-use crate::model::certificate::CertificateRelations;
 use crate::model::identifier::{Identifier, IdentifierRelations, SortableIdentifierColumn};
 use crate::model::identifier_trust_information::{
     IdentifierTrustInformation, IdentifierTrustInformationRelations,
 };
-use crate::model::key::KeyRelations;
 use crate::model::list_filter::{ListFilterCondition, ListFilterValue};
-use crate::model::organisation::OrganisationRelations;
 use crate::model::trust_collection::{
     TrustCollection, TrustCollectionFilterValue, TrustCollectionListQuery,
 };
@@ -68,10 +65,7 @@ impl IdentifierService {
                 &IdentifierRelations {
                     did: Some(Default::default()),
                     key: Some(Default::default()),
-                    certificates: Some(CertificateRelations {
-                        key: Some(KeyRelations::default()),
-                        organisation: Some(OrganisationRelations::default()),
-                    }),
+                    certificates: Some(Default::default()),
                     organisation: Some(Default::default()),
                     trust_information: Some(IdentifierTrustInformationRelations::default()),
                 },
@@ -545,10 +539,7 @@ impl IdentifierService {
                         organisation: None,
                         did: None,
                         key: Some(Default::default()),
-                        certificates: Some(CertificateRelations {
-                            key: Some(Default::default()),
-                            organisation: None,
-                        }),
+                        certificates: Some(Default::default()),
                         trust_information: None,
                     },
                 )

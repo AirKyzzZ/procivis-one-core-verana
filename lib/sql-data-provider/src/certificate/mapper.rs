@@ -1,11 +1,8 @@
-use std::str::FromStr;
-
 use itertools::Itertools;
 use one_core::model::certificate::{
-    Certificate, CertificateFilterValue, CertificateRole, SortableCertificateColumn,
+    Certificate, CertificateFilterValue, SortableCertificateColumn,
 };
 use one_core::model::list_filter::ListFilterCondition;
-use one_core::repository::error::DataLayerError;
 use sea_orm::sea_query::{IntoCondition, SimpleExpr};
 use sea_orm::{ColumnTrait, IntoSimpleExpr, Set};
 
@@ -17,8 +14,6 @@ use crate::list_query_generic::{
 
 impl From<Certificate> for ActiveModel {
     fn from(certificate: Certificate) -> Self {
-        let key_id = certificate.key.map(|key| key.id);
-
         let roles = if !certificate.roles.is_empty() {
             Some(certificate.roles.iter().join(","))
         } else {
@@ -34,41 +29,11 @@ impl From<Certificate> for ActiveModel {
             chain: Set(certificate.chain),
             fingerprint: Set(certificate.fingerprint),
             state: Set(certificate.state.into()),
-            key_id: Set(key_id),
-            organisation_id: Set(certificate.organisation_id),
+            key_id: Set(certificate.key.map(|key| key.id())),
+            organisation_id: Set(certificate.organisation.map(|o| o.id())),
             roles: Set(roles),
             deleted_at: Set(certificate.deleted_at),
         }
-    }
-}
-
-impl TryFrom<certificate::Model> for Certificate {
-    type Error = DataLayerError;
-    fn try_from(value: certificate::Model) -> Result<Self, Self::Error> {
-        let roles = if let Some(value) = value.roles {
-            value
-                .split(",")
-                .map(CertificateRole::from_str)
-                .collect::<Result<Vec<_>, _>>()
-                .map_err(|_| DataLayerError::MappingError)?
-        } else {
-            vec![]
-        };
-        Ok(Self {
-            id: value.id,
-            identifier_id: value.identifier_id,
-            organisation_id: value.organisation_id,
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-            expiry_date: value.expiry_date,
-            name: value.name,
-            chain: value.chain,
-            fingerprint: value.fingerprint,
-            state: value.state.into(),
-            roles,
-            key: None,
-            deleted_at: value.deleted_at,
-        })
     }
 }
 

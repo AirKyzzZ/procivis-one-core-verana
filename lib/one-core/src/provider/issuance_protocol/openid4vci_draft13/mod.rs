@@ -1160,10 +1160,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
                     schema: Some(Default::default()),
                     issuer_identifier: Some(IdentifierRelations {
                         did: Some(Default::default()),
-                        certificates: Some(CertificateRelations {
-                            key: Some(KeyRelations::default()),
-                            ..Default::default()
-                        }),
+                        certificates: Some(Default::default()),
                         ..Default::default()
                     }),
                     issuer_certificate: Some(CertificateRelations::default()),

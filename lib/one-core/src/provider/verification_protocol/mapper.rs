@@ -14,7 +14,6 @@ use super::dto::{
 use crate::config::core_config::{CoreConfig, DatatypeConfig, DatatypeType};
 use crate::error::ContextWithErrorCode;
 use crate::mapper::NESTED_CLAIM_MARKER;
-use crate::model::certificate::CertificateRelations;
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
@@ -376,9 +375,7 @@ pub(crate) async fn get_presentation_credentials_by_schema_id(
                             schema: Some(Default::default()),
                         }),
                         schema: Some(Default::default()),
-                        issuer_certificate: Some(CertificateRelations {
-                            ..Default::default()
-                        }),
+                        issuer_certificate: Some(Default::default()),
                         ..Default::default()
                     },
                 )

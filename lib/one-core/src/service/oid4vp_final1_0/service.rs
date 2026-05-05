@@ -15,7 +15,6 @@ use crate::config::core_config::VerificationProtocolType;
 use crate::error::ContextWithErrorCode;
 use crate::error::ErrorCode::BR_0000;
 use crate::model::blob::{Blob, BlobType};
-use crate::model::certificate::CertificateRelations;
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::identifier_trust_information::{
@@ -72,10 +71,7 @@ impl OID4VPFinal1_0Service {
                     interaction: Some(Default::default()),
                     verifier_identifier: Some(IdentifierRelations {
                         did: Some(Default::default()),
-                        certificates: Some(CertificateRelations {
-                            key: Some(KeyRelations::default()),
-                            ..Default::default()
-                        }),
+                        certificates: Some(Default::default()),
                         trust_information: Some(IdentifierTrustInformationRelations {}),
                         ..Default::default()
                     }),

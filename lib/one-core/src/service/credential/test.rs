@@ -4839,7 +4839,7 @@ async fn test_create_credential_invalid_certificate_role() {
     let certificate = Certificate {
         id: certificate_id,
         identifier_id,
-        organisation_id: Some(organisation.id),
+        organisation: Some(organisation.into()),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         deleted_at: None,
@@ -4849,7 +4849,7 @@ async fn test_create_credential_invalid_certificate_role() {
         fingerprint: "test".to_string(),
         state: CertificateState::Active,
         roles: vec![],
-        key: Some(dummy_key()),
+        key: Some(dummy_key().into()),
     };
     identifier_repository.expect_get().return_once(move |_, _| {
         Ok(Some(Identifier {

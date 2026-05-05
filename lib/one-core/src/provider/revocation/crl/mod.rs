@@ -15,7 +15,7 @@ use uuid::Uuid;
 use super::model::{CredentialRevocationInfo, Operation};
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin};
 use crate::mapper::x509::SigningKeyAdapter;
-use crate::model::certificate::{Certificate, CertificateRelations};
+use crate::model::certificate::Certificate;
 use crate::model::credential::Credential;
 use crate::model::identifier::Identifier;
 use crate::model::revocation_list::{
@@ -260,10 +260,7 @@ impl RevocationMethod for CRLRevocation {
             .get_revocation_list_by_entry_id(
                 signature_id,
                 &RevocationListRelations {
-                    issuer_certificate: Some(CertificateRelations {
-                        key: Some(Default::default()),
-                        ..Default::default()
-                    }),
+                    issuer_certificate: Some(Default::default()),
                     ..Default::default()
                 },
             )
@@ -287,10 +284,7 @@ impl RevocationMethod for CRLRevocation {
             .get_revocation_list(
                 &list_id,
                 &RevocationListRelations {
-                    issuer_certificate: Some(CertificateRelations {
-                        key: Some(Default::default()),
-                        ..Default::default()
-                    }),
+                    issuer_certificate: Some(Default::default()),
                     ..Default::default()
                 },
             )
@@ -407,7 +401,9 @@ impl CRLRevocation {
             .ok_or(RevocationError::MappingError(
                 "Missing certificate key".to_string(),
             ))?
-            .to_owned();
+            .get()
+            .await
+            .error_while("loading certificate key")?;
 
         let key_storage = self
             .key_provider

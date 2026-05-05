@@ -5,7 +5,7 @@ use shared_types::{CertificateId, IdentifierId, OrganisationId};
 use uuid::Uuid;
 
 use crate::model::certificate::{
-    Certificate, CertificateListQuery, CertificateRelations, CertificateState, GetCertificateList,
+    Certificate, CertificateListQuery, CertificateState, GetCertificateList,
     UpdateCertificateRequest,
 };
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
@@ -91,12 +91,8 @@ impl CertificateHistoryDecorator {
 
 #[async_trait::async_trait]
 impl CertificateRepository for CertificateHistoryDecorator {
-    async fn get(
-        &self,
-        id: CertificateId,
-        relations: &CertificateRelations,
-    ) -> Result<Option<Certificate>, DataLayerError> {
-        self.inner.get(id, relations).await
+    async fn get(&self, id: CertificateId) -> Result<Option<Certificate>, DataLayerError> {
+        self.inner.get(id).await
     }
 
     async fn list(
@@ -137,7 +133,7 @@ impl CertificateRepository for CertificateHistoryDecorator {
 
         let certificate = self
             .inner
-            .get(*id, &Default::default())
+            .get(*id)
             .await?
             .context("certificate is missing")?;
 

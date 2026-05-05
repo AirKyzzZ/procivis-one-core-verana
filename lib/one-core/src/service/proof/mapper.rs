@@ -33,6 +33,7 @@ use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
 use crate::model::validity_credential::ValidityCredentialType;
 use crate::proto::trust_information::dto::TrustInformation;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
+use crate::service::certificate::mapper::certificate_to_response_dto;
 use crate::service::credential::dto::{
     CredentialAttestationBlobs, CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO,
 };
@@ -419,12 +420,14 @@ pub(super) async fn get_verifier_proof_detail(
 
     let redirect_uri = proof.redirect_uri.to_owned();
 
-    let verifier_certificate = proof
-        .verifier_certificate
-        .clone()
-        .map(TryInto::try_into)
-        .transpose()
-        .error_while("converting certificate")?;
+    let verifier_certificate = match &proof.verifier_certificate {
+        None => None,
+        Some(certificate) => Some(
+            certificate_to_response_dto(certificate.to_owned())
+                .await
+                .error_while("converting certificate")?,
+        ),
+    };
 
     let list_item_response: ProofListItemResponseDTO = proof.try_into()?;
 
@@ -672,12 +675,14 @@ pub(super) async fn get_holder_proof_detail(
         });
     }
 
-    let verifier_certificate = proof
-        .verifier_certificate
-        .clone()
-        .map(TryInto::try_into)
-        .transpose()
-        .error_while("converting certificate")?;
+    let verifier_certificate = match &proof.verifier_certificate {
+        None => None,
+        Some(certificate) => Some(
+            certificate_to_response_dto(certificate.to_owned())
+                .await
+                .error_while("converting certificate")?,
+        ),
+    };
 
     let list_item_response: ProofListItemResponseDTO = proof.try_into()?;
 

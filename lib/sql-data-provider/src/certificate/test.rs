@@ -6,6 +6,7 @@ use one_core::model::certificate::{
 use one_core::repository::certificate_repository::CertificateRepository;
 use one_core::repository::key_repository::MockKeyRepository;
 use one_core::repository::organisation_repository::MockOrganisationRepository;
+use one_core::service::test_utilities::dummy_organisation;
 use shared_types::{IdentifierId, OrganisationId};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
@@ -59,7 +60,7 @@ async fn test_create_certificate() {
     let certificate = Certificate {
         id,
         identifier_id: setup.identifier_id,
-        organisation_id: Some(setup.organisation_id),
+        organisation: Some(dummy_organisation(Some(setup.organisation_id)).into()),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         expiry_date: get_dummy_date(),
@@ -82,7 +83,7 @@ async fn test_get_certificate() {
     let certificate = Certificate {
         id: Uuid::new_v4().into(),
         identifier_id: setup.identifier_id,
-        organisation_id: Some(setup.organisation_id),
+        organisation: Some(dummy_organisation(Some(setup.organisation_id)).into()),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         expiry_date: get_dummy_date(),
@@ -104,18 +105,13 @@ async fn test_get_certificate() {
     assert!(
         setup
             .provider
-            .get(non_existent_id, &Default::default())
+            .get(non_existent_id,)
             .await
             .unwrap()
             .is_none()
     );
 
-    let retrieved = setup
-        .provider
-        .get(certificate.id, &Default::default())
-        .await
-        .unwrap()
-        .unwrap();
+    let retrieved = setup.provider.get(certificate.id).await.unwrap().unwrap();
     assert_eq!(retrieved.id, certificate.id);
     assert_eq!(retrieved.identifier_id, certificate.identifier_id);
     assert_eq!(retrieved.name, certificate.name);
@@ -133,7 +129,7 @@ async fn test_update_certificate() {
     let certificate = Certificate {
         id: Uuid::new_v4().into(),
         identifier_id: setup.identifier_id,
-        organisation_id: Some(setup.organisation_id),
+        organisation: Some(dummy_organisation(Some(setup.organisation_id)).into()),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         expiry_date: get_dummy_date(),
@@ -160,12 +156,7 @@ async fn test_update_certificate() {
         .await
         .unwrap();
 
-    let retrieved = setup
-        .provider
-        .get(certificate.id, &Default::default())
-        .await
-        .unwrap()
-        .unwrap();
+    let retrieved = setup.provider.get(certificate.id).await.unwrap().unwrap();
 
     assert_eq!(retrieved.state, CertificateState::Expired);
 }
@@ -177,7 +168,7 @@ async fn test_get_returns_soft_deleted_certificate() {
     let certificate = Certificate {
         id,
         identifier_id: setup.identifier_id,
-        organisation_id: Some(setup.organisation_id),
+        organisation: Some(dummy_organisation(Some(setup.organisation_id)).into()),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         expiry_date: get_dummy_date(),
@@ -194,7 +185,7 @@ async fn test_get_returns_soft_deleted_certificate() {
 
     let retrieved = setup
         .provider
-        .get(id, &Default::default())
+        .get(id)
         .await
         .unwrap()
         .expect("soft-deleted certificate should still be retrievable");
@@ -209,7 +200,7 @@ async fn test_delete_certificate_sets_deleted_at() {
     let certificate = Certificate {
         id,
         identifier_id: setup.identifier_id,
-        organisation_id: Some(setup.organisation_id),
+        organisation: Some(dummy_organisation(Some(setup.organisation_id)).into()),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         expiry_date: get_dummy_date(),
@@ -227,7 +218,7 @@ async fn test_delete_certificate_sets_deleted_at() {
 
     let retrieved = setup
         .provider
-        .get(id, &Default::default())
+        .get(id)
         .await
         .unwrap()
         .expect("soft-deleted certificate should still be retrievable");
@@ -247,7 +238,7 @@ async fn test_list_excludes_soft_deleted_certificates() {
     let mk = |id, fp: &str| Certificate {
         id,
         identifier_id: setup.identifier_id,
-        organisation_id: Some(setup.organisation_id),
+        organisation: Some(dummy_organisation(Some(setup.organisation_id)).into()),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         expiry_date: get_dummy_date(),
@@ -293,7 +284,7 @@ async fn test_unique_fingerprint_allows_reuse_after_soft_delete() {
     let mk = |name: &str, fp: &str| Certificate {
         id: Uuid::new_v4().into(),
         identifier_id: setup.identifier_id,
-        organisation_id: Some(setup.organisation_id),
+        organisation: Some(dummy_organisation(Some(setup.organisation_id)).into()),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         expiry_date: get_dummy_date(),

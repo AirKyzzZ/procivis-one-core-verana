@@ -183,7 +183,7 @@ impl Signer for RegistrationCertificate {
             custom: model::Payload::from_request_data_and_status(payload, status),
         };
         let signed_jwt = self
-            .create_and_sign_jwt(key.clone(), pubkey_info, jwt_payload)
+            .create_and_sign_jwt(key.into_owned(), pubkey_info, jwt_payload)
             .await?;
 
         Ok(CreateSignatureResponseDTO {

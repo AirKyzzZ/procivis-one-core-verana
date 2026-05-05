@@ -45,9 +45,9 @@ impl RevocationListProvider {
             relations.issuer_certificate.as_ref(),
             revocation_list.issuer_certificate_id,
         ) {
-            (Some(relations), Some(issuer_certificate_id)) => Some(
+            (Some(_relations), Some(issuer_certificate_id)) => Some(
                 self.certificate_repository
-                    .get(issuer_certificate_id, relations)
+                    .get(issuer_certificate_id)
                     .await?
                     .ok_or(DataLayerError::MissingRequiredRelation {
                         relation: "revocation_list-certificate",

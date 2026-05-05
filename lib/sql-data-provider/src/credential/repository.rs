@@ -161,14 +161,14 @@ impl CredentialProvider {
             None
         };
 
-        let issuer_certificate = if let Some(certificate_relations) = &relations.issuer_certificate
+        let issuer_certificate = if let Some(_certificate_relations) = &relations.issuer_certificate
         {
             match &credential.issuer_certificate_id {
                 None => None,
                 Some(certificate_id) => {
                     let certificate = self
                         .certificate_repository
-                        .get(*certificate_id, certificate_relations)
+                        .get(*certificate_id)
                         .await?
                         .ok_or(DataLayerError::MissingRequiredRelation {
                             relation: "credential-certificate",

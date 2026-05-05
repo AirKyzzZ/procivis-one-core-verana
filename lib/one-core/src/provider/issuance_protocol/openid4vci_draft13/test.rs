@@ -199,7 +199,7 @@ fn generic_credential_certificate() -> Credential {
                 .unwrap()
                 .into(),
             identifier_id: id,
-            organisation_id: None,
+            organisation: None,
             created_date: now,
             last_modified: now,
             deleted_at: None,

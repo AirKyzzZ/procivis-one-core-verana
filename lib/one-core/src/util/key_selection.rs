@@ -101,7 +101,7 @@ pub enum SelectedKey<'a> {
     Key(&'a Key),
     Certificate {
         certificate: &'a Certificate,
-        key: &'a Key,
+        key: Box<Cow<'a, Key>>,
     },
     Did {
         did: &'a Did,
@@ -274,16 +274,19 @@ impl Did {
 }
 
 impl Certificate {
-    pub fn has_matching_key(&self, filter: &KeyFilter) -> bool {
+    pub async fn has_matching_key(&self, filter: &KeyFilter) -> Result<bool, KeySelectionError> {
         if let Some(certificate_key_usage) = &filter.certificate_key_usage
             && !self.matches_key_usage(certificate_key_usage)
         {
-            return false;
+            return Ok(false);
         }
-        self.key
-            .as_ref()
-            .map(|k| filter.matches_key(k))
-            .unwrap_or(false)
+
+        Ok(if let Some(key) = self.key.as_ref() {
+            let key = key.get().await.error_while("getting key")?;
+            filter.matches_key(&key)
+        } else {
+            false
+        })
     }
 
     fn matches_key_usage(&self, certificate_key_usage: &[KeyUsagePurpose]) -> bool {
@@ -412,18 +415,23 @@ impl Identifier {
                         }
                         requested_cert
                     }
-                    None => certs
-                        .iter()
-                        .find(|c| {
-                            c.state == CertificateState::Active
+                    None => {
+                        let mut selected_cert = None;
+                        for c in certs {
+                            if c.state == CertificateState::Active
                                 && certificate_filter.matches_certificate(c)
-                                && c.has_matching_key(&filter)
-                        })
-                        .ok_or(KeySelectionError::NoActiveMatchingCertificate {
+                                && c.has_matching_key(&filter).await?
+                            {
+                                selected_cert = Some(c);
+                                break;
+                            }
+                        }
+                        selected_cert.ok_or(KeySelectionError::NoActiveMatchingCertificate {
                             identifier_id: self.id,
                             key_filter: filter.clone(),
                             certificate_filter: certificate_filter.clone(),
-                        })?,
+                        })?
+                    }
                 };
                 if !certificate_filter.matches_certificate(certificate) {
                     return Err(KeySelectionError::CertificateNotMatchingFilter {
@@ -437,9 +445,12 @@ impl Identifier {
                     .as_ref()
                     .ok_or(KeySelectionError::MappingError(
                         "Missing certificate key".to_owned(),
-                    ))?;
+                    ))?
+                    .get()
+                    .await
+                    .error_while("getting key")?;
 
-                if !filter.matches_key(key) {
+                if !filter.matches_key(&key) {
                     return Err(KeySelectionError::KeyNotMatchingFilter {
                         key_id: key.id,
                         key_filter: filter,
@@ -455,7 +466,10 @@ impl Identifier {
                     });
                 }
 
-                Ok(SelectedKey::Certificate { certificate, key })
+                Ok(SelectedKey::Certificate {
+                    certificate,
+                    key: Box::new(Cow::Owned(key)),
+                })
             }
         }
     }
@@ -515,24 +529,31 @@ impl Identifier {
                     .ok_or(KeySelectionError::MappingError(
                         "Missing identifier certificates".to_owned(),
                     ))?;
-                let certificates = certs
-                    .iter()
-                    .filter(|c| {
-                        c.state == CertificateState::Active
-                            && certificate_filter.matches_certificate(c)
-                            && c.has_matching_key(&filter)
-                    })
-                    .map(|certificate| {
-                        let key =
-                            certificate
-                                .key
-                                .as_ref()
-                                .ok_or(KeySelectionError::MappingError(
-                                    "Missing certificate key".to_owned(),
-                                ))?;
-                        Ok::<_, KeySelectionError>(SelectedKey::Certificate { certificate, key })
-                    })
-                    .collect::<Result<Vec<_>, _>>()?;
+
+                let mut certificates = vec![];
+                for certificate in certs {
+                    if certificate.state != CertificateState::Active
+                        || !certificate_filter.matches_certificate(certificate)
+                        || !certificate.has_matching_key(&filter).await?
+                    {
+                        continue;
+                    }
+
+                    let key = certificate
+                        .key
+                        .as_ref()
+                        .ok_or(KeySelectionError::MappingError(
+                            "Missing certificate key".to_owned(),
+                        ))?
+                        .get()
+                        .await
+                        .error_while("getting key")?;
+
+                    certificates.push(SelectedKey::Certificate {
+                        certificate,
+                        key: Box::new(Cow::Owned(key)),
+                    });
+                }
 
                 if certificates.is_empty() {
                     return Err(KeySelectionError::NoActiveMatchingCertificate {

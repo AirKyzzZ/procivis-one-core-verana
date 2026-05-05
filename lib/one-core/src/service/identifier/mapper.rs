@@ -29,6 +29,7 @@ use crate::provider::blob_storage_provider::{BlobStorageProvider, BlobStorageTyp
 use crate::provider::signer::registration_certificate::model::Credential;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::proof_schema_repository::ProofSchemaRepository;
+use crate::service::certificate::mapper::certificate_to_response_dto;
 use crate::service::common_dto::ListQueryDTO;
 use crate::service::did::dto::CreateDidRequestDTO;
 use crate::service::did::mapper::response_from_did;
@@ -67,8 +68,8 @@ pub(super) async fn identifier_to_response_dto(
                 )))?
             {
                 certs.push(
-                    certificate
-                        .try_into()
+                    certificate_to_response_dto(certificate)
+                        .await
                         .error_while("converting certificate")?,
                 );
             }
@@ -84,8 +85,8 @@ pub(super) async fn identifier_to_response_dto(
                 )))?
             {
                 certs.push(
-                    certificate
-                        .try_into()
+                    certificate_to_response_dto(certificate)
+                        .await
                         .error_while("converting certificate")?,
                 );
             }

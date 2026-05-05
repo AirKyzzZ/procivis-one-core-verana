@@ -11,16 +11,16 @@ use crate::repository::certificate_repository::MockCertificateRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::service::certificate::CertificateService;
 use crate::service::certificate::error::CertificateServiceError;
-use crate::service::test_utilities::{dummy_identifier, get_dummy_date};
+use crate::service::test_utilities::{dummy_identifier, dummy_organisation, get_dummy_date};
 
 #[tokio::test]
 async fn test_get_cert_fail_session_org_mismatch() {
     let mut cert_repo = MockCertificateRepository::new();
-    cert_repo.expect_get().returning(|_, _| {
+    cert_repo.expect_get().returning(|_| {
         Ok(Some(Certificate {
             id: Uuid::new_v4().into(),
             identifier_id: Uuid::new_v4().into(),
-            organisation_id: Some(Uuid::new_v4().into()),
+            organisation: Some(dummy_organisation(None).into()),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             deleted_at: None,
@@ -48,11 +48,11 @@ async fn test_get_certificate_authority_invalid_identifier() {
     let id = Uuid::new_v4().into();
 
     let mut certificate_repository = MockCertificateRepository::new();
-    certificate_repository.expect_get().returning(|id, _| {
+    certificate_repository.expect_get().returning(|id| {
         Ok(Some(Certificate {
             id,
             identifier_id: Uuid::new_v4().into(),
-            organisation_id: Some(Uuid::new_v4().into()),
+            organisation: Some(dummy_organisation(None).into()),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             expiry_date: get_dummy_date(),

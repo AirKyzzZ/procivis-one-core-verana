@@ -21,7 +21,6 @@ use crate::mapper::exchange::{
     get_issuance_param_pre_authorization_expires_in, get_issuance_param_refresh_token_expires_in,
     get_issuance_param_token_expires_in,
 };
-use crate::model::certificate::CertificateRelations;
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::common::LockType;
@@ -607,10 +606,7 @@ impl OID4VCIDraft13Service {
                 &CredentialRelations {
                     issuer_identifier: Some(IdentifierRelations {
                         did: Some(Default::default()),
-                        certificates: Some(CertificateRelations {
-                            key: Some(Default::default()),
-                            ..Default::default()
-                        }),
+                        certificates: Some(Default::default()),
                         ..Default::default()
                     }),
                     issuer_certificate: Some(Default::default()),

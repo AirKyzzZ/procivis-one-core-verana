@@ -766,7 +766,7 @@ async fn test_post_issuer_credential_mdoc() {
     let certificate_model = Certificate {
         id: Uuid::new_v4().into(),
         identifier_id,
-        organisation_id: Some(organisation.id),
+        organisation: Some(organisation.clone().into()),
         created_date: now,
         last_modified: now,
         expiry_date: now.add(Duration::minutes(10)),
@@ -797,7 +797,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         fingerprint: "fingerprint".to_string(),
         state: CertificateState::Active,
         roles: vec![],
-        key: Some(key.clone()),
+        key: Some(key.clone().into()),
         deleted_at: None,
     };
 
@@ -820,7 +820,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         .certificates
         .create(
             issuer_identifier.id,
-            TestingCertificateParams::from(certificate_model),
+            TestingCertificateParams::from(certificate_model).await,
         )
         .await;
 

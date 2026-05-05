@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::ops::Deref;
 
 use one_dto_mapper::convert_inner;
-use shared_types::{DidId, IdentifierId, KeyId, OrganisationId};
+use shared_types::{DidId, IdentifierId, KeyId};
 use uuid::Uuid;
 
 use super::Error;
@@ -10,7 +10,7 @@ use super::creator::IdentifierCreatorProto;
 use crate::config::core_config::SignerType;
 use crate::config::validator::did::validate_did_method;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
-use crate::model::certificate::{Certificate, CertificateRelations, CertificateState};
+use crate::model::certificate::{Certificate, CertificateState};
 use crate::model::did::Did;
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierState, IdentifierType};
 use crate::model::key::Key;
@@ -117,7 +117,7 @@ impl IdentifierCreatorProto {
         let mut certificates: Vec<Certificate> = vec![];
         for request in requests {
             let cert = self
-                .validate_and_prepare_certificate(id, organisation.id, request)
+                .validate_and_prepare_certificate(id, organisation.clone(), request)
                 .await?;
             validate_no_conflicts(&certificates, &cert)?;
             certificates.push(cert);
@@ -168,7 +168,7 @@ impl IdentifierCreatorProto {
         let mut certificates = vec![];
         for request in requests {
             let cert = self
-                .validate_and_prepare_certificate_authority(id, organisation.id, request)
+                .validate_and_prepare_certificate_authority(id, organisation.clone(), request)
                 .await?;
             validate_no_conflicts(&certificates, &cert)?;
             certificates.push(cert);
@@ -341,7 +341,7 @@ impl IdentifierCreatorProto {
     async fn validate_and_prepare_certificate(
         &self,
         identifier_id: IdentifierId,
-        organisation_id: OrganisationId,
+        organisation: Organisation,
         request: CreateCertificateRequestDTO,
     ) -> Result<Certificate, Error> {
         if request.roles.is_empty() {
@@ -354,7 +354,7 @@ impl IdentifierCreatorProto {
             .error_while("getting key")?
             .ok_or(Error::KeyNotFound(request.key_id))?;
 
-        if organisation_id != key.organisation.id() {
+        if organisation.id != key.organisation.id() {
             return Err(Error::OrganisationMismatch);
         }
 
@@ -383,10 +383,7 @@ impl IdentifierCreatorProto {
                         content.certificate_authority.identifier_id,
                         &IdentifierRelations {
                             organisation: Some(Default::default()),
-                            certificates: Some(CertificateRelations {
-                                key: Some(Default::default()),
-                                ..Default::default()
-                            }),
+                            certificates: Some(Default::default()),
                             ..Default::default()
                         },
                     )
@@ -400,8 +397,8 @@ impl IdentifierCreatorProto {
                     return Err(Error::InvalidIdentifierType(identifier.r#type));
                 }
 
-                match (&identifier.organisation, organisation_id) {
-                    (Some(identifier_org), org_id) if org_id == identifier_org.id => {}
+                match &identifier.organisation {
+                    Some(identifier_org) if organisation.id == identifier_org.id => {}
                     _ => {
                         return Err(Error::OrganisationMismatch);
                     }
@@ -481,7 +478,7 @@ impl IdentifierCreatorProto {
         Ok(Certificate {
             id: Uuid::new_v4().into(),
             identifier_id,
-            organisation_id: Some(organisation_id),
+            organisation: Some(organisation.into()),
             created_date: now,
             last_modified: now,
             deleted_at: None,
@@ -491,14 +488,14 @@ impl IdentifierCreatorProto {
             fingerprint: attributes.fingerprint,
             state: CertificateState::Active,
             roles: request.roles,
-            key: Some(key),
+            key: Some(key.into()),
         })
     }
 
     async fn validate_and_prepare_certificate_authority(
         &self,
         identifier_id: IdentifierId,
-        organisation_id: OrganisationId,
+        organisation: Organisation,
         request: CreateCertificateAuthorityRequestDTO,
     ) -> Result<Certificate, Error> {
         let key = self
@@ -581,7 +578,7 @@ impl IdentifierCreatorProto {
         Ok(Certificate {
             id: Uuid::new_v4().into(),
             identifier_id,
-            organisation_id: Some(organisation_id),
+            organisation: Some(organisation.into()),
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
             deleted_at: None,
@@ -591,7 +588,7 @@ impl IdentifierCreatorProto {
             fingerprint: attributes.fingerprint,
             state: CertificateState::Active,
             roles: vec![],
-            key: Some(key),
+            key: Some(key.into()),
         })
     }
 }

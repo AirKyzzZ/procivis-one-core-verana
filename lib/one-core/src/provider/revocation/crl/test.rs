@@ -385,7 +385,7 @@ fn dummy_ca_certificate(issuer: &Identifier) -> Certificate {
     Certificate {
         id: Uuid::new_v4().into(),
         identifier_id: issuer.id,
-        organisation_id: None,
+        organisation: None,
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         deleted_at: None,
@@ -414,7 +414,7 @@ qzmSNPsC3TZzs4uCBIsS3LKDZHCktmj3La1PCGSS
         fingerprint: "fingerprint".to_string(),
         state: CertificateState::Active,
         roles: vec![],
-        key: Some(dummy_key()),
+        key: Some(dummy_key().into()),
     }
 }
 

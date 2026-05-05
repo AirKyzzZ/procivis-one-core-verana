@@ -110,17 +110,22 @@ impl JWTFormatter {
                     ),
                 )?;
 
-                let certificate = certificates
+                let mut found_certificate = None;
+                for c in certificates
                     .iter()
                     .filter(|c| c.state == CertificateState::Active)
-                    .find(|c| {
-                        c.key
-                            .as_ref()
-                            .is_some_and(|key| key.public_key == auth_fn.get_public_key())
-                    })
-                    .ok_or(FormatterError::CouldNotFormat(
-                        "Valid certificate not found".to_string(),
-                    ))?;
+                {
+                    if let Some(key_rel) = c.key.as_ref()
+                        && let Ok(key) = key_rel.get().await
+                        && key.public_key == auth_fn.get_public_key()
+                    {
+                        found_certificate = Some(c);
+                        break;
+                    }
+                }
+                let certificate = found_certificate.ok_or(FormatterError::CouldNotFormat(
+                    "Valid certificate not found".to_string(),
+                ))?;
 
                 (
                     None,

@@ -43,7 +43,7 @@ fn dummy_certificate(pem: String) -> Certificate {
     Certificate {
         id: Uuid::new_v4().into(),
         identifier_id: Uuid::new_v4().into(),
-        organisation_id: None,
+        organisation: None,
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         deleted_at: None,
@@ -565,7 +565,7 @@ async fn test_lifecycle_create_add_update_remove() {
     let (key_provider, key_algorithm_provider, key, certificate, _) = make_signing_mocks();
 
     let mut cert_with_key = certificate.clone();
-    cert_with_key.key = Some(key.clone());
+    cert_with_key.key = Some(key.clone().into());
 
     let identifier = Identifier {
         r#type: IdentifierType::Certificate,
@@ -850,7 +850,7 @@ async fn test_create_trust_list_with_params_enriches_scheme_info() {
     let (key_provider, key_algorithm_provider, key, certificate, _) = make_signing_mocks();
 
     let mut cert_with_key = certificate.clone();
-    cert_with_key.key = Some(key.clone());
+    cert_with_key.key = Some(key.clone().into());
 
     let identifier = Identifier {
         r#type: IdentifierType::Certificate,
@@ -936,7 +936,7 @@ async fn test_generate_trust_list_content_returns_fresh_content() {
     let (key_provider, key_algorithm_provider, key, certificate, _) = make_signing_mocks();
 
     let mut cert_with_key = certificate.clone();
-    cert_with_key.key = Some(key.clone());
+    cert_with_key.key = Some(key.clone().into());
 
     let identifier = Identifier {
         r#type: IdentifierType::Certificate,
@@ -1010,7 +1010,7 @@ async fn test_generate_trust_list_content_resigns_stale_content() {
     let (key_provider, key_algorithm_provider, key, certificate, _) = make_signing_mocks();
 
     let mut cert_with_key = certificate.clone();
-    cert_with_key.key = Some(key.clone());
+    cert_with_key.key = Some(key.clone().into());
 
     let identifier = Identifier {
         r#type: IdentifierType::Certificate,

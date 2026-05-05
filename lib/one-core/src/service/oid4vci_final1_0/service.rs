@@ -33,7 +33,6 @@ use crate::mapper::exchange::{
     get_issuance_param_token_expires_in,
 };
 use crate::model::blob::{Blob, BlobType};
-use crate::model::certificate::CertificateRelations;
 use crate::model::common::LockType;
 use crate::model::credential::{
     Credential, CredentialRelations, CredentialStateEnum, UpdateCredentialRequest,
@@ -119,10 +118,7 @@ impl OID4VCIFinal1_0Service {
                 &IdentifierRelations {
                     did: Some(Default::default()),
                     key: Some(Default::default()),
-                    certificates: Some(CertificateRelations {
-                        key: Some(Default::default()),
-                        ..Default::default()
-                    }),
+                    certificates: Some(Default::default()),
                     trust_information: Some(Default::default()),
                     ..Default::default()
                 },
@@ -744,10 +740,7 @@ impl OID4VCIFinal1_0Service {
                 &CredentialRelations {
                     issuer_identifier: Some(IdentifierRelations {
                         did: Some(Default::default()),
-                        certificates: Some(CertificateRelations {
-                            key: Some(Default::default()),
-                            ..Default::default()
-                        }),
+                        certificates: Some(Default::default()),
                         ..Default::default()
                     }),
                     issuer_certificate: Some(Default::default()),

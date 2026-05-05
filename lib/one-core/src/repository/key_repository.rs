@@ -1,7 +1,10 @@
+use std::sync::Arc;
+
 use shared_types::KeyId;
 
 use super::error::DataLayerError;
 use crate::model::key::{GetKeyList, Key, KeyListQuery};
+use crate::model::relation::AsyncModelLoader;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
@@ -10,4 +13,16 @@ pub trait KeyRepository: Send + Sync {
     async fn get_key(&self, id: &KeyId) -> Result<Option<Key>, DataLayerError>;
     async fn get_keys(&self, ids: &[KeyId]) -> Result<Vec<Key>, DataLayerError>;
     async fn get_key_list(&self, query_params: KeyListQuery) -> Result<GetKeyList, DataLayerError>;
+}
+
+#[async_trait::async_trait]
+impl AsyncModelLoader<Key> for Arc<dyn KeyRepository> {
+    async fn load(&self, id: &KeyId) -> Result<Key, DataLayerError> {
+        self.get_key(id)
+            .await?
+            .ok_or_else(|| DataLayerError::MissingRequiredRelation {
+                relation: "key",
+                id: id.to_string(),
+            })
+    }
 }

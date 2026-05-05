@@ -1,8 +1,11 @@
+use std::str::FromStr;
+
 use async_trait::async_trait;
 use one_core::model::certificate::{
-    Certificate, CertificateListQuery, CertificateRelations, GetCertificateList,
+    Certificate, CertificateListQuery, CertificateRole, GetCertificateList,
     UpdateCertificateRequest,
 };
+use one_core::model::relation::Related;
 use one_core::repository::certificate_repository::CertificateRepository;
 use one_core::repository::error::DataLayerError;
 use sea_orm::{
@@ -11,55 +14,45 @@ use sea_orm::{
 use shared_types::CertificateId;
 
 use super::CertificateProvider;
-use crate::common::list_query_with_base_model;
-use crate::entity::{certificate, identifier};
+use crate::common::list_query_with_custom_model;
+use crate::entity::certificate;
 use crate::list_query_generic::SelectWithListQuery;
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 
 impl CertificateProvider {
-    async fn resolve_relations(
+    fn model_to_certificate(
         &self,
         model: certificate::Model,
-        relations: &CertificateRelations,
     ) -> Result<Certificate, DataLayerError> {
-        let mut result: Certificate = model.clone().try_into()?;
+        let roles = if let Some(value) = model.roles {
+            value
+                .split(",")
+                .map(CertificateRole::from_str)
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(|_| DataLayerError::MappingError)?
+        } else {
+            vec![]
+        };
 
-        if let Some(_key_relations) = &relations.key
-            && let Some(key_id) = &model.key_id
-        {
-            result.key = Some(self.key_repository.get_key(key_id).await?.ok_or(
-                DataLayerError::MissingRequiredRelation {
-                    relation: "certificate-key",
-                    id: key_id.to_string(),
-                },
-            )?);
-        }
-
-        if let Some(_organisation_relations) = &relations.organisation {
-            let identifier = identifier::Entity::find_by_id(model.identifier_id)
-                .one(&self.db)
-                .await
-                .map_err(to_data_layer_error)?
-                .ok_or(DataLayerError::MissingRequiredRelation {
-                    relation: "certificate-identifier",
-                    id: model.identifier_id.to_string(),
-                })?;
-
-            if let Some(organisation_id) = identifier.organisation_id {
-                result.organisation_id = Some(
-                    self.organisation_repository
-                        .get_organisation(&organisation_id)
-                        .await?
-                        .map(|o| o.id)
-                        .ok_or(DataLayerError::MissingRequiredRelation {
-                            relation: "certificate-organisation",
-                            id: organisation_id.to_string(),
-                        })?,
-                );
-            }
-        }
-
-        Ok(result)
+        Ok(Certificate {
+            id: model.id,
+            identifier_id: model.identifier_id,
+            created_date: model.created_date,
+            last_modified: model.last_modified,
+            expiry_date: model.expiry_date,
+            name: model.name,
+            chain: model.chain,
+            fingerprint: model.fingerprint,
+            state: model.state.into(),
+            roles,
+            key: model
+                .key_id
+                .map(|key_id| Related::new(key_id, self.key_repository.clone())),
+            organisation: model
+                .organisation_id
+                .map(|org_id| Related::new(org_id, self.organisation_repository.clone())),
+            deleted_at: model.deleted_at,
+        })
     }
 }
 
@@ -74,20 +67,16 @@ impl CertificateRepository for CertificateProvider {
         Ok(identifier.id)
     }
 
-    async fn get(
-        &self,
-        id: CertificateId,
-        relations: &CertificateRelations,
-    ) -> Result<Option<Certificate>, DataLayerError> {
+    async fn get(&self, id: CertificateId) -> Result<Option<Certificate>, DataLayerError> {
         let certificate = certificate::Entity::find_by_id(id)
             .one(&self.db)
             .await
             .map_err(to_data_layer_error)?;
 
-        match certificate {
-            None => Ok(None),
-            Some(certificate) => Ok(Some(self.resolve_relations(certificate, relations).await?)),
-        }
+        Ok(match certificate {
+            None => None,
+            Some(model) => Some(self.model_to_certificate(model)?),
+        })
     }
 
     async fn list(
@@ -100,7 +89,10 @@ impl CertificateRepository for CertificateProvider {
             .order_by_desc(certificate::Column::CreatedDate)
             .order_by_desc(certificate::Column::Id);
 
-        list_query_with_base_model(query, query_params, &self.db).await
+        list_query_with_custom_model(query, query_params, &self.db, |model| {
+            self.model_to_certificate(model)
+        })
+        .await
     }
 
     async fn update(

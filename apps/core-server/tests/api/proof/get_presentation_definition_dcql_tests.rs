@@ -2406,7 +2406,7 @@ mod trusted_authorities {
                     chain: Some(raw_cert.pem()),
                     fingerprint: Some(fingerprint(raw_cert)),
                     state: Some(CertificateState::Active),
-                    organisation_id: Some(organisation.id),
+                    organisation: Some(organisation.to_owned()),
                     ..Default::default()
                 },
             )

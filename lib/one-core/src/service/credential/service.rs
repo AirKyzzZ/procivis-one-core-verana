@@ -61,10 +61,7 @@ impl CredentialService {
                     issuer_identifier_id,
                     &IdentifierRelations {
                         did: Some(Default::default()),
-                        certificates: Some(CertificateRelations {
-                            key: Some(Default::default()),
-                            ..Default::default()
-                        }),
+                        certificates: Some(Default::default()),
                         key: Some(Default::default()),
                         ..Default::default()
                     },
@@ -153,7 +150,7 @@ impl CredentialService {
                 ));
             }
             SelectedKey::Certificate { certificate, key } => {
-                (key.to_owned(), Some(certificate.to_owned()))
+                (key.into_owned(), Some(certificate.to_owned()))
             }
             SelectedKey::Did { did, key } => {
                 validate_protocol_did_compatibility(

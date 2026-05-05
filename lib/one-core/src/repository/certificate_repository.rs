@@ -2,8 +2,7 @@ use async_trait::async_trait;
 use shared_types::CertificateId;
 
 use crate::model::certificate::{
-    Certificate, CertificateListQuery, CertificateRelations, GetCertificateList,
-    UpdateCertificateRequest,
+    Certificate, CertificateListQuery, GetCertificateList, UpdateCertificateRequest,
 };
 use crate::repository::error::DataLayerError;
 
@@ -12,11 +11,7 @@ use crate::repository::error::DataLayerError;
 pub trait CertificateRepository: Send + Sync {
     async fn create(&self, request: Certificate) -> Result<CertificateId, DataLayerError>;
 
-    async fn get(
-        &self,
-        id: CertificateId,
-        relations: &CertificateRelations,
-    ) -> Result<Option<Certificate>, DataLayerError>;
+    async fn get(&self, id: CertificateId) -> Result<Option<Certificate>, DataLayerError>;
 
     async fn update(
         &self,

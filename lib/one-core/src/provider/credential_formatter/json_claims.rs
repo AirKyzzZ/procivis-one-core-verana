@@ -235,7 +235,7 @@ pub fn prepare_identifier(
             let cert = Certificate {
                 id: Uuid::new_v4().into(),
                 identifier_id,
-                organisation_id: Some(organisation.id),
+                organisation: Some(organisation.to_owned().into()),
                 created_date: now,
                 last_modified: now,
                 deleted_at: None,
@@ -269,7 +269,7 @@ pub fn prepare_identifier(
                 deactivated: false,
                 log: None,
                 keys: Default::default(),
-                organisation: Some(organisation.clone().into()),
+                organisation: Some(organisation.to_owned().into()),
             };
             (
                 None,
@@ -291,7 +291,7 @@ pub fn prepare_identifier(
                 key_reference: None,
                 storage_type: "INTERNAL".to_string(),
                 key_type: parsed_key.algorithm_type.to_string(),
-                organisation: organisation.clone().into(),
+                organisation: organisation.to_owned().into(),
             };
             (
                 None,

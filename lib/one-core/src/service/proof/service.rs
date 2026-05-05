@@ -417,10 +417,7 @@ impl ProofService {
                     verifier_identifier_id,
                     &IdentifierRelations {
                         did: Some(Default::default()),
-                        certificates: Some(CertificateRelations {
-                            key: Some(Default::default()),
-                            ..Default::default()
-                        }),
+                        certificates: Some(Default::default()),
                         ..Default::default()
                     },
                 )
@@ -463,7 +460,7 @@ impl ProofService {
                 ));
             }
             SelectedKey::Certificate { certificate, key } => {
-                (key.to_owned(), Some(certificate.to_owned()))
+                (key.into_owned(), Some(certificate.to_owned()))
             }
             SelectedKey::Did { did, key } => {
                 validate_protocol_did_compatibility(
@@ -1116,16 +1113,10 @@ impl ProofService {
                     verifier_key: Some(KeyRelations::default()),
                     verifier_identifier: Some(IdentifierRelations {
                         did: Some(Default::default()),
-                        certificates: Some(CertificateRelations {
-                            key: Some(KeyRelations::default()),
-                            ..Default::default()
-                        }),
+                        certificates: Some(Default::default()),
                         ..Default::default()
                     }),
-                    verifier_certificate: Some(CertificateRelations {
-                        key: Some(KeyRelations::default()),
-                        ..Default::default()
-                    }),
+                    verifier_certificate: Some(Default::default()),
                 },
                 None,
             )

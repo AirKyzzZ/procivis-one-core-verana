@@ -188,7 +188,7 @@ impl IdentifierCreatorProto {
         let certificate = Certificate {
             id: Uuid::new_v4().into(),
             identifier_id,
-            organisation_id: organisation.as_ref().map(|o| o.id),
+            organisation: organisation.to_owned().map(Into::into),
             created_date: now,
             last_modified: now,
             deleted_at: None,

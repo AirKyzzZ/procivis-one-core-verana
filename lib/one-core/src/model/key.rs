@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use proc_macros::Model;
 use shared_types::{KeyId, OrganisationId};
 use standardized_types::jwk::PrivateJwk;
 use thiserror::Error;
@@ -13,9 +14,10 @@ use super::relation::Related;
 use crate::config::core_config::KeyAlgorithmType;
 use crate::error::{ErrorCode, ErrorCodeMixin};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Model)]
 #[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct Key {
+    #[model(id)]
     pub id: KeyId,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,

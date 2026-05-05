@@ -444,7 +444,7 @@ pub fn dummy_certificate(identifier_id: IdentifierId) -> Certificate {
     Certificate {
         id: Uuid::new_v4().into(),
         identifier_id,
-        organisation_id: None,
+        organisation: None,
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         deleted_at: None,

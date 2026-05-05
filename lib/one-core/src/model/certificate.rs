@@ -4,17 +4,17 @@ use strum::{Display, EnumString};
 use time::OffsetDateTime;
 
 use super::common::GetListResponse;
-use super::key::{Key, KeyRelations};
+use super::key::Key;
 use super::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use super::list_query::ListQuery;
-use super::organisation::OrganisationRelations;
+use super::organisation::Organisation;
+use super::relation::Related;
 
 #[derive(Clone, Debug)]
 #[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct Certificate {
     pub id: CertificateId,
     pub identifier_id: IdentifierId,
-    pub organisation_id: Option<OrganisationId>,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub deleted_at: Option<OffsetDateTime>,
@@ -26,8 +26,8 @@ pub struct Certificate {
     pub state: CertificateState,
     pub roles: Vec<CertificateRole>,
 
-    // Relations:
-    pub key: Option<Key>,
+    pub key: Option<Related<Key>>,
+    pub organisation: Option<Related<Organisation>>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, EnumString, Display)]
@@ -47,10 +47,7 @@ pub enum CertificateState {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
-pub struct CertificateRelations {
-    pub key: Option<KeyRelations>,
-    pub organisation: Option<OrganisationRelations>,
-}
+pub struct CertificateRelations {}
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct UpdateCertificateRequest {

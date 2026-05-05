@@ -8,7 +8,6 @@ use tracing::info;
 
 use crate::error::ContextWithErrorCode;
 use crate::mapper::{list_response_into, list_response_try_into};
-use crate::model::certificate::CertificateRelations;
 use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
@@ -342,10 +341,7 @@ impl TrustListPublicationService {
             .get(
                 identifier_id,
                 &IdentifierRelations {
-                    certificates: Some(CertificateRelations {
-                        key: Some(KeyRelations::default()),
-                        ..Default::default()
-                    }),
+                    certificates: Some(Default::default()),
                     key: Some(KeyRelations::default()),
                     organisation: Some(OrganisationRelations::default()),
                     ..Default::default()
@@ -531,10 +527,19 @@ mod tests {
         let mut session_provider = MockSessionProvider::default();
 
         let organisation_id = Uuid::new_v4().into();
+        let now = crate::clock::now_utc();
+        let organisation = Organisation {
+            id: organisation_id,
+            created_date: now,
+            last_modified: now,
+            deactivated_at: None,
+            wallet_provider: None,
+            wallet_provider_issuer: None,
+            parent_organisation: None,
+        };
         let identifier_id = Uuid::new_v4().into();
         let publisher_id: TrustListPublisherId = "LOTE".into();
         let trust_list_publication_id = Uuid::new_v4().into();
-        let now = crate::clock::now_utc();
         let identifier = Identifier {
             id: identifier_id,
             created_date: now,
@@ -544,21 +549,13 @@ mod tests {
             is_remote: false,
             state: IdentifierState::Active,
             deleted_at: None,
-            organisation: Some(Organisation {
-                id: organisation_id,
-                created_date: now,
-                last_modified: now,
-                deactivated_at: None,
-                wallet_provider: None,
-                wallet_provider_issuer: None,
-                parent_organisation: None,
-            }),
+            organisation: Some(organisation.clone()),
             did: None,
             key: None,
             certificates: Some(vec![Certificate {
                 id: Uuid::new_v4().into(),
                 identifier_id,
-                organisation_id: Some(organisation_id),
+                organisation: Some(organisation.into()),
                 created_date: now,
                 last_modified: now,
                 expiry_date: now + Duration::days(2),
@@ -568,17 +565,20 @@ mod tests {
                 fingerprint: "".to_string(),
                 state: CertificateState::Active,
                 roles: vec![],
-                key: Some(Key {
-                    id: Uuid::new_v4().into(),
-                    created_date: now,
-                    last_modified: now,
-                    public_key: vec![],
-                    name: "".to_string(),
-                    key_reference: None,
-                    storage_type: "".to_string(),
-                    key_type: "EDDSA".to_string(),
-                    organisation: dummy_organisation(None).into(),
-                }),
+                key: Some(
+                    Key {
+                        id: Uuid::new_v4().into(),
+                        created_date: now,
+                        last_modified: now,
+                        public_key: vec![],
+                        name: "".to_string(),
+                        key_reference: None,
+                        storage_type: "".to_string(),
+                        key_type: "EDDSA".to_string(),
+                        organisation: dummy_organisation(None).into(),
+                    }
+                    .into(),
+                ),
             }]),
             trust_information: None,
         };
@@ -1082,7 +1082,7 @@ mod tests {
         let certificate = Certificate {
             id: Uuid::new_v4().into(),
             identifier_id,
-            organisation_id: None,
+            organisation: None,
             created_date: now,
             last_modified: now,
             deleted_at: None,
@@ -1090,7 +1090,7 @@ mod tests {
             name: "TestCertificate".to_string(),
             chain: "".to_string(),
             fingerprint: "".to_string(),
-            key: Some(key),
+            key: Some(key.into()),
             state: CertificateState::Active,
             roles: vec![],
         };

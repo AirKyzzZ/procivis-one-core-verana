@@ -4,9 +4,9 @@ use shared_types::CertificateId;
 use super::CertificateService;
 use super::dto::CertificateResponseDTO;
 use super::error::CertificateServiceError;
+use super::mapper::certificate_to_response_dto;
 use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::pem_chain_into_x5c;
-use crate::model::certificate::CertificateRelations;
 use crate::model::identifier::IdentifierType;
 use crate::validator::throw_if_org_id_not_matching_session;
 
@@ -17,31 +17,23 @@ impl CertificateService {
     ) -> Result<CertificateResponseDTO, CertificateServiceError> {
         let certificate = self
             .certificate_repository
-            .get(
-                id,
-                &CertificateRelations {
-                    key: Some(Default::default()),
-                    organisation: Some(Default::default()),
-                },
-            )
+            .get(id)
             .await
             .error_while("getting certificate")?
             .filter(|c| c.deleted_at.is_none())
             .ok_or(CertificateServiceError::NotFound(id))?;
 
-        throw_if_org_id_not_matching_session(
-            certificate
-                .organisation_id
-                .as_ref()
-                .ok_or(CertificateServiceError::MappingError(format!(
-                    "missing organisation on certificate {}",
-                    certificate.id
-                )))?,
-            &*self.session_provider,
-        )
-        .error_while("checking session")?;
+        let org_id = certificate.organisation.as_ref().map(|o| o.id()).ok_or(
+            CertificateServiceError::MappingError(format!(
+                "missing organisation on certificate {}",
+                certificate.id
+            )),
+        )?;
 
-        certificate.try_into()
+        throw_if_org_id_not_matching_session(&org_id, &*self.session_provider)
+            .error_while("checking session")?;
+
+        certificate_to_response_dto(certificate).await
     }
 
     pub async fn get_certificate_authority(
@@ -50,7 +42,7 @@ impl CertificateService {
     ) -> Result<Vec<u8>, CertificateServiceError> {
         let certificate = self
             .certificate_repository
-            .get(id, &Default::default())
+            .get(id)
             .await
             .error_while("getting certificate")?
             .filter(|c| c.deleted_at.is_none())
