@@ -508,6 +508,15 @@ impl OID4VPFinal1_0Service {
                     ))
                 })?;
 
+                let mdoc_generated_nonce = match jwe_header.partyuinfo_data {
+                    None => None,
+                    Some(data) => Some(String::from_utf8(data).map_err(|err| {
+                        OID4VPFinal1_0ServiceError::ValidationError(format!(
+                            "Failed deserializing mdocGeneratedNonce: {err}"
+                        ))
+                    })?),
+                };
+
                 Ok(SubmissionRequestData {
                     submission_data: payload.submission_data,
                     state: payload
@@ -521,7 +530,7 @@ impl OID4VPFinal1_0Service {
                                 "Invalid state parameter: {err}"
                             ))
                         })?,
-                    mdoc_generated_nonce: jwe_header.agreement_partyuinfo,
+                    mdoc_generated_nonce,
                     encryption_key: Some(key_id),
                 })
             }

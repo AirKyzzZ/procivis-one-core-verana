@@ -42,8 +42,8 @@ pub(crate) async fn build_jwe(
         &payload,
         Header {
             key_id,
-            agreement_partyuinfo: Some(holder_nonce.to_owned()),
-            agreement_partyvinfo: Some(nonce.to_owned()),
+            partyuinfo_data: Some(holder_nonce.as_bytes().to_vec()),
+            partyvinfo_data: Some(nonce.as_bytes().to_vec()),
         },
         shared_secret,
         local_jwk,

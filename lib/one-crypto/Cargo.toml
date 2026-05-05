@@ -38,15 +38,16 @@ thiserror.workspace          = true
 pairing_crypto = { version = "0.4.3", git = "https://github.com/procivis/pairing_crypto", rev = "0ec3629" }
 
 # TODO (ONE-8329): should be unified
-rand            = { workspace = true }
-rand_old        = { package = "rand", version = "0.8.5" }
-rand_chacha     = { version = "0.10.0" }
+rand        = { workspace = true }
+rand_chacha = { version = "0.10.0" }
+rand_old    = { package = "rand", version = "0.8.5" }
 
 [dev-dependencies]
-hex             = { workspace = true }
-mockall         = { workspace = true }
-similar-asserts = { workspace = true }
-tokio           = { workspace = true, features = ["rt-multi-thread", "macros"] }
+hex.workspace             = true
+hex-literal.workspace     = true
+mockall.workspace         = true
+similar-asserts.workspace = true
+tokio                     = { workspace = true, features = ["rt-multi-thread", "macros"] }
 
 [features]
 mock = ["mockall"]

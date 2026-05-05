@@ -3873,6 +3873,7 @@ dependencies = [
  "ct-codecs",
  "ed25519-compact",
  "hex",
+ "hex-literal",
  "hmac 0.12.1",
  "ml-dsa",
  "mockall",
