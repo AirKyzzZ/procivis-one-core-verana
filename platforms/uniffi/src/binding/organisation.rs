@@ -72,6 +72,8 @@ pub struct UpsertOrganisationRequestBindingDTO {
     pub wallet_provider: Option<OptionalString>,
     /// Wallet Provider use only.
     pub wallet_provider_issuer: Option<OptionalString>,
+    /// The parent organization this organization inherits policy-level
+    /// configuration from, if any.
     pub parent_organisation: Option<OptionalString>,
 }
 
@@ -121,6 +123,10 @@ pub(crate) struct HolderWalletInstanceDetailResponseBindingDTO {
 pub(crate) struct VerifierInstanceDetailResponseBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
     pub id: String,
+    /// When true, the verifier will only validate presentations of
+    /// credentials issued by trusted issuers. Requires the Verifier
+    /// Provider to have the `trustEcosystemsEnabled` feature flag
+    /// enabled.
     pub trusted_issuer_required: bool,
 }
 

@@ -107,6 +107,9 @@ pub struct HolderRegisterWalletUnitRequestBindingDTO {
     /// registration.
     #[try_into(infallible)]
     key_type: String,
+    /// When true, the wallet will only interact with entities that can be
+    /// verified as trusted. Requires the Wallet Provider to have the
+    /// `trustEcosystemsEnabled` feature flag enabled.
     #[try_into(infallible)]
     trusted_rp_required: bool,
 }
@@ -166,7 +169,15 @@ pub enum WalletUnitStatusBindingEnum {
 #[derive(Clone, Debug, uniffi::Record)]
 #[uniffi(name = "HolderWalletUnitUpdateRequest")]
 pub struct EditHolderWalletUnitRequestBindingDTO {
+    /// The trust collections the wallet subscribes to, selected from those
+    /// made available by the Wallet Provider. The wallet will evaluate trust
+    /// against the lists contained in these collections. To keep subscribed
+    /// collections in sync with the Wallet Provider, run the
+    /// `TRUST_COLLECTION_SYNC` task.
     pub trust_collections: Option<Vec<String>>,
+    /// When true, the wallet will only interact with entities that can be
+    /// verified as trusted. Requires the Wallet Provider to have the
+    /// `trustEcosystemsEnabled` feature flag enabled.
     pub trusted_rp_required: Option<bool>,
 }
 
@@ -174,6 +185,7 @@ pub struct EditHolderWalletUnitRequestBindingDTO {
 #[from(TrustCollectionsDetailResponseDTO)]
 #[uniffi(name = "TrustCollections")]
 pub struct TrustCollectionsBindingDTO {
+    /// Trust collections available from the Wallet Provider.
     #[from(with_fn = convert_inner)]
     pub trust_collections: Vec<TrustCollectionInfoBindingDTO>,
 }
@@ -181,6 +193,7 @@ pub struct TrustCollectionsBindingDTO {
 #[derive(Clone, Debug, uniffi::Record)]
 #[uniffi(name = "TrustCollectionInfo")]
 pub struct TrustCollectionInfoBindingDTO {
+    /// When true, the wallet is subscribed to this trust collection.
     pub selected: bool,
     pub id: String,
     pub name: String,

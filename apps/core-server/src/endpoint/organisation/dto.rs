@@ -105,6 +105,10 @@ pub(crate) struct HolderWalletInstanceResponseRestDTO {
 #[from(VerifierInstanceDetailResponseDTO)]
 pub(crate) struct VerifierInstanceDetailResponseRestDTO {
     pub id: VerifierInstanceId,
+    /// When true, the verifier will only validate presentations of
+    /// credentials issued by trusted issuers. Requires the Verifier
+    /// Provider to have the `trustEcosystemsEnabled` feature flag
+    /// enabled.
     pub trusted_issuer_required: bool,
 }
 

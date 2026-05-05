@@ -31,6 +31,9 @@ pub(crate) struct HolderRegisterWalletInstanceRequestRestDTO {
     /// registration.
     #[try_into(infallible)]
     pub key_type: String,
+    /// When true, the wallet will only interact with entities that can be
+    /// verified as trusted. Requires the Wallet Provider to have the
+    /// `trustEcosystemsEnabled` feature flag enabled.
     #[try_into(infallible)]
     #[serde(default)]
     pub trusted_rp_required: bool,
@@ -98,7 +101,15 @@ pub(crate) struct HolderWalletInstanceDetailRestDTO {
 #[into(dto::EditHolderWalletInstanceRequestDTO)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct EditHolderWalletInstanceRequestRestDTO {
+    /// The trust collections the wallet subscribes to, selected from those
+    /// made available by the Wallet Provider. The wallet will evaluate trust
+    /// against the lists contained in these collections. To keep subscribed
+    /// collections in sync with the Wallet Provider, run the
+    /// `TRUST_COLLECTION_SYNC` task.
     pub trust_collections: Option<Vec<TrustCollectionId>>,
+    /// When true, the wallet will only interact with entities that can be
+    /// verified as trusted. Requires the Wallet Provider to have the
+    /// `trustEcosystemsEnabled` feature flag enabled.
     pub trusted_rp_required: Option<bool>,
 }
 
@@ -107,6 +118,7 @@ pub(crate) struct EditHolderWalletInstanceRequestRestDTO {
 #[from(dto::TrustCollectionsDetailResponseDTO)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct TrustCollectionsDetailRestDTO {
+    /// Trust collections available from the Wallet Provider.
     #[from(with_fn = convert_inner)]
     pub trust_collections: Vec<TrustCollectionInfoRestDTO>,
 }
@@ -116,6 +128,7 @@ pub(crate) struct TrustCollectionsDetailRestDTO {
 #[from(dto::TrustCollectionInfoDTO)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct TrustCollectionInfoRestDTO {
+    /// When true, the wallet is subscribed to this trust collection.
     pub selected: bool,
     #[serde(flatten)]
     pub collection: ProviderTrustCollectionRestDTO,
