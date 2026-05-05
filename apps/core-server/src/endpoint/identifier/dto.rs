@@ -167,6 +167,9 @@ pub(crate) struct CreateCertificateContentRestDTO {
     pub profile: KeyGenerateCSRRequestProfileRest,
     /// Certificate subject details (for example, common name, organization).
     pub subject: KeyGenerateCSRRequestSubjectRestDTO,
+    /// Optional Subject Alternative Name (SAN) configuration for the
+    /// certificate. Use to specify alternative identifiers such as
+    /// DNS names.
     #[into(with_fn = convert_inner)]
     pub subject_alternative_name: Option<KeyGenerateCSRRequestSubjectAlternativeNameRestDTO>,
     /// The CA to sign the new certificate.

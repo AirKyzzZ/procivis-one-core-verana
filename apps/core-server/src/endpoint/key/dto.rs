@@ -197,6 +197,9 @@ pub(crate) type GetKeyQuery =
 pub(crate) struct KeyGenerateCSRRequestRestDTO {
     pub profile: KeyGenerateCSRRequestProfileRest,
     pub subject: KeyGenerateCSRRequestSubjectRestDTO,
+    /// Optional Subject Alternative Name (SAN) configuration for the
+    /// certificate. Use to specify alternative identifiers such as
+    /// DNS names.
     #[into(with_fn = convert_inner)]
     pub subject_alternative_name: Option<KeyGenerateCSRRequestSubjectAlternativeNameRestDTO>,
 }
@@ -230,6 +233,7 @@ pub(crate) struct KeyGenerateCSRRequestSubjectRestDTO {
 #[into(KeyGenerateCSRRequestSubjectAlternativeNameDTO)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct KeyGenerateCSRRequestSubjectAlternativeNameRestDTO {
+    /// Provide the DNS name(s). Accepts wildcards.
     #[serde(default, rename = "DNSName")]
     pub dns_name: Vec<String>,
 }
