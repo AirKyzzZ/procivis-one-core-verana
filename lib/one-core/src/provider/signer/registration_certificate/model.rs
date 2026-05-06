@@ -174,8 +174,8 @@ pub struct Claim {
 pub struct Intermediary {
     #[serde(rename = "sub")]
     pub subject: String,
-    #[serde(rename = "name")]
-    pub common_name: String,
+    #[serde(rename = "name", skip_serializing_if = "Option::is_none")]
+    pub common_name: Option<String>,
 }
 
 impl<'de> Deserialize<'de> for RequestData {
