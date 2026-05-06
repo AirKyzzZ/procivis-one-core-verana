@@ -121,6 +121,9 @@ rusty_fork_test! {
             verifierProvider: {}
             trustListPublisher: {}
             trustListSubscriber: {}
+            httpClient:
+              insecureHttpTransportAllowed: true
+              maxRedirects: 3
         "};
 
         let config3 = indoc::indoc! {"

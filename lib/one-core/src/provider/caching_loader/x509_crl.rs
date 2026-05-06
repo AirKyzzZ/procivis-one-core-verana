@@ -5,7 +5,6 @@ use time::OffsetDateTime;
 use super::{CacheError, CachingLoader, ResolveResult, Resolver, ResolverError};
 use crate::error::ContextWithErrorCode;
 use crate::proto::http_client::HttpClient;
-use crate::proto::http_client::reqwest_client::ReqwestClient;
 use crate::provider::remote_entity_storage::{RemoteEntityStorage, RemoteEntityType};
 
 pub struct X509CrlCache {
@@ -49,12 +48,8 @@ pub struct X509CrlResolver {
 }
 
 impl X509CrlResolver {
-    pub fn new(client: Option<Arc<dyn HttpClient>>) -> Self {
-        Self {
-            // by default: initialize a new client to avoid propagating the global `allow_insecure_http_transport` config
-            // CRLs can be hosted on insecure URLs
-            client: client.unwrap_or_else(|| Arc::new(ReqwestClient::default())),
-        }
+    pub fn new(client: Arc<dyn HttpClient>) -> Self {
+        Self { client }
     }
 }
 
@@ -91,6 +86,8 @@ impl Resolver for X509CrlResolver {
 #[cfg(test)]
 mod test {
 
+    use std::sync::Arc;
+
     use rcgen::{
         BasicConstraints, CertificateParams, CertificateRevocationList,
         CertificateRevocationListParams, IsCa, Issuer, KeyPair,
@@ -99,6 +96,7 @@ mod test {
     use wiremock::matchers::method;
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
+    use crate::proto::http_client::reqwest_client::ReqwestClient;
     use crate::provider::caching_loader::x509_crl::X509CrlResolver;
     use crate::provider::caching_loader::{ResolveResult, Resolver};
 
@@ -116,7 +114,7 @@ mod test {
             )
             .await;
 
-        let resolver = X509CrlResolver::new(Default::default());
+        let resolver = X509CrlResolver::new(Arc::new(ReqwestClient::default()));
         let result = resolver
             .do_resolve(&format!("http://{}", mock_server.address()), None)
             .await

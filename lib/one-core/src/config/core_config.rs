@@ -23,6 +23,7 @@ use time::Duration;
 
 use super::{ConfigParsingError, ConfigValidationError};
 use crate::model::credential_schema::KeyStorageSecurity;
+use crate::proto::http_client::HttpClientSecurityConfig;
 
 type Dict<K, V> = BTreeMap<K, V>;
 
@@ -35,7 +36,8 @@ struct AppCustomConfigSerdeDTO<Custom> {
     pub(super) app: Custom,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(any(test, feature = "mock"), derive(Default))]
 #[serde(rename_all = "camelCase")]
 pub struct AppConfig<Custom> {
     pub core: CoreConfig,
@@ -43,7 +45,8 @@ pub struct AppConfig<Custom> {
     pub app: Custom,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = "mock"), derive(Default))]
 #[serde(rename_all = "camelCase")]
 pub struct CoreConfig {
     pub format: FormatConfig,
@@ -69,6 +72,7 @@ pub struct CoreConfig {
     pub certificate_validation: CertificateValidationConfig,
     pub signer: SignerConfig,
     pub verifier_provider: VerifierProviderConfig,
+    pub http_client: HttpClientSecurityConfig,
 }
 
 impl CoreConfig {

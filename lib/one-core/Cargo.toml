@@ -27,6 +27,7 @@ dcql.workspace               = true
 figment                      = { version = "0.10", default-features = false }
 flate2                       = { version = "1.0" }
 futures.workspace            = true
+futures-util.workspace       = true
 hex.workspace                = true
 hex-literal.workspace        = true
 hkdf                         = { version = "0.12.4", features = ["std"] }
@@ -50,7 +51,7 @@ proc-macros.workspace        = true
 quick-xml.workspace          = true
 rcgen.workspace              = true
 regex.workspace              = true
-reqwest.workspace            = true
+reqwest                      = { workspace = true, features = ["stream"] }
 roxmltree.workspace          = true
 rumqttc-next                 = { version = "0.27", default-features = false, features = ["use-rustls"] }
 rustls                       = { version = "0.23", default-features = false, features = ["aws_lc_rs"] }

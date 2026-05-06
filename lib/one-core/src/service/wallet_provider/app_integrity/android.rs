@@ -244,6 +244,7 @@ mod test {
     use super::*;
     use crate::proto::certificate_validator::CertificateValidatorImpl;
     use crate::proto::clock::MockClock;
+    use crate::proto::http_client::reqwest_client::ReqwestClient;
     use crate::provider::caching_loader::android_attestation_crl::{
         AndroidAttestationCrlCache, AndroidCertificateInfo, AndroidKeyAttestationsCrl,
         CertificateStatus, MockAndroidAttestationCrlResolver,
@@ -302,7 +303,7 @@ w1IdYIg2Wxg7yHcQZemFQg==
             .returning(|_| Some(Arc::new(Ecdsa)));
 
         let crl_cache = Arc::new(X509CrlCache::new(
-            Arc::new(X509CrlResolver::new(Default::default())),
+            Arc::new(X509CrlResolver::new(Arc::new(ReqwestClient::default()))),
             Arc::new(InMemoryStorage::new(HashMap::new())),
             100,
             Duration::days(1),
@@ -362,7 +363,7 @@ w1IdYIg2Wxg7yHcQZemFQg==
             .returning(|_| Some(Arc::new(Ecdsa)));
 
         let crl_cache = Arc::new(X509CrlCache::new(
-            Arc::new(X509CrlResolver::new(Default::default())),
+            Arc::new(X509CrlResolver::new(Arc::new(ReqwestClient::default()))),
             Arc::new(InMemoryStorage::new(HashMap::new())),
             100,
             Duration::days(1),
@@ -418,7 +419,7 @@ w1IdYIg2Wxg7yHcQZemFQg==
             .returning(|_| Some(Arc::new(Ecdsa)));
 
         let crl_cache = Arc::new(X509CrlCache::new(
-            Arc::new(X509CrlResolver::new(Default::default())),
+            Arc::new(X509CrlResolver::new(Arc::new(ReqwestClient::default()))),
             Arc::new(InMemoryStorage::new(HashMap::new())),
             100,
             Duration::days(1),

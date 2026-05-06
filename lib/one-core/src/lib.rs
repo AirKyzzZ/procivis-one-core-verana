@@ -6,6 +6,7 @@ use one_crypto::initialize_crypto_provider;
 
 use crate::config::ConfigValidationError;
 use crate::config::core_config::CoreConfig;
+use crate::error::ErrorCodeMixinExt;
 use crate::proto::bluetooth_low_energy::ble_resource::BleWaiter;
 use crate::proto::bluetooth_low_energy::low_level::ble_central::BleCentral;
 use crate::proto::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral;
@@ -18,7 +19,7 @@ use crate::proto::credential_schema::parser::CredentialSchemaImportParserImpl;
 use crate::proto::credential_validity_manager::CredentialValidityManagerImpl;
 use crate::proto::csr_creator::CsrCreatorImpl;
 use crate::proto::history_decorator::decorator::decorate_data_provider as decorate_history;
-use crate::proto::http_client::HttpClient;
+use crate::proto::http_client::reqwest_client::ReqwestClient;
 use crate::proto::identifier_creator::creator::IdentifierCreatorProto;
 use crate::proto::mqtt_client::rumqttc_client::RumqttcClient;
 use crate::proto::nfc::hce::NfcHce;
@@ -175,7 +176,6 @@ impl OneCore {
 
         // mandatory dependencies
         data_provider: Arc<dyn DataRepository>,
-        client: Arc<dyn HttpClient>,
 
         // optional dependencies
         ble_peripheral: Option<Arc<dyn BlePeripheral>>,
@@ -193,6 +193,12 @@ impl OneCore {
             }
             _ => None,
         };
+
+        let client = Arc::new(ReqwestClient::new(config.http_client.to_owned()).map_err(
+            |err| {
+                OneCoreInitializationError::Config(err.error_while("creating HTTP client").into())
+            },
+        )?);
 
         let mqtt_client = Arc::new(RumqttcClient::default());
 
@@ -251,7 +257,12 @@ impl OneCore {
             key_algorithm_provider.clone(),
             client.clone(),
             data_provider.get_remote_entity_cache_repository(),
-        );
+        )
+        .map_err(|err| {
+            OneCoreInitializationError::Config(
+                err.error_while("creating certificate validator").into(),
+            )
+        })?;
 
         let json_ld_cache = initialize_jsonld_cache_from_config(
             &config,

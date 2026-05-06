@@ -2,8 +2,6 @@ use std::borrow::Cow;
 use std::sync::Arc;
 
 use one_core::config::core_config::AppConfig;
-use one_core::proto::http_client::HttpClient;
-use one_core::proto::http_client::reqwest_client::ReqwestClient;
 use one_core::{OneCore, OneCoreInitializationError};
 use sentry::integrations::tracing::EventFilter;
 use sql_data_provider::{DataLayer, DbConn};
@@ -12,18 +10,10 @@ use tracing_subscriber::prelude::*;
 use crate::session::CoreServerSessionProvider;
 use crate::{ServerConfig, build_info};
 
-#[expect(clippy::expect_used)]
 pub async fn initialize_core(
     app_config: &AppConfig<ServerConfig>,
     db_conn: DbConn,
 ) -> Result<OneCore, OneCoreInitializationError> {
-    let reqwest_client = reqwest::Client::builder()
-        .https_only(!app_config.app.allow_insecure_http_transport)
-        .build()
-        .expect("Failed to create reqwest::Client");
-
-    let client: Arc<dyn HttpClient> = Arc::new(ReqwestClient::new(reqwest_client));
-
     let session_provider = Arc::new(CoreServerSessionProvider);
 
     let data_repository = Arc::new(DataLayer::build(
@@ -38,7 +28,6 @@ pub async fn initialize_core(
         Some(core_base_url),
         session_provider,
         data_repository,
-        client,
         None,
         None,
         None,

@@ -50,8 +50,6 @@ pub struct ServerConfig {
     #[serde(default)]
     pub hide_error_response_cause: bool,
     #[serde(default)]
-    pub allow_insecure_http_transport: bool,
-    #[serde(default)]
     pub insecure_vc_api_endpoints_enabled: bool,
     /// whether endpoint metrics are available
     #[serde(default)]

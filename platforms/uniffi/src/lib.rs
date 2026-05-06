@@ -5,8 +5,6 @@ use std::sync::{Arc, LazyLock};
 
 use one_core::config::core_config::{self, AppConfig, InputFormat};
 use one_core::error::ContextWithErrorCode;
-use one_core::proto::http_client::HttpClient;
-use one_core::proto::http_client::reqwest_client::ReqwestClient;
 use one_core::proto::session_provider::NoSessionProvider;
 use one_core::repository::error::DataLayerError;
 use one_core::service::error::ServiceError;
@@ -33,7 +31,6 @@ uniffi::setup_scaffolding!();
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 #[serde(rename_all = "camelCase")]
 struct MobileConfig {
-    pub allow_insecure_http_transport: bool,
     pub trace_level: Option<String>,
 }
 
@@ -190,13 +187,6 @@ async fn initialize(
                 .error_while("opening DB")?;
             let data_repository = Arc::new(DataLayer::build(db_conn, vec!["INTERNAL".to_string()]));
 
-            let reqwest_client = reqwest::Client::builder()
-                .https_only(!cfg.app.allow_insecure_http_transport)
-                .build()
-                .map_err(|_| {
-                    SDKError::InitializationFailure("Failed to create reqwest::Client".to_string())
-                })?;
-            let client: Arc<dyn HttpClient> = Arc::new(ReqwestClient::new(reqwest_client));
             let session_provider = Arc::new(NoSessionProvider);
 
             one_core::OneCore::new(
@@ -204,7 +194,6 @@ async fn initialize(
                 None,
                 session_provider,
                 data_repository,
-                client,
                 ble_peripheral,
                 ble_central,
                 nfc_hce,

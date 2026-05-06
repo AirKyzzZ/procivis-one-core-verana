@@ -136,7 +136,6 @@ pub fn create_config(
         sentry_environment: None,
         trace_level: Some("debug,hyper=error,sea_orm=info,sqlx::query=error".into()),
         hide_error_response_cause: true,
-        allow_insecure_http_transport: true,
         insecure_vc_api_endpoints_enabled: true,
         ..app_config.app
     };

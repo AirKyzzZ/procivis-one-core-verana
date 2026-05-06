@@ -85,7 +85,6 @@ async fn test_server_starts_with_base_config() {
         sentry_environment: Default::default(),
         trace_level: Some("debug,hyper=error,sea_orm=info,sqlx::query=error".into()),
         hide_error_response_cause: true,
-        allow_insecure_http_transport: true,
         insecure_vc_api_endpoints_enabled: true,
         enable_metrics: Default::default(),
         enable_server_info: Default::default(),

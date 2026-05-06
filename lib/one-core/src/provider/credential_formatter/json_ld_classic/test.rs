@@ -145,12 +145,7 @@ async fn create_token(include_layout: bool) -> Value {
         .with(eq("sha-256"))
         .returning(move |_| Ok(hasher.clone()));
 
-    let reqwest_client = reqwest::Client::builder()
-        .https_only(false)
-        .build()
-        .expect("Failed to create reqwest::Client");
-
-    let client: Arc<dyn HttpClient> = Arc::new(ReqwestClient::new(reqwest_client));
+    let client: Arc<dyn HttpClient> = Arc::new(ReqwestClient::default());
 
     let formatter = JsonLdClassic::new(
         params,
@@ -270,12 +265,7 @@ async fn test_parse_credential() {
             })
         });
 
-    let reqwest_client = reqwest::Client::builder()
-        .https_only(false)
-        .build()
-        .expect("Failed to create reqwest::Client");
     let mut hasher = MockHasher::default();
-
     hasher.expect_hash().returning(|_| {
         Ok("WQnd2qlMku7G5ItM53QRvdUf4GacXGzLWvTN_wDharc"
             .as_bytes()
@@ -301,7 +291,7 @@ async fn test_parse_credential() {
         prepare_caching_loader(None),
         Arc::new(datatype_provider),
         Arc::new(MockKeyAlgorithmProvider::new()),
-        Arc::new(ReqwestClient::new(reqwest_client)),
+        Arc::new(ReqwestClient::default()),
     );
 
     let mut verify_mock = MockTokenVerifier::new();

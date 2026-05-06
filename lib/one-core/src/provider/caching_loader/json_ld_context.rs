@@ -198,15 +198,14 @@ pub(crate) fn initialize_jsonld_cache_from_config(
 mod test {
     use std::sync::Arc;
 
-    use reqwest::Client;
     use similar_asserts::assert_eq;
     use time::macros::datetime;
     use time::{Duration, OffsetDateTime};
     use wiremock::matchers::{headers, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
-    use crate::proto::http_client::MockHttpClient;
     use crate::proto::http_client::reqwest_client::ReqwestClient;
+    use crate::proto::http_client::{HttpClientSecurityConfig, MockHttpClient};
     use crate::provider::caching_loader::json_ld_context::{JsonLdCachingLoader, JsonLdResolver};
     use crate::provider::remote_entity_storage::{
         MockRemoteEntityStorage, RemoteEntity, RemoteEntityType,
@@ -530,11 +529,13 @@ mod test {
 
         let refresh_timeout = crate::clock::now_utc() - get_dummy_date() + Duration::seconds(99999);
         let loader = create_loader(storage, 1, refresh_timeout, Duration::seconds(300));
-        let client = Client::builder()
-            .timeout(core::time::Duration::from_millis(10))
-            .build()
-            .unwrap();
-        let resolver = Arc::new(JsonLdResolver::new(Arc::new(ReqwestClient::new(client))));
+        let resolver = Arc::new(JsonLdResolver::new(Arc::new(
+            ReqwestClient::new(HttpClientSecurityConfig {
+                timeout: Some(Duration::milliseconds(10)),
+                ..Default::default()
+            })
+            .unwrap(),
+        )));
 
         let (content, _media_type) = loader.get(url, resolver, false).await.unwrap();
 
@@ -566,11 +567,13 @@ mod test {
             Duration::seconds(301),
             Duration::seconds(300),
         );
-        let client = Client::builder()
-            .timeout(core::time::Duration::from_millis(10))
-            .build()
-            .unwrap();
-        let resolver = Arc::new(JsonLdResolver::new(Arc::new(ReqwestClient::new(client))));
+        let resolver = Arc::new(JsonLdResolver::new(Arc::new(
+            ReqwestClient::new(HttpClientSecurityConfig {
+                timeout: Some(Duration::milliseconds(10)),
+                ..Default::default()
+            })
+            .unwrap(),
+        )));
 
         assert!(loader.get(url, resolver, false).await.is_err());
     }

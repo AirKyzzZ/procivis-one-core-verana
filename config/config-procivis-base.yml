@@ -794,3 +794,9 @@ verificationEngagement:
     enabled: true
 certificateValidation:
   leeway: 60
+httpClient:
+  insecureHttpTransportAllowed: false
+  timeout: 30 # 30secs
+  maxRedirects: 3
+  deniedHosts: []
+  maxResponseSize: 10485760 # 10MiB

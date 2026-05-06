@@ -8,7 +8,6 @@ app:
   sentryDsn: ""
   sentryEnvironment: ""
   hideErrorResponseCause: false
-  allowInsecureHttpTransport: false
   insecureVcApiEndpointsEnabled: false
   enableMetrics: true
   enableExternalEndpoints: true

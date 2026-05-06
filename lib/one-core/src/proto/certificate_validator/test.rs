@@ -95,7 +95,7 @@ STsfRXkSUfgzmbAsuDE=
     let validator = CertificateValidatorImpl::new(
         Arc::new(key_algorithm),
         Arc::new(X509CrlCache::new(
-            Arc::new(X509CrlResolver::new(Some(http_client.clone()))),
+            Arc::new(X509CrlResolver::new(http_client.clone())),
             remote_entity_storage.clone(),
             100,
             Duration::days(1),
@@ -211,7 +211,7 @@ fn create_certificate_validator() -> CertificateValidatorImpl {
         .returning(|_| Some(Arc::new(crate::provider::key_algorithm::ecdsa::Ecdsa)));
 
     let crl_cache = Arc::new(X509CrlCache::new(
-        Arc::new(X509CrlResolver::new(Default::default())),
+        Arc::new(X509CrlResolver::new(Arc::new(ReqwestClient::default()))),
         Arc::new(InMemoryStorage::new(HashMap::new())),
         100,
         Duration::minutes(1),

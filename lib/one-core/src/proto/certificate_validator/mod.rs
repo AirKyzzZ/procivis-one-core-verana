@@ -5,9 +5,10 @@ use time::Duration;
 use x509_parser::certificate::X509Certificate;
 
 use crate::config::core_config::{CacheEntityCacheType, CoreConfig};
-use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
+use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, NestedError};
 use crate::proto::clock::{Clock, DefaultClock};
-use crate::proto::http_client::HttpClient;
+use crate::proto::http_client::reqwest_client::ReqwestClient;
+use crate::proto::http_client::{HttpClient, HttpClientSecurityConfig};
 use crate::provider::caching_loader::android_attestation_crl::{
     AndroidAttestationCrlCache, AndroidAttestationCrlResolver,
 };
@@ -247,17 +248,17 @@ pub(crate) fn certificate_validator_from_config(
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     client: Arc<dyn HttpClient>,
     remote_entity_cache_repository: Arc<dyn RemoteEntityCacheRepository>,
-) -> Arc<dyn CertificateValidator> {
-    Arc::new(CertificateValidatorImpl::new(
+) -> Result<Arc<dyn CertificateValidator>, Error> {
+    Ok(Arc::new(CertificateValidatorImpl::new(
         key_algorithm_provider.clone(),
         Arc::new(initialize_x509_crl_cache(
             config,
             remote_entity_cache_repository,
-        )),
+        )?),
         Arc::new(DefaultClock),
         config.certificate_validation.leeway,
         Arc::new(initialize_android_key_attestation_crl_cache(client)),
-    ))
+    )))
 }
 
 fn initialize_android_key_attestation_crl_cache(
@@ -273,10 +274,10 @@ fn initialize_android_key_attestation_crl_cache(
 }
 
 fn initialize_x509_crl_cache(
-    config: &CoreConfig,
+    core_config: &CoreConfig,
     remote_entity_cache_repository: Arc<dyn RemoteEntityCacheRepository>,
-) -> X509CrlCache {
-    let config = config
+) -> Result<X509CrlCache, Error> {
+    let config = core_config
         .cache_entities
         .entities
         .get("X509_CRL")
@@ -288,11 +289,19 @@ fn initialize_x509_crl_cache(
         CacheEntityCacheType::InMemory => Arc::new(InMemoryStorage::new(HashMap::new())),
     };
 
-    X509CrlCache::new(
-        Arc::new(X509CrlResolver::new(Default::default())),
+    // initialize a new client to avoid propagating the global `insecure_http_transport_allowed` config
+    // CRLs can be hosted on insecure URLs
+    let client = ReqwestClient::new(HttpClientSecurityConfig {
+        insecure_http_transport_allowed: true,
+        ..core_config.http_client.to_owned()
+    })
+    .error_while("creating HTTP client")?;
+
+    Ok(X509CrlCache::new(
+        Arc::new(X509CrlResolver::new(Arc::new(client))),
         storage,
         config.cache_size as usize,
         config.cache_refresh_timeout,
         config.refresh_after,
-    )
+    ))
 }

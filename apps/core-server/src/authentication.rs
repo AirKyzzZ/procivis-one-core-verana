@@ -21,7 +21,6 @@ pub(crate) async fn authentication(
             sts_token_validation,
         } => {
             let reqwest_client = reqwest::Client::builder()
-                .https_only(!config.allow_insecure_http_transport)
                 .build()
                 .expect("Failed to create reqwest::Client");
 

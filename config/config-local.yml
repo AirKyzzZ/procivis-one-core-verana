@@ -6,7 +6,6 @@ app:
   traceJson: false
   traceLevel: "debug,hyper=error,sea_orm=info,sqlx::query=error,reqwest=error"
   hideErrorResponseCause: false
-  allowInsecureHttpTransport: true
   insecureVcApiEndpointsEnabled: true
   enableMetrics: true
   enableServerInfo: true
@@ -331,3 +330,5 @@ verifierProvider:
         featureFlags:
           trustEcosystemsEnabled: true
         legacyTrustManagementEnabled: false
+httpClient:
+  insecureHttpTransportAllowed: true

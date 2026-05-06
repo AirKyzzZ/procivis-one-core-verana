@@ -291,6 +291,9 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
         verifierProvider: {}
         trustListPublisher: {}
         trustListSubscriber: {}
+        httpClient:
+          insecureHttpTransportAllowed: true
+          maxRedirects: 3
     "};
 
     AppConfig::parse(vec![InputFormat::yaml_str(config)]).unwrap()

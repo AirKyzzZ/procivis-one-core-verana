@@ -6,13 +6,39 @@ use std::sync::Arc;
 
 use itertools::Itertools;
 use reqwest::header::{InvalidHeaderName, InvalidHeaderValue, ToStrError};
-use serde::Serialize;
 use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
+use serde_with::{DurationSeconds, serde_as};
 use strum::Display;
 use thiserror::Error;
 use time::Duration;
 
 use crate::error::{ErrorCode, ErrorCodeMixin};
+
+#[serde_as]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct HttpClientSecurityConfig {
+    pub insecure_http_transport_allowed: bool,
+    #[serde_as(as = "Option<DurationSeconds<i64>>")]
+    pub timeout: Option<Duration>,
+    pub max_redirects: usize,
+    pub denied_hosts: Option<Vec<String>>,
+    pub max_response_size: Option<u64>,
+}
+
+#[cfg(any(test, feature = "mock"))]
+impl Default for HttpClientSecurityConfig {
+    fn default() -> Self {
+        Self {
+            insecure_http_transport_allowed: true,
+            timeout: None,
+            max_redirects: 10,
+            denied_hosts: None,
+            max_response_size: None,
+        }
+    }
+}
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
@@ -73,6 +99,15 @@ pub enum Error {
     InvalidHeaderValue(#[from] InvalidHeaderValue),
     #[error("Invalid time conversion: {0}")]
     ConversionRange(#[from] time::error::ConversionRange),
+    #[error("URL parse: {0}")]
+    URLParse(#[from] url::ParseError),
+
+    #[error("Invalid URL host: {0}")]
+    InvalidHost(String),
+    #[error("Response too long: {0}B")]
+    ResponseTooLong(u64),
+    #[error("Response timeout")]
+    Timeout,
 }
 
 impl Error {
@@ -88,14 +123,18 @@ impl ErrorCodeMixin for Error {
     fn error_code(&self) -> ErrorCode {
         match self {
             Error::StatusCodeError(status) if status.is_client_error() => ErrorCode::BR_0395,
-            Error::HttpError(_) | Error::StatusCodeError(_) | Error::JsonError(_) => {
-                ErrorCode::BR_0347
-            }
+            Error::HttpError(_)
+            | Error::StatusCodeError(_)
+            | Error::JsonError(_)
+            | Error::InvalidHost(_)
+            | Error::ResponseTooLong(_)
+            | Error::Timeout => ErrorCode::BR_0347,
             Error::UrlEncode(_)
             | Error::ToStrError(_)
             | Error::InvalidHeaderName(_)
             | Error::InvalidHeaderValue(_)
-            | Error::ConversionRange(_) => ErrorCode::BR_0348,
+            | Error::ConversionRange(_)
+            | Error::URLParse(_) => ErrorCode::BR_0348,
         }
     }
 }

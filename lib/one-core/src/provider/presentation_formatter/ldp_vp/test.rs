@@ -100,12 +100,7 @@ async fn test_format_presentation_multi_tokens() {
         .with(eq("sha-256"))
         .returning(move |_| Ok(hasher.clone()));
 
-    let reqwest_client = reqwest::Client::builder()
-        .https_only(false)
-        .build()
-        .expect("Failed to create reqwest::Client");
-
-    let client: Arc<dyn HttpClient> = Arc::new(ReqwestClient::new(reqwest_client));
+    let client: Arc<dyn HttpClient> = Arc::new(ReqwestClient::default());
 
     let formatter = LdpVpPresentationFormatter::new(
         Arc::new(crypto),
@@ -309,12 +304,7 @@ async fn test_parse_presentation_multi_tokens() {
         .with(eq("sha-256"))
         .returning(move |_| Ok(hasher.clone()));
 
-    let reqwest_client = reqwest::Client::builder()
-        .https_only(false)
-        .build()
-        .expect("Failed to create reqwest::Client");
-
-    let client: Arc<dyn HttpClient> = Arc::new(ReqwestClient::new(reqwest_client));
+    let client: Arc<dyn HttpClient> = Arc::new(ReqwestClient::default());
 
     let formatter = LdpVpPresentationFormatter::new(
         Arc::new(crypto),
