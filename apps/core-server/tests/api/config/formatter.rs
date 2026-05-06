@@ -71,7 +71,8 @@ async fn test_expected_format_features() {
             "SUPPORTS_CREDENTIAL_DESIGN",
             "REQUIRES_PRESENTATION_ENCRYPTION",
             "SUPPORTS_COMBINED_PRESENTATION",
-            "SUPPORTS_TX_CODE"
+            "SUPPORTS_TX_CODE",
+            "REQUIRES_NAMESPACES"
         ])
     );
     assert_eq!(

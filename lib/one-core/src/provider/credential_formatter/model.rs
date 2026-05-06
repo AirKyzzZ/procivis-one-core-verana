@@ -415,6 +415,7 @@ pub enum Features {
     RequiresPresentationEncryption,
     SupportsCombinedPresentation,
     SupportsTxCode,
+    RequiresNamespaces,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
