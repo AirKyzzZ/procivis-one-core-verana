@@ -878,8 +878,13 @@ pub enum SignerType {
 
 pub type VerifierProviderConfig = Dict<String, VerifierProviderFields>;
 
+#[skip_serializing_none]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct VerifierProviderFields {
+    pub display: ConfigEntryDisplay,
+    #[serde(default = "default_true")]
+    pub enabled: bool,
     pub params: Params,
 }
 

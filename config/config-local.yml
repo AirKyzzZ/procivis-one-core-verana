@@ -317,6 +317,7 @@ task:
         allowInsecureHttpTransport: true
 verifierProvider:
   PROCIVIS_ONE:
+    display: verifierProvider.procivisOne
     params:
       public:
         verifierName: "Procivis One Verifier"
