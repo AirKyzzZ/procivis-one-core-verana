@@ -1,12 +1,5 @@
-use std::sync::Arc;
-
 pub(crate) use fetcher::{StsJwksFetcher, StsJwksFetcherError};
-use tokio::sync::RwLock;
 pub(crate) use validator::StsTokenValidator;
-
-pub(crate) use crate::sts_token_validator::model::Jwks;
-
-pub(crate) type JwksStore = Arc<RwLock<Arc<Jwks>>>;
 
 mod validator {
     use std::fmt::Debug;
@@ -21,31 +14,27 @@ mod validator {
     use serde::de::DeserializeOwned;
     use thiserror::Error;
     use time::Duration;
-    use tokio::sync::Mutex;
+    use tokio::sync::{Mutex, RwLock};
 
+    use super::StsJwksFetcher;
+    use super::model::Jwks;
     use crate::StsTokenValidation;
-    use crate::sts_token_validator::model::Jwks;
-    use crate::sts_token_validator::{JwksStore, StsJwksFetcher};
+
+    type JwksStore = Arc<RwLock<Arc<Jwks>>>;
 
     #[derive(Clone)]
     pub struct StsTokenValidator {
-        config: Arc<StsTokenValidation>,
+        config: StsTokenValidation,
         jwks_store: JwksStore,
-        fetcher: Arc<StsJwksFetcher>,
-        fetch_lock: Arc<Mutex<()>>,
+        fetch_lock: Arc<Mutex<StsJwksFetcher>>,
     }
 
     impl StsTokenValidator {
-        pub(crate) fn new(
-            jwks_store: JwksStore,
-            fetcher: Arc<StsJwksFetcher>,
-            config: Arc<StsTokenValidation>,
-        ) -> Self {
+        pub(crate) fn new(jwks: Jwks, fetcher: StsJwksFetcher, config: StsTokenValidation) -> Self {
             Self {
                 config,
-                fetcher,
-                jwks_store,
-                fetch_lock: Arc::new(Default::default()),
+                jwks_store: Arc::new(tokio::sync::RwLock::new(Arc::new(jwks))),
+                fetch_lock: Arc::new(Mutex::new(fetcher)),
             }
         }
 
@@ -71,9 +60,9 @@ mod validator {
                 &self.config.aud,
                 &self.config.iss,
                 payload,
-                Duration::seconds(self.config.leeway as _),
+                self.config.leeway,
             )?;
-            let jwks = self.get_jwks().await;
+            let jwks = self.get_jwks().await?;
             let matching_key = jwks.find_by_kid(kid);
             let Some(matching_key) = matching_key else {
                 return Err(StsError::NoMatchingKey);
@@ -85,15 +74,19 @@ mod validator {
             Ok(jwt)
         }
 
-        async fn get_jwks(&self) -> Arc<Jwks> {
-            let jwks = self.jwks_store.read().await.clone();
-            if jwks.has_expired() {
+        async fn get_jwks(&self) -> Result<Arc<Jwks>, StsError> {
+            let jwks = self.jwks_store.read().await;
+
+            let now = one_core::clock::now_utc();
+            let expired = jwks.fetched_at + self.config.jwks_expire_after < now;
+            let to_be_refreshed = jwks.fetched_at + self.config.jwks_refresh_after < now;
+
+            if to_be_refreshed {
                 let fetch_lock = self.fetch_lock.clone();
-                let fetcher_clone = self.fetcher.clone();
                 let jwks_store_clone = self.jwks_store.clone();
                 tokio::spawn(async move {
-                    if let Ok(_lock) = fetch_lock.try_lock() {
-                        match fetcher_clone.fetch_jwks_with_retries().await {
+                    if let Ok(fetcher) = fetch_lock.try_lock() {
+                        match fetcher.fetch_jwks_with_retries().await {
                             Ok(jwks) => {
                                 let mut guard = jwks_store_clone.write().await;
                                 *guard = Arc::new(jwks);
@@ -103,11 +96,17 @@ mod validator {
                             }
                         };
                     } else {
-                        // another task is already fetching, can skip
+                        tracing::debug!("Another task already fetching JWKs, skipping");
                     }
                 });
             }
-            jwks
+
+            if expired {
+                tracing::error!("JWKs expired");
+                return Err(StsError::ExpiredJWKs);
+            }
+
+            Ok(jwks.clone())
         }
     }
 
@@ -151,6 +150,8 @@ mod validator {
         MissingKid,
         #[error("No matching key found.")]
         NoMatchingKey,
+        #[error("JWKs expired and cannot be refreshed.")]
+        ExpiredJWKs,
         #[error("Failed to verify token signature. Cause: {0}.")]
         FailedToVerifySignature(KeyHandleError),
         #[error("Missing issuer.")]
@@ -172,7 +173,6 @@ mod validator {
 
 mod fetcher {
     use std::collections::HashMap;
-    use std::sync::Arc;
     use std::time::Duration;
 
     use one_core::provider::key_algorithm::KeyAlgorithm;
@@ -186,22 +186,22 @@ mod fetcher {
 
     #[derive(Debug, Error)]
     pub(crate) enum StsJwksFetcherError {
-        #[error("Retries exceeded cause: {error:?}")]
-        RetriesExceeded { error: Option<reqwest::Error> },
+        #[error("Retries exceeded cause: {error}")]
+        RetriesExceeded { error: reqwest::Error },
         #[error("Failed to parse JWK. Cause: {0}.")]
         FailedToParseJWK(KeyAlgorithmError),
     }
 
     pub(crate) struct StsJwksFetcher {
         http_client: reqwest::Client,
-        config: Arc<StsTokenValidation>,
+        config: StsTokenValidation,
         max_retries: u32,
     }
 
     impl StsJwksFetcher {
         pub(crate) fn new(
             http_client: reqwest::Client,
-            config: Arc<StsTokenValidation>,
+            config: StsTokenValidation,
             max_retries: u32,
         ) -> Self {
             Self {
@@ -212,13 +212,8 @@ mod fetcher {
         }
 
         pub(crate) async fn fetch_jwks_with_retries(&self) -> Result<Jwks, StsJwksFetcherError> {
-            let mut retries = 0;
-            let mut last_error = None;
+            let mut attempt = 0;
             loop {
-                if retries > self.max_retries {
-                    tracing::error!("Retries exceeded for fetch jwks: {last_error:?}");
-                    return Err(StsJwksFetcherError::RetriesExceeded { error: last_error });
-                }
                 match self.fetch_jwks().await {
                     Ok(jwks) => {
                         let keys = jwks
@@ -228,18 +223,22 @@ mod fetcher {
                             .map(|(kid, v)| Eddsa.parse_jwk(v).map(|kh| (kid, kh)))
                             .collect::<Result<HashMap<_, _>, _>>()
                             .map_err(StsJwksFetcherError::FailedToParseJWK)?;
-                        let now = one_core::clock::now_utc();
+
                         return Ok(Jwks {
-                            ttl: now + Duration::from_secs(self.config.ttl_jwks),
+                            fetched_at: one_core::clock::now_utc(),
                             keys,
                         });
                     }
-                    Err(e) => {
-                        tracing::warn!("Failed to fetch jwks: {e}");
-                        tokio::time::sleep(Duration::from_secs((retries as f32).powf(1.5) as u64))
+                    Err(error) => {
+                        if attempt >= self.max_retries {
+                            tracing::error!("Retries exceeded for fetch jwks: {error}");
+                            return Err(StsJwksFetcherError::RetriesExceeded { error });
+                        }
+
+                        tracing::warn!("Failed to fetch jwks (attempt: {attempt}): {error}");
+                        tokio::time::sleep(Duration::from_secs((attempt as f32).powf(1.5) as u64))
                             .await;
-                        retries += 1;
-                        last_error = Some(e);
+                        attempt += 1;
                     }
                 }
             }
@@ -247,7 +246,7 @@ mod fetcher {
 
         async fn fetch_jwks(&self) -> Result<JwksDTO, reqwest::Error> {
             self.http_client
-                .get(self.config.jwks_uri.clone())
+                .get(&self.config.jwks_uri)
                 .send()
                 .await?
                 .error_for_status()?
@@ -270,17 +269,13 @@ mod model {
     use time::OffsetDateTime;
 
     pub(crate) struct Jwks {
-        pub ttl: OffsetDateTime,
+        pub fetched_at: OffsetDateTime,
         pub keys: HashMap<String, KeyHandle>,
     }
 
     impl Jwks {
         pub(crate) fn find_by_kid(&self, kid: &str) -> Option<&KeyHandle> {
             self.keys.get(kid)
-        }
-
-        pub(crate) fn has_expired(&self) -> bool {
-            self.ttl < one_core::clock::now_utc()
         }
     }
 }

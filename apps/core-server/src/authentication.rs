@@ -25,12 +25,11 @@ pub(crate) async fn authentication(
                 .build()
                 .expect("Failed to create reqwest::Client");
 
-            let config = Arc::new(sts_token_validation.clone());
-            let fetcher = Arc::new(StsJwksFetcher::new(reqwest_client, config.clone(), 3));
+            let config = sts_token_validation.clone();
+            let fetcher = StsJwksFetcher::new(reqwest_client, config.clone(), 3);
             let jwks = fetcher.fetch_jwks_with_retries().await?;
-            let jwks_store = Arc::new(tokio::sync::RwLock::new(Arc::new(jwks)));
             Ok(Authentication::SecurityTokenService(
-                StsTokenValidator::new(jwks_store, fetcher, config),
+                StsTokenValidator::new(jwks, fetcher, config),
             ))
         }
     }

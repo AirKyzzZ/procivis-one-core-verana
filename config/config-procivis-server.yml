@@ -21,8 +21,9 @@ app:
     mode: STS
     stsTokenValidation:
       aud: one-core
-      ttlJwks: 600
-      leeway: 60
+      jwksRefreshAfter: 600 # 10mins
+      jwksExpireAfter: 86400 # 1 day
+      leeway: 60 # 1min
 keyStorage:
   AZURE_VAULT:
     display: "keyStorage.azureKeyVault"

@@ -356,7 +356,8 @@ async fn test_sts_authentication_invalid_token(key: GeneratedKey, jwk: PublicJwk
             stsTokenValidation:
                 aud: 'core'
                 iss: 'bff'
-                ttlJwks: 600
+                jwksRefreshAfter: 600
+                jwksExpireAfter: 86400
                 jwksUri: {url}
                 leeway: 0
     ",

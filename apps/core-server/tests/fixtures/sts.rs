@@ -31,7 +31,8 @@ pub async fn setup_sts_with_payload<T: Serialize>(payload: JWTPayload<T>) -> Sts
             stsTokenValidation:
                 aud: 'core'
                 iss: 'bff'
-                ttlJwks: 600
+                jwksRefreshAfter: 600
+                jwksExpireAfter: 86400
                 jwksUri: {url}
                 leeway: 0
     ",

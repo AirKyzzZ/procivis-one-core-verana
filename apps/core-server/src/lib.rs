@@ -1,6 +1,8 @@
 use std::net::IpAddr;
 
 use serde::{Deserialize, Serialize};
+use serde_with::{DurationSeconds, serde_as};
+use time::Duration;
 
 pub mod deserialize;
 pub mod dto;
@@ -93,12 +95,17 @@ pub enum AuthMode {
     },
 }
 
+#[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct StsTokenValidation {
     aud: String,
     iss: String,
     jwks_uri: String,
-    ttl_jwks: u64,
-    leeway: u64,
+    #[serde_as(as = "DurationSeconds<i64>")]
+    jwks_refresh_after: Duration,
+    #[serde_as(as = "DurationSeconds<i64>")]
+    jwks_expire_after: Duration,
+    #[serde_as(as = "DurationSeconds<i64>")]
+    leeway: Duration,
 }
