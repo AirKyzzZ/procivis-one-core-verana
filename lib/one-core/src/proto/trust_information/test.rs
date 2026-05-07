@@ -89,8 +89,8 @@ async fn test_find_trust_information_by_credential_id_success_rc() {
     let result = provider.get_trust_information(credential_id).await.unwrap();
 
     // then
-    assert!(result.is_some());
-    let info = result.unwrap();
+    assert_eq!(result.len(), 1);
+    let info = result.into_iter().next().unwrap();
     assert_eq!(info.name.unwrap(), "Test RP");
     assert_eq!(info.received_at, created_date);
 }
@@ -127,8 +127,8 @@ async fn test_find_trust_information_by_credential_id_success_nr() {
     let result = provider.get_trust_information(credential_id).await.unwrap();
 
     // then
-    assert!(result.is_some());
-    let info = result.unwrap();
+    assert_eq!(result.len(), 1);
+    let info = result.into_iter().next().unwrap();
     assert_eq!(info.name.unwrap(), "Test RP NR");
     assert_eq!(info.result, TrustResolutionResult::Trusted);
 }
@@ -156,7 +156,7 @@ async fn test_find_trust_information_none_when_empty() {
     let result = provider.get_trust_information(credential_id).await.unwrap();
 
     // then
-    assert!(result.is_none());
+    assert!(result.is_empty());
 }
 
 #[tokio::test]
@@ -185,8 +185,8 @@ async fn test_find_trust_information_by_credential_id_success_no_name() {
     let result = provider.get_trust_information(credential_id).await.unwrap();
 
     // then
-    assert!(result.is_some());
-    let info = result.unwrap();
+    assert_eq!(result.len(), 1);
+    let info = result.into_iter().next().unwrap();
     assert_eq!(info.name, None);
     assert_eq!(info.result, TrustResolutionResult::Untrusted);
 }

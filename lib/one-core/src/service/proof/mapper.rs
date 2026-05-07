@@ -179,7 +179,7 @@ pub(super) async fn get_verifier_proof_detail(
     proof: Proof,
     config: &CoreConfig,
     claims_removed_event: Option<History>,
-    trust_information: Option<TrustInformation>,
+    trust_information: Vec<TrustInformation>,
     validity_credential_repository: &dyn ValidityCredentialRepository,
 ) -> Result<ProofDetailResponseDTO, ProofServiceError> {
     let schema = proof
@@ -241,12 +241,16 @@ pub(super) async fn get_verifier_proof_detail(
             _ => None,
         };
 
+        let credential_trust_information = trust_information
+            .iter()
+            .find(|info| info.credential_id == Some(credential.id))
+            .cloned();
         let credential_detail = credential_detail_response_from_model(
             credential,
             config,
             mdoc_validity_credentials,
             CredentialAttestationBlobs::default(),
-            None,
+            credential_trust_information,
         )
         .await
         .error_while("creating credential detail")?;
@@ -461,7 +465,7 @@ pub(super) async fn get_verifier_proof_detail(
         claims_removed_at: claims_removed_event.map(|event| event.created_date),
         profile: list_item_response.profile,
         webhook_destination_url: list_item_response.webhook_destination_url,
-        trust_information,
+        trust_information: None,
     })
 }
 
@@ -586,7 +590,7 @@ pub(super) async fn get_holder_proof_detail(
     proof: Proof,
     config: &CoreConfig,
     claims_removed_event: Option<History>,
-    trust_information: Option<TrustInformation>,
+    trust_information: Vec<TrustInformation>,
     validity_credential_repository: &dyn ValidityCredentialRepository,
 ) -> Result<ProofDetailResponseDTO, ProofServiceError> {
     let organisation_id = [
@@ -721,7 +725,7 @@ pub(super) async fn get_holder_proof_detail(
         claims_removed_at: claims_removed_event.map(|event| event.created_date),
         profile: list_item_response.profile,
         webhook_destination_url: list_item_response.webhook_destination_url,
-        trust_information,
+        trust_information: trust_information.into_iter().next(),
     })
 }
 

@@ -17,7 +17,7 @@ pub(crate) trait TrustInformationProvider: Send + Sync {
     async fn get_trust_information(
         &self,
         entity_id: EntityId,
-    ) -> Result<Option<TrustInformation>, Error>;
+    ) -> Result<Vec<TrustInformation>, Error>;
 
     async fn get_trust_purpose(
         &self,

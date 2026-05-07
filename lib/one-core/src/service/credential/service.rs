@@ -333,7 +333,9 @@ impl CredentialService {
             .trust_information_provider
             .get_trust_information((*credential_id).into())
             .await
-            .error_while("getting trust information")?;
+            .error_while("getting trust information")?
+            .into_iter()
+            .next();
 
         let attestation_blobs = self.get_wallet_attestation_blobs(&credential).await?;
 

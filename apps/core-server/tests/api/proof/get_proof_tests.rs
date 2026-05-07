@@ -3,7 +3,10 @@ use std::collections::HashSet;
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
-use one_core::model::history::{HistoryAction, HistoryEntityType};
+use one_core::model::history::{
+    HistoryAction, HistoryEntityType, HistoryMetadata, TrustResolutionMetadata,
+    TrustResolutionResult,
+};
 use one_core::model::identifier::IdentifierType;
 use one_core::model::interaction::InteractionType;
 use one_core::model::proof::ProofStateEnum;
@@ -1053,6 +1056,24 @@ async fn test_get_proof_with_credentials() {
         .proofs
         .set_proof_claims(&proof.id, credential.claims.unwrap())
         .await;
+    context
+        .db
+        .histories
+        .create(
+            &organisation,
+            TestingHistoryParams {
+                action: Some(HistoryAction::TrustResolved),
+                created_date: Some(get_dummy_date()),
+                entity_id: Some(proof.id.into()),
+                entity_type: Some(HistoryEntityType::Proof),
+                target: Some(credential.id.to_string()),
+                metadata: Some(HistoryMetadata::TrustResolution(TrustResolutionMetadata {
+                    result: TrustResolutionResult::Trusted,
+                })),
+                ..Default::default()
+            },
+        )
+        .await;
 
     // WHEN
     let resp = context.api.proofs.get(proof.id).await;
@@ -1067,6 +1088,8 @@ async fn test_get_proof_with_credentials() {
     resp["proofInputs"][0]["credential"]["id"].assert_eq(&credential.id);
     assert!(resp["proofInputs"][0]["credential"]["role"].is_string());
     assert!(resp["proofInputs"][0]["credential"]["profile"].is_null());
+    resp["proofInputs"][0]["credential"]["trustInformation"]["result"]
+        .assert_eq(&"TRUSTED".to_string());
 }
 
 #[tokio::test]

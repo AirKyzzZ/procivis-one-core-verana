@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use shared_types::CredentialId;
 use shared_types::i18n::I18nString;
 use time::OffsetDateTime;
 
@@ -14,6 +15,8 @@ pub struct TrustInformation {
     pub received_at: OffsetDateTime,
     pub name: Option<String>,
     pub result: TrustResolutionResult,
+    #[serde(skip)]
+    pub credential_id: Option<CredentialId>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

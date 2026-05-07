@@ -575,7 +575,7 @@ async fn test_get_proof_exists() {
         proof_repository,
         history_repository,
         config: generic_config().core,
-        trust_information_provider: mock_trust_information_provider(&proof, None),
+        trust_information_provider: mock_trust_information_provider(&proof, vec![]),
         ..Default::default()
     });
 
@@ -811,7 +811,7 @@ async fn test_get_proof_with_array_holder() {
         proof_repository,
         history_repository,
         config: generic_config().core,
-        trust_information_provider: mock_trust_information_provider(&proof, None),
+        trust_information_provider: mock_trust_information_provider(&proof, vec![]),
         ..Default::default()
     });
 
@@ -1084,7 +1084,7 @@ async fn test_get_proof_with_array_in_object_holder() {
         proof_repository,
         history_repository,
         config: generic_config().core,
-        trust_information_provider: mock_trust_information_provider(&proof, None),
+        trust_information_provider: mock_trust_information_provider(&proof, vec![]),
         ..Default::default()
     });
 
@@ -1372,7 +1372,7 @@ async fn test_get_proof_with_object_array_holder() {
         proof_repository,
         history_repository,
         config: generic_config().core,
-        trust_information_provider: mock_trust_information_provider(&proof, None),
+        trust_information_provider: mock_trust_information_provider(&proof, vec![]),
         ..Default::default()
     });
 
@@ -1642,7 +1642,7 @@ async fn test_get_proof_with_array() {
         proof_repository,
         history_repository,
         config: generic_config().core,
-        trust_information_provider: mock_trust_information_provider(&proof, None),
+        trust_information_provider: mock_trust_information_provider(&proof, vec![]),
         ..Default::default()
     });
 
@@ -1922,7 +1922,7 @@ async fn test_get_proof_with_array_in_object() {
         proof_repository,
         history_repository,
         config: generic_config().core,
-        trust_information_provider: mock_trust_information_provider(&proof, None),
+        trust_information_provider: mock_trust_information_provider(&proof, vec![]),
         ..Default::default()
     });
 
@@ -2218,7 +2218,7 @@ async fn test_get_proof_with_object_array() {
         proof_repository,
         history_repository,
         config: generic_config().core,
-        trust_information_provider: mock_trust_information_provider(&proof, None),
+        trust_information_provider: mock_trust_information_provider(&proof, vec![]),
         ..Default::default()
     });
 
@@ -4621,7 +4621,7 @@ async fn test_proof_ops_session_org_mismatch() {
 
 fn mock_trust_information_provider(
     proof: &Proof,
-    trust_information_dto: Option<TrustInformation>,
+    trust_information: Vec<TrustInformation>,
 ) -> MockTrustInformationProvider {
     let mut trust_information_provider = MockTrustInformationProvider::default();
     let entity_id: EntityId = proof.id.into();
@@ -4630,6 +4630,6 @@ fn mock_trust_information_provider(
         .expect_get_trust_information()
         .times(1)
         .with(eq(entity_id))
-        .returning(move |_| Ok(trust_information_dto.clone()));
+        .returning(move |_| Ok(trust_information.clone()));
     trust_information_provider
 }

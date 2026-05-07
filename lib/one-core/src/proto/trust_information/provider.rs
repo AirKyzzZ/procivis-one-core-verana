@@ -1,9 +1,10 @@
+use std::str::FromStr;
 use std::sync::Arc;
 
 use HistoryAction::WrpAcReceived;
 use dcql::CredentialQueryId;
-use shared_types::EntityId;
 use shared_types::i18n::I18nString;
+use shared_types::{CredentialId, EntityId};
 
 use crate::error::ContextWithErrorCode;
 use crate::model::common::SortDirection;
@@ -153,7 +154,7 @@ impl TrustInformationProvider for TrustInformationProviderImpl {
     async fn get_trust_information(
         &self,
         entity_id: EntityId,
-    ) -> Result<Option<TrustInformation>, Error> {
+    ) -> Result<Vec<TrustInformation>, Error> {
         let entries = self
             .get_wrp_history_entries(entity_id, vec![WrpRcReceived, WrpNrReceived, TrustResolved])
             .await?
@@ -202,21 +203,32 @@ impl TrustInformationProvider for TrustInformationProviderImpl {
     }
 }
 
-fn trust_information_from_history(history: &[History]) -> Result<Option<TrustInformation>, Error> {
-    let Some(trust_resolved_entry) = history.iter().find(|h| h.action == TrustResolved) else {
-        return Ok(None);
-    };
-    let result = trust_resolution_result_from_history_metadata(trust_resolved_entry)?;
+fn trust_information_from_history(history: &[History]) -> Result<Vec<TrustInformation>, Error> {
     let name = history
         .iter()
         .find(|h| h.action == WrpRcReceived || h.action == WrpNrReceived)
         .map(wrp_name_from_history)
         .transpose()?;
-    Ok(Some(TrustInformation {
-        received_at: trust_resolved_entry.created_date,
-        name,
-        result,
-    }))
+    let mut entries = vec![];
+    for h in history.iter().filter(|h| h.action == TrustResolved) {
+        let result = trust_resolution_result_from_history_metadata(h)?;
+        let credential_id = if let Some(target) = &h.target {
+            Some(CredentialId::from_str(target).map_err(|err| {
+                Error::MappingError(format!(
+                    "invalid credential id `{target}` set as TRUST_RESOLVED target: {err}"
+                ))
+            })?)
+        } else {
+            None
+        };
+        entries.push(TrustInformation {
+            received_at: h.created_date,
+            name: name.clone(),
+            result,
+            credential_id,
+        });
+    }
+    Ok(entries)
 }
 
 fn wrp_name_from_history(history: &History) -> Result<String, Error> {

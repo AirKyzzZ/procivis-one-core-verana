@@ -453,7 +453,7 @@ async fn test_get_credential_success() {
     let service = setup_service(Repositories {
         credential_repository,
         config: generic_config().core,
-        trust_information_provider: mock_trust_information_provider(&credential, None),
+        trust_information_provider: mock_trust_information_provider(&credential, vec![]),
         ..Default::default()
     });
 
@@ -487,7 +487,7 @@ async fn test_get_credential_success_suspended_credential_with_end_date() {
     let service = setup_service(Repositories {
         credential_repository,
         config: generic_config().core,
-        trust_information_provider: mock_trust_information_provider(&credential, None),
+        trust_information_provider: mock_trust_information_provider(&credential, vec![]),
         ..Default::default()
     });
 
@@ -549,7 +549,7 @@ async fn test_get_revoked_credential_success() {
     let service = setup_service(Repositories {
         credential_repository,
         config: generic_config().core,
-        trust_information_provider: mock_trust_information_provider(&credential, None),
+        trust_information_provider: mock_trust_information_provider(&credential, vec![]),
         ..Default::default()
     });
 
@@ -3136,7 +3136,7 @@ async fn test_get_credential_success_with_non_required_nested_object() {
     let service = setup_service(Repositories {
         credential_repository,
         config: generic_config().core,
-        trust_information_provider: mock_trust_information_provider(&credential, None),
+        trust_information_provider: mock_trust_information_provider(&credential, vec![]),
         ..Default::default()
     });
 
@@ -3349,7 +3349,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
     let service = setup_service(Repositories {
         credential_repository,
         config: generic_config().core,
-        trust_information_provider: mock_trust_information_provider(&credential, None),
+        trust_information_provider: mock_trust_information_provider(&credential, vec![]),
         ..Default::default()
     });
 
@@ -3925,7 +3925,7 @@ async fn test_get_credential_success_array_index_sorting() {
     let service = setup_service(Repositories {
         credential_repository,
         config: generic_config().core,
-        trust_information_provider: mock_trust_information_provider(&credential, None),
+        trust_information_provider: mock_trust_information_provider(&credential, vec![]),
         ..Default::default()
     });
 
@@ -4265,7 +4265,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
         credential_repository,
         config: generic_config().core,
         validity_credential_repository,
-        trust_information_provider: mock_trust_information_provider(&credential, None),
+        trust_information_provider: mock_trust_information_provider(&credential, vec![]),
         ..Default::default()
     });
 
@@ -4478,7 +4478,7 @@ async fn test_get_credential_success_array_single_element() {
     let service = setup_service(Repositories {
         credential_repository,
         config: generic_config().core,
-        trust_information_provider: mock_trust_information_provider(&credential, None),
+        trust_information_provider: mock_trust_information_provider(&credential, vec![]),
         ..Default::default()
     });
 
@@ -5135,7 +5135,7 @@ async fn test_credential_ops_session_org_mismatch() {
 
 fn mock_trust_information_provider(
     credential: &Credential,
-    trust_information_dto: Option<TrustInformation>,
+    trust_information: Vec<TrustInformation>,
 ) -> MockTrustInformationProvider {
     let mut trust_information_provider = MockTrustInformationProvider::default();
     let entity_id: EntityId = credential.id.into();
@@ -5144,6 +5144,6 @@ fn mock_trust_information_provider(
         .expect_get_trust_information()
         .times(1)
         .with(eq(entity_id))
-        .returning(move |_| Ok(trust_information_dto.clone()));
+        .returning(move |_| Ok(trust_information.clone()));
     trust_information_provider
 }
