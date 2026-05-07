@@ -34,6 +34,7 @@ use crate::provider::key_algorithm::provider::{MockKeyAlgorithmProvider, ParsedK
 use crate::provider::presentation_formatter::mso_mdoc::model::DeviceResponse;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::iso_18013_7::OID4VPDraftHandover;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
+use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 use crate::service::test_utilities::{
     dummy_did, dummy_identifier, dummy_organisation, generic_config, get_dummy_date,
 };
@@ -979,7 +980,8 @@ fn test_credential_schema_id() {
 
     let result = formatter.credential_schema_id(
         CredentialSchemaId::from(Uuid::new_v4()),
-        &request_dto,
+        request_dto.organisation_id,
+        request_dto.schema_id.as_deref(),
         "https://example.com",
     );
 
@@ -1133,7 +1135,7 @@ async fn test_parse_credential() {
     );
 
     let schema = credential.schema.unwrap();
-    assert_eq!(schema.schema_id, "pavel.7545.strings");
+    assert_eq!(schema.schema_id().await.unwrap(), "pavel.7545.strings");
     let claim_schemas = schema.claim_schemas.get().await.unwrap();
     assert_eq!(claim_schemas.len(), 7);
 

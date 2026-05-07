@@ -21,7 +21,7 @@ async fn test_get_presentation_definition_v2_credential_sets_simple() {
     let schema2 = simple_schema(&context, &org, "https://example.org/foo2").await;
     let credential = simple_credential(&context, &identifier, &schema).await;
 
-    let credential_query1 = CredentialQuery::sd_jwt_vc(vec![schema.schema_id.to_string()])
+    let credential_query1 = CredentialQuery::sd_jwt_vc(vec![schema.schema_id().await.unwrap()])
         .id("test_id")
         .claims(vec![
             ClaimQuery::builder()
@@ -29,7 +29,7 @@ async fn test_get_presentation_definition_v2_credential_sets_simple() {
                 .build(),
         ])
         .build();
-    let credential_query2 = CredentialQuery::sd_jwt_vc(vec![schema2.schema_id.to_string()])
+    let credential_query2 = CredentialQuery::sd_jwt_vc(vec![schema2.schema_id().await.unwrap()])
         .id("test_id2")
         .claims(vec![
             ClaimQuery::builder()
@@ -96,7 +96,7 @@ async fn test_get_presentation_definition_v2_credential_sets_multiple_credential
     let credential3 = simple_credential(&context, &identifier, &schema2).await;
     let credential4 = simple_credential(&context, &identifier, &schema2).await;
 
-    let credential_query1 = CredentialQuery::sd_jwt_vc(vec![schema.schema_id.to_string()])
+    let credential_query1 = CredentialQuery::sd_jwt_vc(vec![schema.schema_id().await.unwrap()])
         .id("test_id")
         .claims(vec![
             ClaimQuery::builder()
@@ -104,7 +104,7 @@ async fn test_get_presentation_definition_v2_credential_sets_multiple_credential
                 .build(),
         ])
         .build();
-    let credential_query2 = CredentialQuery::sd_jwt_vc(vec![schema2.schema_id.to_string()])
+    let credential_query2 = CredentialQuery::sd_jwt_vc(vec![schema2.schema_id().await.unwrap()])
         .id("test_id2")
         .claims(vec![
             ClaimQuery::builder()
@@ -204,7 +204,7 @@ async fn test_get_presentation_definition_v2_optional_credential_sets() {
     let credential1 = simple_credential(&context, &identifier, &schema).await;
     let credential2 = simple_credential(&context, &identifier, &schema2).await;
 
-    let credential_query1 = CredentialQuery::sd_jwt_vc(vec![schema.schema_id.to_string()])
+    let credential_query1 = CredentialQuery::sd_jwt_vc(vec![schema.schema_id().await.unwrap()])
         .id("test_id")
         .claims(vec![
             ClaimQuery::builder()
@@ -212,7 +212,7 @@ async fn test_get_presentation_definition_v2_optional_credential_sets() {
                 .build(),
         ])
         .build();
-    let credential_query2 = CredentialQuery::sd_jwt_vc(vec![schema2.schema_id.to_string()])
+    let credential_query2 = CredentialQuery::sd_jwt_vc(vec![schema2.schema_id().await.unwrap()])
         .id("test_id2")
         .claims(vec![
             ClaimQuery::builder()

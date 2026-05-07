@@ -27,6 +27,7 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{
     CredentialSchema, GetCredentialSchemaList, KeyStorageSecurity, LayoutType, TransactionCodeType,
 };
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::proto::credential_schema::importer::{
     CredentialSchemaImporterProto, MockCredentialSchemaImporter,
 };
@@ -83,17 +84,27 @@ fn setup_service(
 
 fn generic_credential_schema() -> CredentialSchema {
     let now = crate::clock::now_utc();
+    let credential_schema_id = Uuid::new_v4().into();
     CredentialSchema {
         batch_size: None,
         allow_revocation: None,
-        id: Uuid::new_v4().into(),
+        id: credential_schema_id,
         deleted_at: None,
         imported_source_url: "CORE_URL".to_string(),
         created_date: now,
         last_modified: now,
         key_storage_security: None,
         name: "testName".to_string(),
-        format: "".into(),
+        formats: vec![CredentialSchemaFormat {
+            id: Uuid::new_v4().into(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
+            credential_schema_id,
+            format: "".into(),
+            schema_id: "CredentialSchemaId".to_owned(),
+            claim_mappings: Default::default(),
+        }]
+        .into(),
         revocation_method: None,
         claim_schemas: vec![ClaimSchema {
             business_key: None,
@@ -110,7 +121,6 @@ fn generic_credential_schema() -> CredentialSchema {
         organisation: dummy_organisation(None).into(),
         layout_type: LayoutType::Card,
         layout_properties: None,
-        schema_id: "CredentialSchemaId".to_owned(),
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
         transaction_code: None,
@@ -317,7 +327,7 @@ async fn test_create_credential_schema_success() {
         });
     formatter
         .expect_credential_schema_id()
-        .returning(|_, _, _| Ok("schema id".to_string()));
+        .returning(|_, _, _, _| Ok("schema id".to_string()));
     formatter.expect_get_metadata_claims().returning(Vec::new);
     formatter_provider
         .expect_get_credential_formatter()
@@ -345,6 +355,7 @@ async fn test_create_credential_schema_success() {
                 array: Some(false),
                 required: true,
                 claims: vec![],
+                mapping: None,
             }],
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -388,10 +399,7 @@ async fn test_create_credential_schema_success_mdoc_with_custom_schema_id() {
         repository
             .expect_create_credential_schema()
             .times(1)
-            .returning(move |request| {
-                assert_eq!(custom_schema_id, request.schema_id);
-                Ok(schema_id.to_owned())
-            });
+            .returning(move |_| Ok(schema_id.to_owned()));
         let clone = response.clone();
         repository
             .expect_get_credential_schema_list()
@@ -409,7 +417,7 @@ async fn test_create_credential_schema_success_mdoc_with_custom_schema_id() {
         });
     formatter
         .expect_credential_schema_id()
-        .returning(|_, _, _| Ok(custom_schema_id.to_string()));
+        .returning(|_, _, _, _| Ok(custom_schema_id.to_string()));
     formatter.expect_get_metadata_claims().returning(Vec::new);
     formatter_provider
         .expect_get_credential_formatter()
@@ -442,7 +450,9 @@ async fn test_create_credential_schema_success_mdoc_with_custom_schema_id() {
                     required: true,
                     array: Some(false),
                     claims: vec![],
+                    mapping: None,
                 }],
+                mapping: None,
             }],
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -503,7 +513,7 @@ async fn test_create_credential_schema_success_nested_claims() {
         });
     formatter
         .expect_credential_schema_id()
-        .returning(|_, _, _| Ok("some schema id".to_string()));
+        .returning(|_, _, _, _| Ok("some schema id".to_string()));
     formatter.expect_get_metadata_claims().returning(Vec::new);
     formatter_provider
         .expect_get_credential_formatter()
@@ -537,6 +547,7 @@ async fn test_create_credential_schema_success_nested_claims() {
                         required: true,
                         array: Some(false),
                         claims: vec![],
+                        mapping: None,
                     },
                     CredentialClaimSchemaRequestDTO {
                         key: "y".to_string(),
@@ -544,8 +555,10 @@ async fn test_create_credential_schema_success_nested_claims() {
                         required: true,
                         array: Some(false),
                         claims: vec![],
+                        mapping: None,
                     },
                 ],
+                mapping: None,
             }],
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -587,6 +600,7 @@ async fn test_create_credential_schema_failed_slash_in_claim_name() {
                 required: true,
                 array: Some(false),
                 claims: vec![],
+                mapping: None,
             }],
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -637,6 +651,7 @@ async fn test_create_credential_schema_failed_nested_claims_not_in_object_type()
                         required: true,
                         array: Some(false),
                         claims: vec![],
+                        mapping: None,
                     },
                     CredentialClaimSchemaRequestDTO {
                         key: "y".to_string(),
@@ -644,8 +659,10 @@ async fn test_create_credential_schema_failed_nested_claims_not_in_object_type()
                         required: true,
                         array: Some(false),
                         claims: vec![],
+                        mapping: None,
                     },
                 ],
+                mapping: None,
             }],
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -690,6 +707,7 @@ async fn test_create_credential_schema_failed_nested_claims_object_type_has_empt
                 array: Some(false),
                 required: true,
                 claims: vec![],
+                mapping: None,
             }],
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -748,7 +766,9 @@ async fn test_create_credential_schema_failed_nested_claim_fails_validation() {
                     required: true,
                     array: Some(false),
                     claims: vec![],
+                    mapping: None,
                 }],
+                mapping: None,
             }],
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -821,6 +841,7 @@ async fn test_create_credential_schema_unique_name_error() {
                 array: Some(false),
                 required: true,
                 claims: vec![],
+                mapping: None,
             }],
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -868,6 +889,7 @@ async fn test_create_credential_schema_failed_unique_claims_error() {
                     array: Some(false),
                     required: true,
                     claims: vec![],
+                    mapping: None,
                 },
                 CredentialClaimSchemaRequestDTO {
                     key: "sameRoot".to_string(),
@@ -875,6 +897,7 @@ async fn test_create_credential_schema_failed_unique_claims_error() {
                     required: true,
                     array: Some(false),
                     claims: vec![],
+                    mapping: None,
                 },
             ],
             layout_type: LayoutType::Card,
@@ -910,6 +933,7 @@ async fn test_create_credential_schema_failed_unique_claims_error() {
                         array: Some(false),
                         required: true,
                         claims: vec![],
+                        mapping: None,
                     },
                     CredentialClaimSchemaRequestDTO {
                         key: "sameNested".to_string(),
@@ -917,8 +941,10 @@ async fn test_create_credential_schema_failed_unique_claims_error() {
                         datatype: "STRING".to_string(),
                         required: true,
                         claims: vec![],
+                        mapping: None,
                     },
                 ],
+                mapping: None,
             }],
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -966,6 +992,7 @@ async fn test_create_credential_schema_fail_validation() {
                 datatype: "STRING".to_string(),
                 required: true,
                 claims: vec![],
+                mapping: None,
             }],
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -993,6 +1020,7 @@ async fn test_create_credential_schema_fail_validation() {
                 required: true,
                 array: Some(false),
                 claims: vec![],
+                mapping: None,
             }],
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -1020,6 +1048,7 @@ async fn test_create_credential_schema_fail_validation() {
                 required: true,
                 array: Some(false),
                 claims: vec![],
+                mapping: None,
             }],
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -1089,7 +1118,7 @@ async fn test_create_credential_schema_fail_unsupported_wallet_storage_type() {
         });
     formatter
         .expect_credential_schema_id()
-        .returning(|_, _, _| Ok("schema id".to_string()));
+        .returning(|_, _, _, _| Ok("schema id".to_string()));
     formatter_provider
         .expect_get_credential_formatter()
         .once()
@@ -1116,6 +1145,7 @@ async fn test_create_credential_schema_fail_unsupported_wallet_storage_type() {
                 array: Some(false),
                 required: true,
                 claims: vec![],
+                mapping: None,
             }],
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -1194,6 +1224,7 @@ async fn test_create_credential_schema_fail_missing_organisation() {
                 array: Some(false),
                 required: true,
                 claims: vec![],
+                mapping: None,
             }],
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -1259,6 +1290,7 @@ async fn test_create_credential_schema_fail_incompatible_revocation_and_format()
                 array: Some(false),
                 required: true,
                 claims: vec![],
+                mapping: None,
             }],
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -1319,7 +1351,9 @@ async fn test_create_credential_schema_failed_mdoc_not_all_top_claims_are_object
                         required: true,
                         array: Some(false),
                         claims: vec![],
+                        mapping: None,
                     }],
+                    mapping: None,
                 },
                 CredentialClaimSchemaRequestDTO {
                     key: "test2".to_string(),
@@ -1327,6 +1361,7 @@ async fn test_create_credential_schema_failed_mdoc_not_all_top_claims_are_object
                     array: Some(false),
                     required: true,
                     claims: vec![],
+                    mapping: None,
                 },
             ],
             layout_type: LayoutType::Card,
@@ -1382,6 +1417,7 @@ async fn test_create_credential_schema_failed_schema_id_not_allowed() {
                 array: Some(false),
                 required: true,
                 claims: vec![],
+                mapping: None,
             }],
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -1433,6 +1469,7 @@ async fn test_create_credential_schema_failed_claim_schema_key_too_long() {
                 array: Some(false),
                 required: true,
                 claims: vec![],
+                mapping: None,
             }],
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -1465,7 +1502,9 @@ async fn test_create_credential_schema_failed_claim_schema_key_too_long() {
                     datatype: "STRING".to_string(),
                     required: true,
                     claims: vec![],
+                    mapping: None,
                 }],
+                mapping: None,
             }],
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -1493,6 +1532,7 @@ async fn test_create_credential_schema_failed_claim_schema_key_too_long() {
                 array: Some(false),
                 required: true,
                 claims: vec![],
+                mapping: None,
             }],
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -1516,6 +1556,7 @@ async fn test_unnest_claim_schemas_from_request_no_nested_claims() {
         required: true,
         array: Some(false),
         claims: vec![],
+        mapping: None,
     }];
 
     let expected = vec![CredentialClaimSchemaRequestDTO {
@@ -1524,6 +1565,7 @@ async fn test_unnest_claim_schemas_from_request_no_nested_claims() {
         array: Some(false),
         required: true,
         claims: vec![],
+        mapping: None,
     }];
 
     assert_eq!(expected, unnest_claim_schemas(request));
@@ -1543,6 +1585,7 @@ async fn test_unnest_claim_schemas_from_request_single_layer_of_nested_claims() 
                 required: true,
                 array: Some(false),
                 claims: vec![],
+                mapping: None,
             },
             CredentialClaimSchemaRequestDTO {
                 key: "y".to_string(),
@@ -1550,8 +1593,10 @@ async fn test_unnest_claim_schemas_from_request_single_layer_of_nested_claims() 
                 required: true,
                 array: Some(false),
                 claims: vec![],
+                mapping: None,
             },
         ],
+        mapping: None,
     }];
 
     let expected = vec![
@@ -1561,6 +1606,7 @@ async fn test_unnest_claim_schemas_from_request_single_layer_of_nested_claims() 
             required: true,
             array: Some(false),
             claims: vec![],
+            mapping: None,
         },
         CredentialClaimSchemaRequestDTO {
             key: "location/x".to_string(),
@@ -1568,6 +1614,7 @@ async fn test_unnest_claim_schemas_from_request_single_layer_of_nested_claims() 
             required: true,
             array: Some(false),
             claims: vec![],
+            mapping: None,
         },
         CredentialClaimSchemaRequestDTO {
             key: "location/y".to_string(),
@@ -1575,6 +1622,7 @@ async fn test_unnest_claim_schemas_from_request_single_layer_of_nested_claims() 
             required: true,
             claims: vec![],
             array: Some(false),
+            mapping: None,
         },
     ];
 
@@ -1601,6 +1649,7 @@ async fn test_unnest_claim_schemas_from_request_multiple_layers_of_nested_claims
                         required: true,
                         array: Some(false),
                         claims: vec![],
+                        mapping: None,
                     },
                     CredentialClaimSchemaRequestDTO {
                         key: "y".to_string(),
@@ -1608,8 +1657,10 @@ async fn test_unnest_claim_schemas_from_request_multiple_layers_of_nested_claims
                         required: true,
                         array: Some(false),
                         claims: vec![],
+                        mapping: None,
                     },
                 ],
+                mapping: None,
             },
             CredentialClaimSchemaRequestDTO {
                 key: "postal_data".to_string(),
@@ -1623,6 +1674,7 @@ async fn test_unnest_claim_schemas_from_request_multiple_layers_of_nested_claims
                         required: true,
                         claims: vec![],
                         array: Some(false),
+                        mapping: None,
                     },
                     CredentialClaimSchemaRequestDTO {
                         key: "street".to_string(),
@@ -1630,10 +1682,13 @@ async fn test_unnest_claim_schemas_from_request_multiple_layers_of_nested_claims
                         required: true,
                         array: Some(false),
                         claims: vec![],
+                        mapping: None,
                     },
                 ],
+                mapping: None,
             },
         ],
+        mapping: None,
     }];
 
     let expected = vec![
@@ -1643,6 +1698,7 @@ async fn test_unnest_claim_schemas_from_request_multiple_layers_of_nested_claims
             required: true,
             array: Some(false),
             claims: vec![],
+            mapping: None,
         },
         CredentialClaimSchemaRequestDTO {
             key: "address/location".to_string(),
@@ -1650,6 +1706,7 @@ async fn test_unnest_claim_schemas_from_request_multiple_layers_of_nested_claims
             required: true,
             claims: vec![],
             array: Some(false),
+            mapping: None,
         },
         CredentialClaimSchemaRequestDTO {
             key: "address/location/x".to_string(),
@@ -1657,6 +1714,7 @@ async fn test_unnest_claim_schemas_from_request_multiple_layers_of_nested_claims
             required: true,
             claims: vec![],
             array: Some(false),
+            mapping: None,
         },
         CredentialClaimSchemaRequestDTO {
             key: "address/location/y".to_string(),
@@ -1664,6 +1722,7 @@ async fn test_unnest_claim_schemas_from_request_multiple_layers_of_nested_claims
             required: true,
             array: Some(false),
             claims: vec![],
+            mapping: None,
         },
         CredentialClaimSchemaRequestDTO {
             key: "address/postal_data".to_string(),
@@ -1671,6 +1730,7 @@ async fn test_unnest_claim_schemas_from_request_multiple_layers_of_nested_claims
             required: true,
             array: Some(false),
             claims: vec![],
+            mapping: None,
         },
         CredentialClaimSchemaRequestDTO {
             key: "address/postal_data/code".to_string(),
@@ -1678,6 +1738,7 @@ async fn test_unnest_claim_schemas_from_request_multiple_layers_of_nested_claims
             required: true,
             array: Some(false),
             claims: vec![],
+            mapping: None,
         },
         CredentialClaimSchemaRequestDTO {
             key: "address/postal_data/street".to_string(),
@@ -1685,6 +1746,7 @@ async fn test_unnest_claim_schemas_from_request_multiple_layers_of_nested_claims
             required: true,
             array: Some(false),
             claims: vec![],
+            mapping: None,
         },
     ];
 
@@ -1960,6 +2022,7 @@ fn test_claims_presence_in_layout_properties_validation_ok() {
             required: true,
             claims: vec![],
             array: Some(false),
+            mapping: None,
         },
         CredentialClaimSchemaRequestDTO {
             key: "claim2".to_owned(),
@@ -1978,6 +2041,7 @@ fn test_claims_presence_in_layout_properties_validation_ok() {
                         required: true,
                         claims: vec![],
                         array: Some(false),
+                        mapping: None,
                     },
                     CredentialClaimSchemaRequestDTO {
                         key: "claim212".to_owned(),
@@ -1985,6 +2049,7 @@ fn test_claims_presence_in_layout_properties_validation_ok() {
                         required: true,
                         claims: vec![],
                         array: Some(false),
+                        mapping: None,
                     },
                     CredentialClaimSchemaRequestDTO {
                         key: "claim213".to_owned(),
@@ -1992,9 +2057,12 @@ fn test_claims_presence_in_layout_properties_validation_ok() {
                         required: true,
                         claims: vec![],
                         array: Some(false),
+                        mapping: None,
                     },
                 ],
+                mapping: None,
             }],
+            mapping: None,
         },
     ];
     let layout_properties = Some(CredentialSchemaLayoutPropertiesRequestDTO {
@@ -2036,8 +2104,11 @@ fn test_claims_presence_in_layout_properties_validation_missing_primary_attribut
                 required: true,
                 claims: vec![],
                 array: Some(false),
+                mapping: None,
             }],
+            mapping: None,
         }],
+        mapping: None,
     }];
     let layout_properties = Some(CredentialSchemaLayoutPropertiesRequestDTO {
         background: None,
@@ -2348,6 +2419,7 @@ fn test_claims_presence_in_layout_properties_validation_missing_secondary_attrib
         required: true,
         claims: vec![],
         array: Some(false),
+        mapping: None,
     }];
     let layout_properties = Some(CredentialSchemaLayoutPropertiesRequestDTO {
         background: None,
@@ -2377,6 +2449,7 @@ fn test_claims_presence_in_layout_properties_validation_attributes_not_specified
         required: true,
         claims: vec![],
         array: Some(false),
+        mapping: None,
     }];
 
     let request = CreateCredentialSchemaRequestDTO {
@@ -2507,6 +2580,7 @@ async fn test_import_credential_schema_success() {
                     required: true,
                     array: Some(false),
                     claims: vec![],
+                    mapping: None,
                 }],
                 key_storage_security: None,
                 schema_id: "http://127.0.0.1/ssi/schema/some_schmea".to_string(),
@@ -2538,7 +2612,7 @@ async fn test_create_credential_schema_fail_unsupported_datatype() {
         });
     formatter
         .expect_credential_schema_id()
-        .returning(|_, _, _| Ok("some schema id".to_string()));
+        .returning(|_, _, _, _| Ok("some schema id".to_string()));
     formatter_provider
         .expect_get_credential_formatter()
         .once()
@@ -2572,6 +2646,7 @@ async fn test_create_credential_schema_fail_unsupported_datatype() {
                         required: true,
                         array: Some(false),
                         claims: vec![],
+                        mapping: None,
                     },
                     CredentialClaimSchemaRequestDTO {
                         key: "y".to_string(),
@@ -2579,8 +2654,10 @@ async fn test_create_credential_schema_fail_unsupported_datatype() {
                         required: true,
                         array: Some(true),
                         claims: vec![],
+                        mapping: None,
                     },
                 ],
+                mapping: None,
             }],
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -2674,6 +2751,7 @@ async fn test_create_credential_schema_fail_tx_code_not_supported() {
                 array: Some(false),
                 required: true,
                 claims: vec![],
+                mapping: None,
             }],
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -2733,6 +2811,7 @@ async fn test_create_credential_schema_fail_tx_code_description_too_long() {
                 array: Some(false),
                 required: true,
                 claims: vec![],
+                mapping: None,
             }],
             layout_type: LayoutType::Card,
             layout_properties: None,

@@ -139,6 +139,7 @@ impl OID4VPDraft20Service {
             client_id_scheme,
             client_metadata,
         )
+        .await
         .error_while("generating authorization request")?;
 
         Ok(match client_id_scheme {

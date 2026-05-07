@@ -253,7 +253,7 @@ impl IssuanceProtocol for OpenID4VCISwiyu {
             .prepare_issuer_metadata(credential_schema_id)
             .await?;
 
-        let credential_schema_schema_id = prepared_metadata.schema.schema_id.clone();
+        let credential_schema_schema_id = prepared_metadata.schema.schema_id().await?;
 
         let credential_schema_claims = prepared_metadata
             .schema
@@ -267,7 +267,7 @@ impl IssuanceProtocol for OpenID4VCISwiyu {
             .credential_configurations_supported
             .iter_mut()
         {
-            if key != &credential_schema_schema_id {
+            if *key != credential_schema_schema_id {
                 // only adjust the schema referenced in the id
                 continue;
             }

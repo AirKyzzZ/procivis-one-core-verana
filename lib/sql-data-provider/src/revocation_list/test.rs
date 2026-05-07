@@ -21,8 +21,9 @@ use crate::entity::credential_schema::KeyStorageSecurity;
 use crate::entity::revocation_list::RevocationListFormat;
 use crate::test_utilities::{
     dummy_organisation, get_dummy_date, insert_credential, insert_credential_schema_to_database,
-    insert_identifier, insert_organisation_to_database, insert_revocation_list,
-    insert_revocation_list_entry, setup_test_data_layer_and_connection,
+    insert_credential_schema_with_revocation_to_database, insert_identifier,
+    insert_organisation_to_database, insert_revocation_list, insert_revocation_list_entry,
+    setup_test_data_layer_and_connection,
 };
 use crate::transaction_context::TransactionManagerImpl;
 
@@ -361,12 +362,15 @@ async fn create_dummy_credential(
         None,
         organisation.id,
         credential_schema_name,
-        "JWT",
         None,
         Some(KeyStorageSecurity::Basic),
     )
     .await
     .unwrap();
+
+    insert_credential_schema_with_revocation_to_database(db, credential_schema_id, "JWT")
+        .await
+        .unwrap();
 
     let credential = insert_credential(
         db,

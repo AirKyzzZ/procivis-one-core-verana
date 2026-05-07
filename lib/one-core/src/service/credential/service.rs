@@ -11,6 +11,7 @@ use super::dto::{
 use super::error::CredentialServiceError;
 use super::mapper::{
     claims_from_create_request, credential_detail_response_from_model, from_create_request,
+    to_credential_list_response,
 };
 use super::validator::{
     throw_if_credential_state_eq, validate_format_and_did_method_compatibility,
@@ -18,7 +19,6 @@ use super::validator::{
 };
 use crate::config::validator::protocol::validate_protocol_did_compatibility;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
-use crate::mapper::list_response_try_into;
 use crate::model::certificate::{CertificateRelations, CertificateRole};
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
@@ -110,10 +110,11 @@ impl CredentialService {
             .await
             .error_while("getting claim schemas")?;
 
+        let schema_format = schema.format().await?;
         let formatter_capabilities = self
             .formatter_provider
-            .get_credential_formatter(&schema.format)
-            .ok_or(MissingProviderError::Formatter(schema.format.to_string()))
+            .get_credential_formatter(&schema_format)
+            .ok_or(MissingProviderError::Formatter(schema_format.to_string()))
             .error_while("getting formatter")?
             .get_capabilities();
 
@@ -320,7 +321,7 @@ impl CredentialService {
         }
 
         let mdoc_validity_credentials = match &credential.schema {
-            Some(schema) if schema.format.to_string() == "MDOC" => self
+            Some(schema) if schema.format().await?.as_ref() == "MDOC" => self
                 .validity_credential_repository
                 .get_latest_by_credential_id(*credential_id, ValidityCredentialType::Mdoc)
                 .await
@@ -431,7 +432,15 @@ impl CredentialService {
             .await
             .error_while("getting credentials")?;
 
-        list_response_try_into(result)
+        let mut response_dtos = Vec::with_capacity(result.values.len());
+        for value in result.values {
+            response_dtos.push(to_credential_list_response(value).await?);
+        }
+        Ok(GetCredentialListResponseDTO {
+            values: response_dtos,
+            total_pages: result.total_pages,
+            total_items: result.total_items,
+        })
     }
 
     pub async fn reactivate_credential(

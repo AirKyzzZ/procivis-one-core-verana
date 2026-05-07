@@ -50,13 +50,13 @@ async fn test_import_proof_schema_ok() {
             json!({
               "createdDate": now,
               "lastModified": now,
-              "format": original_credential_schema.format,
+              "format": original_credential_schema.format().await.unwrap(),
               "id": original_credential_schema_id,
               "importedSourceUrl": original_credential_schema.imported_source_url,
               "name": original_credential_schema.name,
               "organisationId": source_organisation.id,
               "revocationMethod": original_credential_schema.revocation_method,
-              "schemaId": original_credential_schema.schema_id,
+              "schemaId": original_credential_schema.schema_id().await.unwrap(),
               "keyStorageSecurity": original_credential_schema.key_storage_security,
               "allowSuspension": original_credential_schema.allow_suspension,
               "claims": claim_schemas.iter().map(|schema| json!({
@@ -102,10 +102,10 @@ async fn test_import_proof_schema_ok() {
                     "lastModified": now,
                     "importedSourceUrl": original_credential_schema.imported_source_url,
                     "name": original_credential_schema.name,
-                    "format": original_credential_schema.format,
-                    "revocationMethod": original_credential_schema.format,
+                    "format": original_credential_schema.format().await.unwrap(),
+                    "revocationMethod": original_credential_schema.format().await.unwrap(),
                     "keyStorageSecurity": original_credential_schema.key_storage_security,
-                    "schemaId": original_credential_schema.schema_id,
+                    "schemaId": original_credential_schema.schema_id().await.unwrap(),
                 }
             }
         ]
@@ -189,10 +189,10 @@ async fn test_import_proof_schema_fails_deactivated_organisation() {
                     "lastModified": now,
                     "importedSourceUrl": "invalid_should_not_be_needed",
                     "name": credential_schema.name,
-                    "format": credential_schema.format,
-                    "revocationMethod": credential_schema.format,
+                    "format": credential_schema.format().await.unwrap(),
+                    "revocationMethod": credential_schema.format().await.unwrap(),
                     "keyStorageSecurity": credential_schema.key_storage_security,
-                    "schemaId": credential_schema.schema_id,
+                    "schemaId": credential_schema.schema_id().await.unwrap(),
                 }
             }
         ]
@@ -262,10 +262,10 @@ async fn test_import_proof_schema_for_existing_credential_schema() {
                     "lastModified": now,
                     "importedSourceUrl": "invalid_should_not_be_needed",
                     "name": original_credential_schema.name,
-                    "format": original_credential_schema.format,
-                    "revocationMethod": original_credential_schema.format,
+                    "format": original_credential_schema.format().await.unwrap(),
+                    "revocationMethod": original_credential_schema.format().await.unwrap(),
                     "keyStorageSecurity": original_credential_schema.key_storage_security,
-                    "schemaId": original_credential_schema.schema_id,
+                    "schemaId": original_credential_schema.schema_id().await.unwrap(),
                 }
             }
         ]
@@ -394,10 +394,10 @@ async fn test_import_proof_schema_nested_array() {
                     "lastModified": now,
                     "importedSourceUrl": "invalid_should_not_be_needed",
                     "name": original_credential_schema.name,
-                    "format": original_credential_schema.format,
-                    "revocationMethod": original_credential_schema.format,
+                    "format": original_credential_schema.format().await.unwrap(),
+                    "revocationMethod": original_credential_schema.format().await.unwrap(),
                     "keyStorageSecurity": original_credential_schema.key_storage_security,
-                    "schemaId": original_credential_schema.schema_id,
+                    "schemaId": original_credential_schema.schema_id().await.unwrap(),
                 }
             }
         ]

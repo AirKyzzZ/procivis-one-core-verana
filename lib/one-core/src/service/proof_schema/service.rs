@@ -176,7 +176,8 @@ impl ProofSchemaService {
             .error_while("validating key storage security")?;
         }
 
-        throw_if_invalid_credential_combination(&credential_schemas, &*self.formatter_provider)?;
+        throw_if_invalid_credential_combination(&credential_schemas, &*self.formatter_provider)
+            .await?;
 
         let claim_schemas = extract_claims_from_credential_schema(
             &request.proof_input_schemas,

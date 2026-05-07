@@ -339,14 +339,19 @@ impl OpenId4VpProofValidatorProto {
         proof_schema_input: &ProofInputSchema,
         trusted_authorities: Option<&[TrustedAuthority]>,
     ) -> Result<(DetailCredential, Option<MobileSecurityObject>), OpenID4VCError> {
-        let format = proof_schema_input
-            .credential_schema
-            .as_ref()
-            .map(|schema| &schema.format)
-            .ok_or(OpenID4VCError::VCFormatsNotSupported)?;
+        let credential_schema =
+            proof_schema_input
+                .credential_schema
+                .as_ref()
+                .ok_or(OpenID4VCError::MappingError(
+                    "missing credential schema format".to_string(),
+                ))?;
+        let format = credential_schema.format().await.map_err(|_| {
+            OpenID4VCError::MappingError("missing credential schema format".to_string())
+        })?;
         let formatter = self
             .credential_formatter_provider
-            .get_credential_formatter(format)
+            .get_credential_formatter(&format)
             .ok_or(OpenID4VCError::VCFormatsNotSupported)?;
 
         let credential = formatter
@@ -608,17 +613,22 @@ impl OpenId4VpProofValidatorProto {
                 schema_id_filter.r#const.to_owned()
             };
 
-            let proof_schema_input = proof_schema_inputs
-                .iter()
-                .find(|input| {
-                    input
-                        .credential_schema
-                        .as_ref()
-                        .is_some_and(|schema| schema.schema_id == target_schema_id)
-                })
-                .ok_or(OpenID4VCError::Other(
-                    "Missing proof input schema for credential schema".to_owned(),
-                ))?;
+            let mut proof_schema_input = None;
+            for input in &proof_schema_inputs {
+                if let Some(credential_schema) = &input.credential_schema {
+                    let schema_id = credential_schema
+                        .schema_id()
+                        .await
+                        .map_err(|e| OpenID4VCError::Other(e.to_string()))?;
+                    if schema_id == target_schema_id {
+                        proof_schema_input = Some(input);
+                        break;
+                    }
+                }
+            }
+            let proof_schema_input = proof_schema_input.ok_or(OpenID4VCError::Other(
+                "Missing proof input schema for credential schema".to_owned(),
+            ))?;
 
             let holder_details =
                 presentation

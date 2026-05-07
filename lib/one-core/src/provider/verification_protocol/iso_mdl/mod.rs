@@ -46,6 +46,7 @@ use crate::provider::presentation_formatter::mso_mdoc::model::{
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::SessionTranscript;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::verification_protocol::deserialize_interaction_data;
+use crate::provider::verification_protocol::openid4vp::mapper::format_to_type;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::service::credential::dto::CredentialAttestationBlobs;
 use crate::service::credential::mapper::credential_detail_response_from_model;
@@ -192,19 +193,18 @@ impl VerificationProtocol for IsoMdl {
             .as_ref()
             .map(|did| did.did.to_owned());
 
+        let presentation_schema_format = credential_presentation.credential_schema.format().await?;
         let format_type = self
             .config
             .format
-            .get_type(&credential_presentation.credential_schema.format)
+            .get_type(&presentation_schema_format)
             .error_while("getting format type")?;
         let (_, presentation_formatter) = self
             .presentation_formatter_provider
             .get_presentation_formatter_by_type(format_type)
             .ok_or(VerificationProtocolError::Failed(format!(
-                "unknown format: {}",
-                credential_presentation.credential_schema.format
+                "unknown format: {presentation_schema_format}"
             )))?;
-
         let session_transcript_bytes: EmbeddedCbor<SessionTranscript> =
             ciborium::from_reader(session.session_transcript_bytes.as_slice())?;
 
@@ -213,20 +213,14 @@ impl VerificationProtocol for IsoMdl {
             ..Default::default()
         };
 
-        let presentations = credential_presentations
-            .into_iter()
-            .map(|credential| {
-                let format = self
-                    .config
-                    .format
-                    .get_type(&credential.credential_schema.format)
-                    .error_while("getting format type")?;
-                Ok(CredentialToPresent {
-                    credential_token: credential.presentation,
-                    credential_format: format,
-                })
-            })
-            .collect::<Result<Vec<_>, VerificationProtocolError>>()?;
+        let mut presentations = Vec::with_capacity(credential_presentations.len());
+        for credential in credential_presentations {
+            let credential_format = format_to_type(&credential, &self.config).await?;
+            presentations.push(CredentialToPresent {
+                credential_token: credential.presentation,
+                credential_format,
+            });
+        }
 
         let FormattedPresentation { vp_token, .. } = presentation_formatter
             .format_presentation(presentations, auth_fn, &holder_did, ctx)

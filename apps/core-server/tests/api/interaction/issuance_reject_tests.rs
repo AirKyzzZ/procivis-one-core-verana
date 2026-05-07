@@ -120,7 +120,7 @@ async fn test_issuance_reject_openid4vci_draft13_with_notification() {
 
     context
         .server_mock
-        .token_endpoint(credential_schema.schema_id, "123")
+        .token_endpoint(credential_schema.schema_id().await.unwrap(), "123")
         .await;
 
     context

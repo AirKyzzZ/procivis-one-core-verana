@@ -81,12 +81,15 @@ async fn setup(
         None,
         organisation_id,
         "credential schema",
-        "JWT",
         None,
         Some(KeyStorageSecurity::Basic),
     )
     .await
     .unwrap();
+
+    insert_credential_schema_with_revocation_to_database(&db, credential_schema_id, "JWT")
+        .await
+        .unwrap();
 
     let new_claim_schemas: Vec<ClaimInsertInfo> = (0..2)
         .map(|i| ClaimInsertInfo {
@@ -638,12 +641,15 @@ async fn test_get_proof_with_relations() {
         None,
         organisation_id,
         "credential schema 1",
-        "JWT",
         None,
         Some(KeyStorageSecurity::Basic),
     )
     .await
     .unwrap();
+
+    insert_credential_schema_with_revocation_to_database(&db, credential_schema_id, "JWT")
+        .await
+        .unwrap();
 
     let blob_id = Uuid::new_v4().into();
     blob::ActiveModel {
@@ -864,12 +870,15 @@ async fn test_set_proof_claims_success() {
         None,
         organisation_id,
         "credential schema 1",
-        "JWT",
         None,
         Some(KeyStorageSecurity::Basic),
     )
     .await
     .unwrap();
+
+    insert_credential_schema_with_revocation_to_database(&db, credential_schema_id, "JWT")
+        .await
+        .unwrap();
 
     let credential = insert_credential(
         &db,

@@ -25,7 +25,7 @@ use crate::validator::{
     validate_expiration_time, validate_issuance_time, validate_not_before_time,
 };
 
-pub(crate) fn throw_if_credential_request_invalid(
+pub(crate) async fn throw_if_credential_request_invalid(
     schema: &CredentialSchema,
     request: &OpenID4VCICredentialRequestDTO,
 ) -> Result<(), OID4VCIFinal1_0ServiceError> {
@@ -33,7 +33,7 @@ pub(crate) fn throw_if_credential_request_invalid(
         credential_configuration_id,
     ) = &request.credential
     {
-        if &schema.schema_id != credential_configuration_id {
+        if &schema.schema_id().await? != credential_configuration_id {
             return Err(OpenID4VCIError::UnsupportedCredentialType.into());
         }
     } else {

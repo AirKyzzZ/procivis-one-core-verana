@@ -222,9 +222,9 @@ pub fn create_format_map(
     }
 }
 
-pub(crate) fn create_open_id_for_vp_presentation_definition(
+pub(crate) async fn create_open_id_for_vp_presentation_definition(
     interaction_id: InteractionId,
-    proof_schema: &ProofSchema,
+    proof_schema: ProofSchema,
     format_type_to_input_descriptor_format: TypeToDescriptorMapper,
     format_to_type_mapper: FormatMapper, // Credential schema format to format type mapper
     formatter_provider: &dyn CredentialFormatterProvider,
@@ -259,27 +259,29 @@ pub(crate) fn create_open_id_for_vp_presentation_definition(
             }
         };
 
+    let mut input_descriptors = Vec::with_capacity(requested_credentials.len());
+    for (idx, (credential_schema, claim_schemas)) in requested_credentials.into_iter().enumerate() {
+        let format_type = format_to_type_mapper(&credential_schema.format().await?)?;
+        input_descriptors.push(
+            create_open_id_for_vp_presentation_definition_input_descriptor(
+                idx,
+                credential_schema,
+                claim_schemas.unwrap_or_default(),
+                &format_type,
+                &format_type_to_input_descriptor_format,
+                formatter_provider,
+            )
+            .await?,
+        )
+    }
+
     Ok(OpenID4VPPresentationDefinition {
         id: interaction_id.to_string(),
-        input_descriptors: requested_credentials
-            .into_iter()
-            .enumerate()
-            .map(|(index, (credential_schema, claim_schemas))| {
-                let format_type = format_to_type_mapper(&credential_schema.format)?;
-                create_open_id_for_vp_presentation_definition_input_descriptor(
-                    index,
-                    credential_schema,
-                    claim_schemas.unwrap_or_default(),
-                    &format_type,
-                    &format_type_to_input_descriptor_format,
-                    formatter_provider,
-                )
-            })
-            .collect::<Result<Vec<_>, _>>()?,
+        input_descriptors,
     })
 }
 
-fn create_open_id_for_vp_presentation_definition_input_descriptor(
+async fn create_open_id_for_vp_presentation_definition_input_descriptor(
     index: usize,
     credential_schema: CredentialSchema,
     claim_schemas: Vec<ProofInputClaimSchema>,
@@ -288,7 +290,7 @@ fn create_open_id_for_vp_presentation_definition_input_descriptor(
     formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<OpenID4VPPresentationDefinitionInputDescriptor, VerificationProtocolError> {
     let (id, schema_fields, intent_to_retain) = match presentation_format_type {
-        FormatType::Mdoc => (credential_schema.schema_id, vec![], Some(true)),
+        FormatType::Mdoc => (credential_schema.schema_id().await?, vec![], Some(true)),
         format_type => {
             let path = match format_type {
                 FormatType::SdJwtVc => ["$.vct".to_string()],
@@ -304,7 +306,7 @@ fn create_open_id_for_vp_presentation_definition_input_descriptor(
                 optional: None,
                 filter: Some(OpenID4VPPresentationDefinitionConstraintFieldFilter {
                     r#type: "string".to_string(),
-                    r#const: credential_schema.schema_id.clone(),
+                    r#const: credential_schema.schema_id().await?,
                 }),
                 intent_to_retain: None,
             };
@@ -313,8 +315,9 @@ fn create_open_id_for_vp_presentation_definition_input_descriptor(
         }
     };
 
+    let schema_format = credential_schema.format().await?;
     let selectively_disclosable = !formatter_provider
-        .get_credential_formatter(&credential_schema.format)
+        .get_credential_formatter(&schema_format)
         .ok_or(VerificationProtocolError::Failed(
             "missing provider".to_string(),
         ))?
@@ -538,13 +541,13 @@ pub(crate) fn extracted_credential_to_model(
     })
 }
 
-pub(crate) fn format_to_type(
+pub(crate) async fn format_to_type(
     presented_credential: &FormattedCredentialPresentation,
     config: &CoreConfig,
 ) -> Result<FormatType, VerificationProtocolError> {
     Ok(config
         .format
-        .get_type(&presented_credential.credential_schema.format)
+        .get_type(&presented_credential.credential_schema.format().await?)
         .error_while("getting format type")?)
 }
 

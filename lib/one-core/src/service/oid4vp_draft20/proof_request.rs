@@ -10,7 +10,7 @@ use crate::provider::verification_protocol::openid4vp::model::{
 };
 
 #[expect(clippy::too_many_arguments)]
-pub(crate) fn generate_authorization_request_params_draft20(
+pub(crate) async fn generate_authorization_request_params_draft20(
     proof: &Proof,
     interaction_id: &InteractionId,
     nonce: String,
@@ -22,7 +22,7 @@ pub(crate) fn generate_authorization_request_params_draft20(
 ) -> Result<OpenID4VP20AuthorizationRequest, VerificationProtocolError> {
     Ok(OpenID4VP20AuthorizationRequest {
         response_type: Some("vp_token".to_string()),
-        response_mode: Some(determine_response_mode_openid4vp_draft(proof)?),
+        response_mode: Some(determine_response_mode_openid4vp_draft(proof).await?),
         client_id,
         client_id_scheme: Some(client_id_scheme),
         client_metadata: Some(client_metadata.into()),

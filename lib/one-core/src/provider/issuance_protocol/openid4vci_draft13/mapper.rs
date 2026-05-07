@@ -34,6 +34,7 @@ use crate::model::credential_schema::{
     CredentialSchemaClaimsNestedView, KeyStorageSecurity, LayoutProperties, LogoProperties,
     TransactionCode,
 };
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::identifier::Identifier;
 use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
@@ -468,7 +469,6 @@ fn from_create_request_with_id(
         created_date: now,
         last_modified: now,
         name: request.name,
-        format: request.format,
         key_storage_security: request.key_storage_security,
         revocation_method: request.revocation_method,
         claim_schemas: claim_schemas
@@ -488,8 +488,17 @@ fn from_create_request_with_id(
         layout_type: request.layout_type,
         layout_properties: request.layout_properties.map(Into::into),
         imported_source_url: request.imported_source_url,
-        schema_id: request.schema_id,
         organisation: organisation.into(),
+        formats: vec![CredentialSchemaFormat {
+            id: Uuid::new_v4().into(),
+            created_date: now,
+            last_modified: now,
+            credential_schema_id: id,
+            format: request.format,
+            schema_id: request.schema_id,
+            claim_mappings: Default::default(),
+        }]
+        .into(),
         allow_suspension: false,
         requires_wallet_instance_attestation: false,
         transaction_code: None,
@@ -1035,12 +1044,14 @@ pub(super) async fn credentials_supported_mdoc(
         .await
         .map_err(OpenIDIssuanceError::OpenID4VCI)?;
 
+    let schema_format = schema.format().await?;
     let format_type = config
         .format
-        .get_fields(&schema.format)
+        .get_fields(&schema_format)
         .error_while("getting format config")?
         .r#type;
 
+    let schema_id = schema.schema_id().await?;
     let credential_configuration = OpenID4VCICredentialConfigurationData {
         wallet_storage_type: convert_inner(schema.key_storage_security),
         format: map_to_openid4vp_format(&format_type).to_string(),
@@ -1050,13 +1061,13 @@ pub(super) async fn credentials_supported_mdoc(
         } else {
             None
         },
-        doctype: Some(schema.schema_id.clone()),
+        doctype: Some(schema_id.to_string()),
+        scope: Some(schema_id),
         display: Some(vec![
             OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO { name: schema.name },
         ]),
         cryptographic_binding_methods_supported: Some(cryptographic_binding_methods_supported),
         proof_types_supported,
-        scope: Some(schema.schema_id),
         ..Default::default()
     };
 
@@ -1176,6 +1187,7 @@ pub(crate) fn map_to_import_claim_schema(
             .into_iter()
             .map(|c| map_to_import_claim_schema(now, c))
             .collect(),
+        mapping: None,
     }
 }
 

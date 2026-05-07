@@ -921,6 +921,12 @@ pub enum ErrorCode {
 
     #[strum(message = "Interaction not allowed - untrusted")]
     BR_0433,
+
+    #[strum(message = "Credential schema batch size must be at least 2")]
+    BR_0434,
+
+    #[strum(message = "Credential schema must specify at least one format")]
+    BR_0435,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

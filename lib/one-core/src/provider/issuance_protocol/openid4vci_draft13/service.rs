@@ -76,7 +76,11 @@ async fn credential_configurations_supported(
             .map(Into::into)
             .unwrap_or(WalletStorageTypeEnum::Software),
     );
-    let schema_id = credential_schema.schema_id.to_owned();
+    let schema_id = credential_schema
+        .schema_id()
+        .await
+        .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?
+        .to_owned();
 
     let claims = prepare_nested_representation(credential_schema, config).await?;
 
@@ -241,7 +245,7 @@ pub(crate) fn get_credential_schema_base_url(
     format!("{protocol_base_url}/{credential_schema_id}")
 }
 
-pub(crate) fn create_credential_offer(
+pub(crate) async fn create_credential_offer(
     protocol_base_url: &str,
     pre_authorized_code: &str,
     credential: &Credential,
@@ -295,7 +299,12 @@ pub(crate) fn create_credential_offer(
         credential_issuer: format!("{protocol_base_url}/{}", credential_schema.id),
         issuer_did,
         issuer_certificate,
-        credential_configuration_ids: vec![credential_schema.schema_id.to_owned()],
+        credential_configuration_ids: vec![
+            credential_schema
+                .schema_id()
+                .await
+                .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?,
+        ],
         grants: OpenID4VCIGrants::PreAuthorizedCode(OpenID4VCIPreAuthorizedCodeGrant {
             pre_authorized_code: pre_authorized_code.to_owned(),
             tx_code,

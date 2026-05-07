@@ -122,6 +122,7 @@ pub(crate) async fn credential_schema_to_sd_jwt_vc_metadata(
             text_color: Some("#FFFFFF".to_string()),
         }),
     };
+    let vct = schema.schema_id().await?.to_owned();
     let display_en_us = SdJwtVcDisplayMetadataDTO {
         lang: "en-US".to_string(),
         name: schema.name,
@@ -138,7 +139,7 @@ pub(crate) async fn credential_schema_to_sd_jwt_vc_metadata(
     .error_while("converting nested claims")?;
     let claims = vct_claims_from_nested_view(nested_claims);
     Ok(SdJwtVcTypeMetadataResponseDTO {
-        vct: schema.schema_id,
+        vct,
         name: Some(vct_type),
         display: vec![display_en_us],
         claims,

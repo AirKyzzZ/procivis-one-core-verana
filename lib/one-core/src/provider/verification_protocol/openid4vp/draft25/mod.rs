@@ -136,7 +136,7 @@ impl OpenID4VP25HTTP {
 
         // For DCQL each credential gets a presentation individually
         for credential_presentation in credential_presentations {
-            let credential_format = format_to_type(&credential_presentation, &self.config)?;
+            let credential_format = format_to_type(&credential_presentation, &self.config).await?;
             let presentation_format = match credential_format {
                 FormatType::SdJwt => FormatType::SdJwt,
                 FormatType::SdJwtVc => FormatType::SdJwtVc,
@@ -506,7 +506,7 @@ impl VerificationProtocol for OpenID4VP25HTTP {
 
         let proof_schema = proof
             .schema
-            .as_ref()
+            .clone()
             .ok_or(VerificationProtocolError::Failed(
                 "Proof schema not found".to_string(),
             ))?;
@@ -514,21 +514,27 @@ impl VerificationProtocol for OpenID4VP25HTTP {
         let (presentation_definition, dcql_query) = if self.params.verifier.use_dcql {
             (
                 None,
-                Some(create_dcql_query(
-                    proof_schema,
-                    &format_to_type_mapper,
-                    &*self.credential_formatter_provider,
-                )?),
+                Some(
+                    create_dcql_query(
+                        &proof_schema,
+                        &format_to_type_mapper,
+                        &*self.credential_formatter_provider,
+                    )
+                    .await?,
+                ),
             )
         } else {
             (
-                Some(create_open_id_for_vp_presentation_definition(
-                    interaction_id,
-                    proof_schema,
-                    type_to_descriptor,
-                    format_to_type_mapper,
-                    &*self.credential_formatter_provider,
-                )?),
+                Some(
+                    create_open_id_for_vp_presentation_definition(
+                        interaction_id,
+                        proof_schema,
+                        type_to_descriptor,
+                        format_to_type_mapper,
+                        &*self.credential_formatter_provider,
+                    )
+                    .await?,
+                ),
                 None,
             )
         };
@@ -538,7 +544,7 @@ impl VerificationProtocol for OpenID4VP25HTTP {
                 .await?;
 
         let authorization_request = generate_authorization_request_params_draft25(
-            proof,
+            proof.clone(),
             &interaction_id,
             nonce.clone(),
             presentation_definition.clone(),
@@ -546,7 +552,8 @@ impl VerificationProtocol for OpenID4VP25HTTP {
             encode_client_id_with_scheme_draft25(client_id.clone(), client_id_scheme),
             response_uri.clone(),
             client_metadata.clone(),
-        )?;
+        )
+        .await?;
 
         let encryption_key = client_metadata
             .jwks

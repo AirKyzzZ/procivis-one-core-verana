@@ -12,6 +12,7 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{
     CredentialSchema, GetCredentialSchemaList, KeyStorageSecurity, LayoutType, TransactionCodeType,
 };
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::proto::credential_schema::dto::{
     ImportCredentialSchemaClaimSchemaDTO, ImportCredentialSchemaRequestDTO,
     ImportCredentialSchemaRequestSchemaDTO, ImportCredentialSchemaTransactionCodeDTO,
@@ -41,8 +42,8 @@ fn setup_parser(
     )
 }
 
-#[test]
-fn test_parse_import_credential_schema_success() {
+#[tokio::test]
+async fn test_parse_import_credential_schema_success() {
     // given
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     let mut formatter = MockCredentialFormatter::default();
@@ -87,6 +88,7 @@ fn test_parse_import_credential_schema_success() {
                 required: true,
                 array: Some(false),
                 claims: vec![],
+                mapping: None,
             }],
             key_storage_security: Some(KeyStorageSecurity::Basic),
             schema_id: "http://example.com/schema".to_string(),
@@ -109,7 +111,7 @@ fn test_parse_import_credential_schema_success() {
     // then
     let_assert!(Ok(schema) = result);
     assert_eq!(schema.name, "Imported Schema");
-    assert_eq!(schema.format.as_ref(), "JWT");
+    assert_eq!(schema.format().await.unwrap().as_ref(), "JWT");
     assert_eq!(
         schema.transaction_code.unwrap().r#type,
         TransactionCodeType::Numeric
@@ -169,7 +171,9 @@ async fn test_parse_import_with_nested_claims_success() {
                     required: true,
                     array: Some(false),
                     claims: vec![],
+                    mapping: None,
                 }],
+                mapping: None,
             }],
             key_storage_security: Some(KeyStorageSecurity::Basic),
             schema_id: "http://example.com/schema".to_string(),
@@ -193,17 +197,27 @@ async fn test_parse_import_with_nested_claims_success() {
 #[tokio::test]
 async fn test_importer_import_credential_schema_success() {
     // given
+    let credential_schema_id = Uuid::new_v4().into();
     let credential_schema = CredentialSchema {
         batch_size: None,
         allow_revocation: None,
-        id: Uuid::new_v4().into(),
+        id: credential_schema_id,
         deleted_at: None,
         imported_source_url: "http://source.com".to_string(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         key_storage_security: Some(KeyStorageSecurity::Basic),
         name: "Test Schema".to_string(),
-        format: "JWT".into(),
+        formats: vec![CredentialSchemaFormat {
+            id: Uuid::new_v4().into(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
+            credential_schema_id,
+            format: "JWT".into(),
+            schema_id: "http://example.com/schema".to_owned(),
+            claim_mappings: Default::default(),
+        }]
+        .into(),
         revocation_method: None,
         claim_schemas: vec![ClaimSchema {
             business_key: None,
@@ -220,7 +234,6 @@ async fn test_importer_import_credential_schema_success() {
         organisation: dummy_organisation(None).into(),
         layout_type: LayoutType::Card,
         layout_properties: None,
-        schema_id: "http://example.com/schema".to_string(),
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
         transaction_code: None,
@@ -265,23 +278,32 @@ async fn test_importer_import_credential_schema_success() {
 #[tokio::test]
 async fn test_importer_import_credential_schema_success_duplicate_name() {
     // given
+    let credential_schema_id = Uuid::new_v4().into();
     let mut existing_schema = CredentialSchema {
         batch_size: None,
         allow_revocation: None,
-        id: Uuid::new_v4().into(),
+        id: credential_schema_id,
         deleted_at: None,
         imported_source_url: "http://source.com".to_string(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         key_storage_security: Some(KeyStorageSecurity::Basic),
         name: "Existing Schema".to_string(),
-        format: "JWT".into(),
+        formats: vec![CredentialSchemaFormat {
+            id: Uuid::new_v4().into(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
+            credential_schema_id,
+            format: "JWT".into(),
+            schema_id: "http://example.com/schema".to_owned(),
+            claim_mappings: Default::default(),
+        }]
+        .into(),
         revocation_method: None,
         claim_schemas: vec![].into(),
         organisation: dummy_organisation(None).into(),
         layout_type: LayoutType::Card,
         layout_properties: None,
-        schema_id: "http://example.com/schema".to_string(),
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
         transaction_code: None,
@@ -319,7 +341,16 @@ async fn test_importer_import_credential_schema_success_duplicate_name() {
     let importer =
         CredentialSchemaImporterProto::new(Arc::new(formatter_provider), Arc::new(repository));
 
-    existing_schema.schema_id = "http://different.com/schema".to_string();
+    existing_schema.formats = vec![CredentialSchemaFormat {
+        id: Uuid::new_v4().into(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        format: "JWT".into(),
+        claim_mappings: Default::default(),
+        credential_schema_id: existing_schema.id,
+        schema_id: "http://different.com/schema".to_owned(),
+    }]
+    .into();
 
     // when
     let result = importer
@@ -333,23 +364,32 @@ async fn test_importer_import_credential_schema_success_duplicate_name() {
 #[tokio::test]
 async fn test_importer_import_credential_schema_failure_duplicate_schema_id() {
     // given
+    let credential_schema_id = Uuid::new_v4().into();
     let existing_schema = CredentialSchema {
         batch_size: None,
         allow_revocation: None,
-        id: Uuid::new_v4().into(),
+        id: credential_schema_id,
         deleted_at: None,
         imported_source_url: "http://source.com".to_string(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         key_storage_security: Some(KeyStorageSecurity::Basic),
         name: "Existing Schema".to_string(),
-        format: "JWT".into(),
+        formats: vec![CredentialSchemaFormat {
+            id: Uuid::new_v4().into(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
+            credential_schema_id,
+            format: "JWT".into(),
+            schema_id: "http://example.com/schema".to_owned(),
+            claim_mappings: Default::default(),
+        }]
+        .into(),
         revocation_method: None,
         claim_schemas: vec![].into(),
         organisation: dummy_organisation(None).into(),
         layout_type: LayoutType::Card,
         layout_properties: None,
-        schema_id: "http://example.com/schema".to_string(),
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
         transaction_code: None,

@@ -34,15 +34,16 @@ pub async fn proof_schema_name_already_exists(
     Ok(())
 }
 
-pub fn throw_if_invalid_credential_combination(
+pub async fn throw_if_invalid_credential_combination(
     schemas: &[CredentialSchema],
     formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<(), ProofSchemaServiceError> {
     if schemas.len() > 1 {
         for schema in schemas {
+            let schema_format = schema.format().await?;
             let formatter = formatter_provider
-                .get_credential_formatter(&schema.format)
-                .ok_or(MissingProviderError::Formatter(schema.format.to_string()))
+                .get_credential_formatter(&schema_format)
+                .ok_or(MissingProviderError::Formatter(schema_format.to_string()))
                 .error_while("getting credential formatter")?;
 
             if !formatter
@@ -51,7 +52,7 @@ pub fn throw_if_invalid_credential_combination(
                 .contains(&Features::SupportsCombinedPresentation)
             {
                 return Err(ProofSchemaServiceError::InvalidCredentialCombination {
-                    credential_format: schema.format.to_string(),
+                    credential_format: schema_format.to_string(),
                 });
             }
         }
@@ -106,11 +107,10 @@ pub(super) async fn extract_claims_from_credential_schema(
                 ProofSchemaServiceError::MappingError("Missing credential schema".into())
             })?;
 
+        let schema_format = credential_schema.format().await?;
         let formatter = formatter_provider
-            .get_credential_formatter(&credential_schema.format)
-            .ok_or(MissingProviderError::Formatter(
-                credential_schema.format.to_string(),
-            ))
+            .get_credential_formatter(&schema_format)
+            .ok_or(MissingProviderError::Formatter(schema_format.to_string()))
             .error_while("getting formatter")?;
 
         let claims = credential_schema

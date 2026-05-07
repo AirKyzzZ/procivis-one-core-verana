@@ -172,17 +172,18 @@ impl OID4VCIDraft13Service {
             return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
         };
 
+        let schema_format = schema.format().await?;
         let format_type = self
             .config
             .format
-            .get_fields(&schema.format)
+            .get_fields(&schema_format)
             .error_while("getting format config")?
             .r#type;
 
         let formatter = self
             .formatter_provider
-            .get_credential_formatter(&schema.format)
-            .ok_or(MissingProviderError::Formatter(schema.format.to_string()))?;
+            .get_credential_formatter(&schema_format)
+            .ok_or(MissingProviderError::Formatter(schema_format.to_string()))?;
 
         let format_capabilities = formatter.get_capabilities();
         let credential_signing_alg_values_supported = format_capabilities
@@ -341,7 +342,8 @@ impl OID4VCIDraft13Service {
             &interaction.id.to_string(),
             &credential,
             credential_subject,
-        )?)
+        )
+        .await?)
     }
 
     pub async fn create_credential(
@@ -362,7 +364,7 @@ impl OID4VCIDraft13Service {
             return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
         };
 
-        throw_if_credential_request_invalid(&schema, &request)?;
+        throw_if_credential_request_invalid(&schema, &request).await?;
 
         let interaction_id = parse_access_token(access_token)?;
         let Some(interaction) = self
@@ -822,10 +824,11 @@ impl OID4VCIDraft13Service {
                         .error_while("updating credential")?;
                 }
 
+                let schema_format = credential_schema.format().await?;
                 let credential_format_type = self
                     .config
                     .format
-                    .get_fields(&credential_schema.format)
+                    .get_fields(&schema_format)
                     .error_while("getting protocol config")?
                     .r#type;
 

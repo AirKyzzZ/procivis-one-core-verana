@@ -15,7 +15,7 @@ use super::dto::{
 };
 use super::error::ProofServiceError;
 use crate::config::core_config::{CoreConfig, DatatypeType};
-use crate::error::ContextWithErrorCode;
+use crate::error::{ContextWithErrorCode, NestedError};
 use crate::mapper::{NESTED_CLAIM_MARKER, NESTED_CLAIM_MARKER_STR};
 use crate::model::certificate::Certificate;
 use crate::model::claim_schema::ClaimSchema;
@@ -38,6 +38,8 @@ use crate::service::credential::dto::{
     CredentialAttestationBlobs, CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO,
 };
 use crate::service::credential::mapper::credential_detail_response_from_model;
+use crate::service::credential_schema::dto::CredentialSchemaListItemResponseDTO;
+use crate::service::credential_schema::mapper::to_credential_schema_list_response;
 use crate::service::proof_schema::dto::ProofClaimSchemaResponseDTO;
 
 fn build_claim_from_credential_claims(
@@ -230,10 +232,12 @@ pub(super) async fn get_verifier_proof_detail(
         };
 
         let mdoc_validity_credentials = match &credential.schema {
-            Some(schema) if schema.format.to_string() == "MDOC" => validity_credential_repository
-                .get_latest_by_credential_id(credential.id, ValidityCredentialType::Mdoc)
-                .await
-                .error_while("getting validity credential")?,
+            Some(schema) if schema.format().await?.as_ref() == "MDOC" => {
+                validity_credential_repository
+                    .get_latest_by_credential_id(credential.id, ValidityCredentialType::Mdoc)
+                    .await
+                    .error_while("getting validity credential")?
+            }
             _ => None,
         };
 
@@ -409,12 +413,17 @@ pub(super) async fn get_verifier_proof_detail(
                 Ok(())
             })?;
 
+        let credential_schema_dto: CredentialSchemaListItemResponseDTO =
+            to_credential_schema_list_response(credential_schema.clone())
+                .await
+                .map_err(|e: NestedError| ProofServiceError::MappingError(e.to_string()))?;
+
         proof_inputs.push(ProofInputDTO {
             claims: proof_input_claims,
             credential: credential_for_credential_schema
                 .get(&credential_schema.id)
                 .cloned(),
-            credential_schema: credential_schema.clone().into(),
+            credential_schema: credential_schema_dto,
         })
     }
 
@@ -633,7 +642,7 @@ pub(super) async fn get_holder_proof_detail(
             }
             Entry::Vacant(entry) => {
                 let mdoc_validity_credentials = match &credential.schema {
-                    Some(schema) if schema.format.to_string() == "MDOC" => {
+                    Some(schema) if schema.format().await?.as_ref() == "MDOC" => {
                         validity_credential_repository
                             .get_latest_by_credential_id(
                                 credential.id,
@@ -668,10 +677,15 @@ pub(super) async fn get_holder_proof_detail(
             .get()
             .await
             .error_while("getting claim schemas")?;
+        let credential_schema_dto: CredentialSchemaListItemResponseDTO =
+            to_credential_schema_list_response(credential_schema.clone())
+                .await
+                .map_err(|e: NestedError| ProofServiceError::MappingError(e.to_string()))?;
+
         proof_inputs.push(ProofInputDTO {
             claims: nest_proof_claims(&claims, &credential_claim_schemas, None)?,
             credential: Some(credential),
-            credential_schema: credential_schema.into(),
+            credential_schema: credential_schema_dto,
         });
     }
 

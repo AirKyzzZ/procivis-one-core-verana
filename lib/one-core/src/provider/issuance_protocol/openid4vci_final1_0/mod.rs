@@ -63,6 +63,7 @@ use crate::model::credential::{Credential, CredentialRelations, CredentialStateE
 use crate::model::credential_schema::{
     CredentialSchema, KeyStorageSecurity, LayoutType, UpdateCredentialSchemaRequest,
 };
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::KeyRole;
 use crate::model::history::{
     HistoryAction, HistoryMetadata, TrustResolutionMetadata, TrustResolutionResult,
@@ -870,7 +871,18 @@ impl OpenID4VCIFinal1_0 {
         if let Some(name) = metadata_display.map(|display| display.name.to_owned()) {
             schema.name = name;
         }
-        schema.format = format;
+        let now = now_utc();
+        let schema_id = schema.schema_id().await?;
+        schema.formats = vec![CredentialSchemaFormat {
+            id: Uuid::new_v4().into(),
+            created_date: now,
+            last_modified: now,
+            credential_schema_id: schema.id,
+            format,
+            schema_id,
+            claim_mappings: Default::default(),
+        }]
+        .into();
         schema.organisation = organisation.to_owned().into();
         schema.layout_type = LayoutType::Card;
         schema.layout_properties = metadata_display.and_then(|display| display.to_owned().into());
@@ -1559,14 +1571,15 @@ impl OpenID4VCIFinal1_0 {
         let format_type = self
             .config
             .format
-            .get_fields(&credential_schema.format)
+            .get_fields(&credential_schema.format().await?)
             .error_while("getting format config")?
             .r#type;
 
+        let schema_id = credential_schema.schema_id().await.unwrap_or_default();
         let valid_trust_information_list = trust_information_list
             .iter()
             .filter(|ti| ti.is_valid(now_utc()))
-            .filter(|ti| ti.is_issuance_allowed_for(&credential_schema.schema_id, &format_type));
+            .filter(|ti| ti.is_issuance_allowed_for(&schema_id, &format_type));
 
         let mut etsi_issuer_info_list = Vec::new();
         for trust_information in valid_trust_information_list {
@@ -1621,17 +1634,19 @@ impl OpenID4VCIFinal1_0 {
             ));
         };
 
+        let format = schema.format().await.error_while("getting format")?;
+
         let format_type = self
             .config
             .format
-            .get_fields(&schema.format)
+            .get_fields(&format)
             .error_while("getting format config")?
             .r#type;
 
         let formatter = self
             .formatter_provider
-            .get_credential_formatter(&schema.format)
-            .ok_or(MissingProviderError::Formatter(schema.format.to_string()))
+            .get_credential_formatter(&format)
+            .ok_or(MissingProviderError::Formatter(format.to_string()))
             .error_while("getting formatter")?;
 
         let format_capabilities = formatter.get_capabilities();
@@ -1684,10 +1699,11 @@ impl OpenID4VCIFinal1_0 {
             .ok_or(IssuanceProtocolError::Failed(
                 "Missing credential schema".to_string(),
             ))?;
+        let credential_schema_format = schema.format().await?;
         let formatter = self
             .formatter_provider
-            .get_credential_formatter(&schema.format)
-            .ok_or_else(|| MissingProviderError::Formatter(schema.format.to_string()))
+            .get_credential_formatter(&credential_schema_format)
+            .ok_or_else(|| MissingProviderError::Formatter(credential_schema_format.to_string()))
             .error_while("getting credential formatter")?;
 
         let verification_fn = Box::new(KeyVerification {
@@ -1771,11 +1787,12 @@ impl OpenID4VCIFinal1_0 {
         };
         let credential_str = String::from_utf8(credentials)?;
 
+        let credential_schema_format = credential_schema.format().await?;
         let formatter = self
             .formatter_provider
-            .get_credential_formatter(&credential_schema.format)
+            .get_credential_formatter(&credential_schema_format)
             .ok_or(MissingProviderError::Formatter(
-                credential_schema.format.to_string(),
+                credential_schema_format.to_string(),
             ))
             .error_while("getting credential formatter")?;
 
@@ -2114,7 +2131,6 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
 
         let mut url = Url::parse(&format!("{}://", self.params.url_scheme))
             .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
-        let mut query = url.query_pairs_mut();
 
         let credential_schema = credential
             .schema
@@ -2128,7 +2144,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             .as_ref()
             .ok_or(IssuanceProtocolError::Failed("Missing base_url".to_owned()))?;
 
-        if self.params.credential_offer_by_value {
+        let mut query = if self.params.credential_offer_by_value {
             let identifier_id = credential
                 .issuer_identifier
                 .as_ref()
@@ -2143,15 +2159,20 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 &interaction_id.to_string(),
                 credential_schema,
                 identifier_id,
-            )?;
+            )
+            .await?;
 
             let offer_string = serde_json::to_string(&offer)?;
 
+            let mut query = url.query_pairs_mut();
             query.append_pair(CREDENTIAL_OFFER_VALUE_QUERY_PARAM_KEY, &offer_string);
+            query
         } else {
             let offer_url = get_credential_offer_url(protocol_base_url.to_owned(), credential)?;
+            let mut query = url.query_pairs_mut();
             query.append_pair(CREDENTIAL_OFFER_REFERENCE_QUERY_PARAM_KEY, &offer_url);
-        }
+            query
+        };
         let url = query.finish().to_string();
 
         let transaction_code = credential_schema
@@ -2226,17 +2247,22 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             .clone();
         let credential_state = credential.state;
 
+        let format = credential_schema
+            .format()
+            .await
+            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+
         let credential_format_type = self
             .config
             .format
-            .get_fields(&credential_schema.format)
+            .get_fields(&format)
             .error_while("getting format config")?
             .r#type;
 
         self.validate_credential_issuable(
             credential_id,
             &credential_state,
-            &credential_schema.format,
+            &format,
             credential_format_type,
         )
         .await?;
@@ -2335,12 +2361,17 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         )
         .error_while("getting credential data")?;
 
+        let format = credential_schema
+            .format()
+            .await
+            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+
         let token = self
             .formatter_provider
-            .get_credential_formatter(&credential_schema.format)
+            .get_credential_formatter(&format)
             .ok_or(IssuanceProtocolError::Failed(format!(
                 "formatter not found: {}",
-                &credential_schema.format
+                format
             )))?
             .format_credential(credential_data, auth_fn)
             .await
@@ -2903,8 +2934,9 @@ async fn prepare_credential_schema(
     organisation: &Organisation,
     credential: &mut Credential,
 ) -> Result<Option<UpdateCredentialSchemaRequest>, IssuanceProtocolError> {
+    let schema_id = credential_schema.schema_id().await.unwrap_or_default();
     let stored_schema = credential_schema_repository
-        .get_by_schema_id_and_organisation(&credential_schema.schema_id, organisation.id)
+        .get_by_schema_id_and_organisation(&schema_id, organisation.id)
         .await
         .error_while("getting credential schema")?;
 
@@ -2929,7 +2961,7 @@ async fn prepare_credential_schema(
 
         // refetch and try again
         let stored_schema = credential_schema_repository
-            .get_by_schema_id_and_organisation(&credential_schema.schema_id, organisation.id)
+            .get_by_schema_id_and_organisation(&schema_id, organisation.id)
             .await
             .error_while("getting credential schema")?
             .ok_or(IssuanceProtocolError::Failed(

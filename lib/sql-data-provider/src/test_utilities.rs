@@ -12,10 +12,10 @@ use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
 use shared_types::{
-    BlobId, CertificateId, ClaimId, ClaimSchemaId, CredentialId, CredentialSchemaId, DidId,
-    DidValue, EntityId, HistoryId, IdentifierId, InteractionId, KeyId, NonceId, OrganisationId,
-    ProofId, ProofSchemaId, RevocationListEntryId, RevocationListId, RevocationMethodId,
-    TrustCollectionId, WalletInstanceAttestedKeyId, WalletInstanceId,
+    BlobId, CertificateId, ClaimId, ClaimSchemaId, CredentialId, CredentialSchemaFormatId,
+    CredentialSchemaId, DidId, DidValue, EntityId, HistoryId, IdentifierId, InteractionId, KeyId,
+    NonceId, OrganisationId, ProofId, ProofSchemaId, RevocationListEntryId, RevocationListId,
+    RevocationMethodId, TrustCollectionId, WalletInstanceAttestedKeyId, WalletInstanceId,
 };
 use similar_asserts::assert_eq;
 use standardized_types::jwk::PublicJwk;
@@ -34,10 +34,10 @@ use crate::entity::proof::{ProofRequestState, ProofRole};
 use crate::entity::revocation_list::{RevocationListFormat, RevocationListPurpose};
 use crate::entity::revocation_list_entry::{RevocationListEntryState, RevocationListEntryType};
 use crate::entity::{
-    blob, claim, claim_schema, credential, credential_schema, did, identifier, interaction, key,
-    key_did, organisation, proof, proof_claim, proof_input_claim_schema, proof_input_schema,
-    proof_schema, revocation_list, revocation_list_entry, trust_collection, wallet_instance,
-    wallet_instance_attested_key,
+    blob, claim, claim_schema, credential, credential_schema, credential_schema_format, did,
+    identifier, interaction, key, key_did, organisation, proof, proof_claim,
+    proof_input_claim_schema, proof_input_schema, proof_schema, revocation_list,
+    revocation_list_entry, trust_collection, wallet_instance, wallet_instance_attested_key,
 };
 use crate::{DataLayer, db_conn};
 
@@ -123,7 +123,6 @@ pub async fn insert_credential_schema_to_database(
     deleted_at: Option<OffsetDateTime>,
     organisation_id: OrganisationId,
     name: &str,
-    format: &str,
     revocation_method: impl Into<Option<RevocationMethodId>>,
     key_storage_security: Option<KeyStorageSecurity>,
 ) -> Result<CredentialSchemaId, DbErr> {
@@ -135,7 +134,7 @@ pub async fn insert_credential_schema_to_database(
         imported_source_url: Set("CORE_URL".to_string()),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
-        format: Set(Some(format.into())),
+        format: NotSet,
         name: Set(name.to_owned()),
         revocation_method: Set(revocation_method.into()),
         organisation_id: Set(organisation_id),
@@ -143,7 +142,7 @@ pub async fn insert_credential_schema_to_database(
         deleted_at: Set(deleted_at),
         layout_type: Set(LayoutType::Card),
         layout_properties: Set(None),
-        schema_id: Set(Some(new_id.to_string())),
+        schema_id: NotSet,
         allow_suspension: Set(true),
         requires_wallet_instance_attestation: Set(key_storage_security.is_some()),
         transaction_code_type: Set(None),
@@ -153,6 +152,24 @@ pub async fn insert_credential_schema_to_database(
     .insert(database)
     .await?;
     Ok(schema.id)
+}
+
+pub async fn insert_credential_schema_with_revocation_to_database(
+    database: &DatabaseConnection,
+    credential_schema_id: CredentialSchemaId,
+    format: &str,
+) -> Result<CredentialSchemaFormatId, DbErr> {
+    let credential_schema_format = credential_schema_format::ActiveModel {
+        id: Set(Uuid::new_v4().into()),
+        created_date: Set(get_dummy_date()),
+        last_modified: Set(get_dummy_date()),
+        credential_schema_id: Set(credential_schema_id),
+        format: Set(format.into()),
+        schema_id: Set(credential_schema_id.to_string()),
+    }
+    .insert(database)
+    .await?;
+    Ok(credential_schema_format.id)
 }
 
 pub type ClaimList<'a> = &'a [(

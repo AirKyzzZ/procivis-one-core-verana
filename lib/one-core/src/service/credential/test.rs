@@ -25,6 +25,7 @@ use crate::model::credential::{
     Credential, CredentialRole, CredentialStateEnum, GetCredentialList,
 };
 use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, LayoutType};
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::key::Key;
@@ -136,6 +137,7 @@ fn generic_credential() -> Credential {
         log: None,
     };
 
+    let credential_schema_id = Uuid::new_v4().into();
     Credential {
         id: credential_id,
         created_date: now,
@@ -177,23 +179,31 @@ fn generic_credential() -> Credential {
         schema: Some(CredentialSchema {
             batch_size: None,
             allow_revocation: None,
-            id: Uuid::new_v4().into(),
+            id: credential_schema_id,
             deleted_at: None,
             imported_source_url: "CORE_URL".to_string(),
             created_date: now,
             last_modified: now,
             name: "schema".to_string(),
             key_storage_security: None,
-            format: "JWT".into(),
             revocation_method: None,
             claim_schemas: vec![claim_schema].into(),
             organisation: organisation.into(),
             layout_type: LayoutType::Card,
             layout_properties: None,
-            schema_id: "CredentialSchemaId".to_owned(),
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            formats: vec![CredentialSchemaFormat {
+                id: Uuid::new_v4().into(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                credential_schema_id,
+                format: "JWT".into(),
+                schema_id: "CredentialSchemaId".to_owned(),
+                claim_mappings: Default::default(),
+            }]
+            .into(),
         }),
         interaction: None,
         key: None,
@@ -208,6 +218,7 @@ fn generic_credential() -> Credential {
 fn generic_credential_list_entity() -> Credential {
     let now = crate::clock::now_utc();
 
+    let credential_schema_id = Uuid::new_v4().into();
     Credential {
         id: Uuid::new_v4().into(),
         created_date: now,
@@ -252,20 +263,28 @@ fn generic_credential_list_entity() -> Credential {
         schema: Some(CredentialSchema {
             batch_size: None,
             allow_revocation: None,
-            id: Uuid::new_v4().into(),
+            id: credential_schema_id,
             deleted_at: None,
             imported_source_url: "CORE_URL".to_string(),
             created_date: now,
             last_modified: now,
             name: "schema".to_string(),
             key_storage_security: None,
-            format: "JWT".into(),
+            formats: vec![CredentialSchemaFormat {
+                id: Uuid::new_v4().into(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                credential_schema_id,
+                format: "JWT".into(),
+                schema_id: "CredentialSchemaId".to_owned(),
+                claim_mappings: Default::default(),
+            }]
+            .into(),
             revocation_method: None,
             claim_schemas: Default::default(),
             organisation: dummy_organisation(None).into(),
             layout_type: LayoutType::Card,
             layout_properties: None,
-            schema_id: "CredentialSchemaId".to_owned(),
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
@@ -732,7 +751,13 @@ async fn test_create_credential_based_on_issuer_did_success() {
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
+        .with(eq(credential
+            .schema
+            .as_ref()
+            .unwrap()
+            .format()
+            .await
+            .unwrap()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
@@ -832,7 +857,13 @@ async fn test_create_credential_based_on_issuer_identifier_success() {
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
+        .with(eq(credential
+            .schema
+            .as_ref()
+            .unwrap()
+            .format()
+            .await
+            .unwrap()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
@@ -991,7 +1022,13 @@ async fn test_create_credential_failed_formatter_doesnt_support_did_identifiers(
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
+        .with(eq(credential
+            .schema
+            .as_ref()
+            .unwrap()
+            .format()
+            .await
+            .unwrap()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
@@ -1101,7 +1138,13 @@ async fn test_create_credential_failed_issuance_did_method_incompatible() {
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
+        .with(eq(credential
+            .schema
+            .as_ref()
+            .unwrap()
+            .format()
+            .await
+            .unwrap()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
@@ -1211,7 +1254,13 @@ async fn test_create_credential_fails_if_did_is_deactivated() {
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
+        .with(eq(credential
+            .schema
+            .as_ref()
+            .unwrap()
+            .format()
+            .await
+            .unwrap()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
@@ -1327,7 +1376,7 @@ async fn test_create_credential_one_required_claim_missing_success() {
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
         .expect_get_credential_formatter()
-        .with(eq(credential_schema.format.to_owned()))
+        .with(eq(credential_schema.format().await.unwrap()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
@@ -1458,7 +1507,7 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
         .expect_get_credential_formatter()
-        .with(eq(credential_schema.format.to_owned()))
+        .with(eq(credential_schema.format().await.unwrap()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
@@ -1567,7 +1616,7 @@ async fn test_create_credential_schema_deleted() {
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
         .expect_get_credential_formatter()
-        .with(eq(credential_schema.format.to_owned()))
+        .with(eq(credential_schema.format().await.unwrap()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
@@ -1677,7 +1726,13 @@ async fn test_create_credential_key_with_issuer_key() {
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
+        .with(eq(credential
+            .schema
+            .as_ref()
+            .unwrap()
+            .format()
+            .await
+            .unwrap()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
@@ -1818,7 +1873,13 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
+        .with(eq(credential
+            .schema
+            .as_ref()
+            .unwrap()
+            .format()
+            .await
+            .unwrap()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
@@ -1933,7 +1994,13 @@ async fn test_fail_to_create_credential_no_assertion_key() {
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
+        .with(eq(credential
+            .schema
+            .as_ref()
+            .unwrap()
+            .format()
+            .await
+            .unwrap()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
@@ -2035,7 +2102,13 @@ async fn test_fail_to_create_credential_unknown_key_id() {
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
+        .with(eq(credential
+            .schema
+            .as_ref()
+            .unwrap()
+            .format()
+            .await
+            .unwrap()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
@@ -2149,7 +2222,13 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
+        .with(eq(credential
+            .schema
+            .as_ref()
+            .unwrap()
+            .format()
+            .await
+            .unwrap()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
@@ -2263,7 +2342,13 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
+        .with(eq(credential
+            .schema
+            .as_ref()
+            .unwrap()
+            .format()
+            .await
+            .unwrap()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
@@ -2362,7 +2447,13 @@ async fn test_create_credential_fail_incompatible_format_and_tranposrt_protocol(
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
+        .with(eq(credential
+            .schema
+            .as_ref()
+            .unwrap()
+            .format()
+            .await
+            .unwrap()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
@@ -2461,7 +2552,13 @@ async fn test_create_credential_fail_invalid_redirect_uri() {
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
+        .with(eq(credential
+            .schema
+            .as_ref()
+            .unwrap()
+            .format()
+            .await
+            .unwrap()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
@@ -2556,7 +2653,13 @@ async fn test_create_credential_fail_webhook_not_allowed() {
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
+        .with(eq(credential
+            .schema
+            .as_ref()
+            .unwrap()
+            .format()
+            .await
+            .unwrap()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
@@ -2615,25 +2718,34 @@ fn generate_credential_schema_with_claim_schemas(
     claim_schemas: Vec<ClaimSchema>,
 ) -> CredentialSchema {
     let now = crate::clock::now_utc();
+    let credential_schema_id = Uuid::new_v4().into();
     CredentialSchema {
         batch_size: None,
         allow_revocation: None,
-        id: Uuid::new_v4().into(),
+        id: credential_schema_id,
         deleted_at: None,
         imported_source_url: "CORE_URL".to_string(),
         created_date: now,
         last_modified: now,
         name: "nested".to_string(),
-        format: "".into(),
         revocation_method: None,
         key_storage_security: None,
         layout_type: LayoutType::Card,
         layout_properties: None,
-        schema_id: "".to_string(),
-        claim_schemas: claim_schemas.into(),
-        organisation: dummy_organisation(None).into(),
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
+        claim_schemas: claim_schemas.into(),
+        organisation: dummy_organisation(None).into(),
+        formats: vec![CredentialSchemaFormat {
+            id: Uuid::new_v4().into(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
+            credential_schema_id,
+            format: "".into(),
+            schema_id: "".to_owned(),
+            claim_mappings: Default::default(),
+        }]
+        .into(),
         transaction_code: None,
     }
 }
@@ -3130,6 +3242,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
         generate_claim(id, &schema_str, "str1", "str/2"),
     ];
 
+    let credential_schema_id = Uuid::new_v4().into();
     let credential = Credential {
         id,
         created_date: now,
@@ -3189,20 +3302,28 @@ async fn test_get_credential_success_array_complex_nested_all() {
         schema: Some(CredentialSchema {
             batch_size: None,
             allow_revocation: None,
-            id: Uuid::new_v4().into(),
+            id: credential_schema_id,
             deleted_at: None,
             created_date: now,
             imported_source_url: "CORE_URL".to_string(),
             last_modified: now,
             name: "schema".to_string(),
             key_storage_security: None,
-            format: "JWT".into(),
+            formats: vec![CredentialSchemaFormat {
+                id: Uuid::new_v4().into(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                credential_schema_id,
+                format: "JWT".into(),
+                schema_id: "CredentialSchemaId".to_owned(),
+                claim_mappings: Default::default(),
+            }]
+            .into(),
             revocation_method: None,
             claim_schemas: claim_schemas.into(),
             organisation: organisation.into(),
             layout_type: LayoutType::Card,
             layout_properties: None,
-            schema_id: "CredentialSchemaId".to_owned(),
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
@@ -3697,6 +3818,7 @@ async fn test_get_credential_success_array_index_sorting() {
         generate_claim(id, &schema_str, "str1", "str/12"),
     ];
 
+    let credential_schema_id = Uuid::new_v4().into();
     let credential = Credential {
         id,
         created_date: now,
@@ -3756,20 +3878,28 @@ async fn test_get_credential_success_array_index_sorting() {
         schema: Some(CredentialSchema {
             batch_size: None,
             allow_revocation: None,
-            id: Uuid::new_v4().into(),
+            id: credential_schema_id,
             imported_source_url: "CORE_URL".to_string(),
             deleted_at: None,
             created_date: now,
             last_modified: now,
             name: "schema".to_string(),
             key_storage_security: None,
-            format: "JWT".into(),
+            formats: vec![CredentialSchemaFormat {
+                id: Uuid::new_v4().into(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                credential_schema_id,
+                format: "JWT".into(),
+                schema_id: "CredentialSchemaId".to_owned(),
+                claim_mappings: Default::default(),
+            }]
+            .into(),
             revocation_method: None,
             claim_schemas: claim_schemas.into(),
             organisation: organisation.into(),
             layout_type: LayoutType::Card,
             layout_properties: None,
-            schema_id: "CredentialSchemaId".to_owned(),
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
@@ -4013,6 +4143,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
         generate_claim(id, &schema_root_index_list, "123", "root/0/indexlist/1"),
     ];
 
+    let credential_schema_id = Uuid::new_v4().into();
     let credential = Credential {
         id,
         created_date: now,
@@ -4072,20 +4203,28 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
         schema: Some(CredentialSchema {
             batch_size: None,
             allow_revocation: None,
-            id: Uuid::new_v4().into(),
+            id: credential_schema_id,
             deleted_at: None,
             imported_source_url: "CORE_URL".to_string(),
             created_date: now,
             last_modified: now,
             name: "schema".to_string(),
             key_storage_security: None,
-            format: "MDOC".into(),
+            formats: vec![CredentialSchemaFormat {
+                id: Uuid::new_v4().into(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                credential_schema_id,
+                format: "MDOC".into(),
+                schema_id: "CredentialSchemaId".to_owned(),
+                claim_mappings: Default::default(),
+            }]
+            .into(),
             revocation_method: None,
             claim_schemas: claim_schemas.into(),
             organisation: organisation.into(),
             layout_type: LayoutType::Card,
             layout_properties: None,
-            schema_id: "CredentialSchemaId".to_owned(),
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
@@ -4232,6 +4371,7 @@ async fn test_get_credential_success_array_single_element() {
         "root/0/indexlist/0",
     )];
 
+    let credential_schema_id = Uuid::new_v4().into();
     let credential = Credential {
         id,
         created_date: now,
@@ -4291,20 +4431,28 @@ async fn test_get_credential_success_array_single_element() {
         schema: Some(CredentialSchema {
             batch_size: None,
             allow_revocation: None,
-            id: Uuid::new_v4().into(),
+            id: credential_schema_id,
             deleted_at: None,
             created_date: now,
             last_modified: now,
             imported_source_url: "CORE_URL".to_string(),
             name: "schema".to_string(),
             key_storage_security: None,
-            format: "JWT".into(),
+            formats: vec![CredentialSchemaFormat {
+                id: Uuid::new_v4().into(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                credential_schema_id,
+                format: "JWT".into(),
+                schema_id: "CredentialSchemaId".to_owned(),
+                claim_mappings: Default::default(),
+            }]
+            .into(),
             revocation_method: None,
             claim_schemas: claim_schemas.into(),
             organisation: organisation.into(),
             layout_type: LayoutType::Card,
             layout_properties: None,
-            schema_id: "CredentialSchemaId".to_owned(),
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
@@ -4410,26 +4558,35 @@ async fn test_create_credential_array(
 
     let organisation = dummy_organisation(None);
 
+    let credential_schema_id = Uuid::new_v4().into();
     let credential_schema = CredentialSchema {
-        batch_size: None,
         allow_revocation: None,
-        id: Uuid::new_v4().into(),
+        id: credential_schema_id,
         deleted_at: None,
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         imported_source_url: "CORE_URL".to_string(),
         name: "str array".to_string(),
-        format: "JWT".into(),
         revocation_method: None,
         key_storage_security: None,
         layout_type: LayoutType::Card,
         layout_properties: None,
-        schema_id: "".to_string(),
-        claim_schemas: claim_schemas.into(),
-        organisation: organisation.into(),
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
+        claim_schemas: claim_schemas.into(),
+        organisation: organisation.into(),
+        formats: vec![CredentialSchemaFormat {
+            id: Uuid::new_v4().into(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
+            credential_schema_id,
+            format: "JWT".into(),
+            schema_id: "".to_owned(),
+            claim_mappings: Default::default(),
+        }]
+        .into(),
         transaction_code: None,
+        batch_size: None,
     };
 
     let mut formatter = MockCredentialFormatter::default();
@@ -4790,21 +4947,30 @@ async fn test_create_credential_invalid_certificate_role() {
     let schema_root = generate_claim_schema("root", "OBJECT", true);
     let schema_00 = generate_claim_schema("root/00", "STRING", false);
     let claim_schemas = vec![schema_root.to_owned(), schema_00.to_owned()];
+    let credential_schema_id = Uuid::new_v4().into();
     let credential_schema = CredentialSchema {
         batch_size: None,
         allow_revocation: None,
-        id: Uuid::new_v4().into(),
+        id: credential_schema_id,
         deleted_at: None,
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         imported_source_url: "CORE_URL".to_string(),
         name: "str array".to_string(),
-        format: "JWT".into(),
+        formats: vec![CredentialSchemaFormat {
+            id: Uuid::new_v4().into(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
+            credential_schema_id,
+            format: "JWT".into(),
+            schema_id: "CredentialSchemaId".to_owned(),
+            claim_mappings: Default::default(),
+        }]
+        .into(),
         revocation_method: None,
         key_storage_security: None,
         layout_type: LayoutType::Card,
         layout_properties: None,
-        schema_id: "".to_string(),
         claim_schemas: claim_schemas.into(),
         organisation: organisation.clone().into(),
         allow_suspension: true,

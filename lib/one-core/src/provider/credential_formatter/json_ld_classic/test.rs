@@ -321,7 +321,7 @@ async fn test_parse_credential() {
     assert_eq!(schema.revocation_method, Some("BITSTRINGSTATUSLIST".into()));
     assert_eq!(schema.name, "8761JsonLd");
     assert_eq!(
-        schema.schema_id,
+        schema.schema_id().await.unwrap(),
         "http://127.0.0.1:9876/ssi/schema/v1/4224e72d-087c-4376-8dcd-b48e8095e647"
     );
 

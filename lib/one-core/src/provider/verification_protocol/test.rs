@@ -9,6 +9,7 @@ use crate::model::credential::{
     Credential, CredentialRole, CredentialStateEnum, GetCredentialList,
 };
 use crate::model::credential_schema::{CredentialSchema, LayoutType};
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::provider::verification_protocol::dto::{CredentialGroup, CredentialGroupItem};
 use crate::provider::verification_protocol::mapper::get_relevant_credentials_to_credential_schemas;
@@ -195,7 +196,16 @@ fn mdoc_credential() -> Credential {
 
     credential.state = CredentialStateEnum::Accepted;
     let schema = credential.schema.as_mut().unwrap();
-    schema.format = "MDOC".into();
+    schema.formats = vec![CredentialSchemaFormat {
+        id: Uuid::new_v4().into(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        credential_schema_id: schema.id,
+        format: "MDOC".into(),
+        schema_id: "CredentialSchemaId".to_owned(),
+        claim_mappings: Default::default(),
+    }]
+    .into();
     schema.claim_schemas = new_claim_schemas.to_vec().into();
     *credential.claims.as_mut().unwrap() = vec![Claim {
         id: Uuid::new_v4().into(),
@@ -384,6 +394,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_when_missing_object
 fn dummy_credential() -> Credential {
     let claim_schema_id = Uuid::new_v4().into();
     let credential_id = Uuid::new_v4().into();
+    let credential_schema_id = Uuid::new_v4().into();
     Credential {
         id: credential_id,
         created_date: crate::clock::now_utc(),
@@ -422,14 +433,23 @@ fn dummy_credential() -> Credential {
         schema: Some(CredentialSchema {
             batch_size: None,
             allow_revocation: None,
-            id: Uuid::new_v4().into(),
+            id: credential_schema_id,
             imported_source_url: "CORE_URL".to_string(),
             deleted_at: None,
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
             key_storage_security: None,
             name: "schema".to_string(),
-            format: "JWT".into(),
+            formats: vec![CredentialSchemaFormat {
+                id: Uuid::new_v4().into(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                credential_schema_id,
+                format: "JWT".into(),
+                schema_id: "CredentialSchemaId".to_owned(),
+                claim_mappings: Default::default(),
+            }]
+            .into(),
             revocation_method: Some("revocation method".into()),
             claim_schemas: vec![ClaimSchema {
                 business_key: None,
@@ -445,7 +465,6 @@ fn dummy_credential() -> Credential {
             .into(),
             layout_type: LayoutType::Card,
             layout_properties: None,
-            schema_id: "CredentialSchemaId".to_owned(),
             organisation: dummy_organisation(None).into(),
             allow_suspension: true,
             requires_wallet_instance_attestation: false,

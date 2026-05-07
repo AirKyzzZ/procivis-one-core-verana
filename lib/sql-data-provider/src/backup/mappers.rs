@@ -71,9 +71,7 @@ pub(super) fn credential_from_unexportable_model(
             last_modified: value.credential_schema_last_modified,
             imported_source_url: value.credential_schema_imported_source_url,
             name: value.credential_schema_name,
-            format: value
-                .credential_schema_format
-                .ok_or(DataLayerError::MappingError)?,
+            formats: Default::default(),
             key_storage_security: convert_inner(value.credential_schema_key_storage_security),
             revocation_method: value.credential_schema_revocation_method,
             claim_schemas: claim_schemas.into(),
@@ -92,7 +90,6 @@ pub(super) fn credential_from_unexportable_model(
             // todo: this should be fixed in another ticket
             layout_type: LayoutType::Card,
             layout_properties: None,
-            schema_id: "CredentialSchemaId".to_owned(),
             allow_suspension: value.credential_schema_allow_suspension,
             requires_wallet_instance_attestation: value
                 .credential_schema_requires_wallet_instance_attestation,

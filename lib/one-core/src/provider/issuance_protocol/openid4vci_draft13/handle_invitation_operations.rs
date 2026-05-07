@@ -16,6 +16,7 @@ use crate::model::claim::Claim;
 use crate::model::credential_schema::{
     BackgroundProperties, CredentialSchema, LayoutProperties, LayoutType, LogoProperties,
 };
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::organisation::Organisation;
 use crate::proto::credential_schema::importer::CredentialSchemaImporter;
 use crate::proto::credential_schema::parser::CredentialSchemaImportParser;
@@ -296,14 +297,24 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                     };
 
                     let now = crate::clock::now_utc();
-                    let id = Uuid::new_v4();
+                    let id = Uuid::new_v4().into();
                     let credential_schema = CredentialSchema {
-                        id: id.into(),
+                        id,
                         deleted_at: None,
                         created_date: now,
                         last_modified: now,
                         name,
-                        format: credential_format,
+                        formats: vec![CredentialSchemaFormat {
+                            id: Uuid::new_v4().into(),
+                            created_date: now,
+                            last_modified: now,
+                            credential_schema_id: id,
+                            format: credential_format,
+                            schema_id: schema.id.clone(),
+                            claim_mappings: Default::default(),
+                        }]
+                        .into(),
+                        batch_size: None,
                         imported_source_url: schema_url,
                         key_storage_security: convert_inner(
                             credential_config.wallet_storage_type.to_owned(),
@@ -312,12 +323,10 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                         claim_schemas: claim_schemas.into(),
                         layout_type: LayoutType::Card,
                         layout_properties,
-                        schema_id: schema.id.clone(),
                         organisation: organisation.into(),
                         allow_suspension: false,
                         requires_wallet_instance_attestation: false,
                         transaction_code: None,
-                        batch_size: None,
                         allow_revocation: None,
                     };
 

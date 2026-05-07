@@ -84,7 +84,7 @@ async fn test_get_presentation_definition_openid_with_match_multiple_schemas() {
 
     let interaction = fixtures::create_interaction(
         &db_conn,
-        &get_open_id_interaction_data(&credential_schema_1),
+        &get_open_id_interaction_data(&credential_schema_1).await,
         &organisation,
         InteractionType::Verification,
     )
@@ -146,7 +146,7 @@ async fn test_get_presentation_definition_openid_with_match_multiple_schemas() {
     );
 }
 
-fn get_open_id_interaction_data(credential_schema: &CredentialSchema) -> Vec<u8> {
+async fn get_open_id_interaction_data(credential_schema: &CredentialSchema) -> Vec<u8> {
     json!({
         "response_type": "vp_token",
         "state": "4ae7e7d5-2ac5-4325-858f-d93ff1fb4f8b",
@@ -205,7 +205,7 @@ fn get_open_id_interaction_data(credential_schema: &CredentialSchema) -> Vec<u8>
                                 "path":["$.credentialSchema.id"],
                                 "filter": {
                                     "type": "string",
-                                    "const": credential_schema.schema_id
+                                    "const": credential_schema.schema_id().await.unwrap()
                                 }
                             },
                             {
@@ -287,7 +287,7 @@ async fn test_get_presentation_definition_open_id_vp_with_match() {
         .interactions
         .create(
             None,
-            &get_open_id_interaction_data(&credential_schema),
+            &get_open_id_interaction_data(&credential_schema).await,
             &organisation,
             InteractionType::Verification,
             None,
@@ -364,7 +364,7 @@ async fn test_get_presentation_definition_open_id_vp_with_delete_credential() {
         .interactions
         .create(
             None,
-            &get_open_id_interaction_data(&credential_schema),
+            &get_open_id_interaction_data(&credential_schema).await,
             &organisation,
             InteractionType::Verification,
             None,
@@ -419,7 +419,7 @@ async fn test_get_presentation_definition_open_id_vp_no_match() {
     let credential_schema = fixtures::create_credential_schema(&db_conn, &organisation, None).await;
     let interaction = fixtures::create_interaction(
         &db_conn,
-        &get_open_id_interaction_data(&credential_schema),
+        &get_open_id_interaction_data(&credential_schema).await,
         &organisation,
         InteractionType::Verification,
     )
@@ -490,7 +490,7 @@ async fn test_get_presentation_definition_open_id_vp_no_match() {
     );
 }
 
-fn get_open_id_interaction_data_without_vp_formats(
+async fn get_open_id_interaction_data_without_vp_formats(
     credential_schema: &CredentialSchema,
 ) -> Vec<u8> {
     json!({
@@ -531,7 +531,7 @@ fn get_open_id_interaction_data_without_vp_formats(
                                 "path":["$.credentialSchema.id"],
                                 "filter": {
                                     "type": "string",
-                                    "const": credential_schema.schema_id
+                                    "const": credential_schema.schema_id().await.unwrap()
                                 }
                             },
                             {
@@ -579,7 +579,7 @@ async fn test_get_presentation_definition_open_id_vp_no_match_vp_formats_empty()
         .interactions
         .create(
             None,
-            &get_open_id_interaction_data_without_vp_formats(&credential_schema),
+            &get_open_id_interaction_data_without_vp_formats(&credential_schema).await,
             &organisation,
             InteractionType::Verification,
             None,
@@ -745,7 +745,7 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
                                     "path":["$.credentialSchema.id"],
                                     "filter": {
                                         "type": "string",
-                                        "const": credential_schema_1.schema_id
+                                        "const": credential_schema_1.schema_id().await.unwrap()
                                     }
                                 },
                                 {
@@ -778,7 +778,7 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
                                     "path":["$.credentialSchema.id"],
                                     "filter": {
                                         "type": "string",
-                                        "const": credential_schema_2.schema_id
+                                        "const": credential_schema_2.schema_id().await.unwrap()
                                     }
                                 },
                                 {
@@ -1026,7 +1026,7 @@ async fn test_get_presentation_definition_open_id_vp_matched_only_complete_crede
                                         "path":["$.credentialSchema.id"],
                                         "filter": {
                                             "type": "string",
-                                            "const": credential_schema.schema_id
+                                            "const": credential_schema.schema_id().await.unwrap()
                                         }
                                     },
                                     {

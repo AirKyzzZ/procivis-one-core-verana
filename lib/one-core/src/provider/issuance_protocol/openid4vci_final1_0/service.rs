@@ -76,7 +76,11 @@ pub(crate) async fn credential_configurations_supported(
     proof_types_supported: IndexMap<String, OpenID4VCIProofTypeSupported>,
     credential_signing_alg_values_supported: Vec<String>,
 ) -> Result<IndexMap<String, OpenID4VCICredentialConfigurationData>, OpenID4VCIError> {
-    let schema_id = credential_schema.schema_id.to_owned();
+    let schema_id = credential_schema
+        .schema_id()
+        .await
+        .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?
+        .to_owned();
 
     let credential_metadata_claims: Vec<OpenID4VCICredentialMetadataClaimResponseDTO> = {
         let claims = credential_schema
@@ -161,6 +165,7 @@ pub(crate) async fn credential_configurations_supported(
                 credential_metadata,
                 proof_types_supported,
             )
+            .await
             .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?,
         },
     )]))
@@ -294,7 +299,7 @@ pub(crate) fn get_protocol_base_url(base_url: &str) -> String {
     format!("{base_url}/ssi/openid4vci/final-1.0")
 }
 
-pub(crate) fn create_credential_offer(
+pub(crate) async fn create_credential_offer(
     protocol_base_url: &str,
     protocol_id: &str,
     pre_authorized_code: &str,
@@ -317,7 +322,12 @@ pub(crate) fn create_credential_offer(
 
     Ok(OpenID4VCIFinal1CredentialOfferDTO {
         credential_issuer,
-        credential_configuration_ids: vec![credential_schema.schema_id.to_owned()],
+        credential_configuration_ids: vec![
+            credential_schema
+                .schema_id()
+                .await
+                .map_err(|e| OpenIDIssuanceError::ValidationError(e.to_string()))?,
+        ],
         grants: OpenID4VCIGrants::PreAuthorizedCode(OpenID4VCIPreAuthorizedCodeGrant {
             pre_authorized_code: pre_authorized_code.to_owned(),
             tx_code,

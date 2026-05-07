@@ -18,6 +18,7 @@ use uuid::Uuid;
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::LayoutType;
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::{Did, KeyRole};
 use crate::model::identifier::Identifier;
 use crate::model::key::Key;
@@ -648,20 +649,29 @@ async fn test_extract_credentials_swiyu() {
         .return_once(|_,  _, _, _| Ok(()));
 
     let now = crate::clock::now_utc();
+    let credential_schema_id = Uuid::new_v4().into();
     let credential_schema = crate::model::credential_schema::CredentialSchema {
         batch_size: None,
         allow_revocation: None,
-        id: Uuid::new_v4().into(),
+        id: credential_schema_id,
         deleted_at: None,
         created_date: now,
         last_modified: now,
         name: "".to_string(),
-        format: "".into(),
+        formats: vec![CredentialSchemaFormat {
+            id: Uuid::new_v4().into(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
+            credential_schema_id,
+            format: "".into(),
+            schema_id: "".to_owned(),
+            claim_mappings: Default::default(),
+        }]
+        .into(),
         revocation_method: None,
         key_storage_security: None,
         layout_type: LayoutType::Card,
         layout_properties: None,
-        schema_id: "".to_string(),
         imported_source_url: "".to_string(),
         allow_suspension: false,
         requires_wallet_instance_attestation: false,
@@ -1102,7 +1112,12 @@ fn test_schema_id() {
     };
 
     let id = Uuid::new_v4();
-    let result = formatter.credential_schema_id(id.into(), &request_dto, "https://example.com");
+    let result = formatter.credential_schema_id(
+        id.into(),
+        request_dto.organisation_id,
+        request_dto.schema_id.as_deref(),
+        "https://example.com",
+    );
     assert!(result.is_ok());
     assert_eq!(
         result.unwrap(),

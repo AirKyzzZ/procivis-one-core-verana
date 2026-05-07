@@ -915,7 +915,11 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
     let resp = context
         .api
         .ssi
-        .issuer_create_credential_mdoc(credential_schema.id, &credential_schema.schema_id, &jwt)
+        .issuer_create_credential_mdoc(
+            credential_schema.id,
+            &credential_schema.schema_id().await.unwrap(),
+            &jwt,
+        )
         .await;
 
     assert_eq!(200, resp.status());

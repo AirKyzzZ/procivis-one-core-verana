@@ -18,6 +18,7 @@ use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, LayoutType};
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::Did;
 use crate::model::identifier::{Identifier, IdentifierType};
 use crate::model::interaction::{Interaction, InteractionType};
@@ -95,17 +96,27 @@ fn generic_organisation() -> Organisation {
 
 fn generic_credential_schema() -> CredentialSchema {
     let now = crate::clock::now_utc();
+    let credential_schema_id = Uuid::new_v4().into();
     CredentialSchema {
         batch_size: None,
         allow_revocation: None,
-        id: Uuid::new_v4().into(),
+        id: credential_schema_id,
         deleted_at: None,
         imported_source_url: "CORE_URL".to_string(),
         created_date: now,
         last_modified: now,
         name: "SchemaName".to_string(),
         key_storage_security: None,
-        format: "JWT".into(),
+        formats: vec![CredentialSchemaFormat {
+            id: Uuid::new_v4().into(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
+            credential_schema_id,
+            format: "JWT".into(),
+            schema_id: "".to_owned(),
+            claim_mappings: Default::default(),
+        }]
+        .into(),
         revocation_method: None,
         claim_schemas: vec![ClaimSchema {
             business_key: None,
@@ -122,7 +133,6 @@ fn generic_credential_schema() -> CredentialSchema {
         organisation: dummy_organisation(None).into(),
         layout_type: LayoutType::Card,
         layout_properties: None,
-        schema_id: "CredentialSchemaId".to_owned(),
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
         transaction_code: None,
@@ -343,7 +353,16 @@ async fn test_get_issuer_metadata_sd_jwt() {
 
     let mut schema = generic_credential_schema();
     schema.organisation = generic_organisation().into();
-    schema.format = "SD_JWT".into();
+    schema.formats = vec![CredentialSchemaFormat {
+        id: Uuid::new_v4().into(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        credential_schema_id: schema.id,
+        format: "SD_JWT".into(),
+        schema_id: "".to_owned(),
+        claim_mappings: Default::default(),
+    }]
+    .into();
     {
         let clone = schema.clone();
         repository
@@ -439,7 +458,16 @@ async fn test_get_issuer_metadata_mdoc() {
         .return_once(move |_| Some(Arc::new(formatter)));
 
     let mut schema = generic_credential_schema();
-    schema.format = "MDOC".into();
+    schema.formats = vec![CredentialSchemaFormat {
+        id: Uuid::new_v4().into(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        credential_schema_id: schema.id,
+        format: "MDOC".into(),
+        schema_id: "".to_owned(),
+        claim_mappings: Default::default(),
+    }]
+    .into();
     schema.organisation = generic_organisation().into();
     let now = crate::clock::now_utc();
     schema.claim_schemas = vec![
@@ -969,7 +997,16 @@ async fn test_create_credential_success_sd_jwt_vc() {
     let mut exchange_provider = MockIssuanceProtocolProvider::default();
 
     let mut schema = generic_credential_schema();
-    schema.format = "SD_JWT_VC".into();
+    schema.formats = vec![CredentialSchemaFormat {
+        id: Uuid::new_v4().into(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        credential_schema_id: schema.id,
+        format: "SD_JWT_VC".into(),
+        schema_id: "".to_owned(),
+        claim_mappings: Default::default(),
+    }]
+    .into();
     let credential = dummy_credential(
         "OPENID4VCI_DRAFT13",
         CredentialStateEnum::Pending,
@@ -1126,7 +1163,7 @@ async fn test_create_credential_success_sd_jwt_vc() {
                     proof_type: "jwt".to_string(),
                     jwt: "eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDprZXk6ejZNa3NXcnBvWXRkRjVka1VzZnhpZXZMc0oxaWpkcGtZdm9KcXliVUVjWXllTVJlI2tleS0xIiwidHlwIjoib3BlbmlkNHZjaS1wcm9vZitqd3QifQ.eyJpYXQiOjE3NDE3NzM2OTksImF1ZCI6Imh0dHBzOi8vZXhhbXBsZS5jb20ifQ.9or3jJO7ZKVfajqQa3ef21v45IdFuBsICzW6f2UA-dfPXWlyZToW6NYeMGofo2dxoY7CrkuX5vrCVPNMlaSZBw".to_string(),
                 },
-                vct: Some(schema.schema_id),
+                vct: Some(schema.schema_id().await.unwrap().to_string()),
             },
         )
         .await;
@@ -1144,8 +1181,17 @@ async fn test_create_credential_success_mdoc() {
     let mut exchange_provider = MockIssuanceProtocolProvider::default();
 
     let schema = CredentialSchema {
-        format: "MDOC".into(),
-        schema_id: "test.doctype".to_owned(),
+        formats: vec![CredentialSchemaFormat {
+            id: Uuid::new_v4().into(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
+            credential_schema_id: Uuid::new_v4().into(),
+            format: "MDOC".into(),
+            schema_id: "test.doctype".to_owned(),
+            claim_mappings: Default::default(),
+        }]
+        .into(),
+        batch_size: None,
         ..generic_credential_schema()
     };
     let credential = dummy_credential(
@@ -1299,7 +1345,7 @@ async fn test_create_credential_success_mdoc() {
             OpenID4VCICredentialRequestDTO {
                 format: "mso_mdoc".to_string(),
                 credential_definition: None,
-                doctype: Some(schema.schema_id),
+                doctype: Some(schema.schema_id().await.unwrap().to_string()),
                 proof: OpenID4VCIProofRequestDTO {
                     proof_type: "jwt".to_string(),
                     jwt: "eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDprZXk6ejZNa3NXcnBvWXRkRjVka1VzZnhpZXZMc0oxaWpkcGtZdm9KcXliVUVjWXllTVJlI2tleS0xIiwidHlwIjoib3BlbmlkNHZjaS1wcm9vZitqd3QifQ.eyJpYXQiOjE3NDE3NzM2OTksImF1ZCI6Imh0dHBzOi8vZXhhbXBsZS5jb20ifQ.9or3jJO7ZKVfajqQa3ef21v45IdFuBsICzW6f2UA-dfPXWlyZToW6NYeMGofo2dxoY7CrkuX5vrCVPNMlaSZBw".to_string(),
@@ -1415,7 +1461,16 @@ async fn test_create_credential_invalid_vct_for_credential_schema() {
     let mut repository = MockCredentialSchemaRepository::default();
 
     let mut schema = generic_credential_schema();
-    schema.format = "SD_JWT_VC".into();
+    schema.formats = vec![CredentialSchemaFormat {
+        id: Uuid::new_v4().into(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        credential_schema_id: schema.id,
+        format: "SD_JWT_VC".into(),
+        schema_id: "".to_owned(),
+        claim_mappings: Default::default(),
+    }]
+    .into();
     {
         let clone = schema.clone();
         repository
@@ -1914,7 +1969,16 @@ async fn test_for_mdoc_schema_pre_authorized_grant_type_creates_refresh_token() 
     let mut interaction_repository = MockInteractionRepository::default();
 
     let mut schema = generic_credential_schema();
-    schema.format = "MDOC".into();
+    schema.formats = vec![CredentialSchemaFormat {
+        id: Uuid::new_v4().into(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        credential_schema_id: schema.id,
+        format: "MDOC".into(),
+        schema_id: "".to_owned(),
+        claim_mappings: Default::default(),
+    }]
+    .into();
 
     credential_schema_repository
         .expect_get_credential_schema()

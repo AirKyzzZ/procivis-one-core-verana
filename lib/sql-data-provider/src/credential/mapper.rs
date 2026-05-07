@@ -4,6 +4,7 @@ use one_core::model::credential::{
     Clearable, Credential, CredentialFilterValue, SortableCredentialColumn,
 };
 use one_core::model::credential_schema::{CredentialSchema, LayoutType, TransactionCode};
+use one_core::model::credential_schema_format::CredentialSchemaFormat;
 use one_core::model::identifier::Identifier;
 use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::relation::{Related, RelatedVec};
@@ -11,14 +12,17 @@ use one_core::repository::error::DataLayerError;
 use one_core::repository::organisation_repository::OrganisationRepository;
 use one_dto_mapper::convert_inner;
 use sea_orm::sea_query::query::IntoCondition;
-use sea_orm::sea_query::{ExprTrait, SimpleExpr};
-use sea_orm::{ActiveValue, ColumnTrait, IntoSimpleExpr, JoinType, RelationTrait, Set, Value};
+use sea_orm::sea_query::{ExprTrait, Query, SimpleExpr};
+use sea_orm::{
+    ActiveValue, ColumnTrait, Condition, IntoSimpleExpr, JoinType, RelationTrait, Set, Value,
+};
 use shared_types::{BlobId, CertificateId, IdentifierId, InteractionId, KeyId};
+use uuid::Uuid;
 
 use crate::TransactionManagerImpl;
 use crate::credential::entity_model::CredentialListEntityModel;
-use crate::credential_schema::mapper::ClaimSchemasLoader;
-use crate::entity::{claim, credential, credential_schema, identifier};
+use crate::credential_schema::mapper::{ClaimSchemasLoader, CredentialSchemaFormatsLoader};
+use crate::entity::{claim, credential, credential_schema, credential_schema_format, identifier};
 use crate::list_query_generic::{
     IntoFilterCondition, IntoJoinRelations, IntoSortingColumn, JoinRelation,
     get_blob_match_condition, get_comparison_condition, get_equals_condition,
@@ -74,9 +78,26 @@ impl IntoFilterCondition for CredentialFilterValue {
             Self::CredentialSchemaIds(ids) => credential::Column::CredentialSchemaId
                 .is_in(ids.iter())
                 .into_condition(),
-            Self::SchemaId(schema_id) => {
-                get_equals_condition(credential_schema::Column::SchemaId, schema_id)
-            }
+            Self::SchemaId(schema_id) => Condition::any()
+                .add(
+                    credential_schema::Column::Id.in_subquery(
+                        Query::select()
+                            .column(credential_schema_format::Column::CredentialSchemaId)
+                            .from(credential_schema_format::Entity)
+                            .cond_where(
+                                get_equals_condition(
+                                    credential_schema_format::Column::SchemaId,
+                                    schema_id.clone(),
+                                )
+                                .into_condition(),
+                            )
+                            .to_owned(),
+                    ),
+                )
+                .add(get_equals_condition(
+                    credential_schema::Column::SchemaId,
+                    schema_id,
+                )),
             Self::IssuerIds(ids) => credential::Column::IssuerIdentifierId
                 .is_in(ids.iter())
                 .into_condition(),
@@ -213,6 +234,24 @@ pub(super) fn credential_list_model_to_repository_model(
         _ => return Err(DataLayerError::MappingError),
     };
 
+    let formats = match (
+        credential.credential_schema_format,
+        credential.credential_schema_schema_id,
+    ) {
+        (Some(format), Some(schema_id)) => RelatedVec::from(vec![CredentialSchemaFormat {
+            id: Uuid::new_v4().into(),
+            created_date: credential.credential_schema_created_date,
+            last_modified: credential.credential_schema_last_modified,
+            credential_schema_id: credential.credential_schema_id,
+            format,
+            schema_id,
+            claim_mappings: RelatedVec::default(),
+        }]),
+        _ => RelatedVec::new(CredentialSchemaFormatsLoader {
+            id: credential.credential_schema_id,
+            db: db.clone(),
+        }),
+    };
     let schema = CredentialSchema {
         id: credential.credential_schema_id,
         deleted_at: credential.credential_schema_deleted_at,
@@ -220,14 +259,9 @@ pub(super) fn credential_list_model_to_repository_model(
         last_modified: credential.credential_schema_last_modified,
         key_storage_security: convert_inner(credential.credential_schema_key_storage_security),
         name: credential.credential_schema_name,
-        format: credential
-            .credential_schema_format
-            .ok_or(DataLayerError::MappingError)?,
+        formats,
         revocation_method: credential.credential_schema_revocation_method,
         imported_source_url: credential.credential_schema_imported_source_url,
-        schema_id: credential
-            .credential_schema_schema_id
-            .ok_or(DataLayerError::MappingError)?,
         claim_schemas: RelatedVec::new(ClaimSchemasLoader {
             id: credential.credential_schema_id,
             db: db.to_owned(),

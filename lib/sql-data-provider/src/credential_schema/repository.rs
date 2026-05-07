@@ -8,7 +8,9 @@ use one_core::proto::transaction_manager::IsolationLevel;
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
 use one_core::repository::error::DataLayerError;
 use one_core::service::credential_schema::dto::CredentialSchemaListIncludeEntityTypeEnum;
+use one_dto_mapper::convert_inner;
 use sea_orm::ActiveValue::Set;
+use sea_orm::sea_query::Query;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, Unchanged,
 };
@@ -18,7 +20,7 @@ use crate::common::calculate_pages_count;
 use crate::credential_schema::CredentialSchemaProvider;
 use crate::credential_schema::mapper::{claim_schemas_to_model_vec, credential_schema_from_models};
 use crate::entity::credential_schema::LayoutType;
-use crate::entity::{claim_schema, credential_schema};
+use crate::entity::{claim_schema, credential_schema, credential_schema_format};
 use crate::list_query_generic::SelectWithListQuery;
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 
@@ -31,6 +33,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
         schema: CredentialSchema,
     ) -> Result<CredentialSchemaId, DataLayerError> {
         let claim_schemas = schema.claim_schemas.get().await?;
+        let formats = schema.formats.get().await?;
 
         let credential_schema: credential_schema::ActiveModel = schema.into();
 
@@ -53,6 +56,12 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
                             .map_err(|e| DataLayerError::Db(e.into()))?;
                     }
 
+                    let format_models: Vec<credential_schema_format::ActiveModel> =
+                        convert_inner(formats);
+                    credential_schema_format::Entity::insert_many(format_models)
+                        .exec(&self.db)
+                        .await
+                        .map_err(|e| DataLayerError::Db(e.into()))?;
                     Ok::<_, DataLayerError>(credential_schema)
                 }
                 .boxed(),
@@ -60,7 +69,6 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
                 None,
             )
             .await??;
-
         Ok(credential_schema.id)
     }
 
@@ -209,9 +217,24 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
         organisation_id: OrganisationId,
     ) -> Result<Option<CredentialSchema>, DataLayerError> {
         let credential_schema = credential_schema::Entity::find()
-            .filter(credential_schema::Column::SchemaId.eq(schema_id))
-            .filter(credential_schema::Column::OrganisationId.eq(organisation_id))
-            .filter(credential_schema::Column::DeletedAt.is_null())
+            .filter(
+                credential_schema::Column::OrganisationId
+                    .eq(organisation_id)
+                    .and(credential_schema::Column::DeletedAt.is_null())
+                    .and(
+                        credential_schema::Column::Id
+                            .in_subquery(
+                                Query::select()
+                                    .column(credential_schema_format::Column::CredentialSchemaId)
+                                    .from(credential_schema_format::Entity)
+                                    .cond_where(
+                                        credential_schema_format::Column::SchemaId.eq(schema_id),
+                                    )
+                                    .to_owned(),
+                            )
+                            .or(credential_schema::Column::SchemaId.eq(schema_id)),
+                    ),
+            )
             .one(&self.db)
             .await
             .map_err(to_data_layer_error)?;

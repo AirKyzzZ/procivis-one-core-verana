@@ -46,6 +46,7 @@ pub(crate) fn serialize_interaction_data<DataDTO: ?Sized + serde::Serialize>(
 
 pub(crate) type FormatMapper =
     Arc<dyn Fn(&CredentialFormat) -> Result<FormatType, VerificationProtocolError> + Send + Sync>;
+
 pub(crate) type TypeToDescriptorMapper = Arc<
     dyn Fn(&FormatType) -> Result<HashMap<String, PresentationFormat>, VerificationProtocolError>
         + Send

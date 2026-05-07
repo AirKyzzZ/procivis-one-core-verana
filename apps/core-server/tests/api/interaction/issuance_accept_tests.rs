@@ -217,7 +217,7 @@ async fn test_issuance_accept_openid4vc() {
 
     context
         .server_mock
-        .token_endpoint(credential_schema.schema_id, "123")
+        .token_endpoint(credential_schema.schema_id().await.unwrap(), "123")
         .await;
 
     // WHEN
@@ -418,7 +418,7 @@ async fn test_issuance_accept_schema_name_already_exists() {
 
     context
         .server_mock
-        .token_endpoint_final1(credential_schema.schema_id, "123")
+        .token_endpoint_final1(credential_schema.schema_id().await.unwrap(), "123")
         .await;
 
     // WHEN
@@ -603,7 +603,7 @@ async fn test_issuance_accept_openid4vc_issuer_did_mismatch() {
 
     context
         .server_mock
-        .token_endpoint(credential_schema.schema_id, "123")
+        .token_endpoint(credential_schema.schema_id().await.unwrap(), "123")
         .await;
 
     // WHEN
@@ -778,7 +778,7 @@ async fn test_issuance_accept_openid4vc_issuer_certificate_mismatch() {
 
     context
         .server_mock
-        .token_endpoint(credential_schema.schema_id, "123")
+        .token_endpoint(credential_schema.schema_id().await.unwrap(), "123")
         .await;
 
     // WHEN
@@ -949,7 +949,7 @@ async fn test_issuance_accept_openid4vc_issuer_invalid_signature() {
 
     context
         .server_mock
-        .token_endpoint(credential_schema.schema_id, "123")
+        .token_endpoint(credential_schema.schema_id().await.unwrap(), "123")
         .await;
 
     // WHEN
@@ -1102,7 +1102,7 @@ async fn test_issuance_accept_openid4vc_with_key_id() {
 
     context
         .server_mock
-        .token_endpoint(credential_schema.schema_id, "123")
+        .token_endpoint(credential_schema.schema_id().await.unwrap(), "123")
         .await;
 
     let jwt_credential = w3c_jwt_vc(
@@ -1239,7 +1239,7 @@ async fn test_issuance_accept_autogenerate_holder_binding() {
 
     context
         .server_mock
-        .token_endpoint(credential_schema.schema_id, "123")
+        .token_endpoint(credential_schema.schema_id().await.unwrap(), "123")
         .await;
 
     let jwt_credential = w3c_jwt_vc(
@@ -2139,7 +2139,7 @@ async fn test_issuance_accept_openid4vc_with_tx_code() {
 
     context
         .server_mock
-        .token_endpoint_tx_code(credential_schema.schema_id, "123", tx_code)
+        .token_endpoint_tx_code(credential_schema.schema_id().await.unwrap(), "123", tx_code)
         .await;
 
     // WHEN
@@ -2322,7 +2322,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc() {
 
     context
         .server_mock
-        .token_endpoint(credential_schema.schema_id, "123")
+        .token_endpoint(credential_schema.schema_id().await.unwrap(), "123")
         .await;
 
     // WHEN
@@ -2579,7 +2579,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
 
     context
         .server_mock
-        .token_endpoint(credential_schema.schema_id, "123")
+        .token_endpoint(credential_schema.schema_id().await.unwrap(), "123")
         .await;
 
     // WHEN

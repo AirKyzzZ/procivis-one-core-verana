@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use shared_types::{CredentialFormat, CredentialSchemaId, RevocationMethodId};
 use strum::Display;
+use thiserror::Error;
 use time::OffsetDateTime;
 
 use super::claim_schema::ClaimSchema;
@@ -11,9 +12,12 @@ use super::common::GetListResponse;
 use super::list_query::ListQuery;
 use super::organisation::Organisation;
 use super::relation::{Related, RelatedVec};
+use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, NestedError};
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::service::credential_schema::dto::{
     CredentialSchemaFilterValue, CredentialSchemaListIncludeEntityTypeEnum,
 };
+use crate::service::error::ServiceError;
 
 pub type CredentialSchemaName = String;
 
@@ -25,21 +29,75 @@ pub struct CredentialSchema {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub name: CredentialSchemaName,
-    pub format: CredentialFormat,
     pub revocation_method: Option<RevocationMethodId>,
     pub key_storage_security: Option<KeyStorageSecurity>,
     pub layout_type: LayoutType,
     pub layout_properties: Option<LayoutProperties>,
-    pub schema_id: String,
     pub imported_source_url: String,
     pub allow_suspension: bool,
     pub requires_wallet_instance_attestation: bool,
     pub transaction_code: Option<TransactionCode>,
-    pub batch_size: Option<i32>,
     pub allow_revocation: Option<bool>,
+    pub batch_size: Option<i32>,
 
     pub claim_schemas: RelatedVec<ClaimSchema>,
     pub organisation: Related<Organisation>,
+    pub formats: RelatedVec<CredentialSchemaFormat>,
+}
+
+#[derive(Debug, Error)]
+pub enum CredentialSchemaModelError {
+    #[error("Unsupported key algorithm `{0}`")]
+    UnsupportedKeyAlgorithmType(String),
+}
+
+impl ErrorCodeMixin for CredentialSchemaModelError {
+    fn error_code(&self) -> ErrorCode {
+        match self {
+            Self::UnsupportedKeyAlgorithmType(_) => ErrorCode::BR_0432,
+        }
+    }
+}
+
+impl CredentialSchema {
+    // #[deprecated(note = "Use `formats` instead")] TODO: remove after we support multiformat schema
+    pub async fn matches_schema_id(&self, other_schema_id: &str) -> Result<bool, NestedError> {
+        Ok(self
+            .get_formats()
+            .await?
+            .iter()
+            .any(|f| f.schema_id == other_schema_id))
+    }
+
+    // #[deprecated(note = "Use `formats` instead")] TODO: remove after we support multiformat schema
+    pub async fn format(&self) -> Result<CredentialFormat, NestedError> {
+        Ok(self.first_format().await?.format)
+    }
+
+    // #[deprecated(note = "Use `formats` instead")] TODO: remove after we support multiformat schema
+    pub async fn schema_id(&self) -> Result<String, NestedError> {
+        Ok(self.first_format().await?.schema_id)
+    }
+
+    // #[deprecated(note = "Use `formats` instead")] TODO: remove after we support multiformat schema
+    async fn first_format(&self) -> Result<CredentialSchemaFormat, NestedError> {
+        let formats = self.get_formats().await?;
+        match &formats[..] {
+            [format] => Ok(format.to_owned()),
+            [] => Err(ServiceError::MappingError(
+                "Missing credential schema format".to_string(),
+            ))
+            .error_while("Failed to retrieve credential format"),
+            _ => Err(ServiceError::MappingError(
+                "More than one credential schema format, use formats".to_string(),
+            ))
+            .error_while("Failed to retrieve credential format"),
+        }
+    }
+
+    async fn get_formats(&self) -> Result<Vec<CredentialSchemaFormat>, NestedError> {
+        self.formats.get().await.error_while("getting formats")
+    }
 }
 
 #[derive(Debug)]

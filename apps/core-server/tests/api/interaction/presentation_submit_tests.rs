@@ -756,7 +756,7 @@ async fn setup_submittable_presentation(
                                     "path":["$.credentialSchema.id"],
                                     "filter": {
                                         "type": "string",
-                                        "const": credential_schema.schema_id
+                                        "const": credential_schema.schema_id().await.unwrap()
                                     }
                                 },
                                 {
@@ -1004,7 +1004,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
                                         "path":["$.credentialSchema.id"],
                                         "filter": {
                                             "type": "string",
-                                            "const": credential_schema.schema_id
+                                            "const": credential_schema.schema_id().await.unwrap()
                                         }
                                     },
                                     {
@@ -1389,7 +1389,7 @@ async fn setup_submittable_presentation_dcql(
                             "meta": {
                                 "type_values": [[
                                     "https://www.w3.org/2018/credentials#VerifiableCredential",
-                                    format!("{}#Schema1", credential_schema.schema_id)
+                                    format!("{}#Schema1", credential_schema.schema_id().await.unwrap())
                                 ]]
                             },
                             "claims": [

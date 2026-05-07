@@ -72,8 +72,8 @@ async fn test_get_credential_offer_success_jwt() {
     let credential_id = &offer["credential_configuration_ids"][0];
 
     assert_eq!(
-        credential_id.as_str(),
-        Some(credential_schema.schema_id.as_str())
+        credential_id.as_str().unwrap(),
+        credential_schema.schema_id().await.unwrap()
     );
 
     let expected_claims = serde_json::json!({
@@ -170,8 +170,8 @@ async fn test_get_credential_offer_success_with_tx_code() {
 
     let credential_id = &offer["credential_configuration_ids"][0];
     assert_eq!(
-        credential_id.as_str(),
-        Some(credential_schema.schema_id.as_str())
+        credential_id.as_str().unwrap(),
+        credential_schema.schema_id().await.unwrap()
     );
 }
 
@@ -343,8 +343,8 @@ async fn test_get_credential_offer_when_enable_credential_preview_false() {
 
     let credential_id = &offer["credential_configuration_ids"][0];
     assert_eq!(
-        credential_id.as_str(),
-        Some(credential_schema.schema_id.as_str())
+        credential_id.as_str().unwrap(),
+        credential_schema.schema_id().await.unwrap()
     );
 
     let expected_claims = serde_json::json!({
@@ -431,8 +431,8 @@ async fn test_get_credential_offer_success_certificate_identifier() {
     let credential_id = &offer["credential_configuration_ids"][0];
 
     assert_eq!(
-        credential_id.as_str(),
-        Some(credential_schema.schema_id.as_str())
+        credential_id.as_str().unwrap(),
+        credential_schema.schema_id().await.unwrap()
     );
 }
 
@@ -508,8 +508,8 @@ async fn test_get_credential_offer_success_mdoc() {
     let credential_id = &offer["credential_configuration_ids"][0];
 
     assert_eq!(
-        credential_id.as_str(),
-        Some(credential_schema.schema_id.as_str())
+        credential_id.as_str().unwrap(),
+        credential_schema.schema_id().await.unwrap()
     );
 }
 
@@ -652,8 +652,8 @@ async fn test_get_credential_offer_with_array_success_mdoc() {
     assert_eq!(resp.status(), 200);
     let metadata = resp.json_value().await;
 
-    let credential_configuration =
-        &metadata["credential_configurations_supported"][credential_schema.schema_id];
+    let credential_configuration = &metadata["credential_configurations_supported"]
+        [credential_schema.schema_id().await.unwrap()];
 
     let expected_claims = serde_json::json!({
         "namespace": {

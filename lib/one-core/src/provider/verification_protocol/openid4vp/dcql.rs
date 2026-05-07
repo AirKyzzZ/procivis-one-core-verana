@@ -96,21 +96,25 @@ pub(crate) async fn get_presentation_definition_for_dcql_query(
 
         // This is very inefficient. We would have the information here to also filter by the claims
         // required, etc. but so far this was not a problem so it is not optimized.
-        let mut credential_candidates = fetch_credentials_for_schema_ids(
+        let credential_candidates = fetch_credentials_for_schema_ids(
             organisation.id,
             credential_filters,
             credential_repository,
         )
         .await?;
 
-        credential_candidates.retain(|credential| {
-            let Some(schema) = &credential.schema else {
-                return false;
+        let mut filtered_credential_candidates = vec![];
+        for credential_candidate in credential_candidates.into_iter() {
+            let Some(schema) = &credential_candidate.schema else {
+                continue;
             };
-            format_matches(&query.format, &schema.format, config)
-        });
+            let format = schema.format().await?;
+            if format_matches(&query.format, &format, config) {
+                filtered_credential_candidates.push(credential_candidate);
+            }
+        }
 
-        credential_candidates.retain(|credential| {
+        filtered_credential_candidates.retain(|credential| {
             matches!(
                 credential.state,
                 CredentialStateEnum::Accepted
@@ -121,20 +125,20 @@ pub(crate) async fn get_presentation_definition_for_dcql_query(
 
         if let Some(authorities) = &query.trusted_authorities {
             filter_credentials_by_trusted_authorities(
-                &mut credential_candidates,
+                &mut filtered_credential_candidates,
                 authorities.as_slice(),
             )
             .await;
         }
 
         let match_result = first_applicable_claim_set(
-            &credential_candidates,
+            &filtered_credential_candidates,
             credential_filters,
             credential_formatter_provider,
             config,
         )
         .await?;
-        relevant_credentials.append(&mut credential_candidates);
+        relevant_credentials.append(&mut filtered_credential_candidates);
         requested_credentials.push(to_requested_credential(query, match_result)?)
     }
     Ok(PresentationDefinitionResponseDTO {
@@ -198,22 +202,25 @@ pub(crate) async fn get_presentation_definition_v2(
 
         // This is very inefficient. We would have the information here to also filter by the claims
         // required, etc. but so far this was not a problem so it is not optimized.
-        let mut credential_candidates = fetch_credentials_for_schema_ids(
+        let credential_candidates = fetch_credentials_for_schema_ids(
             organisation.id,
             credential_filters,
             credential_repository,
         )
         .await?;
 
-        credential_candidates.retain(|credential| {
-            let Some(schema) = &credential.schema else {
-                return false;
+        let mut filtered_credential_candidates = vec![];
+        for credential_candidate in credential_candidates.into_iter() {
+            let Some(schema) = &credential_candidate.schema else {
+                continue;
             };
-            format_matches(&query.format, &schema.format, config)
-                && credential.role == CredentialRole::Holder
-        });
+            let format = schema.format().await?;
+            if format_matches(&query.format, &format, config) {
+                filtered_credential_candidates.push(credential_candidate);
+            }
+        }
 
-        if credential_candidates.is_empty() {
+        if filtered_credential_candidates.is_empty() {
             let schema_ids = credential_filters
                 .iter()
                 .flat_map(|filter| {
@@ -250,7 +257,7 @@ pub(crate) async fn get_presentation_definition_v2(
             continue;
         }
 
-        let (candidates, invalid_credentials): (Vec<_>, Vec<_>) = credential_candidates
+        let (candidates, invalid_credentials): (Vec<_>, Vec<_>) = filtered_credential_candidates
             .into_iter()
             .partition(|credential| credential.state == CredentialStateEnum::Accepted);
         if candidates.is_empty() {
@@ -283,15 +290,17 @@ pub(crate) async fn get_presentation_definition_v2(
         let failure_hint_schema = candidates.first().and_then(|cred| cred.schema.clone());
         let mut applicable_credentials = vec![];
         for candidate in candidates {
-            let format = &candidate
+            let format = candidate
                 .schema
                 .as_ref()
                 .ok_or(VerificationProtocolError::Failed(format!(
                     "missing schema for credential {}",
                     candidate.id
                 )))?
-                .format;
-            let formatter = formatter_provider.get_credential_formatter(format).ok_or(
+                .format()
+                .await
+                .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+            let formatter = formatter_provider.get_credential_formatter(&format).ok_or(
                 VerificationProtocolError::Failed(format!(
                     "missing formatter for credential format {format}",
                 )),
@@ -648,15 +657,17 @@ async fn first_applicable_claim_set(
         let mut applicable = false;
         let mut matched_claims = vec![];
 
-        let format = &credential
+        let format = credential
             .schema
             .as_ref()
             .ok_or(VerificationProtocolError::Failed(format!(
                 "missing schema for credential {}",
                 credential.id
             )))?
-            .format;
-        let formatter = formatter_provider.get_credential_formatter(format).ok_or(
+            .format()
+            .await
+            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+        let formatter = formatter_provider.get_credential_formatter(&format).ok_or(
             VerificationProtocolError::Failed(format!(
                 "missing formatter for credential format {format}",
             )),

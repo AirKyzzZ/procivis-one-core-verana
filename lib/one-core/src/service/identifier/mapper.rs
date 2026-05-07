@@ -393,7 +393,8 @@ async fn credential_schema_filter(
         .ok_or(IdentifierServiceError::CredentialSchemaNotFound(
             *credential_schema_id,
         ))?;
-    let filter_value = filter_value_from_credential_schema(config, schema, TrustContext::Issuance)?;
+    let filter_value =
+        filter_value_from_credential_schema(config, schema, TrustContext::Issuance).await?;
     Ok(filter_value)
 }
 
@@ -435,7 +436,8 @@ async fn proof_schema_filter(
             config,
             credential_schema,
             TrustContext::Verification,
-        )?;
+        )
+        .await?;
         trust_verification_types = trust_verification_types & filter_value;
     }
     Ok(trust_verification_types)
@@ -446,18 +448,20 @@ enum TrustContext {
     Verification,
 }
 
-fn filter_value_from_credential_schema(
+async fn filter_value_from_credential_schema(
     config: &CoreConfig,
     schema: CredentialSchema,
     context: TrustContext,
 ) -> Result<IdentifierFilterValue, IdentifierServiceError> {
+    let schema_format = schema.format().await?;
     let format_type = config
         .format
-        .get_type(&schema.format)
+        .get_type(&schema_format)
         .error_while("retrieving credential schema format")?;
+    let schema_id = schema.schema_id().await?;
     let schema_format = SchemaFormat {
         format: format_type.into(),
-        schema_id: schema.schema_id,
+        schema_id,
     };
     let filter_value = match context {
         TrustContext::Issuance => IdentifierFilterValue::TrustAllowedIssuanceTypes(schema_format),

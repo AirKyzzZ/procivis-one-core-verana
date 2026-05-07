@@ -354,10 +354,10 @@ impl SSIHolderService {
             .error_while("validating key security")?;
         }
 
-        let format = &schema.format;
+        let format = schema.format().await?;
         let formatter = self
             .formatter_provider
-            .get_credential_formatter(format)
+            .get_credential_formatter(&format)
             .ok_or(MissingProviderError::Formatter(format.to_string()))
             .error_while("getting formatter")?;
 
@@ -449,10 +449,11 @@ impl SSIHolderService {
         credential: &str,
         schema: &CredentialSchema,
     ) -> Result<Vec<Claim>, HolderServiceError> {
+        let schema_format = schema.format().await?;
         let formatter = self
             .formatter_provider
-            .get_credential_formatter(&schema.format)
-            .ok_or(MissingProviderError::Formatter(schema.format.to_string()))
+            .get_credential_formatter(&schema_format)
+            .ok_or(MissingProviderError::Formatter(schema_format.to_string()))
             .error_while("getting formatter")?;
 
         let credential = formatter

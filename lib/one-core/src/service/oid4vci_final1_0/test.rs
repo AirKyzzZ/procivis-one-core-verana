@@ -18,6 +18,7 @@ use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, LayoutType};
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::Did;
 use crate::model::identifier::{Identifier, IdentifierType};
 use crate::model::interaction::{Interaction, InteractionType};
@@ -196,17 +197,27 @@ fn generic_organisation() -> Organisation {
 
 fn generic_credential_schema() -> CredentialSchema {
     let now = crate::clock::now_utc();
+    let credential_schema_id = Uuid::new_v4().into();
     CredentialSchema {
         batch_size: None,
         allow_revocation: None,
-        id: Uuid::new_v4().into(),
+        id: credential_schema_id,
         deleted_at: None,
         imported_source_url: "CORE_URL".to_string(),
         created_date: now,
         last_modified: now,
         name: "SchemaName".to_string(),
         key_storage_security: Some(KeyStorageSecurity::Basic),
-        format: "JWT".into(),
+        formats: vec![CredentialSchemaFormat {
+            id: Uuid::new_v4().into(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
+            credential_schema_id,
+            format: "JWT".into(),
+            schema_id: "CredentialSchemaId".to_owned(),
+            claim_mappings: Default::default(),
+        }]
+        .into(),
         revocation_method: None,
         claim_schemas: vec![ClaimSchema {
             business_key: None,
@@ -223,7 +234,6 @@ fn generic_credential_schema() -> CredentialSchema {
         organisation: dummy_organisation(None).into(),
         layout_type: LayoutType::Card,
         layout_properties: None,
-        schema_id: "CredentialSchemaId".to_owned(),
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
         transaction_code: None,
@@ -498,7 +508,16 @@ async fn test_get_issuer_metadata_sd_jwt() {
 
     let mut schema = generic_credential_schema();
     schema.organisation = generic_organisation().into();
-    schema.format = "SD_JWT".into();
+    schema.formats = vec![CredentialSchemaFormat {
+        id: Uuid::new_v4().into(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        credential_schema_id: schema.id,
+        format: "SD_JWT".into(),
+        schema_id: "".to_owned(),
+        claim_mappings: Default::default(),
+    }]
+    .into();
 
     {
         let clone = schema.clone();
@@ -624,7 +643,16 @@ async fn test_get_issuer_metadata_mdoc() {
         .return_once(move |_| Some(Arc::new(formatter)));
 
     let mut schema = generic_credential_schema();
-    schema.format = "MDOC".into();
+    schema.formats = vec![CredentialSchemaFormat {
+        id: Uuid::new_v4().into(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        credential_schema_id: schema.id,
+        format: "MDOC".into(),
+        schema_id: "CredentialSchemaId".to_owned(),
+        claim_mappings: Default::default(),
+    }]
+    .into();
     schema.organisation = generic_organisation().into();
     let now = crate::clock::now_utc();
     schema.claim_schemas = vec![
@@ -1131,7 +1159,7 @@ async fn test_create_credential_success() {
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
             OpenID4VCICredentialRequestDTO {
                 credential: OpenID4VCICredentialRequestIdentifier::CredentialConfigurationId(
-                    schema.schema_id,
+                    schema.schema_id().await.unwrap().to_owned(),
                 ),
                 proofs: Some(OpenID4VCICredentialRequestProofs::Jwt(vec![
                     PROOF_JWT.to_string(),
@@ -1155,7 +1183,16 @@ async fn test_create_credential_success_sd_jwt_vc() {
     let mut exchange_provider = MockIssuanceProtocolProvider::default();
 
     let mut schema = generic_credential_schema();
-    schema.format = "SD_JWT_VC".into();
+    schema.formats = vec![CredentialSchemaFormat {
+        id: Uuid::new_v4().into(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        credential_schema_id: schema.id,
+        format: "SD_JWT_VC".into(),
+        schema_id: "CredentialSchemaId".to_owned(),
+        claim_mappings: Default::default(),
+    }]
+    .into();
     schema.key_storage_security = None;
     let credential = dummy_credential(
         "OPENID4VCI_FINAL1",
@@ -1309,7 +1346,7 @@ async fn test_create_credential_success_sd_jwt_vc() {
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
             OpenID4VCICredentialRequestDTO {
                 credential: OpenID4VCICredentialRequestIdentifier::CredentialConfigurationId(
-                    schema.schema_id,
+                    schema.schema_id().await.unwrap().to_owned(),
                 ),
                 proofs: Some(OpenID4VCICredentialRequestProofs::Jwt(vec![
                     PROOF_JWT.to_string(),
@@ -1333,8 +1370,16 @@ async fn test_create_credential_success_mdoc() {
     let mut exchange_provider = MockIssuanceProtocolProvider::default();
 
     let schema = CredentialSchema {
-        format: "MDOC".into(),
-        schema_id: "test.doctype".to_owned(),
+        formats: vec![CredentialSchemaFormat {
+            id: Uuid::new_v4().into(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
+            credential_schema_id: Uuid::new_v4().into(),
+            format: "MDOC".into(),
+            schema_id: "test.doctype".to_owned(),
+            claim_mappings: Default::default(),
+        }]
+        .into(),
         key_storage_security: None,
         ..generic_credential_schema()
     };
@@ -1494,7 +1539,7 @@ async fn test_create_credential_success_mdoc() {
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
             OpenID4VCICredentialRequestDTO {
                 credential: OpenID4VCICredentialRequestIdentifier::CredentialConfigurationId(
-                    schema.schema_id,
+                    schema.schema_id().await.unwrap().to_owned(),
                 ),
                 proofs: Some(OpenID4VCICredentialRequestProofs::Jwt(vec![
                     PROOF_JWT.to_string(),
@@ -1579,7 +1624,7 @@ async fn test_create_credential_format_invalid_bearer_token() {
             "3fa85f64-5717-4562-b3fc-2c963f66afa6",
             OpenID4VCICredentialRequestDTO {
                 credential: OpenID4VCICredentialRequestIdentifier::CredentialConfigurationId(
-                    schema.schema_id,
+                    schema.schema_id().await.unwrap().to_owned(),
                 ),
                 proofs: Some(OpenID4VCICredentialRequestProofs::Jwt(vec![
                     PROOF_JWT.to_string(),
@@ -1633,7 +1678,7 @@ async fn test_create_credential_pre_authorized_code_not_used() {
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
             OpenID4VCICredentialRequestDTO {
                 credential: OpenID4VCICredentialRequestIdentifier::CredentialConfigurationId(
-                    schema.schema_id,
+                    schema.schema_id().await.unwrap().to_owned(),
                 ),
                 proofs: Some(OpenID4VCICredentialRequestProofs::Jwt(vec![
                     PROOF_JWT.to_string(),
@@ -1687,7 +1732,7 @@ async fn test_create_credential_interaction_data_invalid() {
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.123",
             OpenID4VCICredentialRequestDTO {
                 credential: OpenID4VCICredentialRequestIdentifier::CredentialConfigurationId(
-                    schema.schema_id,
+                    schema.schema_id().await.unwrap().to_owned(),
                 ),
                 proofs: Some(OpenID4VCICredentialRequestProofs::Jwt(vec![
                     PROOF_JWT.to_string(),
@@ -1749,7 +1794,7 @@ async fn test_create_credential_access_token_expired() {
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
             OpenID4VCICredentialRequestDTO {
                 credential: OpenID4VCICredentialRequestIdentifier::CredentialConfigurationId(
-                    schema.schema_id,
+                    schema.schema_id().await.unwrap().to_owned(),
                 ),
                 proofs: Some(OpenID4VCICredentialRequestProofs::Jwt(vec![
                     PROOF_JWT.to_string(),
@@ -1923,7 +1968,7 @@ async fn test_create_credential_issuer_failed() {
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
             OpenID4VCICredentialRequestDTO {
                 credential: OpenID4VCICredentialRequestIdentifier::CredentialConfigurationId(
-                    schema.schema_id,
+                    schema.schema_id().await.unwrap().to_owned(),
                 ),
                 proofs: Some(OpenID4VCICredentialRequestProofs::Jwt(vec![
                     PROOF_JWT.to_string(),
@@ -2050,7 +2095,7 @@ async fn test_create_credential_nonce_reused() {
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
             OpenID4VCICredentialRequestDTO {
                 credential: OpenID4VCICredentialRequestIdentifier::CredentialConfigurationId(
-                    schema.schema_id,
+                    schema.schema_id().await.unwrap().to_owned(),
                 ),
                 proofs: Some(OpenID4VCICredentialRequestProofs::Jwt(vec![
                     PROOF_JWT.to_string(),
@@ -2074,7 +2119,16 @@ async fn test_for_mdoc_schema_pre_authorized_grant_type_creates_refresh_token() 
     let mut interaction_repository = MockInteractionRepository::default();
 
     let mut schema = generic_credential_schema();
-    schema.format = "MDOC".into();
+    schema.formats = vec![CredentialSchemaFormat {
+        id: Uuid::new_v4().into(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        credential_schema_id: schema.id,
+        format: "MDOC".into(),
+        schema_id: "CredentialSchemaId".to_owned(),
+        claim_mappings: Default::default(),
+    }]
+    .into();
 
     credential_schema_repository
         .expect_get_credential_schema()

@@ -20,6 +20,7 @@ use crate::model::credential_schema::{
     BackgroundProperties, CodeProperties, CredentialSchema, LayoutProperties, LayoutType,
     LogoProperties,
 };
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::{Features, FormatterCapabilities};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
@@ -72,13 +73,13 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
         };
         let claim_schemas =
             self.parse_all_claim_schemas(now, format, dto.schema.claims, formatter.as_ref())?;
+        let credential_schema_id = Uuid::new_v4().into();
         Ok(CredentialSchema {
-            id: Uuid::new_v4().into(),
+            id: credential_schema_id,
             deleted_at: None,
             created_date: now,
             last_modified: now,
             name: dto.schema.name,
-            format: self.parse_format(dto.schema.format)?,
             revocation_method: self
                 .parse_revocation_method(dto.schema.revocation_method, formatter.as_ref())?,
             key_storage_security: dto.schema.key_storage_security,
@@ -88,7 +89,6 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
                 &claim_schemas,
                 formatter.as_ref(),
             )?,
-            schema_id: self.parse_schema_id(dto.schema.schema_id, formatter.as_ref())?,
             imported_source_url: dto.schema.imported_source_url,
             allow_suspension: self.parse_allow_suspension(
                 dto.schema.allow_suspension,
@@ -100,6 +100,16 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
                 .unwrap_or(false),
             claim_schemas: claim_schemas.into(),
             organisation: dto.organisation.into(),
+            formats: vec![CredentialSchemaFormat {
+                id: Uuid::new_v4().into(),
+                created_date: now,
+                last_modified: now,
+                credential_schema_id,
+                format: self.parse_format(dto.schema.format)?,
+                schema_id: self.parse_schema_id(dto.schema.schema_id, formatter.as_ref())?,
+                claim_mappings: Default::default(),
+            }]
+            .into(),
             transaction_code: convert_inner(dto.schema.transaction_code),
             batch_size: None,
             allow_revocation: None,
@@ -1232,6 +1242,7 @@ mod test {
             required: false,
             array: None,
             claims: vec![],
+            mapping: None,
         }];
 
         // when
@@ -1370,6 +1381,7 @@ mod test {
                 required: true,
                 array: Some(false),
                 claims: vec![],
+                mapping: None,
             },
             ImportCredentialSchemaClaimSchemaDTO {
                 id: Uuid::new_v4(),
@@ -1380,6 +1392,7 @@ mod test {
                 required: true,
                 array: Some(false),
                 claims: vec![],
+                mapping: None,
             },
         ];
 
@@ -1410,6 +1423,7 @@ mod test {
                 required: true,
                 array: Some(false),
                 claims: vec![],
+                mapping: None,
             },
             ImportCredentialSchemaClaimSchemaDTO {
                 id: Uuid::new_v4(),
@@ -1420,6 +1434,7 @@ mod test {
                 required: true,
                 array: Some(false),
                 claims: vec![],
+                mapping: None,
             },
         ];
 
@@ -1457,6 +1472,7 @@ mod test {
             required: true,
             array: Some(false),
             claims: vec![],
+            mapping: None,
         }];
 
         // when
@@ -1505,7 +1521,9 @@ mod test {
                 required: true,
                 array: None,
                 claims: vec![],
+                mapping: None,
             }],
+            mapping: None,
         }];
 
         // when
@@ -1564,6 +1582,7 @@ mod test {
             required: true,
             array: None,
             claims: vec![],
+            mapping: None,
         }];
 
         // when

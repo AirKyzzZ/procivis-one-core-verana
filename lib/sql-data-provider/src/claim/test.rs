@@ -36,17 +36,20 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
 
     let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
 
-    let credential_schema_id = &insert_credential_schema_to_database(
+    let credential_schema_id = insert_credential_schema_to_database(
         &db,
         None,
         organisation_id,
         "credential schema",
-        "JWT",
         None,
         Some(KeyStorageSecurity::Basic),
     )
     .await
     .unwrap();
+
+    insert_credential_schema_with_revocation_to_database(&db, credential_schema_id, "JWT")
+        .await
+        .unwrap();
 
     let claim_schema_ids: Vec<ClaimSchemaId> = (0..4).map(|_| Uuid::new_v4().into()).collect();
     for (index, id) in claim_schema_ids.iter().enumerate() {
@@ -59,7 +62,7 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
             datatype: Set("STRING".to_string()),
             array: Set(false),
             metadata: Set(false),
-            credential_schema_id: Set(*credential_schema_id),
+            credential_schema_id: Set(credential_schema_id),
             order: Set(index as i32),
             required: Set(false),
         }
@@ -92,7 +95,7 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
 
     let credential = insert_credential(
         &db,
-        credential_schema_id,
+        &credential_schema_id,
         CredentialStateEnum::Created,
         "OPENID4VCI_DRAFT13",
         identifier_id,
@@ -126,7 +129,7 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
             })
             .collect(),
         identifier_id,
-        credential_schema_id: *credential_schema_id,
+        credential_schema_id,
     }
 }
 

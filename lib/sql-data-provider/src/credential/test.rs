@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use std::ops::Add;
 use std::sync::Arc;
 
+use one_core::clock::now_utc;
 use one_core::model::claim::{Claim, ClaimRelations};
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::model::credential::{
@@ -9,6 +10,7 @@ use one_core::model::credential::{
     CredentialRole, CredentialStateEnum, UpdateCredentialRequest,
 };
 use one_core::model::credential_schema::{CredentialSchema, LayoutType};
+use one_core::model::credential_schema_format::CredentialSchemaFormat;
 use one_core::model::did::Did;
 use one_core::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use one_core::model::interaction::{Interaction, InteractionRelations, InteractionType};
@@ -62,12 +64,15 @@ async fn setup_empty() -> TestSetup {
         None,
         organisation_id,
         "credential schema",
-        "JWT",
         None,
         Some(KeyStorageSecurity::Basic),
     )
     .await
     .unwrap();
+
+    insert_credential_schema_with_revocation_to_database(&db, credential_schema_id, "JWT")
+        .await
+        .unwrap();
 
     let new_claim_schemas: Vec<ClaimInsertInfo> = (0..2)
         .map(|i| ClaimInsertInfo {
@@ -99,7 +104,16 @@ async fn setup_empty() -> TestSetup {
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         name: "credential schema".to_string(),
-        format: "JWT".into(),
+        formats: vec![CredentialSchemaFormat {
+            id: Uuid::new_v4().into(),
+            created_date: now_utc(),
+            last_modified: now_utc(),
+            credential_schema_id,
+            format: "JWT".into(),
+            schema_id: "CredentialSchemaId".to_owned(),
+            claim_mappings: Default::default(),
+        }]
+        .into(),
         key_storage_security: Some(KeyStorageSecurity::Basic.into()),
         revocation_method: None,
         claim_schemas: new_claim_schemas
@@ -120,7 +134,6 @@ async fn setup_empty() -> TestSetup {
         organisation: dummy_organisation(Some(organisation_id)).into(),
         layout_type: LayoutType::Card,
         layout_properties: None,
-        schema_id: "CredentialSchemaId".to_owned(),
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
         transaction_code: None,

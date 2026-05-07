@@ -16,6 +16,7 @@ use super::error::OID4VPDraft25ServiceError;
 use crate::config::core_config::{CoreConfig, VerificationProtocolType};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{CredentialSchema, LayoutType};
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::Identifier;
 use crate::model::interaction::{Interaction, InteractionType};
@@ -124,6 +125,9 @@ async fn test_presentation_definition_success() {
             .expect_get_proof()
             .once()
             .return_once(move |_, _, _| {
+                let credential_schema_id = Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6")
+                    .unwrap()
+                    .into();
                 Ok(Some(Proof {
                     id: proof_id.to_owned(),
                     created_date: get_dummy_date(),
@@ -169,22 +173,28 @@ async fn test_presentation_definition_success() {
                             credential_schema: Some(CredentialSchema {
                                 batch_size: None,
                                 allow_revocation: None,
-                                id: Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6")
-                                    .unwrap()
-                                    .into(),
+                                id: credential_schema_id,
                                 imported_source_url: "CORE_URL".to_string(),
                                 deleted_at: None,
                                 created_date: get_dummy_date(),
                                 last_modified: get_dummy_date(),
                                 name: "Credential1".to_owned(),
-                                format: "JWT".into(),
+                                formats: vec![CredentialSchemaFormat {
+                                    id: Uuid::new_v4().into(),
+                                    created_date: crate::clock::now_utc(),
+                                    last_modified: crate::clock::now_utc(),
+                                    credential_schema_id,
+                                    format: "JWT".into(),
+                                    schema_id: "CredentialSchemaId".to_owned(),
+                                    claim_mappings: Default::default(),
+                                }]
+                                .into(),
                                 revocation_method: None,
                                 key_storage_security: None,
                                 claim_schemas: Default::default(),
                                 organisation: dummy_organisation(None).into(),
                                 layout_type: LayoutType::Card,
                                 layout_properties: None,
-                                schema_id: "CredentialSchemaId".to_owned(),
                                 allow_suspension: true,
                                 requires_wallet_instance_attestation: false,
                                 transaction_code: None,
@@ -252,7 +262,7 @@ async fn test_submit_proof_failed_credential_suspended() {
                             optional: None,
                             filter: Some(OpenID4VPPresentationDefinitionConstraintFieldFilter {
                                 r#type: "string".to_string(),
-                                r#const: credential_schema.schema_id.to_owned(),
+                                r#const: credential_schema.schema_id().await.unwrap(),
                             }),
                             intent_to_retain: None,
                         },
@@ -432,7 +442,7 @@ async fn test_submit_proof_failed_on_validator_failure() {
                             optional: None,
                             filter: Some(OpenID4VPPresentationDefinitionConstraintFieldFilter {
                                 r#type: "string".to_string(),
-                                r#const: credential_schema.schema_id.to_owned(),
+                                r#const: credential_schema.schema_id().await.unwrap(),
                             }),
                             intent_to_retain: None,
                         },

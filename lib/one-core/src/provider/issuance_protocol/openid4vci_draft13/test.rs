@@ -25,6 +25,7 @@ use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, LayoutType};
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::{Interaction, InteractionType};
@@ -275,6 +276,9 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
         .unwrap()
         .into();
 
+    let credential_schema_id = Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+        .unwrap()
+        .into();
     Credential {
         id: credential_id,
         created_date: now,
@@ -307,21 +311,27 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
         schema: Some(CredentialSchema {
             batch_size: None,
             allow_revocation: None,
-            id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
-                .unwrap()
-                .into(),
+            id: credential_schema_id,
             deleted_at: None,
             imported_source_url: "CORE_URL".to_string(),
             created_date: now,
             key_storage_security: Some(KeyStorageSecurity::Basic),
             last_modified: now,
             name: "schema".to_string(),
-            format: "JWT".into(),
+            formats: vec![CredentialSchemaFormat {
+                id: Uuid::new_v4().into(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                credential_schema_id,
+                format: "JWT".into(),
+                schema_id: "CredentialSchemaId".to_owned(),
+                claim_mappings: Default::default(),
+            }]
+            .into(),
             revocation_method: None,
             claim_schemas: vec![claim_schema].into(),
             layout_type: LayoutType::Card,
             layout_properties: None,
-            schema_id: "CredentialSchemaId".to_owned(),
             organisation: dummy_organisation(None).into(),
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
@@ -384,6 +394,7 @@ async fn test_generate_offer_did() {
         &credential,
         credential_subject,
     )
+    .await
     .unwrap();
 
     assert_eq!(
@@ -392,7 +403,7 @@ async fn test_generate_offer_did() {
             "credential_issuer": "BASE_URL/ssi/openid4vci/draft-13/c322aa7f-9803-410d-b891-939b279fb965",
             "issuer_did": "did:example:123",
             "credential_configuration_ids" : [
-                credential.schema.as_ref().unwrap().schema_id,
+                credential.schema.as_ref().unwrap().schema_id().await.unwrap(),
             ],
             "grants": {
                 "urn:ietf:params:oauth:grant-type:pre-authorized_code": { "pre-authorized_code": "c322aa7f-9803-410d-b891-939b279fb965" }
@@ -427,6 +438,7 @@ async fn test_generate_offer_certificate() {
         &credential,
         credential_subject,
     )
+    .await
     .unwrap();
 
     assert_eq!(
@@ -435,7 +447,7 @@ async fn test_generate_offer_certificate() {
             "credential_issuer": "BASE_URL/ssi/openid4vci/draft-13/c322aa7f-9803-410d-b891-939b279fb965",
             "issuer_certificate": "<dummy test cert chain>",
             "credential_configuration_ids" : [
-                credential.schema.as_ref().unwrap().schema_id,
+                credential.schema.as_ref().unwrap().schema_id().await.unwrap(),
             ],
             "grants": {
                 "urn:ietf:params:oauth:grant-type:pre-authorized_code": { "pre-authorized_code": "c322aa7f-9803-410d-b891-939b279fb965" }
@@ -470,6 +482,7 @@ async fn test_generate_offer_claims_without_values() {
         &credential,
         credential_subject,
     )
+    .await
     .unwrap();
 
     assert_eq!(
@@ -478,7 +491,7 @@ async fn test_generate_offer_claims_without_values() {
             "credential_issuer": "BASE_URL/ssi/openid4vci/draft-13/c322aa7f-9803-410d-b891-939b279fb965",
             "issuer_certificate": "<dummy test cert chain>",
             "credential_configuration_ids" : [
-                credential.schema.as_ref().unwrap().schema_id,
+                credential.schema.as_ref().unwrap().schema_id().await.unwrap(),
             ],
             "grants": {
                 "urn:ietf:params:oauth:grant-type:pre-authorized_code": { "pre-authorized_code": "c322aa7f-9803-410d-b891-939b279fb965" }
@@ -1913,21 +1926,30 @@ fn test_get_parent_claim_paths() {
 }
 
 fn generic_schema() -> CredentialSchema {
+    let credential_schema_id = Uuid::new_v4().into();
     CredentialSchema {
         batch_size: None,
         allow_revocation: None,
-        id: Uuid::new_v4().into(),
+        id: credential_schema_id,
         deleted_at: None,
         imported_source_url: "CORE_URL".to_string(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         name: "LPTestNestedSelectiveZug".to_string(),
-        format: "JSON_LD_BBSPLUS".into(),
+        formats: vec![CredentialSchemaFormat {
+            id: Uuid::new_v4().into(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
+            credential_schema_id,
+            format: "JSON_LD_BBSPLUS".into(),
+            schema_id: "http://127.0.0.1/ssi/schema/v1/id".to_owned(),
+            claim_mappings: Default::default(),
+        }]
+        .into(),
         revocation_method: None,
         key_storage_security: None,
         layout_type: LayoutType::Card,
         layout_properties: None,
-        schema_id: "http://127.0.0.1/ssi/schema/v1/id".to_string(),
         claim_schemas: vec![
             ClaimSchema {
                 business_key: None,
@@ -2027,21 +2049,30 @@ fn generic_schema() -> CredentialSchema {
 }
 
 fn generic_schema_array_object() -> CredentialSchema {
+    let credential_schema_id = Uuid::new_v4().into();
     CredentialSchema {
         batch_size: None,
         allow_revocation: None,
-        id: Uuid::new_v4().into(),
+        id: credential_schema_id,
         deleted_at: None,
         created_date: get_dummy_date(),
         imported_source_url: "CORE_URL".to_string(),
         last_modified: get_dummy_date(),
         name: "LPTestNestedSelectiveZug".to_string(),
-        format: "JSON_LD_CLASSIC".into(),
+        formats: vec![CredentialSchemaFormat {
+            id: Uuid::new_v4().into(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
+            credential_schema_id,
+            format: "JSON_LD_CLASSIC".into(),
+            schema_id: "http://127.0.0.1/ssi/schema/v1/id".to_owned(),
+            claim_mappings: Default::default(),
+        }]
+        .into(),
         revocation_method: None,
         key_storage_security: None,
         layout_type: LayoutType::Card,
         layout_properties: None,
-        schema_id: "http://127.0.0.1/ssi/schema/v1/id".to_string(),
         claim_schemas: vec![
             ClaimSchema {
                 business_key: None,
@@ -2141,21 +2172,30 @@ fn generic_schema_array_object() -> CredentialSchema {
 }
 
 fn generic_schema_object_hell() -> CredentialSchema {
+    let credential_schema_id = Uuid::new_v4().into();
     CredentialSchema {
         batch_size: None,
         allow_revocation: None,
-        id: Uuid::new_v4().into(),
+        id: credential_schema_id,
         deleted_at: None,
         created_date: get_dummy_date(),
         imported_source_url: "CORE_URL".to_string(),
         last_modified: get_dummy_date(),
         name: "LPTestNestedSelectiveZug".to_string(),
-        format: "JSON_LD_CLASSIC".into(),
+        formats: vec![CredentialSchemaFormat {
+            id: Uuid::new_v4().into(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
+            credential_schema_id,
+            format: "JSON_LD_CLASSIC".into(),
+            schema_id: "http://127.0.0.1/ssi/schema/v1/id".to_owned(),
+            claim_mappings: Default::default(),
+        }]
+        .into(),
         revocation_method: None,
         key_storage_security: None,
         layout_type: LayoutType::Card,
         layout_properties: None,
-        schema_id: "http://127.0.0.1/ssi/schema/v1/id".to_string(),
         claim_schemas: vec![
             ClaimSchema {
                 business_key: None,

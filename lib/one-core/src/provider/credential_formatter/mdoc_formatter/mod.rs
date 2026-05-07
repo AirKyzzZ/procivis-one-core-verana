@@ -15,7 +15,7 @@ use one_crypto::utilities::generate_random_bytes;
 use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
 use sha2::{Digest, Sha256, Sha384, Sha512};
-use shared_types::{CredentialId, CredentialSchemaId, DidValue};
+use shared_types::{CredentialId, CredentialSchemaId, DidValue, OrganisationId};
 use standardized_types::jwk::PublicJwk;
 use time::format_description::FormatItem;
 use time::format_description::well_known::Rfc3339;
@@ -41,6 +41,7 @@ use crate::mapper::{NESTED_CLAIM_MARKER, decode_cbor_base64, encode_cbor_base64}
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::identifier::Identifier;
 use crate::model::organisation::Organisation;
 use crate::proto::certificate_validator::CertificateValidator;
@@ -60,7 +61,6 @@ use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
-use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 
 pub(crate) mod util;
 
@@ -397,15 +397,15 @@ impl CredentialFormatter for MdocFormatter {
         }
     }
 
-    fn credential_schema_id(
+    fn credential_schema_id<'a>(
         &self,
         id: CredentialSchemaId,
-        request: &CreateCredentialSchemaRequestDTO,
-        _core_base_url: &str,
+        _organisation_id: OrganisationId,
+        schema_id: Option<&'a str>,
+        _core_base_url: &'a str,
     ) -> Result<String, FormatterError> {
-        Ok(request
-            .schema_id
-            .to_owned()
+        Ok(schema_id
+            .map(ToOwned::to_owned)
             .unwrap_or_else(|| id.to_string()))
     }
 
@@ -479,24 +479,33 @@ impl CredentialFormatter for MdocFormatter {
             }
         }
 
+        let credential_schema_id = Uuid::new_v4().into();
         let credential_schema = crate::model::credential_schema::CredentialSchema {
-            id: Uuid::new_v4().into(),
+            id: credential_schema_id,
             deleted_at: None,
             created_date: now,
             last_modified: now,
             name: doctype.to_owned(),
-            format: "".into(), // Will be overridden based on config priority
             revocation_method: None,
             key_storage_security: None,
             layout_type: crate::model::credential_schema::LayoutType::Card,
             layout_properties: None,
-            schema_id: doctype,
             imported_source_url: "".to_string(),
             allow_suspension: false,
             requires_wallet_instance_attestation: false,
             organisation: organisation.clone().into(),
             claim_schemas: claim_schemas.into(),
             transaction_code: None,
+            formats: vec![CredentialSchemaFormat {
+                id: Uuid::new_v4().into(),
+                created_date: now,
+                last_modified: now,
+                credential_schema_id,
+                format: "".into(), // Will be overridden based on config priority
+                schema_id: doctype,
+                claim_mappings: Default::default(),
+            }]
+            .into(),
             batch_size: None,
             allow_revocation: None,
         };

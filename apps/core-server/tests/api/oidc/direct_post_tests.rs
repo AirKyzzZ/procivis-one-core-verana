@@ -68,7 +68,7 @@ async fn test_direct_post_one_credential_correct() {
                             "path": ["$.credentialSchema.id"],
                             "filter": {
                                 "type": "string",
-                                "const": credential_schema.schema_id
+                                "const": credential_schema.schema_id().await.unwrap()
                             }
                         },
                         {
@@ -221,7 +221,7 @@ async fn test_direct_post_dcql_multiple_flag_true_success() {
                     "required": false
                 }
                 ],
-                "id": credential_schema.schema_id,
+                "id": credential_schema.schema_id().await.unwrap(),
                 "format": "jwt_vc_json",
                 "meta": {
                     "type_values": [["https://www.w3.org/2018/credentials#VerifiableCredential"]],
@@ -258,7 +258,7 @@ async fn test_direct_post_dcql_multiple_flag_true_success() {
 
     let (_, token2) = dummy_presentations().await;
     let vp_token = json!({
-        credential_schema.schema_id: [token2, token2]
+        credential_schema.schema_id().await.unwrap(): [token2, token2]
     });
 
     let params = [
@@ -350,7 +350,7 @@ async fn test_direct_post_dcql_parallel_success() {
                     "required": false
                 }
                 ],
-                "id": credential_schema.schema_id,
+                "id": credential_schema.schema_id().await.unwrap(),
                 "format": "jwt_vc_json",
                 "meta": {
                     "type_values": [["https://www.w3.org/2018/credentials#VerifiableCredential"]],
@@ -386,7 +386,7 @@ async fn test_direct_post_dcql_parallel_success() {
 
     let (_, token2) = dummy_presentations().await;
     let vp_token = json!({
-        credential_schema.schema_id: [token2]
+        credential_schema.schema_id().await.unwrap(): [token2]
     });
 
     let params = [
@@ -679,7 +679,7 @@ async fn test_direct_post_multiple_presentations() {
                             "path": ["$.credentialSchema.id"],
                             "filter": {
                                 "type": "string",
-                                "const": credential_schema1.schema_id
+                                "const": credential_schema1.schema_id().await.unwrap()
                             }
                         },
                         {
@@ -703,7 +703,7 @@ async fn test_direct_post_multiple_presentations() {
                             "path": ["$.credentialSchema.id"],
                             "filter": {
                                 "type": "string",
-                                "const": credential_schema2.schema_id
+                                "const": credential_schema2.schema_id().await.unwrap()
                             }
                         },
                         {
@@ -727,7 +727,7 @@ async fn test_direct_post_multiple_presentations() {
                             "path": ["$.credentialSchema.id"],
                             "filter": {
                                 "type": "string",
-                                "const": credential_schema3.schema_id
+                                "const": credential_schema3.schema_id().await.unwrap()
                             }
                         },
                         {
@@ -971,7 +971,7 @@ async fn test_direct_post_multiple_presentations_missing_inputs() {
                             "path": ["$.credentialSchema.id"],
                             "filter": {
                                 "type": "string",
-                                "const": credential_schema1.schema_id
+                                "const": credential_schema1.schema_id().await.unwrap()
                             }
                         },
                         {
@@ -995,7 +995,7 @@ async fn test_direct_post_multiple_presentations_missing_inputs() {
                             "path": ["$.credentialSchema.id"],
                             "filter": {
                                 "type": "string",
-                                "const": credential_schema2.schema_id
+                                "const": credential_schema2.schema_id().await.unwrap()
                             }
                         },
                         {
@@ -1019,7 +1019,7 @@ async fn test_direct_post_multiple_presentations_missing_inputs() {
                             "path": ["$.credentialSchema.id"],
                             "filter": {
                                 "type": "string",
-                                "const": credential_schema3.schema_id
+                                "const": credential_schema3.schema_id().await.unwrap()
                             }
                         },
                         {
@@ -1203,7 +1203,7 @@ async fn test_direct_post_wrong_claim_format() {
                             "path": ["$.credentialSchema.id"],
                             "filter": {
                                 "type": "string",
-                                "const": credential_schema.schema_id
+                                "const": credential_schema.schema_id().await.unwrap()
                             }
                         },
                         {
@@ -1344,7 +1344,7 @@ async fn test_direct_post_draft25() {
                             "path": ["$.credentialSchema.id"],
                             "filter": {
                                 "type": "string",
-                                "const": credential_schema.schema_id
+                                "const": credential_schema.schema_id().await.unwrap()
                             }
                         },
                         {
@@ -1496,7 +1496,7 @@ async fn test_direct_post_with_profile_verification() {
                             "path": ["$.credentialSchema.id"],
                             "filter": {
                                 "type": "string",
-                                "const": credential_schema.schema_id
+                                "const": credential_schema.schema_id().await.unwrap()
                             }
                         },
                         {

@@ -256,7 +256,8 @@ impl OpenID4VPFinal1_0 {
                 .unwrap_or(true);
 
             if require_holder_binding {
-                let credential_format = format_to_type(&credential_presentation, &self.config)?;
+                let credential_format =
+                    format_to_type(&credential_presentation, &self.config).await?;
                 let presentation_format = match credential_format {
                     FormatType::SdJwt => FormatType::SdJwt,
                     FormatType::SdJwtVc => FormatType::SdJwtVc,
@@ -648,7 +649,8 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
                 proof_schema,
                 &format_to_type_mapper,
                 &*self.credential_formatter_provider,
-            )?,
+            )
+            .await?,
             encode_client_id_with_scheme(client_id_without_prefix.clone(), client_id_scheme),
             response_uri.clone(),
             &interaction_id,

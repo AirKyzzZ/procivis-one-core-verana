@@ -35,6 +35,7 @@ use crate::config::core_config::{
 use crate::error::ContextWithErrorCode;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, LayoutType};
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::identifier::Identifier;
 use crate::model::organisation::Organisation;
 use crate::proto::http_client::HttpClient;
@@ -336,25 +337,34 @@ impl CredentialFormatter for SDJWTFormatter {
             .map(|s| s.id.clone())
             .unwrap_or_else(|| schema_name.clone());
 
+        let credential_schema_id = Uuid::new_v4().into();
         let schema = CredentialSchema {
-            id: Uuid::new_v4().into(),
+            id: credential_schema_id,
             deleted_at: None,
             created_date: now,
             last_modified: now,
             name: schema_name,
-            format: "".into(), // Will be overridden based on config priority
+            formats: vec![CredentialSchemaFormat {
+                id: Uuid::new_v4().into(),
+                created_date: now,
+                last_modified: now,
+                credential_schema_id,
+                format: "".into(), // Will be overridden based on config priority
+                schema_id,
+                claim_mappings: Default::default(),
+            }]
+            .into(),
+            batch_size: None,
             revocation_method: revocation_method.map(|v| v.to_string().into()),
             key_storage_security: None,
             layout_type: LayoutType::Card,
             layout_properties: None,
-            schema_id,
             imported_source_url: "".to_string(),
             allow_suspension: false,
             requires_wallet_instance_attestation: false,
             claim_schemas: claim_schemas.into(),
             organisation: organisation.clone().into(),
             transaction_code: None,
-            batch_size: None,
             allow_revocation: None,
         };
 

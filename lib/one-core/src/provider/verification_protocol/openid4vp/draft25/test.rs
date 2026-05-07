@@ -12,6 +12,7 @@ use super::OpenID4VP25HTTP;
 use super::model::OpenID4Vp25Params;
 use crate::config::core_config::{CoreConfig, FormatType};
 use crate::model::credential_schema::{CredentialSchema, LayoutType};
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::Identifier;
 use crate::model::key::Key;
@@ -218,6 +219,7 @@ async fn test_share_proof() {
 }
 
 fn test_proof(proof_id: Uuid, credential_format: CredentialFormat) -> Proof {
+    let credential_schema_id = Uuid::new_v4().into();
     Proof {
         id: proof_id.into(),
         created_date: crate::clock::now_utc(),
@@ -243,17 +245,25 @@ fn test_proof(proof_id: Uuid, credential_format: CredentialFormat) -> Proof {
                 credential_schema: Some(CredentialSchema {
                     batch_size: None,
                     allow_revocation: None,
-                    id: Uuid::new_v4().into(),
+                    id: credential_schema_id,
                     deleted_at: None,
                     created_date: crate::clock::now_utc(),
                     last_modified: crate::clock::now_utc(),
                     name: "test-credential-schema".to_string(),
-                    format: credential_format,
+                    formats: vec![CredentialSchemaFormat {
+                        id: Uuid::new_v4().into(),
+                        created_date: crate::clock::now_utc(),
+                        last_modified: crate::clock::now_utc(),
+                        credential_schema_id,
+                        format: credential_format,
+                        schema_id: "test_schema_id".to_owned(),
+                        claim_mappings: Default::default(),
+                    }]
+                    .into(),
                     revocation_method: None,
                     key_storage_security: None,
                     layout_type: LayoutType::Card,
                     layout_properties: None,
-                    schema_id: "test_schema_id".to_string(),
                     imported_source_url: "test_imported_src_url".to_string(),
                     allow_suspension: false,
                     requires_wallet_instance_attestation: false,

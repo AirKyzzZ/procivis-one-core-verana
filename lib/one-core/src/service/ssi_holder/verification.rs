@@ -281,8 +281,9 @@ impl SSIHolderService {
                     &submitted_paths,
                 )?);
 
-                let formatter =
-                    self.formatter_for_blob_and_schema(credential_content, credential_schema)?;
+                let formatter = self
+                    .formatter_for_blob_and_schema(credential_content, credential_schema)
+                    .await?;
                 let credential_presentation = CredentialPresentation {
                     token: credential_content.to_owned(),
                     disclosed_keys: submitted_paths,
@@ -371,13 +372,13 @@ impl SSIHolderService {
         }
     }
 
-    fn formatter_for_blob_and_schema(
+    async fn formatter_for_blob_and_schema(
         &self,
         credential_content: &str,
         credential_schema: &CredentialSchema,
     ) -> Result<Arc<dyn CredentialFormatter>, HolderServiceError> {
         let format = detect_format_with_crypto_suite(
-            &credential_schema.format,
+            &credential_schema.format().await?,
             credential_content,
             &*self.formatter_provider,
         )
@@ -679,8 +680,9 @@ impl SSIHolderService {
                 .ok_or(HolderServiceError::MappingError(
                     "credential_schema missing".to_string(),
                 ))?;
-        let formatter =
-            self.formatter_for_blob_and_schema(credential_content, credential_schema)?;
+        let formatter = self
+            .formatter_for_blob_and_schema(credential_content, credential_schema)
+            .await?;
 
         let credential_presentation = CredentialPresentation {
             token: credential_content.to_owned(),

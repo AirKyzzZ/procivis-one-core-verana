@@ -54,12 +54,15 @@ async fn setup_empty() -> TestSetup {
         None,
         organisation_id,
         "initial_schema",
-        "JWT",
         None,
         Some(KeyStorageSecurity::Basic),
     )
     .await
     .unwrap();
+
+    insert_credential_schema_with_revocation_to_database(&db, credential_schema_id, "JWT")
+        .await
+        .unwrap();
 
     let did_id = insert_did_key(
         &db,
@@ -187,12 +190,16 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
         None,
         organisation.id,
         credential_schema_name,
-        "JWT",
         None,
         Some(KeyStorageSecurity::Basic),
     )
     .await
     .unwrap();
+
+    insert_credential_schema_with_revocation_to_database(&db, credential_schema_id, "JWT")
+        .await
+        .unwrap();
+
     insert_history(
         &db,
         HistoryAction::Created.into(),
@@ -510,12 +517,16 @@ async fn test_get_history_list_schema_joins_credentials() {
         None,
         organisation.id,
         "schema",
-        "JWT",
         None,
         Some(KeyStorageSecurity::Basic),
     )
     .await
     .unwrap();
+
+    insert_credential_schema_with_revocation_to_database(&db, credential_schema_id, "JWT")
+        .await
+        .unwrap();
+
     insert_history(
         &db,
         HistoryAction::Created.into(),
@@ -1461,12 +1472,16 @@ async fn test_issuer_org_history_stats_dummy_data() {
         None,
         org_id,
         "schema2",
-        "JWT",
         None,
         Some(KeyStorageSecurity::Basic),
     )
     .await
     .unwrap();
+
+    insert_credential_schema_with_revocation_to_database(&db, credential_schema_id2, "JWT")
+        .await
+        .unwrap();
+
     let credential2 = insert_credential(
         &db,
         &credential_schema_id2,

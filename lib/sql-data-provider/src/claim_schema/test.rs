@@ -27,13 +27,16 @@ async fn setup() -> TestSetup {
         &db,
         None,
         organisation_id,
-        "credential schema",
-        "JWT",
+        "credential schema id",
         None,
         None,
     )
     .await
     .unwrap();
+
+    insert_credential_schema_with_revocation_to_database(&db, credential_schema_id, "JWT")
+        .await
+        .unwrap();
 
     TestSetup {
         repository: Box::new(ClaimSchemaProvider {

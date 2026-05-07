@@ -492,6 +492,7 @@ mod tests {
 
     use super::*;
     use crate::model::credential_schema::{KeyStorageSecurity, LayoutType};
+    use crate::model::credential_schema_format::CredentialSchemaFormat;
     use crate::model::did::{Did, DidType};
     use crate::model::identifier::IdentifierState;
     use crate::service::test_utilities::dummy_organisation;
@@ -539,22 +540,31 @@ mod tests {
             organisation: None,
             log: None,
         };
+        let credential_schema_id = Uuid::new_v4().into();
         let credential = extracted_credential_to_model(
             &claim_schemas,
             CredentialSchema {
                 batch_size: None,
                 allow_revocation: None,
-                id: Uuid::new_v4().into(),
+                id: credential_schema_id,
                 deleted_at: None,
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 name: "CredentialSchema".to_string(),
-                format: "MDOC".into(),
+                formats: vec![CredentialSchemaFormat {
+                    id: Uuid::new_v4().into(),
+                    created_date: crate::clock::now_utc(),
+                    last_modified: crate::clock::now_utc(),
+                    credential_schema_id,
+                    format: "MDOC".into(),
+                    schema_id: "pavel.3310.simple".to_owned(),
+                    claim_mappings: Default::default(),
+                }]
+                .into(),
                 revocation_method: None,
                 key_storage_security: Some(KeyStorageSecurity::Basic),
                 layout_type: LayoutType::Card,
                 layout_properties: None,
-                schema_id: "pavel.3310.simple".to_string(),
                 claim_schemas: claim_schemas.to_owned().into(),
                 organisation: dummy_organisation(None).into(),
                 imported_source_url: "CORE_URL".to_string(),

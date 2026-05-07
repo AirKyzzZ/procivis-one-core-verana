@@ -9,16 +9,17 @@ use super::dto::{
     CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaCodePropertiesDTO,
     CredentialSchemaDcqlResponseDTO, CredentialSchemaDetailResponseDTO,
     CredentialSchemaFilterParamsDTO, CredentialSchemaFilterValue,
-    CredentialSchemaLogoPropertiesRequestDTO,
+    CredentialSchemaListItemResponseDTO, CredentialSchemaLogoPropertiesRequestDTO,
 };
 use super::error::CredentialSchemaServiceError;
 use crate::config::core_config::{CoreConfig, FormatType};
-use crate::error::ContextWithErrorCode;
+use crate::error::{ContextWithErrorCode, NestedError};
 use crate::mapper::credential_schema_claim::from_jwt_request_claim_schema;
 use crate::mapper::{NESTED_CLAIM_MARKER, remove_first_nesting_layer};
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaExactColumn, CredentialSchemaListQuery,
 };
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::list_filter::{
     ComparisonType, ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
     ValueComparison,
@@ -31,7 +32,13 @@ pub(crate) async fn schema_to_detail_response_dto(
     value: CredentialSchema,
     config: &CoreConfig,
 ) -> Result<CredentialSchemaDetailResponseDTO, CredentialSchemaServiceError> {
-    let dcql = map_dcql_format_meta(&value, config);
+    let formats = value.formats.get().await.error_while("getting formats")?;
+    let format = formats
+        .first()
+        .ok_or(CredentialSchemaServiceError::MappingError(
+            "Missing formats".to_string(),
+        ))?;
+    let dcql = map_dcql_format_meta(format, config);
     let claim_schemas = value
         .claim_schemas
         .get()
@@ -47,13 +54,13 @@ pub(crate) async fn schema_to_detail_response_dto(
         created_date: value.created_date,
         last_modified: value.last_modified,
         name: value.name,
-        format: value.format,
+        format: format.format.clone(),
         imported_source_url: value.imported_source_url,
         revocation_method: value.revocation_method,
         organisation_id: value.organisation.id(),
         claims: claim_schemas,
         key_storage_security: value.key_storage_security,
-        schema_id: value.schema_id,
+        schema_id: format.schema_id.clone(),
         layout_type: Some(value.layout_type),
         layout_properties: value.layout_properties.map(|item| item.into()),
         allow_suspension: value.allow_suspension,
@@ -64,40 +71,43 @@ pub(crate) async fn schema_to_detail_response_dto(
 }
 
 fn map_dcql_format_meta(
-    value: &CredentialSchema,
+    format: &CredentialSchemaFormat,
     config: &CoreConfig,
 ) -> Option<CredentialSchemaDcqlResponseDTO> {
     // Ignore failures here, as we don't want to fail the whole request if we can't map the format.
     // This would happen e.g., if a provider is renamed and the schema is still using the old name.
-    let format_type = config.format.get_type(&value.format).ok()?;
+    let format_type = config.format.get_type(&format.format).ok()?;
     let dcql = CredentialSchemaDcqlResponseDTO {
-        meta: schema_to_dcql_meta(value, &format_type),
+        meta: schema_to_dcql_meta(format, &format_type),
         format: format_type.into(),
     };
     Some(dcql)
 }
 
-fn schema_to_dcql_meta(schema: &CredentialSchema, format_type: &FormatType) -> CredentialMeta {
+fn schema_to_dcql_meta(
+    format: &CredentialSchemaFormat,
+    format_type: &FormatType,
+) -> CredentialMeta {
     match format_type {
         FormatType::SdJwtVc => CredentialMeta::SdJwtVc {
-            vct_values: vec![schema.schema_id.clone()],
+            vct_values: vec![format.schema_id.clone()],
         },
         FormatType::Mdoc => CredentialMeta::MsoMdoc {
-            doctype_value: schema.schema_id.clone(),
+            doctype_value: format.schema_id.clone(),
         },
         FormatType::Jwt
         | FormatType::SdJwt
         | FormatType::JsonLdClassic
         | FormatType::JsonLdBbsPlus => {
             // This is a terrible heuristic, but until proper support for JSON-LD contexts is added, this is the best we can do.
-            let context = if let Ok(url) = Url::parse(&schema.schema_id)
+            let context = if let Ok(url) = Url::parse(&format.schema_id)
                 && url.path().starts_with("/ssi/schema/v1/")
             {
-                schema
+                format
                     .schema_id
                     .replace("/ssi/schema/v1/", "/ssi/context/v1/")
             } else {
-                schema.schema_id.clone()
+                format.schema_id.clone()
             };
             CredentialMeta::W3cVc {
                 type_values: vec![vec![Context::CredentialsV2.to_string(), context]],
@@ -151,11 +161,11 @@ pub(super) fn from_create_request_with_id(
 
     Ok(CredentialSchema {
         id,
+        allow_revocation: request.revocation_method.as_ref().map(|_| true),
         deleted_at: None,
         created_date: now,
         last_modified: now,
         name: request.name,
-        format: request.format,
         key_storage_security: request.key_storage_security,
         revocation_method: request.revocation_method,
         claim_schemas: claim_schemas
@@ -176,12 +186,44 @@ pub(super) fn from_create_request_with_id(
         layout_type: request.layout_type,
         layout_properties: request.layout_properties.map(Into::into),
         imported_source_url,
-        schema_id,
         allow_suspension: request.allow_suspension.unwrap_or_default(),
         requires_wallet_instance_attestation: request.requires_wallet_instance_attestation,
         transaction_code: convert_inner(request.transaction_code),
         batch_size: None,
-        allow_revocation: None,
+        formats: vec![CredentialSchemaFormat {
+            id: Uuid::new_v4().into(),
+            created_date: now,
+            last_modified: now,
+            credential_schema_id: id,
+            format: request.format,
+            schema_id,
+            claim_mappings: Default::default(),
+        }]
+        .into(),
+    })
+}
+
+pub(crate) async fn to_credential_schema_list_response(
+    credential_schema: CredentialSchema,
+) -> Result<CredentialSchemaListItemResponseDTO, NestedError> {
+    let format = credential_schema.format().await?.to_owned();
+    let schema_id = credential_schema.schema_id().await?;
+    Ok(CredentialSchemaListItemResponseDTO {
+        id: credential_schema.id,
+        created_date: credential_schema.created_date,
+        last_modified: credential_schema.last_modified,
+        deleted_at: credential_schema.deleted_at,
+        name: credential_schema.name,
+        format,
+        revocation_method: credential_schema.revocation_method,
+        key_storage_security: credential_schema.key_storage_security,
+        schema_id,
+        imported_source_url: credential_schema.imported_source_url,
+        layout_type: Some(credential_schema.layout_type),
+        layout_properties: credential_schema.layout_properties.map(|item| item.into()),
+        allow_suspension: credential_schema.allow_suspension,
+        requires_wallet_instance_attestation: credential_schema
+            .requires_wallet_instance_attestation,
     })
 }
 

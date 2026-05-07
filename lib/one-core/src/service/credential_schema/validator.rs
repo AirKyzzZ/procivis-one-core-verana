@@ -9,9 +9,9 @@ use crate::config::core_config::{ConfigExt, CoreConfig, DatatypeType, FormatType
 use crate::config::validator::datatype::validate_datatypes;
 use crate::config::validator::format::validate_format;
 use crate::config::validator::revocation::validate_revocation;
-use crate::error::ContextWithErrorCode;
+use crate::error::{ContextWithErrorCode, NestedError};
 use crate::mapper::NESTED_CLAIM_MARKER;
-use crate::model::credential_schema::KeyStorageSecurity;
+use crate::model::credential_schema::{GetCredentialSchemaList, KeyStorageSecurity};
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::{Features, FormatterCapabilities};
 use crate::provider::revocation::RevocationMethod;
@@ -35,10 +35,7 @@ pub(crate) async fn credential_schema_already_exists(
         .error_while("getting credential schemas")?;
 
     if let Some(schema_id) = schema_id
-        && credential_schemas
-            .values
-            .iter()
-            .any(|cs| cs.schema_id == schema_id)
+        && exists_credential_schema_with_same_schema_id(&credential_schemas, &schema_id).await?
     {
         return Ok(UniquenessCheckResult::SchemaIdConflict);
     }
@@ -47,6 +44,18 @@ pub(crate) async fn credential_schema_already_exists(
     } else {
         Ok(UniquenessCheckResult::Ok)
     }
+}
+
+async fn exists_credential_schema_with_same_schema_id(
+    credential_schemas: &GetCredentialSchemaList,
+    schema_id: &str,
+) -> Result<bool, NestedError> {
+    for value in &credential_schemas.values {
+        if value.matches_schema_id(schema_id).await? {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 pub(crate) enum UniquenessCheckResult {

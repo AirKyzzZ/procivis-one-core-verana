@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use error::FormatterError;
 use model::{AuthenticationFn, CredentialPresentation, DetailCredential, TokenVerifier};
-use shared_types::CredentialSchemaId;
+use shared_types::{CredentialSchemaId, OrganisationId};
 use time::Duration;
 
 use crate::config::core_config::{KeyAlgorithmType, RevocationType};
@@ -10,7 +10,6 @@ use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::Identifier;
 use crate::model::organisation::Organisation;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
-use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 
 pub(crate) mod common;
 pub use common::nest_claims;
@@ -105,11 +104,12 @@ pub trait CredentialFormatter: Send + Sync {
 
     /// Returns the schema id to be used for a newly created schema.
     /// It may be derived from the `id`, the creation request and the `core_base_url`.
-    fn credential_schema_id(
+    fn credential_schema_id<'a>(
         &self,
         id: CredentialSchemaId,
-        _request: &CreateCredentialSchemaRequestDTO,
-        core_base_url: &str,
+        _organisation_id: OrganisationId,
+        _schema_id: Option<&'a str>,
+        core_base_url: &'a str,
     ) -> Result<String, FormatterError> {
         Ok(format!("{core_base_url}/ssi/schema/v1/{id}"))
     }

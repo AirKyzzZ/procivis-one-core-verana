@@ -246,18 +246,20 @@ impl WRPValidator for WRPValidatorImpl {
         credential_schema: &CredentialSchema,
         organisation_id: OrganisationId,
     ) -> Result<Option<TrustEntityResponse>, WRPValidatorError> {
+        let credential_schema_format = credential_schema.format().await?;
         let formatter_capabilities = self
             .credential_formatter_provider
-            .get_credential_formatter(&credential_schema.format)
+            .get_credential_formatter(&credential_schema_format)
             .ok_or(MissingProviderError::Formatter(
-                credential_schema.format.to_string(),
+                credential_schema_format.to_string(),
             ))
             .error_while("getting formatter")?
             .get_capabilities();
 
+        let credential_schema_schema_id = credential_schema.schema_id().await?;
         if !formatter_capabilities
             .pid_schema_ids
-            .contains(&credential_schema.schema_id)
+            .contains(&credential_schema_schema_id)
         {
             tracing::debug!("Credential not a PID, skipping issuer trust checks");
             return Ok(None);

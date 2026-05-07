@@ -12,6 +12,7 @@ use crate::model::credential::{
     Credential, CredentialRole, CredentialStateEnum, GetCredentialList, UpdateCredentialRequest,
 };
 use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, LayoutType};
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::key::Key;
@@ -235,6 +236,7 @@ fn generic_credential() -> Credential {
         log: None,
     };
 
+    let credential_schema_id = Uuid::new_v4().into();
     Credential {
         id: credential_id,
         created_date: now,
@@ -276,20 +278,28 @@ fn generic_credential() -> Credential {
         schema: Some(CredentialSchema {
             batch_size: None,
             allow_revocation: None,
-            id: Uuid::new_v4().into(),
+            id: credential_schema_id,
             deleted_at: None,
             imported_source_url: "CORE_URL".to_string(),
             created_date: now,
             last_modified: now,
             name: "schema".to_string(),
             key_storage_security: Some(KeyStorageSecurity::Basic),
-            format: "JWT".into(),
+            formats: vec![CredentialSchemaFormat {
+                id: Uuid::new_v4().into(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                credential_schema_id,
+                format: "JWT".into(),
+                schema_id: "CredentialSchemaId".to_owned(),
+                claim_mappings: Default::default(),
+            }]
+            .into(),
             revocation_method: None,
             claim_schemas: vec![claim_schema].into(),
             organisation: organisation.into(),
             layout_type: LayoutType::Card,
             layout_properties: None,
-            schema_id: "CredentialSchemaId".to_owned(),
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,

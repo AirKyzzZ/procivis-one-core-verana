@@ -15,6 +15,7 @@ use crate::model::credential::{
     Credential, CredentialRole, CredentialStateEnum, GetCredentialList,
 };
 use crate::model::credential_schema::{CredentialSchema, LayoutType};
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
@@ -122,6 +123,7 @@ async fn test_presentation_reject_ok() {
         }),
     })
     .unwrap();
+    let credential_schema_id = Uuid::new_v4().into();
     let proof = Proof {
         id: Uuid::new_v4().into(),
         created_date: crate::clock::now_utc(),
@@ -146,18 +148,26 @@ async fn test_presentation_reject_ok() {
                 credential_schema: Some(CredentialSchema {
                     batch_size: None,
                     allow_revocation: None,
-                    id: Uuid::new_v4().into(),
+                    id: credential_schema_id,
                     created_date: crate::clock::now_utc(),
                     imported_source_url: "CORE_URL".to_string(),
                     last_modified: crate::clock::now_utc(),
                     deleted_at: None,
                     name: "".to_string(),
-                    format: "".into(),
+                    formats: vec![CredentialSchemaFormat {
+                        id: Uuid::new_v4().into(),
+                        created_date: crate::clock::now_utc(),
+                        last_modified: crate::clock::now_utc(),
+                        credential_schema_id,
+                        format: "".into(),
+                        schema_id,
+                        claim_mappings: Default::default(),
+                    }]
+                    .into(),
                     revocation_method: None,
                     key_storage_security: None,
                     layout_type: LayoutType::Card,
                     layout_properties: None,
-                    schema_id,
                     claim_schemas: Default::default(),
                     organisation: dummy_organisation(Some(organisation_id)).into(),
                     allow_suspension: true,
@@ -344,10 +354,18 @@ async fn test_get_presentation_definition_ok() {
         imported_source_url: "CORE_URL".to_string(),
         last_modified: crate::clock::now_utc(),
         name: "schema-name".to_string(),
-        format: "ISO_MDL".into(),
+        formats: vec![CredentialSchemaFormat {
+            id: Uuid::new_v4().into(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
+            credential_schema_id,
+            format: "ISO_MDL".into(),
+            schema_id,
+            claim_mappings: Default::default(),
+        }]
+        .into(),
         revocation_method: None,
         layout_type: LayoutType::Card,
-        schema_id: schema_id.clone(),
         organisation: dummy_organisation(Some(organisation_id)).into(),
         layout_properties: None,
         claim_schemas: claim_schemas.values().cloned().collect::<Vec<_>>().into(),

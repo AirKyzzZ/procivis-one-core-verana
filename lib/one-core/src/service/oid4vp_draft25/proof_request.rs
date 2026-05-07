@@ -12,8 +12,8 @@ use crate::provider::verification_protocol::openid4vp::model::{
 use crate::provider::verification_protocol::openid4vp::service::oidc_verifier_presentation_definition;
 
 #[expect(clippy::too_many_arguments)]
-pub(crate) fn generate_authorization_request_params_draft25(
-    proof: &Proof,
+pub(crate) async fn generate_authorization_request_params_draft25(
+    proof: Proof,
     interaction_id: &InteractionId,
     nonce: String,
     presentation_definition: Option<OpenID4VPPresentationDefinition>,
@@ -32,14 +32,14 @@ pub(crate) fn generate_authorization_request_params_draft25(
 
     let presentation_definition = presentation_definition
         .map(|pd| {
-            oidc_verifier_presentation_definition(proof, pd)
+            oidc_verifier_presentation_definition(&proof, pd)
                 .map_err(|e| VerificationProtocolError::Failed(e.to_string()))
         })
         .transpose()?;
 
     Ok(OpenID4VP25AuthorizationRequest {
         response_type: Some("vp_token".to_string()),
-        response_mode: Some(determine_response_mode_openid4vp_draft(proof)?),
+        response_mode: Some(determine_response_mode_openid4vp_draft(&proof).await?),
         client_id,
         client_metadata: Some(client_metadata.into()),
         presentation_definition,

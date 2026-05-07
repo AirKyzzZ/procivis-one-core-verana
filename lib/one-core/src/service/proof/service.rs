@@ -353,7 +353,8 @@ impl ProofService {
             &self.config,
             &proof_schema,
             &*self.credential_formatter_provider,
-        )?;
+        )
+        .await?;
 
         for credential_schema in proof_schema
             .input_schemas
@@ -494,7 +495,8 @@ impl ProofService {
             &verifier_key,
             &*self.credential_formatter_provider,
             &self.config,
-        )?;
+        )
+        .await?;
 
         validate_identifier(
             verifier_identifier.clone(),

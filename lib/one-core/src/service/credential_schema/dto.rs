@@ -1,5 +1,5 @@
 use dcql::CredentialMeta;
-use one_dto_mapper::{From, Into, convert_inner};
+use one_dto_mapper::{From, Into, convert_inner, convert_inner_of_inner};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use shared_types::{
@@ -12,10 +12,11 @@ use uuid::Uuid;
 use crate::model;
 use crate::model::common::GetListResponse;
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaExactColumn, KeyStorageSecurity, LayoutType, TransactionCode,
+    CredentialSchemaExactColumn, KeyStorageSecurity, LayoutType, TransactionCode,
     TransactionCodeType,
 };
 use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
+pub use crate::proto::credential_schema::dto::CredentialClaimSchemaMappingDTO;
 use crate::proto::credential_schema::transaction_code::TransactionCodeLength;
 use crate::service::common_dto::{BoundedB64Image, KB, MB};
 
@@ -23,8 +24,7 @@ pub type CredentialSchemaLogo = BoundedB64Image<{ 500 * KB }>;
 #[allow(clippy::identity_op)]
 pub type CredentialBackgroundImage = BoundedB64Image<{ 1 * MB }>;
 
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize, From)]
-#[from(CredentialSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CredentialSchemaListItemResponseDTO {
     pub id: CredentialSchemaId,
@@ -41,7 +41,6 @@ pub struct CredentialSchemaListItemResponseDTO {
     pub schema_id: String,
     pub imported_source_url: String,
     pub layout_type: Option<LayoutType>,
-    #[from(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesResponseDTO>,
     pub allow_suspension: bool,
     pub requires_wallet_instance_attestation: bool,
@@ -175,6 +174,8 @@ pub struct CredentialClaimSchemaRequestDTO {
     pub array: Option<bool>,
     #[from(with_fn = convert_inner)]
     pub claims: Vec<CredentialClaimSchemaRequestDTO>,
+    #[from(with_fn = convert_inner_of_inner)]
+    pub mapping: Option<Vec<CredentialClaimSchemaMappingDTO>>,
 }
 
 #[skip_serializing_none]
@@ -339,6 +340,8 @@ pub struct ImportCredentialSchemaClaimSchemaDTO {
     #[serde(default)]
     #[into(with_fn = convert_inner)]
     pub claims: Vec<ImportCredentialSchemaClaimSchemaDTO>,
+    #[into(with_fn = convert_inner_of_inner)]
+    pub mapping: Option<Vec<CredentialClaimSchemaMappingDTO>>,
 }
 
 #[derive(Clone, Debug, Into, Deserialize)]

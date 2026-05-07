@@ -152,18 +152,22 @@ impl From<LayoutProperties> for CredentialSchemaLayoutPropertiesRequestDTO {
     }
 }
 
-pub(super) fn credentials_supported_mdoc(
+pub(super) async fn credentials_supported_mdoc(
     schema: CredentialSchema,
     credential_metadata: OpenID4VCICredentialMetadataResponseDTO,
     proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
 ) -> Result<OpenID4VCICredentialConfigurationData, IssuanceProtocolError> {
+    let schema_id = schema
+        .schema_id()
+        .await
+        .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
     let credential_configuration = OpenID4VCICredentialConfigurationData {
         format: "mso_mdoc".to_string(),
-        doctype: Some(schema.schema_id.clone()),
+        doctype: Some(schema_id.to_string()),
         credential_metadata: Some(credential_metadata),
         cryptographic_binding_methods_supported: Some(vec!["cose_key".to_string()]),
         proof_types_supported,
-        scope: Some(schema.schema_id),
+        scope: Some(schema_id),
         ..Default::default()
     };
 

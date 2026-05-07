@@ -14,7 +14,7 @@ use super::dto::{
 };
 use super::error::CredentialServiceError;
 use crate::config::core_config::{CoreConfig, DatatypeType};
-use crate::error::ContextWithErrorCode;
+use crate::error::{ContextWithErrorCode, NestedError};
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::blob::{Blob, BlobType};
 use crate::model::certificate::Certificate;
@@ -35,6 +35,7 @@ use crate::model::validity_credential::ValidityCredential;
 use crate::proto::trust_information::dto::TrustInformation;
 use crate::provider::credential_formatter::mdoc_formatter;
 use crate::service::certificate::mapper::certificate_to_response_dto;
+use crate::service::credential_schema::mapper::to_credential_schema_list_response;
 
 pub(crate) async fn credential_detail_response_from_model(
     value: Credential,
@@ -43,9 +44,17 @@ pub(crate) async fn credential_detail_response_from_model(
     attestation: CredentialAttestationBlobs,
     trust_information: Option<TrustInformation>,
 ) -> Result<CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>, CredentialServiceError> {
-    let schema = value.schema.ok_or(CredentialServiceError::MappingError(
-        "credential_schema is None".to_string(),
-    ))?;
+    let schema_model = value
+        .schema
+        .as_ref()
+        .ok_or(CredentialServiceError::MappingError(
+            "credential_schema is None".to_string(),
+        ))?;
+
+    let schema_dto: DetailCredentialSchemaResponseDTO =
+        to_credential_schema_detail_response(schema_model.clone())
+            .await
+            .map_err(|e: NestedError| CredentialServiceError::MappingError(e.to_string()))?;
 
     let claims = value
         .claims
@@ -60,7 +69,7 @@ pub(crate) async fn credential_detail_response_from_model(
     let mdoc_mso_validity = if let Some(validity_credential) = validity_credential {
         let params = config
             .format
-            .get::<mdoc_formatter::Params, _>(&schema.format)
+            .get::<mdoc_formatter::Params, _>(&schema_model.format().await?)
             .error_while("getting MDOC params")?;
         Some(MdocMsoValidityResponseDTO {
             expiration: validity_credential.created_date + params.mso_expires_in,
@@ -87,8 +96,8 @@ pub(crate) async fn credential_detail_response_from_model(
         revocation_date: get_revocation_date(&state, &value.last_modified),
         state: state.into(),
         last_modified: value.last_modified,
-        claims: from_vec_claim(claims, &schema, config).await?,
-        schema: schema.into(),
+        claims: from_vec_claim(claims, schema_model, config).await?,
+        schema: schema_dto,
         issuer: convert_inner(value.issuer_identifier),
         redirect_uri: value.redirect_uri,
         role: value.role.into(),
@@ -335,30 +344,29 @@ fn sort_claims(claims: &mut [DetailCredentialClaimResponseDTO]) {
     });
 }
 
-impl TryFrom<Credential> for CredentialListItemResponseDTO {
-    type Error = CredentialServiceError;
-
-    fn try_from(value: Credential) -> Result<Self, Self::Error> {
-        let schema = value.schema.ok_or(CredentialServiceError::MappingError(
+pub(super) async fn to_credential_list_response(
+    credential: Credential,
+) -> Result<CredentialListItemResponseDTO, CredentialServiceError> {
+    let schema = credential
+        .schema
+        .ok_or(CredentialServiceError::MappingError(
             "credential_schema is None".to_string(),
         ))?;
-
-        Ok(Self {
-            id: value.id,
-            created_date: value.created_date,
-            issuance_date: value.issuance_date,
-            revocation_date: get_revocation_date(&value.state, &value.last_modified),
-            state: value.state.into(),
-            last_modified: value.last_modified,
-            schema: schema.into(),
-            issuer: convert_inner(value.issuer_identifier),
-            role: value.role.into(),
-            suspend_end_date: value.suspend_end_date,
-            protocol: value.protocol,
-            profile: value.profile,
-            webhook_destination_url: value.webhook_url,
-        })
-    }
+    Ok(CredentialListItemResponseDTO {
+        id: credential.id,
+        created_date: credential.created_date,
+        issuance_date: credential.issuance_date,
+        revocation_date: get_revocation_date(&credential.state, &credential.last_modified),
+        state: credential.state.into(),
+        last_modified: credential.last_modified,
+        schema: to_credential_schema_list_response(schema).await?,
+        issuer: convert_inner(credential.issuer_identifier),
+        role: credential.role.into(),
+        suspend_end_date: credential.suspend_end_date,
+        protocol: credential.protocol,
+        profile: credential.profile,
+        webhook_destination_url: credential.webhook_url,
+    })
 }
 
 fn get_revocation_date(
@@ -511,27 +519,30 @@ fn insert_array_parent(
     Ok(current_path)
 }
 
-impl From<CredentialSchema> for DetailCredentialSchemaResponseDTO {
-    fn from(value: CredentialSchema) -> Self {
-        Self {
-            id: value.id,
-            created_date: value.created_date,
-            deleted_at: value.deleted_at,
-            last_modified: value.last_modified,
-            imported_source_url: value.imported_source_url,
-            name: value.name,
-            format: value.format,
-            revocation_method: value.revocation_method,
-            key_storage_security: value.key_storage_security,
-            organisation_id: value.organisation.id(),
-            schema_id: value.schema_id,
-            layout_type: value.layout_type.into(),
-            layout_properties: value.layout_properties.map(Into::into),
-            allow_suspension: value.allow_suspension,
-            requires_wallet_instance_attestation: value.requires_wallet_instance_attestation,
-            transaction_code: convert_inner(value.transaction_code),
-        }
-    }
+pub(crate) async fn to_credential_schema_detail_response(
+    credential_schema: CredentialSchema,
+) -> Result<DetailCredentialSchemaResponseDTO, NestedError> {
+    let format = credential_schema.format().await?.to_owned();
+    let schema_id = credential_schema.schema_id().await?;
+    Ok(DetailCredentialSchemaResponseDTO {
+        id: credential_schema.id,
+        created_date: credential_schema.created_date,
+        deleted_at: credential_schema.deleted_at,
+        last_modified: credential_schema.last_modified,
+        imported_source_url: credential_schema.imported_source_url,
+        name: credential_schema.name,
+        format,
+        revocation_method: credential_schema.revocation_method,
+        key_storage_security: credential_schema.key_storage_security,
+        organisation_id: credential_schema.organisation.id(),
+        schema_id,
+        layout_type: credential_schema.layout_type.into(),
+        layout_properties: credential_schema.layout_properties.map(Into::into),
+        allow_suspension: credential_schema.allow_suspension,
+        requires_wallet_instance_attestation: credential_schema
+            .requires_wallet_instance_attestation,
+        transaction_code: convert_inner(credential_schema.transaction_code),
+    })
 }
 
 impl TryFrom<Blob> for WalletInstanceAttestationDTO {

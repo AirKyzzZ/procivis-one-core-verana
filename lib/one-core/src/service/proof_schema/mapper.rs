@@ -12,7 +12,7 @@ use super::dto::{
 };
 use super::error::ProofSchemaServiceError;
 use crate::config::core_config::{DatatypeConfig, DatatypeType};
-use crate::error::ContextWithErrorCode;
+use crate::error::{ContextWithErrorCode, NestedError};
 use crate::mapper::{NESTED_CLAIM_MARKER, remove_first_nesting_layer};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::CredentialSchema;
@@ -26,6 +26,7 @@ use crate::model::proof_schema::{
     ExactProofSchemaFilterColumn, ProofInputClaimSchema, ProofInputSchema, ProofSchema,
     ProofSchemaListQuery,
 };
+use crate::service::credential_schema::mapper::to_credential_schema_list_response;
 
 pub(super) async fn convert_proof_schema_to_response(
     value: ProofSchema,
@@ -175,7 +176,9 @@ async fn convert_input_schema_to_response(
             )?,
             datatype_config,
         )?,
-        credential_schema: credential_schema.into(),
+        credential_schema: to_credential_schema_list_response(credential_schema)
+            .await
+            .map_err(|e: NestedError| ProofSchemaServiceError::MappingError(e.to_string()))?,
     })
 }
 

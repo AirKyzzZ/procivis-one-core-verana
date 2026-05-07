@@ -310,7 +310,7 @@ impl VerificationProtocol for OpenID4VP20HTTP {
 
         let proof_schema = proof
             .schema
-            .as_ref()
+            .clone()
             .ok_or(VerificationProtocolError::Failed(
                 "missing proof schema".to_string(),
             ))?;
@@ -322,7 +322,8 @@ impl VerificationProtocol for OpenID4VP20HTTP {
             type_to_descriptor,
             format_to_type_mapper,
             &*self.credential_formatter_provider,
-        )?;
+        )
+        .await?;
 
         let Some(base_url) = &self.base_url else {
             return Err(VerificationProtocolError::Failed("Missing base_url".into()));
@@ -404,7 +405,8 @@ impl VerificationProtocol for OpenID4VP20HTTP {
             response_uri.clone(),
             client_id_scheme,
             client_metadata.clone(),
-        )?;
+        )
+        .await?;
 
         let encryption_key = client_metadata
             .jwks

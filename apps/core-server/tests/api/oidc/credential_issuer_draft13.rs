@@ -41,15 +41,16 @@ async fn test_get_credential_issuer_metadata_jwt() {
         .unwrap();
     assert!(!credentials.is_empty());
     assert_eq!(
-        credentials[&credential_schema.schema_id]["wallet_storage_type"],
+        credentials[&credential_schema.schema_id().await.unwrap()]["wallet_storage_type"],
         "SOFTWARE"
     );
     assert_eq!(
-        &credentials[&credential_schema.schema_id]["credential_definition"]["type"][0],
+        &credentials[&credential_schema.schema_id().await.unwrap()]["credential_definition"]["type"]
+            [0],
         "VerifiableCredential"
     );
-    let subject =
-        &credentials[&credential_schema.schema_id]["credential_definition"]["credentialSubject"];
+    let subject = &credentials[&credential_schema.schema_id().await.unwrap()]["credential_definition"]
+        ["credentialSubject"];
     assert_expected_claims(subject);
 }
 
@@ -94,15 +95,16 @@ async fn test_get_credential_issuer_metadata_sd_jwt() {
         .unwrap();
     assert!(!credentials.is_empty());
     assert_eq!(
-        credentials[&credential_schema.schema_id]["wallet_storage_type"],
+        credentials[&credential_schema.schema_id().await.unwrap()]["wallet_storage_type"],
         "SOFTWARE"
     );
     assert_eq!(
-        &credentials[&credential_schema.schema_id]["credential_definition"]["type"][0],
+        &credentials[&credential_schema.schema_id().await.unwrap()]["credential_definition"]["type"]
+            [0],
         "VerifiableCredential"
     );
-    let subject =
-        &credentials[&credential_schema.schema_id]["credential_definition"]["credentialSubject"];
+    let subject = &credentials[&credential_schema.schema_id().await.unwrap()]["credential_definition"]
+        ["credentialSubject"];
     assert_expected_claims(subject);
 }
 
@@ -147,11 +149,11 @@ async fn test_get_credential_issuer_metadata_sd_jwt_vc() {
         .unwrap();
     assert!(!credentials.is_empty());
     assert_eq!(
-        credentials[&credential_schema.schema_id]["wallet_storage_type"],
+        credentials[&credential_schema.schema_id().await.unwrap()]["wallet_storage_type"],
         "SOFTWARE"
     );
 
-    let claims = &credentials[&credential_schema.schema_id]["claims"];
+    let claims = &credentials[&credential_schema.schema_id().await.unwrap()]["claims"];
     assert_expected_claims(claims)
 }
 

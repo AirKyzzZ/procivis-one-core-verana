@@ -116,7 +116,7 @@ impl OID4VPDraft25Service {
         };
 
         let authorization_request = generate_authorization_request_params_draft25(
-            &proof,
+            proof.clone(),
             &interaction.id,
             interaction_data.nonce,
             interaction_data.presentation_definition,
@@ -125,6 +125,7 @@ impl OID4VPDraft25Service {
             response_uri.clone(),
             client_metadata,
         )
+        .await
         .error_while("generating authorization request")?;
 
         let client_id_scheme =

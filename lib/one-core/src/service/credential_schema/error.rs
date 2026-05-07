@@ -56,12 +56,21 @@ pub enum CredentialSchemaServiceError {
     #[error("Invalid transaction code description length")]
     InvalidTransactionCodeDescriptionLength,
 
+    #[error("Batch size must be at least 2")]
+    BatchSizeTooSmall,
+    #[error("Credential schema mapping format `{0}` is not part of schema formats")]
+    MappingFormatNotPartOfFormats(CredentialFormat),
+    #[error("Credential schema mapping namespace is missing for format `{0}`")]
+    MappingNamespaceMissing(CredentialFormat),
+
     #[error("Key storage security level `{0}` not supported")]
     KeyStorageSecurityDisabled(KeyStorageSecurity),
     #[error("Cannot find `{0}` in revocation method provider")]
     MissingRevocationMethod(RevocationMethodId),
     #[error("Cannot find `{0}` formatter")]
     MissingFormat(CredentialFormat),
+    #[error("Missing formats")]
+    MissingFormats,
     #[error("Missing organisation: {0}")]
     MissingOrganisation(OrganisationId),
     #[error("Organisation {0} is deactivated")]
@@ -92,6 +101,9 @@ impl ErrorCodeMixin for CredentialSchemaServiceError {
             Self::LayoutPropertiesNotSupported => ErrorCode::BR_0131,
             Self::InvalidTransactionCodeLength => ErrorCode::BR_0338,
             Self::InvalidTransactionCodeDescriptionLength => ErrorCode::BR_0346,
+            Self::BatchSizeTooSmall => ErrorCode::BR_0434,
+            Self::MappingFormatNotPartOfFormats(_) => ErrorCode::BR_0352,
+            Self::MappingNamespaceMissing(_) => ErrorCode::BR_0353,
             Self::MissingNestedClaims(_) => ErrorCode::BR_0106,
             Self::NestedClaimsShouldBeEmpty(_) => ErrorCode::BR_0107,
             Self::ClaimSchemaSlashInKeyName(_) => ErrorCode::BR_0108,
@@ -106,6 +118,7 @@ impl ErrorCodeMixin for CredentialSchemaServiceError {
             Self::MissingFormat(_) => ErrorCode::BR_0038,
             Self::MappingError(_) => ErrorCode::BR_0047,
             Self::Nested(nested) => nested.error_code(),
+            Self::MissingFormats => ErrorCode::BR_0435,
         }
     }
 }

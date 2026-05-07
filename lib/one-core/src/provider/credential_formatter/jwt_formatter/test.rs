@@ -746,7 +746,12 @@ fn test_schema_id() {
     };
 
     let id = CredentialSchemaId::from(Uuid::new_v4());
-    let result = formatter.credential_schema_id(id, &request_dto, "https://example.com");
+    let result = formatter.credential_schema_id(
+        id,
+        request_dto.organisation_id,
+        request_dto.schema_id.as_deref(),
+        "https://example.com",
+    );
     assert!(result.is_ok());
     assert_eq!(
         result.unwrap(),
@@ -821,7 +826,7 @@ async fn test_parse_credential() {
     assert_eq!(schema.revocation_method, Some("BITSTRINGSTATUSLIST".into()));
     assert_eq!(schema.name, "7543Nested");
     assert_eq!(
-        schema.schema_id,
+        schema.schema_id().await.unwrap(),
         "https://core.dev.procivis-one.com/ssi/schema/v1/b79b7b5b-20f9-434b-b247-b0d19cc151da"
     );
 

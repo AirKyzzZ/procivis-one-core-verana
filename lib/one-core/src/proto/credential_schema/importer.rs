@@ -62,14 +62,16 @@ impl CredentialSchemaImporter for CredentialSchemaImporterProto {
             .get_credential_schemas_with_same_name_and_id(
                 credential_schema.organisation.id(),
                 credential_schema.name.clone(),
-                credential_schema.schema_id.clone(),
+                credential_schema.schema_id().await?.to_owned(),
             )
             .await?;
 
         if credential_schema_with_same_schema_id_exists(
             &credential_schema,
             &conflicting_credential_schemas,
-        ) {
+        )
+        .await?
+        {
             return Err(Error::AlreadyExists);
         }
 
@@ -146,12 +148,11 @@ impl CredentialSchemaImporterProto {
         &self,
         mut credential_schema: CredentialSchema,
     ) -> Result<CredentialSchema, Error> {
+        let format = credential_schema.format().await?;
         let formatter = self
             .formatter_provider
-            .get_credential_formatter(&credential_schema.format)
-            .ok_or(MissingProviderError::Formatter(
-                credential_schema.format.to_string(),
-            ))
+            .get_credential_formatter(&format)
+            .ok_or(MissingProviderError::Formatter(format.to_string()))
             .error_while("getting formatter")?;
 
         let mut claim_schemas = credential_schema
@@ -186,11 +187,15 @@ fn credential_schema_with_same_name_exists(
         .any(|existing_cs| existing_cs.name == credential_schema.name)
 }
 
-fn credential_schema_with_same_schema_id_exists(
+async fn credential_schema_with_same_schema_id_exists(
     credential_schema: &CredentialSchema,
     conflicting_credential_schemas: &[CredentialSchema],
-) -> bool {
-    conflicting_credential_schemas
-        .iter()
-        .any(|existing_cs| existing_cs.schema_id == credential_schema.schema_id)
+) -> Result<bool, Error> {
+    let target_schema_id = credential_schema.schema_id().await?;
+    for existing_cs in conflicting_credential_schemas {
+        if existing_cs.schema_id().await? == target_schema_id {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }

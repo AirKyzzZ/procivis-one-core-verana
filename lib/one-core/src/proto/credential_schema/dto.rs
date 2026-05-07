@@ -68,6 +68,8 @@ pub struct ImportCredentialSchemaClaimSchemaDTO {
     pub array: Option<bool>,
     #[serde(default)]
     pub claims: Vec<ImportCredentialSchemaClaimSchemaDTO>,
+    #[expect(unused)]
+    pub mapping: Option<Vec<CredentialClaimSchemaMappingDTO>>,
 }
 
 #[derive(Clone, Debug, Deserialize, TryFrom, Into)]
@@ -127,4 +129,12 @@ pub struct CredentialSchemaLogoPropertiesRequestDTO {
 pub struct CredentialSchemaCodePropertiesDTO {
     pub attribute: String,
     pub r#type: CodeTypeEnum,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CredentialClaimSchemaMappingDTO {
+    pub format: CredentialFormat,
+    pub technical_key: String,
+    pub namespace: Option<String>,
 }

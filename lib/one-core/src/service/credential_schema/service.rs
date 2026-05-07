@@ -9,14 +9,17 @@ use super::dto::{
     ImportCredentialSchemaRequestDTO,
 };
 use super::error::CredentialSchemaServiceError;
-use super::mapper::{from_create_request_with_id, schema_to_detail_response_dto};
+use super::mapper::{
+    from_create_request_with_id, schema_to_detail_response_dto, to_credential_schema_list_response,
+};
 use super::validator::UniquenessCheckResult;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::credential_schema_claim::claim_schema_from_metadata_claim_schema;
-use crate::mapper::list_response_into;
+use crate::model::common::GetListResponse;
 use crate::model::credential_schema::SortableCredentialSchemaColumn;
 use crate::repository::error::DataLayerError;
 use crate::service::common_dto::ListQueryDTO;
+use crate::service::credential_schema::dto::CredentialSchemaListItemResponseDTO;
 use crate::util::logging::quoted_opt_provider;
 use crate::validator::throw_if_org_id_not_matching_session;
 
@@ -91,7 +94,12 @@ impl CredentialSchemaService {
 
         let id = CredentialSchemaId::from(Uuid::new_v4());
         let schema_id = formatter
-            .credential_schema_id(id, &request, core_base_url)
+            .credential_schema_id(
+                id,
+                organisation.id,
+                request.schema_id.as_deref(),
+                core_base_url,
+            )
             .error_while("creating schemaId")?;
         let imported_source_url = format!("{core_base_url}/ssi/schema/v1/{id}");
         let mut credential_schema =
@@ -121,9 +129,9 @@ impl CredentialSchemaService {
         }
 
         let success_log = format!(
-            "Created credential schema `{}` ({id}): format `{}`, revocation method {:?}, key storage security {}",
+            "Created credential schema `{}` ({id}): format `{:?}`, revocation method {:?}, key storage security {}",
             credential_schema.name,
-            credential_schema.format,
+            credential_schema.formats,
             credential_schema.revocation_method,
             quoted_opt_provider(&credential_schema.key_storage_security)
         );
@@ -236,7 +244,22 @@ impl CredentialSchemaService {
             .get_credential_schema_list(filter_params.into())
             .await
             .error_while("getting credential schemas")?;
-        Ok(list_response_into(result))
+
+        let mut items: Vec<CredentialSchemaListItemResponseDTO> =
+            Vec::with_capacity(result.values.len());
+        for credential_schema in result.values {
+            items.push(
+                to_credential_schema_list_response(credential_schema)
+                    .await
+                    .error_while("mapping credential schemas")?,
+            );
+        }
+
+        Ok(GetListResponse {
+            values: items,
+            total_items: result.total_items,
+            total_pages: result.total_pages,
+        })
     }
 
     /// Imports a credential schema according to request
@@ -279,7 +302,7 @@ impl CredentialSchemaService {
             "Imported credential schema `{}` ({}): format `{}`, revocation method {:?}, key storage security {}",
             credential_schema.name,
             credential_schema.id,
-            credential_schema.format,
+            credential_schema.format().await?,
             credential_schema.revocation_method,
             quoted_opt_provider(&credential_schema.key_storage_security)
         );

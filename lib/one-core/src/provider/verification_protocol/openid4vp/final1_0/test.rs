@@ -18,6 +18,7 @@ use super::model::{HolderParams, Params, PresentationVerifierParams};
 use crate::config::core_config::FormatType;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::CredentialSchema;
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::Identifier;
 use crate::model::interaction::{Interaction, InteractionType};
@@ -133,9 +134,18 @@ fn generic_params() -> Params {
 
 fn test_credential_schema(format: CredentialFormat) -> CredentialSchema {
     CredentialSchema {
-        format,
+        formats: vec![CredentialSchemaFormat {
+            id: Uuid::new_v4().into(),
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
+            credential_schema_id: Uuid::new_v4().into(),
+            format,
+            schema_id: "test_schema_id".to_owned(),
+            claim_mappings: Default::default(),
+        }]
+        .into(),
+        batch_size: None,
         name: "test-credential-schema".to_string(),
-        schema_id: "test_schema_id".to_string(),
         imported_source_url: "test_imported_src_url".to_string(),
         ..dummy_credential_schema()
     }

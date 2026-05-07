@@ -51,7 +51,7 @@ pub(super) fn throw_if_proof_not_in_session_org(
     )
 }
 
-pub(super) fn validate_format_and_exchange_protocol_compatibility(
+pub(super) async fn validate_format_and_exchange_protocol_compatibility(
     exchange: &str,
     config: &CoreConfig,
     proof_schema: &ProofSchema,
@@ -71,7 +71,7 @@ pub(super) fn validate_format_and_exchange_protocol_compatibility(
         .error_while("getting protocol config")?
         .r#type;
 
-    input_schemas.iter().try_for_each(|input_schema| {
+    for input_schema in input_schemas {
         let credential_schema =
             input_schema
                 .credential_schema
@@ -80,11 +80,10 @@ pub(super) fn validate_format_and_exchange_protocol_compatibility(
                     "credential_schema is None".to_string(),
                 ))?;
 
+        let schema_format = credential_schema.format().await?;
         let formatter = formatter_provider
-            .get_credential_formatter(&credential_schema.format)
-            .ok_or(MissingProviderError::Formatter(
-                credential_schema.format.to_string(),
-            ))
+            .get_credential_formatter(&schema_format)
+            .ok_or(MissingProviderError::Formatter(schema_format.to_string()))
             .error_while("getting formatter")?;
 
         let capabilities = formatter.get_capabilities();
@@ -101,10 +100,7 @@ pub(super) fn validate_format_and_exchange_protocol_compatibility(
         {
             return Err(ProofServiceError::IncompatibleVerificationIdentifier);
         }
-
-        Ok(())
-    })?;
-
+    }
     Ok(())
 }
 
@@ -126,7 +122,7 @@ pub(super) async fn validate_did_and_format_compatibility(
         .await
         .error_while("finding key agreement key")?;
 
-    input_schemas.iter().try_for_each(|input_schema| {
+    for input_schema in input_schemas {
         let credential_schema =
             input_schema
                 .credential_schema
@@ -135,11 +131,10 @@ pub(super) async fn validate_did_and_format_compatibility(
                     "credential_schema is None".to_string(),
                 ))?;
 
+        let schema_format = credential_schema.format().await?;
         let formatter = formatter_provider
-            .get_credential_formatter(&credential_schema.format)
-            .ok_or(MissingProviderError::Formatter(
-                credential_schema.format.to_string(),
-            ))
+            .get_credential_formatter(&schema_format)
+            .ok_or(MissingProviderError::Formatter(schema_format.to_string()))
             .error_while("getting formatter")?;
 
         let capabilities = formatter.get_capabilities();
@@ -150,8 +145,8 @@ pub(super) async fn validate_did_and_format_compatibility(
         {
             return Err(ProofServiceError::NoKeyWithRole(KeyRole::KeyAgreement));
         }
-        Ok(())
-    })
+    }
+    Ok(())
 }
 
 pub(super) fn validate_mdl_exchange(
@@ -248,7 +243,7 @@ pub(super) fn validate_webhook_url(
         .error_while("validating webhook URL")?)
 }
 
-pub(super) fn validate_verification_key_storage_compatibility(
+pub(super) async fn validate_verification_key_storage_compatibility(
     proof_schema: &ProofSchema,
     verifier_key: &Key,
     formatter_provider: &dyn CredentialFormatterProvider,
@@ -268,7 +263,7 @@ pub(super) fn validate_verification_key_storage_compatibility(
         .error_while("getting protocol config")?
         .r#type;
 
-    input_schemas.iter().try_for_each(|input_schema| {
+    for input_schema in input_schemas {
         let credential_schema =
             input_schema
                 .credential_schema
@@ -277,11 +272,10 @@ pub(super) fn validate_verification_key_storage_compatibility(
                     "credential_schema is None".to_string(),
                 ))?;
 
+        let schema_format = credential_schema.format().await?;
         let formatter = formatter_provider
-            .get_credential_formatter(&credential_schema.format)
-            .ok_or(MissingProviderError::Formatter(
-                credential_schema.format.to_string(),
-            ))
+            .get_credential_formatter(&schema_format)
+            .ok_or(MissingProviderError::Formatter(schema_format.to_string()))
             .error_while("getting formatter")?;
 
         let capabilities = formatter.get_capabilities();
@@ -291,9 +285,7 @@ pub(super) fn validate_verification_key_storage_compatibility(
         {
             return Err(ProofServiceError::IncompatibleKeyStorage);
         }
-
-        Ok(())
-    })?;
+    }
 
     Ok(())
 }

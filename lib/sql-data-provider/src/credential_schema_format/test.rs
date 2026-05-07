@@ -19,17 +19,10 @@ async fn test_create_and_get_credential_schema_format() {
     let tx_manager = TransactionManagerImpl::new(db.clone());
 
     let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
-    let credential_schema_id = insert_credential_schema_to_database(
-        &db,
-        None,
-        organisation_id,
-        "schema-a",
-        "JWT",
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let credential_schema_id =
+        insert_credential_schema_to_database(&db, None, organisation_id, "schema-a", None, None)
+            .await
+            .unwrap();
 
     let claim_schema_id: ClaimSchemaId = Uuid::new_v4().into();
     let claim_input = ProofInput {
@@ -107,17 +100,14 @@ async fn test_unique_credential_schema_id_format() {
     let tx_manager = TransactionManagerImpl::new(db.clone());
 
     let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
-    let credential_schema_id = insert_credential_schema_to_database(
-        &db,
-        None,
-        organisation_id,
-        "schema-a",
-        "JWT",
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let credential_schema_id =
+        insert_credential_schema_to_database(&db, None, organisation_id, "schema-a", None, None)
+            .await
+            .unwrap();
+
+    insert_credential_schema_with_revocation_to_database(&db, credential_schema_id, "JWT")
+        .await
+        .unwrap();
 
     let provider: Arc<dyn CredentialSchemaFormatRepository> =
         Arc::new(CredentialSchemaFormatProvider { db: tx_manager });
@@ -162,17 +152,14 @@ async fn test_unique_format_claim_schema_mapping() {
     let tx_manager = TransactionManagerImpl::new(db.clone());
 
     let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
-    let credential_schema_id = insert_credential_schema_to_database(
-        &db,
-        None,
-        organisation_id,
-        "schema-a",
-        "JWT",
-        None,
-        None,
-    )
-    .await
-    .unwrap();
+    let credential_schema_id =
+        insert_credential_schema_to_database(&db, None, organisation_id, "schema-a", None, None)
+            .await
+            .unwrap();
+
+    insert_credential_schema_with_revocation_to_database(&db, credential_schema_id, "JWT")
+        .await
+        .unwrap();
 
     let claim_schema_id: ClaimSchemaId = Uuid::new_v4().into();
     insert_many_claims_schema_to_database(

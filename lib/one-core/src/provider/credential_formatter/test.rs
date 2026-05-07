@@ -8,6 +8,7 @@ use uuid::Uuid;
 use crate::config::core_config::{self, DatatypeConfig, DatatypeType};
 use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchema;
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::{Did, DidType};
 use crate::model::identifier::Identifier;
 use crate::provider::credential_formatter::mapper::credential_data_from_credential_detail_response;
@@ -146,12 +147,20 @@ fn generate_credential_matching_detail(
             created_date: detail.schema.created_date,
             last_modified: detail.schema.last_modified,
             name: detail.schema.name,
-            format: detail.schema.format,
+            formats: vec![CredentialSchemaFormat {
+                id: Uuid::new_v4().into(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                credential_schema_id: detail.schema.id,
+                format: detail.schema.format,
+                schema_id: detail.schema.schema_id,
+                claim_mappings: Default::default(),
+            }]
+            .into(),
             revocation_method: detail.schema.revocation_method,
             key_storage_security: detail.schema.key_storage_security,
             layout_type: crate::model::credential_schema::LayoutType::Card,
             layout_properties: None,
-            schema_id: detail.schema.schema_id,
             imported_source_url: detail.schema.imported_source_url,
             allow_suspension: detail.schema.allow_suspension,
             requires_wallet_instance_attestation: false,

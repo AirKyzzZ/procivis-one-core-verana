@@ -103,11 +103,15 @@ async fn test_import_credential_schema_success_with_same_name() {
         .unwrap();
     assert_eq!(credential_schema.name, "some credential schema");
 
-    let imported_credential_schema = credential_schemas
-        .iter()
-        .find(|cs| cs.schema_id == imported_schema_id.to_string())
-        .unwrap();
-    assert_ne!(imported_credential_schema.name, "some credential schema");
+    let mut imported_credential_schema = None;
+    for credential_schema in credential_schemas {
+        if credential_schema.schema_id().await.unwrap() == imported_schema_id.to_string() {
+            imported_credential_schema = Some(credential_schema);
+            break;
+        }
+    }
+    let imported_credential_schema = imported_credential_schema.unwrap();
+    assert_ne!(&imported_credential_schema.name, "some credential schema");
     assert!(
         imported_credential_schema
             .name

@@ -42,7 +42,7 @@ async fn test_get_credential_issuer_metadata_json() {
     // THEN
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
-    assert_issuer_metadata(&context, &identifier, &credential_schema, resp);
+    assert_issuer_metadata(&context, &identifier, &credential_schema, resp).await;
 }
 
 #[tokio::test]
@@ -76,7 +76,7 @@ async fn test_get_credential_issuer_metadata_jwt_certificate_identifier_with_tru
             TestingIdentifierTrustInformationParams {
                 allowed_issuance_types: Some(vec![SchemaFormat {
                     format: CredentialFormat::JwtVc,
-                    schema_id: credential_schema.schema_id.clone(),
+                    schema_id: credential_schema.schema_id().await.unwrap(),
                 }]),
                 ..Default::default()
             },
@@ -117,9 +117,9 @@ async fn test_get_credential_issuer_metadata_jwt_certificate_identifier_with_tru
         issuer_info["credential_ids"][0]
             .as_str()
             .expect("credential_ids should be string"),
-        credential_schema.schema_id.as_str()
+        credential_schema.schema_id().await.unwrap()
     );
-    assert_issuer_metadata(&context, &identifier, &credential_schema, jwt_payload);
+    assert_issuer_metadata(&context, &identifier, &credential_schema, jwt_payload).await;
 
     let cache_entry = context
         .db
@@ -165,7 +165,8 @@ async fn test_get_credential_issuer_metadata_jwt_with_did_identifier() {
         &identifier,
         &credential_schema,
         jwt.payload.custom,
-    );
+    )
+    .await;
 }
 
 #[tokio::test]
@@ -231,7 +232,7 @@ async fn test_get_credential_issuer_metadata_fails_with_certificate_invalid_role
     assert_eq!(resp.status(), 400);
 }
 
-fn assert_issuer_metadata(
+async fn assert_issuer_metadata(
     context: &TestContext,
     identifier: &Identifier,
     credential_schema: &CredentialSchema,
@@ -265,17 +266,19 @@ fn assert_issuer_metadata(
 
     // Check the credential format and metadata structure
     assert_eq!(
-        credentials[&credential_schema.schema_id]["format"],
+        credentials[&credential_schema.schema_id().await.unwrap()]["format"],
         "jwt_vc_json"
     );
 
     // Check display properties are present
-    let display = &credentials[&credential_schema.schema_id]["credential_metadata"]["display"][0];
+    let display = &credentials[&credential_schema.schema_id().await.unwrap()]["credential_metadata"]
+        ["display"][0];
     assert_eq!(display["name"], "test_schema");
     assert_eq!(display["locale"], "en");
 
     // Check claims structure
-    let claims = &credentials[&credential_schema.schema_id]["credential_metadata"]["claims"];
+    let claims = &credentials[&credential_schema.schema_id().await.unwrap()]["credential_metadata"]
+        ["claims"];
     assert_expected_claims(claims);
 }
 

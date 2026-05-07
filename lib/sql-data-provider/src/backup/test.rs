@@ -24,8 +24,9 @@ use crate::entity::key;
 use crate::entity::key_did::KeyRole;
 use crate::test_utilities::{
     ClaimInsertInfo, ProofInput, assert_eq_unordered, get_dummy_date,
-    insert_credential_schema_to_database, insert_key_did, insert_many_claims_schema_to_database,
-    insert_many_claims_to_database, insert_organisation_to_database,
+    insert_credential_schema_to_database, insert_credential_schema_with_revocation_to_database,
+    insert_key_did, insert_many_claims_schema_to_database, insert_many_claims_to_database,
+    insert_organisation_to_database,
 };
 use crate::transaction_context::TransactionManagerImpl;
 
@@ -314,24 +315,30 @@ async fn add_unexportable_credentials(
         None,
         organisation_id,
         "credential schema 1",
-        "JWT",
         None,
         None,
     )
     .await
     .unwrap();
 
+    insert_credential_schema_with_revocation_to_database(db, schema_id, "JWT")
+        .await
+        .unwrap();
+
     let unexportable_schema_id = insert_credential_schema_to_database(
         db,
         None,
         organisation_id,
         "credential schema 2",
-        "JWT",
         None,
         Some(KeyStorageSecurity::Basic),
     )
     .await
     .unwrap();
+
+    insert_credential_schema_with_revocation_to_database(db, unexportable_schema_id, "JWT")
+        .await
+        .unwrap();
 
     let exportable_ids = futures::stream::iter(keys_setup.exportable_ids.iter())
         .chain(futures::stream::iter(keys_setup.deleted_ids.iter()))

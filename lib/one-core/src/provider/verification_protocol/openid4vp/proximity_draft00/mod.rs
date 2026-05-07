@@ -737,7 +737,7 @@ pub(super) async fn create_presentation(
 
     // For DCQL each credential gets a presentation individually
     for credential_presentation in &params.credential_presentations {
-        let credential_format = format_to_type(credential_presentation, &params.config)?;
+        let credential_format = format_to_type(credential_presentation, &params.config).await?;
         let presentation_format = match credential_format {
             FormatType::SdJwt => FormatType::SdJwt,
             FormatType::SdJwtVc => FormatType::SdJwtVc,
@@ -832,15 +832,17 @@ pub(super) async fn prepare_proof_share(
         proof_schema,
         &params.format_to_type_mapper,
         params.formatter_provider,
-    )?;
+    )
+    .await?;
 
     let presentation_definition = create_open_id_for_vp_presentation_definition(
         params.interaction_id,
-        proof_schema,
+        proof_schema.clone(),
         params.type_to_descriptor,
         params.format_to_type_mapper,
         params.formatter_provider,
-    )?;
+    )
+    .await?;
 
     let Some(verifier_did) = params
         .proof

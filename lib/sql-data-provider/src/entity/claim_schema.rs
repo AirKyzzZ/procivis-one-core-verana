@@ -2,9 +2,9 @@ use std::str::FromStr;
 
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::repository::error::DataLayerError;
-use one_dto_mapper::Into;
+use one_dto_mapper::{From, Into, convert_inner};
 use sea_orm::entity::prelude::*;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use shared_types::{ClaimSchemaId, CredentialSchemaId};
 use time::OffsetDateTime;
 

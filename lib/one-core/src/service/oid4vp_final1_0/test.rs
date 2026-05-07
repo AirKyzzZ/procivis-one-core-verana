@@ -129,7 +129,7 @@ async fn test_submit_proof_failed_credential_suspended() {
                             optional: None,
                             filter: Some(OpenID4VPPresentationDefinitionConstraintFieldFilter {
                                 r#type: "string".to_string(),
-                                r#const: credential_schema.schema_id.to_owned(),
+                                r#const: credential_schema.schema_id().await.unwrap(),
                             }),
                             intent_to_retain: None,
                         },
@@ -308,7 +308,7 @@ async fn test_submit_proof_failed_on_validator_failure() {
                             optional: None,
                             filter: Some(OpenID4VPPresentationDefinitionConstraintFieldFilter {
                                 r#type: "string".to_string(),
-                                r#const: credential_schema.schema_id.to_owned(),
+                                r#const: credential_schema.schema_id().await.unwrap(),
                             }),
                             intent_to_retain: None,
                         },
@@ -467,6 +467,7 @@ async fn test_submit_proof_failed_on_trust_failure() {
 
     let claim_id = Uuid::new_v4().into();
     let credential_schema = dummy_credential_schema();
+    let credential_schema_schema_id = credential_schema.schema_id().await.unwrap();
     let interaction_data = OpenID4VPVerifierInteractionContent {
         nonce: nonce.to_owned(),
         encryption_key: None,
@@ -488,7 +489,7 @@ async fn test_submit_proof_failed_on_trust_failure() {
                             optional: None,
                             filter: Some(OpenID4VPPresentationDefinitionConstraintFieldFilter {
                                 r#type: "string".to_string(),
-                                r#const: credential_schema.schema_id.to_owned(),
+                                r#const: credential_schema_schema_id,
                             }),
                             intent_to_retain: None,
                         },

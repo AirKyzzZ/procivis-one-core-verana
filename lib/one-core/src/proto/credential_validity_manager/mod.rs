@@ -308,7 +308,12 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
         let format_type = self
             .config
             .format
-            .get_fields(&credential_schema.format)
+            .get_fields(
+                &credential_schema
+                    .format()
+                    .await
+                    .error_while("getting format")?,
+            )
             .error_while("getting credential format type")?
             .r#type;
 
@@ -338,12 +343,15 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
         let credential_str =
             String::from_utf8(credentials).map_err(|e| Error::MappingError(e.to_string()))?;
 
+        let format = credential_schema
+            .format()
+            .await
+            .error_while("getting format")?;
+
         let formatter = self
             .formatter_provider
-            .get_credential_formatter(&credential_schema.format)
-            .ok_or(MissingProviderError::Formatter(
-                credential_schema.format.to_string(),
-            ))
+            .get_credential_formatter(&format)
+            .ok_or(MissingProviderError::Formatter(format.to_string()))
             .error_while("getting credential formatter")?;
 
         let detail_credential = formatter

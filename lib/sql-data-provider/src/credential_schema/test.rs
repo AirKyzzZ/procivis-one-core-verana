@@ -1,10 +1,12 @@
 use std::sync::Arc;
 
+use one_core::clock::now_utc;
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential_schema::{
     BackgroundProperties, CredentialSchema, CredentialSchemaListQuery, LayoutProperties,
     LayoutType, UpdateCredentialSchemaRequest,
 };
+use one_core::model::credential_schema_format::CredentialSchemaFormat;
 use one_core::model::list_filter::ListFilterValue;
 use one_core::model::list_query::ListPagination;
 use one_core::model::organisation::Organisation;
@@ -82,12 +84,16 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
         None,
         organisation.id,
         "credential schema",
-        "JWT",
         None,
         None,
     )
     .await
     .unwrap();
+
+    let credential_schema_format_id =
+        insert_credential_schema_with_revocation_to_database(&db, credential_schema_id, "JWT")
+            .await
+            .unwrap();
 
     let new_claim_schemas: Vec<ClaimInsertInfo> = (0..2)
         .map(|i| ClaimInsertInfo {
@@ -121,7 +127,16 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: "credential schema".to_string(),
-            format: "JWT".into(),
+            formats: vec![CredentialSchemaFormat {
+                id: credential_schema_format_id,
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                credential_schema_id,
+                format: "JWT".into(),
+                schema_id: credential_schema_id.to_string(),
+                claim_mappings: Default::default(),
+            }]
+            .into(),
             revocation_method: None,
             claim_schemas: new_claim_schemas
                 .into_iter()
@@ -141,7 +156,6 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
             organisation: organisation.clone().into(),
             layout_type: LayoutType::Card,
             layout_properties: None,
-            schema_id: credential_schema_id.to_string(),
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
@@ -198,13 +212,21 @@ async fn test_create_credential_schema_success() {
             key_storage_security: Some(KeyStorageSecurity::Basic.into()),
             imported_source_url: "CORE_URL".to_string(),
             name: "schema".to_string(),
-            format: "JWT".into(),
+            formats: vec![CredentialSchemaFormat {
+                id: Uuid::new_v4().into(),
+                created_date: now_utc(),
+                last_modified: now_utc(),
+                credential_schema_id,
+                format: "JWT".into(),
+                schema_id: "CredentialSchemaId".to_owned(),
+                claim_mappings: Default::default(),
+            }]
+            .into(),
             revocation_method: None,
             claim_schemas: claim_schemas.into(),
             organisation: organisation.into(),
             layout_type: LayoutType::Card,
             layout_properties: None,
-            schema_id: "CredentialSchemaId".to_owned(),
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
@@ -215,7 +237,7 @@ async fn test_create_credential_schema_success() {
     assert_eq!(result.unwrap(), credential_schema_id);
 
     assert_eq!(
-        crate::entity::credential_schema::Entity::find()
+        credential_schema::Entity::find()
             .all(&db)
             .await
             .unwrap()
@@ -388,10 +410,7 @@ async fn test_delete_credential_schema_success() {
         .await;
     assert!(result.is_ok());
 
-    let db_schemas = crate::entity::credential_schema::Entity::find()
-        .all(&db)
-        .await
-        .unwrap();
+    let db_schemas = credential_schema::Entity::find().all(&db).await.unwrap();
     assert_eq!(db_schemas.len(), 1);
     assert!(db_schemas[0].deleted_at.is_some());
 }
@@ -400,21 +419,30 @@ async fn test_delete_credential_schema_success() {
 async fn test_delete_credential_schema_not_found() {
     let TestSetup { repository, .. } = setup_empty(Repositories::default()).await;
 
+    let credential_schema_id = Uuid::new_v4().into();
     let result = repository
         .delete_credential_schema(&CredentialSchema {
             batch_size: None,
             allow_revocation: None,
-            id: Uuid::new_v4().into(),
+            id: credential_schema_id,
             deleted_at: None,
-            created_date: one_core::clock::now_utc(),
-            last_modified: one_core::clock::now_utc(),
+            created_date: now_utc(),
+            last_modified: now_utc(),
             name: "Test".to_string(),
-            format: "MDOC".into(),
+            formats: vec![CredentialSchemaFormat {
+                id: Uuid::new_v4().into(),
+                created_date: now_utc(),
+                last_modified: now_utc(),
+                credential_schema_id,
+                format: "MDOC".into(),
+                schema_id: "Test_schema_id".to_owned(),
+                claim_mappings: Default::default(),
+            }]
+            .into(),
             revocation_method: None,
             key_storage_security: None,
             layout_type: LayoutType::Document,
             layout_properties: None,
-            schema_id: "Test_schema_id".to_string(),
             imported_source_url: "".to_string(),
             allow_suspension: false,
             requires_wallet_instance_attestation: false,
@@ -455,10 +483,7 @@ async fn test_update_credential_schema_success() {
         .await;
     assert!(result.is_ok());
 
-    let db_schemas = crate::entity::credential_schema::Entity::find()
-        .all(&db)
-        .await
-        .unwrap();
+    let db_schemas = credential_schema::Entity::find().all(&db).await.unwrap();
     assert_eq!(db_schemas.len(), 1);
     assert_eq!(db_schemas[0].revocation_method, Some(new_revocation_method));
     assert_eq!(
@@ -489,7 +514,7 @@ async fn test_get_by_schema_id_and_organisation() {
 
     let res = repository
         .get_by_schema_id_and_organisation(
-            &credential_schema.schema_id,
+            &credential_schema.schema_id().await.unwrap(),
             credential_schema.organisation.id(),
         )
         .await
@@ -526,7 +551,7 @@ async fn insert_null_schema_id_credential_schema(
         schema_id: Set(None),
         revocation_method: Set(None),
         organisation_id: Set(organisation_id),
-        layout_type: Set(crate::entity::credential_schema::LayoutType::Card),
+        layout_type: Set(credential_schema::LayoutType::Card),
         layout_properties: Set(None),
         imported_source_url: Set("CORE_URL".into()),
         allow_suspension: Set(false),

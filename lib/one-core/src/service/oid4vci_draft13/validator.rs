@@ -11,14 +11,19 @@ use crate::provider::issuance_protocol::openid4vci_draft13::model::{
 };
 use crate::service::error::ServiceError;
 
-pub(crate) fn throw_if_credential_request_invalid(
+pub(crate) async fn throw_if_credential_request_invalid(
     schema: &CredentialSchema,
     request: &OpenID4VCICredentialRequestDTO,
 ) -> Result<(), ServiceError> {
     let requested_format = map_from_openid4vp_format(request.format.as_str())
         .map_err(|e| ServiceError::OpenIDIssuanceError(OpenIDIssuanceError::OpenID4VCI(e)))?;
 
-    if !schema.format.to_string().starts_with(&requested_format) {
+    if !schema
+        .format()
+        .await?
+        .to_string()
+        .starts_with(&requested_format)
+    {
         return Err(ServiceError::OpenID4VCIError(
             OpenID4VCIError::UnsupportedCredentialFormat,
         ));
@@ -27,7 +32,7 @@ pub(crate) fn throw_if_credential_request_invalid(
     match requested_format.as_str() {
         "MDOC" => {
             if let Some(doctype) = &request.doctype {
-                if &schema.schema_id != doctype {
+                if &schema.schema_id().await? != doctype {
                     return Err(ServiceError::OpenID4VCIError(
                         OpenID4VCIError::UnsupportedCredentialType,
                     ));
@@ -40,7 +45,7 @@ pub(crate) fn throw_if_credential_request_invalid(
         }
         "SD_JWT" => {
             if let Some(vct) = &request.vct {
-                if &schema.schema_id != vct {
+                if &schema.schema_id().await? != vct {
                     return Err(ServiceError::OpenID4VCIError(
                         OpenID4VCIError::UnsupportedCredentialType,
                     ));

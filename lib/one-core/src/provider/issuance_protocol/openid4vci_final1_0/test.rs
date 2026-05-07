@@ -34,6 +34,7 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::common::GetListResponse;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, LayoutType};
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::history::{HistoryAction, TrustResolutionResult};
 use crate::model::holder_wallet_instance::HolderWalletInstance;
@@ -256,6 +257,9 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
         .unwrap()
         .into();
 
+    let credential_schema_id = Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+        .unwrap()
+        .into();
     Credential {
         id: credential_id,
         created_date: now,
@@ -288,21 +292,27 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
         schema: Some(CredentialSchema {
             batch_size: None,
             allow_revocation: None,
-            id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
-                .unwrap()
-                .into(),
+            id: credential_schema_id,
             deleted_at: None,
             imported_source_url: "CORE_URL".to_string(),
             created_date: now,
             key_storage_security: Some(KeyStorageSecurity::Basic),
             last_modified: now,
             name: "schema".to_string(),
-            format: "JWT".into(),
+            formats: vec![CredentialSchemaFormat {
+                id: Uuid::new_v4().into(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                credential_schema_id,
+                format: "JWT".into(),
+                schema_id: "CredentialSchemaId".to_owned(),
+                claim_mappings: Default::default(),
+            }]
+            .into(),
             revocation_method: None,
             claim_schemas: vec![claim_schema].into(),
             layout_type: LayoutType::Card,
             layout_properties: None,
-            schema_id: "CredentialSchemaId".to_owned(),
             organisation: dummy_organisation(None).into(),
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
@@ -362,6 +372,7 @@ async fn test_generate_offer() {
         credential.schema.as_ref().unwrap(),
         issuer_identifier_id,
     )
+    .await
     .unwrap();
 
     assert_eq!(
@@ -369,7 +380,7 @@ async fn test_generate_offer() {
         json!({
             "credential_issuer": format!("BASE_URL/ssi/openid4vci/final-1.0/{}/{issuer_identifier_id}/c322aa7f-9803-410d-b891-939b279fb965", credential.protocol),
             "credential_configuration_ids" : [
-                credential.schema.as_ref().unwrap().schema_id,
+                credential.schema.as_ref().unwrap().schema_id().await.unwrap(),
             ],
             "grants": {
                 "urn:ietf:params:oauth:grant-type:pre-authorized_code": { "pre-authorized_code": "c322aa7f-9803-410d-b891-939b279fb965" }
@@ -441,7 +452,13 @@ async fn test_holder_accept_credential_success() {
         credential_signing_alg_values_supported: None,
         proof_types_supported: None,
         continue_issuance: None,
-        credential_configuration_id: credential.schema.as_ref().unwrap().schema_id.to_owned(),
+        credential_configuration_id: credential
+            .schema
+            .as_ref()
+            .unwrap()
+            .schema_id()
+            .await
+            .unwrap(),
         credential_metadata: None,
         notification_id: None,
         protocol: "OPENID4VCI_FINAL1".to_string(),
@@ -698,7 +715,13 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         credential_signing_alg_values_supported: None,
         proof_types_supported: None,
         continue_issuance: None,
-        credential_configuration_id: credential.schema.as_ref().unwrap().schema_id.to_owned(),
+        credential_configuration_id: credential
+            .schema
+            .as_ref()
+            .unwrap()
+            .schema_id()
+            .await
+            .unwrap(),
         credential_metadata: None,
         notification_id: None,
         protocol: "OPENID4VCI_FINAL1".to_string(),
@@ -964,7 +987,13 @@ async fn test_holder_accept_credential_autogenerate_holder_binding() {
         credential_signing_alg_values_supported: None,
         proof_types_supported: None,
         continue_issuance: None,
-        credential_configuration_id: credential.schema.as_ref().unwrap().schema_id.to_owned(),
+        credential_configuration_id: credential
+            .schema
+            .as_ref()
+            .unwrap()
+            .schema_id()
+            .await
+            .unwrap(),
         credential_metadata: None,
         notification_id: None,
         protocol: "OPENID4VCI_FINAL1".to_string(),
@@ -1267,7 +1296,13 @@ async fn test_holder_reject_credential() {
             proof_types_supported: None,
             credential_signing_alg_values_supported: None,
             continue_issuance: None,
-            credential_configuration_id: credential.schema.as_ref().unwrap().schema_id.to_owned(),
+            credential_configuration_id: credential
+                .schema
+                .as_ref()
+                .unwrap()
+                .schema_id()
+                .await
+                .unwrap(),
             credential_metadata: None,
             notification_id: Some("notification_id".to_string()),
             protocol: "OPENID4VCI_FINAL1".to_string(),
@@ -2133,7 +2168,13 @@ async fn test_holder_accept_credential_fails_without_wallet_unit_id_when_key_att
         credential_signing_alg_values_supported: None,
         proof_types_supported: Some(proof_types),
         continue_issuance: None,
-        credential_configuration_id: credential.schema.as_ref().unwrap().schema_id.to_owned(),
+        credential_configuration_id: credential
+            .schema
+            .as_ref()
+            .unwrap()
+            .schema_id()
+            .await
+            .unwrap(),
         credential_metadata: None,
         notification_id: None,
         protocol: "OPENID4VCI_FINAL1".to_string(),
@@ -2271,7 +2312,13 @@ async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_att
         credential_signing_alg_values_supported: None,
         proof_types_supported: Some(proof_types),
         continue_issuance: None,
-        credential_configuration_id: credential.schema.as_ref().unwrap().schema_id.to_owned(),
+        credential_configuration_id: credential
+            .schema
+            .as_ref()
+            .unwrap()
+            .schema_id()
+            .await
+            .unwrap(),
         credential_metadata: None,
         notification_id: None,
         protocol: "OPENID4VCI_FINAL1".to_string(),

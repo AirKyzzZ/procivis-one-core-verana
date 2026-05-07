@@ -1171,7 +1171,7 @@ async fn test_parse_credential() {
     let schema = result.schema.as_ref().unwrap();
     assert_eq!(schema.name, "ArraysAndObjects");
     assert_eq!(
-        schema.schema_id,
+        schema.schema_id().await.unwrap(),
         "https://core.dev.procivis-one.com/ssi/schema/v1/30994889-2dc6-4a82-ac41-74ec5cc187ba"
     );
 

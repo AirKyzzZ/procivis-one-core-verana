@@ -70,7 +70,7 @@ pub(crate) async fn pex_submission_data(
                 "Unsupported presentation reference".to_string(),
             ));
         };
-        let credential_format_type = format_to_type(&credential, config)?;
+        let credential_format_type = format_to_type(&credential, config).await?;
         let credentials_to_present = CredentialToPresent {
             credential_token: credential.presentation,
             credential_format: credential_format_type,

@@ -36,7 +36,7 @@ async fn test_get_presentation_definition_2_simple_credential_success() {
     )
     .await;
 
-    let credential_query = CredentialQuery::sd_jwt_vc(vec![schema.schema_id])
+    let credential_query = CredentialQuery::sd_jwt_vc(vec![schema.schema_id().await.unwrap()])
         .id("test_query_id")
         .claims(vec![
             ClaimQuery::builder()
@@ -107,7 +107,7 @@ async fn test_get_presentation_definition_2_trust_purpose_success() {
     )
     .await;
 
-    let credential_query = CredentialQuery::sd_jwt_vc(vec![schema.schema_id.clone()])
+    let credential_query = CredentialQuery::sd_jwt_vc(vec![schema.schema_id().await.unwrap()])
         .id(query_id.clone())
         .claims(vec![
             ClaimQuery::builder()
@@ -207,7 +207,7 @@ async fn test_get_presentation_definition_2_claim_filtering_success() {
     )
     .await;
 
-    let credential_query = CredentialQuery::sd_jwt_vc(vec![schema.schema_id])
+    let credential_query = CredentialQuery::sd_jwt_vc(vec![schema.schema_id().await.unwrap()])
         .id("test_query_id")
         .claims(vec![
             ClaimQuery::builder()
@@ -292,7 +292,7 @@ async fn test_get_presentation_definition_2_claim_non_sd_extra_claim() {
     )
     .await;
 
-    let credential_query = CredentialQuery::sd_jwt_vc(vec![schema.schema_id])
+    let credential_query = CredentialQuery::sd_jwt_vc(vec![schema.schema_id().await.unwrap()])
         .id("test_query_id")
         .claims(vec![
             ClaimQuery::builder()
@@ -382,7 +382,7 @@ async fn test_get_presentation_definition_2_with_user_selection() {
     )
     .await;
 
-    let credential_query = CredentialQuery::sd_jwt_vc(vec![schema.schema_id])
+    let credential_query = CredentialQuery::sd_jwt_vc(vec![schema.schema_id().await.unwrap()])
         .id("test_query_id")
         .claims(vec![
             ClaimQuery::builder()
@@ -484,7 +484,7 @@ async fn test_get_presentation_definition_2_with_user_selection_nesting_mixed_sd
     )
     .await;
 
-    let credential_query = CredentialQuery::sd_jwt_vc(vec![schema.schema_id])
+    let credential_query = CredentialQuery::sd_jwt_vc(vec![schema.schema_id().await.unwrap()])
         .id("test_query_id")
         .claims(vec![
             ClaimQuery::builder()
@@ -715,7 +715,7 @@ async fn test_get_presentation_definition_2_nested_array_element_selection() {
     )
     .await;
 
-    let credential_query = CredentialQuery::sd_jwt_vc(vec![schema.schema_id])
+    let credential_query = CredentialQuery::sd_jwt_vc(vec![schema.schema_id().await.unwrap()])
         .id("test_query_id")
         .claims(vec![
             ClaimQuery::builder()
@@ -797,7 +797,7 @@ async fn test_get_presentation_definition_2_no_credential_with_schema() {
     // GIVEN
     let (context, org, _, identifier, key) = TestContext::new_with_did(None).await;
     let schema = complex_sd_jwt_vc_credential_schema(&context, &org).await;
-    let credential_query = CredentialQuery::sd_jwt_vc(vec![schema.schema_id])
+    let credential_query = CredentialQuery::sd_jwt_vc(vec![schema.schema_id().await.unwrap()])
         .id("test_query_id")
         .claims(vec![
             ClaimQuery::builder()
@@ -869,7 +869,7 @@ async fn test_get_presentation_definition_2_inapplicable_credential_with_schema(
     )
     .await;
 
-    let credential_query = CredentialQuery::sd_jwt_vc(vec![schema.schema_id])
+    let credential_query = CredentialQuery::sd_jwt_vc(vec![schema.schema_id().await.unwrap()])
         .id("test_query_id")
         .claims(vec![
             ClaimQuery::builder()
@@ -941,7 +941,7 @@ async fn test_get_presentation_definition_2_inapplicable_credential_validity() {
     )
     .await;
 
-    let credential_query = CredentialQuery::sd_jwt_vc(vec![schema.schema_id])
+    let credential_query = CredentialQuery::sd_jwt_vc(vec![schema.schema_id().await.unwrap()])
         .id("test_query_id")
         .claims(vec![
             ClaimQuery::builder()

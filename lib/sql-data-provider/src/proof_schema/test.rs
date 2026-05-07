@@ -6,6 +6,7 @@ use one_core::model::common::SortDirection;
 use one_core::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, KeyStorageSecurity, LayoutType,
 };
+use one_core::model::credential_schema_format::CredentialSchemaFormat;
 use one_core::model::list_filter::{ListFilterValue, StringMatch};
 use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::model::organisation::OrganisationRelations;
@@ -161,6 +162,7 @@ async fn test_create_proof_schema_already_exists() {
     )
     .await;
 
+    let credential_schema_id = Uuid::new_v4().into();
     let result = repository
         .create_proof_schema(ProofSchema {
             id: proof_schema_id,
@@ -190,20 +192,28 @@ async fn test_create_proof_schema_already_exists() {
                 credential_schema: Some(CredentialSchema {
                     batch_size: None,
                     allow_revocation: None,
-                    id: Uuid::new_v4().into(),
+                    id: credential_schema_id,
                     deleted_at: None,
                     key_storage_security: Some(KeyStorageSecurity::Basic),
                     imported_source_url: "CORE_URL".to_string(),
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
                     name: "schema".to_string(),
-                    format: "JWT".into(),
+                    formats: vec![CredentialSchemaFormat {
+                        id: Uuid::new_v4().into(),
+                        created_date: one_core::clock::now_utc(),
+                        last_modified: one_core::clock::now_utc(),
+                        credential_schema_id,
+                        format: "JWT".into(),
+                        schema_id: "CredentialSchemaId".to_owned(),
+                        claim_mappings: Default::default(),
+                    }]
+                    .into(),
                     revocation_method: None,
                     claim_schemas: Default::default(),
                     organisation: dummy_organisation(None).into(),
                     layout_type: LayoutType::Card,
                     layout_properties: None,
-                    schema_id: "CredentialSchemaId".to_owned(),
                     allow_suspension: true,
                     requires_wallet_instance_attestation: false,
                     transaction_code: None,
@@ -234,12 +244,15 @@ async fn test_create_proof_schema_success() {
         None,
         organisation_id,
         "cred-schema",
-        "JWT",
         None,
         Some(KeyStorageSecurity::Basic.into()),
     )
     .await
     .unwrap();
+
+    insert_credential_schema_with_revocation_to_database(&db, credential_schema_id, "JWT")
+        .await
+        .unwrap();
 
     let new_claim_schemas: Vec<ClaimInsertInfo> = (0..2)
         .map(|i| ClaimInsertInfo {
@@ -299,13 +312,21 @@ async fn test_create_proof_schema_success() {
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
                     name: "schema".to_string(),
-                    format: "JWT".into(),
+                    formats: vec![CredentialSchemaFormat {
+                        id: Uuid::new_v4().into(),
+                        created_date: one_core::clock::now_utc(),
+                        last_modified: one_core::clock::now_utc(),
+                        credential_schema_id,
+                        format: "JWT".into(),
+                        schema_id: "CredentialSchemaId".to_owned(),
+                        claim_mappings: Default::default(),
+                    }]
+                    .into(),
                     revocation_method: None,
                     claim_schemas: Default::default(),
                     organisation: dummy_organisation(None).into(),
                     layout_type: LayoutType::Card,
                     layout_properties: None,
-                    schema_id: "CredentialSchemaId".to_owned(),
                     allow_suspension: true,
                     requires_wallet_instance_attestation: false,
                     transaction_code: None,
@@ -512,13 +533,21 @@ async fn test_get_proof_schema_with_relations() {
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 name: "schema".to_string(),
-                format: "JWT".into(),
+                formats: vec![CredentialSchemaFormat {
+                    id: Uuid::new_v4().into(),
+                    created_date: one_core::clock::now_utc(),
+                    last_modified: one_core::clock::now_utc(),
+                    credential_schema_id: id.to_owned(),
+                    format: "JWT".into(),
+                    schema_id: "CredentialSchemaId".to_owned(),
+                    claim_mappings: Default::default(),
+                }]
+                .into(),
                 revocation_method: None,
                 claim_schemas: Default::default(),
                 organisation: dummy_organisation(None).into(),
                 layout_type: LayoutType::Card,
                 layout_properties: None,
-                schema_id: "CredentialSchemaId".to_owned(),
                 allow_suspension: true,
                 requires_wallet_instance_attestation: false,
                 transaction_code: None,
@@ -542,12 +571,15 @@ async fn test_get_proof_schema_with_relations() {
         None,
         organisation_id,
         "credential schema",
-        "JWT",
         None,
         Some(KeyStorageSecurity::Basic.into()),
     )
     .await
     .unwrap();
+
+    insert_credential_schema_with_revocation_to_database(&db, credential_schema_id, "JWT")
+        .await
+        .unwrap();
 
     let new_claim_schemas: Vec<ClaimInsertInfo> = (0..2)
         .map(|i| ClaimInsertInfo {
@@ -653,13 +685,21 @@ async fn test_get_proof_schema_with_input_proof_relations() {
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 name: "schema".to_string(),
-                format: "JWT".into(),
+                formats: vec![CredentialSchemaFormat {
+                    id: Uuid::new_v4().into(),
+                    created_date: one_core::clock::now_utc(),
+                    last_modified: one_core::clock::now_utc(),
+                    credential_schema_id: id.to_owned(),
+                    format: "JWT".into(),
+                    schema_id: id.to_string(),
+                    claim_mappings: Default::default(),
+                }]
+                .into(),
                 revocation_method: None,
                 claim_schemas: Default::default(),
                 organisation: dummy_organisation(None).into(),
                 layout_type: LayoutType::Card,
                 layout_properties: None,
-                schema_id: id.to_string(),
                 allow_suspension: true,
                 requires_wallet_instance_attestation: false,
                 transaction_code: None,
@@ -683,24 +723,30 @@ async fn test_get_proof_schema_with_input_proof_relations() {
         None,
         organisation_id,
         "credential schema",
-        "JWT",
         None,
         Some(KeyStorageSecurity::Basic.into()),
     )
     .await
     .unwrap();
 
+    insert_credential_schema_with_revocation_to_database(&db, credential_schema_id, "JWT")
+        .await
+        .unwrap();
+
     let credential_schema_id2 = insert_credential_schema_to_database(
         &db,
         None,
         organisation_id,
         "credential schema2",
-        "JWT",
         None,
         Some(KeyStorageSecurity::Basic.into()),
     )
     .await
     .unwrap();
+
+    insert_credential_schema_with_revocation_to_database(&db, credential_schema_id2, "JWT")
+        .await
+        .unwrap();
 
     let new_claim_schemas: Vec<ClaimInsertInfo> = (0..2)
         .map(|i| ClaimInsertInfo {

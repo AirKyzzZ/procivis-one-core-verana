@@ -438,11 +438,11 @@ async fn test_identifier_filter_proof_schema_success() {
                 allowed_verification_types: Some(vec![
                     SchemaFormat {
                         format: CredentialFormat::JwtVc,
-                        schema_id: credential_schema.schema_id,
+                        schema_id: credential_schema.schema_id().await.unwrap().to_string(),
                     },
                     SchemaFormat {
                         format: CredentialFormat::JwtVc,
-                        schema_id: credential_schema2.schema_id,
+                        schema_id: credential_schema2.schema_id().await.unwrap().to_string(),
                     },
                 ]),
                 ..Default::default()

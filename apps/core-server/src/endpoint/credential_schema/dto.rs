@@ -1,11 +1,11 @@
 use dcql::CredentialMeta;
 use one_core::model::credential_schema::{CredentialSchemaExactColumn, TransactionCodeType};
 use one_core::service::credential_schema::dto::{
-    CreateCredentialSchemaRequestDTO, CredentialClaimSchemaDTO, CredentialClaimSchemaRequestDTO,
-    CredentialSchemaDcqlResponseDTO, CredentialSchemaDetailResponseDTO,
-    CredentialSchemaFilterParamsDTO, CredentialSchemaListIncludeEntityTypeEnum,
-    CredentialSchemaListItemResponseDTO, CredentialSchemaTransactionCodeDTO,
-    CredentialSchemaTransactionCodeRequestDTO,
+    CreateCredentialSchemaRequestDTO, CredentialClaimSchemaDTO, CredentialClaimSchemaMappingDTO,
+    CredentialClaimSchemaRequestDTO, CredentialSchemaDcqlResponseDTO,
+    CredentialSchemaDetailResponseDTO, CredentialSchemaFilterParamsDTO,
+    CredentialSchemaListIncludeEntityTypeEnum, CredentialSchemaListItemResponseDTO,
+    CredentialSchemaTransactionCodeDTO, CredentialSchemaTransactionCodeRequestDTO,
 };
 use one_core::service::error::ServiceError;
 use one_dto_mapper::{
@@ -321,6 +321,15 @@ pub(crate) struct CreateCredentialSchemaRequestRestDTO {
     pub transaction_code: Option<CredentialSchemaTransactionCodeRequestRestDTO>,
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
+#[into(CredentialClaimSchemaMappingDTO)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct CredentialClaimSchemaMappingRestDTO {
+    pub format: String,
+    pub technical_key: String,
+    pub namespace: Option<String>,
+}
+
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, TryInto)]
 #[try_into(T=CredentialSchemaTransactionCodeRequestDTO, Error=ServiceError)]
@@ -376,6 +385,9 @@ pub(crate) struct CredentialClaimSchemaRequestRestDTO {
     #[schema(no_recursion)]
     #[serde(default)]
     pub claims: Vec<CredentialClaimSchemaRequestRestDTO>,
+    #[serde(default)]
+    #[into(with_fn = convert_inner_of_inner)]
+    pub mapping: Option<Vec<CredentialClaimSchemaMappingRestDTO>>,
 }
 
 /// Design the appearance of the credential in the holder's wallet.
@@ -562,6 +574,9 @@ pub(crate) struct ImportCredentialSchemaClaimSchemaRestDTO {
     #[serde(default)]
     #[schema(no_recursion)]
     pub claims: Vec<ImportCredentialSchemaClaimSchemaRestDTO>,
+    #[serde(default)]
+    #[into(with_fn = convert_inner_of_inner)]
+    pub mapping: Option<Vec<CredentialClaimSchemaMappingRestDTO>>,
 }
 
 #[options_not_nullable]

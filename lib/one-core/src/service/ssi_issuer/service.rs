@@ -74,10 +74,11 @@ impl SSIIssuerService {
             ));
         };
 
+        let schema_format = credential_schema.format().await?;
         let config = self
             .config
             .format
-            .get_fields(&credential_schema.format)
+            .get_fields(&schema_format)
             .error_while("getting format config")?;
         if ![FormatType::JsonLdBbsPlus, FormatType::JsonLdClassic].contains(&config.r#type) {
             return Err(IssuerServiceError::InvalidFormat);

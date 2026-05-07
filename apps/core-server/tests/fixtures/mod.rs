@@ -24,6 +24,7 @@ use one_core::model::credential::{
 use one_core::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, KeyStorageSecurity, LayoutProperties, LayoutType,
 };
+use one_core::model::credential_schema_format::CredentialSchemaFormat;
 use one_core::model::did::{Did, DidType, RelatedKey};
 use one_core::model::history::HistoryAction;
 use one_core::model::identifier::{
@@ -656,12 +657,20 @@ pub async fn create_credential_schema(
         key_storage_security: params.key_storage_security.unwrap_or_default(),
         organisation: organisation.to_owned().into(),
         deleted_at: params.deleted_at,
-        format: params.format.unwrap_or("JWT".into()),
+        formats: vec![CredentialSchemaFormat {
+            id: Uuid::new_v4().into(),
+            created_date: one_core::clock::now_utc(),
+            last_modified: one_core::clock::now_utc(),
+            credential_schema_id: id,
+            format: params.format.unwrap_or("JWT".into()),
+            schema_id: params.schema_id.unwrap_or(id.to_string()),
+            claim_mappings: Default::default(),
+        }]
+        .into(),
         revocation_method: params.revocation_method,
         claim_schemas: claim_schemas.into(),
         layout_type: params.layout_type.unwrap_or(LayoutType::Card),
         layout_properties: params.layout_properties,
-        schema_id: params.schema_id.unwrap_or(id.to_string()),
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
         transaction_code: None,
@@ -711,12 +720,20 @@ pub async fn create_credential_schema_with_claims(
         name: name.to_owned(),
         organisation: organisation.to_owned().into(),
         deleted_at: None,
-        format: "JWT".into(),
+        formats: vec![CredentialSchemaFormat {
+            id: Uuid::new_v4().into(),
+            created_date: one_core::clock::now_utc(),
+            last_modified: one_core::clock::now_utc(),
+            credential_schema_id: id.into(),
+            format: "JWT".into(),
+            schema_id: id.to_string(),
+            claim_mappings: Default::default(),
+        }]
+        .into(),
         revocation_method: revocation_method.into(),
         claim_schemas: claim_schemas.into(),
         layout_type: LayoutType::Card,
         layout_properties: None,
-        schema_id: id.to_string(),
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
         transaction_code: None,

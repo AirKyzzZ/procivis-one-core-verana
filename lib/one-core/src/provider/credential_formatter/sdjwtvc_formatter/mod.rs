@@ -18,7 +18,7 @@ use sdjwt::format_credential;
 use serde::Deserialize;
 use serde_json::Value;
 use serde_with::{DurationSeconds, serde_as};
-use shared_types::{CredentialSchemaId, DidValue};
+use shared_types::{CredentialSchemaId, DidValue, OrganisationId};
 use time::Duration;
 use uuid::Uuid;
 
@@ -43,6 +43,7 @@ use crate::error::ContextWithErrorCode;
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, LayoutType};
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::identifier::Identifier;
 use crate::model::organisation::Organisation;
 use crate::proto::certificate_validator::CertificateValidator;
@@ -57,7 +58,6 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::provider::revocation::token_status_list::credential_status_from_sdjwt_status;
-use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 
 const JPEG_DATA_URI_PREFIX: &str = "data:image/jpeg;base64,";
 const PNG_DATA_URI_PREFIX: &str = "data:image/png;base64,";
@@ -150,25 +150,34 @@ impl CredentialFormatter for SDJWTVCFormatter {
         claims.extend(metadata_claims);
         claim_schemas.extend(metadata_claim_schemas);
 
+        let credential_schema_id = Uuid::new_v4().into();
         let schema = CredentialSchema {
-            id: Uuid::new_v4().into(),
+            id: credential_schema_id,
             deleted_at: None,
             created_date: now,
             last_modified: now,
             // Will be overridden based on issuer metadata
             name: vct.clone(),
-            format: "".into(), // Will be overridden based on config priority
             revocation_method: revocation_method.map(|v| v.to_string().into()),
             key_storage_security: None,
             layout_type: LayoutType::Card,
             layout_properties: None,
-            schema_id: vct,
             imported_source_url: "".to_string(),
             allow_suspension: false,
             requires_wallet_instance_attestation: false,
             claim_schemas: claim_schemas.into(),
             organisation: organisation.clone().into(),
             transaction_code: None,
+            formats: vec![CredentialSchemaFormat {
+                id: Uuid::new_v4().into(),
+                created_date: now,
+                last_modified: now,
+                credential_schema_id,
+                format: "".into(), // Will be overridden based on config priority
+                schema_id: vct,
+                claim_mappings: Default::default(),
+            }]
+            .into(),
             batch_size: None,
             allow_revocation: None,
         };
@@ -422,18 +431,16 @@ impl CredentialFormatter for SDJWTVCFormatter {
         }
     }
 
-    fn credential_schema_id(
+    fn credential_schema_id<'a>(
         &self,
         id: CredentialSchemaId,
-        request: &CreateCredentialSchemaRequestDTO,
-        core_base_url: &str,
+        organisation_id: OrganisationId,
+        schema_id: Option<&'a str>,
+        core_base_url: &'a str,
     ) -> Result<String, FormatterError> {
-        Ok(match request.schema_id.as_ref() {
+        Ok(match schema_id {
             Some(schema_id) => schema_id.to_string(),
-            None => format!(
-                "{core_base_url}/ssi/vct/v1/{}/{id}",
-                request.organisation_id
-            ),
+            None => format!("{core_base_url}/ssi/vct/v1/{}/{id}", organisation_id),
         })
     }
 

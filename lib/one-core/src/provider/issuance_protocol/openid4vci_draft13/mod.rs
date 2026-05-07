@@ -474,8 +474,9 @@ impl OpenID4VCI13 {
             .as_ref()
             .ok_or(IssuanceProtocolError::Failed("schema is None".to_string()))?;
 
+        let schema_format = schema.format().await?;
         let real_format = detect_format_with_crypto_suite(
-            &schema.format,
+            &schema_format,
             &issuer_response.credential,
             &*self.formatter_provider,
         )
@@ -485,7 +486,7 @@ impl OpenID4VCI13 {
             .formatter_provider
             .get_credential_formatter(&real_format)
             .ok_or_else(|| {
-                IssuanceProtocolError::Failed(format!("{} formatter not found", schema.format))
+                IssuanceProtocolError::Failed(format!("{} formatter not found", schema_format))
             })?;
 
         let verification_fn = Box::new(KeyVerification {
@@ -630,7 +631,7 @@ impl OpenID4VCI13 {
         let format_type = self
             .config
             .format
-            .get_fields(&schema.format)
+            .get_fields(&schema.format().await?)
             .error_while("getting format config")?
             .r#type;
 
@@ -665,7 +666,7 @@ impl OpenID4VCI13 {
         .error_while("formatting proof")?;
 
         let (credential_definition, doctype) = match oid4vc_format {
-            "mso_mdoc" => (None, Some(schema.schema_id.to_owned())),
+            "mso_mdoc" => (None, Some(schema.schema_id().await?)),
             _ => (
                 Some(OpenID4VCICredentialDefinitionRequestDTO {
                     r#type: vec!["VerifiableCredential".to_string()],
@@ -677,7 +678,7 @@ impl OpenID4VCI13 {
 
         let body = OpenID4VCICredentialRequestDTO {
             format: oid4vc_format.to_owned(),
-            vct: (format_type == FormatType::SdJwtVc).then_some(schema.schema_id.to_owned()),
+            vct: (format_type == FormatType::SdJwtVc).then_some(schema.schema_id().await?),
             doctype,
             proof: OpenID4VCIProofRequestDTO {
                 proof_type: "jwt".to_string(),
@@ -848,7 +849,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
         let format_type = self
             .config
             .format
-            .get_fields(&schema.format)
+            .get_fields(&schema.format().await?)
             .error_while("getting format config")?
             .r#type;
 
@@ -1076,7 +1077,6 @@ impl IssuanceProtocol for OpenID4VCI13 {
 
         let mut url = Url::parse(&format!("{}://", self.params.url_scheme))
             .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
-        let mut query = url.query_pairs_mut();
 
         let credential_schema = credential
             .schema
@@ -1104,21 +1104,26 @@ impl IssuanceProtocol for OpenID4VCI13 {
             true,
         )?;
 
-        if self.params.credential_offer_by_value {
+        let mut query = if self.params.credential_offer_by_value {
             let offer = create_credential_offer(
                 protocol_base_url,
                 &interaction_id.to_string(),
                 credential,
                 credential_subject,
-            )?;
+            )
+            .await?;
 
             let offer_string = serde_json::to_string(&offer)?;
 
+            let mut query = url.query_pairs_mut();
             query.append_pair(CREDENTIAL_OFFER_VALUE_QUERY_PARAM_KEY, &offer_string);
+            query
         } else {
             let offer_url = get_credential_offer_url(protocol_base_url.to_owned(), credential)?;
+            let mut query = url.query_pairs_mut();
             query.append_pair(CREDENTIAL_OFFER_REFERENCE_QUERY_PARAM_KEY, &offer_url);
-        }
+            query
+        };
 
         let url = query.finish().to_string();
 
@@ -1193,23 +1198,22 @@ impl IssuanceProtocol for OpenID4VCI13 {
                 "credential_schema is None".to_string(),
             ))?
             .clone();
+        let format = credential_schema.format().await?;
         let credential_state = credential.state;
         let credential_format_type = self
             .config
             .format
-            .get_fields(&credential_schema.format)
+            .get_fields(&format)
             .error_while("getting format config")?
             .r#type;
 
         self.validate_credential_issuable(
             credential_id,
             &credential_state,
-            &credential_schema.format,
+            &format,
             credential_format_type,
         )
         .await?;
-
-        let format = credential_schema.format;
 
         let revocation_method = match &credential_schema.revocation_method {
             Some(method_id) => {
@@ -1865,7 +1869,7 @@ async fn prepare_issuance_interaction_and_credentials_with_claims(
         Some(credential_schema) => {
             let format_type = config
                 .format
-                .get_fields(&credential_schema.format)
+                .get_fields(&credential_schema.format().await?)
                 .error_while("getting format config")?
                 .r#type;
             if !has_matching_format(credential_config, format_type) {

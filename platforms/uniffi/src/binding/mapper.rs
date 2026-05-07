@@ -533,6 +533,7 @@ impl TryFrom<ImportCredentialSchemaClaimSchemaBindingDTO> for ImportCredentialSc
             datatype: value.datatype,
             array: value.array,
             claims: try_convert_inner(claims)?,
+            mapping: None,
         })
     }
 }
