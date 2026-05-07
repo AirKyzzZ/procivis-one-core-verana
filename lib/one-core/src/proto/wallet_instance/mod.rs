@@ -5,6 +5,7 @@ use async_trait::async_trait;
 use shared_types::HolderWalletInstanceId;
 use time::Duration;
 
+use crate::config::core_config::KeyAlgorithmType;
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, NestedError};
 use crate::mapper::x509::x5c_into_pem_chain;
 use crate::model::holder_wallet_instance::{HolderWalletInstance, HolderWalletInstanceRelations};
@@ -12,15 +13,19 @@ use crate::model::key::{Key, KeyRelations};
 use crate::proto::certificate_validator::{
     CertificateValidationOptions, CertificateValidator, ParsedCertificate,
 };
+use crate::proto::ephemeral_key::EphemeralKey;
 use crate::proto::jwt::mapper::{bin_to_b64url_string, string_to_b64url_string};
 use crate::proto::jwt::model::JWTPayload;
 use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
 use crate::proto::wallet_provider_client::WalletProviderClient;
 use crate::proto::wallet_provider_client::dto::IssueWalletAttestationResponse;
 use crate::provider::credential_formatter::model::{
-    CertificateDetails, CredentialStatus, IdentifierDetails,
+    AuthenticationFn, CertificateDetails, CredentialStatus, IdentifierDetails,
 };
 use crate::provider::issuance_protocol::model::KeyStorageSecurityLevel;
+use crate::provider::key_algorithm::KeyAlgorithm;
+use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
+use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::model::RevocationState;
@@ -31,16 +36,34 @@ use crate::service::wallet_provider::dto::{
     IssueWalletUnitAttestationRequestDTO, IssueWalletUnitAttestationResponseDTO,
     IssueWiaRequestDTO, IssueWuaRequestDTO, WalletUnitAttestationClaims,
 };
-pub enum IssueWalletAttestationRequest<'a> {
-    Wia,
-    Wua(&'a Key, KeyStorageSecurityLevel),
-    WuaAndWia(&'a Key, KeyStorageSecurityLevel),
+
+#[derive(Debug)]
+pub(crate) struct WIARequestParams {
+    pub key_algorithm: KeyAlgorithmType,
+}
+
+#[derive(Debug)]
+pub(crate) struct WUARequestParams<'a> {
+    pub attested_key: &'a Key,
+    pub security_level: KeyStorageSecurityLevel,
+}
+
+#[derive(Debug)]
+pub(crate) enum IssueWalletAttestationRequest<'a> {
+    Wia(WIARequestParams),
+    Wua(WUARequestParams<'a>),
+    WuaAndWia(WUARequestParams<'a>, WIARequestParams),
 }
 
 #[derive(PartialEq)]
 pub enum WalletUnitStatusCheckResponse {
     Revoked,
     Active,
+}
+
+pub(crate) struct IssuedWalletUnitAttestations {
+    pub provider_response: IssueWalletUnitAttestationResponseDTO,
+    pub wia_pop_key: Option<AuthenticationFn>,
 }
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
@@ -50,7 +73,7 @@ pub(crate) trait HolderWalletUnitProto: Send + Sync {
         &self,
         holder_wallet_unit_id: &HolderWalletInstanceId,
         request: IssueWalletAttestationRequest<'a>,
-    ) -> Result<IssueWalletUnitAttestationResponseDTO, Error>;
+    ) -> Result<IssuedWalletUnitAttestations, Error>;
 
     async fn check_wallet_unit_status(
         &self,
@@ -61,11 +84,6 @@ pub(crate) trait HolderWalletUnitProto: Send + Sync {
         &self,
         wua: &str,
     ) -> Result<WalletUnitStatusCheckResponse, Error>;
-
-    async fn get_authentication_key(
-        &self,
-        holder_wallet_unit_id: &HolderWalletInstanceId,
-    ) -> Result<Key, Error>;
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -124,22 +142,9 @@ impl HolderWalletUnitProtoImpl {
     async fn create_proof_of_key_possesion(
         &self,
         wallet_provider_url: &str,
-        key: &Key,
+        key_handle: &KeyHandle,
+        key_algorithm: &dyn KeyAlgorithm,
     ) -> Result<String, Error> {
-        let key_algorithm = self
-            .key_algorithm_provider
-            .key_algorithm_from_key(key)
-            .error_while("getting key algorithm")?;
-
-        let key_storage = self
-            .key_provider
-            .get_key_storage(&key.storage_type)
-            .error_while("getting key storage")?;
-
-        let key_handle = key_storage
-            .key_handle(key)
-            .error_while("getting key handle")?;
-
         let public_key = key_handle.public_key_as_jwk().error_while("creating JWK")?;
 
         let now = crate::clock::now_utc();
@@ -177,6 +182,24 @@ impl HolderWalletUnitProtoImpl {
         token.push_str(&signature_encoded);
 
         Ok(token)
+    }
+
+    fn get_key_handle(&self, key: &Key) -> Result<(KeyHandle, Arc<dyn KeyAlgorithm>), Error> {
+        let key_algorithm = self
+            .key_algorithm_provider
+            .key_algorithm_from_key(key)
+            .error_while("getting key algorithm")?;
+
+        let key_storage = self
+            .key_provider
+            .get_key_storage(&key.storage_type)
+            .error_while("getting key storage")?;
+
+        let key_handle = key_storage
+            .key_handle(key)
+            .error_while("getting key handle")?;
+
+        Ok((key_handle, key_algorithm))
     }
 }
 
@@ -298,8 +321,13 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
             }
         }
 
+        let (key_handle, key_algorithm) = self.get_key_handle(key)?;
         let bearer_token = self
-            .create_proof_of_key_possesion(&holder_wallet_unit.wallet_provider_url, key)
+            .create_proof_of_key_possesion(
+                &holder_wallet_unit.wallet_provider_url,
+                &key_handle,
+                key_algorithm.as_ref(),
+            )
             .await?;
 
         let revocation_check_status = self
@@ -322,37 +350,11 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
         }
     }
 
-    async fn get_authentication_key(
-        &self,
-        holder_wallet_unit_id: &HolderWalletInstanceId,
-    ) -> Result<Key, Error> {
-        let holder_wallet_instance = self
-            .holder_wallet_instance_repository
-            .get(
-                holder_wallet_unit_id,
-                &HolderWalletInstanceRelations {
-                    authentication_key: Some(KeyRelations::default()),
-                    ..Default::default()
-                },
-            )
-            .await
-            .error_while("getting holder wallet unit")?
-            .ok_or(Error::MappingError(
-                "holder wallet unit not found".to_string(),
-            ))?;
-
-        holder_wallet_instance
-            .authentication_key
-            .ok_or(Error::MappingError(
-                "holder wallet unit authentication key not found".to_string(),
-            ))
-    }
-
     async fn issue_wallet_attestations<'a>(
         &self,
         holder_wallet_unit_id: &HolderWalletInstanceId,
         request: IssueWalletAttestationRequest<'a>,
-    ) -> Result<IssueWalletUnitAttestationResponseDTO, Error> {
+    ) -> Result<IssuedWalletUnitAttestations, Error> {
         let holder_wallet_instance = self
             .holder_wallet_instance_repository
             .get(
@@ -376,28 +378,54 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
                     "holder wallet unit authentication key not found".to_string(),
                 ))?;
 
+        let mut wia_pop_key = None;
         let wia_proof = match request {
-            IssueWalletAttestationRequest::Wia | IssueWalletAttestationRequest::WuaAndWia(_, _) => {
+            IssueWalletAttestationRequest::Wia(WIARequestParams { key_algorithm })
+            | IssueWalletAttestationRequest::WuaAndWia(_, WIARequestParams { key_algorithm }) => {
+                let key_algorithm = self
+                    .key_algorithm_provider
+                    .key_algorithm_from_type(key_algorithm)
+                    .ok_or(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
+                        key_algorithm.to_string(),
+                    ))
+                    .error_while("getting key algorithm for WIA key")?;
+
+                let key = EphemeralKey::new(key_algorithm.to_owned())
+                    .error_while("generating WIA PoP key")?;
+
                 let proof = self
                     .create_proof_of_key_possesion(
                         &holder_wallet_instance.wallet_provider_url,
-                        authentication_key,
+                        key.key_handle(),
+                        key_algorithm.as_ref(),
                     )
                     .await?;
+                wia_pop_key = Some(key.into());
                 vec![IssueWiaRequestDTO { proof }]
             }
-            IssueWalletAttestationRequest::Wua(_, _) => {
+            IssueWalletAttestationRequest::Wua(_) => {
                 vec![]
             }
         };
 
         let wua_proof = match request {
-            IssueWalletAttestationRequest::WuaAndWia(attested_key, security_level)
-            | IssueWalletAttestationRequest::Wua(attested_key, security_level) => {
+            IssueWalletAttestationRequest::WuaAndWia(
+                WUARequestParams {
+                    attested_key,
+                    security_level,
+                },
+                _,
+            )
+            | IssueWalletAttestationRequest::Wua(WUARequestParams {
+                attested_key,
+                security_level,
+            }) => {
+                let (key_handle, key_algorithm) = self.get_key_handle(attested_key)?;
                 let proof = self
                     .create_proof_of_key_possesion(
                         &holder_wallet_instance.wallet_provider_url,
-                        attested_key,
+                        &key_handle,
+                        key_algorithm.as_ref(),
                     )
                     .await?;
                 vec![IssueWuaRequestDTO {
@@ -408,10 +436,12 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
             _ => vec![],
         };
 
+        let (key_handle, key_algorithm) = self.get_key_handle(authentication_key)?;
         let bearer_token = self
             .create_proof_of_key_possesion(
                 &holder_wallet_instance.wallet_provider_url,
-                authentication_key,
+                &key_handle,
+                key_algorithm.as_ref(),
             )
             .await?;
 
@@ -429,8 +459,11 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
             .await
             .error_while("issuing attestation")?;
 
-        if let IssueWalletAttestationResponse::Active(response) = issuance_result {
-            Ok(response)
+        if let IssueWalletAttestationResponse::Active(provider_response) = issuance_result {
+            Ok(IssuedWalletUnitAttestations {
+                provider_response,
+                wia_pop_key,
+            })
         } else {
             Err(Error::MappingError(
                 "Failed to issue wallet attestations".to_string(),

@@ -51,7 +51,7 @@ use crate::proto::identifier_creator::{
 };
 use crate::proto::jwt::model::JWTPayload;
 use crate::proto::session_provider::NoSessionProvider;
-use crate::proto::wallet_instance::MockHolderWalletUnitProto;
+use crate::proto::wallet_instance::{IssuedWalletUnitAttestations, MockHolderWalletUnitProto};
 use crate::proto::wrp_validator::MockWRPValidator;
 use crate::proto::wrp_validator::model::{
     AccessCertificateResult, RegistrationCertificateResult, TrustMode,
@@ -447,6 +447,7 @@ async fn test_holder_accept_credential_success() {
         access_token_expires_at: None,
         refresh_token: None,
         token_endpoint_auth_methods_supported: None,
+        client_attestation_pop_signing_alg_values_supported: None,
         refresh_token_expires_at: None,
         cryptographic_binding_methods_supported: Some(vec!["jwk".to_string()]),
         credential_signing_alg_values_supported: None,
@@ -709,6 +710,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         access_token: None,
         access_token_expires_at: None,
         token_endpoint_auth_methods_supported: None,
+        client_attestation_pop_signing_alg_values_supported: None,
         refresh_token: None,
         refresh_token_expires_at: None,
         cryptographic_binding_methods_supported: Some(vec!["jwk".to_string()]),
@@ -982,6 +984,7 @@ async fn test_holder_accept_credential_autogenerate_holder_binding() {
         access_token_expires_at: None,
         refresh_token: None,
         token_endpoint_auth_methods_supported: None,
+        client_attestation_pop_signing_alg_values_supported: None,
         refresh_token_expires_at: None,
         cryptographic_binding_methods_supported: Some(vec!["jwk".to_string()]),
         credential_signing_alg_values_supported: None,
@@ -1292,6 +1295,7 @@ async fn test_holder_reject_credential() {
             ),
             refresh_token_expires_at: None,
             token_endpoint_auth_methods_supported: None,
+            client_attestation_pop_signing_alg_values_supported: None,
             cryptographic_binding_methods_supported: None,
             proof_types_supported: None,
             credential_signing_alg_values_supported: None,
@@ -2164,6 +2168,7 @@ async fn test_holder_accept_credential_fails_without_wallet_unit_id_when_key_att
         refresh_token: None,
         refresh_token_expires_at: None,
         token_endpoint_auth_methods_supported: None,
+        client_attestation_pop_signing_alg_values_supported: None,
         cryptographic_binding_methods_supported: None,
         credential_signing_alg_values_supported: None,
         proof_types_supported: Some(proof_types),
@@ -2308,6 +2313,7 @@ async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_att
         refresh_token: None,
         refresh_token_expires_at: None,
         token_endpoint_auth_methods_supported: None,
+        client_attestation_pop_signing_alg_values_supported: None,
         cryptographic_binding_methods_supported: Some(vec!["jwk".to_string()]),
         credential_signing_alg_values_supported: None,
         proof_types_supported: Some(proof_types),
@@ -2515,9 +2521,12 @@ async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_att
         .expect_issue_wallet_attestations()
         .once()
         .returning(|_, _| {
-            Ok(IssueWalletUnitAttestationResponseDTO {
-                wia: vec![],
-                wua: vec!["wua_attestation_jwt".to_string()],
+            Ok(IssuedWalletUnitAttestations {
+                provider_response: IssueWalletUnitAttestationResponseDTO {
+                    wia: vec![],
+                    wua: vec!["wua_attestation_jwt".to_string()],
+                },
+                wia_pop_key: None,
             })
         });
 

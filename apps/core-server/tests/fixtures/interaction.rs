@@ -94,7 +94,8 @@ pub fn dummy_interaction_data(
     "trust_mode": "TRUST_OPTIONAL"
     });
     if params.require_instance_attestation {
-        value["token_endpoint_auth_methods_supported"] = json!(["attest_jwt_client_auth"])
+        value["token_endpoint_auth_methods_supported"] = json!(["attest_jwt_client_auth"]);
+        value["client_attestation_pop_signing_alg_values_supported"] = json!(["ES256"]);
     }
     if params.require_tx_code {
         value["grants"]["urn:ietf:params:oauth:grant-type:pre-authorized_code"]["tx_code"] =

@@ -1914,6 +1914,7 @@ fn dummy_interaction() -> HolderInteractionData {
         credential_signing_alg_values_supported: None,
         proof_types_supported: None,
         token_endpoint_auth_methods_supported: None,
+        client_attestation_pop_signing_alg_values_supported: None,
         credential_metadata: None,
         credential_configuration_id: "".to_string(),
         notification_id: None,

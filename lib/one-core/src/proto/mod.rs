@@ -6,6 +6,7 @@ pub(crate) mod cose;
 pub(crate) mod credential_schema;
 pub(crate) mod credential_validity_manager;
 pub(crate) mod csr_creator;
+pub(crate) mod ephemeral_key;
 pub(crate) mod history_decorator;
 pub mod http_client;
 pub(crate) mod identifier_creator;
@@ -23,7 +24,6 @@ pub mod session_provider;
 pub mod transaction_manager;
 pub(crate) mod trust_collection;
 pub mod trust_information;
-
 pub(crate) mod trust_list_subscription_sync;
 pub(crate) mod verifier_provider_client;
 pub(crate) mod wallet_instance;
