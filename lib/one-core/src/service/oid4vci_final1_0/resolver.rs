@@ -9,6 +9,7 @@ use crate::config::core_config::{CacheEntityCacheType, CoreConfig};
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::x509::pem_chain_into_x5c;
 use crate::model::certificate::CertificateRole;
+use crate::model::did::KeyRole;
 use crate::model::identifier::Identifier;
 use crate::proto::jwt::model::JWTPayload;
 use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
@@ -22,7 +23,9 @@ use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
 use crate::provider::remote_entity_storage::{RemoteEntityStorage, RemoteEntityType};
 use crate::repository::remote_entity_cache_repository::RemoteEntityCacheRepository;
 use crate::service::oid4vci_final1_0::error::OID4VCIFinal1_0ServiceError;
-use crate::util::key_selection::{CertificateFilter, KeySelection, KeySelectionError, SelectedKey};
+use crate::util::key_selection::{
+    CertificateFilter, KeyFilter, KeySelection, KeySelectionError, SelectedKey,
+};
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
@@ -144,6 +147,10 @@ impl CredentialIssuerMetadataResolver {
                 certificate_filter: Some(CertificateFilter::role_filter(
                     CertificateRole::Authentication,
                 )),
+                key_filter: Some(KeyFilter {
+                    did_role: Some(KeyRole::Authentication),
+                    ..Default::default()
+                }),
                 ..Default::default()
             })
             .await
