@@ -351,7 +351,7 @@ async fn test_get_issuer_metadata_jwt() {
     key_algorithm_provider
         .expect_key_algorithm_from_type()
         .with(eq(KeyAlgorithmType::Ecdsa))
-        .return_once(move |_| Some(Arc::new(key_algorithm)));
+        .return_once(move |_| Ok(Arc::new(key_algorithm)));
 
     let mut formatter = MockCredentialFormatter::default();
     formatter
@@ -489,7 +489,7 @@ async fn test_get_issuer_metadata_sd_jwt() {
     key_algorithm_provider
         .expect_key_algorithm_from_type()
         .with(eq(KeyAlgorithmType::Ecdsa))
-        .return_once(move |_| Some(Arc::new(key_algorithm)));
+        .return_once(move |_| Ok(Arc::new(key_algorithm)));
 
     let mut formatter = MockCredentialFormatter::default();
     formatter
@@ -625,7 +625,7 @@ async fn test_get_issuer_metadata_mdoc() {
     key_algorithm_provider
         .expect_key_algorithm_from_type()
         .with(eq(KeyAlgorithmType::Ecdsa))
-        .return_once(move |_| Some(Arc::new(key_algorithm)));
+        .return_once(move |_| Ok(Arc::new(key_algorithm)));
 
     let mut formatter = MockCredentialFormatter::default();
     formatter
@@ -1089,7 +1089,7 @@ async fn test_create_credential_success() {
         .once()
         .returning({
             let key_algorithm = key_algorithm.clone();
-            move |_| Some(key_algorithm.clone())
+            move |_| Ok(key_algorithm.clone())
         });
     let mut did_method_provider = MockDidMethodProvider::new();
     did_method_provider
@@ -1276,7 +1276,7 @@ async fn test_create_credential_success_sd_jwt_vc() {
         .once()
         .returning({
             let key_algorithm = key_algorithm.clone();
-            move |_| Some(key_algorithm.clone())
+            move |_| Ok(key_algorithm.clone())
         });
     let mut did_method_provider = MockDidMethodProvider::new();
     did_method_provider
@@ -1469,7 +1469,7 @@ async fn test_create_credential_success_mdoc() {
         .once()
         .returning({
             let key_algorithm = key_algorithm.clone();
-            move |_| Some(key_algorithm.clone())
+            move |_| Ok(key_algorithm.clone())
         });
     let mut did_method_provider = MockDidMethodProvider::new();
     did_method_provider
@@ -1898,7 +1898,7 @@ async fn test_create_credential_issuer_failed() {
         .once()
         .returning({
             let key_algorithm = key_algorithm.clone();
-            move |_| Some(key_algorithm.clone())
+            move |_| Ok(key_algorithm.clone())
         });
     let mut did_method_provider = MockDidMethodProvider::new();
     did_method_provider
@@ -2045,7 +2045,7 @@ async fn test_create_credential_nonce_reused() {
         .once()
         .returning({
             let key_algorithm = key_algorithm.clone();
-            move |_| Some(key_algorithm.clone())
+            move |_| Ok(key_algorithm.clone())
         });
     let mut did_method_provider = MockDidMethodProvider::new();
     did_method_provider

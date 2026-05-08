@@ -521,6 +521,6 @@ fn setup_key_algorithm_mocks(provider: &mut MockKeyAlgorithmProvider) {
                     Arc::new(public_key_handle),
                 )))
             });
-            Some(Arc::new(algorithm))
+            Ok(Arc::new(algorithm))
         });
 }

@@ -127,7 +127,7 @@ fn make_signing_mocks() -> (
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
         .expect_key_algorithm_from_type()
-        .returning(move |_| Some(ecdsa.clone()));
+        .returning(move |_| Ok(ecdsa.clone()));
 
     let pub_key = public_key.clone();
     let mut key_provider = MockKeyProvider::new();

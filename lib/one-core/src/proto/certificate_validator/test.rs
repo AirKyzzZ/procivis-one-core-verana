@@ -204,11 +204,11 @@ fn create_certificate_validator() -> CertificateValidatorImpl {
     key_algorithm_provider
         .expect_key_algorithm_from_type()
         .with(eq(KeyAlgorithmType::Eddsa))
-        .returning(|_| Some(Arc::new(crate::provider::key_algorithm::eddsa::Eddsa)));
+        .returning(|_| Ok(Arc::new(crate::provider::key_algorithm::eddsa::Eddsa)));
     key_algorithm_provider
         .expect_key_algorithm_from_type()
         .with(eq(KeyAlgorithmType::Ecdsa))
-        .returning(|_| Some(Arc::new(crate::provider::key_algorithm::ecdsa::Ecdsa)));
+        .returning(|_| Ok(Arc::new(crate::provider::key_algorithm::ecdsa::Ecdsa)));
 
     let crl_cache = Arc::new(X509CrlCache::new(
         Arc::new(X509CrlResolver::new(Arc::new(ReqwestClient::default()))),

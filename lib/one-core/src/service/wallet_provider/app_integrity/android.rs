@@ -300,7 +300,7 @@ w1IdYIg2Wxg7yHcQZemFQg==
         let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
         key_algorithm_provider
             .expect_key_algorithm_from_type()
-            .returning(|_| Some(Arc::new(Ecdsa)));
+            .returning(|_| Ok(Arc::new(Ecdsa)));
 
         let crl_cache = Arc::new(X509CrlCache::new(
             Arc::new(X509CrlResolver::new(Arc::new(ReqwestClient::default()))),
@@ -360,7 +360,7 @@ w1IdYIg2Wxg7yHcQZemFQg==
         let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
         key_algorithm_provider
             .expect_key_algorithm_from_type()
-            .returning(|_| Some(Arc::new(Ecdsa)));
+            .returning(|_| Ok(Arc::new(Ecdsa)));
 
         let crl_cache = Arc::new(X509CrlCache::new(
             Arc::new(X509CrlResolver::new(Arc::new(ReqwestClient::default()))),
@@ -416,7 +416,7 @@ w1IdYIg2Wxg7yHcQZemFQg==
         let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
         key_algorithm_provider
             .expect_key_algorithm_from_type()
-            .returning(|_| Some(Arc::new(Ecdsa)));
+            .returning(|_| Ok(Arc::new(Ecdsa)));
 
         let crl_cache = Arc::new(X509CrlCache::new(
             Arc::new(X509CrlResolver::new(Arc::new(ReqwestClient::default()))),

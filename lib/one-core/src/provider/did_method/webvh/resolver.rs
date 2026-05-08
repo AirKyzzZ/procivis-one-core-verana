@@ -566,11 +566,11 @@ mod test {
         key_algorithm_provider
             .expect_key_algorithm_from_type()
             .with(eq(KeyAlgorithmType::Ecdsa))
-            .returning(|_| Some(Arc::new(Ecdsa)));
+            .returning(|_| Ok(Arc::new(Ecdsa)));
         key_algorithm_provider
             .expect_key_algorithm_from_type()
             .with(eq(KeyAlgorithmType::Eddsa))
-            .returning(|_| Some(Arc::new(Eddsa)));
+            .returning(|_| Ok(Arc::new(Eddsa)));
 
         Arc::new(FakeDidMethodProvider(Arc::new(key_algorithm_provider)))
     }

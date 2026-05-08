@@ -125,7 +125,7 @@ async fn create_token(include_layout: bool) -> Value {
         .never()
         .returning({
             let key_algorithm = Arc::new(key_algorithm);
-            move |_| Some(key_algorithm.clone())
+            move |_| Ok(key_algorithm.clone())
         });
 
     let mut hasher = MockHasher::default();

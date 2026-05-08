@@ -1680,6 +1680,7 @@ impl OpenID4VCIFinal1_0 {
             .filter_map(|alg_type| {
                 self.key_algorithm_provider
                     .key_algorithm_from_type(alg_type)
+                    .ok()
                     .map(|alg| alg.issuance_jose_alg_id())
             })
             .collect();

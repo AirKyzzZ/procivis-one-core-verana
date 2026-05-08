@@ -41,7 +41,7 @@ async fn test_internal_generate_with_encryption() {
     mock_key_algorithm_provider
         .expect_key_algorithm_from_type()
         .times(1)
-        .returning(move |_| Some(arc.clone()));
+        .returning(move |_| Ok(arc.clone()));
 
     let provider = InternalKeyProvider::new(
         "Internal",
@@ -113,7 +113,7 @@ async fn test_internal_sign_with_encryption() {
     mock_key_algorithm_provider
         .expect_key_algorithm_from_type()
         .once()
-        .returning(move |_| Some(arc_key_algorithm_clone.clone()));
+        .returning(move |_| Ok(arc_key_algorithm_clone.clone()));
 
     mock_key_algorithm_provider
         .expect_key_algorithm_from_key()
@@ -173,7 +173,7 @@ async fn test_internal_import() {
     mock_key_algorithm_provider
         .expect_key_algorithm_from_type()
         .times(1)
-        .returning(move |_| Some(arc.clone()));
+        .returning(move |_| Ok(arc.clone()));
 
     let provider = InternalKeyProvider::new(
         "test",

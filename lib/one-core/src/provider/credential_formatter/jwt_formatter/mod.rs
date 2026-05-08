@@ -36,7 +36,6 @@ use crate::proto::jwt::model::{JWTPayload, jwt_metadata_claims};
 use crate::provider::credential_formatter::mapper::default_2_years;
 use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::did_method::error::DidMethodError;
-use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 
@@ -149,9 +148,6 @@ impl CredentialFormatter for JWTFormatter {
         let key_algorithm = self
             .key_algorithm_provider
             .key_algorithm_from_type(algorithm)
-            .ok_or(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
-                algorithm.to_string(),
-            ))
             .error_while("getting key algorithm")?;
 
         let jose_alg = key_algorithm.issuance_jose_alg_id();

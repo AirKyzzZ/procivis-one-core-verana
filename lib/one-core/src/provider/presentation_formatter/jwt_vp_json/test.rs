@@ -120,7 +120,7 @@ async fn test_format_presentation() {
     key_algorithm_provider
         .expect_key_algorithm_from_type()
         .with(eq(KeyAlgorithmType::Ecdsa))
-        .return_once(|_| Some(Arc::new(key_algorithm)));
+        .return_once(|_| Ok(Arc::new(key_algorithm)));
 
     let jwt_formatter = JwtVpPresentationFormatter {
         params: Params { leeway },

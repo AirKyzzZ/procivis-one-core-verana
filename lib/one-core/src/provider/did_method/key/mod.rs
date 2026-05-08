@@ -16,7 +16,6 @@ use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::key_helpers::{decode_did, generate_document};
 use crate::provider::did_method::keys::Keys;
 use crate::provider::did_method::model::{AmountOfKeys, DidCapabilities, DidDocument, Operation};
-use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
 pub struct KeyDidMethod {
@@ -54,9 +53,6 @@ impl DidMethod for KeyDidMethod {
         let jwk = self
             .key_algorithm_provider
             .key_algorithm_from_type(decoded.r#type)
-            .ok_or(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
-                decoded.r#type.to_string(),
-            ))
             .error_while("getting key algorithm")?
             .reconstruct_key(&decoded.decoded_multibase, None, None)
             .map_err(|err| {

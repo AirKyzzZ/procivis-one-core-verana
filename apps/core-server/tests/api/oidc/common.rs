@@ -50,7 +50,7 @@ pub(super) async fn proof_jwt(use_kid: bool, nonce: Option<&str>) -> String {
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
         .expect_key_algorithm_from_type()
-        .returning(|_| Some(Arc::new(Eddsa)));
+        .returning(|_| Ok(Arc::new(Eddsa)));
     key_algorithm_provider
         .expect_key_algorithm_from_key()
         .returning(|_| Ok(Arc::new(Eddsa)));

@@ -1398,7 +1398,7 @@ async fn test_holder_reject_credential() {
                 .expect_issuance_jose_alg_id()
                 .returning(|| "ES256".to_string());
 
-            Some(Arc::new(algorithm))
+            Ok(Arc::new(algorithm))
         });
 
     did_method_provider.expect_get_did_method().returning(|_| {

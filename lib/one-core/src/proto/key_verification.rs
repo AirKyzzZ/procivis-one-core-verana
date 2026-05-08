@@ -13,7 +13,6 @@ use crate::proto::certificate_validator::{
 use crate::proto::jwt::TokenError;
 use crate::provider::credential_formatter::model::{PublicKeySource, TokenVerifier};
 use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
@@ -70,9 +69,6 @@ impl KeyVerification {
         let alg = self
             .key_algorithm_provider
             .key_algorithm_from_type(algorithm)
-            .ok_or(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
-                algorithm.to_string(),
-            ))
             .error_while("getting key algorithm")?;
 
         let public_key = alg
@@ -114,9 +110,6 @@ impl TokenVerifier for KeyVerification {
                 let alg = self
                     .key_algorithm_provider
                     .key_algorithm_from_type(algorithm)
-                    .ok_or(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
-                        algorithm.to_string(),
-                    ))
                     .error_while("getting key algorithm")?;
                 alg.parse_jwk(&jwk).error_while("parsing JWK")?
             }
@@ -219,7 +212,7 @@ mod test {
                 assert_eq!(*alg, KeyAlgorithmType::Ecdsa);
                 true
             })
-            .returning(move |_| Some(key_alg.clone()));
+            .returning(move |_| Ok(key_alg.clone()));
 
         let verification = KeyVerification {
             key_algorithm_provider: Arc::new(key_algorithm_provider),
@@ -313,7 +306,7 @@ mod test {
                 assert_eq!(*alg, KeyAlgorithmType::Ecdsa);
                 true
             })
-            .returning(move |_| Some(key_alg.clone()));
+            .returning(move |_| Ok(key_alg.clone()));
 
         let verification = KeyVerification {
             key_algorithm_provider: Arc::new(key_algorithm_provider),

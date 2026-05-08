@@ -3687,7 +3687,7 @@ async fn test_share_proof_created_success() {
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
         .expect_key_algorithm_from_type()
-        .return_once(|_| Some(Arc::new(key_algorithm)));
+        .return_once(|_| Ok(Arc::new(key_algorithm)));
 
     let mut key_provider = MockKeyProvider::new();
     key_provider.expect_get_key_storage().return_once(|_| {
@@ -3806,7 +3806,7 @@ async fn test_share_proof_pending_success() {
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
         .expect_key_algorithm_from_type()
-        .return_once(|_| Some(Arc::new(key_algorithm)));
+        .return_once(|_| Ok(Arc::new(key_algorithm)));
 
     let expected_url = "test_url";
     let interaction_id = Uuid::new_v4().into();
@@ -3918,7 +3918,7 @@ async fn test_share_proof_interaction_expired_success() {
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
         .expect_key_algorithm_from_type()
-        .return_once(|_| Some(Arc::new(key_algorithm)));
+        .return_once(|_| Ok(Arc::new(key_algorithm)));
 
     let expected_url = "test_url";
     let interaction_id = Uuid::new_v4().into();

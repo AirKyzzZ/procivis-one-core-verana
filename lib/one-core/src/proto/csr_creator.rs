@@ -44,8 +44,6 @@ pub enum CsrRequestProfile {
 pub enum CsrCreationError {
     #[error("Unsupported key algorithm: `{key_algorithm}`")]
     UnsupportedKeyAlgorithm { key_algorithm: String },
-    #[error("Missing provider for key algorithm: `{key_type}`")]
-    MissingKeyAlgorithmProvider { key_type: KeyAlgorithmType },
     #[error("Missing provider for key storage: `{key_storage}`")]
     MissingKeyStorageProvider { key_storage: String },
     #[error("CSR signing failed: {0}")]
@@ -59,7 +57,6 @@ impl ErrorCodeMixin for CsrCreationError {
         match self {
             Self::SigningError(_) => ErrorCode::BR_0329,
             Self::UnsupportedKeyAlgorithm { .. } => ErrorCode::BR_0128,
-            Self::MissingKeyAlgorithmProvider { .. } => ErrorCode::BR_0063,
             Self::MissingKeyStorageProvider { .. } => ErrorCode::BR_0040,
             Self::Nested(nested) => nested.error_code(),
         }
@@ -107,7 +104,7 @@ impl CsrCreatorImpl {
         let key_algorithm = self
             .key_algorithm_provider
             .key_algorithm_from_type(key_type)
-            .ok_or(CsrCreationError::MissingKeyAlgorithmProvider { key_type })?;
+            .error_while("getting key algorithm")?;
 
         if !key_algorithm
             .get_capabilities()

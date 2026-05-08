@@ -52,7 +52,7 @@ pub async fn format_mdoc_credential(
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
         .expect_key_algorithm_from_type()
-        .returning(|_| Some(Arc::new(Ecdsa)));
+        .returning(|_| Ok(Arc::new(Ecdsa)));
     key_algorithm_provider.expect_parse_jwk().returning(|_| {
         let mut public_key = MockSignaturePublicKeyHandle::new();
         public_key.expect_as_cose().returning(|| {

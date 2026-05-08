@@ -5,11 +5,15 @@ use standardized_types::jwk::JwkUse;
 use thiserror::Error;
 
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
+use crate::provider::provider_directory::ProviderDirectoryError;
 
 #[derive(Debug, Error)]
 pub enum KeyAlgorithmProviderError {
     #[error("Cannot find key algorithm `{0}`")]
     MissingAlgorithmImplementation(String),
+
+    #[error(transparent)]
+    ProviderDirectoryError(#[from] ProviderDirectoryError),
 
     #[error(transparent)]
     Nested(#[from] NestedError),
@@ -19,6 +23,7 @@ impl ErrorCodeMixin for KeyAlgorithmProviderError {
     fn error_code(&self) -> ErrorCode {
         match self {
             Self::MissingAlgorithmImplementation(_) => ErrorCode::BR_0042,
+            Self::ProviderDirectoryError(nested) => nested.error_code(),
             Self::Nested(nested) => nested.error_code(),
         }
     }

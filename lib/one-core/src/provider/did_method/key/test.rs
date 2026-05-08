@@ -30,7 +30,7 @@ fn setup_key_did_method(
     key_algorithm_provider
         .expect_key_algorithm_from_type()
         .with(eq(algorithm_id))
-        .returning(move |_| Some(alg_clone.clone()));
+        .returning(move |_| Ok(alg_clone.clone()));
     key_algorithm_provider
         .expect_key_algorithm_from_key()
         .returning(move |_| Ok(alg.clone()));

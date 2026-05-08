@@ -80,7 +80,7 @@ async fn test_format_presentation_multi_tokens() {
         .never()
         .returning({
             let key_algorithm = Arc::new(key_algorithm);
-            move |_| Some(key_algorithm.clone())
+            move |_| Ok(key_algorithm.clone())
         });
 
     let mut hasher = MockHasher::default();
@@ -284,7 +284,7 @@ async fn test_parse_presentation_multi_tokens() {
         .never()
         .returning({
             let key_algorithm = Arc::new(key_algorithm);
-            move |_| Some(key_algorithm.clone())
+            move |_| Ok(key_algorithm.clone())
         });
 
     let mut hasher = MockHasher::default();

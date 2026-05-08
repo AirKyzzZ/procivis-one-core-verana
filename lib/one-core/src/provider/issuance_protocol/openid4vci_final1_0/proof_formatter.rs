@@ -295,7 +295,7 @@ mod test {
         let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
         key_algorithm_provider
             .expect_key_algorithm_from_type()
-            .returning(|_| Some(Arc::new(Eddsa)));
+            .returning(|_| Ok(Arc::new(Eddsa)));
         key_algorithm_provider
             .expect_key_algorithm_from_jose_alg()
             .returning(|_| Some((KeyAlgorithmType::Eddsa, Arc::new(Eddsa))));

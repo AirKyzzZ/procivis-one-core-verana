@@ -132,7 +132,7 @@ async fn prepare_bearer_token(context: &TestContext, org: &Organisation) -> (Did
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
         .expect_key_algorithm_from_type()
-        .returning(|_| Some(Arc::new(Ecdsa)));
+        .returning(|_| Ok(Arc::new(Ecdsa)));
     key_algorithm_provider
         .expect_key_algorithm_from_key()
         .returning(|_| Ok(Arc::new(Ecdsa)));

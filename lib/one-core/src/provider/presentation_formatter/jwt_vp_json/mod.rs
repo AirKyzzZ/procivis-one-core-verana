@@ -111,9 +111,7 @@ impl PresentationFormatter for JwtVpPresentationFormatter {
             let key_algorithm = self
                 .key_algorithm_provider
                 .key_algorithm_from_type(key_algorithm)
-                .ok_or(FormatterError::CouldNotFormat(
-                    "Invalid key algorithm".to_string(),
-                ))?;
+                .error_while("getting key algorithm")?;
             let jwk = key_algorithm
                 .reconstruct_key(&holder_binding_fn.get_public_key(), None, None)
                 .error_while("reconstructing key")?

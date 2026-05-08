@@ -26,8 +26,10 @@ pub struct ParsedKey {
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 pub trait KeyAlgorithmProvider: Send + Sync {
-    fn key_algorithm_from_type(&self, algorithm: KeyAlgorithmType)
-    -> Option<Arc<dyn KeyAlgorithm>>;
+    fn key_algorithm_from_type(
+        &self,
+        algorithm: KeyAlgorithmType,
+    ) -> Result<Arc<dyn KeyAlgorithm>, KeyAlgorithmProviderError>;
 
     fn key_algorithm_from_key(
         &self,
@@ -66,8 +68,8 @@ impl KeyAlgorithmProvider for KeyAlgorithmProviderImpl {
     fn key_algorithm_from_type(
         &self,
         algorithm: KeyAlgorithmType,
-    ) -> Option<Arc<dyn KeyAlgorithm>> {
-        self.directory.provider(&algorithm).ok()
+    ) -> Result<Arc<dyn KeyAlgorithm>, KeyAlgorithmProviderError> {
+        Ok(self.directory.provider(&algorithm)?)
     }
 
     fn key_algorithm_from_key(
@@ -146,9 +148,7 @@ impl KeyAlgorithmProvider for KeyAlgorithmProviderImpl {
         private_key: Option<SecretSlice<u8>>,
         r#use: Option<JwkUse>,
     ) -> Result<KeyHandle, KeyAlgorithmProviderError> {
-        let algorithm = self.key_algorithm_from_type(algorithm).ok_or(
-            KeyAlgorithmProviderError::MissingAlgorithmImplementation(algorithm.to_string()),
-        )?;
+        let algorithm = self.key_algorithm_from_type(algorithm)?;
         Ok(algorithm
             .reconstruct_key(public_key, private_key, r#use)
             .error_while("reconstructing key")?)

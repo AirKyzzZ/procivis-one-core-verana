@@ -81,7 +81,7 @@ impl KeyStorage for InternalKeyProvider {
         let key_pair = self
             .key_algorithm_provider
             .key_algorithm_from_type(key_type)
-            .ok_or(KeyStorageError::InvalidKeyAlgorithm(key_type.to_string()))?
+            .error_while("getting key algorithm")?
             .generate_key()
             .error_while("generating key")?;
 
@@ -104,7 +104,7 @@ impl KeyStorage for InternalKeyProvider {
         let key_pair = self
             .key_algorithm_provider
             .key_algorithm_from_type(key_type)
-            .ok_or(KeyStorageError::InvalidKeyAlgorithm(key_type.to_string()))?
+            .error_while("getting key algorithm")?
             .parse_private_jwk(jwk)
             .error_while("parsing private JWK")?;
 

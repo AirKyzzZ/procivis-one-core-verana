@@ -44,7 +44,7 @@ fn setup_service(
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
         .expect_key_algorithm_from_type()
-        .returning(move |_| Some(key_algorithm.clone()));
+        .returning(move |_| Ok(key_algorithm.clone()));
     KeyService::new(
         Arc::new(repository),
         Arc::new(organisation_repository),

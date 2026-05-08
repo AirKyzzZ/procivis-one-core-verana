@@ -24,7 +24,6 @@ use crate::provider::credential_formatter::model::{
 };
 use crate::provider::issuance_protocol::model::KeyStorageSecurityLevel;
 use crate::provider::key_algorithm::KeyAlgorithm;
-use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
@@ -385,9 +384,6 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
                 let key_algorithm = self
                     .key_algorithm_provider
                     .key_algorithm_from_type(key_algorithm)
-                    .ok_or(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
-                        key_algorithm.to_string(),
-                    ))
                     .error_while("getting key algorithm for WIA key")?;
 
                 let key = EphemeralKey::new(key_algorithm.to_owned())

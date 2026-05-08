@@ -15,7 +15,6 @@ use super::{
 use crate::config::core_config::KeyAlgorithmType;
 use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::{authority_key_identifier, subject_key_identifier};
-use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
 
@@ -178,9 +177,6 @@ impl CertificateValidatorImpl {
         let key_algorithm = self
             .key_algorithm_provider
             .key_algorithm_from_type(alg_type)
-            .ok_or_else(|| {
-                KeyAlgorithmProviderError::MissingAlgorithmImplementation(alg_type.to_string())
-            })
             .error_while("getting key algorithm")?;
 
         let key_handle = key_algorithm
