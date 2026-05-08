@@ -7,7 +7,7 @@ use url::Url;
 
 use crate::proto::jwt::model::JWTPayload;
 use crate::provider::signer::registration_certificate;
-use crate::provider::signer::registration_certificate::model::Policy;
+use crate::provider::signer::registration_certificate::model::{Claim, Policy};
 use crate::provider::trust_list_subscriber::TrustEntityResponse;
 
 pub(crate) struct AccessCertificateResult {
@@ -213,15 +213,6 @@ pub(crate) struct Credential {
     pub format: dcql::CredentialFormat,
     pub meta: dcql::CredentialMeta,
     pub claim: Option<Vec<Claim>>,
-}
-
-/// B.2.10 <https://www.etsi.org/deliver/etsi_ts/119400_119499/119475/01.02.01_60/ts_119475v010201p.pdf>
-#[derive(Debug, Clone, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
-pub(crate) struct Claim {
-    pub path: String,
-    #[serde(default)]
-    pub values: Vec<dcql::ClaimValue>,
 }
 
 /// B.2.11 <https://www.etsi.org/deliver/etsi_ts/119400_119499/119475/01.02.01_60/ts_119475v010201p.pdf>

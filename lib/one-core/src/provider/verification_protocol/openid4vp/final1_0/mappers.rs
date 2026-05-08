@@ -289,23 +289,6 @@ impl From<wrp_validator::model::Credential> for registration_certificate::model:
     }
 }
 
-impl From<wrp_validator::model::Claim> for registration_certificate::model::Claim {
-    fn from(value: wrp_validator::model::Claim) -> Self {
-        let mut segments: Vec<_> = value.path.split('.').collect();
-        if segments.first() == Some(&"$") {
-            segments.remove(0);
-        }
-        Self {
-            path: segments.into(),
-            values: if value.values.is_empty() {
-                None
-            } else {
-                Some(value.values)
-            },
-        }
-    }
-}
-
 pub(super) fn credential_query_matches_reg_cert_credential(
     credential_query: &dcql::CredentialQuery,
     req_cert_credential: &registration_certificate::model::Credential,
