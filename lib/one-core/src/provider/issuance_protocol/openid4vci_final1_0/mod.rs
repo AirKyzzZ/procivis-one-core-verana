@@ -1315,7 +1315,7 @@ impl OpenID4VCIFinal1_0 {
     async fn fetch_issuer_metadata(
         &self,
         credential_issuer: &str,
-        validate_trust: Option<OrganisationId>,
+        organisation_id: OrganisationId,
     ) -> Result<(IssuerMetadataRepresentation, TrustMode), IssuanceProtocolError> {
         let credential_issuer_endpoint: Url = credential_issuer.parse().map_err(|_| {
             IssuanceProtocolError::InvalidRequest(format!(
@@ -1348,14 +1348,11 @@ impl OpenID4VCIFinal1_0 {
             .await
             .error_while("validating issuer metadata JWT")?;
 
-        let trust_mode = if let Some(organisation_id) = validate_trust {
-            self.wrp_validator
-                .wallet_trust_mode(organisation_id)
-                .await
-                .error_while("checking wallet trust mode")?
-        } else {
-            TrustMode::Disabled
-        };
+        let trust_mode = self
+            .wrp_validator
+            .wallet_trust_mode(organisation_id)
+            .await
+            .error_while("checking wallet trust mode")?;
 
         let Some(x5c) = jwt.header.x5c.as_ref() else {
             tracing::debug!("Issuer metadata signed via DID or JWK");
@@ -1367,9 +1364,7 @@ impl OpenID4VCIFinal1_0 {
             return Ok((IssuerMetadataRepresentation::Signed(jwt, None), trust_mode));
         };
 
-        let access_certificate = if trust_mode != TrustMode::Disabled
-            && let Some(organisation_id) = validate_trust
-        {
+        let access_certificate = if trust_mode != TrustMode::Disabled {
             let pem_chain = x5c_into_pem_chain(x5c).error_while("converting x5c")?;
             match self
                 .wrp_validator
@@ -1847,14 +1842,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             return false;
         }
 
-        async {
-            let credential_offer =
-                resolve_credential_offer(self.client.as_ref(), url.to_owned()).await?;
-            self.fetch_issuer_metadata(&credential_offer.credential_issuer, None)
-                .await
-        }
-        .await
-        .is_ok()
+        true
     }
 
     async fn holder_handle_invitation(
@@ -1866,7 +1854,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         let credential_offer = resolve_credential_offer(self.client.as_ref(), url).await?;
 
         let (issuer_metadata, trust_mode) = self
-            .fetch_issuer_metadata(&credential_offer.credential_issuer, Some(organisation.id))
+            .fetch_issuer_metadata(&credential_offer.credential_issuer, organisation.id)
             .await?;
 
         let AuthorizationMetadata {
@@ -2471,10 +2459,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         organisation: Organisation,
     ) -> Result<ContinueIssuanceResponseDTO, IssuanceProtocolError> {
         let (issuer_metadata, trust_mode) = self
-            .fetch_issuer_metadata(
-                &continue_issuance_dto.credential_issuer,
-                Some(organisation.id),
-            )
+            .fetch_issuer_metadata(&continue_issuance_dto.credential_issuer, organisation.id)
             .await?;
 
         let AuthorizationMetadata {
@@ -2729,37 +2714,35 @@ async fn resolve_credential_offer(
     invitation_url: Url,
 ) -> Result<OpenID4VCIFinal1CredentialOfferDTO, IssuanceProtocolError> {
     let query_pairs: HashMap<_, _> = invitation_url.query_pairs().collect();
-    let credential_offer_param = query_pairs.get(CREDENTIAL_OFFER_VALUE_QUERY_PARAM_KEY);
-    let credential_offer_reference_param =
-        query_pairs.get(CREDENTIAL_OFFER_REFERENCE_QUERY_PARAM_KEY);
-
-    if credential_offer_param.is_some() && credential_offer_reference_param.is_some() {
-        return Err(IssuanceProtocolError::Failed(format!(
+    match (
+        query_pairs.get(CREDENTIAL_OFFER_VALUE_QUERY_PARAM_KEY),
+        query_pairs.get(CREDENTIAL_OFFER_REFERENCE_QUERY_PARAM_KEY),
+    ) {
+        (Some(_), Some(_)) => Err(IssuanceProtocolError::Failed(format!(
             "Detected both {CREDENTIAL_OFFER_VALUE_QUERY_PARAM_KEY} and {CREDENTIAL_OFFER_REFERENCE_QUERY_PARAM_KEY}"
-        )));
-    }
-
-    if let Some(credential_offer) = credential_offer_param {
-        Ok(serde_json::from_str(credential_offer)?)
-    } else if let Some(credential_offer_reference) = credential_offer_reference_param {
-        let credential_offer_url = Url::parse(credential_offer_reference).map_err(|error| {
-            IssuanceProtocolError::Failed(format!("Failed decoding credential offer url {error}"))
-        })?;
-
-        Ok(async {
-            client
-                .get(credential_offer_url.as_str())
-                .send()
-                .await?
-                .error_for_status()?
-                .json()
-        }
-        .await
-        .error_while("fetching offer")?)
-    } else {
-        Err(IssuanceProtocolError::Failed(
+        ))),
+        (None, None) => Err(IssuanceProtocolError::Failed(
             "Missing credential offer param".to_string(),
-        ))
+        )),
+        (Some(credential_offer_value), None) => Ok(serde_json::from_str(credential_offer_value)?),
+        (None, Some(credential_offer_reference)) => {
+            let credential_offer_url = Url::parse(credential_offer_reference).map_err(|error| {
+                IssuanceProtocolError::Failed(format!(
+                    "Failed decoding credential offer url {error}"
+                ))
+            })?;
+
+            Ok(async {
+                client
+                    .get(credential_offer_url.as_str())
+                    .send()
+                    .await?
+                    .error_for_status()?
+                    .json()
+            }
+            .await
+            .error_while("fetching offer")?)
+        }
     }
 }
 

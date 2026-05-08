@@ -2018,72 +2018,17 @@ async fn inner_continue_issuance_test(with_scope: bool, with_credential_configur
     );
 }
 
-fn dummy_issuer_metadata() -> Vec<u8> {
-    json!({
-        "credential_endpoint": "http://base_url/credential",
-        "credential_issuer": "http://base_url",
-        "credential_configurations_supported": {
-            "id": {
-                "credential_definition": {
-                    "type": [
-                        "VerifiableCredential"
-                    ],
-                    "credentialSubject" : {
-                        "address": {
-                            "value_type": "STRING",
-                        }
-                    }
-                },
-                "format": "vc+sd-jwt",
-            }
-      }
-    })
-    .to_string()
-    .into_bytes()
-}
-
 #[tokio::test]
 async fn test_can_handle_issuance_success_with_custom_url_scheme() {
     let url_scheme = "my-custom-scheme";
 
-    let mock_server = MockServer::start().await;
-    let issuer_url = Url::from_str(&mock_server.uri()).unwrap();
-
-    Mock::given(method(Method::GET))
-        .and(path(
-            "ssi/oidc-issuer/v1/c322aa7f-9803-410d-b891-939b279fb965/offer/c322aa7f-9803-410d-b891-939b279fb965"
-        ))
-        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
-            "credential_issuer": "http://base_url",
-            "credential_configuration_ids" : ["id"],
-            "grants": {
-                "urn:ietf:params:oauth:grant-type:pre-authorized_code": {
-                    "pre-authorized_code": "c322aa7f-9803-410d-b891-939b279fb965"
-                }
-            },
-        })))
-        .expect(1)
-        .mount(&mock_server)
-        .await;
-
-    let mut metadata_cache = MockOpenIDMetadataFetcher::new();
-    metadata_cache
-        .expect_get()
-        .with(
-            eq("http://base_url/.well-known/openid-credential-issuer"),
-            eq("application/json"),
-        )
-        .returning(|_, _| Ok(dummy_issuer_metadata()));
-
     let protocol = setup_protocol(TestInputs {
         params: Some(test_params(url_scheme)),
-        metadata_cache,
         ..Default::default()
     });
 
     let test_url = format!(
-        "{url_scheme}://?credential_offer_uri=http%3A%2F%2F{}%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%2Foffer%2Fc322aa7f-9803-410d-b891-939b279fb965",
-        issuer_url.authority(),
+        "{url_scheme}://?credential_offer_uri=http%3A%2F%2Fissuer.com%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%2Foffer%2Fc322aa7f-9803-410d-b891-939b279fb965",
     );
     assert!(protocol.holder_can_handle(&test_url.parse().unwrap()).await)
 }
@@ -2095,21 +2040,6 @@ async fn test_can_handle_issuance_fail_with_custom_url_scheme() {
 
     let protocol = setup_protocol(TestInputs {
         params: Some(test_params(url_scheme)),
-        ..Default::default()
-    });
-
-    let test_url = format!(
-        "{other_url_scheme}://?credential_offer_uri=http%3A%2F%2Fbase_url%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%2Foffer%2Fc322aa7f-9803-410d-b891-939b279fb965"
-    );
-    assert!(!protocol.holder_can_handle(&test_url.parse().unwrap()).await)
-}
-
-#[tokio::test]
-async fn test_can_handle_presentation_fail_with_custom_url_scheme() {
-    let other_url_scheme = "my-different-scheme";
-
-    let protocol = setup_protocol(TestInputs {
-        params: Some(test_params("issuance-url-scheme")),
         ..Default::default()
     });
 

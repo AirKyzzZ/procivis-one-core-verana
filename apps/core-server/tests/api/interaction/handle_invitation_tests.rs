@@ -771,7 +771,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_referen
             "/ssi/openid4vci/final-1.0/{credential_schema_id}/offer/{credential_id}"
         )))
         .respond_with(ResponseTemplate::new(200).set_body_json(credential_offer))
-        .expect(2)
+        .expect(1)
         .mount(&mock_server)
         .await;
 
