@@ -12,6 +12,7 @@ use super::dto::{
 };
 use super::error::HolderServiceError;
 use super::mapper::holder_did_key_jwk_from_credential;
+use crate::config::core_config::BlobStorageType;
 use crate::config::validator::transport::{
     SelectedTransportType, validate_and_select_transport_type,
 };
@@ -29,7 +30,6 @@ use crate::model::key::KeyRelations;
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::proof::{Proof, ProofRelations, ProofStateEnum, UpdateProofRequest};
 use crate::proto::identifier_creator::{IdentifierRole, RemoteIdentifierRelation};
-use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::CredentialPresentation;
 use crate::provider::issuance_protocol::deserialize_interaction_data;
@@ -251,10 +251,6 @@ impl SSIHolderService {
                 let db_blob_storage = self
                     .blob_storage_provider
                     .get_blob_storage(BlobStorageType::Db)
-                    .await
-                    .ok_or_else(|| {
-                        MissingProviderError::BlobStorage(BlobStorageType::Db.to_string())
-                    })
                     .error_while("getting blob storage")?;
                 let credential_blob = db_blob_storage
                     .get(&credential_blob_id)
@@ -632,10 +628,6 @@ impl SSIHolderService {
         let blob_storage = self
             .blob_storage_provider
             .get_blob_storage(BlobStorageType::Db)
-            .await
-            .ok_or(MissingProviderError::BlobStorage(
-                "Missing blobstorage type DB".to_string(),
-            ))
             .error_while("getting blob storage")?;
 
         let credential = self

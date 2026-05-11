@@ -33,7 +33,8 @@ use crate::proto::transaction_manager::NoTransactionManager;
 use crate::proto::wrp_validator::MockWRPValidator;
 use crate::proto::wrp_validator::error::WRPValidatorError;
 use crate::proto::wrp_validator::model::TrustMode;
-use crate::provider::blob_storage_provider::{MockBlobStorage, MockBlobStorageProvider};
+use crate::provider::blob_storage::MockBlobStorage;
+use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::key::{
@@ -232,7 +233,7 @@ async fn test_submit_proof_failed_credential_suspended() {
     let mut blob_storage_provider = MockBlobStorageProvider::new();
     blob_storage_provider
         .expect_get_blob_storage()
-        .returning(move |_| Some(blob_storage.clone()));
+        .returning(move |_| Ok(blob_storage.clone()));
 
     let mut proof_validator = MockOpenId4VpProofValidator::new();
     proof_validator
@@ -411,7 +412,7 @@ async fn test_submit_proof_failed_on_validator_failure() {
     let mut blob_storage_provider = MockBlobStorageProvider::new();
     blob_storage_provider
         .expect_get_blob_storage()
-        .returning(move |_| Some(blob_storage.clone()));
+        .returning(move |_| Ok(blob_storage.clone()));
 
     let mut proof_validator = MockOpenId4VpProofValidator::new();
     proof_validator
@@ -592,7 +593,7 @@ async fn test_submit_proof_failed_on_trust_failure() {
     let mut blob_storage_provider = MockBlobStorageProvider::new();
     blob_storage_provider
         .expect_get_blob_storage()
-        .returning(move |_| Some(blob_storage.clone()));
+        .returning(move |_| Ok(blob_storage.clone()));
 
     let mut proof_validator = MockOpenId4VpProofValidator::new();
     proof_validator

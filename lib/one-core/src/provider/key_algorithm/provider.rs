@@ -16,7 +16,9 @@ use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, KeyAlgorithmFields, KeyAlgorithmType};
 use crate::error::ContextWithErrorCode;
 use crate::model::key::Key;
-use crate::provider::provider_directory::{InitializationError, ProviderDirectory};
+use crate::provider::provider_directory::{
+    InitializationError, ProviderDirectory, ProviderDirectoryError,
+};
 
 #[derive(Clone)]
 pub struct ParsedKey {
@@ -29,7 +31,7 @@ pub trait KeyAlgorithmProvider: Send + Sync {
     fn key_algorithm_from_type(
         &self,
         algorithm: KeyAlgorithmType,
-    ) -> Result<Arc<dyn KeyAlgorithm>, KeyAlgorithmProviderError>;
+    ) -> Result<Arc<dyn KeyAlgorithm>, ProviderDirectoryError>;
 
     fn key_algorithm_from_key(
         &self,
@@ -68,8 +70,8 @@ impl KeyAlgorithmProvider for KeyAlgorithmProviderImpl {
     fn key_algorithm_from_type(
         &self,
         algorithm: KeyAlgorithmType,
-    ) -> Result<Arc<dyn KeyAlgorithm>, KeyAlgorithmProviderError> {
-        Ok(self.directory.provider(&algorithm)?)
+    ) -> Result<Arc<dyn KeyAlgorithm>, ProviderDirectoryError> {
+        self.directory.provider(&algorithm)
     }
 
     fn key_algorithm_from_key(
@@ -148,7 +150,9 @@ impl KeyAlgorithmProvider for KeyAlgorithmProviderImpl {
         private_key: Option<SecretSlice<u8>>,
         r#use: Option<JwkUse>,
     ) -> Result<KeyHandle, KeyAlgorithmProviderError> {
-        let algorithm = self.key_algorithm_from_type(algorithm)?;
+        let algorithm = self
+            .key_algorithm_from_type(algorithm)
+            .error_while("getting key algorithm")?;
         Ok(algorithm
             .reconstruct_key(public_key, private_key, r#use)
             .error_while("reconstructing key")?)

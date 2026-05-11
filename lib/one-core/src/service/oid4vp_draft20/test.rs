@@ -26,7 +26,8 @@ use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofS
 use crate::proto::identifier_creator::MockIdentifierCreator;
 use crate::proto::openid4vp_proof_validator::MockOpenId4VpProofValidator;
 use crate::proto::transaction_manager::NoTransactionManager;
-use crate::provider::blob_storage_provider::{MockBlobStorage, MockBlobStorageProvider};
+use crate::provider::blob_storage::MockBlobStorage;
+use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
@@ -364,7 +365,7 @@ async fn test_submit_proof_failed_credential_suspended() {
     let mut blob_storage_provider = MockBlobStorageProvider::new();
     blob_storage_provider
         .expect_get_blob_storage()
-        .returning(move |_| Some(blob_storage.clone()));
+        .returning(move |_| Ok(blob_storage.clone()));
 
     let mut proof_validator = MockOpenId4VpProofValidator::new();
     proof_validator

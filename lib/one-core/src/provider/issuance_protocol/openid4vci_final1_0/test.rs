@@ -56,7 +56,7 @@ use crate::proto::wrp_validator::MockWRPValidator;
 use crate::proto::wrp_validator::model::{
     AccessCertificateResult, RegistrationCertificateResult, TrustMode,
 };
-use crate::provider::blob_storage_provider::MockBlobStorageProvider;
+use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::provider::caching_loader::openid_metadata::MockOpenIDMetadataFetcher;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{IdentifierDetails, MockSignatureProvider};

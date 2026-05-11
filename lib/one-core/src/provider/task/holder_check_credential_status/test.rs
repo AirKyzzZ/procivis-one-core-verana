@@ -20,7 +20,8 @@ use crate::proto::credential_validity_manager::{
     CredentialValidityManager, CredentialValidityManagerImpl,
 };
 use crate::proto::session_provider::NoSessionProvider;
-use crate::provider::blob_storage_provider::{MockBlobStorage, MockBlobStorageProvider};
+use crate::provider::blob_storage::MockBlobStorage;
+use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{
     CredentialStatus, CredentialSubject, DetailCredential, IdentifierDetails,
@@ -138,7 +139,7 @@ async fn test_task_holder_check_credential_status_being_revoked() {
     blob_storage_provider
         .expect_get_blob_storage()
         .once()
-        .returning(move |_| Some(blob_storage.clone()));
+        .returning(move |_| Ok(blob_storage.clone()));
 
     let credential_repository = Arc::new(credential_repository);
     let validity_manager = setup_validity_manager(Repositories {

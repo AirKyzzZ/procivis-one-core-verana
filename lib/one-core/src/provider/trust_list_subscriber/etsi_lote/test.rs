@@ -23,11 +23,11 @@ use crate::provider::caching_loader::etsi_lote::EtsiLoteCache;
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::key_algorithm::KeyAlgorithm;
 use crate::provider::key_algorithm::ecdsa::Ecdsa;
-use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
 };
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::provider::provider_directory::ProviderDirectoryError;
 use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
 use crate::provider::trust_list_subscriber::TrustListSubscriber;
 use crate::provider::trust_list_subscriber::error::TrustListSubscriberError;
@@ -253,9 +253,10 @@ fn setup_subscriber(time: OffsetDateTime, reference: &Url) -> EtsiLoteSubscriber
         .expect_key_algorithm_from_type()
         .returning(|r#type| match r#type {
             KeyAlgorithmType::Ecdsa => Ok(Arc::new(Ecdsa)),
-            _ => Err(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
-                "".to_string(),
-            )),
+            _ => Err(ProviderDirectoryError::MissingProvider {
+                config_key: "".to_string(),
+                provider_type: "".to_string(),
+            }),
         });
     key_algorithm_provider
         .expect_key_algorithm_from_jose_alg()
@@ -359,9 +360,10 @@ fn setup_subscriber_xml(time: OffsetDateTime, reference: &Url) -> EtsiLoteSubscr
         .expect_key_algorithm_from_type()
         .returning(|r#type| match r#type {
             KeyAlgorithmType::Ecdsa => Ok(Arc::new(Ecdsa)),
-            _ => Err(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
-                "".to_string(),
-            )),
+            _ => Err(ProviderDirectoryError::MissingProvider {
+                config_key: "".to_string(),
+                provider_type: "".to_string(),
+            }),
         });
     let key_algorithm_provider = Arc::new(key_algorithm_provider);
     let cache_storage = Arc::new(InMemoryStorage::new(HashMap::new()));

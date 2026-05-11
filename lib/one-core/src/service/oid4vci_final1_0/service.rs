@@ -26,7 +26,7 @@ use super::validator::{
     verify_pop_signature, verify_wia_signature, verify_wua_wia_issuers_match,
 };
 use crate::config::ConfigValidationError;
-use crate::config::core_config::{FormatType, IssuanceProtocolType};
+use crate::config::core_config::{BlobStorageType, FormatType, IssuanceProtocolType};
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::exchange::{
     get_issuance_param_pre_authorization_expires_in, get_issuance_param_refresh_token_expires_in,
@@ -46,7 +46,6 @@ use crate::proto::jwt::Jwt;
 use crate::proto::key_verification::KeyVerification;
 use crate::proto::transaction_manager::IsolationLevel;
 use crate::proto::wallet_instance::WalletUnitStatusCheckResponse;
-use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::credential_formatter::model::IdentifierDetails;
 use crate::provider::issuance_protocol::error::{IssuanceProtocolError, OpenID4VCIError};
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
@@ -481,10 +480,6 @@ impl OID4VCIFinal1_0Service {
                 let db_blob_storage = self
                     .blob_storage_provider
                     .get_blob_storage(BlobStorageType::Db)
-                    .await
-                    .ok_or_else(|| {
-                        MissingProviderError::BlobStorage(BlobStorageType::Db.to_string())
-                    })
                     .error_while("getting blob storage")?;
 
                 let wallet_instance_attestation_blob = db_blob_storage
@@ -632,10 +627,6 @@ impl OID4VCIFinal1_0Service {
             let blob_storage = self
                 .blob_storage_provider
                 .get_blob_storage(BlobStorageType::Db)
-                .await
-                .ok_or(MissingProviderError::BlobStorage(
-                    BlobStorageType::Db.to_string(),
-                ))
                 .error_while("getting blob storage")?;
 
             let wua_dto = serde_json::to_vec(&WalletUnitAttestationDTO { attestation })
@@ -996,10 +987,6 @@ impl OID4VCIFinal1_0Service {
                             let blob_storage = self
                                 .blob_storage_provider
                                 .get_blob_storage(BlobStorageType::Db)
-                                .await
-                                .ok_or(MissingProviderError::BlobStorage(
-                                    BlobStorageType::Db.to_string(),
-                                ))
                                 .error_while("getting blob storage")?;
 
                             let attestation_token =

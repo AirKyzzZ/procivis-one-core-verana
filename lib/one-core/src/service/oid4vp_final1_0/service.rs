@@ -11,7 +11,7 @@ use super::proof_request::{
     generate_authorization_request_params_final1_0, select_key_agreement_key_from_proof,
 };
 use crate::clock::now_utc;
-use crate::config::core_config::VerificationProtocolType;
+use crate::config::core_config::{BlobStorageType, VerificationProtocolType};
 use crate::error::ContextWithErrorCode;
 use crate::error::ErrorCode::BR_0000;
 use crate::model::blob::{Blob, BlobType};
@@ -28,7 +28,6 @@ use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
 use crate::proto::openid4vp_proof_validator::ValidatedProofResult;
-use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::final1_0::mappers::{
     create_open_id_for_vp_client_metadata_final1_0, decode_client_id_with_scheme,
@@ -47,7 +46,6 @@ use crate::provider::verification_protocol::openid4vp::model::{
     OpenID4VPVerifierInteractionContent, ResponseSubmission, SubmissionRequestData,
     VpSubmissionData,
 };
-use crate::service::error::MissingProviderError;
 use crate::service::ssi_validator::validate_verification_protocol_type;
 use crate::util::openid4vp::persist_accepted_proof;
 use crate::validator::{throw_if_proof_state_not_eq, validate_verification_protocol_config_exists};
@@ -343,8 +341,6 @@ impl OID4VPFinal1_0Service {
         let blob_storage = self
             .blob_storage_provider
             .get_blob_storage(BlobStorageType::Db)
-            .await
-            .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))
             .error_while("getting blob storage")?;
 
         let blob_value = serde_json::to_string(&unpacked_request.submission_data)
@@ -580,8 +576,6 @@ impl OID4VPFinal1_0Service {
         let blob_storage = self
             .blob_storage_provider
             .get_blob_storage(BlobStorageType::Db)
-            .await
-            .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))
             .error_while("getting blob storage")?;
 
         let mut verifier_info = vec![];

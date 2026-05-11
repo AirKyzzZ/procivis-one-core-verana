@@ -31,7 +31,8 @@ use crate::proto::identifier_creator::MockIdentifierCreator;
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::proto::session_provider::{NoSessionProvider, Session};
 use crate::proto::wrp_validator::model::TrustMode;
-use crate::provider::blob_storage_provider::{MockBlobStorage, MockBlobStorageProvider};
+use crate::provider::blob_storage::MockBlobStorage;
+use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::issuance_protocol::MockIssuanceProtocol;
@@ -434,7 +435,7 @@ async fn test_submit_proof_succeeds() {
     blob_storage_provider
         .expect_get_blob_storage()
         .once()
-        .returning(move |_| Some(blob_storage.clone()));
+        .returning(move |_| Ok(blob_storage.clone()));
 
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
@@ -645,7 +646,7 @@ async fn test_submit_proof_multiple_credentials_succeeds() {
     blob_storage_provider
         .expect_get_blob_storage()
         .times(2)
-        .returning(move |_| Some(blob_storage.clone()));
+        .returning(move |_| Ok(blob_storage.clone()));
 
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
@@ -886,7 +887,7 @@ async fn test_submit_proof_repeating_claims() {
     blob_storage_provider
         .expect_get_blob_storage()
         .times(2)
-        .returning(move |_| Some(blob_storage.clone()));
+        .returning(move |_| Ok(blob_storage.clone()));
 
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
@@ -1005,7 +1006,7 @@ async fn test_accept_credential() {
     blob_storage_provider
         .expect_get_blob_storage()
         .once()
-        .returning(move |_| Some(blob_storage.clone()));
+        .returning(move |_| Ok(blob_storage.clone()));
 
     let mut key_security_level_provider = MockKeySecurityLevelProvider::new();
     key_security_level_provider
@@ -1140,7 +1141,7 @@ async fn test_accept_credential_with_did() {
     blob_storage_provider
         .expect_get_blob_storage()
         .once()
-        .returning(move |_| Some(blob_storage.clone()));
+        .returning(move |_| Ok(blob_storage.clone()));
 
     let mut key_security_level_provider = MockKeySecurityLevelProvider::new();
     key_security_level_provider

@@ -8,16 +8,15 @@ use super::{
     OpenID4VCIIssuerMetadataResponseDTO,
 };
 use crate::clock::now_utc;
+use crate::config::core_config::BlobStorageType;
 use crate::error::ContextWithErrorCode;
 use crate::model::blob::{Blob, BlobType};
 use crate::model::history::{
     History, HistoryAction, HistoryEntityType, HistoryMetadata, HistorySource,
 };
 use crate::proto::session_provider::SessionExt;
-use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::signer::registration_certificate;
-use crate::service::error::MissingProviderError;
 
 pub(super) struct TrustInfo {
     pub registration_certificate: Option<String>,
@@ -175,8 +174,6 @@ impl OpenID4VCIFinal1_0 {
             let blob_storage = self
                 .blob_storage_provider
                 .get_blob_storage(BlobStorageType::Db)
-                .await
-                .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))
                 .error_while("getting blob storage")?;
 
             let blob = Blob::new(blob_content, BlobType::HistoryMetadata);

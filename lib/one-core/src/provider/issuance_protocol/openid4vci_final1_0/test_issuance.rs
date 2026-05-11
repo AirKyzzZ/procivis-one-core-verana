@@ -28,7 +28,8 @@ use crate::proto::identifier_creator::MockIdentifierCreator;
 use crate::proto::session_provider::NoSessionProvider;
 use crate::proto::wallet_instance::MockHolderWalletUnitProto;
 use crate::proto::wrp_validator::MockWRPValidator;
-use crate::provider::blob_storage_provider::{MockBlobStorage, MockBlobStorageProvider};
+use crate::provider::blob_storage::MockBlobStorage;
+use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::provider::caching_loader::openid_metadata::MockOpenIDMetadataFetcher;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{CredentialStatus, MockSignatureProvider};
@@ -170,7 +171,7 @@ async fn test_issuer_submit_succeeds() {
     blob_storage_provider
         .expect_get_blob_storage()
         .once()
-        .returning(move |_| Some(blob_storage.clone()));
+        .returning(move |_| Ok(blob_storage.clone()));
 
     let provider = OpenID4VCIFinal1_0::new(
         Arc::new(MockHttpClient::new()),
@@ -339,7 +340,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
     blob_storage_provider
         .expect_get_blob_storage()
         .once()
-        .returning(move |_| Some(blob_storage.clone()));
+        .returning(move |_| Ok(blob_storage.clone()));
 
     let service = OpenID4VCIFinal1_0::new(
         Arc::new(MockHttpClient::new()),

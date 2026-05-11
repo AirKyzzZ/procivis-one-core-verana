@@ -40,7 +40,7 @@ use crate::proto::wallet_instance::HolderWalletUnitProtoImpl;
 use crate::proto::wallet_provider_client::http_client::HTTPWalletProviderClient;
 use crate::proto::wrp_validator::validator::WRPValidatorImpl;
 use crate::proto::xades::XAdES;
-use crate::provider::blob_storage_provider::blob_storage_provider_from_config;
+use crate::provider::blob_storage::provider::blob_storage_provider_from_config;
 use crate::provider::caching_loader::json_ld_context::{
     ContextCache, initialize_jsonld_cache_from_config,
 };
@@ -427,10 +427,8 @@ impl OneCore {
             data_provider.get_tx_manager(),
         ));
 
-        let blob_storage_provider = blob_storage_provider_from_config(
-            &config.blob_storage,
-            data_provider.get_blob_repository(),
-        );
+        let blob_storage_provider =
+            blob_storage_provider_from_config(&mut config, data_provider.get_blob_repository())?;
 
         let trust_information_provider = Arc::new(TrustInformationProviderImpl::new(
             data_provider.get_history_repository(),

@@ -10,7 +10,7 @@ use crate::proto::openid4vp_proof_validator::OpenId4VpProofValidator;
 use crate::proto::session_provider::SessionProvider;
 use crate::proto::transaction_manager::TransactionManager;
 use crate::proto::trust_information::TrustInformationProvider;
-use crate::provider::blob_storage_provider::BlobStorageProvider;
+use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;

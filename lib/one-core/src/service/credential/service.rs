@@ -17,6 +17,7 @@ use super::validator::{
     throw_if_credential_state_eq, validate_format_and_did_method_compatibility,
     validate_redirect_uri, validate_webhook_url,
 };
+use crate::config::core_config::BlobStorageType;
 use crate::config::validator::protocol::validate_protocol_did_compatibility;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::certificate::{CertificateRelations, CertificateRole};
@@ -30,7 +31,6 @@ use crate::model::did::KeyRole;
 use crate::model::identifier::{IdentifierRelations, IdentifierState, IdentifierType};
 use crate::model::interaction::{InteractionRelations, InteractionType};
 use crate::model::validity_credential::ValidityCredentialType;
-use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::issuance_protocol::model::ShareResponse;
 use crate::provider::revocation::model::RevocationState;
 use crate::repository::error::DataLayerError;
@@ -364,8 +364,6 @@ impl CredentialService {
         let db_blob_storage = self
             .blob_storage_provider
             .get_blob_storage(BlobStorageType::Db)
-            .await
-            .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))
             .error_while("getting blob storage")?;
 
         let wallet_instance_attestation_blob = match &credential.wallet_instance_attestation_blob_id

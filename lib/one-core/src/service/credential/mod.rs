@@ -5,7 +5,7 @@ use crate::proto::credential_validity_manager::CredentialValidityManager;
 use crate::proto::notification_scheduler::NotificationScheduler;
 use crate::proto::session_provider::SessionProvider;
 use crate::proto::trust_information::TrustInformationProvider;
-use crate::provider::blob_storage_provider::BlobStorageProvider;
+use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::issuance_protocol::provider::IssuanceProtocolProvider;
 use crate::repository::credential_repository::CredentialRepository;

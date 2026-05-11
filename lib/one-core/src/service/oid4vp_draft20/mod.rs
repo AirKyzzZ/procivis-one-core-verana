@@ -4,7 +4,7 @@ use crate::config::core_config;
 use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::openid4vp_proof_validator::OpenId4VpProofValidator;
 use crate::proto::transaction_manager::TransactionManager;
-use crate::provider::blob_storage_provider::BlobStorageProvider;
+use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::repository::credential_repository::CredentialRepository;

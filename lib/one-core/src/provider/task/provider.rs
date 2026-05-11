@@ -22,7 +22,7 @@ use crate::proto::trust_collection::TrustCollectionManager;
 use crate::proto::trust_list_subscription_sync::TrustListSubscriptionSync;
 use crate::proto::verifier_provider_client::VerifierProviderClient;
 use crate::proto::wallet_provider_client::WalletProviderClient;
-use crate::provider::blob_storage_provider::BlobStorageProvider;
+use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::task::trust_collection_sync::TrustCollectionSyncTask;
 use crate::provider::trust_list_subscriber::provider::TrustListSubscriberProvider;
 use crate::repository::certificate_repository::CertificateRepository;

@@ -10,6 +10,7 @@ use uuid::Uuid;
 use super::OpenID4VPFinal1_0;
 use super::mappers::credential_query_matches_reg_cert_credential;
 use super::model::{AuthorizationRequest, VerifierInfoAttestation};
+use crate::config::core_config::BlobStorageType;
 use crate::error::ContextWithErrorCode;
 use crate::model::blob::{Blob, BlobType};
 use crate::model::history::{
@@ -18,11 +19,9 @@ use crate::model::history::{
 };
 use crate::proto::session_provider::SessionExt;
 use crate::proto::wrp_validator::model::{AccessCertificateResult, IntendedUse, TrustMode};
-use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
 use crate::provider::signer::registration_certificate;
 use crate::provider::verification_protocol::openid4vp::VerificationProtocolError;
-use crate::service::error::MissingProviderError;
 
 impl OpenID4VPFinal1_0 {
     #[tracing::instrument(level = "debug", skip_all, err(Debug))]
@@ -367,8 +366,6 @@ impl OpenID4VPFinal1_0 {
             let blob_storage = self
                 .blob_storage_provider
                 .get_blob_storage(BlobStorageType::Db)
-                .await
-                .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))
                 .error_while("getting blob storage")?;
 
             let blob = Blob::new(blob_content, BlobType::HistoryMetadata);

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::proto::session_provider::SessionProvider;
-use crate::provider::blob_storage_provider::BlobStorageProvider;
+use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::signer::provider::SignerProvider;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::identifier_repository::IdentifierRepository;

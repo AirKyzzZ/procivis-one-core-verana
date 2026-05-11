@@ -9,7 +9,7 @@ use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::transaction_manager::TransactionManager;
 use crate::proto::wallet_instance::HolderWalletUnitProto;
-use crate::provider::blob_storage_provider::BlobStorageProvider;
+use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::issuance_protocol::openid4vci_final1_0_swiyu::OID4VCI_FINAL1_0_SWIYU_VERSION;
 use crate::provider::issuance_protocol::provider::IssuanceProtocolProvider;

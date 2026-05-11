@@ -206,9 +206,6 @@ pub enum MissingProviderError {
     #[error("Cannot find trust manager `{0}`")]
     TrustManager(String),
 
-    #[error("Cannot find blob storage `{0}`")]
-    BlobStorage(String),
-
     #[error("Cannot find signature provider `{0}`")]
     Signer(String),
 
@@ -307,7 +304,6 @@ impl ErrorCodeMixin for MissingProviderError {
             Self::ExchangeProtocol(_) => ErrorCode::BR_0046,
             Self::Task(_) => ErrorCode::BR_0103,
             Self::TrustManager(_) => ErrorCode::BR_0132,
-            Self::BlobStorage(_) => ErrorCode::BR_0252,
             Self::Signer(_) => ErrorCode::BR_0326,
             Self::Verifier(_) => ErrorCode::BR_0380,
             Self::TrustListSubscriber(_) => ErrorCode::BR_0400,

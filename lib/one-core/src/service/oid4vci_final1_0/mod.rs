@@ -6,7 +6,7 @@ use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::transaction_manager::TransactionManager;
 use crate::proto::wallet_instance::HolderWalletUnitProto;
-use crate::provider::blob_storage_provider::BlobStorageProvider;
+use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::issuance_protocol::openid4vci_final1_0::service::get_protocol_base_url;
 use crate::provider::issuance_protocol::provider::IssuanceProtocolProvider;

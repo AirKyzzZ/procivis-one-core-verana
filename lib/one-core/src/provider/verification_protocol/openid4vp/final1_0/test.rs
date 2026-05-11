@@ -32,7 +32,7 @@ use crate::proto::http_client::{
 use crate::proto::session_provider::NoSessionProvider;
 use crate::proto::trust_information::MockTrustInformationProvider;
 use crate::proto::wrp_validator::MockWRPValidator;
-use crate::provider::blob_storage_provider::MockBlobStorageProvider;
+use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;

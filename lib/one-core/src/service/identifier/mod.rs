@@ -6,7 +6,7 @@ use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::session_provider::SessionProvider;
 use crate::proto::transaction_manager::TransactionManager;
 use crate::proto::wrp_validator::WRPValidator;
-use crate::provider::blob_storage_provider::BlobStorageProvider;
+use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::trust_list_subscriber::provider::TrustListSubscriberProvider;
 use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;

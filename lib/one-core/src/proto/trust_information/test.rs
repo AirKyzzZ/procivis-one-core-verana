@@ -12,7 +12,7 @@ use crate::model::history::{
 };
 use crate::proto::trust_information::TrustInformationProvider;
 use crate::proto::trust_information::provider::TrustInformationProviderImpl;
-use crate::provider::blob_storage_provider::MockBlobStorageProvider;
+use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::repository::history_repository::MockHistoryRepository;
 
 fn dummy_history(action: HistoryAction, metadata: Option<HistoryMetadata>) -> History {

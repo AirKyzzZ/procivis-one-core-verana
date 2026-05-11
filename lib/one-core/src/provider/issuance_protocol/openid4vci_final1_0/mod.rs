@@ -57,7 +57,9 @@ use super::{
     serialize_interaction_data,
 };
 use crate::clock::now_utc;
-use crate::config::core_config::{CoreConfig, DidType as ConfigDidType, FormatType};
+use crate::config::core_config::{
+    BlobStorageType, CoreConfig, DidType as ConfigDidType, FormatType,
+};
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
 use crate::mapper::oidc::map_from_oidc_format_to_core_detailed;
 use crate::mapper::x509::x5c_into_pem_chain;
@@ -101,7 +103,7 @@ use crate::proto::wallet_instance::{
 };
 use crate::proto::wrp_validator::WRPValidator;
 use crate::proto::wrp_validator::model::{AccessCertificateResult, TrustMode};
-use crate::provider::blob_storage_provider::{BlobStorageProvider, BlobStorageType};
+use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
 use crate::provider::credential_formatter::mapper::credential_data_from_credential_detail_response;
 use crate::provider::credential_formatter::mdoc_formatter;
@@ -1261,8 +1263,6 @@ impl OpenID4VCIFinal1_0 {
         let db_blob_storage = self
             .blob_storage_provider
             .get_blob_storage(BlobStorageType::Db)
-            .await
-            .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))
             .error_while("getting blob storage")?;
 
         let credential_blob_id = match credential.credential_blob_id {
@@ -1588,8 +1588,6 @@ impl OpenID4VCIFinal1_0 {
         let blob_storage = self
             .blob_storage_provider
             .get_blob_storage(BlobStorageType::Db)
-            .await
-            .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))
             .error_while("getting blob storage")?;
 
         let format_type = self
@@ -1765,8 +1763,6 @@ impl OpenID4VCIFinal1_0 {
         let db_blob_storage = self
             .blob_storage_provider
             .get_blob_storage(BlobStorageType::Db)
-            .await
-            .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))
             .error_while("getting blob storage")?;
 
         let blob_id = credential
@@ -1795,8 +1791,6 @@ impl OpenID4VCIFinal1_0 {
             let blob_storage = self
                 .blob_storage_provider
                 .get_blob_storage(BlobStorageType::Db)
-                .await
-                .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))
                 .error_while("getting blob storage")?;
 
             blob_storage

@@ -9,7 +9,7 @@ use super::dto::{
     ResolvedTrustEntrySourceResponseDTO,
 };
 use super::error::IdentifierServiceError;
-use crate::config::core_config::CoreConfig;
+use crate::config::core_config::{BlobStorageType, CoreConfig};
 use crate::error::ContextWithErrorCode;
 use crate::model::blob::BlobType;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
@@ -25,7 +25,7 @@ use crate::model::list_filter::{
 use crate::model::list_query::{ListPagination, ListQuery, ListSorting};
 use crate::model::proof_schema::{ProofInputSchemaRelations, ProofSchemaRelations};
 use crate::model::trust_list_subscription::TrustListSubscription;
-use crate::provider::blob_storage_provider::{BlobStorageProvider, BlobStorageType};
+use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::signer::registration_certificate::model::Credential;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::proof_schema_repository::ProofSchemaRepository;
@@ -33,7 +33,6 @@ use crate::service::certificate::mapper::certificate_to_response_dto;
 use crate::service::common_dto::ListQueryDTO;
 use crate::service::did::dto::CreateDidRequestDTO;
 use crate::service::did::mapper::response_from_did;
-use crate::service::error::MissingProviderError;
 
 pub(super) async fn identifier_to_response_dto(
     value: Identifier,
@@ -131,8 +130,6 @@ async fn map_trust_information(
 ) -> Result<Vec<IdentifierTrustInformationResponseDTO>, IdentifierServiceError> {
     let blob_storage = blob_storage_provider
         .get_blob_storage(BlobStorageType::Db)
-        .await
-        .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))
         .error_while("getting blob storage")?;
     let mut trust_info_dtos = vec![];
     for entry in trust_information {

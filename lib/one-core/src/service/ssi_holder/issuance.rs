@@ -15,7 +15,7 @@ use super::validator::{
     validate_credentials_match_session_organisation, validate_holder_capabilities,
     validate_initiate_issuance_request,
 };
-use crate::config::core_config::FormatType;
+use crate::config::core_config::{BlobStorageType, FormatType};
 use crate::error::ContextWithErrorCode;
 use crate::model::blob::{Blob, BlobType};
 use crate::model::credential::{
@@ -25,7 +25,6 @@ use crate::model::identifier::IdentifierRelations;
 use crate::model::interaction::{Interaction, InteractionRelations, InteractionType};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::proto::oauth_client::{OAuthAuthorizationRequest, OAuthClientProvider};
-use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::issuance_protocol::dto::{ContinueIssuanceDTO, Features};
 use crate::provider::issuance_protocol::model::{
     InvitationResponseEnum, SubmitIssuerResponse, UpdateResponse,
@@ -232,8 +231,6 @@ impl SSIHolderService {
         let db_blob_storage = self
             .blob_storage_provider
             .get_blob_storage(BlobStorageType::Db)
-            .await
-            .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))
             .error_while("getting blob storage")?;
 
         let blob = Blob::new(

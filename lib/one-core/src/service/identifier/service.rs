@@ -22,6 +22,7 @@ use super::mapper::{
 };
 use super::validator::validate_identifier_type;
 use crate::config::core_config;
+use crate::config::core_config::BlobStorageType;
 use crate::error::ErrorCode::BR_0224;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
 use crate::model::blob::Blob;
@@ -39,13 +40,11 @@ use crate::model::trust_list_subscription::{
 };
 use crate::proto::identifier_creator::CreateLocalIdentifierRequest;
 use crate::proto::transaction_manager::IsolationLevel;
-use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::trust_list_subscriber::{
     Feature, TrustEntityResponse, TrustListSubscriber, TrustListSubscriberCapabilities,
 };
 use crate::repository::error::DataLayerError;
 use crate::service::common_dto::ListQueryDTO;
-use crate::service::error::MissingProviderError;
 use crate::validator::{throw_if_org_id_not_matching_session, throw_if_org_not_matching_session};
 
 impl IdentifierService {
@@ -284,8 +283,6 @@ impl IdentifierService {
         let blob_storage = self
             .blob_storage_provider
             .get_blob_storage(BlobStorageType::Db)
-            .await
-            .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))
             .error_while("getting blob storage")?;
         let now = OffsetDateTime::now_utc();
 

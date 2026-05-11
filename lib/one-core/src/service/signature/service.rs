@@ -4,6 +4,7 @@ use one_dto_mapper::convert_inner;
 use uuid::Uuid;
 
 use super::SignatureService;
+use crate::config::core_config::BlobStorageType;
 use crate::error::ContextWithErrorCode;
 use crate::model::blob::{Blob, BlobType};
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
@@ -11,9 +12,7 @@ use crate::model::identifier::IdentifierRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::revocation_list::{RevocationListEntityInfo, RevocationListRelations};
 use crate::proto::session_provider::SessionExt;
-use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::signer::dto::{CreateSignatureResponseDTO, Issuer};
-use crate::service::error::MissingProviderError;
 use crate::service::signature::dto::{CreateSignatureRequestDTO, SignatureStatusInfo};
 use crate::service::signature::error::SignatureServiceError;
 use crate::validator::permissions::RequiredPermissions;
@@ -171,8 +170,6 @@ impl SignatureService {
         let blob_storage = self
             .blob_storage_provider
             .get_blob_storage(BlobStorageType::Db)
-            .await
-            .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))
             .error_while("getting blob storage")?;
 
         let blob = Blob::new(

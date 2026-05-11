@@ -1,4 +1,4 @@
-pub mod blob_storage_provider;
+pub mod blob_storage;
 pub mod caching_loader;
 pub mod credential_formatter;
 pub mod data_type;

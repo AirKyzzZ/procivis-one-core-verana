@@ -7,6 +7,7 @@ use shared_types::CredentialId;
 use uuid::Uuid;
 
 use super::Task;
+use crate::config::core_config::BlobStorageType;
 use crate::error::ContextWithErrorCode;
 use crate::model::claim::ClaimRelations;
 use crate::model::credential::{CredentialFilterValue, CredentialListQuery, CredentialRelations};
@@ -14,12 +15,12 @@ use crate::model::history::{HistoryAction, HistoryEntityType, HistoryFilterValue
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::{ListPagination, ListQuery};
 use crate::model::proof::{ProofClaimRelations, ProofRelations, ProofStateEnum};
-use crate::provider::blob_storage_provider::{BlobStorageProvider, BlobStorageType};
+use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::repository::claim_repository::ClaimRepository;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::proof_repository::ProofRepository;
-use crate::service::error::{EntityNotFoundError, MissingProviderError, ServiceError};
+use crate::service::error::{EntityNotFoundError, ServiceError};
 use crate::service::proof::dto::ProofFilterValue;
 
 pub struct RetainProofCheck {
@@ -153,10 +154,7 @@ impl Task for RetainProofCheck {
                 let blob_storage = self
                     .blob_storage_provider
                     .get_blob_storage(BlobStorageType::Db)
-                    .await
-                    .ok_or_else(|| {
-                        MissingProviderError::BlobStorage(BlobStorageType::Db.to_string())
-                    })?;
+                    .error_while("getting blob storage")?;
 
                 let credential_blob_ids = self
                     .credential_repository
@@ -189,10 +187,7 @@ impl Task for RetainProofCheck {
                     let blob_storage = self
                         .blob_storage_provider
                         .get_blob_storage(BlobStorageType::Db)
-                        .await
-                        .ok_or_else(|| {
-                            MissingProviderError::BlobStorage(BlobStorageType::Db.to_string())
-                        })?;
+                        .error_while("getting blob storage")?;
 
                     blob_storage
                         .delete(&proof_blob_id)

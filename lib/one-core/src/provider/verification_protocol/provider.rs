@@ -29,7 +29,7 @@ use crate::proto::nfc::hce::NfcHce;
 use crate::proto::session_provider::SessionProvider;
 use crate::proto::trust_information::TrustInformationProvider;
 use crate::proto::wrp_validator::WRPValidator;
-use crate::provider::blob_storage_provider::BlobStorageProvider;
+use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;

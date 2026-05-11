@@ -56,7 +56,7 @@ use crate::proto::session_provider::{NoSessionProvider, SessionProvider};
 use crate::proto::transaction_manager::NoTransactionManager;
 use crate::proto::trust_information::MockTrustInformationProvider;
 use crate::proto::trust_information::dto::TrustInformation;
-use crate::provider::blob_storage_provider::MockBlobStorageProvider;
+use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::model::FormatterCapabilities;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::credential_formatter::{CredentialFormatter, MockCredentialFormatter};

@@ -31,7 +31,7 @@ use crate::proto::http_client::HttpClient;
 use crate::proto::session_provider::SessionProvider;
 use crate::proto::trust_information::TrustInformationProvider;
 use crate::proto::wrp_validator::WRPValidator;
-use crate::provider::blob_storage_provider::BlobStorageProvider;
+use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;

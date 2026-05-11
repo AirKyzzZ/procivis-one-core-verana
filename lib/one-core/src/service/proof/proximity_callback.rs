@@ -9,7 +9,7 @@ use uuid::Uuid;
 
 use super::ProofService;
 use super::error::ProofServiceError;
-use crate::config::core_config::{TransportType, VerificationProtocolType};
+use crate::config::core_config::{BlobStorageType, TransportType, VerificationProtocolType};
 use crate::error::ContextWithErrorCode;
 use crate::error::ErrorCode::BR_0000;
 use crate::model::blob::{Blob, BlobType};
@@ -20,7 +20,6 @@ use crate::model::proof::{Proof, ProofRelations, ProofStateEnum, UpdateProofRequ
 use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
-use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::model::{
     OpenID4VPDirectPostResponseDTO, OpenID4VPVerifierInteractionContent, SubmissionRequestData,
@@ -32,7 +31,6 @@ use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::m
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::mqtt::model::{
     MQTTOpenID4VPInteractionDataVerifier, MQTTVerifierProtocolData,
 };
-use crate::service::error::MissingProviderError;
 use crate::util::openid4vp::persist_accepted_proof;
 
 impl ProofService {
@@ -210,8 +208,6 @@ impl ProofService {
         let blob_storage = self
             .blob_storage_provider
             .get_blob_storage(BlobStorageType::Db)
-            .await
-            .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))
             .error_while("getting blob storage")?;
 
         let blob_value = serde_json::to_string(&unpacked_request.submission_data).map_err(|e| {

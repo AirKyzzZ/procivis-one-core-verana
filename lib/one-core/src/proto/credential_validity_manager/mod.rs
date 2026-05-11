@@ -3,7 +3,7 @@ use std::sync::Arc;
 use one_crypto::encryption::EncryptionError;
 use shared_types::{CredentialId, CredentialSchemaId, RevocationMethodId};
 
-use crate::config::core_config::{CoreConfig, FormatType};
+use crate::config::core_config::{BlobStorageType, CoreConfig, FormatType};
 use crate::error::{
     ContextWithErrorCode, ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt, NestedError,
 };
@@ -16,7 +16,7 @@ use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::proto::session_provider::SessionProvider;
-use crate::provider::blob_storage_provider::{BlobStorageProvider, BlobStorageType};
+use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::issuance_protocol::provider::IssuanceProtocolProvider;
@@ -326,8 +326,6 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
             let blob_storage = self
                 .blob_storage_provider
                 .get_blob_storage(BlobStorageType::Db)
-                .await
-                .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))
                 .error_while("getting blob storage")?;
 
             blob_storage

@@ -23,7 +23,9 @@ use super::validator::{
     validate_verification_key_storage_compatibility, validate_verifier_engagement,
     validate_webhook_url,
 };
-use crate::config::core_config::{TransportType, VerificationEngagement, VerificationProtocolType};
+use crate::config::core_config::{
+    BlobStorageType, TransportType, VerificationEngagement, VerificationProtocolType,
+};
 use crate::config::validator::protocol::{
     validate_identifier, validate_protocol_did_compatibility, validate_protocol_type,
 };
@@ -47,7 +49,6 @@ use crate::model::proof::{
 };
 use crate::model::proof_schema::{ProofInputSchemaRelations, ProofSchemaRelations};
 use crate::proto::nfc::static_handover_handler::NfcStaticHandoverHandler;
-use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::credential_formatter::mdoc_formatter::util::EmbeddedCbor;
 use crate::provider::verification_protocol::dto::{
     PresentationDefinitionResponseDTO, PresentationDefinitionV2ResponseDTO,
@@ -718,8 +719,6 @@ impl ProofService {
         let blob_storage = self
             .blob_storage_provider
             .get_blob_storage(BlobStorageType::Db)
-            .await
-            .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))
             .error_while("getting blob storage")?;
 
         let credential_blob_ids = self
@@ -752,8 +751,6 @@ impl ProofService {
             let blob_storage = self
                 .blob_storage_provider
                 .get_blob_storage(BlobStorageType::Db)
-                .await
-                .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))
                 .error_while("getting blob storage")?;
 
             blob_storage
@@ -1003,8 +1000,6 @@ impl ProofService {
             let blob_storage = self
                 .blob_storage_provider
                 .get_blob_storage(BlobStorageType::Db)
-                .await
-                .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))
                 .error_while("getting blob storage")?;
 
             blob_storage

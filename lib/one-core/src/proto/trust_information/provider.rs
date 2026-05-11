@@ -6,6 +6,7 @@ use dcql::CredentialQueryId;
 use shared_types::i18n::I18nString;
 use shared_types::{CredentialId, EntityId};
 
+use crate::config::core_config::BlobStorageType;
 use crate::error::ContextWithErrorCode;
 use crate::model::common::SortDirection;
 use crate::model::history::HistoryAction::{TrustResolved, WrpNrReceived, WrpRcReceived};
@@ -20,9 +21,9 @@ use crate::proto::trust_information::dto::{
     TrustInformation, TrustPurpose, WalletRelyingPartyDetails,
 };
 use crate::proto::trust_information::{Error, TrustDetails, TrustInformationProvider};
-use crate::provider::blob_storage_provider::{BlobStorage, BlobStorageProvider, BlobStorageType};
+use crate::provider::blob_storage::BlobStorage;
+use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::repository::history_repository::HistoryRepository;
-use crate::service::error::MissingProviderError;
 use crate::util::access_cert_parser::{EtsiParsedAccessCert, etsi_access_cert_from_pem_chain};
 
 pub(crate) struct TrustInformationProviderImpl {
@@ -187,8 +188,6 @@ impl TrustInformationProvider for TrustInformationProviderImpl {
         let blob_storage = self
             .blob_storage_provider
             .get_blob_storage(BlobStorageType::Db)
-            .await
-            .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))
             .error_while("getting blob storage")?;
         let access_certificate = self
             .parsed_access_cert_from_history(id, &history, &*blob_storage)

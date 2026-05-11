@@ -8,6 +8,7 @@ use super::OID4VPDraft20Service;
 use super::error::OID4VPDraft20ServiceError;
 use super::mapper::parse_interaction_content;
 use super::proof_request::generate_authorization_request_params_draft20;
+use crate::config::core_config::BlobStorageType;
 use crate::config::core_config::VerificationProtocolType::{
     OpenId4VpDraft20, OpenId4VpDraft20Swiyu,
 };
@@ -24,7 +25,6 @@ use crate::model::proof::{Proof, ProofRelations, ProofStateEnum, UpdateProofRequ
 use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
-use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::mapper::{
@@ -40,7 +40,6 @@ use crate::provider::verification_protocol::openid4vp::model::{
     VpSubmissionData,
 };
 use crate::provider::verification_protocol::openid4vp::service::create_open_id_for_vp_client_metadata_draft;
-use crate::service::error::MissingProviderError;
 use crate::service::ssi_validator::validate_verification_protocol_type;
 use crate::util::openid4vp::persist_accepted_proof;
 use crate::validator::{throw_if_proof_state_not_eq, validate_verification_protocol_config_exists};
@@ -319,8 +318,6 @@ impl OID4VPDraft20Service {
         let blob_storage = self
             .blob_storage_provider
             .get_blob_storage(BlobStorageType::Db)
-            .await
-            .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))
             .error_while("getting blob storage")?;
 
         let blob_value = serde_json::to_string(&unpacked_request.submission_data).map_err(|e| {

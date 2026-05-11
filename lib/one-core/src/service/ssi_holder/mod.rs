@@ -4,7 +4,7 @@ use crate::config::core_config;
 use crate::proto::http_client::HttpClient;
 use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::session_provider::SessionProvider;
-use crate::provider::blob_storage_provider::BlobStorageProvider;
+use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::issuance_protocol::provider::IssuanceProtocolProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
