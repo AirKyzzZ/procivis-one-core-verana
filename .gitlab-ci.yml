@@ -111,6 +111,7 @@ stages:
     -e POSTGRES_PASSWORD=$POSTGRES_PASSWORD
     -e POSTGRES_DB=$POSTGRES_DB
     --network=$NETWORK_NAME
+    -v ${DB_CONTAINER_NAME}_data:/var/lib/postgresql
     -p 5432:5432
     postgres:18.3
   - |
@@ -218,6 +219,7 @@ tests:postgres:
   after_script:
     - docker stop $DB_CONTAINER_NAME
     - docker rm $DB_CONTAINER_NAME
+    - docker volume rm ${DB_CONTAINER_NAME}_data || true
     - docker stop $RUST_CONTAINER_NAME
     - docker rm $RUST_CONTAINER_NAME
     - *delete_network
