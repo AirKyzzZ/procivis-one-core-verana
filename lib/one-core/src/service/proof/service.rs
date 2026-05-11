@@ -32,26 +32,20 @@ use crate::config::validator::transport::{
 };
 use crate::error::ContextWithErrorCode;
 use crate::mapper::list_response_try_into;
-use crate::model::certificate::{CertificateRelations, CertificateRole};
+use crate::model::certificate::CertificateRole;
 use crate::model::claim::ClaimRelations;
-use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{CredentialFilterValue, CredentialListQuery, CredentialRelations};
-use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::KeyRole;
 use crate::model::history::{HistoryAction, HistoryFilterValue, HistoryListQuery};
 use crate::model::identifier::{IdentifierRelations, IdentifierType};
 use crate::model::interaction::{InteractionRelations, InteractionType};
-use crate::model::key::KeyRelations;
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
-use crate::model::organisation::OrganisationRelations;
 use crate::model::proof::{
     Proof, ProofClaimRelations, ProofRelations, ProofRole, ProofStateEnum, SortableProofColumn,
     UpdateProofRequest,
 };
-use crate::model::proof_schema::{
-    ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
-};
+use crate::model::proof_schema::{ProofInputSchemaRelations, ProofSchemaRelations};
 use crate::proto::nfc::static_handover_handler::NfcStaticHandoverHandler;
 use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::credential_formatter::mdoc_formatter::util::EmbeddedCbor;
@@ -96,7 +90,7 @@ impl ProofService {
                     schema: Some(ProofSchemaRelations {
                         organisation: Some(Default::default()),
                         proof_inputs: Some(ProofInputSchemaRelations {
-                            claim_schemas: Some(ProofSchemaClaimRelations::default()),
+                            claim_schemas: Some(Default::default()),
                             credential_schema: Some(Default::default()),
                         }),
                     }),
@@ -113,7 +107,7 @@ impl ProofService {
                                 did: Some(Default::default()),
                                 ..Default::default()
                             }),
-                            issuer_certificate: Some(CertificateRelations::default()),
+                            issuer_certificate: Some(Default::default()),
                             holder_identifier: Some(IdentifierRelations {
                                 did: Some(Default::default()),
                                 ..Default::default()
@@ -125,7 +119,7 @@ impl ProofService {
                         organisation: Some(Default::default()),
                         ..Default::default()
                     }),
-                    verifier_certificate: Some(CertificateRelations::default()),
+                    verifier_certificate: Some(Default::default()),
                     interaction: Some(InteractionRelations {
                         organisation: Some(Default::default()),
                     }),
@@ -253,7 +247,7 @@ impl ProofService {
                     interaction: Some(InteractionRelations {
                         organisation: Some(Default::default()),
                     }),
-                    verifier_certificate: Some(CertificateRelations::default()),
+                    verifier_certificate: Some(Default::default()),
                     ..Default::default()
                 },
                 None,
@@ -327,9 +321,9 @@ impl ProofService {
             .get_proof_schema(
                 &proof_schema_id,
                 &ProofSchemaRelations {
-                    organisation: Some(OrganisationRelations::default()),
+                    organisation: Some(Default::default()),
                     proof_inputs: Some(ProofInputSchemaRelations {
-                        claim_schemas: Some(ProofSchemaClaimRelations::default()),
+                        claim_schemas: Some(Default::default()),
                         credential_schema: Some(Default::default()),
                     }),
                 },
@@ -674,15 +668,15 @@ impl ProofService {
                 &proof_id,
                 &ProofRelations {
                     claims: Some(ProofClaimRelations {
-                        claim: ClaimRelations::default(),
-                        credential: Some(CredentialRelations::default()),
+                        claim: Default::default(),
+                        credential: Some(Default::default()),
                     }),
                     schema: Some(ProofSchemaRelations {
-                        organisation: Some(OrganisationRelations::default()),
+                        organisation: Some(Default::default()),
                         proof_inputs: None,
                     }),
                     interaction: Some(InteractionRelations {
-                        organisation: Some(OrganisationRelations::default()),
+                        organisation: Some(Default::default()),
                     }),
                     ..Default::default()
                 },
@@ -735,7 +729,7 @@ impl ProofService {
                     CredentialFilterValue::CredentialIds(Vec::from_iter(credential_ids.clone()))
                         .condition(),
                 ),
-                ..CredentialListQuery::default()
+                ..Default::default()
             })
             .await
             .error_while("getting credentials")?
@@ -967,10 +961,10 @@ impl ProofService {
                 &proof_id,
                 &ProofRelations {
                     interaction: Some(InteractionRelations {
-                        organisation: Some(OrganisationRelations::default()),
+                        organisation: Some(Default::default()),
                     }),
                     schema: Some(ProofSchemaRelations {
-                        organisation: Some(OrganisationRelations::default()),
+                        organisation: Some(Default::default()),
                         proof_inputs: None,
                     }),
                     ..Default::default()
@@ -1032,10 +1026,12 @@ impl ProofService {
                 &id,
                 &ProofRelations {
                     schema: Some(ProofSchemaRelations {
-                        organisation: Some(OrganisationRelations::default()),
+                        organisation: Some(Default::default()),
                         ..Default::default()
                     }),
-                    interaction: Some(InteractionRelations::default()),
+                    interaction: Some(InteractionRelations {
+                        organisation: Some(Default::default()),
+                    }),
                     ..Default::default()
                 },
                 None,
@@ -1100,19 +1096,19 @@ impl ProofService {
                 &ProofRelations {
                     schema: Some(ProofSchemaRelations {
                         proof_inputs: Some(ProofInputSchemaRelations {
-                            claim_schemas: Some(ProofSchemaClaimRelations::default()),
-                            credential_schema: Some(CredentialSchemaRelations::default()),
+                            claim_schemas: Some(Default::default()),
+                            credential_schema: Some(Default::default()),
                         }),
-                        organisation: Some(OrganisationRelations::default()),
+                        organisation: Some(Default::default()),
                     }),
-                    interaction: Some(InteractionRelations::default()),
+                    interaction: Some(Default::default()),
                     claims: Some(ProofClaimRelations {
                         claim: ClaimRelations {
-                            schema: Some(ClaimSchemaRelations::default()),
+                            schema: Some(Default::default()),
                         },
                         ..Default::default()
                     }),
-                    verifier_key: Some(KeyRelations::default()),
+                    verifier_key: Some(Default::default()),
                     verifier_identifier: Some(IdentifierRelations {
                         did: Some(Default::default()),
                         certificates: Some(Default::default()),
