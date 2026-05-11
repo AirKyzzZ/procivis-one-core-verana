@@ -12,7 +12,8 @@ use one_core::provider::issuance_protocol::openid4vci_final1_0::model::{
     OpenID4VCICredentialMetadataResponseDTO, OpenID4VCICredentialRequestDTO,
     OpenID4VCICredentialRequestIdentifier, OpenID4VCICredentialRequestProofs,
     OpenID4VCICredentialSubjectItem, OpenID4VCIFinal1CredentialOfferDTO, OpenID4VCIGrants,
-    OpenID4VCIIssuerMetadataClaimDisplay, OpenID4VCIIssuerMetadataCredentialMetadataImage,
+    OpenID4VCIIssuerMetadataBatchIssuanceDTO, OpenID4VCIIssuerMetadataClaimDisplay,
+    OpenID4VCIIssuerMetadataCredentialMetadataImage,
     OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
     OpenID4VCIIssuerMetadataDisplayResponseDTO, OpenID4VCIIssuerMetadataLogoDTO,
     OpenID4VCINonceResponseDTO, OpenID4VCINotificationEvent, OpenID4VCINotificationRequestDTO,
@@ -43,6 +44,13 @@ pub(crate) struct OpenID4VCIIssuerMetadataResponseRestDTO {
     pub credential_configurations_supported:
         IndexMap<String, OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO>,
     pub display: Option<Vec<OpenID4VCIIssuerMetadataDisplayResponseRestDTO>>,
+    pub batch_credential_issuance: Option<OpenID4VCIIssuerMetadataBatchIssuanceRestDTO>,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(OpenID4VCIIssuerMetadataBatchIssuanceDTO)]
+pub(crate) struct OpenID4VCIIssuerMetadataBatchIssuanceRestDTO {
+    pub batch_size: u32,
 }
 
 #[options_not_nullable]

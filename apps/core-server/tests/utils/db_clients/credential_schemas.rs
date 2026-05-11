@@ -892,6 +892,83 @@ impl CredentialSchemasDB {
         self.get(&id).await
     }
 
+    pub async fn create_with_multiformat(
+        &self,
+        name: &str,
+        organisation: &Organisation,
+        batch_size: Option<i32>,
+    ) -> Result<CredentialSchemaId, DataLayerError> {
+        let claim_schema = ClaimSchema {
+            business_key: None,
+            id: Uuid::new_v4().into(),
+            key: "firstName".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            array: false,
+            metadata: false,
+            required: true,
+        };
+        let claim_schema1 = ClaimSchema {
+            business_key: None,
+            id: Uuid::new_v4().into(),
+            key: "isOver18".to_string(),
+            data_type: "BOOLEAN".to_string(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            array: false,
+            metadata: false,
+            required: false,
+        };
+        let claim_schemas = vec![claim_schema, claim_schema1];
+
+        let id = Uuid::new_v4().into();
+        let credential_schema = CredentialSchema {
+            batch_size,
+            allow_revocation: None,
+            id,
+            imported_source_url: "CORE_URL".to_string(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            name: name.to_owned(),
+            key_storage_security: None,
+            organisation: organisation.clone().into(),
+            deleted_at: None,
+            formats: vec![
+                CredentialSchemaFormat {
+                    id: Uuid::new_v4().into(),
+                    created_date: one_core::clock::now_utc(),
+                    last_modified: one_core::clock::now_utc(),
+                    credential_schema_id: id,
+                    format: "SD_JWT_VC".into(),
+                    schema_id: "sd-jwt_vct".to_string(),
+                    claim_mappings: Default::default(),
+                },
+                CredentialSchemaFormat {
+                    id: Uuid::new_v4().into(),
+                    created_date: one_core::clock::now_utc(),
+                    last_modified: one_core::clock::now_utc(),
+                    credential_schema_id: id,
+                    format: "MDOC".into(),
+                    schema_id: "mdoc_doctype".to_string(),
+                    claim_mappings: Default::default(),
+                },
+            ]
+            .into(),
+            revocation_method: None,
+            claim_schemas: claim_schemas.into(),
+            layout_type: LayoutType::Card,
+            layout_properties: None,
+            allow_suspension: false,
+            requires_wallet_instance_attestation: false,
+            transaction_code: None,
+        };
+
+        self.repository
+            .create_credential_schema(credential_schema)
+            .await
+    }
+
     pub async fn get(&self, credential_schema_id: &CredentialSchemaId) -> CredentialSchema {
         self.repository
             .get_credential_schema(credential_schema_id)

@@ -49,7 +49,7 @@ use super::openid4vci_final1_0::model::{
 };
 use super::openid4vci_final1_0::proof_formatter::{OpenID4VCIProofJWTFormatter, PublicKeyInfo};
 use super::openid4vci_final1_0::service::{
-    create_credential_offer, create_issuer_metadata_response, credential_configurations_supported,
+    create_credential_offer, create_issuer_metadata_response, credential_configuration_supported,
     get_protocol_base_url,
 };
 use super::{
@@ -112,6 +112,7 @@ use crate::provider::credential_formatter::model::{
 };
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::issuance_protocol::model::OpenID4VCIProofTypeSupported;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_security_level::provider::KeySecurityLevelProvider;
 use crate::provider::key_storage::provider::KeyProvider;
@@ -905,6 +906,7 @@ impl OpenID4VCIFinal1_0 {
             claim_mappings: Default::default(),
         }]
         .into();
+        schema.batch_size = interaction_data.batch_size.map(|size| size as _);
         schema.organisation = organisation.to_owned().into();
         schema.layout_type = LayoutType::Card;
         schema.layout_properties = metadata_display.and_then(|display| display.to_owned().into());
@@ -1528,6 +1530,11 @@ impl OpenID4VCIFinal1_0 {
             credential_endpoint: issuer_metadata.metadata().credential_endpoint.clone(),
             notification_endpoint: issuer_metadata.metadata().notification_endpoint.to_owned(),
             nonce_endpoint: issuer_metadata.metadata().nonce_endpoint.to_owned(),
+            batch_size: issuer_metadata
+                .metadata()
+                .batch_credential_issuance
+                .as_ref()
+                .map(|data| data.batch_size),
             challenge_endpoint,
             token_endpoint: Some(token_endpoint),
             grants: Some(grants),
@@ -1590,47 +1597,55 @@ impl OpenID4VCIFinal1_0 {
             .get_blob_storage(BlobStorageType::Db)
             .error_while("getting blob storage")?;
 
-        let format_type = self
-            .config
-            .format
-            .get_fields(&credential_schema.format().await?)
-            .error_while("getting format config")?
-            .r#type;
+        let formats = credential_schema
+            .formats
+            .get()
+            .await
+            .error_while("getting formats")?;
 
-        let schema_id = credential_schema.schema_id().await.unwrap_or_default();
-        let valid_trust_information_list = trust_information_list
-            .iter()
-            .filter(|ti| ti.is_valid(now_utc()))
-            .filter(|ti| ti.is_issuance_allowed_for(&schema_id, &format_type));
+        let mut result = Vec::new();
+        for format in formats {
+            let format_type = self
+                .config
+                .format
+                .get_fields(&format.format)
+                .error_while("getting format config")?
+                .r#type;
 
-        let mut etsi_issuer_info_list = Vec::new();
-        for trust_information in valid_trust_information_list {
-            let certificate = blob_storage
-                .get(&trust_information.blob_id)
-                .await
-                .error_while("getting trust information blob")?
-                .ok_or(IssuanceProtocolError::TrustInformationError(
-                    "Missing registration certificate".to_string(),
-                ))?;
+            let valid_trust_information_list = trust_information_list
+                .iter()
+                .filter(|ti| ti.is_valid(now_utc()))
+                .filter(|ti| ti.is_issuance_allowed_for(&format.schema_id, &format_type));
 
-            if certificate.r#type != BlobType::RegistrationCertificate {
-                return Err(IssuanceProtocolError::TrustInformationError(format!(
-                    "Invalid trust information data, expected registration certificate, got {:?}",
-                    certificate.r#type
-                )));
+            for trust_information in valid_trust_information_list {
+                let certificate = blob_storage
+                    .get(&trust_information.blob_id)
+                    .await
+                    .error_while("getting trust information blob")?
+                    .ok_or(IssuanceProtocolError::TrustInformationError(
+                        "Missing registration certificate".to_string(),
+                    ))?;
+
+                if certificate.r#type != BlobType::RegistrationCertificate {
+                    return Err(IssuanceProtocolError::TrustInformationError(format!(
+                        "Invalid trust information data, expected registration certificate, got {:?}",
+                        certificate.r#type
+                    )));
+                }
+
+                result.push(EtsiIssuerInfoResponseDTO {
+                    format: EtsiIssuerInfoAttestationFormat::RegistrationCert,
+                    data: String::from_utf8(certificate.value)?,
+                    credential_ids: trust_information
+                        .allowed_issuance_types
+                        .iter()
+                        .map(|ti| dcql::CredentialQueryId::from(ti.schema_id.as_str()))
+                        .collect(),
+                })
             }
-
-            etsi_issuer_info_list.push(EtsiIssuerInfoResponseDTO {
-                format: EtsiIssuerInfoAttestationFormat::RegistrationCert,
-                data: String::from_utf8(certificate.value)?,
-                credential_ids: trust_information
-                    .allowed_issuance_types
-                    .iter()
-                    .map(|ti| dcql::CredentialQueryId::from(ti.schema_id.as_str()))
-                    .collect(),
-            })
         }
-        Ok(Some(etsi_issuer_info_list))
+
+        Ok(Some(result))
     }
 
     pub(super) async fn prepare_issuer_metadata(
@@ -1656,52 +1671,62 @@ impl OpenID4VCIFinal1_0 {
             ));
         };
 
-        let format = schema.format().await.error_while("getting format")?;
-
-        let format_type = self
-            .config
-            .format
-            .get_fields(&format)
-            .error_while("getting format config")?
-            .r#type;
-
-        let formatter = self
-            .formatter_provider
-            .get_credential_formatter(&format)
-            .ok_or(MissingProviderError::Formatter(format.to_string()))
-            .error_while("getting formatter")?;
-
-        let format_capabilities = formatter.get_capabilities();
-        let credential_signing_alg_values_supported = format_capabilities
-            .signing_key_algorithms
-            .into_iter()
-            .filter_map(|alg_type| {
-                self.key_algorithm_provider
-                    .key_algorithm_from_type(alg_type)
-                    .ok()
-                    .map(|alg| alg.issuance_jose_alg_id())
-            })
-            .collect();
-
-        let credential_configurations_supported: IndexMap<
+        let formats = schema.formats.get().await.error_while("getting formats")?;
+        let mut credential_configurations_supported: IndexMap<
             String,
             OpenID4VCICredentialConfigurationData,
-        > = credential_configurations_supported(
-            &format_type,
-            &schema,
-            map_cryptographic_binding_methods_supported(
-                &self.did_method_provider.supported_method_names(),
-                &format_capabilities.holder_identifier_types,
-            ),
+        > = Default::default();
+
+        let proof_types_supported: IndexMap<String, OpenID4VCIProofTypeSupported> =
             map_proof_types_supported(
                 self.key_algorithm_provider
                     .supported_verification_jose_alg_ids(),
-                schema.key_storage_security.map(|x| x.into()),
-            ),
-            credential_signing_alg_values_supported,
-        )
-        .await
-        .map_err(OpenIDIssuanceError::OpenID4VCI)?;
+                schema.key_storage_security.map(Into::into),
+            );
+
+        for format in formats {
+            let format_type = self
+                .config
+                .format
+                .get_fields(&format.format)
+                .error_while("getting format config")?
+                .r#type;
+
+            let formatter = self
+                .formatter_provider
+                .get_credential_formatter(&format.format)
+                .ok_or(MissingProviderError::Formatter(format.format.to_string()))
+                .error_while("getting formatter")?;
+
+            let format_capabilities = formatter.get_capabilities();
+            let credential_signing_alg_values_supported = format_capabilities
+                .signing_key_algorithms
+                .into_iter()
+                .filter_map(|alg_type| {
+                    self.key_algorithm_provider
+                        .key_algorithm_from_type(alg_type)
+                        .ok()
+                        .map(|alg| alg.issuance_jose_alg_id())
+                })
+                .collect();
+
+            let configuration = credential_configuration_supported(
+                &format_type,
+                &format.schema_id,
+                &schema,
+                map_cryptographic_binding_methods_supported(
+                    &self.did_method_provider.supported_method_names(),
+                    &format_capabilities.holder_identifier_types,
+                ),
+                proof_types_supported.to_owned(),
+                credential_signing_alg_values_supported,
+            )
+            .await
+            .map_err(OpenIDIssuanceError::OpenID4VCI)?;
+
+            credential_configurations_supported.insert(format.schema_id, configuration);
+        }
+
         Ok(PreparedMetadata {
             protocol_base_url,
             schema,

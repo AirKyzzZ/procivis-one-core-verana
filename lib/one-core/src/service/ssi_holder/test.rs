@@ -1906,6 +1906,7 @@ fn dummy_interaction() -> HolderInteractionData {
         nonce_endpoint: None,
         challenge_endpoint: None,
         grants: None,
+        batch_size: None,
         continue_issuance: None,
         access_token: None,
         access_token_expires_at: None,

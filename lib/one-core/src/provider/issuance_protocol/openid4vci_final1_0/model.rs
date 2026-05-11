@@ -141,6 +141,8 @@ pub(crate) struct HolderInteractionData {
     #[serde(default)]
     pub continue_issuance: Option<ContinueIssuanceDTO>,
     #[serde(default)]
+    pub batch_size: Option<u32>,
+    #[serde(default)]
     pub access_token: Option<Vec<u8>>,
     #[serde(default, with = "time::serde::rfc3339::option")]
     pub access_token_expires_at: Option<OffsetDateTime>,
@@ -199,6 +201,12 @@ pub struct OpenID4VCIIssuerMetadataResponseDTO {
     //https://www.etsi.org/deliver/etsi_ts/119400_119499/11947203/01.01.01_60/ts_11947203v010101p.pdf section 4.2.3
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub issuer_info: Vec<EtsiIssuerInfoResponseDTO>,
+    pub batch_credential_issuance: Option<OpenID4VCIIssuerMetadataBatchIssuanceDTO>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct OpenID4VCIIssuerMetadataBatchIssuanceDTO {
+    pub batch_size: u32,
 }
 
 #[skip_serializing_none]

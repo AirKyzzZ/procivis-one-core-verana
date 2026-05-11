@@ -7,7 +7,6 @@ use shared_types::{IdentifierId, InteractionId};
 use time::Duration;
 use uuid::Uuid;
 
-use super::mapper::credentials_supported_mdoc;
 use super::model::{
     EtsiIssuerInfoResponseDTO, OpenID4VCIGrants, OpenID4VCIIssuerInteractionDataDTO,
     OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
@@ -26,8 +25,8 @@ use crate::provider::issuance_protocol::model::{OpenID4VCIProofTypeSupported, Op
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
     CredentialSigningAlgValue, OpenID4VCICredentialConfigurationData,
     OpenID4VCICredentialMetadataClaimResponseDTO, OpenID4VCICredentialMetadataResponseDTO,
-    OpenID4VCIFinal1CredentialOfferDTO, OpenID4VCIIssuerMetadataClaimDisplay,
-    OpenID4VCIIssuerMetadataCredentialMetadataImage,
+    OpenID4VCIFinal1CredentialOfferDTO, OpenID4VCIIssuerMetadataBatchIssuanceDTO,
+    OpenID4VCIIssuerMetadataClaimDisplay, OpenID4VCIIssuerMetadataCredentialMetadataImage,
     OpenID4VCIIssuerMetadataCredentialMetadataProcivisDesign, OpenID4VCIIssuerMetadataLogoDTO,
 };
 use crate::provider::issuance_protocol::openid4vci_final1_0::validator::{
@@ -51,6 +50,16 @@ pub(crate) fn create_issuer_metadata_response(
         identifier.id
     );
 
+    let batch_credential_issuance = if let Some(batch_size) = schema.batch_size
+        && batch_size >= 2
+    {
+        Some(OpenID4VCIIssuerMetadataBatchIssuanceDTO {
+            batch_size: batch_size as _,
+        })
+    } else {
+        None
+    };
+
     Ok(OpenID4VCIIssuerMetadataResponseDTO {
         credential_issuer,
         authorization_servers: None,
@@ -66,28 +75,25 @@ pub(crate) fn create_issuer_metadata_response(
             logo: None,
         }]),
         issuer_info: issuer_info.unwrap_or_default(),
+        batch_credential_issuance,
     })
 }
 
-pub(crate) async fn credential_configurations_supported(
+pub(crate) async fn credential_configuration_supported(
     format: &FormatType,
+    schema_id: &str,
     credential_schema: &CredentialSchema,
     cryptographic_binding_methods_supported: Vec<String>,
     proof_types_supported: IndexMap<String, OpenID4VCIProofTypeSupported>,
     credential_signing_alg_values_supported: Vec<String>,
-) -> Result<IndexMap<String, OpenID4VCICredentialConfigurationData>, OpenID4VCIError> {
-    let schema_id = credential_schema
-        .schema_id()
-        .await
-        .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?
-        .to_owned();
-
+) -> Result<OpenID4VCICredentialConfigurationData, OpenID4VCIError> {
     let credential_metadata_claims: Vec<OpenID4VCICredentialMetadataClaimResponseDTO> = {
         let claims = credential_schema
             .claim_schemas
             .get()
             .await
             .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?;
+
         claims
             .iter()
             .filter_map(|claim| {
@@ -128,47 +134,42 @@ pub(crate) async fn credential_configurations_supported(
     };
     let proof_types_supported = Some(proof_types_supported);
 
-    Ok(IndexMap::from([(
-        schema_id.clone(),
-        match format {
-            FormatType::JsonLdClassic | FormatType::JsonLdBbsPlus => jsonld_configuration(
-                "ldp_vc",
-                credential_metadata,
-                cryptographic_binding_methods_supported,
-                proof_types_supported,
-            ),
-            FormatType::Jwt => jwt_configuration(
-                "jwt_vc_json",
-                credential_metadata,
-                cryptographic_binding_methods_supported,
-                proof_types_supported,
-                credential_signing_alg_values_supported,
-            ),
-            FormatType::SdJwt => sdjwt_configuration(
-                "vc+sd-jwt",
-                credential_metadata,
-                Some(schema_id),
-                cryptographic_binding_methods_supported,
-                proof_types_supported,
-                credential_signing_alg_values_supported,
-            ),
-            FormatType::SdJwtVc => sdjwt_configuration(
-                "dc+sd-jwt",
-                credential_metadata,
-                Some(schema_id),
-                cryptographic_binding_methods_supported,
-                proof_types_supported,
-                credential_signing_alg_values_supported,
-            ),
-            FormatType::Mdoc => credentials_supported_mdoc(
-                credential_schema.clone(),
-                credential_metadata,
-                proof_types_supported,
-            )
-            .await
-            .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?,
-        },
-    )]))
+    Ok(match format {
+        FormatType::JsonLdClassic | FormatType::JsonLdBbsPlus => jsonld_configuration(
+            "ldp_vc",
+            credential_metadata,
+            cryptographic_binding_methods_supported,
+            proof_types_supported,
+        ),
+        FormatType::Jwt => jwt_configuration(
+            "jwt_vc_json",
+            credential_metadata,
+            cryptographic_binding_methods_supported,
+            proof_types_supported,
+            credential_signing_alg_values_supported,
+        ),
+        FormatType::SdJwt => sdjwt_configuration(
+            "vc+sd-jwt",
+            credential_metadata,
+            schema_id,
+            cryptographic_binding_methods_supported,
+            proof_types_supported,
+            credential_signing_alg_values_supported,
+        ),
+        FormatType::SdJwtVc => sdjwt_configuration(
+            "dc+sd-jwt",
+            credential_metadata,
+            schema_id,
+            cryptographic_binding_methods_supported,
+            proof_types_supported,
+            credential_signing_alg_values_supported,
+        ),
+        FormatType::Mdoc => mdoc_configuration(
+            schema_id.to_string(),
+            credential_metadata,
+            proof_types_supported,
+        ),
+    })
 }
 
 pub(crate) fn create_display_dto_from_schema(
@@ -273,7 +274,7 @@ fn jwt_configuration(
 fn sdjwt_configuration(
     oidc_format: &str,
     credential_metadata: OpenID4VCICredentialMetadataResponseDTO,
-    vct: Option<String>,
+    vct: &str,
     cryptographic_binding_methods_supported: Vec<String>,
     proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
     credential_signing_alg_values_supported: Vec<String>,
@@ -282,8 +283,8 @@ fn sdjwt_configuration(
         format: oidc_format.into(),
         credential_metadata: Some(credential_metadata),
         cryptographic_binding_methods_supported: Some(cryptographic_binding_methods_supported),
-        vct: vct.clone(),
-        scope: vct,
+        vct: Some(vct.to_string()),
+        scope: Some(vct.to_string()),
         proof_types_supported,
         credential_signing_alg_values_supported: Some(
             credential_signing_alg_values_supported
@@ -291,6 +292,22 @@ fn sdjwt_configuration(
                 .map(CredentialSigningAlgValue::String)
                 .collect(),
         ),
+        ..Default::default()
+    }
+}
+
+fn mdoc_configuration(
+    doctype: String,
+    credential_metadata: OpenID4VCICredentialMetadataResponseDTO,
+    proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
+) -> OpenID4VCICredentialConfigurationData {
+    OpenID4VCICredentialConfigurationData {
+        format: "mso_mdoc".to_string(),
+        doctype: Some(doctype.to_string()),
+        credential_metadata: Some(credential_metadata),
+        cryptographic_binding_methods_supported: Some(vec!["cose_key".to_string()]),
+        proof_types_supported,
+        scope: Some(doctype),
         ..Default::default()
     }
 }

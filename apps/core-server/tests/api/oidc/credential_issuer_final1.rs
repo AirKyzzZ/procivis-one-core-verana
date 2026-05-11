@@ -46,6 +46,57 @@ async fn test_get_credential_issuer_metadata_json() {
 }
 
 #[tokio::test]
+async fn test_get_credential_issuer_metadata_batch_multiformat() {
+    // GIVEN
+    let (context, organisation, identifier, ..) =
+        TestContext::new_with_certificate_identifier(None).await;
+    let credential_schema_id = context
+        .db
+        .credential_schemas
+        .create_with_multiformat("test_schema", &organisation, Some(10))
+        .await
+        .unwrap();
+
+    // WHEN
+    let resp = context
+        .api
+        .ssi
+        .openid_credential_issuer_final1(
+            "OPENID4VCI_FINAL1",
+            identifier.id,
+            credential_schema_id,
+            mime::APPLICATION_JSON.into(),
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    assert_eq!(resp["batch_credential_issuance"]["batch_size"], 10);
+
+    let credential_configurations = resp["credential_configurations_supported"]
+        .as_object()
+        .unwrap();
+    assert_eq!(credential_configurations.len(), 2);
+
+    assert_eq!(
+        credential_configurations["sd-jwt_vct"]["format"],
+        "dc+sd-jwt"
+    );
+    assert_eq!(credential_configurations["sd-jwt_vct"]["vct"], "sd-jwt_vct");
+
+    assert_eq!(
+        credential_configurations["mdoc_doctype"]["format"],
+        "mso_mdoc"
+    );
+    assert_eq!(
+        credential_configurations["mdoc_doctype"]["doctype"],
+        "mdoc_doctype"
+    );
+}
+
+#[tokio::test]
 async fn test_get_credential_issuer_metadata_jwt_certificate_identifier_with_trust_information() {
     // GIVEN
     let (context, organisation, identifier, certificate, ..) =

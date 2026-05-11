@@ -41,6 +41,7 @@ impl From<OpenID4VCIIssuerMetadataResponseDTO> for OpenID4VCIIssuerMetadataRespo
                 .collect(),
             display: convert_inner_of_inner(value.display),
             nonce_endpoint: value.nonce_endpoint,
+            batch_credential_issuance: convert_inner(value.batch_credential_issuance),
         }
     }
 }

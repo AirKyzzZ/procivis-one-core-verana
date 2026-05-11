@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 
-use indexmap::IndexMap;
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use one_dto_mapper::convert_inner_of_inner;
@@ -13,16 +12,15 @@ use super::model::{
     CredentialSchemaCodePropertiesRequestDTO, CredentialSchemaCodeTypeEnum,
     CredentialSchemaLayoutPropertiesRequestDTO, CredentialSchemaLogoPropertiesRequestDTO,
     HolderInteractionData, OpenID4VCICredentialConfigurationData,
-    OpenID4VCICredentialMetadataResponseDTO, OpenID4VCIIssuerInteractionDataDTO,
-    OpenID4VCIIssuerMetadataCredentialMetadataProcivisDesign,
+    OpenID4VCIIssuerInteractionDataDTO, OpenID4VCIIssuerMetadataCredentialMetadataProcivisDesign,
     OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO, OpenID4VCITokenResponseDTO,
 };
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{IdentifierType, Params};
 use crate::model::credential::Credential;
 use crate::model::credential_schema::{
-    BackgroundProperties, CodeProperties, CodeTypeEnum, CredentialSchema, KeyStorageSecurity,
-    LayoutProperties, LogoProperties,
+    BackgroundProperties, CodeProperties, CodeTypeEnum, KeyStorageSecurity, LayoutProperties,
+    LogoProperties,
 };
 use crate::provider::issuance_protocol::error::{IssuanceProtocolError, OpenID4VCIError};
 use crate::provider::issuance_protocol::model::{
@@ -150,28 +148,6 @@ impl From<LayoutProperties> for CredentialSchemaLayoutPropertiesRequestDTO {
                 }),
         }
     }
-}
-
-pub(super) async fn credentials_supported_mdoc(
-    schema: CredentialSchema,
-    credential_metadata: OpenID4VCICredentialMetadataResponseDTO,
-    proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
-) -> Result<OpenID4VCICredentialConfigurationData, IssuanceProtocolError> {
-    let schema_id = schema
-        .schema_id()
-        .await
-        .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
-    let credential_configuration = OpenID4VCICredentialConfigurationData {
-        format: "mso_mdoc".to_string(),
-        doctype: Some(schema_id.to_string()),
-        credential_metadata: Some(credential_metadata),
-        cryptographic_binding_methods_supported: Some(vec!["cose_key".to_string()]),
-        proof_types_supported,
-        scope: Some(schema_id),
-        ..Default::default()
-    };
-
-    Ok(credential_configuration)
 }
 
 pub(crate) fn map_proof_types_supported<R: From<[(String, OpenID4VCIProofTypeSupported); 1]>>(
