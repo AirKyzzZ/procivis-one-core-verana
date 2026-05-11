@@ -2941,13 +2941,33 @@ async fn prepare_credential_schema(
     organisation: &Organisation,
     credential: &mut Credential,
 ) -> Result<Option<UpdateCredentialSchemaRequest>, IssuanceProtocolError> {
-    let schema_id = credential_schema.schema_id().await.unwrap_or_default();
+    let parsed_schema_id = credential_schema
+        .schema_id()
+        .await
+        .error_while("getting parsed schema_id")?;
+    let parsed_format = credential_schema
+        .format()
+        .await
+        .error_while("getting parsed format")?;
     let stored_schema = credential_schema_repository
-        .get_by_schema_id_and_organisation(&schema_id, organisation.id)
+        .get_by_schema_id_and_organisation(&parsed_schema_id, organisation.id)
         .await
         .error_while("getting credential schema")?;
 
     if let Some(stored_schema) = stored_schema {
+        if let Some(conflicting_schema) = stored_schema
+            .formats
+            .get()
+            .await
+            .error_while("getting credential schema formats")?
+            .iter()
+            .find(|format| format.schema_id == parsed_schema_id && format.format != parsed_format)
+        {
+            return Err(IssuanceProtocolError::Failed(format!(
+                "Credential schema conflict: credential schema with id {} has matching schema_id {} but different format {}",
+                conflicting_schema.id, conflicting_schema.schema_id, conflicting_schema.format
+            )));
+        }
         prepare_credential_schema_updates(credential_schema, stored_schema, credential).await
     } else {
         match credential_schema_importer
@@ -2968,7 +2988,7 @@ async fn prepare_credential_schema(
 
         // refetch and try again
         let stored_schema = credential_schema_repository
-            .get_by_schema_id_and_organisation(&schema_id, organisation.id)
+            .get_by_schema_id_and_organisation(&parsed_schema_id, organisation.id)
             .await
             .error_while("getting credential schema")?
             .ok_or(IssuanceProtocolError::Failed(
