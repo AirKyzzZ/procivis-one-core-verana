@@ -8,9 +8,12 @@ use shared_types::{CredentialSchemaId, Permission};
 
 use super::dto::{
     CredentialSchemaResponseRestDTO, CredentialSchemaShareResponseRestDTO,
-    GetCredentialSchemaQuery, ImportCredentialSchemaRequestRestDTO,
+    CredentialSchemaV2ResponseRestDTO, GetCredentialSchemaQuery,
+    ImportCredentialSchemaRequestRestDTO,
 };
-use crate::dto::common::{EntityResponseRestDTO, GetCredentialSchemasResponseDTO};
+use crate::dto::common::{
+    EntityResponseRestDTO, GetCredentialSchemasResponseDTO, GetCredentialSchemasV2ResponseDTO,
+};
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
 use crate::endpoint::credential_schema::dto::{
@@ -102,6 +105,37 @@ pub(crate) async fn get_credential_schema_list(
     }
     .await;
     OkOrErrorResponse::from_result(result, state, "getting credential schemas")
+}
+
+#[endpoint(
+    permissions = [Permission::CredentialSchemaList],
+    get,
+    path = "/api/credential-schema/v2",
+    responses(OkOrErrorResponse<GetCredentialSchemasV2ResponseDTO>),
+    params(GetCredentialSchemaQuery),
+    tag = "credential_schema_management",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "List credential schemas (v2)",
+    description = "Returns a list of credential schemas in an organization in v2 format.",
+)]
+pub(crate) async fn get_credential_schema_list_v2(
+    state: State<AppState>,
+    WithRejection(Qs(query), _): WithRejection<Qs<GetCredentialSchemaQuery>, ErrorResponseRestDTO>,
+) -> OkOrErrorResponse<GetCredentialSchemasV2ResponseDTO> {
+    let result = async {
+        Ok::<_, ServiceError>(
+            state
+                .core
+                .credential_schema_service
+                .get_credential_schema_list_v2(query.try_into()?)
+                .await
+                .error_while("getting credential schema list v2")?,
+        )
+    }
+    .await;
+    OkOrErrorResponse::from_result(result, state, "getting credential schemas v2")
 }
 
 #[endpoint(
@@ -224,6 +258,33 @@ pub(crate) async fn share_credential_schema(
         .share_credential_schema(&id)
         .await;
     CreatedOrErrorResponse::from_result(result, state, "sharing credential schema")
+}
+
+#[endpoint(
+    permissions = [Permission::CredentialSchemaDetail],
+    get,
+    path = "/api/credential-schema/v2/{id}",
+    responses(OkOrErrorResponse<CredentialSchemaV2ResponseRestDTO>),
+    params(
+        ("id" = CredentialSchemaId, Path, description = "Schema id")
+    ),
+    tag = "credential_schema_management",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "Retrieve credential schema (v2)",
+    description = "Retrieves detailed information about a credential schema in v2 format, including all formats and per-claim mappings.",
+)]
+pub(crate) async fn get_credential_schema_v2(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<CredentialSchemaId>, ErrorResponseRestDTO>,
+) -> OkOrErrorResponse<CredentialSchemaV2ResponseRestDTO> {
+    let result = state
+        .core
+        .credential_schema_service
+        .get_credential_schema_v2(&id)
+        .await;
+    OkOrErrorResponse::from_result(result, state, "getting credential schema v2")
 }
 
 #[endpoint(

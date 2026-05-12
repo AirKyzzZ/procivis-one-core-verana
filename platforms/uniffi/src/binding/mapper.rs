@@ -1038,6 +1038,7 @@ impl TryFrom<CredentialSchemaListQueryBindingDTO>
                 exact: convert_inner_of_inner(value.exact),
                 organisation_id: into_id(value.organisation_id)?,
                 schema_id: value.schema_id,
+                schema_ids: value.schema_ids,
                 formats: value.formats,
                 requires_wallet_instance_attestation: None,
                 key_storage_security: None,
@@ -1046,6 +1047,8 @@ impl TryFrom<CredentialSchemaListQueryBindingDTO>
                 created_date_before: into_timestamp_opt(value.created_date_before)?,
                 last_modified_after: into_timestamp_opt(value.last_modified_after)?,
                 last_modified_before: into_timestamp_opt(value.last_modified_before)?,
+                uses_batch_issuance: value.uses_batch_issuance,
+                is_multiformat_schema: value.is_multiformat_schema,
             },
             include: value
                 .include

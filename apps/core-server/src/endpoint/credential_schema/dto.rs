@@ -2,11 +2,13 @@ use dcql::CredentialMeta;
 use one_core::model::credential_schema::{CredentialSchemaExactColumn, TransactionCodeType};
 use one_core::service::credential_schema::dto::{
     CreateCredentialSchemaRequestDTO, CreateCredentialSchemaV2RequestDTO, CredentialClaimSchemaDTO,
-    CredentialClaimSchemaMappingDTO, CredentialClaimSchemaRequestDTO,
+    CredentialClaimSchemaMappingDTO, CredentialClaimSchemaRequestDTO, CredentialClaimSchemaV2DTO,
     CredentialSchemaDcqlResponseDTO, CredentialSchemaDetailResponseDTO,
-    CredentialSchemaFilterParamsDTO, CredentialSchemaFormatRequestDTO,
+    CredentialSchemaDetailV2ResponseDTO, CredentialSchemaFilterParamsDTO,
+    CredentialSchemaFormatRequestDTO, CredentialSchemaFormatResponseDTO,
     CredentialSchemaListIncludeEntityTypeEnum, CredentialSchemaListItemResponseDTO,
-    CredentialSchemaTransactionCodeDTO, CredentialSchemaTransactionCodeRequestDTO,
+    CredentialSchemaListItemV2ResponseDTO, CredentialSchemaTransactionCodeDTO,
+    CredentialSchemaTransactionCodeRequestDTO,
 };
 use one_core::service::error::ServiceError;
 use one_dto_mapper::{
@@ -14,7 +16,9 @@ use one_dto_mapper::{
 };
 use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
-use shared_types::{CredentialFormat, CredentialSchemaId, OrganisationId, RevocationMethodId};
+use shared_types::{
+    ClaimSchemaId, CredentialFormat, CredentialSchemaId, OrganisationId, RevocationMethodId,
+};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
@@ -59,6 +63,37 @@ pub(crate) struct CredentialSchemaListItemResponseRestDTO {
     #[from(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
     pub allow_suspension: bool,
+    pub requires_wallet_instance_attestation: bool,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[serde(rename_all = "camelCase")]
+#[from(CredentialSchemaListItemV2ResponseDTO)]
+pub(crate) struct CredentialSchemaListItemV2ResponseRestDTO {
+    /// UUID of this credential schema. Use this value as `credentialSchemaId`
+    /// when creating credentials with this schema.
+    pub id: CredentialSchemaId,
+    #[serde(serialize_with = "front_time")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
+    pub created_date: OffsetDateTime,
+    #[serde(serialize_with = "front_time")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
+    pub last_modified: OffsetDateTime,
+    pub name: String,
+    #[from(with_fn = convert_inner)]
+    pub formats: Vec<CredentialSchemaFormatResponseRestDTO>,
+    /// Indication of what type of key storage the wallet should use.
+    #[from(with_fn = convert_inner)]
+    pub key_storage_security: Option<KeyStorageSecurityRestEnum>,
+    pub imported_source_url: String,
+    #[from(with_fn = convert_inner)]
+    pub layout_type: Option<CredentialSchemaLayoutType>,
+    #[from(with_fn = convert_inner)]
+    pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
+    pub allow_suspension: bool,
+    pub allow_revocation: Option<bool>,
+    pub batch_size: Option<i32>,
     pub requires_wallet_instance_attestation: bool,
 }
 
@@ -215,6 +250,22 @@ pub(crate) struct CredentialSchemasFilterQueryParamsRest {
     #[param(nullable = false)]
     #[try_into(infallible)]
     pub last_modified_before: Option<OffsetDateTime>,
+
+    /// Return only credential schemas which support batch issuance.
+    #[try_into(with_fn = convert_inner, infallible)]
+    #[param(nullable = false)]
+    pub uses_batch_issuance: Option<Boolean>,
+
+    /// Return only credential schemas with multiple formats.
+    #[try_into(with_fn = convert_inner, infallible)]
+    #[param(nullable = false)]
+    pub is_multiformat_schema: Option<Boolean>,
+
+    /// Return credential schemas associated with any of the specified schema IDs.
+    /// Works across all format entries of a credential schema.
+    #[try_into(infallible)]
+    #[param(rename = "schemaIds[]", inline, nullable = false)]
+    pub schema_ids: Option<Vec<String>>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
@@ -670,6 +721,81 @@ pub(crate) struct CreateCredentialSchemaV2RequestRestDTO {
     #[serde(default)]
     #[try_into(with_fn = try_convert_inner)]
     pub transaction_code: Option<CredentialSchemaTransactionCodeRequestRestDTO>,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(CredentialSchemaFormatResponseDTO)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CredentialSchemaFormatResponseRestDTO {
+    pub format: CredentialFormat,
+    pub schema_id: String,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(CredentialClaimSchemaMappingDTO)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CredentialClaimSchemaMappingResponseRestDTO {
+    pub format: CredentialFormat,
+    pub technical_key: String,
+    pub namespace: Option<String>,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(CredentialClaimSchemaV2DTO)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CredentialClaimSchemaV2ResponseRestDTO {
+    pub id: ClaimSchemaId,
+    #[serde(serialize_with = "front_time")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
+    pub created_date: OffsetDateTime,
+    #[serde(serialize_with = "front_time")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
+    pub last_modified: OffsetDateTime,
+    pub key: String,
+    pub datatype: String,
+    pub required: bool,
+    pub array: bool,
+    #[from(with_fn = convert_inner)]
+    #[schema(no_recursion)]
+    pub claims: Vec<CredentialClaimSchemaV2ResponseRestDTO>,
+    #[from(with_fn = convert_inner_of_inner)]
+    pub mappings: Option<Vec<CredentialClaimSchemaMappingResponseRestDTO>>,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(CredentialSchemaDetailV2ResponseDTO)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CredentialSchemaV2ResponseRestDTO {
+    pub id: CredentialSchemaId,
+    #[serde(serialize_with = "front_time")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
+    pub created_date: OffsetDateTime,
+    #[serde(serialize_with = "front_time")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
+    pub last_modified: OffsetDateTime,
+    pub name: String,
+    #[from(with_fn = convert_inner)]
+    pub formats: Vec<CredentialSchemaFormatResponseRestDTO>,
+    pub organisation_id: OrganisationId,
+    #[from(with_fn = convert_inner)]
+    pub claims: Vec<CredentialClaimSchemaV2ResponseRestDTO>,
+    #[from(with_fn = convert_inner)]
+    pub key_storage_security: Option<KeyStorageSecurityRestEnum>,
+    pub imported_source_url: String,
+    #[from(with_fn = convert_inner)]
+    pub layout_type: Option<CredentialSchemaLayoutType>,
+    #[from(with_fn = convert_inner)]
+    pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
+    pub allow_suspension: bool,
+    pub allow_revocation: Option<bool>,
+    pub batch_size: Option<i32>,
+    pub requires_wallet_instance_attestation: bool,
+    #[from(with_fn = convert_inner)]
+    pub transaction_code: Option<CredentialSchemaTransactionCodeRestDTO>,
 }
 
 #[cfg(test)]

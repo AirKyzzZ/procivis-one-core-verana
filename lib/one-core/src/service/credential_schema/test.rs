@@ -236,6 +236,9 @@ async fn test_get_credential_schema_list_success() {
                 created_date_before: None,
                 last_modified_after: None,
                 last_modified_before: None,
+                uses_batch_issuance: None,
+                is_multiformat_schema: None,
+                schema_ids: None,
             },
             include: None,
         })
@@ -2865,6 +2868,9 @@ async fn test_list_credential_schema_fail_session_org_mismatch() {
                 created_date_before: None,
                 last_modified_after: None,
                 last_modified_before: None,
+                uses_batch_issuance: None,
+                is_multiformat_schema: None,
+                schema_ids: None,
             },
             include: None,
         })

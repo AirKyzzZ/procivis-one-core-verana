@@ -46,6 +46,54 @@ pub struct CredentialSchemaListItemResponseDTO {
     pub requires_wallet_instance_attestation: bool,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CredentialSchemaFormatResponseDTO {
+    pub format: CredentialFormat,
+    pub schema_id: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CredentialClaimSchemaV2DTO {
+    pub id: ClaimSchemaId,
+    #[serde(with = "time::serde::rfc3339")]
+    pub created_date: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
+    pub last_modified: OffsetDateTime,
+    pub key: String,
+    pub datatype: String,
+    pub required: bool,
+    pub array: bool,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub claims: Vec<CredentialClaimSchemaV2DTO>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mappings: Option<Vec<CredentialClaimSchemaMappingDTO>>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CredentialSchemaDetailV2ResponseDTO {
+    pub id: CredentialSchemaId,
+    #[serde(with = "time::serde::rfc3339")]
+    pub created_date: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
+    pub last_modified: OffsetDateTime,
+    pub name: String,
+    pub formats: Vec<CredentialSchemaFormatResponseDTO>,
+    pub organisation_id: OrganisationId,
+    pub claims: Vec<CredentialClaimSchemaV2DTO>,
+    pub key_storage_security: Option<KeyStorageSecurity>,
+    pub imported_source_url: String,
+    pub layout_type: Option<LayoutType>,
+    pub layout_properties: Option<CredentialSchemaLayoutPropertiesResponseDTO>,
+    pub allow_suspension: bool,
+    pub allow_revocation: Option<bool>,
+    pub batch_size: Option<i32>,
+    pub requires_wallet_instance_attestation: bool,
+    pub transaction_code: Option<CredentialSchemaTransactionCodeDTO>,
+}
+
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CredentialSchemaDetailResponseDTO {
@@ -120,6 +168,8 @@ pub enum CredentialSchemaFilterValue {
     CredentialSchemaIds(Vec<CredentialSchemaId>),
     CreatedDate(ValueComparison<OffsetDateTime>),
     LastModified(ValueComparison<OffsetDateTime>),
+    UsesBatchIssuance(bool),
+    IsMultiformatSchema(bool),
 }
 
 impl ListFilterValue for CredentialSchemaFilterValue {}
@@ -138,9 +188,34 @@ pub struct CredentialSchemaFilterParamsDTO {
     pub created_date_before: Option<OffsetDateTime>,
     pub last_modified_after: Option<OffsetDateTime>,
     pub last_modified_before: Option<OffsetDateTime>,
+    pub uses_batch_issuance: Option<bool>,
+    pub is_multiformat_schema: Option<bool>,
+    pub schema_ids: Option<Vec<String>>,
 }
 
 pub type GetCredentialSchemaListResponseDTO = GetListResponse<CredentialSchemaListItemResponseDTO>;
+pub type GetCredentialSchemaListV2ResponseDTO =
+    GetListResponse<CredentialSchemaListItemV2ResponseDTO>;
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CredentialSchemaListItemV2ResponseDTO {
+    pub id: CredentialSchemaId,
+    #[serde(with = "time::serde::rfc3339")]
+    pub created_date: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
+    pub last_modified: OffsetDateTime,
+    pub name: String,
+    pub formats: Vec<CredentialSchemaFormatResponseDTO>,
+    pub key_storage_security: Option<KeyStorageSecurity>,
+    pub imported_source_url: String,
+    pub layout_type: Option<LayoutType>,
+    pub layout_properties: Option<CredentialSchemaLayoutPropertiesResponseDTO>,
+    pub allow_suspension: bool,
+    pub allow_revocation: Option<bool>,
+    pub batch_size: Option<i32>,
+    pub requires_wallet_instance_attestation: bool,
+}
 
 #[derive(Clone, Debug)]
 pub struct CreateCredentialSchemaV2RequestDTO {

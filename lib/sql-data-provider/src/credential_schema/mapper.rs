@@ -13,7 +13,7 @@ use one_core::service::credential_schema::dto::CredentialSchemaFilterValue;
 use one_dto_mapper::convert_inner;
 use sea_orm::ActiveValue::Set;
 use sea_orm::sea_query::query::IntoCondition;
-use sea_orm::sea_query::{Query, SimpleExpr};
+use sea_orm::sea_query::{ExprTrait, Query, SimpleExpr};
 use sea_orm::{ColumnTrait, Condition, EntityTrait, IntoSimpleExpr, QueryFilter, QueryOrder};
 use shared_types::CredentialSchemaId;
 use uuid::Uuid;
@@ -113,6 +113,41 @@ impl IntoFilterCondition for CredentialSchemaFilterValue {
                 credential_schema::Column::KeyStorageSecurity
                     .is_in(security_levels)
                     .into_condition()
+            }
+            Self::UsesBatchIssuance(uses_batch_issuance) => {
+                if uses_batch_issuance {
+                    credential_schema::Column::BatchSize
+                        .is_not_null()
+                        .into_condition()
+                } else {
+                    credential_schema::Column::BatchSize
+                        .is_null()
+                        .into_condition()
+                }
+            }
+            Self::IsMultiformatSchema(is_multiformat) => {
+                let subquery = Query::select()
+                    .column(credential_schema_format::Column::CredentialSchemaId)
+                    .from(credential_schema_format::Entity)
+                    .group_by_col(credential_schema_format::Column::CredentialSchemaId)
+                    .and_having(
+                        sea_orm::sea_query::Expr::col(
+                            credential_schema_format::Column::CredentialSchemaId,
+                        )
+                        .count()
+                        .gt(1_i32),
+                    )
+                    .to_owned();
+
+                if is_multiformat {
+                    credential_schema::Column::Id
+                        .in_subquery(subquery)
+                        .into_condition()
+                } else {
+                    credential_schema::Column::Id
+                        .not_in_subquery(subquery)
+                        .into_condition()
+                }
             }
         }
     }

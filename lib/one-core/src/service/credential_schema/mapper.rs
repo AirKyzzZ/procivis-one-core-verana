@@ -6,10 +6,12 @@ use uuid::Uuid;
 
 use super::dto::{
     CreateCredentialSchemaRequestDTO, CreateCredentialSchemaV2RequestDTO, CredentialClaimSchemaDTO,
-    CredentialClaimSchemaRequestDTO, CredentialSchemaBackgroundPropertiesRequestDTO,
-    CredentialSchemaCodePropertiesDTO, CredentialSchemaDcqlResponseDTO,
-    CredentialSchemaDetailResponseDTO, CredentialSchemaFilterParamsDTO,
-    CredentialSchemaFilterValue, CredentialSchemaListItemResponseDTO,
+    CredentialClaimSchemaRequestDTO, CredentialClaimSchemaV2DTO,
+    CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaCodePropertiesDTO,
+    CredentialSchemaDcqlResponseDTO, CredentialSchemaDetailResponseDTO,
+    CredentialSchemaDetailV2ResponseDTO, CredentialSchemaFilterParamsDTO,
+    CredentialSchemaFilterValue, CredentialSchemaFormatResponseDTO,
+    CredentialSchemaListItemResponseDTO, CredentialSchemaListItemV2ResponseDTO,
     CredentialSchemaLogoPropertiesRequestDTO,
 };
 use super::error::CredentialSchemaServiceError;
@@ -76,6 +78,128 @@ pub(crate) async fn schema_to_detail_response_dto(
         transaction_code: convert_inner(value.transaction_code),
         dcql,
     })
+}
+
+pub(crate) async fn schema_to_detail_v2_response_dto(
+    value: CredentialSchema,
+) -> Result<CredentialSchemaDetailV2ResponseDTO, CredentialSchemaServiceError> {
+    let formats = value.formats.get().await.error_while("getting formats")?;
+
+    let format_responses: Vec<CredentialSchemaFormatResponseDTO> = formats
+        .iter()
+        .map(|f| CredentialSchemaFormatResponseDTO {
+            format: f.format.clone(),
+            schema_id: f.schema_id.clone(),
+        })
+        .collect();
+
+    let claim_schemas = value
+        .claim_schemas
+        .get()
+        .await
+        .error_while("getting claim schemas")?
+        .into_iter()
+        .filter(|schema| !schema.metadata)
+        .collect::<Vec<_>>();
+
+    let mut claim_mappings_map: std::collections::HashMap<
+        shared_types::ClaimSchemaId,
+        Vec<CredentialClaimSchemaMappingDTO>,
+    > = std::collections::HashMap::new();
+
+    for format in &formats {
+        let mappings = format
+            .claim_mappings
+            .get()
+            .await
+            .error_while("getting claim mappings")?;
+        for mapping in mappings {
+            claim_mappings_map
+                .entry(mapping.claim_schema_id)
+                .or_default()
+                .push(CredentialClaimSchemaMappingDTO {
+                    format: format.format.clone(),
+                    technical_key: mapping.technical_key.clone(),
+                    namespace: mapping.namespace.clone(),
+                });
+        }
+    }
+
+    let claim_schemas_v2: Vec<CredentialClaimSchemaV2DTO> = claim_schemas
+        .into_iter()
+        .map(|cs| {
+            let mappings = claim_mappings_map.remove(&cs.id);
+            CredentialClaimSchemaV2DTO {
+                id: cs.id,
+                created_date: cs.created_date,
+                last_modified: cs.last_modified,
+                key: cs.key,
+                datatype: cs.data_type,
+                required: cs.required,
+                array: cs.array,
+                claims: vec![],
+                mappings,
+            }
+        })
+        .collect();
+
+    let claim_schemas_v2 = renest_claim_schemas_v2(claim_schemas_v2)?;
+
+    Ok(CredentialSchemaDetailV2ResponseDTO {
+        id: value.id,
+        created_date: value.created_date,
+        last_modified: value.last_modified,
+        name: value.name,
+        formats: format_responses,
+        imported_source_url: value.imported_source_url,
+        organisation_id: value.organisation.id(),
+        claims: claim_schemas_v2,
+        key_storage_security: value.key_storage_security,
+        layout_type: Some(value.layout_type),
+        layout_properties: value.layout_properties.map(|item| item.into()),
+        allow_suspension: value.allow_suspension,
+        allow_revocation: value.allow_revocation,
+        batch_size: value.batch_size,
+        requires_wallet_instance_attestation: value.requires_wallet_instance_attestation,
+        transaction_code: convert_inner(value.transaction_code),
+    })
+}
+
+fn renest_claim_schemas_v2(
+    claim_schemas: Vec<CredentialClaimSchemaV2DTO>,
+) -> Result<Vec<CredentialClaimSchemaV2DTO>, CredentialSchemaServiceError> {
+    let mut result = vec![];
+
+    for claim_schema in claim_schemas.iter() {
+        if claim_schema.key.find(NESTED_CLAIM_MARKER).is_none() {
+            result.push(claim_schema.to_owned());
+        }
+    }
+
+    for mut claim_schema in claim_schemas.into_iter() {
+        if claim_schema.key.find(NESTED_CLAIM_MARKER).is_some() {
+            let matching_entry = result
+                .iter_mut()
+                .find(|result_schema| {
+                    claim_schema
+                        .key
+                        .starts_with(&format!("{}{NESTED_CLAIM_MARKER}", result_schema.key))
+                })
+                .ok_or(CredentialSchemaServiceError::MissingParentClaimSchema {
+                    claim_schema_id: claim_schema.id,
+                })?;
+            claim_schema.key = remove_first_nesting_layer(&claim_schema.key);
+            matching_entry.claims.push(claim_schema);
+        }
+    }
+
+    result
+        .into_iter()
+        .map(|mut claim_schema| {
+            claim_schema.claims = renest_claim_schemas_v2(claim_schema.claims)?;
+            Ok(claim_schema)
+        })
+        .collect::<Result<Vec<CredentialClaimSchemaV2DTO>, _>>()
 }
 
 fn map_dcql_format_meta(
@@ -335,6 +459,41 @@ pub(crate) async fn to_credential_schema_list_response(
     })
 }
 
+pub(crate) async fn to_credential_schema_list_v2_response(
+    credential_schema: CredentialSchema,
+) -> Result<CredentialSchemaListItemV2ResponseDTO, NestedError> {
+    let formats = credential_schema
+        .formats
+        .get()
+        .await
+        .error_while("getting formats")?;
+
+    let format_responses: Vec<CredentialSchemaFormatResponseDTO> = formats
+        .iter()
+        .map(|f| CredentialSchemaFormatResponseDTO {
+            format: f.format.clone(),
+            schema_id: f.schema_id.clone(),
+        })
+        .collect();
+
+    Ok(CredentialSchemaListItemV2ResponseDTO {
+        id: credential_schema.id,
+        created_date: credential_schema.created_date,
+        last_modified: credential_schema.last_modified,
+        name: credential_schema.name,
+        formats: format_responses,
+        key_storage_security: credential_schema.key_storage_security,
+        imported_source_url: credential_schema.imported_source_url,
+        layout_type: Some(credential_schema.layout_type),
+        layout_properties: credential_schema.layout_properties.map(|item| item.into()),
+        allow_suspension: credential_schema.allow_suspension,
+        allow_revocation: credential_schema.allow_revocation,
+        batch_size: credential_schema.batch_size,
+        requires_wallet_instance_attestation: credential_schema
+            .requires_wallet_instance_attestation,
+    })
+}
+
 pub(super) fn renest_claim_schemas(
     claim_schemas: Vec<CredentialClaimSchemaDTO>,
 ) -> Result<Vec<CredentialClaimSchemaDTO>, CredentialSchemaServiceError> {
@@ -508,9 +667,20 @@ impl From<CredentialSchemaFilterParamsDTO> for ListFilterCondition<CredentialSch
             })
         });
 
+        let uses_batch_issuance = value
+            .uses_batch_issuance
+            .map(CredentialSchemaFilterValue::UsesBatchIssuance);
+
+        let is_multiformat_schema = value
+            .is_multiformat_schema
+            .map(CredentialSchemaFilterValue::IsMultiformatSchema);
+
+        let schema_ids = value.schema_ids.map(CredentialSchemaFilterValue::SchemaIds);
+
         organisation_id
             & name
             & schema_id
+            & schema_ids
             & formats
             & key_storage_security
             & requires_wia
@@ -519,5 +689,7 @@ impl From<CredentialSchemaFilterParamsDTO> for ListFilterCondition<CredentialSch
             & created_date_before
             & last_modified_after
             & last_modified_before
+            & uses_batch_issuance
+            & is_multiformat_schema
     }
 }

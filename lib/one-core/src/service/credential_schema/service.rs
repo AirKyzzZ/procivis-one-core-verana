@@ -4,15 +4,12 @@ use uuid::Uuid;
 use super::CredentialSchemaService;
 use super::dto::{
     CreateCredentialSchemaRequestDTO, CreateCredentialSchemaV2RequestDTO,
-    CredentialSchemaDetailResponseDTO, CredentialSchemaFilterParamsDTO,
-    CredentialSchemaListIncludeEntityTypeEnum, CredentialSchemaShareResponseDTO,
-    GetCredentialSchemaListResponseDTO, ImportCredentialSchemaRequestDTO,
+    CredentialSchemaDetailResponseDTO, CredentialSchemaDetailV2ResponseDTO,
+    CredentialSchemaFilterParamsDTO, CredentialSchemaListIncludeEntityTypeEnum,
+    CredentialSchemaShareResponseDTO, GetCredentialSchemaListResponseDTO,
+    GetCredentialSchemaListV2ResponseDTO, ImportCredentialSchemaRequestDTO,
 };
 use super::error::CredentialSchemaServiceError;
-use super::mapper::{
-    build_format_with_claim_mappings, from_create_request_with_id, from_create_v2_request_with_id,
-    schema_to_detail_response_dto, to_credential_schema_list_response, unnest_claim_schemas,
-};
 use super::validator::UniquenessCheckResult;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::credential_schema_claim::{
@@ -23,7 +20,15 @@ use crate::model::credential_schema::SortableCredentialSchemaColumn;
 use crate::model::organisation::Organisation;
 use crate::repository::error::DataLayerError;
 use crate::service::common_dto::ListQueryDTO;
-use crate::service::credential_schema::dto::CredentialSchemaListItemResponseDTO;
+use crate::service::credential_schema::dto::{
+    CredentialSchemaListItemResponseDTO, CredentialSchemaListItemV2ResponseDTO,
+};
+use crate::service::credential_schema::mapper::{
+    build_format_with_claim_mappings, from_create_request_with_id, from_create_v2_request_with_id,
+    schema_to_detail_response_dto, schema_to_detail_v2_response_dto,
+    to_credential_schema_list_response, to_credential_schema_list_v2_response,
+    unnest_claim_schemas,
+};
 use crate::util::logging::quoted_opt_provider;
 use crate::validator::throw_if_org_id_not_matching_session;
 
@@ -369,6 +374,34 @@ impl CredentialSchemaService {
         schema_to_detail_response_dto(schema, &self.config).await
     }
 
+    pub async fn get_credential_schema_v2(
+        &self,
+        credential_schema_id: &CredentialSchemaId,
+    ) -> Result<CredentialSchemaDetailV2ResponseDTO, CredentialSchemaServiceError> {
+        let schema = self
+            .credential_schema_repository
+            .get_credential_schema(credential_schema_id)
+            .await
+            .error_while("getting credential schema")?;
+
+        let Some(schema) = schema else {
+            return Err(CredentialSchemaServiceError::NotFound(
+                *credential_schema_id,
+            ));
+        };
+
+        throw_if_org_id_not_matching_session(schema.organisation.id_ref(), &*self.session_provider)
+            .error_while("checking session")?;
+
+        if schema.deleted_at.is_some() {
+            return Err(CredentialSchemaServiceError::NotFound(
+                *credential_schema_id,
+            ));
+        }
+
+        schema_to_detail_v2_response_dto(schema).await
+    }
+
     /// Returns list of credential schemas according to query
     ///
     /// # Arguments
@@ -399,6 +432,43 @@ impl CredentialSchemaService {
         for credential_schema in result.values {
             items.push(
                 to_credential_schema_list_response(credential_schema)
+                    .await
+                    .error_while("mapping credential schemas")?,
+            );
+        }
+
+        Ok(GetListResponse {
+            values: items,
+            total_items: result.total_items,
+            total_pages: result.total_pages,
+        })
+    }
+
+    pub async fn get_credential_schema_list_v2(
+        &self,
+        filter_params: ListQueryDTO<
+            SortableCredentialSchemaColumn,
+            CredentialSchemaFilterParamsDTO,
+            CredentialSchemaListIncludeEntityTypeEnum,
+        >,
+    ) -> Result<GetCredentialSchemaListV2ResponseDTO, CredentialSchemaServiceError> {
+        throw_if_org_id_not_matching_session(
+            &filter_params.filter.organisation_id,
+            &*self.session_provider,
+        )
+        .error_while("checking session")?;
+
+        let result = self
+            .credential_schema_repository
+            .get_credential_schema_list(filter_params.into())
+            .await
+            .error_while("getting credential schemas")?;
+
+        let mut items: Vec<CredentialSchemaListItemV2ResponseDTO> =
+            Vec::with_capacity(result.values.len());
+        for credential_schema in result.values {
+            items.push(
+                to_credential_schema_list_v2_response(credential_schema)
                     .await
                     .error_while("mapping credential schemas")?,
             );

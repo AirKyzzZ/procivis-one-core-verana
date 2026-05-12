@@ -7,7 +7,9 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::endpoint::credential::dto::CredentialListItemResponseRestDTO;
-use crate::endpoint::credential_schema::dto::CredentialSchemaListItemResponseRestDTO;
+use crate::endpoint::credential_schema::dto::{
+    CredentialSchemaListItemResponseRestDTO, CredentialSchemaListItemV2ResponseRestDTO,
+};
 use crate::endpoint::did::dto::DidListItemResponseRestDTO;
 use crate::endpoint::history::dto::HistoryResponseRestDTO;
 use crate::endpoint::key::dto::KeyListItemResponseRestDTO;
@@ -37,6 +39,8 @@ where
 pub(crate) type GetProofsResponseRestDTO = GetListResponseRestDTO<ProofListItemResponseRestDTO>;
 pub(crate) type GetCredentialSchemasResponseDTO =
     GetListResponseRestDTO<CredentialSchemaListItemResponseRestDTO>;
+pub(crate) type GetCredentialSchemasV2ResponseDTO =
+    GetListResponseRestDTO<CredentialSchemaListItemV2ResponseRestDTO>;
 pub(crate) type GetDidsResponseRestDTO = GetListResponseRestDTO<DidListItemResponseRestDTO>;
 pub(crate) type GetCredentialsResponseDTO =
     GetListResponseRestDTO<CredentialListItemResponseRestDTO>;

@@ -138,6 +138,11 @@ impl CredentialSchemasApi {
         self.client.get(&url).await
     }
 
+    pub async fn get_v2(&self, schema_id: &impl Display) -> Response {
+        let url = format!("/api/credential-schema/v2/{schema_id}");
+        self.client.get(&url).await
+    }
+
     pub async fn list(
         &self,
         page: u64,
@@ -148,6 +153,30 @@ impl CredentialSchemasApi {
     ) -> Response {
         let mut url = format!(
             "/api/credential-schema/v1?page={page}&pageSize={page_size}&organisationId={organisation_id}"
+        );
+
+        if let Some(include) = include {
+            for item in include {
+                url += &format!("&include[]={item}")
+            }
+        }
+        if let Some(filters) = additional_params {
+            url += &format!("&{filters}");
+        }
+
+        self.client.get(&url).await
+    }
+
+    pub async fn list_v2(
+        &self,
+        page: u64,
+        page_size: u64,
+        organisation_id: &impl Display,
+        include: Option<Vec<CredentialSchemaListIncludeEntityTypeEnum>>,
+        additional_params: Option<&str>,
+    ) -> Response {
+        let mut url = format!(
+            "/api/credential-schema/v2?page={page}&pageSize={page_size}&organisationId={organisation_id}"
         );
 
         if let Some(include) = include {
