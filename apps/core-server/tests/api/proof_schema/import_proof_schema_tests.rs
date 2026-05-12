@@ -331,6 +331,7 @@ async fn test_import_proof_schema_nested_array() {
         array: true,
         metadata: false,
         required: true,
+        translations: Default::default(),
     };
 
     let original_credential_schema = context
@@ -353,6 +354,7 @@ async fn test_import_proof_schema_nested_array() {
                         array: false,
                         metadata: false,
                         required: true,
+                        translations: Default::default(),
                     },
                 ]),
                 ..Default::default()

@@ -16,6 +16,7 @@ pub mod identifier_trust_information;
 pub mod interaction;
 pub mod key;
 pub mod key_did;
+pub mod localized_text;
 pub mod notification;
 pub mod organisation;
 pub mod proof;

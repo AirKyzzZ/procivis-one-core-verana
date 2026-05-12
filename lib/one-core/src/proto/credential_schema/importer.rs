@@ -8,6 +8,7 @@ use time::format_description::well_known::iso8601::{
 
 use super::Error;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
+use crate::mapper::credential_schema_claim::backfill_default_translations;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaListQuery};
 use crate::model::list_filter::{ListFilterValue, StringMatch, StringMatchType};
 use crate::model::list_query::ListPagination;
@@ -76,6 +77,10 @@ impl CredentialSchemaImporter for CredentialSchemaImporterProto {
             credential_schema.name =
                 self.generate_unique_credential_schema_name(&credential_schema)?;
         }
+
+        let credential_schema = backfill_default_translations(credential_schema)
+            .await
+            .error_while("backfilling default translations")?;
 
         self.repository
             .create_credential_schema(credential_schema.clone())

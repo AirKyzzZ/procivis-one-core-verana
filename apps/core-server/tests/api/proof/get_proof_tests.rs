@@ -808,6 +808,7 @@ async fn test_get_proof_with_nested_optional_inputs() {
         last_modified: get_dummy_date(),
         metadata: false,
         required: true,
+        translations: Default::default(),
     };
     let obj_claim = ClaimSchema {
         business_key: None,
@@ -819,6 +820,7 @@ async fn test_get_proof_with_nested_optional_inputs() {
         last_modified: get_dummy_date(),
         metadata: false,
         required: true,
+        translations: Default::default(),
     };
     let nested_claim = ClaimSchema {
         business_key: None,
@@ -830,6 +832,7 @@ async fn test_get_proof_with_nested_optional_inputs() {
         last_modified: get_dummy_date(),
         metadata: false,
         required: true,
+        translations: Default::default(),
     };
     let credential_schema = context
         .db

@@ -25,6 +25,7 @@ use one_core::repository::identifier_repository::IdentifierRepository;
 use one_core::repository::identifier_trust_information_repository::IdentifierTrustInformationRepository;
 use one_core::repository::interaction_repository::InteractionRepository;
 use one_core::repository::key_repository::KeyRepository;
+use one_core::repository::localized_text_repository::LocalizedTextRepository;
 use one_core::repository::notification_repository::NotificationRepository;
 use one_core::repository::organisation_repository::OrganisationRepository;
 use one_core::repository::proof_repository::ProofRepository;
@@ -59,6 +60,7 @@ use crate::history::HistoryProvider;
 use crate::holder_wallet_instance::HolderWalletInstanceProvider;
 use crate::identifier_trust_information::IdentifierTrustInformationProvider;
 use crate::key::KeyProvider;
+use crate::localized_text::LocalizedTextProvider;
 use crate::notification::NotificationProvider;
 use crate::remote_entity_cache::RemoteEntityCacheProvider;
 use crate::revocation_list::RevocationListProvider;
@@ -126,7 +128,7 @@ pub struct DataLayer {
     proof_repository: Arc<dyn ProofRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
     revocation_list_repository: Arc<dyn RevocationListRepository>,
-    validitiy_credential_repository: Arc<dyn ValidityCredentialRepository>,
+    validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
     backup_repository: Arc<dyn BackupRepository>,
     trust_collection_repository: Arc<dyn TrustCollectionRepository>,
     trust_entry_repository: Arc<dyn TrustEntryRepository>,
@@ -139,12 +141,17 @@ pub struct DataLayer {
     verifier_instance_repository: Arc<dyn VerifierInstanceRepository>,
     wallet_instance_attestation_repository: Arc<dyn WalletInstanceAttestationRepository>,
     wallet_instance_attested_key_repository: Arc<dyn WalletInstanceAttestedKeyRepository>,
+    #[allow(dead_code)]
+    localized_text_repository: Arc<dyn LocalizedTextRepository>,
 }
 
 impl DataLayer {
     pub fn build(db: DbConn, exportable_storages: Vec<String>) -> Self {
         let transaction_manager = TransactionManagerImpl::new(db.clone());
         let history_repository = Arc::new(HistoryProvider {
+            db: transaction_manager.clone(),
+        });
+        let localized_text_repository = Arc::new(LocalizedTextProvider {
             db: transaction_manager.clone(),
         });
 
@@ -174,6 +181,7 @@ impl DataLayer {
         let credential_schema_repository = Arc::new(CredentialSchemaProvider {
             db: transaction_manager.clone(),
             organisation_repository: organisation_repository.clone(),
+            localized_text_repository: localized_text_repository.clone(),
         });
 
         let credential_schema_format_repository = Arc::new(CredentialSchemaFormatProvider {
@@ -269,7 +277,7 @@ impl DataLayer {
             key_repository: key_repository.clone(),
         });
 
-        let validitiy_credential_repository = Arc::new(ValidityCredentialProvider {
+        let validity_credential_repository = Arc::new(ValidityCredentialProvider {
             db: transaction_manager.clone(),
         });
         let backup_repository = Arc::new(BackupProvider::new(
@@ -333,7 +341,7 @@ impl DataLayer {
             db,
             interaction_repository,
             revocation_list_repository,
-            validitiy_credential_repository,
+            validity_credential_repository,
             backup_repository,
             trust_collection_repository,
             trust_entry_repository,
@@ -349,6 +357,7 @@ impl DataLayer {
             verifier_instance_repository,
             wallet_instance_attestation_repository,
             wallet_instance_attested_key_repository,
+            localized_text_repository,
         }
     }
 }
@@ -409,7 +418,7 @@ impl DataRepository for DataLayer {
         self.revocation_list_repository.clone()
     }
     fn get_validity_credential_repository(&self) -> Arc<dyn ValidityCredentialRepository> {
-        self.validitiy_credential_repository.clone()
+        self.validity_credential_repository.clone()
     }
     fn get_backup_repository(&self) -> Arc<dyn BackupRepository> {
         self.backup_repository.clone()
@@ -459,6 +468,10 @@ impl DataRepository for DataLayer {
     fn get_verifier_instance_repository(&self) -> Arc<dyn VerifierInstanceRepository> {
         self.verifier_instance_repository.clone()
     }
+
+    fn get_localized_text_repository(&self) -> Arc<dyn LocalizedTextRepository> {
+        self.localized_text_repository.clone()
+    }
 }
 
 /// Connects to the database and runs the pending migrations (until we externalize them)
@@ -478,6 +491,7 @@ pub async fn db_conn(
 mod blob;
 mod holder_wallet_instance;
 mod identifier_trust_information;
+mod localized_text;
 #[cfg(any(test, feature = "test_utils"))]
 pub mod test_utilities;
 mod transaction_context;

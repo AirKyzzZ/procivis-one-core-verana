@@ -509,6 +509,7 @@ mod tests {
             array: false,
             metadata: false,
             required: true,
+            translations: Default::default(),
         };
 
         let element_claim_schema = ClaimSchema {
@@ -521,6 +522,7 @@ mod tests {
             array: false,
             metadata: false,
             required: true,
+            translations: Default::default(),
         };
 
         let claim_schemas = vec![namespace_claim_schema.clone(), element_claim_schema.clone()];
@@ -571,6 +573,7 @@ mod tests {
                 allow_suspension: true,
                 requires_wallet_instance_attestation: false,
                 transaction_code: None,
+                translations: Default::default(),
             },
             vec![(
                 CredentialClaim::try_from(json!({ "element": "Test" })).unwrap(),

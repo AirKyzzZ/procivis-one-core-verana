@@ -126,6 +126,7 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
                 array: false,
                 metadata: false,
                 required: true,
+                translations: Default::default(),
             })
             .collect(),
         identifier_id,
@@ -402,6 +403,7 @@ async fn test_get_claim_list_with_relation() {
                     array: false,
                     metadata: false,
                     required: true,
+                    translations: Default::default(),
                 })
                 .collect())
         });

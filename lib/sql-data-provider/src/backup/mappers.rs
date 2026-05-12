@@ -11,18 +11,19 @@ use one_core::repository::organisation_repository::OrganisationRepository;
 use one_dto_mapper::convert_inner;
 
 use super::models::{ClaimWithSchema, UnexportableCredentialModel};
+use crate::claim_schema::mapper::claim_schema_from_model;
+use crate::transaction_context::TransactionManagerImpl;
 
-impl From<ClaimWithSchema> for Claim {
-    fn from(value: ClaimWithSchema) -> Self {
-        let mut claim: Claim = value.claim.into();
-        claim.schema = Some(value.claim_schema.into());
-        claim
-    }
+fn claim_with_schema_to_claim(value: ClaimWithSchema, db: TransactionManagerImpl) -> Claim {
+    let mut claim: Claim = value.claim.into();
+    claim.schema = Some(claim_schema_from_model(value.claim_schema, db));
+    claim
 }
 
 pub(super) fn credential_from_unexportable_model(
     value: UnexportableCredentialModel,
     organisation_repository: &Arc<dyn OrganisationRepository>,
+    db: &TransactionManagerImpl,
 ) -> Result<Credential, DataLayerError> {
     let claims_with_schema: Vec<ClaimWithSchema> =
         serde_json::from_str(&value.claims).map_err(|_| DataLayerError::MappingError)?;
@@ -30,8 +31,9 @@ pub(super) fn credential_from_unexportable_model(
     let (claims, claim_schemas): (Vec<_>, Vec<ClaimSchema>) = claims_with_schema
         .into_iter()
         .map(|item| {
-            let claim_schema = item.claim_schema.to_owned().into();
-            (item.into(), claim_schema)
+            let claim_schema = claim_schema_from_model(item.claim_schema.clone(), db.clone());
+            let claim = claim_with_schema_to_claim(item, db.clone());
+            (claim, claim_schema)
         })
         .unzip();
 
@@ -96,6 +98,7 @@ pub(super) fn credential_from_unexportable_model(
             transaction_code,
             batch_size: value.credential_schema_batch_size,
             allow_revocation: value.credential_schema_allow_revocation,
+            translations: Default::default(),
         }),
         interaction: None,
         key: None,

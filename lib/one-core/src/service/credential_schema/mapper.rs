@@ -32,6 +32,7 @@ use crate::model::list_filter::{
     ValueComparison,
 };
 use crate::model::list_query::ListPagination;
+use crate::model::localized_text::{LocalizedText, LocalizedTextEntityType, LocalizedTextField};
 use crate::model::organisation::Organisation;
 use crate::model::relation::RelatedVec;
 use crate::proto::credential_schema::dto::CredentialClaimSchemaMappingDTO;
@@ -292,7 +293,7 @@ pub(super) fn from_create_request_with_id(
         deleted_at: None,
         created_date: now,
         last_modified: now,
-        name: request.name,
+        name: request.name.clone(),
         key_storage_security: request.key_storage_security,
         revocation_method: request.revocation_method,
         claim_schemas: claim_schemas
@@ -327,6 +328,16 @@ pub(super) fn from_create_request_with_id(
             claim_mappings: Default::default(),
         }]
         .into(),
+        translations: vec![LocalizedText {
+            entity_id: id.into(),
+            field: LocalizedTextField::Name,
+            created_date: now,
+            last_modified: now,
+            lang: "en".to_string(),
+            value: request.name,
+            entity_type: LocalizedTextEntityType::CredentialSchema,
+        }]
+        .into(),
     })
 }
 
@@ -345,7 +356,7 @@ pub(super) fn from_create_v2_request_with_id(
         deleted_at: None,
         created_date: now,
         last_modified: now,
-        name: request.name,
+        name: request.name.clone(),
         key_storage_security: request.key_storage_security,
         revocation_method: None,
         claim_schemas: claim_schemas.into(),
@@ -358,6 +369,16 @@ pub(super) fn from_create_v2_request_with_id(
         transaction_code: convert_inner(request.transaction_code),
         batch_size: request.batch_size,
         formats: formats.into(),
+        translations: vec![LocalizedText {
+            entity_id: id.into(),
+            field: LocalizedTextField::Name,
+            created_date: now,
+            last_modified: now,
+            lang: "en".to_string(),
+            value: request.name,
+            entity_type: LocalizedTextEntityType::CredentialSchema,
+        }]
+        .into(),
     }
 }
 

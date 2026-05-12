@@ -5,11 +5,11 @@ use itertools::Itertools;
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::repository::claim_schema_repository::ClaimSchemaRepository;
 use one_core::repository::error::DataLayerError;
-use one_dto_mapper::convert_inner;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use shared_types::ClaimSchemaId;
 
 use super::ClaimSchemaProvider;
+use crate::claim_schema::mapper::claim_schema_from_model;
 use crate::entity::claim_schema;
 
 #[autometrics]
@@ -40,7 +40,10 @@ impl ClaimSchemaRepository for ClaimSchemaProvider {
             });
         }
 
-        let mut claim_schema_list: Vec<ClaimSchema> = convert_inner(models);
+        let mut claim_schema_list: Vec<ClaimSchema> = models
+            .into_iter()
+            .map(|cs| claim_schema_from_model(cs, self.db.clone()))
+            .collect();
 
         #[allow(clippy::indexing_slicing)]
         claim_schema_list.sort_by_key(|claim_schema| claim_schema_to_index[&claim_schema.id]);

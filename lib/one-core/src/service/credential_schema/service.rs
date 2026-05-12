@@ -14,7 +14,8 @@ use super::error::CredentialSchemaServiceError;
 use super::validator::UniquenessCheckResult;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::credential_schema_claim::{
-    claim_schema_from_metadata_claim_schema, from_request_claim_schema,
+    backfill_default_translations, claim_schema_from_metadata_claim_schema,
+    from_request_claim_schema,
 };
 use crate::model::common::GetListResponse;
 use crate::model::credential_schema::SortableCredentialSchemaColumn;
@@ -117,6 +118,9 @@ impl CredentialSchemaService {
 
             credential_schema.claim_schemas = claim_schemas.into();
         }
+        let credential_schema = backfill_default_translations(credential_schema)
+            .await
+            .error_while("backfilling default translations")?;
 
         let success_log = format!(
             "Created credential schema `{}` ({id}): format `{:?}`, revocation method {:?}, key storage security {}",
@@ -240,6 +244,10 @@ impl CredentialSchemaService {
             claim_schemas,
             imported_source_url,
         );
+
+        let credential_schema = backfill_default_translations(credential_schema)
+            .await
+            .error_while("backfilling default translations")?;
 
         let success_log = format!(
             "Created credential schema v2 `{}` ({credential_schema_id}): formats `{:?}`: key storage security {}",

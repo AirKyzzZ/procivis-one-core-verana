@@ -121,6 +121,7 @@ async fn test_issuance_accept_openid4vc() {
                         array: false,
                         metadata: false,
                         required: true,
+                        translations: Default::default(),
                     },
                     ClaimSchema {
                         business_key: None,
@@ -132,6 +133,7 @@ async fn test_issuance_accept_openid4vc() {
                         array: false,
                         metadata: true,
                         required: false,
+                        translations: Default::default(),
                     },
                 ]),
                 ..Default::default()
@@ -320,6 +322,7 @@ async fn test_issuance_accept_schema_name_already_exists() {
                         array: false,
                         metadata: false,
                         required: true,
+                        translations: Default::default(),
                     },
                     ClaimSchema {
                         business_key: None,
@@ -331,6 +334,7 @@ async fn test_issuance_accept_schema_name_already_exists() {
                         array: false,
                         metadata: true,
                         required: false,
+                        translations: Default::default(),
                     },
                 ]),
                 ..Default::default()
@@ -477,6 +481,7 @@ async fn test_issuance_accept_openid4vc_issuer_invalid_signature() {
                     array: false,
                     metadata: false,
                     required: true,
+                    translations: Default::default(),
                 }]),
                 ..Default::default()
             },
@@ -609,6 +614,7 @@ async fn test_issuance_accept_openid4vc_with_key_id() {
                     array: false,
                     metadata: false,
                     required: true,
+                    translations: Default::default(),
                 }]),
                 ..Default::default()
             },
@@ -713,6 +719,7 @@ async fn test_issuance_accept_autogenerate_holder_binding() {
                     array: false,
                     metadata: false,
                     required: true,
+                    translations: Default::default(),
                 }]),
                 ..Default::default()
             },
@@ -1413,6 +1420,7 @@ async fn test_issuance_accept_openid4vc_with_tx_code() {
                     array: false,
                     metadata: false,
                     required: true,
+                    translations: Default::default(),
                 }]),
                 ..Default::default()
             },
@@ -1614,6 +1622,7 @@ async fn test_wia_pop_iss_equals_wia_sub() {
                     array: false,
                     metadata: false,
                     required: true,
+                    translations: Default::default(),
                 }]),
                 ..Default::default()
             },

@@ -173,6 +173,7 @@ async fn test_presentation_reject_ok() {
                     allow_suspension: true,
                     requires_wallet_instance_attestation: false,
                     transaction_code: None,
+                    translations: Default::default(),
                 }),
             }]),
             organisation: None,
@@ -277,7 +278,7 @@ async fn test_get_presentation_definition_ok() {
             last_modified: crate::clock::now_utc(),
             array: false,
             metadata: false,
-            required: true,
+            required: true,        translations: Default::default(),
         },
         "org.iso.18013.5.1.mDL/name" => ClaimSchema {
             business_key: None,
@@ -288,7 +289,7 @@ async fn test_get_presentation_definition_ok() {
             last_modified: crate::clock::now_utc(),
             array: false,
             metadata: false,
-            required: true,
+            required: true,        translations: Default::default(),
         },
        "org.iso.18013.5.1.mDL/age" => ClaimSchema {
             business_key: None,
@@ -299,7 +300,7 @@ async fn test_get_presentation_definition_ok() {
             last_modified: crate::clock::now_utc(),
             array: false,
             metadata: false,
-            required: true,
+            required: true,        translations: Default::default(),
         },
        "org.iso.18013.5.1.mDL/country" => ClaimSchema {
             business_key: None,
@@ -310,7 +311,7 @@ async fn test_get_presentation_definition_ok() {
             last_modified: crate::clock::now_utc(),
             array: false,
             metadata: false,
-            required: true,
+            required: true,        translations: Default::default(),
         },
        "org.iso.18013.5.1.mDL/country_code" => ClaimSchema {
             business_key: None,
@@ -321,7 +322,7 @@ async fn test_get_presentation_definition_ok() {
             last_modified: crate::clock::now_utc(),
             array: false,
             metadata: false,
-            required: true,
+            required: true,        translations: Default::default(),
         },
         "org.iso.18013.5.1.mDL/info" => ClaimSchema {
             business_key: None,
@@ -332,7 +333,7 @@ async fn test_get_presentation_definition_ok() {
             last_modified: crate::clock::now_utc(),
             array: false,
             metadata: false,
-            required: true,
+            required: true,        translations: Default::default(),
         },
         "org.iso.18013.5.1.mDL/info/code" => ClaimSchema {
             business_key: None,
@@ -343,7 +344,7 @@ async fn test_get_presentation_definition_ok() {
             last_modified: crate::clock::now_utc(),
             array: false,
             metadata: false,
-            required: true,
+            required: true,        translations: Default::default(),
         },
     ];
     let credential_schema = CredentialSchema {
@@ -374,6 +375,7 @@ async fn test_get_presentation_definition_ok() {
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
         transaction_code: None,
+        translations: Default::default(),
     };
 
     let claims = vec![

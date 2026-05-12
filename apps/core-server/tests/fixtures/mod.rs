@@ -639,6 +639,7 @@ pub async fn create_credential_schema(
         array: false,
         metadata: false,
         required: true,
+        translations: Default::default(),
     };
     let claim_schemas = vec![claim_schema];
 
@@ -675,6 +676,7 @@ pub async fn create_credential_schema(
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
         transaction_code: None,
+        translations: Default::default(),
     };
 
     data_layer
@@ -707,6 +709,7 @@ pub async fn create_credential_schema_with_claims(
             array: *array,
             metadata: false,
             required: required.to_owned(),
+            translations: Default::default(),
         })
         .collect();
     let id = Uuid::new_v4();
@@ -738,6 +741,7 @@ pub async fn create_credential_schema_with_claims(
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
         transaction_code: None,
+        translations: Default::default(),
     };
 
     data_layer
@@ -775,6 +779,7 @@ pub async fn create_proof_schema(
                         array: false,
                         metadata: false,
                         required: true,
+                        translations: Default::default(),
                     },
                     required: claim.required.to_owned(),
                     order: order as _,

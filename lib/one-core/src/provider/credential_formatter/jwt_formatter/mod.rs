@@ -395,6 +395,7 @@ impl CredentialFormatter for JWTFormatter {
             .into(),
             batch_size: None,
             allow_revocation: None,
+            translations: Default::default(),
         };
 
         let issuer = jwt

@@ -185,6 +185,7 @@ async fn test_create_proof_schema_already_exists() {
                         array: false,
                         metadata: false,
                         required: true,
+                        translations: Default::default(),
                     },
                     required: false,
                     order: 0,
@@ -217,6 +218,7 @@ async fn test_create_proof_schema_already_exists() {
                     allow_suspension: true,
                     requires_wallet_instance_attestation: false,
                     transaction_code: None,
+                    translations: Default::default(),
                 }),
             }]),
         })
@@ -298,6 +300,7 @@ async fn test_create_proof_schema_success() {
                         array: false,
                         metadata: false,
                         required: true,
+                        translations: Default::default(),
                     },
                     required: false,
                     order: 0,
@@ -330,6 +333,7 @@ async fn test_create_proof_schema_success() {
                     allow_suspension: true,
                     requires_wallet_instance_attestation: false,
                     transaction_code: None,
+                    translations: Default::default(),
                 }),
             }]),
         })
@@ -508,6 +512,7 @@ async fn test_get_proof_schema_with_relations() {
                     array: false,
                     metadata: false,
                     required: true,
+                    translations: Default::default(),
                 })
                 .collect())
         });
@@ -551,6 +556,7 @@ async fn test_get_proof_schema_with_relations() {
                 allow_suspension: true,
                 requires_wallet_instance_attestation: false,
                 transaction_code: None,
+                translations: Default::default(),
             }))
         });
 
@@ -662,6 +668,7 @@ async fn test_get_proof_schema_with_input_proof_relations() {
                     array: false,
                     metadata: false,
                     required: true,
+                    translations: Default::default(),
                 })
                 .collect())
         });
@@ -703,6 +710,7 @@ async fn test_get_proof_schema_with_input_proof_relations() {
                 allow_suspension: true,
                 requires_wallet_instance_attestation: false,
                 transaction_code: None,
+                translations: Default::default(),
             }))
         });
 

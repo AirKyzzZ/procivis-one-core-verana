@@ -227,6 +227,7 @@ fn generic_credential_schema() -> CredentialSchema {
             id: Uuid::new_v4().into(),
             metadata: false,
             required: true,
+            translations: Default::default(),
         }]
         .into(),
         organisation: dummy_organisation(None).into(),
@@ -235,6 +236,7 @@ fn generic_credential_schema() -> CredentialSchema {
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
         transaction_code: None,
+        translations: Default::default(),
     }
 }
 
@@ -664,6 +666,7 @@ async fn test_get_issuer_metadata_mdoc() {
             array: false,
             metadata: false,
             required: true,
+            translations: Default::default(),
         },
         ClaimSchema {
             business_key: None,
@@ -675,6 +678,7 @@ async fn test_get_issuer_metadata_mdoc() {
             array: false,
             metadata: false,
             required: true,
+            translations: Default::default(),
         },
     ]
     .into();

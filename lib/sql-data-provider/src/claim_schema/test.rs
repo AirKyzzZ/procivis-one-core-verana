@@ -66,6 +66,7 @@ async fn test_get_claim_schema_list() {
             array: false,
             metadata: false,
             required: true,
+            translations: Default::default(),
         },
         ClaimSchema {
             business_key: None,
@@ -77,6 +78,7 @@ async fn test_get_claim_schema_list() {
             array: false,
             metadata: false,
             required: true,
+            translations: Default::default(),
         },
     ];
 

@@ -229,6 +229,7 @@ async fn test_importer_import_credential_schema_success() {
             array: false,
             metadata: false,
             required: true,
+            translations: Default::default(),
         }]
         .into(),
         organisation: dummy_organisation(None).into(),
@@ -237,6 +238,7 @@ async fn test_importer_import_credential_schema_success() {
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
         transaction_code: None,
+        translations: Default::default(),
     };
     let credential_schema_id = credential_schema.id;
 
@@ -297,6 +299,7 @@ async fn test_importer_import_credential_schema_success_duplicate_name() {
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
         transaction_code: None,
+        translations: Default::default(),
     };
 
     let existing_schema_clone = existing_schema.clone();
@@ -370,6 +373,7 @@ async fn test_importer_import_credential_schema_failure_duplicate_schema_id() {
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
         transaction_code: None,
+        translations: Default::default(),
     };
 
     let existing_schema_clone = existing_schema.clone();

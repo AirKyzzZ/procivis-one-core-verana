@@ -59,6 +59,7 @@ async fn setup_empty(repositories: Repositories) -> TestSetup {
         repository: Box::new(CredentialSchemaProvider {
             db: TransactionManagerImpl::new(db.clone()),
             organisation_repository,
+            localized_text_repository: data_layer.localized_text_repository,
         }),
         db,
     }
@@ -150,6 +151,7 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
                     array: false,
                     metadata: false,
                     required: claim.required,
+                    translations: Default::default(),
                 })
                 .collect::<Vec<_>>()
                 .into(),
@@ -159,6 +161,7 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            translations: Default::default(),
         },
         organisation,
         repository,
@@ -187,6 +190,7 @@ async fn test_create_credential_schema_success() {
             array: false,
             metadata: false,
             required: true,
+            translations: Default::default(),
         },
         ClaimSchema {
             business_key: None,
@@ -198,6 +202,7 @@ async fn test_create_credential_schema_success() {
             array: false,
             metadata: false,
             required: false,
+            translations: Default::default(),
         },
     ];
 
@@ -230,6 +235,7 @@ async fn test_create_credential_schema_success() {
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            translations: Default::default(),
         })
         .await;
 
@@ -449,6 +455,7 @@ async fn test_delete_credential_schema_not_found() {
             claim_schemas: Default::default(),
             organisation: dummy_organisation(None).into(),
             transaction_code: None,
+            translations: Default::default(),
         })
         .await;
     assert!(matches!(result, Err(DataLayerError::RecordNotUpdated)));

@@ -167,6 +167,7 @@ fn generate_credential_matching_detail(
             claim_schemas: Default::default(),
             organisation: dummy_organisation(None).into(),
             transaction_code: None,
+            translations: Default::default(),
         }),
         interaction: None,
         key: None,

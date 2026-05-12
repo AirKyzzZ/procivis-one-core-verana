@@ -363,6 +363,7 @@ impl CredentialFormatter for SDJWTFormatter {
             organisation: organisation.clone().into(),
             transaction_code: None,
             allow_revocation: None,
+            translations: Default::default(),
         };
 
         let issuer_identifier = prepare_identifier(

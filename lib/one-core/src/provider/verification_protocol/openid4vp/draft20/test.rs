@@ -385,6 +385,7 @@ fn test_proof(proof_id: Uuid, credential_format: CredentialFormat) -> Proof {
                     claim_schemas: Default::default(),
                     organisation: dummy_organisation(None).into(),
                     transaction_code: None,
+                    translations: Default::default(),
                 }),
             }]),
         }),

@@ -227,6 +227,7 @@ async fn test_get_credential_success_metadata() {
                         array: false,
                         metadata: false,
                         required: true,
+                        translations: Default::default(),
                     },
                     ClaimSchema {
                         business_key: None,
@@ -238,6 +239,7 @@ async fn test_get_credential_success_metadata() {
                         array: false,
                         metadata: true,
                         required: false,
+                        translations: Default::default(),
                     },
                 ]),
                 ..Default::default()

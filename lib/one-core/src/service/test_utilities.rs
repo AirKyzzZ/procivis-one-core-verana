@@ -319,6 +319,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
                 array: false,
                 metadata: false,
                 required: true,
+                translations: Default::default(),
             }),
         }]),
         issuer_identifier: Some(Identifier {
@@ -358,6 +359,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
                 array: false,
                 metadata: false,
                 required: true,
+                translations: Default::default(),
             }]
             .into(),
             organisation: dummy_organisation(None).into(),
@@ -366,6 +368,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            translations: Default::default(),
         }),
         interaction: Some(Interaction {
             id: Uuid::new_v4().into(),
@@ -559,6 +562,7 @@ pub fn dummy_credential_schema() -> CredentialSchema {
         requires_wallet_instance_attestation: false,
         transaction_code: None,
         allow_revocation: None,
+        translations: Default::default(),
     }
 }
 
@@ -573,6 +577,7 @@ pub fn dummy_claim_schema() -> ClaimSchema {
         array: false,
         metadata: false,
         required: true,
+        translations: Default::default(),
     }
 }
 

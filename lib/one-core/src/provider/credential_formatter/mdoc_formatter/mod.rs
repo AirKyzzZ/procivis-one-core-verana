@@ -466,6 +466,7 @@ impl CredentialFormatter for MdocFormatter {
                 array: false,
                 metadata: true,
                 required: false,
+                translations: Default::default(),
             }),
         });
 
@@ -508,6 +509,7 @@ impl CredentialFormatter for MdocFormatter {
             .into(),
             batch_size: None,
             allow_revocation: None,
+            translations: Default::default(),
         };
 
         let issuer_identifier = prepare_identifier(
@@ -1138,6 +1140,7 @@ fn parse_claims(
                 array: false,
                 metadata: false,
                 required: false,
+                translations: Default::default(),
             }),
         });
     }
@@ -1202,6 +1205,7 @@ fn parse_claim(
                 array: false,
                 metadata: false,
                 required: false,
+                translations: Default::default(),
             }),
         }]);
     }
@@ -1258,6 +1262,7 @@ fn parse_claim(
                     array: true,
                     metadata: false,
                     required: false,
+                    translations: Default::default(),
                 }),
             }];
             result.extend(subclaims);
@@ -1299,6 +1304,7 @@ fn parse_claim(
                     array: false,
                     metadata: false,
                     required: false,
+                    translations: Default::default(),
                 }),
             });
 
@@ -1327,6 +1333,7 @@ fn parse_claim(
                     array: false,
                     metadata: false,
                     required: false,
+                    translations: Default::default(),
                 }),
             }]
         }

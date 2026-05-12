@@ -419,7 +419,7 @@ impl BackupRepository for BackupProvider {
         let credentials = credentials
             .into_iter()
             .map(|credential| {
-                credential_from_unexportable_model(credential, &self.organisation_repository)
+                credential_from_unexportable_model(credential, &self.organisation_repository, &db)
             })
             .collect::<Result<_, DataLayerError>>()?;
 

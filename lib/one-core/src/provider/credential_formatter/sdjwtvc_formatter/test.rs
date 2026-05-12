@@ -686,10 +686,12 @@ async fn test_extract_credentials_swiyu() {
             array: false,
             metadata: false,
             required: false,
+            translations: Default::default(),
         }]
         .into(),
         organisation: dummy_organisation(None).into(),
         transaction_code: None,
+        translations: Default::default(),
     };
 
     let credentials = sd_formatter

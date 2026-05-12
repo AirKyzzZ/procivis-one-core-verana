@@ -122,6 +122,7 @@ fn parse_claim(
                     array: true,
                     metadata: claim_value.metadata,
                     required: false,
+                    translations: Default::default(),
                 }),
             }];
             result.extend(subclaims);
@@ -160,6 +161,7 @@ fn parse_claim(
                     array: false,
                     metadata: claim_value.metadata,
                     required: false,
+                    translations: Default::default(),
                 }),
             });
 
@@ -190,6 +192,7 @@ fn parse_claim(
                     array: false,
                     metadata: claim_value.metadata,
                     required: false,
+                    translations: Default::default(),
                 }),
             }]
         }

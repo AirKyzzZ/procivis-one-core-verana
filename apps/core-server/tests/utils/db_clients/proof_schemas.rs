@@ -57,6 +57,7 @@ impl ProofSchemasDB {
                         array: claim.array,
                         metadata: false,
                         required: true,
+                        translations: Default::default(),
                     },
                     required: claim.required,
                     order: order as _,

@@ -14,6 +14,7 @@ use super::organisation::Organisation;
 use super::relation::{Related, RelatedVec};
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, NestedError};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
+use crate::model::localized_text::LocalizedText;
 use crate::service::credential_schema::dto::{
     CredentialSchemaFilterValue, CredentialSchemaListIncludeEntityTypeEnum,
 };
@@ -43,6 +44,7 @@ pub struct CredentialSchema {
     pub claim_schemas: RelatedVec<ClaimSchema>,
     pub organisation: Related<Organisation>,
     pub formats: RelatedVec<CredentialSchemaFormat>,
+    pub translations: RelatedVec<LocalizedText>,
 }
 
 #[derive(Debug, Error)]

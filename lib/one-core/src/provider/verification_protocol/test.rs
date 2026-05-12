@@ -69,6 +69,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_empty_missing_requi
             array: false,
             metadata: false,
             required: false,
+            translations: Default::default(),
         });
         credential_schema.claim_schemas = claim_schemas.into();
     }
@@ -180,6 +181,7 @@ fn mdoc_credential() -> Credential {
             array: false,
             metadata: false,
             required: true,
+            translations: Default::default(),
         },
         ClaimSchema {
             business_key: None,
@@ -191,6 +193,7 @@ fn mdoc_credential() -> Credential {
             array: false,
             metadata: false,
             required: true,
+            translations: Default::default(),
         },
     ];
 
@@ -296,6 +299,7 @@ fn mdoc_credential_with_optional_namespace() -> Credential {
             array: false,
             metadata: false,
             required: true,
+            translations: Default::default(),
         },
         ClaimSchema {
             business_key: None,
@@ -307,6 +311,7 @@ fn mdoc_credential_with_optional_namespace() -> Credential {
             array: false,
             metadata: false,
             required: true,
+            translations: Default::default(),
         },
         ClaimSchema {
             business_key: None,
@@ -318,6 +323,7 @@ fn mdoc_credential_with_optional_namespace() -> Credential {
             array: false,
             metadata: false,
             required: false,
+            translations: Default::default(),
         },
         ClaimSchema {
             business_key: None,
@@ -329,6 +335,7 @@ fn mdoc_credential_with_optional_namespace() -> Credential {
             array: false,
             metadata: false,
             required: true,
+            translations: Default::default(),
         },
         ClaimSchema {
             business_key: None,
@@ -340,6 +347,7 @@ fn mdoc_credential_with_optional_namespace() -> Credential {
             array: false,
             metadata: false,
             required: true,
+            translations: Default::default(),
         },
     ];
 
@@ -425,6 +433,7 @@ fn dummy_credential() -> Credential {
                 array: false,
                 metadata: false,
                 required: true,
+                translations: Default::default(),
             }),
         }]),
         issuer_identifier: None,
@@ -461,6 +470,7 @@ fn dummy_credential() -> Credential {
                 array: false,
                 metadata: false,
                 required: true,
+                translations: Default::default(),
             }]
             .into(),
             layout_type: LayoutType::Card,
@@ -469,6 +479,7 @@ fn dummy_credential() -> Credential {
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            translations: Default::default(),
         }),
         interaction: Some(Interaction {
             id: Uuid::new_v4().into(),

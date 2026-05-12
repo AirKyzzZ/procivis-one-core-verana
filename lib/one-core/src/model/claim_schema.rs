@@ -2,6 +2,9 @@ use proc_macros::Model;
 use shared_types::ClaimSchemaId;
 use time::OffsetDateTime;
 
+use crate::model::localized_text::LocalizedText;
+use crate::model::relation::RelatedVec;
+
 #[derive(Clone, Debug, Model)]
 #[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct ClaimSchema {
@@ -16,6 +19,8 @@ pub struct ClaimSchema {
     pub metadata: bool,
     /// mandatory during issuance
     pub required: bool,
+
+    pub translations: RelatedVec<LocalizedText>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]

@@ -575,6 +575,21 @@ async fn test_create_credential_schema_modc_without_schema_id() {
     assert_eq!(credential_schema.organisation.id(), organisation.id);
     assert_eq!(credential_schema.format().await.unwrap().as_ref(), "MDOC");
     assert_eq!(credential_schema.schema_id().await.unwrap(), id.to_string());
+    let schema_translations = context.db.localized_text.get(credential_schema.id).await;
+    assert_eq!(schema_translations.len(), 1);
+    assert_eq!(schema_translations[0].lang, "en");
+    assert_eq!(schema_translations[0].value, "schema");
+    let claim_schemas = credential_schema.claim_schemas.get().await.unwrap();
+    for claim_schema in claim_schemas
+        .iter()
+        .filter(|claim_schema| !claim_schema.metadata)
+    {
+        let claim_translations = claim_schema.translations.get().await.unwrap();
+        assert_eq!(claim_translations.len(), 1);
+        assert_eq!(claim_translations[0].lang, "en");
+        assert!(claim_schema.key.ends_with(&claim_translations[0].value));
+        assert!(!claim_translations[0].value.contains("/"));
+    }
 }
 
 #[tokio::test]

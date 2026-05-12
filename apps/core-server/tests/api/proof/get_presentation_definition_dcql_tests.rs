@@ -1429,6 +1429,7 @@ async fn test_get_presentation_definition_dcql_metadata_value_matching() {
                         array: false,
                         metadata: false,
                         required: true,
+                        translations: Default::default(),
                     },
                     ClaimSchema {
                         business_key: None,
@@ -1440,6 +1441,7 @@ async fn test_get_presentation_definition_dcql_metadata_value_matching() {
                         array: false,
                         metadata: true,
                         required: false,
+                        translations: Default::default(),
                     },
                 ]),
                 ..Default::default()

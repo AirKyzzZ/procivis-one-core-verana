@@ -1,19 +1,27 @@
 use one_core::model::claim_schema::ClaimSchema;
+use one_core::model::relation::RelatedVec;
 
 use crate::entity::claim_schema;
+use crate::localized_text::LocalizedTextLoader;
+use crate::transaction_context::TransactionManagerImpl;
 
-impl From<claim_schema::Model> for ClaimSchema {
-    fn from(value: claim_schema::Model) -> Self {
-        Self {
-            id: value.id,
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-            key: value.key,
-            business_key: value.business_key,
-            data_type: value.datatype,
-            array: value.array,
-            metadata: value.metadata,
-            required: value.required,
-        }
+pub(crate) fn claim_schema_from_model(
+    value: claim_schema::Model,
+    db: TransactionManagerImpl,
+) -> ClaimSchema {
+    ClaimSchema {
+        id: value.id,
+        created_date: value.created_date,
+        last_modified: value.last_modified,
+        key: value.key,
+        business_key: value.business_key,
+        data_type: value.datatype,
+        array: value.array,
+        metadata: value.metadata,
+        required: value.required,
+        translations: RelatedVec::new(LocalizedTextLoader {
+            id: value.id.into(),
+            db,
+        }),
     }
 }

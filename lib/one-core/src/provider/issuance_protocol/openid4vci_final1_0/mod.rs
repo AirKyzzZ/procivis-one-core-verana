@@ -61,6 +61,7 @@ use crate::config::core_config::{
     BlobStorageType, CoreConfig, DidType as ConfigDidType, FormatType,
 };
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
+use crate::mapper::credential_schema_claim::add_fallback_translation;
 use crate::mapper::oidc::map_from_oidc_format_to_core_detailed;
 use crate::mapper::x509::x5c_into_pem_chain;
 use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
@@ -3186,7 +3187,11 @@ async fn prepare_credential_schema_updates(
                     claim.schema = Some(known_claim_schema.to_owned());
                 });
         } else {
-            new_claim_schemas.push(parsed_claim_schema);
+            new_claim_schemas.push(
+                add_fallback_translation(parsed_claim_schema)
+                    .await
+                    .error_while("adding fallback claim translation")?,
+            );
         }
     }
 

@@ -774,6 +774,7 @@ fn dummy_credential() -> Credential {
                 array: false,
                 metadata: false,
                 required: true,
+                translations: Default::default(),
             }),
         }]),
         issuer_identifier: None,
@@ -810,6 +811,7 @@ fn dummy_credential() -> Credential {
                 array: false,
                 metadata: false,
                 required: true,
+                translations: Default::default(),
             }]
             .into(),
             layout_type: LayoutType::Card,
@@ -818,6 +820,7 @@ fn dummy_credential() -> Credential {
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            translations: Default::default(),
         }),
         interaction: Some(Interaction {
             id: Uuid::new_v4().into(),

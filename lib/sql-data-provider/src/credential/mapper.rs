@@ -28,6 +28,7 @@ use crate::list_query_generic::{
     get_blob_match_condition, get_comparison_condition, get_equals_condition,
     get_string_match_condition,
 };
+use crate::localized_text::LocalizedTextLoader;
 
 pub(super) fn from_clearable<T>(clearable: Clearable<Option<T>>) -> ActiveValue<Option<T>>
 where
@@ -281,6 +282,10 @@ pub(super) fn credential_list_model_to_repository_model(
         transaction_code,
         batch_size: credential.credential_schema_batch_size,
         allow_revocation: credential.credential_schema_allow_revocation,
+        translations: RelatedVec::new(LocalizedTextLoader {
+            id: credential.credential_schema_id.into(),
+            db: db.to_owned(),
+        }),
     };
 
     let issuer_identifier = match credential.issuer_identifier_id {

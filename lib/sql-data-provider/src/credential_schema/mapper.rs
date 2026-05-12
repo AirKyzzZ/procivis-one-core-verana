@@ -19,6 +19,7 @@ use shared_types::CredentialSchemaId;
 use uuid::Uuid;
 
 use crate::TransactionManagerImpl;
+use crate::claim_schema::mapper::claim_schema_from_model;
 use crate::credential_schema_format::mapper::credential_schema_format_from_model;
 use crate::entity::credential_schema::KeyStorageSecurity;
 use crate::entity::{claim_schema, credential_schema, credential_schema_format};
@@ -26,6 +27,7 @@ use crate::list_query_generic::{
     IntoFilterCondition, IntoSortingColumn, get_comparison_condition, get_equals_condition,
     get_string_match_condition,
 };
+use crate::localized_text::LocalizedTextLoader;
 use crate::mapper::to_data_layer_error;
 
 impl IntoSortingColumn for SortableCredentialSchemaColumn {
@@ -254,7 +256,7 @@ pub(super) fn credential_schema_from_models(
         key_storage_security: convert_inner(credential_schema.key_storage_security),
         formats,
         revocation_method: credential_schema.revocation_method,
-        claim_schemas: RelatedVec::new(ClaimSchemasLoader { id, db }),
+        claim_schemas: RelatedVec::new(ClaimSchemasLoader { id, db: db.clone() }),
         organisation: Related::new(
             credential_schema.organisation_id,
             organisation_repository.to_owned(),
@@ -272,6 +274,7 @@ pub(super) fn credential_schema_from_models(
         transaction_code,
         batch_size: credential_schema.batch_size,
         allow_revocation: credential_schema.allow_revocation,
+        translations: RelatedVec::new(LocalizedTextLoader { id: id.into(), db }),
     })
 }
 
@@ -290,7 +293,10 @@ impl AsyncVecLoader<ClaimSchema> for ClaimSchemasLoader {
             .await
             .map_err(to_data_layer_error)?;
 
-        Ok(convert_inner(claim_schemas))
+        Ok(claim_schemas
+            .into_iter()
+            .map(|m| claim_schema_from_model(m, self.db.clone()))
+            .collect())
     }
 }
 

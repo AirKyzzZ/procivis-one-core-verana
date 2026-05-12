@@ -274,6 +274,7 @@ fn generic_proof_input_schema() -> ProofInputSchema {
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            translations: Default::default(),
         }),
     }
 }
@@ -314,6 +315,7 @@ async fn test_get_presentation_definition_proof_role_verifier() {
                         array: false,
                         metadata: false,
                         required: true,
+                        translations: Default::default(),
                     },
                     required: true,
                     order: 0,
@@ -346,6 +348,7 @@ async fn test_get_presentation_definition_proof_role_verifier() {
                     allow_suspension: true,
                     requires_wallet_instance_attestation: false,
                     transaction_code: None,
+                    translations: Default::default(),
                 }),
             }]),
         }),
@@ -441,6 +444,7 @@ async fn test_get_proof_exists() {
                         array: false,
                         metadata: false,
                         required: true,
+                        translations: Default::default(),
                     },
                     required: true,
                     order: 0,
@@ -476,6 +480,7 @@ async fn test_get_proof_exists() {
                         array: false,
                         metadata: false,
                         required: true,
+                        translations: Default::default(),
                     }]
                     .into(),
                     organisation: dummy_organisation(None).into(),
@@ -484,6 +489,7 @@ async fn test_get_proof_exists() {
                     allow_suspension: true,
                     requires_wallet_instance_attestation: false,
                     transaction_code: None,
+                    translations: Default::default(),
                 }),
             }]),
         }),
@@ -603,6 +609,7 @@ async fn test_get_proof_with_array_holder() {
         array: true,
         metadata: false,
         required: true,
+        translations: Default::default(),
     };
 
     let credential_schema_id = Uuid::new_v4().into();
@@ -634,6 +641,7 @@ async fn test_get_proof_with_array_holder() {
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
         transaction_code: None,
+        translations: Default::default(),
     };
 
     let credential = Credential {
@@ -854,6 +862,7 @@ async fn test_get_proof_with_array_in_object_holder() {
             array: false,
             metadata: false,
             required: true,
+            translations: Default::default(),
         },
         ClaimSchema {
             business_key: None,
@@ -865,6 +874,7 @@ async fn test_get_proof_with_array_in_object_holder() {
             array: true,
             metadata: false,
             required: true,
+            translations: Default::default(),
         },
     ];
 
@@ -897,6 +907,7 @@ async fn test_get_proof_with_array_in_object_holder() {
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
         transaction_code: None,
+        translations: Default::default(),
     };
 
     let credential = Credential {
@@ -1132,6 +1143,7 @@ async fn test_get_proof_with_object_array_holder() {
             array: true,
             metadata: false,
             required: true,
+            translations: Default::default(),
         },
         ClaimSchema {
             business_key: None,
@@ -1143,6 +1155,7 @@ async fn test_get_proof_with_object_array_holder() {
             array: false,
             metadata: false,
             required: true,
+            translations: Default::default(),
         },
     ];
 
@@ -1175,6 +1188,7 @@ async fn test_get_proof_with_object_array_holder() {
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
         transaction_code: None,
+        translations: Default::default(),
     };
 
     let credential = Credential {
@@ -1427,6 +1441,7 @@ async fn test_get_proof_with_array() {
         array: true,
         metadata: false,
         required: true,
+        translations: Default::default(),
     };
 
     let credential_schema_id = Uuid::new_v4().into();
@@ -1458,6 +1473,7 @@ async fn test_get_proof_with_array() {
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
         transaction_code: None,
+        translations: Default::default(),
     };
 
     let credential = Credential {
@@ -1685,6 +1701,7 @@ async fn test_get_proof_with_array_in_object() {
             array: false,
             metadata: false,
             required: true,
+            translations: Default::default(),
         },
         ClaimSchema {
             business_key: None,
@@ -1696,6 +1713,7 @@ async fn test_get_proof_with_array_in_object() {
             array: true,
             metadata: false,
             required: true,
+            translations: Default::default(),
         },
     ];
 
@@ -1728,6 +1746,7 @@ async fn test_get_proof_with_array_in_object() {
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
         transaction_code: None,
+        translations: Default::default(),
     };
 
     let credential = Credential {
@@ -1971,6 +1990,7 @@ async fn test_get_proof_with_object_array() {
             array: true,
             metadata: false,
             required: true,
+            translations: Default::default(),
         },
         ClaimSchema {
             business_key: None,
@@ -1982,6 +2002,7 @@ async fn test_get_proof_with_object_array() {
             array: false,
             metadata: false,
             required: true,
+            translations: Default::default(),
         },
     ];
 
@@ -2014,6 +2035,7 @@ async fn test_get_proof_with_object_array() {
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
         transaction_code: None,
+        translations: Default::default(),
     };
 
     let credential = Credential {

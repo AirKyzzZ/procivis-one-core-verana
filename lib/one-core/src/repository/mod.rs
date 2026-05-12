@@ -16,6 +16,7 @@ pub mod identifier_repository;
 pub mod identifier_trust_information_repository;
 pub mod interaction_repository;
 pub mod key_repository;
+pub mod localized_text_repository;
 pub mod notification_repository;
 pub mod organisation_repository;
 pub mod proof_repository;
@@ -67,6 +68,7 @@ use wallet_instance_attested_key_repository::WalletInstanceAttestedKeyRepository
 use wallet_instance_repository::WalletInstanceRepository;
 
 use crate::proto::transaction_manager::TransactionManager;
+use crate::repository::localized_text_repository::LocalizedTextRepository;
 
 pub trait DataRepository: Send + Sync {
     fn get_organisation_repository(&self) -> Arc<dyn OrganisationRepository>;
@@ -105,5 +107,6 @@ pub trait DataRepository: Send + Sync {
         &self,
     ) -> Arc<dyn WalletInstanceAttestedKeyRepository>;
     fn get_verifier_instance_repository(&self) -> Arc<dyn VerifierInstanceRepository>;
+    fn get_localized_text_repository(&self) -> Arc<dyn LocalizedTextRepository>;
     fn get_tx_manager(&self) -> Arc<dyn TransactionManager>;
 }

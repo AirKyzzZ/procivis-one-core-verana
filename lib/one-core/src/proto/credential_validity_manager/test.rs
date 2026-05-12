@@ -680,6 +680,7 @@ fn generic_credential() -> Credential {
         last_modified: now,
         metadata: false,
         required: true,
+        translations: Default::default(),
     };
     let organisation = dummy_organisation(None);
 
@@ -780,6 +781,7 @@ fn generic_credential() -> Credential {
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            translations: Default::default(),
         }),
         interaction: None,
         key: None,

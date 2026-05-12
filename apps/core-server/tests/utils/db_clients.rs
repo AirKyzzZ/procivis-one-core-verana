@@ -20,6 +20,7 @@ use self::trust_list_publication::TrustListPublicationDB;
 use self::trust_list_subscription::TrustListSubscriptionDB;
 use crate::utils::db_clients::blobs::BlobsDB;
 use crate::utils::db_clients::holder_wallet_instance::HolderWalletInstancesDB;
+use crate::utils::db_clients::localized_text::LocalizedTextDB;
 use crate::utils::db_clients::remote_entity_cache::RemoteEntityCacheDB;
 use crate::utils::db_clients::trust_collections::TrustCollectionDB;
 use crate::utils::db_clients::validity_credentials::ValidityCredentialsDB;
@@ -38,6 +39,7 @@ pub mod identifier_trust_information;
 pub mod identifiers;
 pub mod interactions;
 pub mod keys;
+pub mod localized_text;
 pub mod notifications;
 pub mod organisations;
 pub mod proof_schemas;
@@ -80,6 +82,7 @@ pub struct DbClient {
     pub verifier_instances: VerifierInstancesDB,
     #[expect(unused)]
     pub wallet_instance_attestations: WalletInstanceAttestationsDB,
+    pub localized_text: LocalizedTextDB,
     pub db_conn: DbConn,
 }
 
@@ -125,6 +128,7 @@ impl DbClient {
             wallet_instance_attestations: WalletInstanceAttestationsDB::new(
                 layer.get_wallet_instance_attestation_repository(),
             ),
+            localized_text: LocalizedTextDB::new(layer.get_localized_text_repository()),
         }
     }
 }

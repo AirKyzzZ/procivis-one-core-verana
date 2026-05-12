@@ -349,6 +349,7 @@ async fn test_create_proof_schema_success() {
         array: false,
         metadata: false,
         required: false,
+        translations: Default::default(),
     };
 
     let mut formatter = MockCredentialFormatter::default();
@@ -405,6 +406,7 @@ async fn test_create_proof_schema_success() {
                 allow_suspension: true,
                 requires_wallet_instance_attestation: false,
                 transaction_code: None,
+                translations: Default::default(),
             };
 
             Ok(GetListResponse {
@@ -503,6 +505,7 @@ async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
         array: false,
         metadata: false,
         required: false,
+        translations: Default::default(),
     };
 
     let claim_schema_hardware_id = Uuid::new_v4().into();
@@ -546,6 +549,7 @@ async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
                 allow_suspension: true,
                 requires_wallet_instance_attestation: false,
                 transaction_code: None,
+                translations: Default::default(),
             };
 
             let schema_hardware = CredentialSchema {
@@ -643,6 +647,7 @@ async fn test_create_proof_schema_fail_unsupported_wallet_storage_type() {
         array: false,
         metadata: false,
         required: false,
+        translations: Default::default(),
     };
 
     let organisation_id = Uuid::new_v4().into();
@@ -687,6 +692,7 @@ async fn test_create_proof_schema_fail_unsupported_wallet_storage_type() {
                 allow_suspension: true,
                 requires_wallet_instance_attestation: false,
                 transaction_code: None,
+                translations: Default::default(),
             };
 
             Ok(GetListResponse {
@@ -745,6 +751,7 @@ async fn test_create_proof_schema_array_object_fail() {
         array: false,
         metadata: false,
         required: false,
+        translations: Default::default(),
     };
 
     let claim_schema_array = ClaimSchema {
@@ -757,6 +764,7 @@ async fn test_create_proof_schema_array_object_fail() {
         array: true,
         metadata: false,
         required: false,
+        translations: Default::default(),
     };
 
     let claim_schema_array_object = ClaimSchema {
@@ -769,6 +777,7 @@ async fn test_create_proof_schema_array_object_fail() {
         array: false,
         metadata: false,
         required: false,
+        translations: Default::default(),
     };
 
     let claim_schema_array_object_item = ClaimSchema {
@@ -781,6 +790,7 @@ async fn test_create_proof_schema_array_object_fail() {
         array: false,
         metadata: false,
         required: false,
+        translations: Default::default(),
     };
 
     let claim_id = claim_schema_array_object_item.id;
@@ -848,6 +858,7 @@ async fn test_create_proof_schema_array_object_fail() {
                 allow_suspension: true,
                 requires_wallet_instance_attestation: false,
                 transaction_code: None,
+                translations: Default::default(),
             };
 
             Ok(GetListResponse {
@@ -911,6 +922,7 @@ async fn test_create_proof_schema_array_success() {
         array: false,
         metadata: false,
         required: false,
+        translations: Default::default(),
     };
 
     let claim_schema_array = ClaimSchema {
@@ -923,6 +935,7 @@ async fn test_create_proof_schema_array_success() {
         array: true,
         metadata: false,
         required: false,
+        translations: Default::default(),
     };
 
     let claim_schema_array_object = ClaimSchema {
@@ -935,6 +948,7 @@ async fn test_create_proof_schema_array_success() {
         array: false,
         metadata: false,
         required: false,
+        translations: Default::default(),
     };
 
     let claim_schema_array_object_item = ClaimSchema {
@@ -947,6 +961,7 @@ async fn test_create_proof_schema_array_success() {
         array: false,
         metadata: false,
         required: false,
+        translations: Default::default(),
     };
 
     let claim_id = claim_schema_array.id;
@@ -1015,6 +1030,7 @@ async fn test_create_proof_schema_array_success() {
                 allow_suspension: true,
                 requires_wallet_instance_attestation: false,
                 transaction_code: None,
+                translations: Default::default(),
             };
 
             Ok(GetListResponse {
@@ -1172,6 +1188,7 @@ async fn test_create_proof_schema_claims_dont_exist() {
                     array: false,
                     metadata: false,
                     required: false,
+                    translations: Default::default(),
                 }]
                 .into(),
                 organisation: dummy_organisation(None).into(),
@@ -1180,6 +1197,7 @@ async fn test_create_proof_schema_claims_dont_exist() {
                 allow_suspension: true,
                 requires_wallet_instance_attestation: false,
                 transaction_code: None,
+                translations: Default::default(),
             };
 
             Ok(GetListResponse {
@@ -1760,12 +1778,14 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
                     last_modified: get_dummy_date(),
                     metadata: false,
                     required: true,
+                    translations: Default::default(),
                 }]
                 .into(),
                 organisation: dummy_organisation(None).into(),
                 allow_suspension: true,
                 requires_wallet_instance_attestation: false,
                 transaction_code: None,
+                translations: Default::default(),
             }))
         });
 
@@ -2102,6 +2122,7 @@ async fn test_get_proof_schema_success_nested_claims() {
         array: false,
         metadata: false,
         required: true,
+        translations: Default::default(),
     };
     let location_x_claim_schema = ClaimSchema {
         business_key: None,
@@ -2113,6 +2134,7 @@ async fn test_get_proof_schema_success_nested_claims() {
         array: false,
         metadata: false,
         required: true,
+        translations: Default::default(),
     };
 
     let mut proof_schema = generic_proof_schema();
@@ -2160,6 +2182,7 @@ async fn test_get_proof_schema_success_nested_claims_not_mandatory() {
         array: false,
         metadata: false,
         required: true,
+        translations: Default::default(),
     };
     let location_x_cs = ClaimSchema {
         business_key: None,
@@ -2171,6 +2194,7 @@ async fn test_get_proof_schema_success_nested_claims_not_mandatory() {
         array: false,
         metadata: false,
         required: true,
+        translations: Default::default(),
     };
     let location_foo_cs = ClaimSchema {
         business_key: None,
@@ -2182,6 +2206,7 @@ async fn test_get_proof_schema_success_nested_claims_not_mandatory() {
         array: false,
         metadata: false,
         required: false,
+        translations: Default::default(),
     };
 
     let mut proof_schema = generic_proof_schema();
@@ -2230,6 +2255,7 @@ async fn test_get_proof_schema_success_nested_claims_parent_not_mandatory() {
         array: false,
         metadata: false,
         required: true,
+        translations: Default::default(),
     };
     let location_cs = ClaimSchema {
         business_key: None,
@@ -2241,6 +2267,7 @@ async fn test_get_proof_schema_success_nested_claims_parent_not_mandatory() {
         array: false,
         metadata: false,
         required: false,
+        translations: Default::default(),
     };
     let location_x_cs = ClaimSchema {
         business_key: None,
@@ -2252,6 +2279,7 @@ async fn test_get_proof_schema_success_nested_claims_parent_not_mandatory() {
         array: false,
         metadata: false,
         required: true,
+        translations: Default::default(),
     };
 
     let mut proof_schema = generic_proof_schema();
@@ -2342,6 +2370,7 @@ fn credential_schema_with_claims(claims: Vec<ClaimSchema>) -> CredentialSchema {
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
         transaction_code: None,
+        translations: Default::default(),
     }
 }
 
@@ -2537,6 +2566,7 @@ async fn test_create_proof_schema_verify_nested_generic(
             array: false,
             metadata: false,
             required: true,
+            translations: Default::default(),
         })
         .collect();
 
@@ -2598,6 +2628,7 @@ async fn test_create_proof_schema_verify_nested_generic(
                 allow_suspension: true,
                 requires_wallet_instance_attestation: false,
                 transaction_code: None,
+                translations: Default::default(),
             };
 
             Ok(GetListResponse {

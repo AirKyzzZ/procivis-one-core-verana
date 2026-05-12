@@ -73,6 +73,7 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
                     array: false,
                     metadata: false,
                     required: false,
+                    translations: Default::default(),
                 }),
             }]),
             issuer_identifier: None,
@@ -109,6 +110,7 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
                     array: false,
                     metadata: false,
                     required: false,
+                    translations: Default::default(),
                 }]
                 .into(),
                 organisation: dummy_organisation(None).into(),
@@ -117,6 +119,7 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
                 allow_suspension: true,
                 requires_wallet_instance_attestation: false,
                 transaction_code: None,
+                translations: Default::default(),
             }),
             interaction: None,
             key: None,

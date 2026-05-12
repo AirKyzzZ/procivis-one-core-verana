@@ -492,6 +492,7 @@ impl CredentialFormatter for JsonLdBbsplus {
             .into(),
             batch_size: None,
             allow_revocation: None,
+            translations: Default::default(),
         };
 
         let issuer_identifier = prepare_identifier(

@@ -93,7 +93,7 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
             deleted_at: None,
             created_date: now,
             last_modified: now,
-            name: dto.schema.name,
+            name: dto.schema.name.clone(),
             revocation_method: self
                 .parse_revocation_method(dto.schema.revocation_method, formatter.as_ref())?,
             key_storage_security: dto.schema.key_storage_security,
@@ -127,6 +127,7 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
             transaction_code: convert_inner(dto.schema.transaction_code),
             batch_size: None,
             allow_revocation: None,
+            translations: Default::default(),
         })
     }
 
@@ -225,6 +226,7 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
             transaction_code: convert_inner(dto.schema.transaction_code),
             batch_size: dto.schema.batch_size,
             allow_revocation: dto.schema.allow_revocation,
+            translations: Default::default(),
         })
     }
 }
@@ -497,6 +499,7 @@ impl CredentialSchemaImportParserImpl {
             array: self.parse_claim_schema_array(&key, claim_schema_dto.array, formatters)?,
             metadata: false,
             required: claim_schema_dto.required,
+            translations: Default::default(),
         };
         let mut childs = self.parse_level_claim_schemas(
             now,
@@ -1099,6 +1102,7 @@ mod test {
             array: false,
             metadata: false,
             required: true,
+            translations: Default::default(),
         }];
 
         let layout_props = Some(ImportCredentialSchemaLayoutPropertiesDTO {
@@ -1172,6 +1176,7 @@ mod test {
             array: false,
             metadata: false,
             required: true,
+            translations: Default::default(),
         }];
 
         // when
@@ -1382,6 +1387,7 @@ mod test {
             array: false,
             metadata: false,
             required: true,
+            translations: Default::default(),
         }];
 
         let code = CredentialSchemaCodePropertiesDTO {

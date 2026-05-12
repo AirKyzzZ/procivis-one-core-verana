@@ -21,6 +21,7 @@ use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::identifier_trust_information_repository::IdentifierTrustInformationRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::key_repository::KeyRepository;
+use crate::repository::localized_text_repository::LocalizedTextRepository;
 use crate::repository::notification_repository::NotificationRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
 use crate::repository::proof_repository::ProofRepository;
@@ -154,6 +155,10 @@ impl DataRepository for DecoratedDataProvider {
 
     fn get_tx_manager(&self) -> Arc<dyn TransactionManager> {
         self.data_provider.get_tx_manager()
+    }
+
+    fn get_localized_text_repository(&self) -> Arc<dyn LocalizedTextRepository> {
+        self.data_provider.get_localized_text_repository()
     }
 }
 

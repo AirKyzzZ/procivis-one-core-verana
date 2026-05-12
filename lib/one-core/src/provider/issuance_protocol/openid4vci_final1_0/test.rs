@@ -252,6 +252,7 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
         array: false,
         metadata: false,
         required: true,
+        translations: Default::default(),
     };
 
     let credential_id = Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
@@ -318,6 +319,7 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            translations: Default::default(),
         }),
         interaction: Some(Interaction {
             id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")

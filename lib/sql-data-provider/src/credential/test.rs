@@ -128,6 +128,7 @@ async fn setup_empty() -> TestSetup {
                 array: false,
                 metadata: false,
                 required: true,
+                translations: Default::default(),
             })
             .collect::<Vec<_>>()
             .into(),
@@ -137,6 +138,7 @@ async fn setup_empty() -> TestSetup {
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
         transaction_code: None,
+        translations: Default::default(),
     };
 
     let did_id = insert_did_key(

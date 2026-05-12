@@ -759,6 +759,7 @@ async fn test_submit_proof_repeating_claims() {
                         array: false,
                         metadata: false,
                         required: true,
+                        translations: Default::default(),
                     }),
                 }]),
                 holder_identifier: Some(identifier.clone()),
@@ -1764,6 +1765,7 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
                 array: false,
                 metadata: false,
                 required: true,
+                translations: Default::default(),
             }]
             .into(),
             organisation: dummy_organisation(organisation_id).into(),
@@ -1773,6 +1775,7 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            translations: Default::default(),
         }),
         interaction: Some(Interaction {
             id: Uuid::new_v4().into(),

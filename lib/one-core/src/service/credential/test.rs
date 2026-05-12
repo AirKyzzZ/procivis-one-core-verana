@@ -104,6 +104,7 @@ fn generic_credential() -> Credential {
         last_modified: now,
         metadata: false,
         required: true,
+        translations: Default::default(),
     };
     let organisation = dummy_organisation(None);
 
@@ -194,6 +195,7 @@ fn generic_credential() -> Credential {
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            translations: Default::default(),
             formats: vec![CredentialSchemaFormat {
                 id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
@@ -288,6 +290,7 @@ fn generic_credential_list_entity() -> Credential {
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            translations: Default::default(),
         }),
         interaction: None,
         key: None,
@@ -1320,6 +1323,7 @@ async fn test_create_credential_one_required_claim_missing_success() {
                 last_modified: crate::clock::now_utc(),
                 metadata: false,
                 required: true,
+                translations: Default::default(),
             },
             ClaimSchema {
                 business_key: None,
@@ -1331,6 +1335,7 @@ async fn test_create_credential_one_required_claim_missing_success() {
                 last_modified: crate::clock::now_utc(),
                 metadata: false,
                 required: false,
+                translations: Default::default(),
             },
         ]
         .into(),
@@ -1457,6 +1462,7 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
                 last_modified: crate::clock::now_utc(),
                 metadata: false,
                 required: true,
+                translations: Default::default(),
             },
             ClaimSchema {
                 business_key: None,
@@ -1468,6 +1474,7 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
                 last_modified: crate::clock::now_utc(),
                 metadata: false,
                 required: false,
+                translations: Default::default(),
             },
         ]
         .into(),
@@ -2747,6 +2754,7 @@ fn generate_credential_schema_with_claim_schemas(
         }]
         .into(),
         transaction_code: None,
+        translations: Default::default(),
     }
 }
 
@@ -2769,6 +2777,7 @@ async fn test_validate_create_request_all_nested_claims_are_required() {
             last_modified: now,
             metadata: false,
             required: true,
+            translations: Default::default(),
         },
         ClaimSchema {
             business_key: None,
@@ -2780,6 +2789,7 @@ async fn test_validate_create_request_all_nested_claims_are_required() {
             last_modified: now,
             metadata: false,
             required: true,
+            translations: Default::default(),
         },
         ClaimSchema {
             business_key: None,
@@ -2791,6 +2801,7 @@ async fn test_validate_create_request_all_nested_claims_are_required() {
             last_modified: now,
             metadata: false,
             required: true,
+            translations: Default::default(),
         },
         ClaimSchema {
             business_key: None,
@@ -2802,6 +2813,7 @@ async fn test_validate_create_request_all_nested_claims_are_required() {
             last_modified: now,
             metadata: false,
             required: true,
+            translations: Default::default(),
         },
     ]);
 
@@ -2858,6 +2870,7 @@ async fn test_validate_create_request_all_optional_nested_object_with_required_c
             last_modified: now,
             metadata: false,
             required: true,
+            translations: Default::default(),
         },
         ClaimSchema {
             business_key: None,
@@ -2869,6 +2882,7 @@ async fn test_validate_create_request_all_optional_nested_object_with_required_c
             last_modified: now,
             metadata: false,
             required: false,
+            translations: Default::default(),
         },
         ClaimSchema {
             business_key: None,
@@ -2880,6 +2894,7 @@ async fn test_validate_create_request_all_optional_nested_object_with_required_c
             last_modified: now,
             metadata: false,
             required: true,
+            translations: Default::default(),
         },
         ClaimSchema {
             business_key: None,
@@ -2891,6 +2906,7 @@ async fn test_validate_create_request_all_optional_nested_object_with_required_c
             last_modified: now,
             metadata: false,
             required: true,
+            translations: Default::default(),
         },
     ]);
 
@@ -2978,6 +2994,7 @@ async fn test_validate_create_request_all_required_nested_object_with_optional_c
             last_modified: now,
             metadata: false,
             required: true,
+            translations: Default::default(),
         },
         ClaimSchema {
             business_key: None,
@@ -2989,6 +3006,7 @@ async fn test_validate_create_request_all_required_nested_object_with_optional_c
             last_modified: now,
             metadata: false,
             required: true,
+            translations: Default::default(),
         },
         ClaimSchema {
             business_key: None,
@@ -3000,6 +3018,7 @@ async fn test_validate_create_request_all_required_nested_object_with_optional_c
             last_modified: now,
             metadata: false,
             required: true,
+            translations: Default::default(),
         },
         ClaimSchema {
             business_key: None,
@@ -3011,6 +3030,7 @@ async fn test_validate_create_request_all_required_nested_object_with_optional_c
             last_modified: now,
             metadata: false,
             required: false,
+            translations: Default::default(),
         },
     ]);
 
@@ -3095,6 +3115,7 @@ async fn test_get_credential_success_with_non_required_nested_object() {
         last_modified: now,
         metadata: false,
         required: false,
+        translations: Default::default(),
     };
     let location_x_claim_schema = ClaimSchema {
         business_key: None,
@@ -3106,6 +3127,7 @@ async fn test_get_credential_success_with_non_required_nested_object() {
         last_modified: now,
         metadata: false,
         required: false,
+        translations: Default::default(),
     };
 
     let mut credential = generic_credential();
@@ -3163,6 +3185,7 @@ fn generate_claim_schema(key: &str, datatype: &str, array: bool) -> ClaimSchema 
         last_modified: now,
         metadata: false,
         required: true,
+        translations: Default::default(),
     }
 }
 
@@ -3327,6 +3350,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            translations: Default::default(),
         }),
         interaction: None,
         key: None,
@@ -3903,6 +3927,7 @@ async fn test_get_credential_success_array_index_sorting() {
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            translations: Default::default(),
         }),
         interaction: None,
         key: None,
@@ -4228,6 +4253,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            translations: Default::default(),
         }),
         interaction: None,
         key: None,
@@ -4456,6 +4482,7 @@ async fn test_get_credential_success_array_single_element() {
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            translations: Default::default(),
         }),
         interaction: None,
         key: None,
@@ -4587,6 +4614,7 @@ async fn test_create_credential_array(
         .into(),
         transaction_code: None,
         batch_size: None,
+        translations: Default::default(),
     };
 
     let mut formatter = MockCredentialFormatter::default();
@@ -4976,6 +5004,7 @@ async fn test_create_credential_invalid_certificate_role() {
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
         transaction_code: None,
+        translations: Default::default(),
     };
 
     let mut formatter = MockCredentialFormatter::default();

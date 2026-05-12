@@ -113,6 +113,7 @@ fn generic_credential_schema() -> CredentialSchema {
             array: false,
             metadata: false,
             required: true,
+            translations: Default::default(),
         }]
         .into(),
         organisation: dummy_organisation(None).into(),
@@ -121,6 +122,7 @@ fn generic_credential_schema() -> CredentialSchema {
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
         transaction_code: None,
+        translations: Default::default(),
     }
 }
 

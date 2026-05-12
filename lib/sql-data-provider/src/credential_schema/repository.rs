@@ -42,6 +42,8 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
             claim_mappings.extend(format.claim_mappings.get().await?)
         }
 
+        let mut localized_texts = vec![];
+        localized_texts.extend(schema.translations.get().await?);
         let credential_schema: credential_schema::ActiveModel = schema.into();
 
         let credential_schema = self
@@ -54,6 +56,9 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
                         .map_err(to_data_layer_error)?;
 
                     if !claim_schemas.is_empty() {
+                        for claim_schema in &claim_schemas {
+                            localized_texts.extend(claim_schema.translations.get().await?);
+                        }
                         let claim_schema_models =
                             claim_schemas_to_model_vec(claim_schemas, &credential_schema.id);
 
@@ -78,6 +83,11 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
                             .exec(&self.db)
                             .await
                             .map_err(|e| DataLayerError::Db(e.into()))?;
+                    }
+                    if !localized_texts.is_empty() {
+                        self.localized_text_repository
+                            .upsert_many(localized_texts)
+                            .await?;
                     }
                     Ok::<_, DataLayerError>(credential_schema)
                 }

@@ -2,8 +2,12 @@ use shared_types::ClaimSchemaId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::claim_schema::ClaimSchema;
+use crate::model::credential_schema::CredentialSchema;
+use crate::model::localized_text::{LocalizedText, LocalizedTextEntityType, LocalizedTextField};
 use crate::provider::credential_formatter::MetadataClaimSchema;
+use crate::repository::error::DataLayerError;
 use crate::service::credential_schema::dto::{
     CredentialClaimSchemaDTO, CredentialClaimSchemaRequestDTO,
 };
@@ -14,7 +18,7 @@ pub(crate) fn claim_schema_from_metadata_claim_schema(
 ) -> ClaimSchema {
     ClaimSchema {
         id: Uuid::new_v4().into(),
-        key: metadata_claim.key,
+        key: metadata_claim.key.to_string(),
         business_key: None,
         data_type: metadata_claim.data_type,
         created_date: now,
@@ -22,6 +26,8 @@ pub(crate) fn claim_schema_from_metadata_claim_schema(
         array: metadata_claim.array,
         required: metadata_claim.required,
         metadata: true,
+        // metadata claims are not translated
+        translations: vec![].into(),
     }
 }
 
@@ -39,6 +45,7 @@ pub(crate) fn from_request_claim_schema(
         array: request.array.unwrap_or(false),
         metadata: false,
         required: request.required,
+        translations: Default::default(),
     }
 }
 
@@ -60,6 +67,7 @@ pub(crate) fn from_jwt_request_claim_schema(
         array: array.unwrap_or(false),
         metadata: false,
         required,
+        translations: Default::default(),
     }
 }
 
@@ -76,4 +84,52 @@ impl From<ClaimSchema> for CredentialClaimSchemaDTO {
             claims: vec![],
         }
     }
+}
+
+pub(crate) async fn backfill_default_translations(
+    mut credential_schema: CredentialSchema,
+) -> Result<CredentialSchema, DataLayerError> {
+    if credential_schema.translations.get().await?.is_empty() {
+        credential_schema.translations = vec![LocalizedText {
+            entity_id: credential_schema.id.into(),
+            field: LocalizedTextField::Name,
+            created_date: credential_schema.created_date,
+            last_modified: credential_schema.last_modified,
+            // TODO ONE-9686: Use fallback language from config
+            lang: "en".to_string(),
+            value: credential_schema.name.clone(),
+            entity_type: LocalizedTextEntityType::CredentialSchema,
+        }]
+        .into()
+    }
+
+    let mut claim_schemas = vec![];
+    for claim_schema in credential_schema.claim_schemas.get().await? {
+        claim_schemas.push(add_fallback_translation(claim_schema).await?);
+    }
+    credential_schema.claim_schemas = claim_schemas.into();
+    Ok(credential_schema)
+}
+
+pub(crate) async fn add_fallback_translation(
+    mut claim_schema: ClaimSchema,
+) -> Result<ClaimSchema, DataLayerError> {
+    if !claim_schema.metadata && claim_schema.translations.get().await?.is_empty() {
+        claim_schema.translations = vec![LocalizedText {
+            entity_id: claim_schema.id.into(),
+            field: LocalizedTextField::Name,
+            created_date: claim_schema.created_date,
+            last_modified: claim_schema.last_modified,
+            // TODO ONE-9686: Use fallback language from config
+            lang: "en".to_string(),
+            value: claim_schema
+                .key
+                .rsplit_once(NESTED_CLAIM_MARKER)
+                .map(|(_, end)| end.to_string())
+                .unwrap_or(claim_schema.key.clone()),
+            entity_type: LocalizedTextEntityType::ClaimSchema,
+        }]
+        .into();
+    }
+    Ok(claim_schema)
 }

@@ -57,6 +57,7 @@ impl CredentialSchemasDB {
                 array: false,
                 metadata: false,
                 required: true,
+                translations: Default::default(),
             };
             let claim_schema1 = ClaimSchema {
                 business_key: None,
@@ -68,6 +69,7 @@ impl CredentialSchemasDB {
                 array: false,
                 metadata: false,
                 required: false,
+                translations: Default::default(),
             };
             vec![claim_schema, claim_schema1]
         });
@@ -118,6 +120,7 @@ impl CredentialSchemasDB {
             allow_suspension: params.allow_suspension.unwrap_or(true),
             requires_wallet_instance_attestation: params.requires_wallet_instance_attestation,
             transaction_code: params.transaction_code,
+            translations: Default::default(),
         };
 
         let id = self
@@ -157,6 +160,7 @@ impl CredentialSchemasDB {
             array: false,
             metadata: false,
             required: true,
+            translations: Default::default(),
         };
         let claim_schemas = vec![claim_schema.to_owned()];
 
@@ -188,6 +192,7 @@ impl CredentialSchemasDB {
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            translations: Default::default(),
         };
 
         let id = self
@@ -216,6 +221,7 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             required: true,
+            translations: Default::default(),
         };
         let claim_schema_root_field: ClaimSchema = ClaimSchema {
             business_key: None,
@@ -227,6 +233,7 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             required: true,
+            translations: Default::default(),
         };
         let claim_schema_root_array = ClaimSchema {
             business_key: None,
@@ -238,6 +245,7 @@ impl CredentialSchemasDB {
             last_modified: get_dummy_date(),
             metadata: false,
             required: true,
+            translations: Default::default(),
         };
         let claim_schema_nested = ClaimSchema {
             business_key: None,
@@ -249,6 +257,7 @@ impl CredentialSchemasDB {
             last_modified: get_dummy_date(),
             metadata: false,
             required: true,
+            translations: Default::default(),
         };
         let claim_schema_field = ClaimSchema {
             business_key: None,
@@ -260,6 +269,7 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             required: true,
+            translations: Default::default(),
         };
         let claim_schemas = vec![
             claim_schema_root_namespace.to_owned(),
@@ -298,6 +308,7 @@ impl CredentialSchemasDB {
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            translations: Default::default(),
         };
 
         let id = self
@@ -326,6 +337,7 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             required: true,
+            translations: Default::default(),
         };
         let claim_schema_address_street = ClaimSchema {
             business_key: None,
@@ -337,6 +349,7 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             required: true,
+            translations: Default::default(),
         };
         let claim_schema_address_coordinates = ClaimSchema {
             business_key: None,
@@ -348,6 +361,7 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             required: true,
+            translations: Default::default(),
         };
         let claim_schema_address_coordinates_x = ClaimSchema {
             business_key: None,
@@ -359,6 +373,7 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             required: true,
+            translations: Default::default(),
         };
         let claim_schema_address_coordinates_y = ClaimSchema {
             business_key: None,
@@ -370,6 +385,7 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             required: true,
+            translations: Default::default(),
         };
         let claim_schemas = vec![
             claim_schema_address.to_owned(),
@@ -408,6 +424,7 @@ impl CredentialSchemasDB {
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            translations: Default::default(),
         };
 
         let id = self
@@ -436,6 +453,7 @@ impl CredentialSchemasDB {
             array: false,
             metadata: false,
             required: true,
+            translations: Default::default(),
         };
         let claim_schema_address = ClaimSchema {
             business_key: None,
@@ -447,6 +465,7 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             required: true,
+            translations: Default::default(),
         };
         let claim_schema_address_street = ClaimSchema {
             business_key: None,
@@ -458,6 +477,7 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             required: true,
+            translations: Default::default(),
         };
         let claim_schema_address_coordinates = ClaimSchema {
             business_key: None,
@@ -469,6 +489,7 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             required: true,
+            translations: Default::default(),
         };
         let claim_schema_address_coordinates_x = ClaimSchema {
             business_key: None,
@@ -480,6 +501,7 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             required: true,
+            translations: Default::default(),
         };
         let claim_schema_address_coordinates_y = ClaimSchema {
             business_key: None,
@@ -491,6 +513,7 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             required: true,
+            translations: Default::default(),
         };
         let claim_schemas = vec![
             claim_schema_name.to_owned(),
@@ -530,6 +553,7 @@ impl CredentialSchemasDB {
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            translations: Default::default(),
         };
 
         let id = self
@@ -558,6 +582,7 @@ impl CredentialSchemasDB {
             array: false,
             metadata: false,
             required: true,
+            translations: Default::default(),
         };
         let claim_schema_string_array = ClaimSchema {
             business_key: None,
@@ -569,6 +594,7 @@ impl CredentialSchemasDB {
             array: true,
             metadata: false,
             required: true,
+            translations: Default::default(),
         };
         let claim_schema_object_array = ClaimSchema {
             business_key: None,
@@ -580,6 +606,7 @@ impl CredentialSchemasDB {
             array: true,
             metadata: false,
             required: true,
+            translations: Default::default(),
         };
         let claim_schema_object_array_field1 = ClaimSchema {
             business_key: None,
@@ -591,6 +618,7 @@ impl CredentialSchemasDB {
             array: false,
             metadata: false,
             required: true,
+            translations: Default::default(),
         };
         let claim_schema_object_array_field2 = ClaimSchema {
             business_key: None,
@@ -602,6 +630,7 @@ impl CredentialSchemasDB {
             array: false,
             metadata: false,
             required: true,
+            translations: Default::default(),
         };
         let claim_schema_address = ClaimSchema {
             business_key: None,
@@ -613,6 +642,7 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             required: true,
+            translations: Default::default(),
         };
         let claim_schema_address_street = ClaimSchema {
             business_key: None,
@@ -624,6 +654,7 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             required: true,
+            translations: Default::default(),
         };
         let claim_schema_address_coordinates = ClaimSchema {
             business_key: None,
@@ -635,6 +666,7 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             required: true,
+            translations: Default::default(),
         };
         let claim_schema_nested_string_array = ClaimSchema {
             business_key: None,
@@ -646,6 +678,7 @@ impl CredentialSchemasDB {
             array: true,
             metadata: false,
             required: true,
+            translations: Default::default(),
         };
         let claim_schema_nested_object_array = ClaimSchema {
             business_key: None,
@@ -657,6 +690,7 @@ impl CredentialSchemasDB {
             array: true,
             metadata: false,
             required: true,
+            translations: Default::default(),
         };
         let claim_schema_nested_object_array_field1 = ClaimSchema {
             business_key: None,
@@ -668,6 +702,7 @@ impl CredentialSchemasDB {
             array: false,
             metadata: false,
             required: true,
+            translations: Default::default(),
         };
         let claim_schema_nested_object_array_field2 = ClaimSchema {
             business_key: None,
@@ -679,6 +714,7 @@ impl CredentialSchemasDB {
             array: false,
             metadata: false,
             required: true,
+            translations: Default::default(),
         };
         let claim_schema_address_coordinates_x = ClaimSchema {
             business_key: None,
@@ -690,6 +726,7 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             required: true,
+            translations: Default::default(),
         };
         let claim_schema_address_coordinates_y = ClaimSchema {
             business_key: None,
@@ -701,6 +738,7 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             required: true,
+            translations: Default::default(),
         };
         let claim_schemas = vec![
             claim_schema_name.to_owned(),
@@ -748,6 +786,7 @@ impl CredentialSchemasDB {
             allow_suspension: true,
             requires_wallet_instance_attestation: params.requires_wallet_instance_attestation,
             transaction_code: None,
+            translations: Default::default(),
         };
 
         let id = self
@@ -774,6 +813,7 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             required: true,
+            translations: Default::default(),
         };
         let claim_schemas = vec![claim_schema.to_owned()];
 
@@ -806,6 +846,7 @@ impl CredentialSchemasDB {
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            translations: Default::default(),
         };
 
         let id = self
@@ -840,6 +881,7 @@ impl CredentialSchemasDB {
                 array: *array,
                 metadata: false,
                 required: *required,
+                translations: Default::default(),
             })
             .collect();
 
@@ -881,6 +923,7 @@ impl CredentialSchemasDB {
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            translations: Default::default(),
         };
 
         let id = self
@@ -908,6 +951,7 @@ impl CredentialSchemasDB {
             array: false,
             metadata: false,
             required: true,
+            translations: Default::default(),
         };
         let claim_schema1 = ClaimSchema {
             business_key: None,
@@ -919,6 +963,7 @@ impl CredentialSchemasDB {
             array: false,
             metadata: false,
             required: false,
+            translations: Default::default(),
         };
         let claim_schemas = vec![claim_schema, claim_schema1];
 
@@ -962,6 +1007,7 @@ impl CredentialSchemasDB {
             allow_suspension: false,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            translations: Default::default(),
         };
 
         self.repository
