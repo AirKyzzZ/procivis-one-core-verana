@@ -20,7 +20,10 @@ use crate::common::calculate_pages_count;
 use crate::credential_schema::CredentialSchemaProvider;
 use crate::credential_schema::mapper::{claim_schemas_to_model_vec, credential_schema_from_models};
 use crate::entity::credential_schema::LayoutType;
-use crate::entity::{claim_schema, credential_schema, credential_schema_format};
+use crate::entity::{
+    claim_schema, credential_schema, credential_schema_format,
+    credential_schema_format_claim_schema,
+};
 use crate::list_query_generic::SelectWithListQuery;
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 
@@ -34,6 +37,10 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
     ) -> Result<CredentialSchemaId, DataLayerError> {
         let claim_schemas = schema.claim_schemas.get().await?;
         let formats = schema.formats.get().await?;
+        let mut claim_mappings = vec![];
+        for format in &formats {
+            claim_mappings.extend(format.claim_mappings.get().await?)
+        }
 
         let credential_schema: credential_schema::ActiveModel = schema.into();
 
@@ -55,13 +62,23 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
                             .await
                             .map_err(|e| DataLayerError::Db(e.into()))?;
                     }
-
-                    let format_models: Vec<credential_schema_format::ActiveModel> =
-                        convert_inner(formats);
-                    credential_schema_format::Entity::insert_many(format_models)
-                        .exec(&self.db)
-                        .await
-                        .map_err(|e| DataLayerError::Db(e.into()))?;
+                    if !formats.is_empty() {
+                        let format_models: Vec<credential_schema_format::ActiveModel> =
+                            convert_inner(formats);
+                        credential_schema_format::Entity::insert_many(format_models)
+                            .exec(&self.db)
+                            .await
+                            .map_err(|e| DataLayerError::Db(e.into()))?;
+                    }
+                    if !claim_mappings.is_empty() {
+                        let mapping_models: Vec<
+                            credential_schema_format_claim_schema::ActiveModel,
+                        > = convert_inner(claim_mappings);
+                        credential_schema_format_claim_schema::Entity::insert_many(mapping_models)
+                            .exec(&self.db)
+                            .await
+                            .map_err(|e| DataLayerError::Db(e.into()))?;
+                    }
                     Ok::<_, DataLayerError>(credential_schema)
                 }
                 .boxed(),

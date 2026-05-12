@@ -58,10 +58,14 @@ pub enum CredentialSchemaServiceError {
 
     #[error("Batch size must be at least 2")]
     BatchSizeTooSmall,
-    #[error("Credential schema mapping format `{0}` is not part of schema formats")]
-    MappingFormatNotPartOfFormats(CredentialFormat),
-    #[error("Credential schema mapping namespace is missing for format `{0}`")]
-    MappingNamespaceMissing(CredentialFormat),
+    #[error(
+        "Credential schema mapping for claim with key `{0}`, format `{1}` is not part of schema formats for format"
+    )]
+    MappingFormatNotPartOfFormats(String, CredentialFormat),
+    #[error(
+        "Credential schema mapping for claim with key `{0}`, namespace is missing for format `{1}`"
+    )]
+    MappingNamespaceMissing(String, CredentialFormat),
 
     #[error("Key storage security level `{0}` not supported")]
     KeyStorageSecurityDisabled(KeyStorageSecurity),
@@ -75,6 +79,11 @@ pub enum CredentialSchemaServiceError {
     MissingOrganisation(OrganisationId),
     #[error("Organisation {0} is deactivated")]
     OrganisationIsDeactivated(OrganisationId),
+
+    #[error("Duplicate formats")]
+    DuplicateFormats,
+    #[error("Duplicate formats in mapping for claim `{0}`")]
+    DuplicateMappingFormats(String),
 
     #[error("Mapping error: `{0}`")]
     MappingError(String),
@@ -102,8 +111,8 @@ impl ErrorCodeMixin for CredentialSchemaServiceError {
             Self::InvalidTransactionCodeLength => ErrorCode::BR_0338,
             Self::InvalidTransactionCodeDescriptionLength => ErrorCode::BR_0346,
             Self::BatchSizeTooSmall => ErrorCode::BR_0434,
-            Self::MappingFormatNotPartOfFormats(_) => ErrorCode::BR_0352,
-            Self::MappingNamespaceMissing(_) => ErrorCode::BR_0353,
+            Self::MappingFormatNotPartOfFormats(..) => ErrorCode::BR_0437,
+            Self::MappingNamespaceMissing(..) => ErrorCode::BR_0438,
             Self::MissingNestedClaims(_) => ErrorCode::BR_0106,
             Self::NestedClaimsShouldBeEmpty(_) => ErrorCode::BR_0107,
             Self::ClaimSchemaSlashInKeyName(_) => ErrorCode::BR_0108,
@@ -119,6 +128,8 @@ impl ErrorCodeMixin for CredentialSchemaServiceError {
             Self::MappingError(_) => ErrorCode::BR_0047,
             Self::Nested(nested) => nested.error_code(),
             Self::MissingFormats => ErrorCode::BR_0435,
+            Self::DuplicateFormats => ErrorCode::BR_0439,
+            Self::DuplicateMappingFormats(_) => ErrorCode::BR_0440,
         }
     }
 }

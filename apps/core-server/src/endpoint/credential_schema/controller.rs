@@ -13,7 +13,9 @@ use super::dto::{
 use crate::dto::common::{EntityResponseRestDTO, GetCredentialSchemasResponseDTO};
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
-use crate::endpoint::credential_schema::dto::CreateCredentialSchemaRequestRestDTO;
+use crate::endpoint::credential_schema::dto::{
+    CreateCredentialSchemaRequestRestDTO, CreateCredentialSchemaV2RequestRestDTO,
+};
 use crate::extractor::Qs;
 use crate::router::AppState;
 
@@ -222,4 +224,53 @@ pub(crate) async fn share_credential_schema(
         .share_credential_schema(&id)
         .await;
     CreatedOrErrorResponse::from_result(result, state, "sharing credential schema")
+}
+
+#[endpoint(
+    permissions = [Permission::CredentialSchemaCreate],
+    post,
+    path = "/api/credential-schema/v2",
+    request_body = CreateCredentialSchemaV2RequestRestDTO,
+    responses(CreatedOrErrorResponse<EntityResponseRestDTO>),
+    tag = "credential_schema_management",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "Create credential schema (v2)",
+    description = indoc::formatdoc! {"
+        Creates a credential schema (v2), which supports multiple credential formats
+        and per-claim technical key mappings.
+
+        The `formats` array is mandatory and must contain at least one entry.
+        Each entry specifies a `format` (mandatory) and an optional `schemaId`.
+
+        Claims may include a `mapping` array to specify per-format technical keys
+        and namespaces. When no mapping is specified, the claim key is used as the
+        technical key. For mdoc formats, the schemaId is used as the default namespace.
+
+        The optional `batchSize` must be at least 2 if specified.
+    "},
+)]
+pub(crate) async fn post_credential_schema_v2(
+    state: State<AppState>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<CreateCredentialSchemaV2RequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
+) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
+    let request = match request.try_into() {
+        Ok(request) => request,
+        Err(err) => {
+            return CreatedOrErrorResponse::from_error(
+                &err,
+                state.config.hide_error_response_cause,
+            );
+        }
+    };
+    let result = state
+        .core
+        .credential_schema_service
+        .create_credential_schema_v2(request)
+        .await;
+    CreatedOrErrorResponse::from_result(result, state, "creating credential schema v2")
 }

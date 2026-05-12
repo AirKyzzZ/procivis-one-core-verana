@@ -8,7 +8,7 @@ use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrde
 use shared_types::{CredentialSchemaFormatId, CredentialSchemaId};
 
 use crate::credential_schema_format::CredentialSchemaFormatProvider;
-use crate::credential_schema_format::mapper::credential_schema_format_from_models;
+use crate::credential_schema_format::mapper::credential_schema_format_from_model;
 use crate::entity::{credential_schema_format, credential_schema_format_claim_schema};
 use crate::mapper::to_data_layer_error;
 
@@ -61,7 +61,7 @@ impl CredentialSchemaFormatRepository for CredentialSchemaFormatProvider {
             .await
             .map_err(to_data_layer_error)?;
 
-        Ok(row.map(|model| credential_schema_format_from_models(model, self.db.to_owned())))
+        Ok(row.map(|model| credential_schema_format_from_model(model, self.db.to_owned())))
     }
 
     async fn list_by_credential_schema_id(
@@ -77,7 +77,7 @@ impl CredentialSchemaFormatRepository for CredentialSchemaFormatProvider {
 
         Ok(rows
             .into_iter()
-            .map(|model| credential_schema_format_from_models(model, self.db.to_owned()))
+            .map(|model| credential_schema_format_from_model(model, self.db.to_owned()))
             .collect())
     }
 }

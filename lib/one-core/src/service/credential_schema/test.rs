@@ -2083,7 +2083,7 @@ fn test_claims_presence_in_layout_properties_validation_ok() {
         ..dummy_request()
     };
 
-    assert2::assert!(let Ok(()) = check_claims_presence_in_layout_properties(&request))
+    assert2::assert!(let Ok(()) = check_claims_presence_in_layout_properties(request.layout_properties.as_ref(), &request.claims))
 }
 
 #[test]
@@ -2126,7 +2126,7 @@ fn test_claims_presence_in_layout_properties_validation_missing_primary_attribut
     };
 
     assert2::assert!(
-        let Err(CredentialSchemaServiceError::MissingLayoutAttribute(_)) = check_claims_presence_in_layout_properties(&request)
+        let Err(CredentialSchemaServiceError::MissingLayoutAttribute(_)) = check_claims_presence_in_layout_properties(request.layout_properties.as_ref(), &request.claims)
     )
 }
 
@@ -2156,7 +2156,7 @@ fn test_background_attributes_combination_failed_both() {
     };
 
     assert2::assert!(
-        let Err(CredentialSchemaServiceError::AttributeCombinationNotAllowed) = check_background_properties(&request)
+        let Err(CredentialSchemaServiceError::AttributeCombinationNotAllowed) = check_background_properties(request.layout_properties.as_ref())
     )
 }
 
@@ -2181,7 +2181,7 @@ fn test_background_attributes_combination_failed_none() {
     };
 
     assert2::assert!(
-        let Err(CredentialSchemaServiceError::AttributeCombinationNotAllowed) = check_background_properties(&request)
+        let Err(CredentialSchemaServiceError::AttributeCombinationNotAllowed) = check_background_properties(request.layout_properties.as_ref())
     )
 }
 
@@ -2211,7 +2211,7 @@ fn test_background_attributes_combination_ok_image() {
     };
 
     assert2::assert!(
-        let Ok(()) = check_background_properties(&request)
+        let Ok(()) = check_background_properties(request.layout_properties.as_ref())
     )
 }
 
@@ -2236,7 +2236,7 @@ fn test_background_attributes_combination_ok_color() {
     };
 
     assert2::assert!(
-        let Ok(()) = check_background_properties(&request)
+        let Ok(()) = check_background_properties(request.layout_properties.as_ref())
     )
 }
 
@@ -2262,7 +2262,7 @@ fn test_logo_attributes_combination_ok_background_plus_font() {
     };
 
     assert2::assert!(
-        let Ok(()) = check_logo_properties(&request)
+        let Ok(()) = check_logo_properties(request.layout_properties.as_ref())
     )
 }
 
@@ -2293,7 +2293,7 @@ fn test_logo_attributes_combination_ok_image() {
     };
 
     assert2::assert!(
-        let Ok(()) = check_logo_properties(&request)
+        let Ok(()) = check_logo_properties(request.layout_properties.as_ref())
     )
 }
 
@@ -2324,7 +2324,7 @@ fn test_logo_attributes_combination_mix1_fail() {
     };
 
     assert2::assert!(
-        let Err(CredentialSchemaServiceError::AttributeCombinationNotAllowed) = check_logo_properties(&request)
+        let Err(CredentialSchemaServiceError::AttributeCombinationNotAllowed) = check_logo_properties(request.layout_properties.as_ref())
     )
 }
 
@@ -2355,7 +2355,7 @@ fn test_logo_attributes_combination_mix2_fail() {
     };
 
     assert2::assert!(
-        let Err(CredentialSchemaServiceError::AttributeCombinationNotAllowed) = check_logo_properties(&request)
+        let Err(CredentialSchemaServiceError::AttributeCombinationNotAllowed) = check_logo_properties(request.layout_properties.as_ref())
     )
 }
 
@@ -2381,7 +2381,7 @@ fn test_logo_attributes_combination_mix3_fail() {
     };
 
     assert2::assert!(
-        let Err(CredentialSchemaServiceError::AttributeCombinationNotAllowed) = check_logo_properties(&request)
+        let Err(CredentialSchemaServiceError::AttributeCombinationNotAllowed) = check_logo_properties(request.layout_properties.as_ref())
     )
 }
 
@@ -2407,7 +2407,7 @@ fn test_logo_attributes_combination_empty_fail() {
     };
 
     assert2::assert!(
-        let Err(CredentialSchemaServiceError::AttributeCombinationNotAllowed) = check_logo_properties(&request)
+        let Err(CredentialSchemaServiceError::AttributeCombinationNotAllowed) = check_logo_properties(request.layout_properties.as_ref())
     )
 }
 
@@ -2437,7 +2437,7 @@ fn test_claims_presence_in_layout_properties_validation_missing_secondary_attrib
     };
 
     assert2::assert!(
-        let Err(CredentialSchemaServiceError::MissingLayoutAttribute(_)) = check_claims_presence_in_layout_properties(&request)
+        let Err(CredentialSchemaServiceError::MissingLayoutAttribute(_)) = check_claims_presence_in_layout_properties(request.layout_properties.as_ref(), &request.claims)
     )
 }
 
@@ -2458,7 +2458,7 @@ fn test_claims_presence_in_layout_properties_validation_attributes_not_specified
         ..dummy_request()
     };
 
-    assert2::assert!(let Ok(()) = check_claims_presence_in_layout_properties(&request))
+    assert2::assert!(let Ok(()) = check_claims_presence_in_layout_properties(request.layout_properties.as_ref(), &request.claims))
 }
 
 fn dummy_request() -> CreateCredentialSchemaRequestDTO {

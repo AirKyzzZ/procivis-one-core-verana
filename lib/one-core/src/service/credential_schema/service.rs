@@ -1,22 +1,26 @@
-use shared_types::CredentialSchemaId;
+use shared_types::{CredentialSchemaId, OrganisationId};
 use uuid::Uuid;
 
 use super::CredentialSchemaService;
 use super::dto::{
-    CreateCredentialSchemaRequestDTO, CredentialSchemaDetailResponseDTO,
-    CredentialSchemaFilterParamsDTO, CredentialSchemaListIncludeEntityTypeEnum,
-    CredentialSchemaShareResponseDTO, GetCredentialSchemaListResponseDTO,
-    ImportCredentialSchemaRequestDTO,
+    CreateCredentialSchemaRequestDTO, CreateCredentialSchemaV2RequestDTO,
+    CredentialSchemaDetailResponseDTO, CredentialSchemaFilterParamsDTO,
+    CredentialSchemaListIncludeEntityTypeEnum, CredentialSchemaShareResponseDTO,
+    GetCredentialSchemaListResponseDTO, ImportCredentialSchemaRequestDTO,
 };
 use super::error::CredentialSchemaServiceError;
 use super::mapper::{
-    from_create_request_with_id, schema_to_detail_response_dto, to_credential_schema_list_response,
+    build_format_with_claim_mappings, from_create_request_with_id, from_create_v2_request_with_id,
+    schema_to_detail_response_dto, to_credential_schema_list_response, unnest_claim_schemas,
 };
 use super::validator::UniquenessCheckResult;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
-use crate::mapper::credential_schema_claim::claim_schema_from_metadata_claim_schema;
+use crate::mapper::credential_schema_claim::{
+    claim_schema_from_metadata_claim_schema, from_request_claim_schema,
+};
 use crate::model::common::GetListResponse;
 use crate::model::credential_schema::SortableCredentialSchemaColumn;
+use crate::model::organisation::Organisation;
 use crate::repository::error::DataLayerError;
 use crate::service::common_dto::ListQueryDTO;
 use crate::service::credential_schema::dto::CredentialSchemaListItemResponseDTO;
@@ -52,45 +56,25 @@ impl CredentialSchemaService {
             &*self.revocation_method_provider,
         )?;
 
-        match super::validator::credential_schema_already_exists(
-            &*self.credential_schema_repository,
+        self.validate_credential_schema_already_exists(
             &request.name,
-            request.schema_id.clone(),
+            request.schema_id.iter().cloned().collect(),
             request.organisation_id,
         )
-        .await?
-        {
-            UniquenessCheckResult::SchemaIdConflict | UniquenessCheckResult::NameConflict => {
-                return Err(CredentialSchemaServiceError::AlreadyExists);
-            }
-            UniquenessCheckResult::Ok => {}
-        };
+        .await?;
 
-        super::validator::check_claims_presence_in_layout_properties(&request)?;
-        super::validator::check_background_properties(&request)?;
-        super::validator::check_logo_properties(&request)?;
+        super::validator::check_claims_presence_in_layout_properties(
+            request.layout_properties.as_ref(),
+            &request.claims,
+        )?;
+        super::validator::check_background_properties(request.layout_properties.as_ref())?;
+        super::validator::check_logo_properties(request.layout_properties.as_ref())?;
         super::validator::validate_key_storage_security_supported(
             request.key_storage_security,
             &self.config,
         )?;
 
-        let organisation = self
-            .organisation_repository
-            .get_organisation(&request.organisation_id)
-            .await
-            .error_while("getting organisation")?;
-
-        let Some(organisation) = organisation else {
-            return Err(CredentialSchemaServiceError::MissingOrganisation(
-                request.organisation_id,
-            ));
-        };
-
-        if organisation.deactivated_at.is_some() {
-            return Err(CredentialSchemaServiceError::OrganisationIsDeactivated(
-                request.organisation_id,
-            ));
-        }
+        let organisation = self.get_organisation(request.organisation_id).await?;
 
         let id = CredentialSchemaId::from(Uuid::new_v4());
         let schema_id = formatter
@@ -143,6 +127,171 @@ impl CredentialSchemaService {
 
         tracing::info!(message = success_log);
         Ok(schema_id)
+    }
+
+    pub async fn create_credential_schema_v2(
+        &self,
+        request: CreateCredentialSchemaV2RequestDTO,
+    ) -> Result<CredentialSchemaId, CredentialSchemaServiceError> {
+        throw_if_org_id_not_matching_session(&request.organisation_id, &*self.session_provider)
+            .error_while("checking session")?;
+
+        let core_base_url = self.core_base_url.as_ref().ok_or_else(|| {
+            CredentialSchemaServiceError::MappingError("Missing core base_url".to_string())
+        })?;
+
+        let schema_ids = request
+            .formats
+            .iter()
+            .flat_map(|format| format.schema_id.clone())
+            .collect();
+
+        self.validate_credential_schema_already_exists(
+            &request.name,
+            schema_ids,
+            request.organisation_id,
+        )
+        .await?;
+
+        super::validator::validate_create_v2_request(
+            &request,
+            &self.config,
+            &*self.formatter_provider,
+        )?;
+
+        super::validator::check_claims_presence_in_layout_properties(
+            request.layout_properties.as_ref(),
+            &request.claims,
+        )?;
+        super::validator::check_background_properties(request.layout_properties.as_ref())?;
+        super::validator::check_logo_properties(request.layout_properties.as_ref())?;
+        super::validator::validate_key_storage_security_supported(
+            request.key_storage_security,
+            &self.config,
+        )?;
+
+        let organisation = self.get_organisation(request.organisation_id).await?;
+
+        let credential_schema_id = CredentialSchemaId::from(Uuid::new_v4());
+        let now = crate::clock::now_utc();
+
+        let flat_claims = unnest_claim_schemas(request.claims.clone());
+        let claim_schemas_with_raw_mappings = flat_claims
+            .into_iter()
+            .map(|claim_schema_request| {
+                (
+                    from_request_claim_schema(now, &claim_schema_request),
+                    claim_schema_request.mapping.unwrap_or_default(),
+                )
+            })
+            .collect::<Vec<_>>();
+
+        let mut claim_schemas: Vec<_> = claim_schemas_with_raw_mappings
+            .iter()
+            .map(|(cs, _)| cs.clone())
+            .collect();
+        let mut resolved_formats = vec![];
+        for format_req in &request.formats {
+            let formatter = self
+                .formatter_provider
+                .get_credential_formatter(&format_req.format)
+                .ok_or(CredentialSchemaServiceError::MissingFormat(
+                    format_req.format.to_owned(),
+                ))?;
+
+            let schema_id = formatter
+                .credential_schema_id(
+                    credential_schema_id,
+                    organisation.id,
+                    format_req.schema_id.as_deref(),
+                    core_base_url,
+                )
+                .error_while("creating schemaId")?;
+
+            let (schema_format, format_specific_claim_schemas) = build_format_with_claim_mappings(
+                credential_schema_id,
+                schema_id,
+                format_req.format.clone(),
+                now,
+                &claim_schemas_with_raw_mappings,
+                formatter.as_ref(),
+            );
+            resolved_formats.push(schema_format);
+            claim_schemas.extend(format_specific_claim_schemas);
+        }
+        let resolved_formats_types = resolved_formats
+            .iter()
+            .map(|f| f.format.clone())
+            .collect::<Vec<_>>();
+
+        let imported_source_url = format!("{core_base_url}/ssi/schema/v1/{credential_schema_id}");
+        let credential_schema = from_create_v2_request_with_id(
+            credential_schema_id,
+            request,
+            organisation,
+            now,
+            resolved_formats,
+            claim_schemas,
+            imported_source_url,
+        );
+
+        let success_log = format!(
+            "Created credential schema v2 `{}` ({credential_schema_id}): formats `{:?}`, key storage security {}",
+            credential_schema.name,
+            resolved_formats_types,
+            quoted_opt_provider(&credential_schema.key_storage_security)
+        );
+
+        let schema_id = self
+            .credential_schema_repository
+            .create_credential_schema(credential_schema)
+            .await
+            .error_while("creating credential schema")?;
+
+        tracing::info!(message = success_log);
+        Ok(schema_id)
+    }
+
+    async fn get_organisation(
+        &self,
+        organisation_id: OrganisationId,
+    ) -> Result<Organisation, CredentialSchemaServiceError> {
+        let organisation = self
+            .organisation_repository
+            .get_organisation(&organisation_id)
+            .await
+            .error_while("getting organisation")?
+            .ok_or(CredentialSchemaServiceError::MissingOrganisation(
+                organisation_id,
+            ))?;
+
+        if organisation.deactivated_at.is_some() {
+            return Err(CredentialSchemaServiceError::OrganisationIsDeactivated(
+                organisation_id,
+            ));
+        }
+        Ok(organisation)
+    }
+
+    async fn validate_credential_schema_already_exists(
+        &self,
+        name: &str,
+        schema_ids: Vec<String>,
+        organisation_id: OrganisationId,
+    ) -> Result<(), CredentialSchemaServiceError> {
+        match super::validator::credential_schema_already_exists(
+            &*self.credential_schema_repository,
+            name,
+            schema_ids,
+            organisation_id,
+        )
+        .await?
+        {
+            UniquenessCheckResult::SchemaIdConflict | UniquenessCheckResult::NameConflict => {
+                Err(CredentialSchemaServiceError::AlreadyExists)
+            }
+            UniquenessCheckResult::Ok => Ok(()),
+        }
     }
 
     /// Deletes a credential schema

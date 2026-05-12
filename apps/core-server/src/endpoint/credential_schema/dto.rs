@@ -1,9 +1,10 @@
 use dcql::CredentialMeta;
 use one_core::model::credential_schema::{CredentialSchemaExactColumn, TransactionCodeType};
 use one_core::service::credential_schema::dto::{
-    CreateCredentialSchemaRequestDTO, CredentialClaimSchemaDTO, CredentialClaimSchemaMappingDTO,
-    CredentialClaimSchemaRequestDTO, CredentialSchemaDcqlResponseDTO,
-    CredentialSchemaDetailResponseDTO, CredentialSchemaFilterParamsDTO,
+    CreateCredentialSchemaRequestDTO, CreateCredentialSchemaV2RequestDTO, CredentialClaimSchemaDTO,
+    CredentialClaimSchemaMappingDTO, CredentialClaimSchemaRequestDTO,
+    CredentialSchemaDcqlResponseDTO, CredentialSchemaDetailResponseDTO,
+    CredentialSchemaFilterParamsDTO, CredentialSchemaFormatRequestDTO,
     CredentialSchemaListIncludeEntityTypeEnum, CredentialSchemaListItemResponseDTO,
     CredentialSchemaTransactionCodeDTO, CredentialSchemaTransactionCodeRequestDTO,
 };
@@ -602,6 +603,73 @@ pub(crate) struct ImportCredentialSchemaLayoutPropertiesRestDTO {
     #[serde(default)]
     #[try_into(with_fn = convert_inner, infallible)]
     pub code: Option<CredentialSchemaCodePropertiesRestDTO>,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into, ModifySchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[into(CredentialSchemaFormatRequestDTO)]
+pub(crate) struct CredentialSchemaFormatRequestRestDTO {
+    /// Credential format identifier from the system configuration.
+    #[modify_schema(field = format)]
+    pub format: CredentialFormat,
+    /// Optional schema identifier for this format (e.g. DocType for mdoc, vct for SD-JWT VC).
+    #[serde(default)]
+    #[into(with_fn = convert_inner)]
+    pub schema_id: Option<String>,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, TryInto, Validate)]
+#[try_into(T = CreateCredentialSchemaV2RequestDTO, Error = ServiceError)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct CreateCredentialSchemaV2RequestRestDTO {
+    /// Name of the credential schema.
+    #[validate(length(min = 1))]
+    #[try_into(infallible)]
+    pub name: String,
+    /// List of credential formats supported by this schema.
+    #[validate(length(min = 1))]
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub formats: Vec<CredentialSchemaFormatRequestRestDTO>,
+    /// Required when not using STS authentication mode.
+    #[try_into(with_fn = fallback_organisation_id_from_session)]
+    pub organisation_id: Option<OrganisationId>,
+    /// Defines the set of claims to be asserted when using this credential schema.
+    #[validate(length(min = 1))]
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub claims: Vec<CredentialClaimSchemaRequestRestDTO>,
+    /// Specifies key storage security requirements.
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub key_storage_security: Option<KeyStorageSecurityRestEnum>,
+    /// Determines the general appearance of the credential in the holder's wallet.
+    #[serde(default)]
+    #[schema(default = CredentialSchemaLayoutType::default)]
+    #[try_into(infallible)]
+    pub layout_type: CredentialSchemaLayoutType,
+    #[serde(default)]
+    #[try_into(with_fn = try_convert_inner)]
+    pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
+    /// If `true` and the chosen revocation method allows for suspension,
+    /// credentials issued with this schema can be suspended.
+    #[serde(default)]
+    #[try_into(infallible)]
+    pub allow_suspension: Option<bool>,
+    /// If `true`, credentials issued with this schema can be revoked.
+    #[serde(default)]
+    #[try_into(infallible)]
+    pub allow_revocation: Option<bool>,
+    /// Minimum batch size for issuance. Must be at least 2 if specified.
+    #[serde(default)]
+    #[try_into(infallible)]
+    pub batch_size: Option<i32>,
+    #[serde(default)]
+    #[try_into(infallible)]
+    pub requires_wallet_instance_attestation: bool,
+    /// Optional transaction code configuration.
+    #[serde(default)]
+    #[try_into(with_fn = try_convert_inner)]
+    pub transaction_code: Option<CredentialSchemaTransactionCodeRequestRestDTO>,
 }
 
 #[cfg(test)]

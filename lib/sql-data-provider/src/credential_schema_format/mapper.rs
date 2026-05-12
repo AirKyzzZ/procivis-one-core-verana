@@ -54,7 +54,7 @@ impl From<CredentialSchemaFormatClaimSchema>
     }
 }
 
-pub(crate) fn credential_schema_format_from_models(
+pub(crate) fn credential_schema_format_from_model(
     model: credential_schema_format::Model,
     db: TransactionManagerImpl,
 ) -> CredentialSchemaFormat {

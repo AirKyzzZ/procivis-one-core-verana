@@ -19,7 +19,7 @@ use shared_types::CredentialSchemaId;
 use uuid::Uuid;
 
 use crate::TransactionManagerImpl;
-use crate::credential_schema_format::mapper::credential_schema_format_from_models;
+use crate::credential_schema_format::mapper::credential_schema_format_from_model;
 use crate::entity::credential_schema::KeyStorageSecurity;
 use crate::entity::{claim_schema, credential_schema, credential_schema_format};
 use crate::list_query_generic::{
@@ -64,6 +64,20 @@ impl IntoFilterCondition for CredentialSchemaFilterValue {
                     credential_schema::Column::SchemaId,
                     string_match,
                 )),
+            Self::SchemaIds(schema_ids) => Condition::any()
+                .add(
+                    credential_schema::Column::Id.in_subquery(
+                        Query::select()
+                            .column(credential_schema_format::Column::CredentialSchemaId)
+                            .from(credential_schema_format::Entity)
+                            .cond_where(
+                                credential_schema_format::Column::SchemaId
+                                    .is_in(schema_ids.clone()),
+                            )
+                            .to_owned(),
+                    ),
+                )
+                .add(credential_schema::Column::SchemaId.is_in(schema_ids)),
             Self::Formats(formats) => Condition::any()
                 .add(
                     credential_schema::Column::Id.in_subquery(
@@ -262,7 +276,7 @@ impl AsyncVecLoader<CredentialSchemaFormat> for CredentialSchemaFormatsLoader {
 
         Ok(credential_schema_formats
             .into_iter()
-            .map(|m| credential_schema_format_from_models(m, self.db.clone()))
+            .map(|m| credential_schema_format_from_model(m, self.db.clone()))
             .collect())
     }
 }

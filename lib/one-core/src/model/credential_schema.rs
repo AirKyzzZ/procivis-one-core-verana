@@ -61,12 +61,15 @@ impl ErrorCodeMixin for CredentialSchemaModelError {
 
 impl CredentialSchema {
     // #[deprecated(note = "Use `formats` instead")] TODO: remove after we support multiformat schema
-    pub async fn matches_schema_id(&self, other_schema_id: &str) -> Result<bool, NestedError> {
+    pub async fn matches_schema_id(
+        &self,
+        other_schema_ids: &[String],
+    ) -> Result<bool, NestedError> {
         Ok(self
             .get_formats()
             .await?
             .iter()
-            .any(|f| f.schema_id == other_schema_id))
+            .any(|f| other_schema_ids.contains(&f.schema_id)))
     }
 
     // #[deprecated(note = "Use `formats` instead")] TODO: remove after we support multiformat schema

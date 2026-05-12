@@ -1,4 +1,5 @@
 mod create_credential_schema_tests;
+mod create_credential_schema_v2_tests;
 mod delete_credential_schema_tests;
 mod get_credential_schema_tests;
 mod import_credential_schema_test;

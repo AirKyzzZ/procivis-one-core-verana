@@ -113,6 +113,7 @@ pub enum CredentialSchemaFilterValue {
     Name(StringMatch),
     OrganisationId(OrganisationId),
     SchemaId(StringMatch),
+    SchemaIds(Vec<String>),
     Formats(Vec<String>),
     RequiresWalletInstanceAttestation(bool),
     KeyStorageSecurity(Vec<KeyStorageSecurity>),
@@ -140,6 +141,28 @@ pub struct CredentialSchemaFilterParamsDTO {
 }
 
 pub type GetCredentialSchemaListResponseDTO = GetListResponse<CredentialSchemaListItemResponseDTO>;
+
+#[derive(Clone, Debug)]
+pub struct CreateCredentialSchemaV2RequestDTO {
+    pub name: String,
+    pub formats: Vec<CredentialSchemaFormatRequestDTO>,
+    pub organisation_id: OrganisationId,
+    pub claims: Vec<CredentialClaimSchemaRequestDTO>,
+    pub key_storage_security: Option<KeyStorageSecurity>,
+    pub layout_type: LayoutType,
+    pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,
+    pub allow_suspension: Option<bool>,
+    pub allow_revocation: Option<bool>,
+    pub batch_size: Option<i32>,
+    pub requires_wallet_instance_attestation: bool,
+    pub transaction_code: Option<CredentialSchemaTransactionCodeRequestDTO>,
+}
+
+#[derive(Clone, Debug)]
+pub struct CredentialSchemaFormatRequestDTO {
+    pub format: CredentialFormat,
+    pub schema_id: Option<String>,
+}
 
 #[derive(Clone, Debug)]
 pub struct CreateCredentialSchemaRequestDTO {

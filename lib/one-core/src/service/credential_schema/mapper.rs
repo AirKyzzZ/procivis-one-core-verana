@@ -5,28 +5,36 @@ use url::Url;
 use uuid::Uuid;
 
 use super::dto::{
-    CreateCredentialSchemaRequestDTO, CredentialClaimSchemaDTO, CredentialClaimSchemaRequestDTO,
-    CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaCodePropertiesDTO,
-    CredentialSchemaDcqlResponseDTO, CredentialSchemaDetailResponseDTO,
-    CredentialSchemaFilterParamsDTO, CredentialSchemaFilterValue,
-    CredentialSchemaListItemResponseDTO, CredentialSchemaLogoPropertiesRequestDTO,
+    CreateCredentialSchemaRequestDTO, CreateCredentialSchemaV2RequestDTO, CredentialClaimSchemaDTO,
+    CredentialClaimSchemaRequestDTO, CredentialSchemaBackgroundPropertiesRequestDTO,
+    CredentialSchemaCodePropertiesDTO, CredentialSchemaDcqlResponseDTO,
+    CredentialSchemaDetailResponseDTO, CredentialSchemaFilterParamsDTO,
+    CredentialSchemaFilterValue, CredentialSchemaListItemResponseDTO,
+    CredentialSchemaLogoPropertiesRequestDTO,
 };
 use super::error::CredentialSchemaServiceError;
 use crate::config::core_config::{CoreConfig, FormatType};
 use crate::error::{ContextWithErrorCode, NestedError};
-use crate::mapper::credential_schema_claim::from_jwt_request_claim_schema;
+use crate::mapper::credential_schema_claim::{
+    claim_schema_from_metadata_claim_schema, from_jwt_request_claim_schema,
+};
 use crate::mapper::{NESTED_CLAIM_MARKER, remove_first_nesting_layer};
+use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaExactColumn, CredentialSchemaListQuery,
 };
 use crate::model::credential_schema_format::CredentialSchemaFormat;
+use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::list_filter::{
     ComparisonType, ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
     ValueComparison,
 };
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::Organisation;
-use crate::provider::credential_formatter::model::Context;
+use crate::model::relation::RelatedVec;
+use crate::proto::credential_schema::dto::CredentialClaimSchemaMappingDTO;
+use crate::provider::credential_formatter::CredentialFormatter;
+use crate::provider::credential_formatter::model::{Context, Features};
 
 pub(crate) async fn schema_to_detail_response_dto(
     value: CredentialSchema,
@@ -118,7 +126,7 @@ fn schema_to_dcql_meta(
 
 pub(super) fn create_unique_name_check_request(
     name: &str,
-    schema_id: Option<String>,
+    schema_ids: Vec<String>,
     organisation_id: OrganisationId,
 ) -> Result<CredentialSchemaListQuery, CredentialSchemaServiceError> {
     Ok(CredentialSchemaListQuery {
@@ -133,12 +141,7 @@ pub(super) fn create_unique_name_check_request(
                     value: name.to_owned(),
                 })
                 .condition()
-                    | schema_id.map(|schema_id| {
-                        CredentialSchemaFilterValue::SchemaId(StringMatch {
-                            r#match: StringMatchType::Equals,
-                            value: schema_id,
-                        })
-                    })),
+                    | CredentialSchemaFilterValue::SchemaIds(schema_ids)),
         ),
         ..Default::default()
     })
@@ -201,6 +204,111 @@ pub(super) fn from_create_request_with_id(
         }]
         .into(),
     })
+}
+
+pub(super) fn from_create_v2_request_with_id(
+    id: CredentialSchemaId,
+    request: CreateCredentialSchemaV2RequestDTO,
+    organisation: Organisation,
+    now: time::OffsetDateTime,
+    formats: Vec<CredentialSchemaFormat>,
+    claim_schemas: Vec<ClaimSchema>,
+    imported_source_url: String,
+) -> CredentialSchema {
+    CredentialSchema {
+        id,
+        allow_revocation: request.allow_revocation,
+        deleted_at: None,
+        created_date: now,
+        last_modified: now,
+        name: request.name,
+        key_storage_security: request.key_storage_security,
+        revocation_method: None,
+        claim_schemas: claim_schemas.into(),
+        organisation: organisation.into(),
+        layout_type: request.layout_type,
+        layout_properties: request.layout_properties.map(Into::into),
+        imported_source_url,
+        allow_suspension: request.allow_suspension.unwrap_or_default(),
+        requires_wallet_instance_attestation: request.requires_wallet_instance_attestation,
+        transaction_code: convert_inner(request.transaction_code),
+        batch_size: request.batch_size,
+        formats: formats.into(),
+    }
+}
+
+pub(super) fn build_format_with_claim_mappings(
+    credential_schema_id: CredentialSchemaId,
+    schema_id: String,
+    format: shared_types::CredentialFormat,
+    now: time::OffsetDateTime,
+    claim_schemas_to_mappings: &[(ClaimSchema, Vec<CredentialClaimSchemaMappingDTO>)],
+    formatter: &dyn CredentialFormatter,
+) -> (CredentialSchemaFormat, Vec<ClaimSchema>) {
+    let format_id = Uuid::new_v4().into();
+    let uses_namespaces = formatter
+        .get_capabilities()
+        .features
+        .contains(&Features::RequiresNamespaces);
+
+    let metadata_claims_with_mappings = formatter
+        .get_metadata_claims()
+        .into_iter()
+        .map(|metadata_claim| {
+            (
+                claim_schema_from_metadata_claim_schema(metadata_claim, now),
+                vec![],
+            )
+        })
+        .collect::<Vec<_>>();
+
+    let mut mappings = vec![];
+    for (claim_schema, claim_mappings) in claim_schemas_to_mappings
+        .iter()
+        .chain(metadata_claims_with_mappings.iter())
+    {
+        let mapping_for_format = claim_mappings.iter().find(|m| m.format == format);
+
+        let technical_key = mapping_for_format
+            .map(|m| m.technical_key.clone())
+            .unwrap_or_else(|| claim_schema.key.clone());
+
+        let namespace = mapping_for_format
+            .and_then(|m| m.namespace.clone())
+            .or_else(|| {
+                if uses_namespaces {
+                    Some(schema_id.clone())
+                } else {
+                    None
+                }
+            });
+
+        mappings.push(CredentialSchemaFormatClaimSchema {
+            id: Uuid::new_v4().into(),
+            created_date: now,
+            last_modified: now,
+            credential_schema_format_id: format_id,
+            claim_schema_id: claim_schema.id,
+            technical_key,
+            namespace,
+        });
+    }
+
+    (
+        CredentialSchemaFormat {
+            id: format_id,
+            created_date: now,
+            last_modified: now,
+            credential_schema_id,
+            format,
+            schema_id,
+            claim_mappings: RelatedVec::from(mappings),
+        },
+        metadata_claims_with_mappings
+            .into_iter()
+            .map(|(claim_schema, _)| claim_schema)
+            .collect(),
+    )
 }
 
 pub(crate) async fn to_credential_schema_list_response(

@@ -52,6 +52,18 @@ pub struct CreateSchemaParams {
     pub transaction_code: Option<CredentialSchemaTransactionCodeRequestRestDTO>,
 }
 
+#[derive(Default)]
+pub struct CreateSchemaV2Params {
+    pub name: String,
+    pub organisation_id: Uuid,
+    pub formats: Vec<serde_json::Value>,
+    pub claims: Vec<TestClaim>,
+    pub batch_size: Option<i32>,
+    pub allow_suspension: Option<bool>,
+    pub allow_revocation: Option<bool>,
+    pub transaction_code: Option<CredentialSchemaTransactionCodeRequestRestDTO>,
+}
+
 impl CreateSchemaParams {
     pub fn with_default_claims(mut self, claim_name: String) -> Self {
         self.claims = vec![TestClaim {
@@ -158,6 +170,42 @@ impl CredentialSchemasApi {
     pub async fn share(&self, schema_id: &impl Display) -> Response {
         let url = format!("/api/credential-schema/v1/{schema_id}/share");
         self.client.post(&url, None).await
+    }
+
+    pub async fn create_v2(&self, params: CreateSchemaV2Params) -> Response {
+        let primary_attribute = params
+            .claims
+            .first()
+            .map(TestClaim::primary_attribute_from_firsts)
+            .unwrap_or_default();
+        let body = json!({
+            "name": params.name,
+            "organisationId": params.organisation_id,
+            "formats": params.formats,
+            "claims": params.claims,
+            "layoutType": "CARD",
+            "layoutProperties": {
+                "background": {
+                    "color": "bg-color"
+                },
+                "primaryAttribute": primary_attribute,
+            },
+            "batchSize": params.batch_size,
+            "allowSuspension": params.allow_suspension,
+            "allowRevocation": params.allow_revocation,
+        });
+        let mut body = body;
+        if let Some(transaction_code) = params.transaction_code {
+            let mut code = json!({
+                "type": transaction_code.r#type,
+                "length": transaction_code.length
+            });
+            if let Some(description) = transaction_code.description {
+                code["description"] = json!(description);
+            }
+            body["transactionCode"] = code;
+        }
+        self.client.post("/api/credential-schema/v2", body).await
     }
 
     pub async fn import(

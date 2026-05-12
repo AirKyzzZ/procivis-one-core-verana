@@ -927,6 +927,18 @@ pub enum ErrorCode {
 
     #[strum(message = "Credential schema must specify at least one format")]
     BR_0435,
+
+    #[strum(message = "Credential schema mapping format not part of formats")]
+    BR_0437,
+
+    #[strum(message = "Credential schema mapping namespace missing")]
+    BR_0438,
+
+    #[strum(message = "Credential schema duplicate formats")]
+    BR_0439,
+
+    #[strum(message = "Credential schema duplicate mapping formats")]
+    BR_0440,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

@@ -1,8 +1,13 @@
 use std::collections::HashSet;
 
+use itertools::Itertools;
 use shared_types::OrganisationId;
 
-use super::dto::{CreateCredentialSchemaRequestDTO, CredentialClaimSchemaRequestDTO};
+use super::dto::{
+    CreateCredentialSchemaRequestDTO, CreateCredentialSchemaV2RequestDTO,
+    CredentialClaimSchemaRequestDTO, CredentialSchemaFormatRequestDTO,
+    CredentialSchemaLayoutPropertiesRequestDTO, CredentialSchemaTransactionCodeRequestDTO,
+};
 use super::error::CredentialSchemaServiceError;
 use super::mapper::create_unique_name_check_request;
 use crate::config::core_config::{ConfigExt, CoreConfig, DatatypeType, FormatType};
@@ -22,21 +27,19 @@ use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 pub(crate) async fn credential_schema_already_exists(
     repository: &dyn CredentialSchemaRepository,
     name: &str,
-    schema_id: Option<String>,
+    schema_ids: Vec<String>,
     organisation_id: OrganisationId,
 ) -> Result<UniquenessCheckResult, CredentialSchemaServiceError> {
     let credential_schemas = repository
         .get_credential_schema_list(create_unique_name_check_request(
             name,
-            schema_id.clone(),
+            schema_ids.clone(),
             organisation_id,
         )?)
         .await
         .error_while("getting credential schemas")?;
 
-    if let Some(schema_id) = schema_id
-        && exists_credential_schema_with_same_schema_id(&credential_schemas, &schema_id).await?
-    {
+    if exists_credential_schema_with_same_schema_id(&credential_schemas, &schema_ids).await? {
         return Ok(UniquenessCheckResult::SchemaIdConflict);
     }
     if credential_schemas.values.iter().any(|cs| cs.name == name) {
@@ -48,10 +51,10 @@ pub(crate) async fn credential_schema_already_exists(
 
 async fn exists_credential_schema_with_same_schema_id(
     credential_schemas: &GetCredentialSchemaList,
-    schema_id: &str,
+    schema_ids: &[String],
 ) -> Result<bool, NestedError> {
     for value in &credential_schemas.values {
-        if value.matches_schema_id(schema_id).await? {
+        if value.matches_schema_id(schema_ids).await? {
             return Ok(true);
         }
     }
@@ -94,27 +97,284 @@ pub(crate) fn validate_create_request(
     };
 
     validate_nested_claim_schemas(&request.claims, config, formatter)?;
-    validate_claim_names(request, formatter)?;
-    validate_revocation_method_is_compatible_with_format(request, config, formatter)?;
+    validate_claim_names_for_formatter(&request.claims, formatter)?;
+    validate_revocation_method_is_compatible_with_format(
+        request.revocation_method.as_ref(),
+        config,
+        formatter,
+    )?;
     validate_revocation_method_is_compatible_with_suspension(
-        request,
+        request.allow_suspension,
         revocation_method.as_deref(),
     )?;
-    validate_credential_design(request, formatter)?;
-    validate_mdoc_claim_types(request, config)?;
-    validate_schema_id(request, formatter)?;
-    validate_transaction_code(request, formatter)?;
+    validate_credential_design(request.layout_properties.as_ref(), formatter)?;
+    validate_mdoc_claim_types(&request.claims, &request.format, config)?;
+    validate_schema_id_is_allowed(request.schema_id.as_deref(), formatter)?;
+    validate_transaction_code(request.transaction_code.as_ref(), formatter)?;
+
+    Ok(())
+}
+
+pub(crate) fn validate_create_v2_request(
+    request: &CreateCredentialSchemaV2RequestDTO,
+    config: &CoreConfig,
+    formatter_provider: &dyn crate::provider::credential_formatter::provider::CredentialFormatterProvider,
+) -> Result<(), CredentialSchemaServiceError> {
+    if request.formats.is_empty() {
+        return Err(CredentialSchemaServiceError::MissingFormats);
+    }
+    validate_unique_formats(&request.formats)?;
+
+    if request.claims.is_empty() {
+        return Err(CredentialSchemaServiceError::MissingClaimSchemas);
+    }
+    if let Some(batch_size) = request.batch_size
+        && batch_size < 2
+    {
+        return Err(CredentialSchemaServiceError::BatchSizeTooSmall);
+    }
+
+    validate_key_lengths(&request.claims, 0)?;
+
+    for format_req in &request.formats {
+        validate_format(&format_req.format, &config.format).error_while("validating format")?;
+
+        let formatter = formatter_provider
+            .get_credential_formatter(&format_req.format)
+            .ok_or(CredentialSchemaServiceError::MissingFormat(
+                format_req.format.to_owned(),
+            ))?;
+
+        validate_schema_id_is_allowed(format_req.schema_id.as_deref(), &*formatter)?;
+        validate_nested_claim_schemas(&request.claims, config, &*formatter)?;
+        validate_claim_names_for_formatter(&request.claims, &*formatter)?;
+        validate_credential_design(request.layout_properties.as_ref(), &*formatter)?;
+        validate_mdoc_claim_types(&request.claims, &format_req.format, config)?;
+        validate_transaction_code(request.transaction_code.as_ref(), &*formatter)?;
+    }
+    validate_claim_mappings_for_format(
+        request.claims.clone(),
+        &request.formats,
+        formatter_provider,
+    )?;
+    Ok(())
+}
+
+fn validate_unique_formats(
+    formats: &[CredentialSchemaFormatRequestDTO],
+) -> Result<(), CredentialSchemaServiceError> {
+    if !formats.iter().map(|format| &format.format).all_unique() {
+        return Err(CredentialSchemaServiceError::DuplicateFormats);
+    }
+    Ok(())
+}
+
+fn validate_claim_names_for_formatter(
+    claims: &[CredentialClaimSchemaRequestDTO],
+    formatter: &dyn CredentialFormatter,
+) -> Result<(), CredentialSchemaServiceError> {
+    let forbidden_names = formatter.get_capabilities().forbidden_claim_names;
+
+    if forbidden_names
+        .into_iter()
+        .any(|forbidden_name| validate_claims_names_are_not_forbidden(&forbidden_name, claims))
+    {
+        return Err(CredentialSchemaServiceError::ForbiddenClaimName);
+    }
+
+    Ok(())
+}
+
+fn validate_revocation_method_is_compatible_with_format(
+    revocation_method_id: Option<&shared_types::RevocationMethodId>,
+    config: &CoreConfig,
+    formatter: &dyn CredentialFormatter,
+) -> Result<(), CredentialSchemaServiceError> {
+    let Some(method_id) = revocation_method_id else {
+        return Ok(());
+    };
+
+    let revocation_method = config
+        .revocation
+        .get_fields(method_id)
+        .error_while("getting revocation config")?;
+
+    if formatter
+        .get_capabilities()
+        .revocation_methods
+        .contains(&revocation_method.r#type)
+    {
+        Ok(())
+    } else {
+        Err(CredentialSchemaServiceError::RevocationMethodNotCompatibleWithSelectedFormat)
+    }
+}
+
+fn validate_credential_design(
+    layout_properties: Option<&CredentialSchemaLayoutPropertiesRequestDTO>,
+    formatter: &dyn CredentialFormatter,
+) -> Result<(), CredentialSchemaServiceError> {
+    if layout_properties.is_some()
+        && !formatter
+            .get_capabilities()
+            .features
+            .contains(&Features::SupportsCredentialDesign)
+    {
+        return Err(CredentialSchemaServiceError::LayoutPropertiesNotSupported);
+    }
+    Ok(())
+}
+
+fn validate_mdoc_claim_types(
+    claims: &[CredentialClaimSchemaRequestDTO],
+    format: &shared_types::CredentialFormat,
+    config: &CoreConfig,
+) -> Result<(), CredentialSchemaServiceError> {
+    let format_type = config
+        .format
+        .get_fields(format)
+        .error_while("getting format config")?
+        .r#type;
+
+    if format_type != FormatType::Mdoc {
+        return Ok(());
+    }
+
+    for claim in claims {
+        let data_type = config
+            .datatype
+            .get_fields(&claim.datatype)
+            .error_while("getting datatype config")?
+            .r#type;
+        if data_type != DatatypeType::Object {
+            return Err(
+                CredentialSchemaServiceError::InvalidClaimTypeMdocTopLevelOnlyObjectsAllowed,
+            );
+        }
+    }
+
+    Ok(())
+}
+
+fn validate_transaction_code(
+    transaction_code: Option<&CredentialSchemaTransactionCodeRequestDTO>,
+    formatter: &dyn CredentialFormatter,
+) -> Result<(), CredentialSchemaServiceError> {
+    if let Some(transaction_code) = transaction_code {
+        if !formatter
+            .get_capabilities()
+            .features
+            .contains(&Features::SupportsTxCode)
+        {
+            return Err(CredentialSchemaServiceError::TransactionCodeNotSupported);
+        }
+
+        if let Some(description) = &transaction_code.description
+            && (description.is_empty() || description.len() > 300)
+        {
+            return Err(CredentialSchemaServiceError::InvalidTransactionCodeDescriptionLength);
+        }
+    }
+
+    Ok(())
+}
+
+fn validate_revocation_method_is_compatible_with_suspension(
+    allow_suspension: Option<bool>,
+    revocation_method: Option<&dyn RevocationMethod>,
+) -> Result<(), CredentialSchemaServiceError> {
+    let operations = match revocation_method {
+        Some(method) => method.get_capabilities().operations,
+        None => vec![],
+    };
+
+    match allow_suspension {
+        Some(true) => {
+            if !operations.contains(&Operation::Suspend) {
+                return Err(
+                    CredentialSchemaServiceError::SuspensionNotAvailableForSelectedRevocationMethod,
+                );
+            }
+        }
+        _ => {
+            if operations == vec![Operation::Suspend] {
+                return Err(
+                    CredentialSchemaServiceError::SuspensionNotEnabledForSuspendOnlyRevocationMethod,
+                );
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn validate_schema_id_is_allowed(
+    schema_id: Option<&str>,
+    formatter: &dyn CredentialFormatter,
+) -> Result<(), CredentialSchemaServiceError> {
+    let FormatterCapabilities { features, .. } = formatter.get_capabilities();
+
+    if features.contains(&Features::SupportsSchemaId) {
+        if let Some(schema_id) = schema_id
+            && schema_id.is_empty()
+        {
+            return Err(CredentialSchemaServiceError::SchemaIdNotAllowed);
+        }
+    } else if schema_id.is_some() {
+        return Err(CredentialSchemaServiceError::SchemaIdNotAllowed);
+    }
+
+    Ok(())
+}
+
+fn validate_claim_mappings_for_format(
+    claims: Vec<CredentialClaimSchemaRequestDTO>,
+    formats: &[CredentialSchemaFormatRequestDTO],
+    formatter_provider: &dyn crate::provider::credential_formatter::provider::CredentialFormatterProvider,
+) -> Result<(), CredentialSchemaServiceError> {
+    let flat_claims = super::mapper::unnest_claim_schemas(claims);
+
+    for claim in &flat_claims {
+        if let Some(mappings) = &claim.mapping {
+            if !mappings.iter().map(|m| &m.format).all_unique() {
+                return Err(CredentialSchemaServiceError::DuplicateMappingFormats(
+                    claim.key.clone(),
+                ));
+            }
+
+            for mapping in mappings {
+                if !formats.iter().any(|f| f.format == mapping.format) {
+                    return Err(CredentialSchemaServiceError::MappingFormatNotPartOfFormats(
+                        claim.key.clone(),
+                        mapping.format.clone(),
+                    ));
+                }
+                let formatter = formatter_provider
+                    .get_credential_formatter(&mapping.format)
+                    .ok_or(CredentialSchemaServiceError::MissingFormat(
+                        mapping.format.to_owned(),
+                    ))?;
+                let requires_namespaces = formatter
+                    .get_capabilities()
+                    .features
+                    .contains(&Features::RequiresNamespaces);
+                if requires_namespaces && mapping.namespace.is_none() {
+                    return Err(CredentialSchemaServiceError::MappingNamespaceMissing(
+                        claim.key.clone(),
+                        mapping.format.clone(),
+                    ));
+                }
+            }
+        }
+    }
 
     Ok(())
 }
 
 pub(crate) fn check_background_properties(
-    request: &CreateCredentialSchemaRequestDTO,
+    layout_properties: Option<&CredentialSchemaLayoutPropertiesRequestDTO>,
 ) -> Result<(), CredentialSchemaServiceError> {
-    let background = request
-        .layout_properties
-        .as_ref()
-        .and_then(|p| p.background.as_ref());
+    let background = layout_properties.and_then(|p| p.background.as_ref());
 
     if let Some(background) = background {
         return match (background.color.as_ref(), background.image.as_ref()) {
@@ -127,12 +387,9 @@ pub(crate) fn check_background_properties(
 }
 
 pub(crate) fn check_logo_properties(
-    request: &CreateCredentialSchemaRequestDTO,
+    layout_properties: Option<&CredentialSchemaLayoutPropertiesRequestDTO>,
 ) -> Result<(), CredentialSchemaServiceError> {
-    let logo = request
-        .layout_properties
-        .as_ref()
-        .and_then(|p| p.logo.as_ref());
+    let logo = layout_properties.and_then(|p| p.logo.as_ref());
 
     if let Some(logo) = logo {
         return match (
@@ -149,23 +406,13 @@ pub(crate) fn check_logo_properties(
 }
 
 pub(crate) fn check_claims_presence_in_layout_properties(
-    request: &CreateCredentialSchemaRequestDTO,
+    layout_properties: Option<&CredentialSchemaLayoutPropertiesRequestDTO>,
+    claims: &[CredentialClaimSchemaRequestDTO],
 ) -> Result<(), CredentialSchemaServiceError> {
-    let primary_attribute = request
-        .layout_properties
-        .as_ref()
-        .and_then(|p| p.primary_attribute.as_ref());
-    let secondary_attribute = request
-        .layout_properties
-        .as_ref()
-        .and_then(|p| p.secondary_attribute.as_ref());
-    let picture_attribute = request
-        .layout_properties
-        .as_ref()
-        .and_then(|p| p.picture_attribute.as_ref());
-    let code_attribute = request
-        .layout_properties
-        .as_ref()
+    let primary_attribute = layout_properties.and_then(|p| p.primary_attribute.as_ref());
+    let secondary_attribute = layout_properties.and_then(|p| p.secondary_attribute.as_ref());
+    let picture_attribute = layout_properties.and_then(|p| p.picture_attribute.as_ref());
+    let code_attribute = layout_properties
         .and_then(|p| p.code.as_ref())
         .map(|c| &c.attribute);
 
@@ -177,12 +424,12 @@ pub(crate) fn check_claims_presence_in_layout_properties(
         return Ok(());
     }
 
-    let claims = get_all_claim_paths(&request.claims);
+    let claim_paths = get_all_claim_paths(claims);
 
-    handle_attribute_claim_validation(primary_attribute, &claims, "Primary")?;
-    handle_attribute_claim_validation(secondary_attribute, &claims, "Secondary")?;
-    handle_attribute_claim_validation(picture_attribute, &claims, "Picture")?;
-    handle_attribute_claim_validation(code_attribute, &claims, "Code attribute")?;
+    handle_attribute_claim_validation(primary_attribute, &claim_paths, "Primary")?;
+    handle_attribute_claim_validation(secondary_attribute, &claim_paths, "Secondary")?;
+    handle_attribute_claim_validation(picture_attribute, &claim_paths, "Picture")?;
+    handle_attribute_claim_validation(code_attribute, &claim_paths, "Code attribute")?;
 
     Ok(())
 }
@@ -229,21 +476,6 @@ fn handle_attribute_claim_validation(
             attribute_name.to_owned(),
         ));
     }
-    Ok(())
-}
-
-fn validate_claim_names(
-    request: &CreateCredentialSchemaRequestDTO,
-    formatter: &dyn CredentialFormatter,
-) -> Result<(), CredentialSchemaServiceError> {
-    let forbidden_names = formatter.get_capabilities().forbidden_claim_names;
-
-    if forbidden_names.into_iter().any(|forbidden_name| {
-        validate_claims_names_are_not_forbidden(&forbidden_name, &request.claims)
-    }) {
-        return Err(CredentialSchemaServiceError::ForbiddenClaimName);
-    }
-
     Ok(())
 }
 
@@ -389,146 +621,6 @@ fn gather_claim_schemas<'a>(
         .flat_map(|f| gather_claim_schemas(&f.claims));
 
     Box::new(claim_schemas.iter().chain(nested))
-}
-
-fn validate_revocation_method_is_compatible_with_suspension(
-    request: &CreateCredentialSchemaRequestDTO,
-    revocation_method: Option<&dyn RevocationMethod>,
-) -> Result<(), CredentialSchemaServiceError> {
-    let operations = match revocation_method {
-        Some(method) => method.get_capabilities().operations,
-        None => vec![],
-    };
-
-    match request.allow_suspension {
-        Some(true) => {
-            if !operations.contains(&Operation::Suspend) {
-                return Err(
-                    CredentialSchemaServiceError::SuspensionNotAvailableForSelectedRevocationMethod,
-                );
-            }
-        }
-        _ => {
-            if operations == vec![Operation::Suspend] {
-                return Err(
-                    CredentialSchemaServiceError::SuspensionNotEnabledForSuspendOnlyRevocationMethod,
-                );
-            }
-        }
-    }
-
-    Ok(())
-}
-
-fn validate_revocation_method_is_compatible_with_format(
-    request: &CreateCredentialSchemaRequestDTO,
-    config: &CoreConfig,
-    formatter: &dyn CredentialFormatter,
-) -> Result<(), CredentialSchemaServiceError> {
-    let Some(method_id) = &request.revocation_method else {
-        return Ok(());
-    };
-
-    let revocation_method = config
-        .revocation
-        .get_fields(method_id)
-        .error_while("getting revocation config")?;
-
-    if formatter
-        .get_capabilities()
-        .revocation_methods
-        .contains(&revocation_method.r#type)
-    {
-        Ok(())
-    } else {
-        Err(CredentialSchemaServiceError::RevocationMethodNotCompatibleWithSelectedFormat)
-    }
-}
-
-fn validate_credential_design(
-    request: &CreateCredentialSchemaRequestDTO,
-    formatter: &dyn CredentialFormatter,
-) -> Result<(), CredentialSchemaServiceError> {
-    if request.layout_properties.is_some()
-        && !formatter
-            .get_capabilities()
-            .features
-            .contains(&Features::SupportsCredentialDesign)
-    {
-        return Err(CredentialSchemaServiceError::LayoutPropertiesNotSupported);
-    }
-    Ok(())
-}
-
-fn validate_mdoc_claim_types(
-    request: &CreateCredentialSchemaRequestDTO,
-    config: &CoreConfig,
-) -> Result<(), CredentialSchemaServiceError> {
-    let format_type = config
-        .format
-        .get_fields(&request.format)
-        .error_while("getting format config")?
-        .r#type;
-    if format_type != FormatType::Mdoc {
-        return Ok(());
-    }
-
-    for claim in &request.claims {
-        let data_type = config
-            .datatype
-            .get_fields(&claim.datatype)
-            .error_while("getting datatype config")?
-            .r#type;
-        if data_type != DatatypeType::Object {
-            return Err(
-                CredentialSchemaServiceError::InvalidClaimTypeMdocTopLevelOnlyObjectsAllowed,
-            );
-        }
-    }
-
-    Ok(())
-}
-
-fn validate_schema_id(
-    request: &CreateCredentialSchemaRequestDTO,
-    formatter: &dyn CredentialFormatter,
-) -> Result<(), CredentialSchemaServiceError> {
-    let FormatterCapabilities { features, .. } = formatter.get_capabilities();
-
-    if features.contains(&Features::SupportsSchemaId) {
-        if let Some(schema_id) = request.schema_id.as_ref()
-            && schema_id.is_empty()
-        {
-            return Err(CredentialSchemaServiceError::SchemaIdNotAllowed);
-        }
-    } else if request.schema_id.is_some() {
-        return Err(CredentialSchemaServiceError::SchemaIdNotAllowed);
-    }
-
-    Ok(())
-}
-
-fn validate_transaction_code(
-    request: &CreateCredentialSchemaRequestDTO,
-    formatter: &dyn CredentialFormatter,
-) -> Result<(), CredentialSchemaServiceError> {
-    if let Some(transaction_code) = &request.transaction_code {
-        if !formatter
-            .get_capabilities()
-            .features
-            .contains(&Features::SupportsTxCode)
-        {
-            return Err(CredentialSchemaServiceError::TransactionCodeNotSupported);
-        }
-
-        if let Some(description) = &transaction_code.description
-            && (description.is_empty() || description.len() > 300)
-        {
-            return Err(CredentialSchemaServiceError::InvalidTransactionCodeDescriptionLength);
-        }
-    }
-
-    Ok(())
 }
 
 fn validate_key_lengths(
