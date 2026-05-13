@@ -8,7 +8,8 @@ use one_core::service::credential_schema::dto::{
     CredentialSchemaFormatRequestDTO, CredentialSchemaFormatResponseDTO,
     CredentialSchemaListIncludeEntityTypeEnum, CredentialSchemaListItemResponseDTO,
     CredentialSchemaListItemV2ResponseDTO, CredentialSchemaTransactionCodeDTO,
-    CredentialSchemaTransactionCodeRequestDTO,
+    CredentialSchemaTransactionCodeRequestDTO, ImportCredentialSchemaV2FormatDTO,
+    ImportCredentialSchemaV2RequestDTO, ImportCredentialSchemaV2RequestSchemaDTO,
 };
 use one_core::service::error::ServiceError;
 use one_dto_mapper::{
@@ -796,6 +797,84 @@ pub(crate) struct CredentialSchemaV2ResponseRestDTO {
     pub requires_wallet_instance_attestation: bool,
     #[from(with_fn = convert_inner)]
     pub transaction_code: Option<CredentialSchemaTransactionCodeRestDTO>,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[into(ImportCredentialSchemaV2FormatDTO)]
+pub(crate) struct ImportCredentialSchemaV2FormatRestDTO {
+    /// Credential format identifier from the system configuration.
+    pub format: CredentialFormat,
+    /// Schema identifier for this format (e.g. DocType for mdoc, vct for SD-JWT VC).
+    pub schema_id: String,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Deserialize, TryInto, ToSchema)]
+#[try_into(T=ImportCredentialSchemaV2RequestDTO, Error=ServiceError)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct ImportCredentialSchemaV2RequestRestDTO {
+    /// Required when not using STS authentication mode. Specifies the
+    /// organizational context for this operation. When using STS
+    /// authentication, this value is derived from the token.
+    #[try_into(with_fn = fallback_organisation_id_from_session)]
+    pub organisation_id: Option<OrganisationId>,
+    pub schema: ImportCredentialSchemaV2RequestSchemaRestDTO,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Deserialize, TryInto, ToSchema)]
+#[try_into(T=ImportCredentialSchemaV2RequestSchemaDTO, Error=ServiceError)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct ImportCredentialSchemaV2RequestSchemaRestDTO {
+    #[try_into(infallible)]
+    pub id: Uuid,
+    #[serde(with = "time::serde::rfc3339")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
+    #[try_into(infallible)]
+    pub created_date: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
+    #[try_into(infallible)]
+    pub last_modified: OffsetDateTime,
+    #[try_into(infallible)]
+    pub name: String,
+    /// List of credential formats supported by this schema. At least one entry required.
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub formats: Vec<ImportCredentialSchemaV2FormatRestDTO>,
+    #[try_into(rename = "organisation_id", infallible)]
+    pub organisation_id: OrganisationId,
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub claims: Vec<ImportCredentialSchemaClaimSchemaRestDTO>,
+    #[serde(default)]
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub key_storage_security: Option<KeyStorageSecurityRestEnum>,
+    #[try_into(infallible)]
+    pub imported_source_url: String,
+    #[serde(default)]
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub layout_type: Option<CredentialSchemaLayoutType>,
+    #[serde(default)]
+    #[try_into(with_fn = try_convert_inner)]
+    pub layout_properties: Option<ImportCredentialSchemaLayoutPropertiesRestDTO>,
+    #[serde(default)]
+    #[try_into(infallible)]
+    pub allow_suspension: Option<bool>,
+    #[serde(default)]
+    #[try_into(infallible)]
+    pub requires_wallet_instance_attestation: Option<bool>,
+    #[serde(default)]
+    #[try_into(with_fn = try_convert_inner)]
+    pub transaction_code: Option<ImportCredentialSchemaTransactionCodeRequestRestDTO>,
+    /// If `true`, credentials issued with this schema can be revoked.
+    #[serde(default)]
+    #[try_into(infallible)]
+    pub allow_revocation: Option<bool>,
+    /// Minimum batch size for issuance. Must be at least 2 if specified.
+    #[serde(default)]
+    #[try_into(infallible)]
+    pub batch_size: Option<i32>,
 }
 
 #[cfg(test)]

@@ -9,7 +9,7 @@ use shared_types::{CredentialSchemaId, Permission};
 use super::dto::{
     CredentialSchemaResponseRestDTO, CredentialSchemaShareResponseRestDTO,
     CredentialSchemaV2ResponseRestDTO, GetCredentialSchemaQuery,
-    ImportCredentialSchemaRequestRestDTO,
+    ImportCredentialSchemaRequestRestDTO, ImportCredentialSchemaV2RequestRestDTO,
 };
 use crate::dto::common::{
     EntityResponseRestDTO, GetCredentialSchemasResponseDTO, GetCredentialSchemasV2ResponseDTO,
@@ -334,4 +334,49 @@ pub(crate) async fn post_credential_schema_v2(
         .create_credential_schema_v2(request)
         .await;
     CreatedOrErrorResponse::from_result(result, state, "creating credential schema v2")
+}
+
+#[endpoint(
+    permissions = [Permission::CredentialSchemaCreate],
+    post,
+    path = "/api/credential-schema/v2/import",
+    request_body = ImportCredentialSchemaV2RequestRestDTO,
+    responses(CreatedOrErrorResponse<EntityResponseRestDTO>),
+    tag = "credential_schema_management",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "Import credential schema (v2)",
+    description = indoc::formatdoc! {"
+        Imports a shared credential schema (v2) supporting multiple credential formats
+        and per-claim technical key mappings.
+
+        After previewing the credential schema from the
+        [share credential schema](../core/share-credential-schema.api.mdx) endpoint, pass
+        the schema here, along with the uuid of the mobile verifier's organization,
+        to import the credential schema.
+    "},
+)]
+pub(crate) async fn import_credential_schema_v2(
+    state: State<AppState>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<ImportCredentialSchemaV2RequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
+) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
+    let request = match request.try_into() {
+        Ok(request) => request,
+        Err(err) => {
+            return CreatedOrErrorResponse::from_error(
+                &err,
+                state.config.hide_error_response_cause,
+            );
+        }
+    };
+    let result = state
+        .core
+        .credential_schema_service
+        .import_credential_schema_v2(request)
+        .await;
+    CreatedOrErrorResponse::from_result(result, state, "importing credential schema v2")
 }

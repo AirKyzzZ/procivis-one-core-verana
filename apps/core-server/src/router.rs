@@ -277,6 +277,10 @@ fn get_management_endpoints(
                     .post(credential_schema::controller::post_credential_schema_v2),
             )
             .route(
+                "/api/credential-schema/v2/import",
+                post(credential_schema::controller::import_credential_schema_v2),
+            )
+            .route(
                 "/api/credential-schema/v1/import",
                 post(credential_schema::controller::import_credential_schema),
             )

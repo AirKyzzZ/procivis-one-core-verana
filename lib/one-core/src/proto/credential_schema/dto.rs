@@ -68,8 +68,43 @@ pub struct ImportCredentialSchemaClaimSchemaDTO {
     pub array: Option<bool>,
     #[serde(default)]
     pub claims: Vec<ImportCredentialSchemaClaimSchemaDTO>,
-    #[expect(unused)]
     pub mapping: Option<Vec<CredentialClaimSchemaMappingDTO>>,
+}
+
+#[derive(Clone, Debug)]
+pub struct ImportCredentialSchemaV2FormatDTO {
+    pub format: CredentialFormat,
+    pub schema_id: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct ImportCredentialSchemaV2RequestDTO {
+    pub organisation: Organisation,
+    pub schema: ImportCredentialSchemaV2RequestSchemaDTO,
+}
+
+#[derive(Clone, Debug)]
+pub struct ImportCredentialSchemaV2RequestSchemaDTO {
+    #[allow(unused)]
+    pub id: CredentialSchemaId,
+    #[allow(unused)]
+    pub created_date: OffsetDateTime,
+    #[allow(unused)]
+    pub last_modified: OffsetDateTime,
+    pub name: String,
+    pub formats: Vec<ImportCredentialSchemaV2FormatDTO>,
+    #[allow(unused)]
+    pub organisation_id: OrganisationId,
+    pub claims: Vec<ImportCredentialSchemaClaimSchemaDTO>,
+    pub key_storage_security: Option<KeyStorageSecurity>,
+    pub imported_source_url: String,
+    pub layout_type: Option<LayoutType>,
+    pub layout_properties: Option<ImportCredentialSchemaLayoutPropertiesDTO>,
+    pub allow_suspension: Option<bool>,
+    pub requires_wallet_instance_attestation: Option<bool>,
+    pub transaction_code: Option<ImportCredentialSchemaTransactionCodeDTO>,
+    pub allow_revocation: Option<bool>,
+    pub batch_size: Option<i32>,
 }
 
 #[derive(Clone, Debug, Deserialize, TryFrom, Into)]

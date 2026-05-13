@@ -311,7 +311,6 @@ impl OneCore {
         ));
 
         let credential_schema_importer = Arc::new(CredentialSchemaImporterProto::new(
-            credential_formatter_provider.clone(),
             data_provider.get_credential_schema_repository(),
         ));
 

@@ -48,6 +48,16 @@ pub(crate) enum Error {
     #[error("Layout attribute doesn't exists: `{0}`")]
     MissingLayoutAttribute(String),
 
+    #[error("Batch size must be at least 2")]
+    BatchSizeTooSmall,
+    #[error("Missing credential schema formats")]
+    MissingFormats,
+
+    #[error("Duplicate formats")]
+    DuplicateFormats,
+    #[error("Duplicate formats in mapping for claim `{0}`")]
+    DuplicateMappingFormats(String),
+
     #[expect(clippy::enum_variant_names)]
     #[error("Mapping error: `{0}`")]
     MappingError(String),
@@ -76,6 +86,10 @@ impl ErrorCodeMixin for Error {
             Self::ClaimSchemaUnsupportedDatatype { .. } => ErrorCode::BR_0245,
             Self::AttributeCombinationNotAllowed => ErrorCode::BR_0118,
             Self::MissingLayoutAttribute(_) => ErrorCode::BR_0105,
+            Self::BatchSizeTooSmall => ErrorCode::BR_0434,
+            Self::DuplicateFormats => ErrorCode::BR_0439,
+            Self::DuplicateMappingFormats(_) => ErrorCode::BR_0440,
+            Self::MissingFormats => ErrorCode::BR_0435,
             Self::MappingError(_) => ErrorCode::BR_0047,
             Self::Nested(nested) => nested.error_code(),
         }

@@ -256,17 +256,7 @@ async fn test_importer_import_credential_schema_success() {
         .once()
         .return_once(move |_| Ok(credential_schema_id));
 
-    let mut formatter = MockCredentialFormatter::default();
-    formatter.expect_get_metadata_claims().returning(Vec::new);
-
-    let mut formatter_provider = MockCredentialFormatterProvider::default();
-    formatter_provider
-        .expect_get_credential_formatter()
-        .once()
-        .return_once(move |_| Some(Arc::new(formatter)));
-
-    let importer =
-        CredentialSchemaImporterProto::new(Arc::new(formatter_provider), Arc::new(repository));
+    let importer = CredentialSchemaImporterProto::new(Arc::new(repository));
 
     // when
     let result = importer.import_credential_schema(credential_schema).await;
@@ -326,20 +316,7 @@ async fn test_importer_import_credential_schema_success_duplicate_name() {
         .once()
         .returning(move |_| Ok(existing_schema.id));
 
-    let mut formatter = MockCredentialFormatter::default();
-    formatter
-        .expect_get_capabilities()
-        .returning(FormatterCapabilities::default);
-    formatter.expect_get_metadata_claims().returning(Vec::new);
-
-    let mut formatter_provider = MockCredentialFormatterProvider::default();
-    formatter_provider
-        .expect_get_credential_formatter()
-        .once()
-        .return_once(|_| Some(Arc::new(formatter)));
-
-    let importer =
-        CredentialSchemaImporterProto::new(Arc::new(formatter_provider), Arc::new(repository));
+    let importer = CredentialSchemaImporterProto::new(Arc::new(repository));
 
     existing_schema.formats = vec![CredentialSchemaFormat {
         id: Uuid::new_v4().into(),
@@ -408,10 +385,7 @@ async fn test_importer_import_credential_schema_failure_duplicate_schema_id() {
             })
         });
 
-    let importer = CredentialSchemaImporterProto::new(
-        Arc::new(MockCredentialFormatterProvider::default()),
-        Arc::new(repository),
-    );
+    let importer = CredentialSchemaImporterProto::new(Arc::new(repository));
 
     // when
     let result = importer

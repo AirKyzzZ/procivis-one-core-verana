@@ -64,10 +64,7 @@ fn setup_service(
         revocation_method_provider.clone(),
     );
 
-    let importer = CredentialSchemaImporterProto::new(
-        formatter_provider.clone(),
-        credential_schema_repository.clone(),
-    );
+    let importer = CredentialSchemaImporterProto::new(credential_schema_repository.clone());
 
     CredentialSchemaService::new(
         Some("http://127.0.0.1:4321".to_string()),
@@ -2529,7 +2526,7 @@ async fn test_import_credential_schema_success() {
     let formatter = Arc::new(formatter);
     formatter_provider
         .expect_get_credential_formatter()
-        .times(2)
+        .times(1)
         .returning(move |_| Some(formatter.clone()));
 
     repository

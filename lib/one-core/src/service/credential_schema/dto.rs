@@ -239,6 +239,13 @@ pub struct CredentialSchemaFormatRequestDTO {
     pub schema_id: Option<String>,
 }
 
+#[derive(Clone, Debug, Into)]
+#[into(crate::proto::credential_schema::dto::ImportCredentialSchemaV2FormatDTO)]
+pub struct ImportCredentialSchemaV2FormatDTO {
+    pub format: CredentialFormat,
+    pub schema_id: String,
+}
+
 #[derive(Clone, Debug)]
 pub struct CreateCredentialSchemaRequestDTO {
     pub name: String,
@@ -461,4 +468,36 @@ pub struct ImportCredentialSchemaLayoutPropertiesDTO {
     #[serde(default)]
     #[into(with_fn = convert_inner)]
     pub code: Option<CredentialSchemaCodePropertiesDTO>,
+}
+
+#[derive(Clone, Debug)]
+pub struct ImportCredentialSchemaV2RequestDTO {
+    pub organisation_id: OrganisationId,
+    pub schema: ImportCredentialSchemaV2RequestSchemaDTO,
+}
+
+#[derive(Clone, Debug, Into)]
+#[into(crate::proto::credential_schema::dto::ImportCredentialSchemaV2RequestSchemaDTO)]
+pub struct ImportCredentialSchemaV2RequestSchemaDTO {
+    pub id: Uuid,
+    pub created_date: OffsetDateTime,
+    pub last_modified: OffsetDateTime,
+    pub name: String,
+    #[into(with_fn = convert_inner)]
+    pub formats: Vec<ImportCredentialSchemaV2FormatDTO>,
+    pub organisation_id: Uuid,
+    #[into(with_fn = convert_inner)]
+    pub claims: Vec<ImportCredentialSchemaClaimSchemaDTO>,
+    pub key_storage_security: Option<KeyStorageSecurity>,
+    pub imported_source_url: String,
+    #[into(with_fn = convert_inner)]
+    pub layout_type: Option<LayoutType>,
+    #[into(with_fn = convert_inner)]
+    pub layout_properties: Option<ImportCredentialSchemaLayoutPropertiesDTO>,
+    pub allow_suspension: Option<bool>,
+    pub requires_wallet_instance_attestation: Option<bool>,
+    #[into(with_fn = convert_inner)]
+    pub transaction_code: Option<ImportCredentialSchemaTransactionCodeDTO>,
+    pub allow_revocation: Option<bool>,
+    pub batch_size: Option<i32>,
 }

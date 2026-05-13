@@ -2,25 +2,30 @@ use std::sync::Arc;
 
 use itertools::Itertools;
 use one_dto_mapper::convert_inner;
-use shared_types::{CredentialFormat, RevocationMethodId};
+use shared_types::{CredentialFormat, CredentialSchemaId, RevocationMethodId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::Error;
 use super::dto::{
-    CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaCodePropertiesDTO,
-    CredentialSchemaLogoPropertiesRequestDTO, ImportCredentialSchemaClaimSchemaDTO,
-    ImportCredentialSchemaLayoutPropertiesDTO, ImportCredentialSchemaRequestDTO,
+    CredentialClaimSchemaMappingDTO, CredentialSchemaBackgroundPropertiesRequestDTO,
+    CredentialSchemaCodePropertiesDTO, CredentialSchemaLogoPropertiesRequestDTO,
+    ImportCredentialSchemaClaimSchemaDTO, ImportCredentialSchemaLayoutPropertiesDTO,
+    ImportCredentialSchemaRequestDTO, ImportCredentialSchemaV2FormatDTO,
+    ImportCredentialSchemaV2RequestDTO,
 };
 use crate::config::core_config::{ConfigExt, CoreConfig, DatatypeType, FormatType};
 use crate::error::ContextWithErrorCode;
 use crate::mapper::NESTED_CLAIM_MARKER;
+use crate::mapper::credential_schema_claim::claim_schema_from_metadata_claim_schema;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{
     BackgroundProperties, CodeProperties, CredentialSchema, LayoutProperties, LayoutType,
     LogoProperties,
 };
 use crate::model::credential_schema_format::CredentialSchemaFormat;
+use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
+use crate::model::relation::RelatedVec;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::{Features, FormatterCapabilities};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
@@ -40,6 +45,11 @@ pub(crate) trait CredentialSchemaImportParser: Send + Sync {
     fn parse_import_credential_schema(
         &self,
         dto: ImportCredentialSchemaRequestDTO,
+    ) -> Result<CredentialSchema, Error>;
+
+    fn parse_import_credential_schema_v2(
+        &self,
+        dto: ImportCredentialSchemaV2RequestDTO,
     ) -> Result<CredentialSchema, Error>;
 }
 
@@ -71,8 +81,12 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
             ),
             None => None,
         };
-        let claim_schemas =
-            self.parse_all_claim_schemas(now, format, dto.schema.claims, formatter.as_ref())?;
+        let formatters = vec![(format.to_owned(), formatter.clone())];
+        let claim_schemas = self
+            .parse_all_claim_schemas(now, dto.schema.claims, formatters.as_ref())?
+            .into_iter()
+            .map(|(cs, _)| cs)
+            .collect::<Vec<_>>();
         let credential_schema_id = Uuid::new_v4().into();
         Ok(CredentialSchema {
             id: credential_schema_id,
@@ -87,7 +101,7 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
             layout_properties: self.parse_layout_properties(
                 dto.schema.layout_properties,
                 &claim_schemas,
-                formatter.as_ref(),
+                formatters.as_ref(),
             )?,
             imported_source_url: dto.schema.imported_source_url,
             allow_suspension: self.parse_allow_suspension(
@@ -113,6 +127,104 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
             transaction_code: convert_inner(dto.schema.transaction_code),
             batch_size: None,
             allow_revocation: None,
+        })
+    }
+
+    fn parse_import_credential_schema_v2(
+        &self,
+        dto: ImportCredentialSchemaV2RequestDTO,
+    ) -> Result<CredentialSchema, Error> {
+        if dto.schema.formats.is_empty() {
+            return Err(Error::MissingFormats);
+        }
+        self.validate_unique_formats(&dto.schema.formats)?;
+        if let Some(batch_size) = dto.schema.batch_size
+            && batch_size < 2
+        {
+            return Err(Error::BatchSizeTooSmall);
+        }
+        let now = crate::clock::now_utc();
+
+        let mut formatters = Vec::with_capacity(dto.schema.formats.len());
+        for format_req in &dto.schema.formats {
+            self.parse_format(format_req.format.clone())?;
+            let format_type = self
+                .config
+                .format
+                .get_fields(&format_req.format)
+                .error_while("getting format type")?
+                .r#type()
+                .to_owned();
+            let formatter = self
+                .formatter_provider
+                .get_credential_formatter(&format_req.format)
+                .ok_or(MissingProviderError::Formatter(
+                    format_req.format.to_string(),
+                ))
+                .error_while("getting formatter")?;
+            formatters.push((format_type, formatter));
+        }
+
+        let claim_schemas_with_raw_mappings =
+            self.parse_all_claim_schemas(now, dto.schema.claims, formatters.as_ref())?;
+
+        let credential_schema_id = Uuid::new_v4().into();
+
+        let mut formats = vec![];
+        let mut claim_schemas: Vec<_> = claim_schemas_with_raw_mappings
+            .iter()
+            .map(|(cs, _)| cs.clone())
+            .collect();
+        for format_req in &dto.schema.formats {
+            let formatter = self
+                .formatter_provider
+                .get_credential_formatter(&format_req.format)
+                .ok_or(MissingProviderError::Formatter(
+                    format_req.format.to_string(),
+                ))
+                .error_while("getting formatter")?;
+
+            let schema_id =
+                self.parse_schema_id(format_req.schema_id.clone(), formatter.as_ref())?;
+            let (format, format_specific_claim_schemas) = self.parse_format_with_claim_mappings(
+                credential_schema_id,
+                schema_id,
+                format_req.format.clone(),
+                now,
+                &claim_schemas_with_raw_mappings,
+                formatter.as_ref(),
+            );
+
+            formats.push(format);
+            claim_schemas.extend(format_specific_claim_schemas);
+        }
+
+        Ok(CredentialSchema {
+            id: credential_schema_id,
+            deleted_at: None,
+            created_date: now,
+            last_modified: now,
+            name: dto.schema.name,
+            revocation_method: None,
+            key_storage_security: dto.schema.key_storage_security,
+            layout_type: dto.schema.layout_type.unwrap_or(LayoutType::Card),
+            layout_properties: self.parse_layout_properties(
+                dto.schema.layout_properties,
+                &claim_schemas,
+                formatters.as_ref(),
+            )?,
+            imported_source_url: dto.schema.imported_source_url,
+            allow_suspension: dto.schema.allow_suspension.unwrap_or(false),
+            requires_wallet_instance_attestation: dto
+                .schema
+                .requires_wallet_instance_attestation
+                .unwrap_or(false),
+            claim_schemas: claim_schemas.into(),
+            organisation: dto.organisation.into(),
+            formats: formats.into(),
+            transaction_code: convert_inner(dto.schema.transaction_code),
+            batch_size: dto.schema.batch_size,
+            allow_revocation: dto.schema.allow_revocation,
         })
     }
 }
@@ -185,13 +297,14 @@ impl CredentialSchemaImportParserImpl {
         &self,
         layout_properties: Option<ImportCredentialSchemaLayoutPropertiesDTO>,
         claim_schemas: &[ClaimSchema],
-        formatter: &dyn CredentialFormatter,
+        formatters: &[(FormatType, Arc<dyn CredentialFormatter>)],
     ) -> Result<Option<LayoutProperties>, Error> {
         if layout_properties.is_some()
-            && !formatter
-                .get_capabilities()
-                .features
-                .contains(&Features::SupportsCredentialDesign)
+            && !formatters.iter().all(|(_, f)| {
+                f.get_capabilities()
+                    .features
+                    .contains(&Features::SupportsCredentialDesign)
+            })
         {
             return Err(Error::LayoutPropertiesNotSupported);
         }
@@ -255,15 +368,14 @@ impl CredentialSchemaImportParserImpl {
     pub(super) fn parse_all_claim_schemas(
         &self,
         now: OffsetDateTime,
-        format: &FormatType,
         claim_schemas: Vec<ImportCredentialSchemaClaimSchemaDTO>,
-        formatter: &dyn CredentialFormatter,
-    ) -> Result<Vec<ClaimSchema>, Error> {
+        formatters: &[(FormatType, Arc<dyn CredentialFormatter>)],
+    ) -> Result<Vec<(ClaimSchema, Vec<CredentialClaimSchemaMappingDTO>)>, Error> {
         if claim_schemas.is_empty() {
             return Err(Error::MissingClaims);
         }
-        self.validate_top_level_claims_mdoc_types(format, &claim_schemas)?;
-        self.parse_level_claim_schemas(now, None, claim_schemas, formatter)
+        self.validate_top_level_claims_mdoc_types(formatters, &claim_schemas)?;
+        self.parse_level_claim_schemas(now, None, claim_schemas, formatters)
     }
 
     pub(super) fn parse_level_claim_schemas(
@@ -271,16 +383,91 @@ impl CredentialSchemaImportParserImpl {
         now: OffsetDateTime,
         parent_key: Option<&str>,
         claim_schemas: Vec<ImportCredentialSchemaClaimSchemaDTO>,
-        formatter: &dyn CredentialFormatter,
-    ) -> Result<Vec<ClaimSchema>, Error> {
+        formatters: &[(FormatType, Arc<dyn CredentialFormatter>)],
+    ) -> Result<Vec<(ClaimSchema, Vec<CredentialClaimSchemaMappingDTO>)>, Error> {
         self.validate_claim_schema_keys_unique(&claim_schemas)
             .error_while("checking claims")?;
 
         claim_schemas
             .into_iter()
-            .map(|c| self.parse_claim_schema(now, parent_key, c, formatter))
+            .map(|c| self.parse_claim_schema(now, parent_key, c, formatters))
             .flatten_ok()
             .try_collect()
+    }
+
+    pub(super) fn parse_format_with_claim_mappings(
+        &self,
+        credential_schema_id: CredentialSchemaId,
+        schema_id: String,
+        format: CredentialFormat,
+        now: OffsetDateTime,
+        claim_schemas_to_mappings: &[(ClaimSchema, Vec<CredentialClaimSchemaMappingDTO>)],
+        formatter: &dyn CredentialFormatter,
+    ) -> (CredentialSchemaFormat, Vec<ClaimSchema>) {
+        let format_id = Uuid::new_v4().into();
+        let uses_namespaces = formatter
+            .get_capabilities()
+            .features
+            .contains(&Features::RequiresNamespaces);
+
+        let metadata_claims_with_mappings = formatter
+            .get_metadata_claims()
+            .into_iter()
+            .map(|metadata_claim| {
+                (
+                    claim_schema_from_metadata_claim_schema(metadata_claim, now),
+                    vec![],
+                )
+            })
+            .collect::<Vec<_>>();
+
+        let mut mappings = vec![];
+        for (claim_schema, claim_mappings) in claim_schemas_to_mappings
+            .iter()
+            .chain(metadata_claims_with_mappings.iter())
+        {
+            let mapping_for_format = claim_mappings.iter().find(|m| m.format == format);
+
+            let technical_key = mapping_for_format
+                .map(|m| m.technical_key.clone())
+                .unwrap_or_else(|| claim_schema.key.clone());
+
+            let namespace = mapping_for_format
+                .and_then(|m| m.namespace.clone())
+                .or_else(|| {
+                    if uses_namespaces {
+                        Some(schema_id.clone())
+                    } else {
+                        None
+                    }
+                });
+
+            mappings.push(CredentialSchemaFormatClaimSchema {
+                id: Uuid::new_v4().into(),
+                created_date: now,
+                last_modified: now,
+                credential_schema_format_id: format_id,
+                claim_schema_id: claim_schema.id,
+                technical_key,
+                namespace,
+            });
+        }
+
+        (
+            CredentialSchemaFormat {
+                id: format_id,
+                created_date: now,
+                last_modified: now,
+                credential_schema_id,
+                format,
+                schema_id,
+                claim_mappings: RelatedVec::from(mappings),
+            },
+            metadata_claims_with_mappings
+                .into_iter()
+                .map(|(claim_schema, _)| claim_schema)
+                .collect(),
+        )
     }
 
     pub(super) fn parse_claim_schema(
@@ -288,12 +475,13 @@ impl CredentialSchemaImportParserImpl {
         now: OffsetDateTime,
         parent_key: Option<&str>,
         claim_schema_dto: ImportCredentialSchemaClaimSchemaDTO,
-        formatter: &dyn CredentialFormatter,
-    ) -> Result<Vec<ClaimSchema>, Error> {
+        formatters: &[(FormatType, Arc<dyn CredentialFormatter>)],
+    ) -> Result<Vec<(ClaimSchema, Vec<CredentialClaimSchemaMappingDTO>)>, Error> {
+        self.validate_claim_schema_mappings_unique_formats(&claim_schema_dto)?;
         let mut flattened_claim_schemas = vec![];
         let key = claim_schema_dto.key.clone();
         let flattened_key =
-            self.parse_claim_schema_key(parent_key, claim_schema_dto.key, formatter)?;
+            self.parse_claim_schema_key(parent_key, claim_schema_dto.key, formatters)?;
         let claim_schema = ClaimSchema {
             id: Uuid::new_v4().into(),
             key: flattened_key.clone(),
@@ -302,11 +490,11 @@ impl CredentialSchemaImportParserImpl {
                 &key,
                 &claim_schema_dto.claims,
                 claim_schema_dto.datatype,
-                formatter,
+                formatters,
             )?,
             created_date: now,
             last_modified: now,
-            array: self.parse_claim_schema_array(&key, claim_schema_dto.array, formatter)?,
+            array: self.parse_claim_schema_array(&key, claim_schema_dto.array, formatters)?,
             metadata: false,
             required: claim_schema_dto.required,
         };
@@ -314,10 +502,10 @@ impl CredentialSchemaImportParserImpl {
             now,
             Some(&flattened_key),
             claim_schema_dto.claims,
-            formatter,
+            formatters,
         )?;
 
-        flattened_claim_schemas.push(claim_schema);
+        flattened_claim_schemas.push((claim_schema, claim_schema_dto.mapping.unwrap_or_default()));
         flattened_claim_schemas.append(&mut childs);
         Ok(flattened_claim_schemas)
     }
@@ -326,15 +514,14 @@ impl CredentialSchemaImportParserImpl {
         &self,
         parent_key: Option<&str>,
         key: String,
-        formatter: &dyn CredentialFormatter,
+        formatters: &[(FormatType, Arc<dyn CredentialFormatter>)],
     ) -> Result<String, Error> {
         if key.find(NESTED_CLAIM_MARKER).is_some() {
             return Err(Error::ClaimSchemaSlashInKeyName(key));
         }
-        if formatter
-            .get_capabilities()
-            .forbidden_claim_names
-            .contains(&key)
+        if formatters
+            .iter()
+            .any(|(_, f)| f.get_capabilities().forbidden_claim_names.contains(&key))
         {
             return Err(Error::ForbiddenClaimName);
         }
@@ -354,14 +541,14 @@ impl CredentialSchemaImportParserImpl {
         &self,
         claim_name: &str,
         is_array: Option<bool>,
-        formatter: &dyn CredentialFormatter,
+        formatters: &[(FormatType, Arc<dyn CredentialFormatter>)],
     ) -> Result<bool, Error> {
         if let Some(true) = is_array {
             self.config
                 .datatype
                 .get_if_enabled("ARRAY")
                 .error_while("checking claims")?;
-            self.validate_datatype_formatter_capabilities(claim_name, "ARRAY", formatter)
+            self.validate_datatype_formatter_capabilities(claim_name, "ARRAY", formatters)
                 .error_while("checking claims")?;
             Ok(true)
         } else {
@@ -374,7 +561,7 @@ impl CredentialSchemaImportParserImpl {
         claim_shema_key: &str,
         claim_schema_claims: &[ImportCredentialSchemaClaimSchemaDTO],
         claim_schema_data_type: String,
-        formatter: &dyn CredentialFormatter,
+        formatters: &[(FormatType, Arc<dyn CredentialFormatter>)],
     ) -> Result<String, Error> {
         self.config
             .datatype
@@ -391,7 +578,7 @@ impl CredentialSchemaImportParserImpl {
         self.validate_datatype_formatter_capabilities(
             claim_shema_key,
             &claim_schema_data_type,
-            formatter,
+            formatters,
         )
         .error_while("checking claims datatype")?;
         Ok(claim_schema_data_type)
@@ -432,28 +619,33 @@ impl CredentialSchemaImportParserImpl {
         &self,
         claim_name: &str,
         datatype: &str,
-        formatter: &dyn CredentialFormatter,
+        formatters: &[(FormatType, Arc<dyn CredentialFormatter>)],
     ) -> Result<(), Error> {
-        if !formatter
-            .get_capabilities()
-            .datatypes
-            .iter()
-            .any(|d| d == datatype)
-        {
-            return Err(Error::ClaimSchemaUnsupportedDatatype {
-                claim_name: claim_name.to_owned(),
-                data_type: datatype.to_owned(),
-            });
-        };
+        for (_, formatter) in formatters {
+            if !formatter
+                .get_capabilities()
+                .datatypes
+                .iter()
+                .any(|d| d == datatype)
+            {
+                return Err(Error::ClaimSchemaUnsupportedDatatype {
+                    claim_name: claim_name.to_owned(),
+                    data_type: datatype.to_owned(),
+                });
+            };
+        }
         Ok(())
     }
 
     pub(super) fn validate_top_level_claims_mdoc_types(
         &self,
-        format_type: &FormatType,
+        formatters: &[(FormatType, Arc<dyn CredentialFormatter>)],
         claim_schemas: &[ImportCredentialSchemaClaimSchemaDTO],
     ) -> Result<(), Error> {
-        if *format_type != FormatType::Mdoc {
+        if formatters
+            .iter()
+            .all(|(format_type, _)| *format_type != FormatType::Mdoc)
+        {
             return Ok(());
         }
 
@@ -468,6 +660,33 @@ impl CredentialSchemaImportParserImpl {
                 return Err(Error::InvalidClaimTypeMdocTopLevelOnlyObjectsAllowed);
             }
         }
+        Ok(())
+    }
+
+    fn validate_unique_formats(
+        &self,
+        formats: &[ImportCredentialSchemaV2FormatDTO],
+    ) -> Result<(), Error> {
+        if !formats.iter().map(|format| &format.format).all_unique() {
+            return Err(Error::DuplicateFormats);
+        }
+        Ok(())
+    }
+
+    fn validate_claim_schema_mappings_unique_formats(
+        &self,
+        claim_schema: &ImportCredentialSchemaClaimSchemaDTO,
+    ) -> Result<(), Error> {
+        if !claim_schema
+            .mapping
+            .iter()
+            .flatten()
+            .map(|mapping| &mapping.format)
+            .all_unique()
+        {
+            return Err(Error::DuplicateMappingFormats(claim_schema.key.clone()));
+        }
+
         Ok(())
     }
 
@@ -566,9 +785,9 @@ mod test {
         ImportCredentialSchemaLayoutPropertiesDTO,
     };
     use crate::proto::credential_schema::parser::CredentialSchemaImportParserImpl;
-    use crate::provider::credential_formatter::MockCredentialFormatter;
     use crate::provider::credential_formatter::model::{Features, FormatterCapabilities};
     use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
+    use crate::provider::credential_formatter::{CredentialFormatter, MockCredentialFormatter};
     use crate::provider::revocation::MockRevocationMethod;
     use crate::provider::revocation::model::{Operation, RevocationMethodCapabilities};
     use crate::provider::revocation::provider::MockRevocationMethodProvider;
@@ -834,6 +1053,8 @@ mod test {
     fn test_parse_layout_properties_success_none() {
         // given
         let formatter = MockCredentialFormatter::default();
+        let formatters: Vec<(FormatType, Arc<dyn CredentialFormatter>)> =
+            vec![(FormatType::SdJwtVc, Arc::new(formatter))];
         let parser = setup_parser(
             generic_config().core,
             MockCredentialFormatterProvider::default(),
@@ -841,7 +1062,7 @@ mod test {
         );
 
         // when
-        let result = parser.parse_layout_properties(None, &[], &formatter);
+        let result = parser.parse_layout_properties(None, &[], formatters.as_ref());
 
         // then
         let_assert!(Ok(None) = result);
@@ -857,6 +1078,9 @@ mod test {
                 features: vec![Features::SupportsCredentialDesign],
                 ..Default::default()
             });
+
+        let formatters: Vec<(FormatType, Arc<dyn CredentialFormatter>)> =
+            vec![(FormatType::SdJwtVc, Arc::new(formatter))];
 
         let parser = setup_parser(
             generic_config().core,
@@ -887,7 +1111,8 @@ mod test {
         });
 
         // when
-        let result = parser.parse_layout_properties(layout_props, &claim_schemas, &formatter);
+        let result =
+            parser.parse_layout_properties(layout_props, &claim_schemas, formatters.as_ref());
 
         // then
         let_assert!(Ok(Some(props)) = result);
@@ -901,6 +1126,9 @@ mod test {
         formatter
             .expect_get_capabilities()
             .returning(FormatterCapabilities::default);
+
+        let formatters: Vec<(FormatType, Arc<dyn CredentialFormatter>)> =
+            vec![(FormatType::SdJwtVc, Arc::new(formatter))];
 
         let parser = setup_parser(
             generic_config().core,
@@ -918,7 +1146,7 @@ mod test {
         });
 
         // when
-        let result = parser.parse_layout_properties(layout_props, &[], &formatter);
+        let result = parser.parse_layout_properties(layout_props, &[], formatters.as_ref());
 
         // then
         assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0131);
@@ -1201,6 +1429,8 @@ mod test {
                 ..Default::default()
             });
 
+        let formatters: Vec<(FormatType, Arc<dyn CredentialFormatter>)> =
+            vec![(FormatType::SdJwtVc, Arc::new(formatter))];
         let parser = setup_parser(
             generic_config().core,
             MockCredentialFormatterProvider::default(),
@@ -1209,7 +1439,7 @@ mod test {
 
         // when
         let result =
-            parser.parse_claim_schema_datatype("claim1", &[], "STRING".to_string(), &formatter);
+            parser.parse_claim_schema_datatype("claim1", &[], "STRING".to_string(), &formatters);
 
         // then
         let_assert!(Ok(datatype) = result);
@@ -1226,12 +1456,14 @@ mod test {
                 datatypes: vec!["STRING".into(), "OBJECT".into()],
                 ..Default::default()
             });
-
         let parser = setup_parser(
             generic_config().core,
             MockCredentialFormatterProvider::default(),
             MockRevocationMethodProvider::new(),
         );
+
+        let formatters: Vec<(FormatType, Arc<dyn CredentialFormatter>)> =
+            vec![(FormatType::SdJwtVc, Arc::new(formatter))];
 
         let claim_schema_claims = vec![ImportCredentialSchemaClaimSchemaDTO {
             id: Uuid::new_v4(),
@@ -1250,7 +1482,7 @@ mod test {
             "claim1",
             &claim_schema_claims,
             "OBJECT".to_string(),
-            &formatter,
+            &formatters,
         );
 
         // then
@@ -1289,12 +1521,15 @@ mod test {
             MockRevocationMethodProvider::new(),
         );
 
+        let formatters: Vec<(FormatType, Arc<dyn CredentialFormatter>)> =
+            vec![(FormatType::SdJwtVc, Arc::new(formatter))];
+
         // when
         let result = parser.parse_claim_schema_datatype(
             "claim1",
             &[],
             "INVALID_TYPE".to_string(),
-            &formatter,
+            &formatters,
         );
 
         // then
@@ -1332,8 +1567,11 @@ mod test {
             MockRevocationMethodProvider::new(),
         );
 
+        let formatters: Vec<(FormatType, Arc<dyn CredentialFormatter>)> =
+            vec![(FormatType::SdJwtVc, Arc::new(formatter))];
+
         // when
-        let result = parser.parse_claim_schema_array("claim1", Some(true), &formatter);
+        let result = parser.parse_claim_schema_array("claim1", Some(true), &formatters);
 
         // then
         let_assert!(Ok(is_array) = result);
@@ -1354,8 +1592,11 @@ mod test {
             MockRevocationMethodProvider::new(),
         );
 
+        let formatters: Vec<(FormatType, Arc<dyn CredentialFormatter>)> =
+            vec![(FormatType::SdJwtVc, Arc::new(formatter))];
+
         // when
-        let result = parser.parse_claim_schema_array("claim1", Some(true), &formatter);
+        let result = parser.parse_claim_schema_array("claim1", Some(true), &formatters);
 
         // then
         assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0089);
@@ -1475,15 +1716,17 @@ mod test {
             mapping: None,
         }];
 
+        let formatters: Vec<(FormatType, Arc<dyn CredentialFormatter>)> =
+            vec![(FormatType::Jwt, Arc::new(formatter))];
         // when
-        let result = parser.parse_all_claim_schemas(now, &FormatType::Jwt, claims, &formatter);
+        let result = parser.parse_all_claim_schemas(now, claims, &formatters);
 
         // then
         let_assert!(Ok(schemas) = result);
         assert!(1 == schemas.len());
-        assert!("name" == schemas[0].key);
-        assert!("STRING" == schemas[0].data_type);
-        assert!(schemas[0].required);
+        assert!("name" == schemas[0].0.key);
+        assert!("STRING" == schemas[0].0.data_type);
+        assert!(schemas[0].0.required);
     }
 
     #[test]
@@ -1525,15 +1768,16 @@ mod test {
             }],
             mapping: None,
         }];
-
+        let formatters: Vec<(FormatType, Arc<dyn CredentialFormatter>)> =
+            vec![(FormatType::Jwt, Arc::new(formatter))];
         // when
-        let result = parser.parse_all_claim_schemas(now, &FormatType::Jwt, claims, &formatter);
+        let result = parser.parse_all_claim_schemas(now, claims, &formatters);
 
         // then
         let_assert!(Ok(schemas) = result);
         assert!(2 == schemas.len());
-        assert!("address" == schemas[0].key);
-        assert!("address/street" == schemas[1].key);
+        assert_eq!("address", schemas[0].0.key);
+        assert_eq!("address/street", schemas[1].0.key);
     }
 
     #[test]
@@ -1547,9 +1791,11 @@ mod test {
         );
 
         let now = crate::clock::now_utc();
+        let formatters: Vec<(FormatType, Arc<dyn CredentialFormatter>)> =
+            vec![(FormatType::Jwt, Arc::new(formatter))];
 
         // when
-        let result = parser.parse_all_claim_schemas(now, &FormatType::Jwt, vec![], &formatter);
+        let result = parser.parse_all_claim_schemas(now, vec![], &formatters);
 
         // then
         assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0008);
@@ -1584,9 +1830,11 @@ mod test {
             claims: vec![],
             mapping: None,
         }];
+        let formatters: Vec<(FormatType, Arc<dyn CredentialFormatter>)> =
+            vec![(FormatType::Mdoc, Arc::new(formatter))];
 
         // when
-        let result = parser.parse_all_claim_schemas(now, &FormatType::Mdoc, claims, &formatter);
+        let result = parser.parse_all_claim_schemas(now, claims, &formatters);
 
         // then
         assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0117);

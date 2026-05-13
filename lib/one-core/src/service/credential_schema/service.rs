@@ -8,6 +8,7 @@ use super::dto::{
     CredentialSchemaFilterParamsDTO, CredentialSchemaListIncludeEntityTypeEnum,
     CredentialSchemaShareResponseDTO, GetCredentialSchemaListResponseDTO,
     GetCredentialSchemaListV2ResponseDTO, ImportCredentialSchemaRequestDTO,
+    ImportCredentialSchemaV2RequestDTO,
 };
 use super::error::CredentialSchemaServiceError;
 use super::validator::UniquenessCheckResult;
@@ -224,7 +225,7 @@ impl CredentialSchemaService {
             resolved_formats.push(schema_format);
             claim_schemas.extend(format_specific_claim_schemas);
         }
-        let resolved_formats_types = resolved_formats
+        let resolved_format_types = resolved_formats
             .iter()
             .map(|f| f.format.clone())
             .collect::<Vec<_>>();
@@ -241,9 +242,9 @@ impl CredentialSchemaService {
         );
 
         let success_log = format!(
-            "Created credential schema v2 `{}` ({credential_schema_id}): formats `{:?}`, key storage security {}",
+            "Created credential schema v2 `{}` ({credential_schema_id}): formats `{:?}`: key storage security {}",
             credential_schema.name,
-            resolved_formats_types,
+            resolved_format_types,
             quoted_opt_provider(&credential_schema.key_storage_security)
         );
 
@@ -523,6 +524,52 @@ impl CredentialSchemaService {
             credential_schema.id,
             credential_schema.format().await?,
             credential_schema.revocation_method,
+            quoted_opt_provider(&credential_schema.key_storage_security)
+        );
+
+        let credential_schema = self
+            .importer_proto
+            .import_credential_schema(credential_schema)
+            .await
+            .error_while("importing schema")?;
+        tracing::info!(message = success_log);
+        Ok(credential_schema.id)
+    }
+
+    pub async fn import_credential_schema_v2(
+        &self,
+        request: ImportCredentialSchemaV2RequestDTO,
+    ) -> Result<CredentialSchemaId, CredentialSchemaServiceError> {
+        throw_if_org_id_not_matching_session(&request.organisation_id, &*self.session_provider)
+            .error_while("checking session")?;
+        let organisation = self
+            .organisation_repository
+            .get_organisation(&request.organisation_id)
+            .await
+            .error_while("getting organisation")?
+            .ok_or(CredentialSchemaServiceError::MissingOrganisation(
+                request.organisation_id,
+            ))?;
+        if organisation.deactivated_at.is_some() {
+            return Err(CredentialSchemaServiceError::OrganisationIsDeactivated(
+                request.organisation_id,
+            ));
+        }
+
+        let credential_schema = self
+            .import_parser
+            .parse_import_credential_schema_v2(
+                crate::proto::credential_schema::dto::ImportCredentialSchemaV2RequestDTO {
+                    organisation,
+                    schema: request.schema.into(),
+                },
+            )
+            .error_while("parsing schema")?;
+
+        let success_log = format!(
+            "Imported credential schema v2 `{}` ({}): key storage security {}",
+            credential_schema.name,
+            credential_schema.id,
             quoted_opt_provider(&credential_schema.key_storage_security)
         );
 
