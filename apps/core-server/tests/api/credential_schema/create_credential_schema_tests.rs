@@ -500,6 +500,7 @@ async fn test_fail_create_credential_schema_with_unsupported_data_type() {
         required: true,
         claims: vec![],
         array: Some(true),
+        translations: None,
     }];
 
     // WHEN

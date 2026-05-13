@@ -32,6 +32,7 @@ async fn test_get_list_credential_schema_v2_success() {
         allow_suspension: Some(true),
         allow_revocation: Some(true),
         transaction_code: None,
+        translations: None,
     };
     let resp = context.api.credential_schemas.create_v2(params).await;
     assert_eq!(resp.status(), 201);

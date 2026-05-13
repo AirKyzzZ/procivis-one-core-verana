@@ -38,8 +38,27 @@ pub(crate) fn from_request_claim_schema(
     now: OffsetDateTime,
     request: &CredentialClaimSchemaRequestDTO,
 ) -> ClaimSchema {
+    let id: ClaimSchemaId = Uuid::new_v4().into();
+    let translations = match &request.translations {
+        Some(t) => t
+            .name
+            .0
+            .iter()
+            .map(|(lang, value)| LocalizedText {
+                entity_id: id.into(),
+                field: LocalizedTextField::Name,
+                created_date: now,
+                last_modified: now,
+                lang: lang.clone(),
+                value: value.clone(),
+                entity_type: LocalizedTextEntityType::ClaimSchema,
+            })
+            .collect::<Vec<_>>()
+            .into(),
+        None => Default::default(),
+    };
     ClaimSchema {
-        id: Uuid::new_v4().into(),
+        id,
         key: request.key.clone(),
         business_key: Some(request.key.clone()),
         data_type: request.datatype.clone(),
@@ -48,7 +67,7 @@ pub(crate) fn from_request_claim_schema(
         array: request.array.unwrap_or(false),
         metadata: false,
         required: request.required,
-        translations: Default::default(),
+        translations,
     }
 }
 

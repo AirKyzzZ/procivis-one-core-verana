@@ -198,7 +198,7 @@ impl CredentialSchemaService {
             .map(|claim_schema_request| {
                 (
                     from_request_claim_schema(now, &claim_schema_request),
-                    claim_schema_request.mapping.unwrap_or_default(),
+                    claim_schema_request.mappings.unwrap_or_default(),
                 )
             })
             .collect::<Vec<_>>();

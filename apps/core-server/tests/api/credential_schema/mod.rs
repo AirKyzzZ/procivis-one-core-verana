@@ -4,6 +4,7 @@ mod delete_credential_schema_tests;
 mod get_credential_schema_tests;
 mod get_credential_schema_v2_tests;
 mod import_credential_schema_test;
+mod import_credential_schema_v2_tests;
 mod list_credential_schema_tests;
 mod list_credential_schema_v2_tests;
 mod share_credential_schema_tests;

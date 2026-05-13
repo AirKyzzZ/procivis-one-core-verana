@@ -447,7 +447,11 @@ pub(crate) struct CredentialClaimSchemaRequestRestDTO {
     pub claims: Vec<CredentialClaimSchemaRequestRestDTO>,
     #[serde(default)]
     #[into(with_fn = convert_inner_of_inner)]
-    pub mapping: Option<Vec<CredentialClaimSchemaMappingRestDTO>>,
+    pub mappings: Option<Vec<CredentialClaimSchemaMappingRestDTO>>,
+    /// Translations for this claim's display name.
+    #[serde(default)]
+    #[into(with_fn = convert_inner)]
+    pub translations: Option<CredentialClaimSchemaTranslationsRestDTO>,
 }
 
 /// Design the appearance of the credential in the holder's wallet.
@@ -639,7 +643,7 @@ pub(crate) struct ImportCredentialSchemaClaimSchemaRestDTO {
     pub claims: Vec<ImportCredentialSchemaClaimSchemaRestDTO>,
     #[serde(default)]
     #[into(with_fn = convert_inner_of_inner)]
-    pub mapping: Option<Vec<CredentialClaimSchemaMappingRestDTO>>,
+    pub mappings: Option<Vec<CredentialClaimSchemaMappingRestDTO>>,
     #[allow(unused)]
     #[into(skip)]
     pub translations: Option<CredentialClaimSchemaTranslationsRestDTO>,
@@ -735,6 +739,10 @@ pub(crate) struct CreateCredentialSchemaV2RequestRestDTO {
     #[serde(default)]
     #[try_into(with_fn = try_convert_inner)]
     pub transaction_code: Option<CredentialSchemaTransactionCodeRequestRestDTO>,
+    /// Translations for the credential schema name and optional description.
+    #[serde(default)]
+    #[try_into(infallible, with_fn = convert_inner)]
+    pub translations: Option<CredentialSchemaTranslationsRestDTO>,
 }
 
 #[options_not_nullable]
@@ -814,16 +822,19 @@ pub(crate) struct CredentialSchemaV2ResponseRestDTO {
     pub translations: CredentialSchemaTranslationsRestDTO,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
+#[options_not_nullable]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From, Into)]
 #[from(CredentialSchemaTranslationsDTO)]
+#[into(CredentialSchemaTranslationsDTO)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CredentialSchemaTranslationsRestDTO {
     pub name: I18nString,
     pub description: Option<I18nString>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From, Into)]
 #[from(CredentialClaimSchemaTranslationsDTO)]
+#[into(CredentialClaimSchemaTranslationsDTO)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CredentialClaimSchemaTranslationsRestDTO {
     pub name: I18nString,
@@ -905,6 +916,10 @@ pub(crate) struct ImportCredentialSchemaV2RequestSchemaRestDTO {
     #[serde(default)]
     #[try_into(infallible)]
     pub batch_size: Option<i32>,
+    /// Translations for the credential schema name and optional description.
+    #[serde(default)]
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub translations: Option<CredentialSchemaTranslationsRestDTO>,
 }
 
 #[cfg(test)]

@@ -251,6 +251,7 @@ pub struct CreateCredentialSchemaV2RequestDTO {
     pub batch_size: Option<i32>,
     pub requires_wallet_instance_attestation: bool,
     pub transaction_code: Option<CredentialSchemaTransactionCodeRequestDTO>,
+    pub translations: Option<CredentialSchemaTranslationsDTO>,
 }
 
 #[derive(Clone, Debug)]
@@ -300,7 +301,9 @@ pub struct CredentialClaimSchemaRequestDTO {
     #[from(with_fn = convert_inner)]
     pub claims: Vec<CredentialClaimSchemaRequestDTO>,
     #[from(with_fn = convert_inner_of_inner)]
-    pub mapping: Option<Vec<CredentialClaimSchemaMappingDTO>>,
+    pub mappings: Option<Vec<CredentialClaimSchemaMappingDTO>>,
+    #[from(replace = Option::<CredentialClaimSchemaTranslationsDTO>::None)]
+    pub translations: Option<CredentialClaimSchemaTranslationsDTO>,
 }
 
 #[skip_serializing_none]
@@ -466,7 +469,7 @@ pub struct ImportCredentialSchemaClaimSchemaDTO {
     #[into(with_fn = convert_inner)]
     pub claims: Vec<ImportCredentialSchemaClaimSchemaDTO>,
     #[into(with_fn = convert_inner_of_inner)]
-    pub mapping: Option<Vec<CredentialClaimSchemaMappingDTO>>,
+    pub mappings: Option<Vec<CredentialClaimSchemaMappingDTO>>,
 }
 
 #[derive(Clone, Debug, Into, Deserialize)]
@@ -520,4 +523,5 @@ pub struct ImportCredentialSchemaV2RequestSchemaDTO {
     pub transaction_code: Option<ImportCredentialSchemaTransactionCodeDTO>,
     pub allow_revocation: Option<bool>,
     pub batch_size: Option<i32>,
+    pub translations: Option<CredentialSchemaTranslationsDTO>,
 }

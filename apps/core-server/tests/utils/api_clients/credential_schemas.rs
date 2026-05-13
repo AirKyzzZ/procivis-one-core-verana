@@ -22,6 +22,8 @@ pub struct TestClaim {
     pub claims: Vec<TestClaim>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub array: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub translations: Option<serde_json::Value>,
 }
 
 impl TestClaim {
@@ -62,6 +64,7 @@ pub struct CreateSchemaV2Params {
     pub allow_suspension: Option<bool>,
     pub allow_revocation: Option<bool>,
     pub transaction_code: Option<CredentialSchemaTransactionCodeRequestRestDTO>,
+    pub translations: Option<serde_json::Value>,
 }
 
 impl CreateSchemaParams {
@@ -76,8 +79,10 @@ impl CreateSchemaParams {
                 required: true,
                 claims: vec![],
                 array: None,
+                translations: None,
             }],
             array: None,
+            translations: None,
         }];
         self
     }
@@ -234,6 +239,9 @@ impl CredentialSchemasApi {
             }
             body["transactionCode"] = code;
         }
+        if let Some(translations) = params.translations {
+            body["translations"] = translations;
+        }
         self.client.post("/api/credential-schema/v2", body).await
     }
 
@@ -247,6 +255,24 @@ impl CredentialSchemasApi {
         self.client
             .post(
                 "/api/credential-schema/v1/import",
+                Some(json!({
+                    "schema": schema,
+                    "organisationId": organisation_id
+                })),
+            )
+            .await
+    }
+
+    pub async fn import_v2(
+        &self,
+        organisation_id: OrganisationId,
+        credential_schema: impl Into<serde_json::Value>,
+    ) -> Response {
+        let schema = credential_schema.into();
+
+        self.client
+            .post(
+                "/api/credential-schema/v2/import",
                 Some(json!({
                     "schema": schema,
                     "organisationId": organisation_id

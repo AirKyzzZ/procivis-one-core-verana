@@ -68,7 +68,7 @@ pub struct ImportCredentialSchemaClaimSchemaDTO {
     pub array: Option<bool>,
     #[serde(default)]
     pub claims: Vec<ImportCredentialSchemaClaimSchemaDTO>,
-    pub mapping: Option<Vec<CredentialClaimSchemaMappingDTO>>,
+    pub mappings: Option<Vec<CredentialClaimSchemaMappingDTO>>,
 }
 
 #[derive(Clone, Debug)]
@@ -105,6 +105,8 @@ pub struct ImportCredentialSchemaV2RequestSchemaDTO {
     pub transaction_code: Option<ImportCredentialSchemaTransactionCodeDTO>,
     pub allow_revocation: Option<bool>,
     pub batch_size: Option<i32>,
+    pub translations:
+        Option<crate::service::credential_schema::dto::CredentialSchemaTranslationsDTO>,
 }
 
 #[derive(Clone, Debug, Deserialize, TryFrom, Into)]

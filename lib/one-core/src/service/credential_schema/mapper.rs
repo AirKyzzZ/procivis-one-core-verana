@@ -350,7 +350,7 @@ pub(super) fn from_create_request_with_id(
             claim_mappings: Default::default(),
         }]
         .into(),
-        translations: schema_name_translation(id, request.name, now, default_language).into(),
+        translations: default_name_translation(id, request.name, now, default_language).into(),
     })
 }
 
@@ -384,11 +384,48 @@ pub(super) fn from_create_v2_request_with_id(
         transaction_code: convert_inner(request.transaction_code),
         batch_size: request.batch_size,
         formats: formats.into(),
-        translations: schema_name_translation(id, request.name, now, default_language).into(),
+        translations: match request.translations {
+            Some(translations) => schema_translations_from_dto(id, translations, now),
+            None => default_name_translation(id, request.name, now, default_language),
+        }
+        .into(),
     }
 }
 
-fn schema_name_translation(
+pub(crate) fn schema_translations_from_dto(
+    id: CredentialSchemaId,
+    translations: CredentialSchemaTranslationsDTO,
+    now: time::OffsetDateTime,
+) -> Vec<LocalizedText> {
+    let mut result = Vec::new();
+    for (lang, value) in translations.name.0 {
+        result.push(LocalizedText {
+            entity_id: id.into(),
+            field: LocalizedTextField::Name,
+            created_date: now,
+            last_modified: now,
+            lang,
+            value,
+            entity_type: LocalizedTextEntityType::CredentialSchema,
+        });
+    }
+    if let Some(description) = translations.description {
+        for (lang, value) in description.0 {
+            result.push(LocalizedText {
+                entity_id: id.into(),
+                field: LocalizedTextField::Description,
+                created_date: now,
+                last_modified: now,
+                lang,
+                value,
+                entity_type: LocalizedTextEntityType::CredentialSchema,
+            });
+        }
+    }
+    result
+}
+
+fn default_name_translation(
     id: CredentialSchemaId,
     name: String,
     now: time::OffsetDateTime,

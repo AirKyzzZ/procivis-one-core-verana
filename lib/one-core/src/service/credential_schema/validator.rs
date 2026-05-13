@@ -335,7 +335,7 @@ fn validate_claim_mappings_for_format(
     let flat_claims = super::mapper::unnest_claim_schemas(claims);
 
     for claim in &flat_claims {
-        if let Some(mappings) = &claim.mapping {
+        if let Some(mappings) = &claim.mappings {
             if !mappings.iter().map(|m| &m.format).all_unique() {
                 return Err(CredentialSchemaServiceError::DuplicateMappingFormats(
                     claim.key.clone(),

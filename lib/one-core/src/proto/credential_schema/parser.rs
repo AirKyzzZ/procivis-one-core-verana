@@ -32,6 +32,7 @@ use crate::provider::credential_formatter::provider::CredentialFormatterProvider
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::model::Operation;
 use crate::provider::revocation::provider::RevocationMethodProvider;
+use crate::service::credential_schema::mapper::schema_translations_from_dto;
 use crate::service::error::MissingProviderError;
 
 pub(crate) struct CredentialSchemaImportParserImpl {
@@ -226,7 +227,12 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
             transaction_code: convert_inner(dto.schema.transaction_code),
             batch_size: dto.schema.batch_size,
             allow_revocation: dto.schema.allow_revocation,
-            translations: Default::default(),
+            translations: match dto.schema.translations {
+                Some(translations) => {
+                    schema_translations_from_dto(credential_schema_id, translations, now).into()
+                }
+                None => Default::default(),
+            },
         })
     }
 }
@@ -508,7 +514,7 @@ impl CredentialSchemaImportParserImpl {
             formatters,
         )?;
 
-        flattened_claim_schemas.push((claim_schema, claim_schema_dto.mapping.unwrap_or_default()));
+        flattened_claim_schemas.push((claim_schema, claim_schema_dto.mappings.unwrap_or_default()));
         flattened_claim_schemas.append(&mut childs);
         Ok(flattened_claim_schemas)
     }
@@ -681,7 +687,7 @@ impl CredentialSchemaImportParserImpl {
         claim_schema: &ImportCredentialSchemaClaimSchemaDTO,
     ) -> Result<(), Error> {
         if !claim_schema
-            .mapping
+            .mappings
             .iter()
             .flatten()
             .map(|mapping| &mapping.format)
@@ -1480,7 +1486,7 @@ mod test {
             required: false,
             array: None,
             claims: vec![],
-            mapping: None,
+            mappings: None,
         }];
 
         // when
@@ -1628,7 +1634,7 @@ mod test {
                 required: true,
                 array: Some(false),
                 claims: vec![],
-                mapping: None,
+                mappings: None,
             },
             ImportCredentialSchemaClaimSchemaDTO {
                 id: Uuid::new_v4(),
@@ -1639,7 +1645,7 @@ mod test {
                 required: true,
                 array: Some(false),
                 claims: vec![],
-                mapping: None,
+                mappings: None,
             },
         ];
 
@@ -1670,7 +1676,7 @@ mod test {
                 required: true,
                 array: Some(false),
                 claims: vec![],
-                mapping: None,
+                mappings: None,
             },
             ImportCredentialSchemaClaimSchemaDTO {
                 id: Uuid::new_v4(),
@@ -1681,7 +1687,7 @@ mod test {
                 required: true,
                 array: Some(false),
                 claims: vec![],
-                mapping: None,
+                mappings: None,
             },
         ];
 
@@ -1719,7 +1725,7 @@ mod test {
             required: true,
             array: Some(false),
             claims: vec![],
-            mapping: None,
+            mappings: None,
         }];
 
         let formatters: Vec<(FormatType, Arc<dyn CredentialFormatter>)> =
@@ -1770,9 +1776,9 @@ mod test {
                 required: true,
                 array: None,
                 claims: vec![],
-                mapping: None,
+                mappings: None,
             }],
-            mapping: None,
+            mappings: None,
         }];
         let formatters: Vec<(FormatType, Arc<dyn CredentialFormatter>)> =
             vec![(FormatType::Jwt, Arc::new(formatter))];
@@ -1834,7 +1840,7 @@ mod test {
             required: true,
             array: None,
             claims: vec![],
-            mapping: None,
+            mappings: None,
         }];
         let formatters: Vec<(FormatType, Arc<dyn CredentialFormatter>)> =
             vec![(FormatType::Mdoc, Arc::new(formatter))];

@@ -91,6 +91,7 @@ async fn test_ssi_get_credential_schema_v2_created_via_v2_endpoint() {
                 required: true,
                 claims: vec![],
                 array: None,
+                translations: None,
             }],
             batch_size: Some(5),
             ..Default::default()

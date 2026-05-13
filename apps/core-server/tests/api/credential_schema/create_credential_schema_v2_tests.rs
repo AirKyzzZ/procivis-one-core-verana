@@ -1,6 +1,7 @@
 use core_server::endpoint::credential_schema::dto::{
     CredentialSchemaTransactionCodeRequestRestDTO, TransactionCodeTypeRestEnum,
 };
+use one_core::model::localized_text::{LocalizedTextEntityType, LocalizedTextField};
 use similar_asserts::assert_eq;
 
 use crate::utils::api_clients::credential_schemas::{CreateSchemaV2Params, TestClaim};
@@ -18,8 +19,10 @@ fn default_claims() -> Vec<TestClaim> {
             required: true,
             claims: vec![],
             array: None,
+            translations: None,
         }],
         array: None,
+        translations: None,
     }]
 }
 
@@ -391,8 +394,10 @@ async fn test_fail_create_credential_schema_v2_forbidden_claim_name() {
                     required: true,
                     claims: vec![],
                     array: None,
+                    translations: None,
                 }],
                 array: None,
+                translations: None,
             }],
             ..Default::default()
         })
@@ -474,6 +479,7 @@ async fn test_fail_create_credential_schema_v2_unsupported_data_type() {
                 required: true,
                 claims: vec![],
                 array: Some(true),
+                translations: None,
             }],
             ..Default::default()
         })
@@ -482,4 +488,247 @@ async fn test_fail_create_credential_schema_v2_unsupported_data_type() {
     // THEN
     assert_eq!(resp.status(), 400);
     assert_eq!(resp.error_code().await, "BR_0245");
+}
+
+#[tokio::test]
+async fn test_create_credential_schema_v2_with_claim_translations() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credential_schemas
+        .create_v2(CreateSchemaV2Params {
+            name: "v2 schema with claim translations".into(),
+            organisation_id: organisation.id.into(),
+            formats: vec![jwt_format()],
+            claims: vec![TestClaim {
+                datatype: "OBJECT".to_string(),
+                key: "root".to_string(),
+                required: true,
+                claims: vec![TestClaim {
+                    datatype: "STRING".to_string(),
+                    key: "firstName".to_string(),
+                    required: true,
+                    claims: vec![],
+                    array: None,
+                    translations: Some(serde_json::json!({
+                        "name": {
+                            "en": "First Name",
+                            "de": "Vorname"
+                        }
+                    })),
+                }],
+                array: None,
+                translations: Some(serde_json::json!({
+                    "name": {
+                        "en": "Root Object",
+                        "de": "Hauptobjekt"
+                    }
+                })),
+            }],
+            ..Default::default()
+        })
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+    let resp_json = resp.json_value().await;
+    let id = resp_json["id"].parse();
+    let credential_schema = context.db.credential_schemas.get(&id).await;
+
+    let get_resp = context
+        .api
+        .credential_schemas
+        .get_v2(&credential_schema.id)
+        .await
+        .json_value()
+        .await;
+
+    let root_claim = &get_resp["claims"][0];
+    assert_eq!(root_claim["key"], "root");
+    assert_eq!(root_claim["translations"]["name"]["en"], "Root Object");
+    assert_eq!(root_claim["translations"]["name"]["de"], "Hauptobjekt");
+
+    let first_name_claim = &root_claim["claims"][0];
+    assert_eq!(first_name_claim["key"], "firstName");
+    assert_eq!(first_name_claim["translations"]["name"]["en"], "First Name");
+    assert_eq!(first_name_claim["translations"]["name"]["de"], "Vorname");
+
+    let claim_schemas = credential_schema.claim_schemas.get().await.unwrap();
+    let root_cs = claim_schemas.iter().find(|cs| cs.key == "root").unwrap();
+    let root_translations = context.db.localized_text.get(root_cs.id).await;
+    assert_eq!(root_translations.len(), 2);
+    assert!(
+        root_translations
+            .iter()
+            .any(|t| t.lang == "en" && t.value == "Root Object")
+    );
+    assert!(
+        root_translations
+            .iter()
+            .any(|t| t.lang == "de" && t.value == "Hauptobjekt")
+    );
+    assert!(
+        root_translations
+            .iter()
+            .all(|t| t.entity_type == LocalizedTextEntityType::ClaimSchema)
+    );
+
+    let first_name_cs = claim_schemas
+        .iter()
+        .find(|cs| cs.key == "root/firstName")
+        .unwrap();
+    let first_name_translations = context.db.localized_text.get(first_name_cs.id).await;
+    assert_eq!(first_name_translations.len(), 2);
+    assert!(
+        first_name_translations
+            .iter()
+            .any(|t| t.lang == "en" && t.value == "First Name")
+    );
+    assert!(
+        first_name_translations
+            .iter()
+            .any(|t| t.lang == "de" && t.value == "Vorname")
+    );
+}
+
+#[tokio::test]
+async fn test_create_credential_schema_v2_with_translations() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credential_schemas
+        .create_v2(CreateSchemaV2Params {
+            name: "v2 schema".into(),
+            organisation_id: organisation.id.into(),
+            formats: vec![jwt_format()],
+            claims: default_claims(),
+            translations: Some(serde_json::json!({
+                "name": {
+                    "en": "Schema name in English",
+                    "de": "Schema Name auf Deutsch"
+                },
+                "description": {
+                    "en": "Schema description in English",
+                    "de": "Schema Beschreibung auf Deutsch"
+                }
+            })),
+            ..Default::default()
+        })
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+    let resp_json = resp.json_value().await;
+    let id = resp_json["id"].parse();
+    let credential_schema = context.db.credential_schemas.get(&id).await;
+
+    let get_resp = context
+        .api
+        .credential_schemas
+        .get_v2(&credential_schema.id)
+        .await
+        .json_value()
+        .await;
+
+    assert_eq!(
+        get_resp["translations"]["name"]["en"],
+        "Schema name in English"
+    );
+    assert_eq!(
+        get_resp["translations"]["name"]["de"],
+        "Schema Name auf Deutsch"
+    );
+    assert_eq!(
+        get_resp["translations"]["description"]["en"],
+        "Schema description in English"
+    );
+    assert_eq!(
+        get_resp["translations"]["description"]["de"],
+        "Schema Beschreibung auf Deutsch"
+    );
+    let schema_translations = context.db.localized_text.get(credential_schema.id).await;
+
+    let name_translations: Vec<_> = schema_translations
+        .iter()
+        .filter(|t| t.field == LocalizedTextField::Name)
+        .collect();
+    assert_eq!(name_translations.len(), 2);
+    assert!(
+        name_translations
+            .iter()
+            .any(|t| t.lang == "en" && t.value == "Schema name in English")
+    );
+    assert!(
+        name_translations
+            .iter()
+            .any(|t| t.lang == "de" && t.value == "Schema Name auf Deutsch")
+    );
+
+    let description_translations: Vec<_> = schema_translations
+        .iter()
+        .filter(|t| t.field == LocalizedTextField::Description)
+        .collect();
+    assert_eq!(description_translations.len(), 2);
+    assert!(
+        description_translations
+            .iter()
+            .any(|t| t.lang == "en" && t.value == "Schema description in English")
+    );
+    assert!(
+        description_translations
+            .iter()
+            .any(|t| t.lang == "de" && t.value == "Schema Beschreibung auf Deutsch")
+    );
+
+    assert!(
+        schema_translations
+            .iter()
+            .all(|t| t.entity_type == LocalizedTextEntityType::CredentialSchema)
+    );
+}
+
+#[tokio::test]
+async fn test_create_credential_schema_v2_default_translation() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    // WHEN - no translations provided
+    let resp = context
+        .api
+        .credential_schemas
+        .create_v2(CreateSchemaV2Params {
+            name: "my schema".into(),
+            organisation_id: organisation.id.into(),
+            formats: vec![jwt_format()],
+            claims: default_claims(),
+            ..Default::default()
+        })
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+    let resp_json = resp.json_value().await;
+    let id = resp_json["id"].parse();
+    let credential_schema = context.db.credential_schemas.get(&id).await;
+
+    let get_resp = context
+        .api
+        .credential_schemas
+        .get_v2(&credential_schema.id)
+        .await
+        .json_value()
+        .await;
+
+    assert_eq!(get_resp["translations"]["name"]["en"], "my schema");
+    let schema_translations = context.db.localized_text.get(credential_schema.id).await;
+    assert_eq!(schema_translations.len(), 1);
+    assert_eq!(schema_translations[0].lang, "en");
+    assert_eq!(schema_translations[0].value, "my schema");
+    assert_eq!(schema_translations[0].field, LocalizedTextField::Name);
 }
