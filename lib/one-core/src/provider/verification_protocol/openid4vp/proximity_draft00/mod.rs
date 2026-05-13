@@ -859,7 +859,7 @@ pub(super) async fn prepare_proof_share(
     let Ok(verifier_key) = verifier_did
         .find_key(
             &params.key_id,
-            &KeyFilter::role_filter(KeyRole::Authentication),
+            &KeyFilter::did_role(KeyRole::Authentication),
         )
         .await
     else {

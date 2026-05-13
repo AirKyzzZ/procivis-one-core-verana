@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use rcgen::KeyUsagePurpose;
 use shared_types::{CertificateId, DidId, IdentifierId, KeyId};
 use x509_parser::pem::Pem;
@@ -14,24 +12,41 @@ use crate::model::key::Key;
 
 #[derive(Default, Clone, Debug)]
 pub struct KeyFilter {
-    pub did_role: Option<KeyRole>,
-    pub certificate_key_usage: Option<Vec<KeyUsagePurpose>>,
-    pub algorithms: Option<Vec<KeyAlgorithmType>>,
+    id: Option<KeyId>,
+    did_role: Option<KeyRole>,
+    algorithms: Option<Vec<KeyAlgorithmType>>,
 }
 
 impl KeyFilter {
-    pub fn role_filter(role: KeyRole) -> Self {
+    pub fn did_role(role: KeyRole) -> Self {
         Self {
             did_role: Some(role),
             ..Default::default()
         }
     }
 
-    pub fn cert_usage_filter(usage: Vec<KeyUsagePurpose>) -> Self {
+    pub fn id(id: Option<KeyId>) -> Self {
         Self {
-            certificate_key_usage: Some(usage),
+            id,
             ..Default::default()
         }
+    }
+
+    pub fn and_id(mut self, key_id: Option<KeyId>) -> Self {
+        self.id = key_id;
+        self
+    }
+
+    pub fn algorithms(algorithms: Vec<KeyAlgorithmType>) -> Self {
+        Self {
+            algorithms: Some(algorithms),
+            ..Default::default()
+        }
+    }
+
+    pub fn and_algorithms(mut self, algorithms: Vec<KeyAlgorithmType>) -> Self {
+        self.algorithms = Some(algorithms);
+        self
     }
 
     pub fn matches_related_key(&self, key: &RelatedKey) -> bool {
@@ -47,6 +62,11 @@ impl KeyFilter {
     }
 
     pub fn matches_key(&self, key: &Key) -> bool {
+        if let Some(key_id) = self.id.as_ref()
+            && key_id != &key.id
+        {
+            return false;
+        }
         self.algorithms
             .as_ref()
             .map(|algorithms| {
@@ -59,17 +79,66 @@ impl KeyFilter {
     }
 }
 
-#[derive(Default, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct CertificateFilter {
+    id: Option<CertificateId>,
     role: Option<CertificateRole>,
+    key_usage: Option<Vec<KeyUsagePurpose>>,
+    allowed_states: Vec<CertificateState>,
+}
+
+impl Default for CertificateFilter {
+    fn default() -> Self {
+        Self {
+            allowed_states: vec![CertificateState::Active],
+            id: None,
+            role: None,
+            key_usage: None,
+        }
+    }
 }
 
 impl CertificateFilter {
+    pub fn id(id: Option<CertificateId>) -> Self {
+        Self {
+            id,
+            ..Default::default()
+        }
+    }
+
+    pub fn key_usage(usage: Vec<KeyUsagePurpose>) -> Self {
+        Self {
+            key_usage: Some(usage),
+            ..Default::default()
+        }
+    }
+
+    pub fn and_id(mut self, id: Option<CertificateId>) -> Self {
+        self.id = id;
+        self
+    }
+
     pub fn role_filter(role: CertificateRole) -> Self {
-        Self { role: Some(role) }
+        Self {
+            role: Some(role),
+            ..Default::default()
+        }
     }
 
     pub fn matches_certificate(&self, certificate: &Certificate) -> bool {
+        if let Some(id) = self.id.as_ref()
+            && id != &certificate.id
+        {
+            return false;
+        }
+        if let Some(key_usage) = &self.key_usage
+            && !certificate.matches_key_usage(key_usage)
+        {
+            return false;
+        }
+        if !self.allowed_states.contains(&certificate.state) {
+            return false;
+        }
         if let Some(role) = self.role
             && !certificate.roles.contains(&role)
         {
@@ -81,17 +150,15 @@ impl CertificateFilter {
 
 #[derive(Default, Debug)]
 pub struct KeySelection {
-    pub key: Option<KeyId>,
     pub did: Option<DidId>,
-    pub certificate: Option<CertificateId>,
-    pub key_filter: Option<KeyFilter>,
-    pub certificate_filter: Option<CertificateFilter>,
+    pub key: KeyFilter,
+    pub certificate: CertificateFilter,
 }
 
 impl From<KeyFilter> for KeySelection {
     fn from(value: KeyFilter) -> Self {
         Self {
-            key_filter: Some(value),
+            key: value,
             ..Default::default()
         }
     }
@@ -101,11 +168,11 @@ pub enum SelectedKey<'a> {
     Key(&'a Key),
     Certificate {
         certificate: &'a Certificate,
-        key: Box<Cow<'a, Key>>,
+        key: Box<Key>,
     },
     Did {
         did: &'a Did,
-        key: Box<Cow<'a, RelatedKey>>,
+        key: Box<RelatedKey>,
     },
 }
 
@@ -172,23 +239,13 @@ pub enum KeySelectionError {
         certificate_id: CertificateId,
         certificate_filter: CertificateFilter,
     },
-    #[error("Certificate {certificate_id} does not belong to identifier {identifier_id}")]
-    CertificateNotFound {
-        identifier_id: IdentifierId,
-        certificate_id: CertificateId,
-    },
-    #[error("Certificate {certificate_id} is in invalid state `{state:?}`")]
-    CertificateInvalidState {
-        certificate_id: CertificateId,
-        state: CertificateState,
-    },
     #[error(
-        "No active certificate matching filters available for `identifier` ({identifier_id}): certificate filter `{certificate_filter:?}`: key filter `{key_filter:?}`"
+        "No certificate matching filters available for `identifier` ({identifier_id}): certificate filter `{certificate_filter:?}`: key filter `{key_filter:?}`"
     )]
-    NoActiveMatchingCertificate {
+    NoMatchingCertificate {
         identifier_id: IdentifierId,
         key_filter: KeyFilter,
-        certificate_filter: CertificateFilter,
+        certificate_filter: Box<CertificateFilter>,
     },
     #[error("Key {key_id} does not belong to certificate {certificate_id}")]
     KeyCertificateMismatch {
@@ -275,12 +332,6 @@ impl Did {
 
 impl Certificate {
     pub async fn has_matching_key(&self, filter: &KeyFilter) -> Result<bool, KeySelectionError> {
-        if let Some(certificate_key_usage) = &filter.certificate_key_usage
-            && !self.matches_key_usage(certificate_key_usage)
-        {
-            return Ok(false);
-        }
-
         Ok(if let Some(key) = self.key.as_ref() {
             let key = key.get().await.error_while("getting key")?;
             filter.matches_key(&key)
@@ -302,6 +353,18 @@ impl Certificate {
         certificate_key_usage
             .iter()
             .all(|key_usage_purpose| key_usage_matches(key_usage.value, key_usage_purpose))
+    }
+
+    async fn key(&self) -> Result<Key, KeySelectionError> {
+        self.key
+            .as_ref()
+            .ok_or(KeySelectionError::MappingError(
+                "Missing certificate key".to_owned(),
+            ))?
+            .get()
+            .await
+            .error_while("getting key")
+            .map_err(Into::into)
     }
 }
 
@@ -327,7 +390,7 @@ impl Identifier {
         if self.is_remote {
             return Err(KeySelectionError::RemoteIdentifier);
         }
-        let filter = selection.key_filter.clone().unwrap_or_default();
+        let filter = &selection.key;
         match self.r#type {
             IdentifierType::Key => {
                 self.throw_on_certificate_id(&selection)?;
@@ -340,11 +403,11 @@ impl Identifier {
                 if !filter.matches_key(key) {
                     return Err(KeySelectionError::NoKeyMatchingFilter {
                         identifier_id: self.id,
-                        key_filter: filter,
+                        key_filter: filter.clone(),
                     });
                 }
 
-                if let Some(key_id) = selection.key
+                if let Some(key_id) = filter.id
                     && key_id != key.id
                 {
                     return Err(KeySelectionError::KeyNotFound {
@@ -373,102 +436,43 @@ impl Identifier {
                     });
                 }
 
-                let key = match selection.key {
-                    Some(key_id) => did.find_key(&key_id, &filter).await?,
-                    None => did.find_first_matching_key(&filter).await?.ok_or(
-                        KeySelectionError::NoKeyMatchingFilter {
-                            identifier_id: self.id,
-                            key_filter: filter,
-                        },
-                    )?,
-                };
-
+                let key = did.find_first_matching_key(filter).await?.ok_or(
+                    KeySelectionError::NoKeyMatchingFilter {
+                        identifier_id: self.id,
+                        key_filter: filter.clone(),
+                    },
+                )?;
                 Ok(SelectedKey::Did {
                     did,
-                    key: Box::new(Cow::Owned(key)),
+                    key: Box::new(key),
                 })
             }
             IdentifierType::Certificate | IdentifierType::CertificateAuthority => {
                 self.throw_on_did_id(&selection)?;
-                let certificate_filter = selection.certificate_filter.unwrap_or_default();
                 let certs = self
                     .certificates
                     .as_ref()
                     .ok_or(KeySelectionError::MappingError(
                         "Missing identifier certificates".to_owned(),
                     ))?;
-
-                let certificate = match &selection.certificate {
-                    Some(requested_id) => {
-                        let requested_cert = certs
-                            .iter()
-                            .find(|cert| cert.id == *requested_id)
-                            .ok_or(KeySelectionError::CertificateNotFound {
-                                identifier_id: self.id,
-                                certificate_id: *requested_id,
-                            })?;
-                        if requested_cert.state != CertificateState::Active {
-                            return Err(KeySelectionError::CertificateInvalidState {
-                                certificate_id: requested_cert.id,
-                                state: requested_cert.state,
-                            });
-                        }
-                        requested_cert
+                let mut selected_cert = None;
+                for c in certs {
+                    if selection.certificate.matches_certificate(c)
+                        && c.has_matching_key(filter).await?
+                    {
+                        selected_cert = Some(c);
+                        break;
                     }
-                    None => {
-                        let mut selected_cert = None;
-                        for c in certs {
-                            if c.state == CertificateState::Active
-                                && certificate_filter.matches_certificate(c)
-                                && c.has_matching_key(&filter).await?
-                            {
-                                selected_cert = Some(c);
-                                break;
-                            }
-                        }
-                        selected_cert.ok_or(KeySelectionError::NoActiveMatchingCertificate {
-                            identifier_id: self.id,
-                            key_filter: filter.clone(),
-                            certificate_filter: certificate_filter.clone(),
-                        })?
-                    }
-                };
-                if !certificate_filter.matches_certificate(certificate) {
-                    return Err(KeySelectionError::CertificateNotMatchingFilter {
-                        certificate_id: certificate.id,
-                        certificate_filter,
-                    });
                 }
-
-                let key = certificate
-                    .key
-                    .as_ref()
-                    .ok_or(KeySelectionError::MappingError(
-                        "Missing certificate key".to_owned(),
-                    ))?
-                    .get()
-                    .await
-                    .error_while("getting key")?;
-
-                if !filter.matches_key(&key) {
-                    return Err(KeySelectionError::KeyNotMatchingFilter {
-                        key_id: key.id,
-                        key_filter: filter,
-                    });
-                }
-
-                if let Some(key_id) = selection.key
-                    && key_id != key.id
-                {
-                    return Err(KeySelectionError::KeyCertificateMismatch {
-                        certificate_id: certificate.id,
-                        key_id,
-                    });
-                }
-
+                let certificate =
+                    selected_cert.ok_or(KeySelectionError::NoMatchingCertificate {
+                        identifier_id: self.id,
+                        key_filter: filter.clone(),
+                        certificate_filter: Box::new(selection.certificate.clone()),
+                    })?;
                 Ok(SelectedKey::Certificate {
                     certificate,
-                    key: Box::new(Cow::Owned(key)),
+                    key: Box::new(certificate.key().await?),
                 })
             }
         }
@@ -517,7 +521,7 @@ impl Identifier {
                     .into_iter()
                     .map(|key| SelectedKey::Did {
                         did,
-                        key: Box::new(Cow::Owned(key)),
+                        key: Box::new(key),
                     })
                     .collect())
             }
@@ -532,34 +536,22 @@ impl Identifier {
 
                 let mut certificates = vec![];
                 for certificate in certs {
-                    if certificate.state != CertificateState::Active
-                        || !certificate_filter.matches_certificate(certificate)
+                    if !certificate_filter.matches_certificate(certificate)
                         || !certificate.has_matching_key(&filter).await?
                     {
                         continue;
                     }
-
-                    let key = certificate
-                        .key
-                        .as_ref()
-                        .ok_or(KeySelectionError::MappingError(
-                            "Missing certificate key".to_owned(),
-                        ))?
-                        .get()
-                        .await
-                        .error_while("getting key")?;
-
                     certificates.push(SelectedKey::Certificate {
                         certificate,
-                        key: Box::new(Cow::Owned(key)),
+                        key: Box::new(certificate.key().await?),
                     });
                 }
 
                 if certificates.is_empty() {
-                    return Err(KeySelectionError::NoActiveMatchingCertificate {
+                    return Err(KeySelectionError::NoMatchingCertificate {
                         identifier_id: self.id,
                         key_filter: filter.clone(),
-                        certificate_filter: certificate_filter.clone(),
+                        certificate_filter: Box::new(certificate_filter.clone()),
                     });
                 }
                 Ok(certificates)
@@ -568,7 +560,7 @@ impl Identifier {
     }
 
     fn throw_on_certificate_id(&self, selection: &KeySelection) -> Result<(), KeySelectionError> {
-        if selection.certificate.is_some() {
+        if selection.certificate.id.is_some() {
             return Err(KeySelectionError::SelectionNotApplicableForType {
                 identifier_id: self.id,
                 id_type: "Certificate".to_string(),

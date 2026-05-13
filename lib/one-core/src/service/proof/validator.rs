@@ -118,7 +118,7 @@ pub(super) async fn validate_did_and_format_compatibility(
             ))?;
 
     let key_agreement_key = verifier_did
-        .find_first_matching_key(&KeyFilter::role_filter(KeyRole::KeyAgreement))
+        .find_first_matching_key(&KeyFilter::did_role(KeyRole::KeyAgreement))
         .await
         .error_while("finding key agreement key")?;
 

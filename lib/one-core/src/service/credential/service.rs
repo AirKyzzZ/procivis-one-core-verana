@@ -127,19 +127,14 @@ impl CredentialService {
             .error_while("getting protocol")?
             .get_capabilities();
 
-        let key_filter = KeyFilter {
-            did_role: Some(KeyRole::AssertionMethod),
-            algorithms: Some(formatter_capabilities.signing_key_algorithms.clone()),
-            ..Default::default()
-        };
-        let certificate_filter = CertificateFilter::role_filter(CertificateRole::AssertionMethod);
         let selection = issuer_identifier
             .select_key(KeySelection {
-                key: request.issuer_key,
                 did: request.issuer_did,
-                certificate: request.issuer_certificate,
-                key_filter: Some(key_filter),
-                certificate_filter: Some(certificate_filter),
+                key: KeyFilter::did_role(KeyRole::AssertionMethod)
+                    .and_id(request.issuer_key)
+                    .and_algorithms(formatter_capabilities.signing_key_algorithms.clone()),
+                certificate: CertificateFilter::role_filter(CertificateRole::AssertionMethod)
+                    .and_id(request.issuer_certificate),
             })
             .await
             .error_while("selecting key")?;
@@ -150,9 +145,7 @@ impl CredentialService {
                     IdentifierType::Key,
                 ));
             }
-            SelectedKey::Certificate { certificate, key } => {
-                (key.into_owned(), Some(certificate.to_owned()))
-            }
+            SelectedKey::Certificate { certificate, key } => (*key, Some(certificate.to_owned())),
             SelectedKey::Did { did, key } => {
                 validate_protocol_did_compatibility(
                     &exchange_capabilities.did_methods,

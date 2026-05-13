@@ -80,7 +80,7 @@ pub(super) async fn select_holder_key(
                     "Missing identifier did".to_string(),
                 ))?;
 
-            let key_filter = KeyFilter::role_filter(KeyRole::Authentication);
+            let key_filter = KeyFilter::did_role(KeyRole::Authentication);
             let selected_key = match key_id {
                 Some(key_id) => did
                     .find_key(&key_id, &key_filter)

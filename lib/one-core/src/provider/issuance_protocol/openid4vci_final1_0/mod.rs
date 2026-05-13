@@ -366,7 +366,7 @@ impl OpenID4VCIFinal1_0 {
         };
 
         let related_did_key = did
-            .find_key(&key.id, &KeyFilter::role_filter(KeyRole::AssertionMethod))
+            .find_key(&key.id, &KeyFilter::did_role(KeyRole::AssertionMethod))
             .await
             .error_while("finding related key")?;
         let issuer_jwk_key_id = did.verification_method_id(&related_did_key);
@@ -1210,7 +1210,7 @@ impl OpenID4VCIFinal1_0 {
                     .any(|method| &format!("did:{}", did.did.method()) == method)
                 {
                     let related_key = did
-                        .find_key(&key.id, &KeyFilter::role_filter(KeyRole::Authentication))
+                        .find_key(&key.id, &KeyFilter::did_role(KeyRole::Authentication))
                         .await
                         .error_while("finding related key")?;
 

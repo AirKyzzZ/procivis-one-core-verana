@@ -44,7 +44,7 @@ use crate::provider::trust_list_publisher::{
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::trust_entry_repository::TrustEntryRepository;
 use crate::repository::trust_list_publication_repository::TrustListPublicationRepository;
-use crate::util::key_selection::{KeySelection, SelectedKey};
+use crate::util::key_selection::{CertificateFilter, KeyFilter, KeySelection, SelectedKey};
 
 pub(crate) struct EtsiLotePublisher {
     pub method_id: TrustListPublisherId,
@@ -117,8 +117,8 @@ impl TrustListPublisher for EtsiLotePublisher {
         let selected = request
             .identifier
             .select_key(KeySelection {
-                key: request.key_id,
-                certificate: request.certificate_id,
+                key: KeyFilter::id(request.key_id),
+                certificate: CertificateFilter::id(request.certificate_id),
                 ..Default::default()
             })
             .await

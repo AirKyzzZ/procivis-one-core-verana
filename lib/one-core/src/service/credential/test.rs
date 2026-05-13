@@ -5064,7 +5064,7 @@ async fn test_create_credential_invalid_certificate_role() {
         .await;
 
     // then
-    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0222);
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0330);
 }
 
 #[tokio::test]

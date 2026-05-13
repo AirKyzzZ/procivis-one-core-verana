@@ -712,7 +712,7 @@ pub(crate) async fn format_status_list_credential(
         .clone();
 
     let key = issuer_did
-        .find_first_matching_key(&KeyFilter::role_filter(KeyRole::AssertionMethod))
+        .find_first_matching_key(&KeyFilter::did_role(KeyRole::AssertionMethod))
         .await
         .map_err(|_| RevocationError::KeyWithRoleNotFound(KeyRole::AssertionMethod))?
         .ok_or(RevocationError::KeyWithRoleNotFound(

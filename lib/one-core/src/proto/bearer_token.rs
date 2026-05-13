@@ -65,7 +65,7 @@ pub(crate) async fn prepare_bearer_token(
                 .ok_or(Error::MappingError("Missing identifier did".to_string()))?;
 
             let authentication_key = did
-                .find_first_matching_key(&KeyFilter::role_filter(KeyRole::Authentication))
+                .find_first_matching_key(&KeyFilter::did_role(KeyRole::Authentication))
                 .await
                 .error_while("finding did key")?
                 .ok_or(Error::KeyNotFound)?;

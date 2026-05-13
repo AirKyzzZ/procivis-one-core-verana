@@ -29,7 +29,7 @@ use crate::service::trust_list_publication::dto::{
     UpdateTrustEntryRequestDTO,
 };
 use crate::service::trust_list_publication::error::TrustListPublicationServiceError;
-use crate::util::key_selection::{KeySelection, SelectedKey};
+use crate::util::key_selection::{CertificateFilter, KeyFilter, KeySelection, SelectedKey};
 use crate::validator::{throw_if_org_id_not_matching_session, throw_if_org_not_matching_session};
 
 impl TrustListPublicationService {
@@ -432,8 +432,8 @@ async fn validate_publication_identifier_capabilities(
 
     let selected = identifier
         .select_key(KeySelection {
-            key: key_id,
-            certificate: certificate_id,
+            certificate: CertificateFilter::id(certificate_id),
+            key: KeyFilter::id(key_id),
             ..Default::default()
         })
         .await

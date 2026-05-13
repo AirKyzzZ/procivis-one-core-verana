@@ -19,7 +19,7 @@ use crate::model::identifier::Identifier;
 use crate::model::key::Key;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::RevocationMethod;
-use crate::util::key_selection::{KeyFilter, KeySelection, SelectedKey};
+use crate::util::key_selection::{CertificateFilter, KeyFilter, KeySelection, SelectedKey};
 
 pub(super) struct IdentifierInfo<'a> {
     pub identifier: &'a Identifier,
@@ -54,9 +54,9 @@ pub(super) async fn prepare_params_and_ca_issuer<'a>(
     let SelectedKey::Certificate { certificate, key } = identifier_info
         .identifier
         .select_key(KeySelection {
-            key: identifier_info.key,
-            certificate: identifier_info.certificate,
-            key_filter: Some(KeyFilter::cert_usage_filter(required_ca_cert_key_usages)),
+            certificate: CertificateFilter::key_usage(required_ca_cert_key_usages)
+                .and_id(identifier_info.certificate),
+            key: KeyFilter::id(identifier_info.key),
             ..Default::default()
         })
         .await
@@ -80,7 +80,7 @@ pub(super) async fn prepare_params_and_ca_issuer<'a>(
             .await?
         }
     };
-    let signing_key = signing_key_adapter(key.into_owned(), &*key_provider)?;
+    let signing_key = signing_key_adapter(*key, &*key_provider)?;
     let (cert_issuer, issuer_alternative_name) = issuer_from_cert(certificate, signing_key)?;
 
     if let Some(issuer_alternative_name) = &issuer_alternative_name {

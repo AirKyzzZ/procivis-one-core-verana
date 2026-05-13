@@ -1016,13 +1016,7 @@ impl WalletProviderService {
         };
 
         let selection = issuer_identifier
-            .select_key(
-                KeyFilter {
-                    algorithms: Some(vec![KeyAlgorithmType::Ecdsa]),
-                    ..Default::default()
-                }
-                .into(),
-            )
+            .select_key(KeyFilter::algorithms(vec![KeyAlgorithmType::Ecdsa]).into())
             .await
             .error_while("selecting key")?;
         let issuer_key = selection.key();
@@ -1039,10 +1033,7 @@ impl WalletProviderService {
             let key = issuer_did
                 .find_key(
                     &issuer_key.id,
-                    &KeyFilter {
-                        algorithms: Some(vec![KeyAlgorithmType::Ecdsa]),
-                        ..Default::default()
-                    },
+                    &KeyFilter::algorithms(vec![KeyAlgorithmType::Ecdsa]),
                 )
                 .await
                 .error_while("finding key")?;

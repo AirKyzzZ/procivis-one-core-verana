@@ -55,7 +55,7 @@ use crate::repository::error::DataLayerError;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::wallet_instance_repository::WalletInstanceRepository;
-use crate::util::key_selection::{KeyFilter, KeySelection, SelectedKey};
+use crate::util::key_selection::{CertificateFilter, KeyFilter, KeySelection, SelectedKey};
 
 pub mod resolver;
 pub mod util;
@@ -841,16 +841,13 @@ async fn format_status_list_credential(
 
     let selection = issuer_identifier
         .select_key(KeySelection {
-            certificate: issuer_certificate.map(|c| c.id),
-            key_filter: Some(KeyFilter {
-                did_role: Some(KeyRole::AssertionMethod),
-                certificate_key_usage: Some(vec![KeyUsagePurpose::DigitalSignature]),
-                ..Default::default()
-            }),
+            certificate: CertificateFilter::key_usage(vec![KeyUsagePurpose::DigitalSignature])
+                .and_id(issuer_certificate.map(|c| c.id)),
+            key: KeyFilter::did_role(KeyRole::AssertionMethod),
             ..Default::default()
         })
         .await
-        .map_err(|_| RevocationError::KeyWithRoleNotFound(KeyRole::AssertionMethod))?;
+        .error_while("selecting key")?;
     let key = selection.key();
 
     let key_id = if let SelectedKey::Did { did, key } = &selection {
@@ -878,7 +875,7 @@ async fn format_status_list_credential(
             RevocationType::TokenStatusList,
         )
         .await
-        .error_while("formatting token statu list")?;
+        .error_while("formatting token status list")?;
 
     Ok(status_list)
 }

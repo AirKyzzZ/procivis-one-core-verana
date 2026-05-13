@@ -68,7 +68,7 @@ use crate::service::common_dto::{ListQueryDTO, TrustInformationDetailResponseDTO
 use crate::service::credential_schema::validator::validate_key_storage_security_supported;
 use crate::service::error::MissingProviderError;
 use crate::util::interactions::{add_new_interaction, clear_previous_interaction};
-use crate::util::key_selection::{KeyFilter, KeySelection, SelectedKey};
+use crate::util::key_selection::{CertificateFilter, KeyFilter, KeySelection, SelectedKey};
 use crate::validator::{throw_if_org_id_not_matching_session, throw_if_org_not_matching_session};
 
 const DEFAULT_ENGAGEMENT: &str = "QR_CODE";
@@ -441,11 +441,9 @@ impl ProofService {
 
         let selection = verifier_identifier
             .select_key(KeySelection {
-                key: request.verifier_key,
                 did: request.verifier_did_id,
-                certificate: request.verifier_certificate,
-                key_filter: Some(KeyFilter::role_filter(KeyRole::Authentication)),
-                ..Default::default()
+                certificate: CertificateFilter::id(request.verifier_certificate),
+                key: KeyFilter::did_role(KeyRole::Authentication).and_id(request.verifier_key),
             })
             .await
             .error_while("selecting key")?;
@@ -455,9 +453,7 @@ impl ProofService {
                     IdentifierType::Key,
                 ));
             }
-            SelectedKey::Certificate { certificate, key } => {
-                (key.into_owned(), Some(certificate.to_owned()))
-            }
+            SelectedKey::Certificate { certificate, key } => (*key, Some(certificate.to_owned())),
             SelectedKey::Did { did, key } => {
                 validate_protocol_did_compatibility(
                     &exchange_protocol_capabilities.did_methods,
@@ -471,7 +467,7 @@ impl ProofService {
                     &*self.credential_formatter_provider,
                 )
                 .await?;
-                (key.key.to_owned(), None)
+                (key.key, None)
             }
         };
 

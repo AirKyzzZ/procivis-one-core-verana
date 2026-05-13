@@ -144,19 +144,14 @@ impl CredentialIssuerMetadataResolver {
     ) -> Result<String, OID4VCIFinal1_0ServiceError> {
         let signing_key = issuer_identifier
             .select_key(KeySelection {
-                certificate_filter: Some(CertificateFilter::role_filter(
-                    CertificateRole::Authentication,
-                )),
-                key_filter: Some(KeyFilter {
-                    did_role: Some(KeyRole::Authentication),
-                    ..Default::default()
-                }),
+                certificate: CertificateFilter::role_filter(CertificateRole::Authentication),
+                key: KeyFilter::did_role(KeyRole::Authentication),
                 ..Default::default()
             })
             .await
             .map_err(|e| match e {
                 KeySelectionError::CertificateNotMatchingFilter { .. }
-                | KeySelectionError::NoActiveMatchingCertificate { .. } => {
+                | KeySelectionError::NoMatchingCertificate { .. } => {
                     OID4VCIFinal1_0ServiceError::MissingAuthenticationCapableCertificate(
                         issuer_identifier.id,
                     )

@@ -241,7 +241,7 @@ pub(crate) async fn get_encryption_key_jwk_from_proof(
                         "verifier_did is None".to_string(),
                     ))?;
 
-            let key_filter = KeyFilter::role_filter(KeyRole::KeyAgreement);
+            let key_filter = KeyFilter::did_role(KeyRole::KeyAgreement);
             let encryption_key = verifier_did.find_key(&verifier_key.id, &key_filter).await;
 
             let encryption_key = match encryption_key {

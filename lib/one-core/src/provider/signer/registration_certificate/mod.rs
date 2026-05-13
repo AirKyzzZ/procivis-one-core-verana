@@ -33,7 +33,7 @@ use crate::provider::signer::registration_certificate::model::{
     Status, WRPRegistrationCertificate, WRPRegistrationCertificatePayload,
 };
 use crate::provider::signer::validity::{SignatureValidity, calculate_signature_validity};
-use crate::util::key_selection::{KeyFilter, KeySelection, SelectedKey};
+use crate::util::key_selection::{CertificateFilter, KeyFilter, KeySelection, SelectedKey};
 use crate::validator::permissions::RequiredPermissions;
 
 #[derive(Clone, Deserialize)]
@@ -155,9 +155,8 @@ impl Signer for RegistrationCertificate {
         };
         let selected_key = identifier
             .select_key(KeySelection {
-                key,
-                key_filter: Some(KeyFilter::role_filter(KeyRole::AssertionMethod)),
-                certificate,
+                key: KeyFilter::did_role(KeyRole::AssertionMethod).and_id(key),
+                certificate: CertificateFilter::id(certificate),
                 ..Default::default()
             })
             .await
@@ -183,7 +182,7 @@ impl Signer for RegistrationCertificate {
             custom: model::Payload::from_request_data_and_status(payload, status),
         };
         let signed_jwt = self
-            .create_and_sign_jwt(key.into_owned(), pubkey_info, jwt_payload)
+            .create_and_sign_jwt(*key, pubkey_info, jwt_payload)
             .await?;
 
         Ok(CreateSignatureResponseDTO {

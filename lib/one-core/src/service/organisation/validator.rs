@@ -48,14 +48,7 @@ pub(super) async fn validate_wallet_provider_issuer(
     };
 
     identifier
-        .select_key(
-            KeyFilter {
-                did_role: None,
-                algorithms: Some(vec![KeyAlgorithmType::Ecdsa]),
-                ..Default::default()
-            }
-            .into(),
-        )
+        .select_key(KeyFilter::algorithms(vec![KeyAlgorithmType::Ecdsa]).into())
         .await
         .error_while("selecting identifier key")?;
     Ok(())

@@ -121,7 +121,7 @@ pub(crate) async fn select_key_agreement_key_from_proof(
                 ));
             };
 
-            let key_agreement_key_filter = KeyFilter::role_filter(KeyRole::KeyAgreement);
+            let key_agreement_key_filter = KeyFilter::did_role(KeyRole::KeyAgreement);
             // We ensure the specified key is a key agreement key
             let encryption_key = verifier_did
                 .find_key(&verifier_key.id, &key_agreement_key_filter)
