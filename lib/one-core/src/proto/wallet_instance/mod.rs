@@ -43,7 +43,7 @@ pub(crate) struct WIARequestParams {
 
 #[derive(Debug)]
 pub(crate) struct WUARequestParams<'a> {
-    pub attested_key: &'a Key,
+    pub attested_keys: &'a [&'a Key],
     pub security_level: KeyStorageSecurityLevel,
 }
 
@@ -407,27 +407,32 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
         let wua_proof = match request {
             IssueWalletAttestationRequest::WuaAndWia(
                 WUARequestParams {
-                    attested_key,
+                    attested_keys,
                     security_level,
                 },
                 _,
             )
             | IssueWalletAttestationRequest::Wua(WUARequestParams {
-                attested_key,
+                attested_keys,
                 security_level,
             }) => {
-                let (key_handle, key_algorithm) = self.get_key_handle(attested_key)?;
-                let proof = self
-                    .create_proof_of_key_possesion(
-                        &holder_wallet_instance.wallet_provider_url,
-                        &key_handle,
-                        key_algorithm.as_ref(),
-                    )
-                    .await?;
-                vec![IssueWuaRequestDTO {
-                    proof,
-                    security_level,
-                }]
+                let mut requests = Vec::with_capacity(attested_keys.len());
+                for key in attested_keys {
+                    let (key_handle, key_algorithm) = self.get_key_handle(key)?;
+                    let proof = self
+                        .create_proof_of_key_possesion(
+                            &holder_wallet_instance.wallet_provider_url,
+                            &key_handle,
+                            key_algorithm.as_ref(),
+                        )
+                        .await?;
+
+                    requests.push(IssueWuaRequestDTO {
+                        proof,
+                        security_level,
+                    });
+                }
+                requests
             }
             _ => vec![],
         };

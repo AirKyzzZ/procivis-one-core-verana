@@ -689,7 +689,7 @@ impl OpenID4VCIFinal1_0 {
             match (use_wallet_attestation, &key_storage_security_level) {
                 (true, Some(level)) => Some(IssueWalletAttestationRequest::WuaAndWia(
                     WUARequestParams {
-                        attested_key,
+                        attested_keys: &[attested_key],
                         security_level: *level,
                     },
                     self.prepare_wia_request_params(interaction_data)?,
@@ -699,7 +699,7 @@ impl OpenID4VCIFinal1_0 {
                 )),
                 (false, Some(level)) => {
                     Some(IssueWalletAttestationRequest::Wua(WUARequestParams {
-                        attested_key,
+                        attested_keys: &[attested_key],
                         security_level: *level,
                     }))
                 }
