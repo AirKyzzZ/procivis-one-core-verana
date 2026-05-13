@@ -234,7 +234,7 @@ impl SSIHolderService {
             .error_while("getting blob storage")?;
 
         let blob = Blob::new(
-            issuer_response.credential.as_bytes().to_vec(),
+            issuer_response.credential.as_ref().as_bytes().to_vec(),
             BlobType::Credential,
         );
         let blob_id = blob.id;

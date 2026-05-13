@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use shared_types::SerializedCredential;
 use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
 
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
@@ -18,7 +19,7 @@ pub struct OpenID4VCICredentialResponseDTO {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct OpenID4VCICredentialResponseEntryDTO {
-    pub credential: String,
+    pub credential: SerializedCredential,
 }
 
 #[derive(Clone, Debug, Deserialize)]

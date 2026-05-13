@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use error::FormatterError;
 use model::{AuthenticationFn, CredentialPresentation, DetailCredential, TokenVerifier};
-use shared_types::{CredentialSchemaId, OrganisationId};
+use shared_types::{CredentialSchemaId, OrganisationId, SerializedCredential};
 use time::Duration;
 
 use crate::config::core_config::{KeyAlgorithmType, RevocationType};
@@ -51,7 +51,7 @@ pub trait CredentialFormatter: Send + Sync {
         &self,
         credential_data: model::CredentialData,
         auth_fn: model::AuthenticationFn,
-    ) -> Result<String, error::FormatterError>;
+    ) -> Result<SerializedCredential, error::FormatterError>;
 
     /// Formats Status List credential
     async fn format_status_list<'a>(
@@ -68,7 +68,7 @@ pub trait CredentialFormatter: Send + Sync {
     /// Parses a received credential and verifies the signature.
     async fn extract_credentials<'a>(
         &self,
-        credentials: &str,
+        credentials: &SerializedCredential,
         credential_schema: Option<&'a CredentialSchema>,
         verification: Box<dyn TokenVerifier>,
     ) -> Result<DetailCredential, FormatterError>;
@@ -76,7 +76,7 @@ pub trait CredentialFormatter: Send + Sync {
     /// Parses a received credential without verifying the signature.
     async fn extract_credentials_unverified<'a>(
         &self,
-        credential: &str,
+        credential: &SerializedCredential,
         credential_schema: Option<&'a CredentialSchema>,
     ) -> Result<DetailCredential, FormatterError>;
 
@@ -128,7 +128,7 @@ pub trait CredentialFormatter: Send + Sync {
     /// Reconstructs credential_schema, claims, issuer identifiers etc.
     async fn parse_credential(
         &self,
-        credential: &str,
+        credential: &SerializedCredential,
         organisation: Organisation,
         verification: Box<dyn TokenVerifier>,
     ) -> Result<Credential, FormatterError>;

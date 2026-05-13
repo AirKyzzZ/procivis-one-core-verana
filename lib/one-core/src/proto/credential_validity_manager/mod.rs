@@ -338,8 +338,9 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
             vec![]
         };
 
-        let credential_str =
-            String::from_utf8(credentials).map_err(|e| Error::MappingError(e.to_string()))?;
+        let credential_str = String::from_utf8(credentials)
+            .map_err(|e| Error::MappingError(e.to_string()))?
+            .into();
 
         let format = credential_schema
             .format()

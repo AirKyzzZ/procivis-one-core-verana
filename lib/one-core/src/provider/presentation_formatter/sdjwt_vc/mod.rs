@@ -87,8 +87,9 @@ impl PresentationFormatter for SdjwtVCPresentationFormatter {
         };
 
         let mut vp_token = credential.credential_token.clone();
+        let serialized_credential = vp_token.as_str().into();
 
-        let jwt = parse_token(&vp_token)?;
+        let jwt = parse_token(&serialized_credential)?;
         let decomposed_token =
             Jwt::<Value>::decompose_token(jwt.jwt).error_while("parsing SD-JWT token")?;
         let hash_alg = decomposed_token
@@ -143,7 +144,7 @@ impl PresentationFormatter for SdjwtVCPresentationFormatter {
             expires_at: proof_of_key_possession.expires_at,
             issuer: Some(issuer),
             nonce: Some(proof_of_key_possession.custom.nonce),
-            credentials: vec![token.to_string()],
+            credentials: vec![token.into()],
         })
     }
 
@@ -162,7 +163,7 @@ impl PresentationFormatter for SdjwtVCPresentationFormatter {
             expires_at: proof_of_key_possession.expires_at,
             issuer: Some(issuer),
             nonce: Some(proof_of_key_possession.custom.nonce),
-            credentials: vec![token.to_string()],
+            credentials: vec![token.into()],
         })
     }
 
@@ -181,7 +182,7 @@ impl SdjwtVCPresentationFormatter {
     ) -> Result<(IdentifierDetails, JWTPayload<KeyBindingPayload>), FormatterError> {
         let (jwt, _issuer_details, key_binding_token): (Jwt<SdJwtVc>, _, _) =
             Jwt::build_from_token_with_disclosures(
-                token,
+                &token.into(),
                 crypto,
                 verification.as_ref(),
                 Some(&*self.certificate_validator),

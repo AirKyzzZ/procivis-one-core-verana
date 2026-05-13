@@ -216,7 +216,7 @@ impl LdpVpPresentationFormatter {
             None,
         )?;
 
-        let credentials: Vec<String> = presentation
+        let credentials = presentation
             .verifiable_credential
             .iter()
             .map(|token| {
@@ -224,9 +224,9 @@ impl LdpVpPresentationFormatter {
                     let enveloped: CredentialEnvelope =
                         serde_json::from_value(serde_json::Value::Object(token.to_owned()))?;
 
-                    Ok(enveloped.get_token())
+                    Ok(enveloped.get_token().into())
                 } else {
-                    Ok(serde_json::to_string(token)?)
+                    Ok(serde_json::to_string(token)?.into())
                 }
             })
             .collect::<Result<_, FormatterError>>()

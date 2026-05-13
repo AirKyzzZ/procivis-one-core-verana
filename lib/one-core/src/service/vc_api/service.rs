@@ -196,7 +196,7 @@ impl VCAPIService {
             .error_while("formatting credential")?;
 
         let mut verifiable_credential: LdCredential =
-            serde_json::from_str(&test).map_err(|e: serde_json::Error| {
+            serde_json::from_str(test.as_ref()).map_err(|e: serde_json::Error| {
                 ServiceError::Other(format!("Failed to serialize verifiable credential: {e}"))
             })?;
 
@@ -244,10 +244,11 @@ impl VCAPIService {
                 "Formatter not found for credential format {format}"
             )))?;
 
-        let string_token =
-            serde_json::to_string(&verify_request.verifiable_credential).map_err(|e| {
+        let string_token = serde_json::to_string(&verify_request.verifiable_credential)
+            .map_err(|e| {
                 ServiceError::Other(format!("Failed to serialize verifiable credential: {e}"))
-            })?;
+            })?
+            .into();
 
         let verification_fn = Box::new(KeyVerification {
             key_algorithm_provider: self.key_algorithm_provider.clone(),

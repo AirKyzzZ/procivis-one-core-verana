@@ -214,7 +214,7 @@ async fn test_format_credential() {
 
     let token = result.unwrap();
 
-    let jwt_parts: Vec<&str> = token.splitn(3, '.').collect();
+    let jwt_parts: Vec<&str> = token.as_ref().splitn(3, '.').collect();
 
     assert_eq!(
         jwt_parts[0],
@@ -308,7 +308,7 @@ async fn test_format_credential_with_layout_properties() {
 
     let token = result.unwrap();
 
-    let jwt_parts: Vec<&str> = token.splitn(3, '.').collect();
+    let jwt_parts: Vec<&str> = token.as_ref().splitn(3, '.').collect();
 
     assert_eq!(
         jwt_parts[0],
@@ -398,7 +398,7 @@ async fn test_format_credential_nested_array() {
 
     let token = result.unwrap();
 
-    let jwt_parts: Vec<&str> = token.splitn(3, '.').collect();
+    let jwt_parts: Vec<&str> = token.as_ref().splitn(3, '.').collect();
 
     assert_eq!(
         jwt_parts[0],
@@ -447,7 +447,7 @@ async fn test_format_credential_nested_array() {
 async fn test_extract_credentials() {
     let jwt_token = "ewogICJhbGciOiAiYWxnb3JpdGhtIiwKICAidHlwIjogIkpXVCIKfQ.ewogICJpYXQiOiAxNjk5MzU0MjI4LAogICJleHAiOiAxNzYyNDI2MjI4LAogICJuYmYiOiAxNjk5MzU0MTgzLAogICJpc3MiOiAiZGlkOmlzc3Vlcjp0ZXN0IiwKICAic3ViIjogImRpZDpob2xkZXI6dGVzdCIsCiAgImp0aSI6ICI5YTQxNGE2MC05ZTZiLTQ3NTctODAxMS05YWE4NzBlZjQ3ODgiLAogICJ2YyI6IHsKICAgICJAY29udGV4dCI6IFsKICAgICAgImh0dHBzOi8vd3d3LnczLm9yZy8yMDE4L2NyZWRlbnRpYWxzL3YxIiwKICAgICAgImh0dHBzOi8vdGVzdGNvbnRleHQuY29tL3YxIgogICAgXSwKICAgICJ0eXBlIjogWwogICAgICAiVmVyaWZpYWJsZUNyZWRlbnRpYWwiLAogICAgICAiVHlwZTEiCiAgICBdLAogICAgImNyZWRlbnRpYWxTdWJqZWN0IjogewogICAgICAiYWdlIjogIjQyIiwKICAgICAgIm5hbWUiOiAiSm9obiIKICAgIH0sCiAgICAiY3JlZGVudGlhbFN0YXR1cyI6IHsKICAgICAgImlkIjogImh0dHBzOi8vcHJvY2l2aXMuY2gvc3RhdHVzL2lkIiwKICAgICAgInR5cGUiOiAiVFlQRSIsCiAgICAgICJzdGF0dXNQdXJwb3NlIjogIlBVUlBPU0UiLAogICAgICAiRmllbGQxIjogIlZhbDEiCiAgICB9CiAgfQp9";
 
-    let token = format!("{jwt_token}.QUJD");
+    let token = format!("{jwt_token}.QUJD").into();
 
     let leeway = Duration::seconds(45);
 
@@ -555,7 +555,7 @@ async fn test_extract_credentials() {
 async fn test_extract_credentials_nested_array() {
     let jwt_token = "ewogICJhbGciOiAiYWxnb3JpdGhtIiwKICAia2lkIjogIiNrZXkwIiwKICAidHlwIjogIkpXVCIKfQ.ewogICJpYXQiOiAxNzE4MjU5ODU2LAogICJleHAiOiAxNzgxMzMxODU2LAogICJuYmYiOiAxNzE4MjU5ODExLAogICJpc3MiOiAiZGlkOmlzc3Vlcjp0ZXN0IiwKICAic3ViIjogImRpZDpob2xkZXI6dGVzdCIsCiAgImp0aSI6ICJodHRwOi8vYmFzZV91cmwvc3NpL2NyZWRlbnRpYWwvdjEvOWE0MTRhNjAtOWU2Yi00NzU3LTgwMTEtOWFhODcwZWY0Nzg4IiwKICAidmMiOiB7CiAgICAiQGNvbnRleHQiOiBbCiAgICAgICJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSIsCiAgICAgICJodHRwczovL3R5cGUxY29udGV4dC5vcmciCiAgICBdLAogICAgInR5cGUiOiBbCiAgICAgICJWZXJpZmlhYmxlQ3JlZGVudGlhbCIsCiAgICAgICJUeXBlMSIKICAgIF0sCiAgICAiaWQiOiAiaHR0cDovL2Jhc2VfdXJsL3NzaS9jcmVkZW50aWFsL3YxLzlhNDE0YTYwLTllNmItNDc1Ny04MDExLTlhYTg3MGVmNDc4OCIsCiAgICAiY3JlZGVudGlhbFN1YmplY3QiOiB7CiAgICAgICJyb290IjogewogICAgICAgICJhcnJheSI6IFsKICAgICAgICAgICJhcnJheV9pdGVtIgogICAgICAgIF0sCiAgICAgICAgIm5lc3RlZCI6ICJuZXN0ZWRfaXRlbSIKICAgICAgfSwKICAgICAgInJvb3RfaXRlbSI6ICJyb290X2l0ZW0iCiAgICB9LAogICAgImNyZWRlbnRpYWxTdGF0dXMiOiB7CiAgICAgICJpZCI6ICJodHRwczovL3Byb2NpdmlzLmNoL3N0YXR1cy9pZCIsCiAgICAgICJ0eXBlIjogIlRZUEUiLAogICAgICAic3RhdHVzUHVycG9zZSI6ICJQVVJQT1NFIiwKICAgICAgIkZpZWxkMSI6ICJWYWwxIgogICAgfSwKICAgICJjcmVkZW50aWFsU2NoZW1hIjogewogICAgICAiaWQiOiAiaHR0cHM6Ly9wcm9jaXZpcy5jaC9jcmVkZW50aWFsLXNjaGVtYS9pZCIsCiAgICAgICJ0eXBlIjogIlByb2NpdmlzT25lU2NoZW1hMjAyNCIKICAgIH0KICB9Cn0";
 
-    let token = format!("{jwt_token}.QUJD");
+    let token = format!("{jwt_token}.QUJD").into();
 
     let leeway = Duration::seconds(45);
 
@@ -674,7 +674,7 @@ async fn test_format_credential_presentation() {
 
     // Both
     let credential_presentation = CredentialPresentation {
-        token: jwt_token.to_owned(),
+        token: jwt_token.into(),
         disclosed_keys: vec!["name".to_string(), "age".to_string()],
     };
 
@@ -686,7 +686,7 @@ async fn test_format_credential_presentation() {
 
     // Just name
     let credential_presentation = CredentialPresentation {
-        token: jwt_token.to_owned(),
+        token: jwt_token.into(),
         disclosed_keys: vec!["name".to_string()],
     };
 
@@ -800,7 +800,11 @@ async fn test_parse_credential() {
         .expect_key_algorithm_provider()
         .return_const(Box::new(key_algorithm_provider));
     let credential = jwt_formatter
-        .parse_credential(TOKEN, dummy_organisation(None), Box::new(verify_mock))
+        .parse_credential(
+            &TOKEN.into(),
+            dummy_organisation(None),
+            Box::new(verify_mock),
+        )
         .await
         .unwrap();
 

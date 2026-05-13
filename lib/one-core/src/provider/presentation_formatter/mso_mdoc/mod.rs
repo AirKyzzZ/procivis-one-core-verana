@@ -160,7 +160,7 @@ impl PresentationFormatter for MsoMdocPresentationFormatter {
                     "Missing docs".to_string(),
                 ))?;
 
-        let mut tokens: Vec<String> = Vec::with_capacity(documents.len());
+        let mut tokens = Vec::with_capacity(documents.len());
 
         let (session_transcript, nonce) = self.extract_presentation_context(&context)?;
 
@@ -203,7 +203,7 @@ impl PresentationFormatter for MsoMdocPresentationFormatter {
             .await?;
 
             presentation_issuer_jwk = Some(holder_jwk);
-            tokens.push(encode_cbor_base64(issuer_signed)?)
+            tokens.push(encode_cbor_base64(issuer_signed)?.into())
         }
 
         // todo transfer issued and expires from the token
@@ -233,8 +233,8 @@ impl PresentationFormatter for MsoMdocPresentationFormatter {
 
         let tokens = documents
             .into_iter()
-            .map(|doc| encode_cbor_base64(doc.issuer_signed))
-            .collect::<Result<Vec<String>, FormatterError>>()?;
+            .map(|doc| Ok(encode_cbor_base64(doc.issuer_signed)?.into()))
+            .collect::<Result<_, FormatterError>>()?;
 
         // todo transfer issued and expires from the token
         Ok(ExtractedPresentation {

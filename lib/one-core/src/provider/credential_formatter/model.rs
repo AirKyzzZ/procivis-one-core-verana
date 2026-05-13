@@ -9,7 +9,7 @@ use indexmap::IndexMap;
 use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_with::skip_serializing_none;
-use shared_types::DidValue;
+use shared_types::{DidValue, SerializedCredential};
 use standardized_types::jwk::PublicJwk;
 use strum::{Display, IntoStaticStr};
 use time::OffsetDateTime;
@@ -361,7 +361,7 @@ pub struct HolderBindingCtx {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CredentialPresentation {
-    pub token: String,
+    pub token: SerializedCredential,
     pub disclosed_keys: Vec<String>,
 }
 

@@ -133,7 +133,7 @@ async fn test_format_credential() {
 
     let token = result.unwrap();
 
-    let parts: Vec<&str> = token.splitn(4, '~').collect();
+    let parts: Vec<&str> = token.as_ref().splitn(4, '~').collect();
     assert_eq!(parts.len(), 4);
     assert_eq!(parts[3], "");
 
@@ -313,7 +313,7 @@ async fn test_format_credential_with_array() {
 
     let token = result.unwrap();
 
-    let parts: Vec<&str> = token.split('~').collect();
+    let parts: Vec<&str> = token.as_ref().split('~').collect();
     assert_eq!(parts.len(), 6);
 
     assert_eq!("", parts[5]);
@@ -442,7 +442,7 @@ async fn test_format_credential_with_array_sd() {
 
     let token = result.unwrap();
 
-    let parts: Vec<&str> = token.split('~').collect();
+    let parts: Vec<&str> = token.as_ref().split('~').collect();
     assert_eq!(parts.len(), 7);
 
     assert_eq!("", parts[6]);
@@ -517,7 +517,8 @@ async fn test_extract_credentials() {
     let jwt_token = "ewogICJhbGciOiAiYWxnb3JpdGhtIiwKICAidHlwIjogIlNESldUIgp9.ewogICJpYXQiOiAxNjk5MjcwMjY2LAogICJleHAiOiAxNzYyMzQyMjY2LAogICJuYmYiOiAxNjk5MjcwMjIxLAogICJpc3MiOiAiZGlkOmlzc3Vlcjp0ZXN0IiwKICAic3ViIjogImRpZDpob2xkZXI6dGVzdCIsCiAgImp0aSI6ICI5YTQxNGE2MC05ZTZiLTQ3NTctODAxMS05YWE4NzBlZjQ3ODgiLAogICJ2YyI6IHsKICAgICJAY29udGV4dCI6IFsKICAgICAgImh0dHBzOi8vd3d3LnczLm9yZy8yMDE4L2NyZWRlbnRpYWxzL3YxIiwKICAgICAgImh0dHBzOi8vd3d3LnR5cGUxLWNvbnRleHQuY29tL3YxIgogICAgXSwKICAgICJ0eXBlIjogWwogICAgICAiVmVyaWZpYWJsZUNyZWRlbnRpYWwiLAogICAgICAiVHlwZTEiCiAgICBdLAogICAgImNyZWRlbnRpYWxTdWJqZWN0IjogewogICAgICAiX3NkIjogWwogICAgICAgICJyWmp5eEY0ekU3ZmRSbWtjVVQ4SGtyOF9JSFNCZXMxejFwWldQMnZMQlJFIiwKICAgICAgICAiS0dQbGRsUEIzOTV4S0pSaks4azJLNVV2c0VuczlRaEw3TzdKVXU1OUVSayIKICAgICAgXQogICAgfSwKICAgICJjcmVkZW50aWFsU3RhdHVzIjogewogICAgICAiaWQiOiAiaHR0cHM6Ly93d3cudGVzdC12Yy5jb20vc3RhdHVzL2lkIiwKICAgICAgInR5cGUiOiAiVFlQRSIsCiAgICAgICJzdGF0dXNQdXJwb3NlIjogIlBVUlBPU0UiLAogICAgICAiRmllbGQxIjogIlZhbDEiCiAgICB9CiAgfSwKICAiX3NkX2FsZyI6ICJzaGEtMjU2Igp9";
     let token = format!(
         "{jwt_token}.QUJD~WyJNVEl6WVdKaiIsIm5hbWUiLCJKb2huIl0~WyJNVEl6WVdKaiIsImFnZSIsIjQyIl0~"
-    );
+    )
+    .into();
 
     let claim1 = "[\"MTIzYWJj\",\"name\",\"John\"]";
     let claim2 = "[\"MTIzYWJj\",\"age\",\"42\"]";
@@ -673,7 +674,8 @@ async fn test_extract_credentials_with_array() {
             xNa3U3RzVJdE01M1FSdmRVZjRHYWNYR3pMV3ZUTl93RGhhcmMiLCJyNjllcWUwN1M5ckUyN0luZy1s\
             OTk3b2ZnODVSU19uUnVWWHVjVlE5RWh3Il19XQ~WyJNVEl6WVdKaiIsInJvb3RfaXRlbSIsInJvb3R\
             faXRlbSJd~"
-    );
+    )
+    .into();
 
     let claim1 = "[\"MTIzYWJj\",\"array\",[\"array_item\"]]";
     let claim2 = "[\"MTIzYWJj\",\"nested\",\"nested_item\"]";
@@ -792,7 +794,7 @@ async fn test_extract_credentials_with_array_stripped() {
             xNa3U3RzVJdE01M1FSdmRVZjRHYWNYR3pMV3ZUTl93RGhhcmMiLCJyNjllcWUwN1M5ckUyN0luZy1s\
             OTk3b2ZnODVSU19uUnVWWHVjVlE5RWh3Il19XQ~WyJNVEl6WVdKaiIsInJvb3RfaXRlbSIsInJvb3R\
             faXRlbSJd~"
-    );
+    ).into();
 
     let claim1 = "[\"MTIzYWJj\",\"array\",[\"array_item\"]]";
     let claim2 = "[\"MTIzYWJj\",\"nested\",\"nested_item\"]";
@@ -1137,7 +1139,11 @@ async fn test_parse_credential() {
         .expect_key_algorithm_provider()
         .return_const(Box::new(key_algorithm_provider));
     let result = formatter
-        .parse_credential(CREDENTIAL, dummy_organisation(None), Box::new(verify_mock))
+        .parse_credential(
+            &CREDENTIAL.into(),
+            dummy_organisation(None),
+            Box::new(verify_mock),
+        )
         .await
         .unwrap();
 

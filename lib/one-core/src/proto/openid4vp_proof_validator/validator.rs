@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use dcql::{CredentialFormat, CredentialQuery, TrustedAuthority};
-use shared_types::DidValue;
+use shared_types::{DidValue, SerializedCredential};
 use standardized_types::jwk::PublicJwk;
 use standardized_types::x509::KeyIdentifier;
 
@@ -266,7 +266,7 @@ impl OpenId4VpProofValidatorProto {
                 CredentialFormat::W3cSdJwt => FormatType::Jwt,
                 _ => map_from_oidc_format_to_core_detailed(
                     &credential_query.format.to_string(),
-                    Some(presentation_string),
+                    Some(&presentation_string.as_str().into()),
                 )
                 .map_err(|_| OpenID4VCError::VCFormatsNotSupported)?,
             };
@@ -295,7 +295,10 @@ impl OpenId4VpProofValidatorProto {
             (Some(holder_details), credentials)
         } else {
             // No holder binding — presentation_strings contains bare credential tokens
-            let credential_tokens = presentation_strings.to_vec();
+            let credential_tokens = presentation_strings
+                .iter()
+                .map(|token| token.as_str().into())
+                .collect();
 
             (None, credential_tokens)
         };
@@ -335,7 +338,7 @@ impl OpenId4VpProofValidatorProto {
     async fn validate_credential(
         &self,
         holder_details: Option<&IdentifierDetails>,
-        credential_token: &str,
+        credential_token: &SerializedCredential,
         proof_schema_input: &ProofInputSchema,
         trusted_authorities: Option<&[TrustedAuthority]>,
     ) -> Result<(DetailCredential, Option<MobileSecurityObject>), OpenID4VCError> {

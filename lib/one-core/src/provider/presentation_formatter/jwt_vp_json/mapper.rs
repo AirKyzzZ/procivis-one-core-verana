@@ -23,7 +23,7 @@ impl TryFrom<Jwt<VP>> for ExtractedPresentation {
                             "Enveloped VP id missing delimiter".to_string(),
                         ),
                     )?;
-                    Ok(token.to_string())
+                    Ok(token.into())
                 }
                 VerifiableCredential::Token(token) => Ok(token),
             })

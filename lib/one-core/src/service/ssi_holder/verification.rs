@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use itertools::Itertools;
-use shared_types::{ClaimId, CredentialId, InteractionId, ProofId};
+use shared_types::{ClaimId, CredentialId, InteractionId, ProofId, SerializedCredential};
 use url::Url;
 
 use super::SSIHolderService;
@@ -262,7 +262,8 @@ impl SSIHolderService {
 
                 let credential_data = credential_blob.value.as_slice();
                 let credential_content = std::str::from_utf8(credential_data)
-                    .map_err(|e| HolderServiceError::MappingError(e.to_string()))?;
+                    .map_err(|e| HolderServiceError::MappingError(e.to_string()))?
+                    .into();
 
                 let credential_schema =
                     credential
@@ -278,10 +279,10 @@ impl SSIHolderService {
                 )?);
 
                 let formatter = self
-                    .formatter_for_blob_and_schema(credential_content, credential_schema)
+                    .formatter_for_blob_and_schema(&credential_content, credential_schema)
                     .await?;
                 let credential_presentation = CredentialPresentation {
-                    token: credential_content.to_owned(),
+                    token: credential_content,
                     disclosed_keys: submitted_paths,
                 };
                 let (holder_did, key, jwk_key_id) =
@@ -370,7 +371,7 @@ impl SSIHolderService {
 
     async fn formatter_for_blob_and_schema(
         &self,
-        credential_content: &str,
+        credential_content: &SerializedCredential,
         credential_schema: &CredentialSchema,
     ) -> Result<Arc<dyn CredentialFormatter>, HolderServiceError> {
         let format = detect_format_with_crypto_suite(
@@ -663,7 +664,8 @@ impl SSIHolderService {
             )))?;
 
         let credential_content = std::str::from_utf8(&credential_blob.value)
-            .map_err(|e| HolderServiceError::MappingError(e.to_string()))?;
+            .map_err(|e| HolderServiceError::MappingError(e.to_string()))?
+            .into();
 
         let credential_schema =
             credential
@@ -673,11 +675,11 @@ impl SSIHolderService {
                     "credential_schema missing".to_string(),
                 ))?;
         let formatter = self
-            .formatter_for_blob_and_schema(credential_content, credential_schema)
+            .formatter_for_blob_and_schema(&credential_content, credential_schema)
             .await?;
 
         let credential_presentation = CredentialPresentation {
-            token: credential_content.to_owned(),
+            token: credential_content,
             // credential formatters do not use intermediary claims
             disclosed_keys: paths_to_leafs(presented_paths),
         };

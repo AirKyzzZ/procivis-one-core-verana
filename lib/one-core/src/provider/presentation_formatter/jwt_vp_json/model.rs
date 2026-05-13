@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use shared_types::SerializedCredential;
 
 use crate::provider::credential_formatter::vcdm::ContextType;
 
@@ -23,7 +24,7 @@ pub struct VPContent {
 #[serde(untagged)]
 pub enum VerifiableCredential {
     Enveloped(EnvelopedContent),
-    Token(String),
+    Token(SerializedCredential),
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]

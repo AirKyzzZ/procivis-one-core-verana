@@ -1049,7 +1049,7 @@ async fn test_create_credential_success() {
         issuance_protocol
             .expect_issuer_issue_credential()
             .once()
-            .return_once(|_, _, _, _| Ok("xyz".to_string()));
+            .return_once(|_, _, _, _| Ok("xyz".into()));
         exchange_provider
             .expect_get_protocol()
             .once()
@@ -1162,8 +1162,8 @@ async fn test_create_credential_success() {
 
     let result = result.unwrap();
     assert_eq!(
-        "xyz",
-        result.credentials.unwrap().first().unwrap().credential
+        result.credentials.unwrap().first().unwrap().credential,
+        "xyz".into(),
     );
 }
 
@@ -1234,7 +1234,7 @@ async fn test_create_credential_success_sd_jwt_vc() {
         issuance_protocol
             .expect_issuer_issue_credential()
             .once()
-            .return_once(|_, _, _, _| Ok("xyz".to_string()));
+            .return_once(|_, _, _, _| Ok("xyz".into()));
         exchange_provider
             .expect_get_protocol()
             .once()
@@ -1347,8 +1347,8 @@ async fn test_create_credential_success_sd_jwt_vc() {
 
     let result = result.unwrap();
     assert_eq!(
-        "xyz",
-        result.credentials.unwrap().first().unwrap().credential
+        result.credentials.unwrap().first().unwrap().credential,
+        "xyz".into(),
     );
 }
 
@@ -1421,7 +1421,7 @@ async fn test_create_credential_success_mdoc() {
         issuance_protocol
             .expect_issuer_issue_credential()
             .once()
-            .return_once(|_, _, _, _| Ok("xyz".to_string()));
+            .return_once(|_, _, _, _| Ok("xyz".into()));
         exchange_provider
             .expect_get_protocol()
             .once()
@@ -1535,8 +1535,8 @@ async fn test_create_credential_success_mdoc() {
     assert!(result.is_ok());
     let result = result.unwrap();
     assert_eq!(
-        "xyz",
-        result.credentials.unwrap().first().unwrap().credential
+        result.credentials.unwrap().first().unwrap().credential,
+        "xyz".into(),
     );
 }
 

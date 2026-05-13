@@ -11,7 +11,7 @@ use one_crypto::CryptoProvider;
 use serde::Deserialize;
 use serde_json::Value;
 use serde_with::{DurationSeconds, serde_as};
-use shared_types::DidValue;
+use shared_types::{DidValue, SerializedCredential};
 use time::Duration;
 use uuid::Uuid;
 
@@ -84,7 +84,7 @@ impl CredentialFormatter for SDJWTFormatter {
         &self,
         credential_data: CredentialData,
         auth_fn: AuthenticationFn,
-    ) -> Result<String, FormatterError> {
+    ) -> Result<SerializedCredential, FormatterError> {
         const HASH_ALG: &str = "sha-256";
         let mut vcdm = credential_data.vcdm;
 
@@ -143,7 +143,7 @@ impl CredentialFormatter for SDJWTFormatter {
 
     async fn extract_credentials<'a>(
         &self,
-        token: &str,
+        token: &SerializedCredential,
         _credential_schema: Option<&'a CredentialSchema>,
         verification: VerificationFn,
     ) -> Result<DetailCredential, FormatterError> {
@@ -168,7 +168,7 @@ impl CredentialFormatter for SDJWTFormatter {
 
     async fn extract_credentials_unverified<'a>(
         &self,
-        token: &str,
+        token: &SerializedCredential,
         _credential_schema: Option<&'a CredentialSchema>,
     ) -> Result<DetailCredential, FormatterError> {
         extract_credentials_internal(token, None, &*self.crypto, &*self.client).await
@@ -249,7 +249,7 @@ impl CredentialFormatter for SDJWTFormatter {
 
     async fn parse_credential(
         &self,
-        credential: &str,
+        credential: &SerializedCredential,
         organisation: Organisation,
         verification: Box<dyn TokenVerifier>,
     ) -> Result<Credential, FormatterError> {
@@ -434,7 +434,7 @@ impl SDJWTFormatter {
 }
 
 pub(crate) async fn extract_credentials_internal(
-    token: &str,
+    token: &SerializedCredential,
     verification: Option<&VerificationFn>,
     crypto: &dyn CryptoProvider,
     http_client: &dyn HttpClient,

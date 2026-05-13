@@ -9,7 +9,7 @@ use async_trait::async_trait;
 use model::VcClaim;
 use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
-use shared_types::DidValue;
+use shared_types::{DidValue, SerializedCredential};
 use time::Duration;
 use uuid::Uuid;
 
@@ -84,7 +84,7 @@ impl CredentialFormatter for JWTFormatter {
         &self,
         credential_data: CredentialData,
         auth_fn: AuthenticationFn,
-    ) -> Result<String, FormatterError> {
+    ) -> Result<SerializedCredential, FormatterError> {
         let now = crate::clock::now_utc();
 
         let mut vcdm = credential_data.vcdm;
@@ -132,7 +132,8 @@ impl CredentialFormatter for JWTFormatter {
         Ok(jwt
             .tokenize(Some(&*auth_fn))
             .await
-            .error_while("creating JWT credential token")?)
+            .error_while("creating JWT credential token")?
+            .into())
     }
 
     async fn format_status_list<'a>(
@@ -185,12 +186,12 @@ impl CredentialFormatter for JWTFormatter {
 
     async fn extract_credentials<'a>(
         &self,
-        token: &str,
+        token: &SerializedCredential,
         _credential_schema: Option<&'a CredentialSchema>,
         verification: VerificationFn,
     ) -> Result<DetailCredential, FormatterError> {
         // Build fails if verification fails
-        let jwt: Jwt<VcClaim> = Jwt::build_from_token(token, Some(&verification), None)
+        let jwt: Jwt<VcClaim> = Jwt::build_from_token(token.as_ref(), Some(&verification), None)
             .await
             .error_while("extracting JWT credential token")?;
 
@@ -199,10 +200,10 @@ impl CredentialFormatter for JWTFormatter {
 
     async fn extract_credentials_unverified<'a>(
         &self,
-        token: &str,
+        token: &SerializedCredential,
         _credential_schema: Option<&'a CredentialSchema>,
     ) -> Result<DetailCredential, FormatterError> {
-        let jwt: Jwt<VcClaim> = Jwt::build_from_token(token, None, None)
+        let jwt: Jwt<VcClaim> = Jwt::build_from_token(token.as_ref(), None, None)
             .await
             .error_while("parsing JWT credential token")?;
 
@@ -213,7 +214,7 @@ impl CredentialFormatter for JWTFormatter {
         &self,
         credential: CredentialPresentation,
     ) -> Result<String, FormatterError> {
-        Ok(credential.token)
+        Ok(credential.token.into())
     }
 
     fn get_leeway(&self) -> Duration {
@@ -290,15 +291,16 @@ impl CredentialFormatter for JWTFormatter {
 
     async fn parse_credential(
         &self,
-        credential: &str,
+        credential: &SerializedCredential,
         organisation: Organisation,
         verification: Box<dyn TokenVerifier>,
     ) -> Result<Credential, FormatterError> {
         let now = crate::clock::now_utc();
 
-        let jwt: Jwt<VcClaim> = Jwt::build_from_token(credential, Some(&verification), None)
-            .await
-            .error_while("parsing JWT credential token")?;
+        let jwt: Jwt<VcClaim> =
+            Jwt::build_from_token(credential.as_ref(), Some(&verification), None)
+                .await
+                .error_while("parsing JWT credential token")?;
 
         let revocation_method =
             if let Some(status) = jwt.payload.custom.vc.credential_status.first() {

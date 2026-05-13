@@ -353,7 +353,7 @@ async fn test_submit_proof_succeeds() {
     formatter
         .expect_prepare_selective_disclosure()
         .once()
-        .returning(|presentation| Ok(presentation.token));
+        .returning(|presentation| Ok(presentation.token.into()));
 
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     let formatter = Arc::new(formatter);
@@ -555,7 +555,7 @@ async fn test_submit_proof_multiple_credentials_succeeds() {
     formatter
         .expect_prepare_selective_disclosure()
         .times(2)
-        .returning(|presentation| Ok(presentation.token));
+        .returning(|presentation| Ok(presentation.token.into()));
 
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     let formatter = Arc::new(formatter);
@@ -770,7 +770,7 @@ async fn test_submit_proof_repeating_claims() {
     let mut formatter = MockCredentialFormatter::new();
     formatter
         .expect_prepare_selective_disclosure()
-        .returning(|presentation| Ok(presentation.token));
+        .returning(|presentation| Ok(presentation.token.into()));
 
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     let formatter = Arc::new(formatter);
@@ -965,7 +965,7 @@ async fn test_accept_credential() {
         .returning(|_, _, _| {
             Ok(UpdateResponse {
                 result: SubmitIssuerResponse {
-                    credential: "credential".to_string(),
+                    credential: "credential".into(),
                     redirect_uri: None,
                     notification_id: None,
                 },
@@ -1100,7 +1100,7 @@ async fn test_accept_credential_with_did() {
         .returning(|_, _, _| {
             Ok(UpdateResponse {
                 result: SubmitIssuerResponse {
-                    credential: "credential".to_string(),
+                    credential: "credential".into(),
                     redirect_uri: None,
                     notification_id: None,
                 },

@@ -552,7 +552,7 @@ fn test_data(
         expires_at: Some(crate::clock::now_utc() + Duration::days(10)),
         issuer: Some(IdentifierDetails::Did(holder_did)),
         nonce: Some(nonce),
-        credentials: vec!["credential".to_string()],
+        credentials: vec!["credential".into()],
     };
 
     let mock_data = MockData {

@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use shared_types::SerializedCredential;
 
 use crate::error::ContextWithErrorCode;
 use crate::proto::jwt::Jwt;
@@ -22,7 +23,7 @@ pub(crate) struct VPContent {
     #[serde(rename = "type")]
     pub r#type: Vec<String>,
     #[serde(rename = "_sd_jwt")]
-    pub verifiable_credential: Vec<String>,
+    pub verifiable_credential: Vec<SerializedCredential>,
 }
 
 impl TryFrom<Jwt<Sdvp>> for ExtractedPresentation {

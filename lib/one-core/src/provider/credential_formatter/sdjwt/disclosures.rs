@@ -4,6 +4,7 @@ use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use one_crypto::Hasher;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
+use shared_types::SerializedCredential;
 
 use crate::mapper::{NESTED_CLAIM_MARKER, paths_to_leafs};
 use crate::proto::jwt::mapper::string_to_b64url_string;
@@ -315,11 +316,14 @@ fn compute_disclosure_for_array_element(value: &Value) -> Result<String, Formatt
     Ok(string_to_b64url_string(&array)?)
 }
 
-pub(crate) fn parse_token(token: &str) -> Result<DecomposedToken<'_>, FormatterError> {
+pub(crate) fn parse_token(
+    token: &SerializedCredential,
+) -> Result<DecomposedToken<'_>, FormatterError> {
     let (token_with_disclosures, key_binding_token) = token
+        .as_ref()
         .rsplit_once('~')
         .map(|(token, kb_token)| (token, (!kb_token.is_empty()).then_some(kb_token)))
-        .unwrap_or((token, None));
+        .unwrap_or((token.as_ref(), None));
 
     // ONE-6254: Legacy SD-JWT tokens do not have the mandatory '~' character at the end
     // -> Check if the last element is _really_ a KB token or just a disclosure of a badly formatted credential
@@ -327,7 +331,10 @@ pub(crate) fn parse_token(token: &str) -> Result<DecomposedToken<'_>, FormatterE
     let (token_with_disclosures, key_binding_token) = match key_binding_token {
         // A properly formatted KB token must contain . in it
         Some(kb_token) if kb_token.contains('.') => (token_with_disclosures, Some(kb_token)),
-        _ => (token.strip_suffix('~').unwrap_or(token), None),
+        _ => (
+            token.as_ref().strip_suffix('~').unwrap_or(token.as_ref()),
+            None,
+        ),
     };
 
     let mut token_parts = token_with_disclosures.split("~");

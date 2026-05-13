@@ -11,7 +11,7 @@ use one_crypto::CryptoProvider;
 use serde::Deserialize;
 use serde_json::json;
 use serde_with::DurationSeconds;
-use shared_types::DidValue;
+use shared_types::{DidValue, SerializedCredential};
 use time::Duration;
 use url::Url;
 use uuid::Uuid;
@@ -106,7 +106,7 @@ impl CredentialFormatter for JsonLdBbsplus {
         &self,
         credential_data: CredentialData,
         auth_fn: AuthenticationFn,
-    ) -> Result<String, FormatterError> {
+    ) -> Result<SerializedCredential, FormatterError> {
         if let Ok(alg) = auth_fn.get_key_algorithm()
             && alg != KeyAlgorithmType::BbsPlus
         {
@@ -155,7 +155,7 @@ impl CredentialFormatter for JsonLdBbsplus {
 
         vcdm.proof = Some(proof);
 
-        Ok(serde_json::to_string(&vcdm)?)
+        Ok(serde_json::to_string(&vcdm)?.into())
     }
 
     async fn format_status_list<'a>(
@@ -227,11 +227,11 @@ impl CredentialFormatter for JsonLdBbsplus {
 
     async fn extract_credentials<'a>(
         &self,
-        credential: &str,
+        credential: &SerializedCredential,
         _credential_schema: Option<&'a CredentialSchema>,
         verification_fn: VerificationFn,
     ) -> Result<DetailCredential, FormatterError> {
-        let mut vcdm: VcdmCredential = serde_json::from_str(credential)?;
+        let mut vcdm: VcdmCredential = serde_json::from_str(credential.as_ref())?;
         let mandatory_pointers = self.verify(&mut vcdm, verification_fn).await?;
         let metadata_claims = self
             .get_metadata_claims()
@@ -243,10 +243,10 @@ impl CredentialFormatter for JsonLdBbsplus {
 
     async fn extract_credentials_unverified<'a>(
         &self,
-        credential: &str,
+        credential: &SerializedCredential,
         _credential_schema: Option<&'a CredentialSchema>,
     ) -> Result<DetailCredential, FormatterError> {
-        let vc: VcdmCredential = serde_json::from_str(credential)?;
+        let vc: VcdmCredential = serde_json::from_str(credential.as_ref())?;
 
         let metadata_claims = self
             .get_metadata_claims()
@@ -261,7 +261,7 @@ impl CredentialFormatter for JsonLdBbsplus {
         &self,
         credential: CredentialPresentation,
     ) -> Result<String, FormatterError> {
-        let mut vcdm: VcdmCredential = serde_json::from_str(&credential.token)?;
+        let mut vcdm: VcdmCredential = serde_json::from_str(credential.token.as_ref())?;
 
         let Some(proof) = vcdm.proof.take() else {
             return Err(FormatterError::CouldNotFormat("Missing proof".to_string()));
@@ -399,13 +399,13 @@ impl CredentialFormatter for JsonLdBbsplus {
 
     async fn parse_credential(
         &self,
-        credential: &str,
+        credential: &SerializedCredential,
         organisation: Organisation,
         verification: Box<dyn TokenVerifier>,
     ) -> Result<Credential, FormatterError> {
         let now = crate::clock::now_utc();
 
-        let mut vcdm: VcdmCredential = serde_json::from_str(credential)?;
+        let mut vcdm: VcdmCredential = serde_json::from_str(credential.as_ref())?;
 
         let revocation_method = if let Some(status) = vcdm.credential_status.first() {
             match status.r#type.as_str() {

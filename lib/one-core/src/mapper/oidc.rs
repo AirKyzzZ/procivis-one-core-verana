@@ -1,4 +1,4 @@
-use shared_types::CredentialFormat;
+use shared_types::{CredentialFormat, SerializedCredential};
 use standardized_types::openid4vp::ResponseMode;
 
 use crate::config::core_config::FormatType;
@@ -12,12 +12,15 @@ use crate::service::error::ServiceError;
 // This detects precise format checking e.g. crypto suite
 pub(crate) fn detect_format_with_crypto_suite(
     credential_schema_format: &CredentialFormat,
-    credential_content: &str,
+    credential_content: &SerializedCredential,
     formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<CredentialFormat, ServiceError> {
     let format = if credential_schema_format.as_ref().starts_with("JSON_LD") {
-        let format_type = map_from_oidc_format_to_core_detailed("ldp_vc", Some(credential_content))
-            .map_err(|_| ServiceError::MappingError("Credential format not resolved".to_owned()))?;
+        let format_type = map_from_oidc_format_to_core_detailed(
+            "ldp_vc",
+            Some(&credential_content.as_ref().into()),
+        )
+        .map_err(|_| ServiceError::MappingError("Credential format not resolved".to_owned()))?;
         let (name, _) = formatter_provider
             .get_formatter_by_type(format_type)
             .ok_or(ServiceError::MappingError(format!(
@@ -87,13 +90,13 @@ pub(crate) fn map_from_openid4vp_format(format: &str) -> Result<String, OpenID4V
 
 pub(crate) fn map_from_oidc_format_to_core_detailed(
     format: &str,
-    token: Option<&str>,
+    token: Option<&String>,
 ) -> Result<FormatType, OpenIDIssuanceError> {
     match format {
         "jwt_vc_json" => Ok(FormatType::Jwt),
         "vc+sd-jwt" | "dc+sd-jwt" | "vc sd-jwt" => {
             if let Some(token) = token {
-                match detect_sdjwt_type_from_token(token).map_err(|_| {
+                match detect_sdjwt_type_from_token(&token.as_str().into()).map_err(|_| {
                     OpenIDIssuanceError::OpenID4VCI(OpenID4VCIError::UnsupportedCredentialFormat)
                 })? {
                     SdJwtType::SdJwt => Ok(FormatType::SdJwt),

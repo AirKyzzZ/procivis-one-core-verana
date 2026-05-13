@@ -82,7 +82,8 @@ impl PresentationFormatter for SdjwtPresentationFormatter {
 
         for credential in &credentials {
             let mut vp_token = credential.credential_token.clone();
-            let jwt = parse_token(&vp_token)?;
+            let serialized_credential = vp_token.as_str().into();
+            let jwt = parse_token(&serialized_credential)?;
             let jwt_payload = Jwt::<Value>::decompose_token(jwt.jwt)
                 .error_while("parsing SD-JWT presetation token")?
                 .payload;
@@ -191,11 +192,17 @@ impl SdjwtPresentationFormatter {
             return jwt_vp.try_into();
         }
 
-        let credential =
-            extract_credentials_internal(token, verification, &*self.crypto, http_client).await?;
+        let serialized_credential = token.into();
+        let credential = extract_credentials_internal(
+            &serialized_credential,
+            verification,
+            &*self.crypto,
+            http_client,
+        )
+        .await?;
 
         // Perform KB verification at the presentation level
-        let decomposed = parse_token(token)?;
+        let decomposed = parse_token(&serialized_credential)?;
         let decomposed_jwt = Jwt::<serde_json::Map<String, Value>>::decompose_token(decomposed.jwt)
             .error_while("parsing SD-JWT token")?;
 
@@ -240,7 +247,7 @@ impl SdjwtPresentationFormatter {
             expires_at: proof_of_key_possesion.expires_at,
             issuer: credential.subject,
             nonce: Some(proof_of_key_possesion.custom.nonce),
-            credentials: vec![token.to_string()],
+            credentials: vec![token.into()],
         };
 
         Ok(presentation)

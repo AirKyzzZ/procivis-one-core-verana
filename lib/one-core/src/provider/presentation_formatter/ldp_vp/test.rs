@@ -376,10 +376,10 @@ async fn test_parse_presentation_multi_tokens() {
         .filter(|c| !c.is_whitespace())
         .collect::<String>();
 
-    assert_eq!(credentials[0], JWT_TOKEN);
+    assert_eq!(credentials[0], JWT_TOKEN.into());
     // parse JSON to compare serialization order independent
     assert_eq!(
-        Value::from_str(&credentials[1]).expect("failed to parse JSON"),
+        Value::from_str(credentials[1].as_ref()).expect("failed to parse JSON"),
         Value::from_str(&json_ld_no_whitespace).expect("failed to parse JSON")
     );
 }

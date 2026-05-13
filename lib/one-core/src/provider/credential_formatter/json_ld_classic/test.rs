@@ -170,7 +170,7 @@ async fn create_token(include_layout: bool) -> Value {
         .await
         .unwrap();
 
-    let parsed_json: Value = serde_json::from_str(&formatted_credential).unwrap();
+    let parsed_json: Value = serde_json::from_str(formatted_credential.as_ref()).unwrap();
     parsed_json
 }
 
@@ -298,7 +298,11 @@ async fn test_parse_credential() {
     verify_mock.expect_verify().return_once(|_, _, _, _| Ok(()));
 
     let credential = formatter
-        .parse_credential(CREDENTIAL, dummy_organisation(None), Box::new(verify_mock))
+        .parse_credential(
+            &CREDENTIAL.into(),
+            dummy_organisation(None),
+            Box::new(verify_mock),
+        )
         .await
         .unwrap();
 

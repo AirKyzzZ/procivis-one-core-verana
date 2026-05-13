@@ -6,7 +6,9 @@ use std::sync::Arc;
 use secrecy::SecretSlice;
 use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
-use shared_types::{CredentialId, CredentialSchemaFormatId, CredentialSchemaId};
+use shared_types::{
+    CredentialId, CredentialSchemaFormatId, CredentialSchemaId, SerializedCredential,
+};
 use time::Duration;
 use url::Url;
 
@@ -227,7 +229,7 @@ impl IssuanceProtocol for OpenID4VCISwiyu {
         format_id: CredentialSchemaFormatId,
         holder_identifier: Identifier,
         holder_key_id: String,
-    ) -> Result<String, IssuanceProtocolError> {
+    ) -> Result<SerializedCredential, IssuanceProtocolError> {
         self.inner
             .issuer_issue_credential(credential_id, format_id, holder_identifier, holder_key_id)
             .await

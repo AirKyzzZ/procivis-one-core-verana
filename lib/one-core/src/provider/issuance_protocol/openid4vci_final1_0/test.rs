@@ -672,7 +672,7 @@ async fn test_holder_accept_credential_success() {
         .unwrap();
 
     let issuer_response = result.result;
-    assert_eq!(issuer_response.credential, "credential");
+    assert_eq!(issuer_response.credential, "credential".into());
     assert_eq!(issuer_response.notification_id.unwrap(), "notification_id");
 
     let create_credential = result.create_credential.unwrap();
@@ -950,7 +950,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         .unwrap();
 
     let issuer_response = result.result;
-    assert_eq!(issuer_response.credential, "credential");
+    assert_eq!(issuer_response.credential, "credential".into());
     assert_eq!(issuer_response.notification_id.unwrap(), "notification_id");
 
     let create_credential = result.create_credential.unwrap();
@@ -1252,7 +1252,7 @@ async fn test_holder_accept_credential_autogenerate_holder_binding() {
         .unwrap();
 
     let issuer_response = result.result;
-    assert_eq!(issuer_response.credential, "credential");
+    assert_eq!(issuer_response.credential, "credential".into());
     assert_eq!(issuer_response.notification_id.unwrap(), "notification_id");
 
     let create_credential = result.create_credential.unwrap();
@@ -2524,7 +2524,7 @@ async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_att
         .unwrap();
 
     let issuer_response = result.result;
-    assert_eq!(issuer_response.credential, "credential");
+    assert_eq!(issuer_response.credential, "credential".into());
     assert_eq!(issuer_response.notification_id.unwrap(), "notification_id");
 }
 

@@ -18,7 +18,7 @@ use sdjwt::format_credential;
 use serde::Deserialize;
 use serde_json::Value;
 use serde_with::{DurationSeconds, serde_as};
-use shared_types::{CredentialSchemaId, DidValue, OrganisationId};
+use shared_types::{CredentialSchemaId, DidValue, OrganisationId, SerializedCredential};
 use time::Duration;
 use uuid::Uuid;
 
@@ -103,7 +103,7 @@ fn default_sd_array_elements() -> bool {
 impl CredentialFormatter for SDJWTVCFormatter {
     async fn parse_credential(
         &self,
-        credential: &str,
+        credential: &SerializedCredential,
         organisation: Organisation,
         verification: Box<dyn TokenVerifier>,
     ) -> Result<Credential, FormatterError> {
@@ -233,7 +233,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
         &self,
         credential_data: CredentialData,
         auth_fn: AuthenticationFn,
-    ) -> Result<String, FormatterError> {
+    ) -> Result<SerializedCredential, FormatterError> {
         const HASH_ALG: &str = "sha-256";
         // todo: here we need sdjwt-vc specific data model instead of using vcdm
         let mut vcdm = credential_data.vcdm;
@@ -311,7 +311,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
 
     async fn extract_credentials<'a>(
         &self,
-        token: &str,
+        token: &SerializedCredential,
         credential_schema: Option<&'a CredentialSchema>,
         verification: VerificationFn,
     ) -> Result<DetailCredential, FormatterError> {
@@ -341,7 +341,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
 
     async fn extract_credentials_unverified<'a>(
         &self,
-        token: &str,
+        token: &SerializedCredential,
         credential_schema: Option<&'a CredentialSchema>,
     ) -> Result<DetailCredential, FormatterError> {
         self.extract_credentials_internal(token, credential_schema, None, &*self.crypto)
@@ -503,7 +503,7 @@ impl SDJWTVCFormatter {
 
     async fn extract_credentials_internal(
         &self,
-        token: &str,
+        token: &SerializedCredential,
         credential_schema: Option<&CredentialSchema>,
         verification: Option<VerificationFn>,
         crypto: &dyn CryptoProvider,

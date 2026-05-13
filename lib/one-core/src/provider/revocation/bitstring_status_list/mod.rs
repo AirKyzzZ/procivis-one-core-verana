@@ -7,7 +7,9 @@ use std::sync::Arc;
 use futures::FutureExt;
 use resolver::{StatusListCacheEntry, StatusListResolver};
 use serde::{Deserialize, Serialize};
-use shared_types::{CredentialId, RevocationListEntryId, RevocationListId, RevocationMethodId};
+use shared_types::{
+    CredentialId, RevocationListEntryId, RevocationListId, RevocationMethodId, SerializedCredential,
+};
 use uuid::Uuid;
 
 use self::model::StatusPurpose;
@@ -284,14 +286,15 @@ impl RevocationMethod for BitstringStatusList {
             .error_while("getting bitstring status list")?;
 
         let response: StatusListCacheEntry = serde_json::from_slice(content)?;
-        let response_content = String::from_utf8(response.content)?;
+        let response_content: SerializedCredential = String::from_utf8(response.content)?.into();
 
-        let is_bbs = if let Ok(vcdm) = serde_json::from_str::<VcdmCredential>(&response_content) {
-            vcdm.proof
-                .is_some_and(|proof| proof.cryptosuite == "bbs-2023")
-        } else {
-            false
-        };
+        let is_bbs =
+            if let Ok(vcdm) = serde_json::from_str::<VcdmCredential>(response_content.as_ref()) {
+                vcdm.proof
+                    .is_some_and(|proof| proof.cryptosuite == "bbs-2023")
+            } else {
+                false
+            };
 
         let content_type = match (media_type, &response.content_type) {
             (Some(media_type), _) => media_type,

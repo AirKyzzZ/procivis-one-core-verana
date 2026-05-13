@@ -190,7 +190,7 @@ fn format_payload(credentials: &[String], nonce: Option<String>) -> Result<VP, F
 
                 Ok(VerifiableCredential::Enveloped(vp))
             } else {
-                Ok(VerifiableCredential::Token(token.to_owned()))
+                Ok(VerifiableCredential::Token(token.as_str().into()))
             }
         })
         .collect::<Result<Vec<VerifiableCredential>, FormatterError>>()?;

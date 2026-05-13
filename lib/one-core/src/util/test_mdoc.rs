@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use coset::{CoseKeyBuilder, iana};
+use shared_types::SerializedCredential;
 use time::Duration;
 
 use crate::config::core_config::KeyAlgorithmType;
@@ -31,7 +32,7 @@ pub async fn format_mdoc_credential(
     credential_data: CredentialData,
     params: Params,
     auth_fn: AuthenticationFn,
-) -> String {
+) -> SerializedCredential {
     let crl_cache = Arc::new(X509CrlCache::new(
         Arc::new(X509CrlResolver::new(Arc::new(ReqwestClient::default()))),
         Arc::new(InMemoryStorage::new(HashMap::new())),

@@ -1,7 +1,7 @@
 use one_dto_mapper::{From, Into};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-use shared_types::{CredentialId, InteractionId, OrganisationId, TaskId};
+use shared_types::{CredentialId, InteractionId, OrganisationId, SerializedCredential, TaskId};
 use strum::Display;
 use time::OffsetDateTime;
 
@@ -131,7 +131,7 @@ pub(crate) struct UpdateResponse {
 
 #[derive(Clone, Deserialize, Debug)]
 pub(crate) struct SubmitIssuerResponse {
-    pub credential: String,
+    pub credential: SerializedCredential,
     #[serde(rename = "redirectUri")]
     pub redirect_uri: Option<String>,
     pub notification_id: Option<String>,

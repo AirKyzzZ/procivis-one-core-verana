@@ -9,7 +9,7 @@ use one_crypto::{CryptoProvider, Hasher};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use serde_with::{DurationSeconds, serde_as};
-use shared_types::DidValue;
+use shared_types::{DidValue, SerializedCredential};
 use time::Duration;
 use url::Url;
 use uuid::Uuid;
@@ -72,7 +72,7 @@ impl CredentialFormatter for JsonLdClassic {
         &self,
         credential_data: CredentialData,
         auth_fn: AuthenticationFn,
-    ) -> Result<String, FormatterError> {
+    ) -> Result<SerializedCredential, FormatterError> {
         let mut vcdm = credential_data.vcdm;
 
         let now = crate::clock::now_utc();
@@ -107,7 +107,7 @@ impl CredentialFormatter for JsonLdClassic {
 
         let vcdm = self.add_proof(vcdm, key_algorithm, auth_fn).await?;
 
-        Ok(serde_json::to_string(&vcdm)?)
+        Ok(serde_json::to_string(&vcdm)?.into())
     }
 
     async fn format_status_list<'a>(
@@ -156,7 +156,7 @@ impl CredentialFormatter for JsonLdClassic {
 
     async fn extract_credentials<'a>(
         &self,
-        credential: &str,
+        credential: &SerializedCredential,
         _credential_schema: Option<&'a CredentialSchema>,
         verification_fn: VerificationFn,
     ) -> Result<DetailCredential, FormatterError> {
@@ -166,7 +166,7 @@ impl CredentialFormatter for JsonLdClassic {
 
     async fn extract_credentials_unverified<'a>(
         &self,
-        credential: &str,
+        credential: &SerializedCredential,
         _credential_schema: Option<&'a CredentialSchema>,
     ) -> Result<DetailCredential, FormatterError> {
         self.extract_credentials_internal(credential, None).await
@@ -176,7 +176,7 @@ impl CredentialFormatter for JsonLdClassic {
         &self,
         credential: CredentialPresentation,
     ) -> Result<String, FormatterError> {
-        Ok(credential.token)
+        Ok(credential.token.into())
     }
 
     fn get_leeway(&self) -> Duration {
@@ -241,13 +241,13 @@ impl CredentialFormatter for JsonLdClassic {
 
     async fn parse_credential(
         &self,
-        credential: &str,
+        credential: &SerializedCredential,
         organisation: Organisation,
         verification: Box<dyn TokenVerifier>,
     ) -> Result<Credential, FormatterError> {
         let now = crate::clock::now_utc();
 
-        let vcdm: VcdmCredential = serde_json::from_str(credential)?;
+        let vcdm: VcdmCredential = serde_json::from_str(credential.as_ref())?;
 
         verify_credential_signature(
             vcdm.clone(),
@@ -417,10 +417,10 @@ impl JsonLdClassic {
 
     async fn extract_credentials_internal(
         &self,
-        credential: &str,
+        credential: &SerializedCredential,
         verification_fn: Option<VerificationFn>,
     ) -> Result<DetailCredential, FormatterError> {
-        let vcdm: VcdmCredential = serde_json::from_str(credential)?;
+        let vcdm: VcdmCredential = serde_json::from_str(credential.as_ref())?;
 
         if let Some(verification_fn) = verification_fn {
             verify_credential_signature(

@@ -15,7 +15,9 @@ use one_crypto::utilities::generate_random_bytes;
 use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
 use sha2::{Digest, Sha256, Sha384, Sha512};
-use shared_types::{CredentialId, CredentialSchemaId, DidValue, OrganisationId};
+use shared_types::{
+    CredentialId, CredentialSchemaId, DidValue, OrganisationId, SerializedCredential,
+};
 use standardized_types::jwk::PublicJwk;
 use time::format_description::FormatItem;
 use time::format_description::well_known::Rfc3339;
@@ -122,7 +124,7 @@ impl CredentialFormatter for MdocFormatter {
         &self,
         credential_data: CredentialData,
         auth_fn: AuthenticationFn,
-    ) -> Result<String, FormatterError> {
+    ) -> Result<SerializedCredential, FormatterError> {
         let vcdm = credential_data.vcdm;
         let credential_schema = vcdm
             .credential_schema
@@ -241,7 +243,7 @@ impl CredentialFormatter for MdocFormatter {
             issuer_auth: CoseSign1(cose_sign1),
         };
 
-        encode_cbor_base64(issuer_signed)
+        encode_cbor_base64(issuer_signed).map(Into::into)
     }
 
     async fn format_status_list<'a>(
@@ -261,7 +263,7 @@ impl CredentialFormatter for MdocFormatter {
 
     async fn extract_credentials<'a>(
         &self,
-        token: &str,
+        token: &SerializedCredential,
         _credential_schema: Option<&'a crate::model::credential_schema::CredentialSchema>,
         _verification: VerificationFn,
     ) -> Result<DetailCredential, FormatterError> {
@@ -270,7 +272,7 @@ impl CredentialFormatter for MdocFormatter {
 
     async fn extract_credentials_unverified<'a>(
         &self,
-        token: &str,
+        token: &SerializedCredential,
         _credential_schema: Option<&'a crate::model::credential_schema::CredentialSchema>,
     ) -> Result<DetailCredential, FormatterError> {
         extract_credentials_internal(&*self.certificate_validator, token, false).await
@@ -281,7 +283,7 @@ impl CredentialFormatter for MdocFormatter {
         &self,
         credential: CredentialPresentation,
     ) -> Result<String, FormatterError> {
-        let mut issuer_signed: IssuerSigned = decode_cbor_base64(&credential.token)?;
+        let mut issuer_signed: IssuerSigned = decode_cbor_base64(credential.token.as_ref())?;
 
         let Some(namespaces) = issuer_signed.name_spaces.as_mut() else {
             return Err(FormatterError::CouldNotFormat(
@@ -422,11 +424,11 @@ impl CredentialFormatter for MdocFormatter {
 
     async fn parse_credential(
         &self,
-        credential: &str,
+        credential: &SerializedCredential,
         organisation: Organisation,
         _verification: Box<dyn TokenVerifier>,
     ) -> Result<Credential, FormatterError> {
-        let issuer_signed: IssuerSigned = decode_cbor_base64(credential)?;
+        let issuer_signed: IssuerSigned = decode_cbor_base64(credential.as_ref())?;
         let issuer_certificate = extract_certificate_from_x5chain_header(
             &*self.certificate_validator,
             &issuer_signed.issuer_auth,
@@ -553,10 +555,10 @@ impl CredentialFormatter for MdocFormatter {
 
 async fn extract_credentials_internal(
     certificate_validator: &dyn CertificateValidator,
-    token: &str,
+    token: &SerializedCredential,
     verify: bool,
 ) -> Result<DetailCredential, FormatterError> {
-    let issuer_signed: IssuerSigned = decode_cbor_base64(token)?;
+    let issuer_signed: IssuerSigned = decode_cbor_base64(token.as_ref())?;
     let issuer_cert = extract_certificate_from_x5chain_header(
         certificate_validator,
         &issuer_signed.issuer_auth,
@@ -1085,9 +1087,9 @@ fn extract_claims(
 }
 
 pub async fn try_extracting_mso_from_token(
-    token: &str,
+    token: &SerializedCredential,
 ) -> Result<MobileSecurityObject, FormatterError> {
-    let issuer_signed: IssuerSigned = decode_cbor_base64(token)?;
+    let issuer_signed: IssuerSigned = decode_cbor_base64(token.as_ref())?;
     try_extract_mobile_security_object(&issuer_signed.issuer_auth)
 }
 

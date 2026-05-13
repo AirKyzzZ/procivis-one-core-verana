@@ -14,7 +14,7 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use shared_types::{
     BlobId, CredentialFormat, CredentialId, CredentialSchemaFormatId, CredentialSchemaId,
-    InteractionId, OrganisationId,
+    InteractionId, OrganisationId, SerializedCredential,
 };
 use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
 use time::{Duration, OffsetDateTime};
@@ -855,7 +855,7 @@ impl OpenID4VCIFinal1_0 {
     ) -> Result<UpdateResponse, IssuanceProtocolError> {
         let format_type = map_from_oidc_format_to_core_detailed(
             &interaction_data.format,
-            Some(&issuer_response.credential),
+            Some(&issuer_response.credential.as_ref().into()),
         )?;
 
         let (format, formatter) = self
@@ -1260,7 +1260,7 @@ impl OpenID4VCIFinal1_0 {
     async fn upsert_credential_blob(
         &self,
         credential: &Credential,
-        token: &str,
+        token: &SerializedCredential,
     ) -> Result<BlobId, IssuanceProtocolError> {
         let db_blob_storage = self
             .blob_storage_provider
@@ -1269,7 +1269,7 @@ impl OpenID4VCIFinal1_0 {
 
         let credential_blob_id = match credential.credential_blob_id {
             None => {
-                let blob = Blob::new(token, BlobType::Credential);
+                let blob = Blob::new(token.as_ref(), BlobType::Credential);
                 db_blob_storage
                     .create(blob.clone())
                     .await
@@ -1281,7 +1281,7 @@ impl OpenID4VCIFinal1_0 {
                     .update(
                         &blob_id,
                         UpdateBlobRequest {
-                            value: Some(token.into()),
+                            value: Some(token.as_ref().into()),
                         },
                     )
                     .await
@@ -1799,7 +1799,7 @@ impl OpenID4VCIFinal1_0 {
             .update(
                 &blob_id,
                 UpdateBlobRequest {
-                    value: Some(response.credential.into()),
+                    value: Some(response.credential.as_ref().into()),
                 },
             )
             .await
@@ -1829,7 +1829,7 @@ impl OpenID4VCIFinal1_0 {
         } else {
             vec![]
         };
-        let credential_str = String::from_utf8(credentials)?;
+        let credential_str = String::from_utf8(credentials)?.into();
 
         let credential_schema_format = credential_schema.format().await?;
         let formatter = self
@@ -2246,7 +2246,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         format_id: CredentialSchemaFormatId,
         holder_identifier: Identifier,
         holder_key_id: String,
-    ) -> Result<String, IssuanceProtocolError> {
+    ) -> Result<SerializedCredential, IssuanceProtocolError> {
         let Some(mut credential) = self
             .credential_repository
             .get_credential(
@@ -2421,7 +2421,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                         Mdoc {
                             id: Uuid::new_v4(),
                             created_date: crate::clock::now_utc(),
-                            credential: token.as_bytes().to_vec(),
+                            credential: token.as_ref().into(),
                             linked_credential_id: *credential_id,
                         }
                         .into(),
@@ -2445,7 +2445,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                         Mdoc {
                             id: Uuid::new_v4(),
                             created_date: crate::clock::now_utc(),
-                            credential: token.as_bytes().to_vec(),
+                            credential: token.as_ref().into(),
                             linked_credential_id: *credential_id,
                         }
                         .into(),

@@ -5,7 +5,7 @@ use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use one_crypto::hasher::sha256::SHA256;
 use one_crypto::{Hasher, MockHasher};
 use serde_json::{Value, json};
-use shared_types::DidValue;
+use shared_types::{DidValue, SerializedCredential};
 use similar_asserts::assert_eq;
 use url::Url;
 use uuid::Uuid;
@@ -36,7 +36,7 @@ async fn test_prepare_sd_presentation() {
     let key_age = "WyJNVEl6WVdKaiIsImFnZSIsIjQyIl0";
     let key_id = "key-id";
     let key_alg = "ES256";
-    let token = format!("{jwt_token}.QUJD~{key_name}~{key_age}~");
+    let token: SerializedCredential = format!("{jwt_token}.QUJD~{key_name}~{key_age}~").into();
 
     let mut signer = MockSignatureProvider::default();
     signer
@@ -131,7 +131,7 @@ async fn test_prepare_sd_presentation_malformed() {
     let key_id = "key-id";
     let key_alg = "ES256";
     // malformed: no trailing ~
-    let token = format!("{jwt_token}.QUJD~{key_name}~{key_age}");
+    let token: SerializedCredential = format!("{jwt_token}.QUJD~{key_name}~{key_age}").into();
 
     let mut signer = MockSignatureProvider::default();
     signer

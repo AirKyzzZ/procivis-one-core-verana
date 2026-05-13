@@ -2,7 +2,9 @@ use dto::IssuanceProtocolCapabilities;
 use error::IssuanceProtocolError;
 use serde::Serialize;
 use serde::de::Deserialize;
-use shared_types::{CredentialId, CredentialSchemaFormatId, CredentialSchemaId};
+use shared_types::{
+    CredentialId, CredentialSchemaFormatId, CredentialSchemaId, SerializedCredential,
+};
 use url::Url;
 
 use crate::model::credential::{Credential, CredentialStateEnum};
@@ -102,7 +104,7 @@ pub(crate) trait IssuanceProtocol: Send + Sync {
         format_id: CredentialSchemaFormatId,
         holder_identifier: Identifier,
         holder_key_id: String,
-    ) -> Result<String, IssuanceProtocolError>;
+    ) -> Result<SerializedCredential, IssuanceProtocolError>;
 
     async fn issuer_metadata(
         &self,

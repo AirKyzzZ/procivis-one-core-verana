@@ -384,7 +384,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         .unwrap();
 
     let formatted_credential =
-        Base64UrlSafeNoPadding::decode_to_vec(formatted_credential, None).unwrap();
+        Base64UrlSafeNoPadding::decode_to_vec(formatted_credential.as_ref(), None).unwrap();
     let issuer_signed: IssuerSigned = ciborium::from_reader(&formatted_credential[..]).unwrap();
 
     let namespaces = issuer_signed.name_spaces.unwrap();
@@ -1070,7 +1070,11 @@ async fn test_parse_credential() {
     verify_mock.expect_verify().return_once(|_, _, _, _| Ok(()));
 
     let credential = formatter
-        .parse_credential(ISSUED_MDOC, dummy_organisation(None), Box::new(verify_mock))
+        .parse_credential(
+            &ISSUED_MDOC.into(),
+            dummy_organisation(None),
+            Box::new(verify_mock),
+        )
         .await
         .unwrap();
 

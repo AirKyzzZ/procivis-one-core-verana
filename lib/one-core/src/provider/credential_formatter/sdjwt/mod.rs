@@ -6,7 +6,7 @@ use one_crypto::{CryptoProvider, Hasher};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
-use shared_types::DidValue;
+use shared_types::{DidValue, SerializedCredential};
 use time::Duration;
 
 use super::model::{
@@ -62,7 +62,7 @@ pub(crate) async fn format_credential<T: Serialize>(
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
     digests_to_payload: impl FnOnce(Vec<String>) -> Result<T, FormatterError>,
     sd_array_elements: bool,
-) -> Result<String, FormatterError> {
+) -> Result<SerializedCredential, FormatterError> {
     let issuer = credential.issuer.as_url().to_string();
     let id = credential.id.clone();
     let invalid_before = credential.valid_from.or(credential.issuance_date);
@@ -155,7 +155,7 @@ pub(crate) async fn format_credential<T: Serialize>(
         .await
         .error_while("creating SD-JWT token")?;
     append_disclosures(&mut token, disclosures);
-    Ok(token)
+    Ok(token.into())
 }
 
 fn format_hashed_credential<T>(
@@ -169,9 +169,11 @@ fn format_hashed_credential<T>(
     Ok((payload, disclosures))
 }
 
-pub(crate) fn detect_sdjwt_type_from_token(token: &str) -> Result<SdJwtType, FormatterError> {
-    let without_claims = match token.split_once('~') {
-        None => token,
+pub(crate) fn detect_sdjwt_type_from_token(
+    token: &SerializedCredential,
+) -> Result<SdJwtType, FormatterError> {
+    let without_claims = match token.as_ref().split_once('~') {
+        None => token.as_ref(),
         Some((without_claims, _)) => without_claims,
     };
     let jwt: DecomposedJwt<AnyPayload> =
@@ -257,7 +259,7 @@ pub(crate) struct SdJwtHolderBindingParams {
 
 impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
     pub(crate) async fn build_from_token_with_disclosures(
-        token: &str,
+        token: &SerializedCredential,
         crypto: &dyn CryptoProvider,
         verification: Option<&VerificationFn>,
         certificate_validator: Option<&dyn CertificateValidator>,

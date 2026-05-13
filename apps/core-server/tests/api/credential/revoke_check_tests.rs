@@ -12,6 +12,7 @@ use one_core::provider::key_algorithm::eddsa::Eddsa;
 use one_crypto::Signer;
 use one_crypto::signer::eddsa::{EDDSASigner, KeyPair};
 use serde_json::{Value, json};
+use shared_types::SerializedCredential;
 use similar_asserts::assert_eq;
 use time::Duration;
 use uuid::Uuid;
@@ -692,7 +693,7 @@ async fn test_revoke_check_mdoc_update() {
         .db
         .blobs
         .create(TestingBlobParams {
-            value: Some(expired_mdoc_credential().await.as_bytes().to_vec()),
+            value: Some(expired_mdoc_credential().await.as_ref().into()),
             ..Default::default()
         })
         .await;
@@ -748,7 +749,10 @@ async fn test_revoke_check_mdoc_update() {
         .get(&credential.credential_blob_id.unwrap())
         .await
         .unwrap();
-    assert_eq!(updated_credentials.value, valid_credential.as_bytes());
+    assert_eq!(
+        updated_credentials.value,
+        valid_credential.as_ref().as_bytes().to_vec()
+    );
 }
 
 #[tokio::test]
@@ -832,7 +836,7 @@ async fn test_revoke_check_mdoc_update_invalid() {
         .db
         .blobs
         .create(TestingBlobParams {
-            value: Some(expired_credential.as_bytes().to_vec()),
+            value: Some(expired_credential.as_ref().into()),
             ..Default::default()
         })
         .await;
@@ -893,7 +897,7 @@ async fn test_revoke_check_mdoc_update_invalid() {
         .unwrap();
     assert_eq!(
         updated_credentials.value,
-        expired_credential.as_bytes() // invalid content was rejected / credential not updated
+        expired_credential.as_ref().as_bytes().to_vec() // invalid content was rejected / credential not updated
     );
 }
 
@@ -980,7 +984,7 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
         .db
         .blobs
         .create(TestingBlobParams {
-            value: Some(valid_credential.as_bytes().to_vec()),
+            value: Some(valid_credential.as_ref().into()),
             ..Default::default()
         })
         .await;
@@ -1038,7 +1042,10 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
             .get(&credential.credential_blob_id.unwrap())
             .await
             .unwrap();
-        assert_eq!(updated_credentials.value, valid_credential2.as_bytes());
+        assert_eq!(
+            updated_credentials.value,
+            valid_credential2.as_ref().as_bytes().to_vec()
+        );
         assert!(updated_credentials.last_modified > before_refresh);
     }
 }
@@ -1124,7 +1131,7 @@ async fn test_revoke_check_token_update() {
         .db
         .blobs
         .create(TestingBlobParams {
-            value: Some(valid_credential.as_bytes().to_vec()),
+            value: Some(valid_credential.as_ref().into()),
             ..Default::default()
         })
         .await;
@@ -1257,7 +1264,7 @@ async fn test_revoke_check_mdoc_tokens_expired() {
         .db
         .blobs
         .create(TestingBlobParams {
-            value: Some(expired_credential.as_bytes().to_vec()),
+            value: Some(expired_credential.as_ref().into()),
             ..Default::default()
         })
         .await;
@@ -1304,7 +1311,7 @@ async fn test_revoke_check_mdoc_tokens_expired() {
         .unwrap();
     assert_eq!(
         updated_credentials_blob.value,
-        expired_credential.as_bytes()
+        expired_credential.as_ref().as_bytes().to_vec()
     );
     let updated_credentials = context.db.credentials.get(&credential.id).await;
     assert_eq!(updated_credentials.state, CredentialStateEnum::Revoked,);
@@ -1388,7 +1395,7 @@ async fn test_revoke_check_mdoc_fail_to_update_token_valid_mso() {
         .db
         .blobs
         .create(TestingBlobParams {
-            value: Some(valid_credential.as_bytes().to_vec()),
+            value: Some(valid_credential.as_ref().into()),
             ..Default::default()
         })
         .await;
@@ -1517,7 +1524,7 @@ async fn test_suspended_to_valid_mdoc() {
         .db
         .blobs
         .create(TestingBlobParams {
-            value: Some(expired_credential.as_bytes().to_vec()),
+            value: Some(expired_credential.as_ref().into()),
             ..Default::default()
         })
         .await;
@@ -1582,7 +1589,10 @@ async fn test_suspended_to_valid_mdoc() {
         .get(&credential.credential_blob_id.unwrap())
         .await
         .unwrap();
-    assert_eq!(updated_credentials_blob.value, valid_credential.as_bytes());
+    assert_eq!(
+        updated_credentials_blob.value,
+        valid_credential.as_ref().as_bytes().to_vec()
+    );
     let updated_credentials = context.db.credentials.get(&credential.id).await;
     assert_eq!(updated_credentials.state, CredentialStateEnum::Accepted,);
     let history = context
@@ -1690,7 +1700,7 @@ async fn test_suspended_to_suspended_update_failed() {
         .db
         .blobs
         .create(TestingBlobParams {
-            value: Some(expired_credential.as_bytes().to_vec()),
+            value: Some(expired_credential.as_ref().into()),
             ..Default::default()
         })
         .await;
@@ -1742,7 +1752,7 @@ async fn test_suspended_to_suspended_update_failed() {
         .unwrap();
     assert_eq!(
         updated_credentials_blob.value,
-        expired_credential.as_bytes()
+        expired_credential.as_ref().as_bytes().to_vec()
     );
     let updated_credentials = context.db.credentials.get(&credential.id).await;
     assert_eq!(updated_credentials.state, CredentialStateEnum::Suspended,);
@@ -1833,7 +1843,7 @@ async fn test_revoke_check_failed_deleted_credential() {
     assert_eq!(resp.status(), 404);
 }
 
-async fn valid_mdoc_credential() -> String {
+async fn valid_mdoc_credential() -> SerializedCredential {
     let params = Params {
         mso_expires_in: Duration::days(1),
         mso_expected_update_in: Duration::seconds(300),
@@ -1845,7 +1855,7 @@ async fn valid_mdoc_credential() -> String {
     minimal_mdoc_credential(params).await
 }
 
-async fn expired_mdoc_credential() -> String {
+async fn expired_mdoc_credential() -> SerializedCredential {
     let params = Params {
         mso_expires_in: Duration::days(-1), // already expired
         mso_expected_update_in: Duration::days(-1),
@@ -1857,7 +1867,7 @@ async fn expired_mdoc_credential() -> String {
     minimal_mdoc_credential(params).await
 }
 
-async fn minimal_mdoc_credential(params: Params) -> String {
+async fn minimal_mdoc_credential(params: Params) -> SerializedCredential {
     let credential = CredentialData {
         vcdm: VcdmCredential {
             context: Default::default(),

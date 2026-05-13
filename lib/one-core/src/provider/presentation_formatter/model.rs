@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
+use shared_types::SerializedCredential;
 use standardized_types::jwk::PublicJwk;
 use time::OffsetDateTime;
 
@@ -19,7 +20,7 @@ pub struct ExtractedPresentation {
     pub expires_at: Option<OffsetDateTime>,
     pub issuer: Option<IdentifierDetails>,
     pub nonce: Option<String>,
-    pub credentials: Vec<String>,
+    pub credentials: Vec<SerializedCredential>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

@@ -180,6 +180,6 @@ async fn test_format_presentation() {
     assert_eq!(vp.verifiable_credential.len(), 1);
     assert_eq!(
         vp.verifiable_credential[0],
-        VerifiableCredential::Token(jwt_token.to_string())
+        VerifiableCredential::Token(jwt_token.into())
     );
 }
