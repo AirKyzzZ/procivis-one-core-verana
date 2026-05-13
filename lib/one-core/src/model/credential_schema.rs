@@ -84,18 +84,14 @@ impl CredentialSchema {
 
     // #[deprecated(note = "Use `formats` instead")] TODO: remove after we support multiformat schema
     async fn first_format(&self) -> Result<CredentialSchemaFormat, NestedError> {
-        let formats = self.get_formats().await?;
-        match &formats[..] {
-            [format] => Ok(format.to_owned()),
-            [] => Err(ServiceError::MappingError(
-                "Missing credential schema format".to_string(),
-            ))
-            .error_while("Failed to retrieve credential format"),
-            _ => Err(ServiceError::MappingError(
-                "More than one credential schema format, use formats".to_string(),
-            ))
-            .error_while("Failed to retrieve credential format"),
-        }
+        self.get_formats()
+            .await?
+            .into_iter()
+            .next()
+            .ok_or_else(|| {
+                ServiceError::MappingError("Missing credential schema format".to_string())
+            })
+            .error_while("Failed to retrieve credential format")
     }
 
     async fn get_formats(&self) -> Result<Vec<CredentialSchemaFormat>, NestedError> {
