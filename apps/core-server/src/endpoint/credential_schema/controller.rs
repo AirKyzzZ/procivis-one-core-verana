@@ -250,6 +250,32 @@ pub(crate) async fn post_credential_schema(
 )]
 pub(crate) async fn share_credential_schema(
     state: State<AppState>,
+    with_rejection: WithRejection<Path<CredentialSchemaId>, ErrorResponseRestDTO>,
+) -> CreatedOrErrorResponse<CredentialSchemaShareResponseRestDTO> {
+    share_credential_schema_v2(axum::Extension(authorized), state, with_rejection).await
+}
+
+#[endpoint(
+    permissions = [Permission::CredentialSchemaShare],
+    post,
+    path = "/api/credential-schema/v2/{id}/share",
+    responses(CreatedOrErrorResponse<CredentialSchemaShareResponseRestDTO>),
+    params(
+        ("id" = CredentialSchemaId, Path, description = "Schema id")
+    ),
+    tag = "credential_schema_management",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "Share credential schema (v2)",
+    description = indoc::formatdoc! {"
+        Generates a url to share a credential schema with a mobile verifier using the v2 SSI schema endpoint.
+        The mobile verifier can make an HTTP request on the resulting url to preview the shared credential
+        schema in v2 format.
+    "},
+)]
+pub(crate) async fn share_credential_schema_v2(
+    state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<CredentialSchemaId>, ErrorResponseRestDTO>,
 ) -> CreatedOrErrorResponse<CredentialSchemaShareResponseRestDTO> {
     let result = state

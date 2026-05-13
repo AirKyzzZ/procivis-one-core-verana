@@ -30,7 +30,9 @@ use super::dto::{
 use crate::dto::common::EntityResponseRestDTO;
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
-use crate::endpoint::credential_schema::dto::CredentialSchemaResponseRestDTO;
+use crate::endpoint::credential_schema::dto::{
+    CredentialSchemaResponseRestDTO, CredentialSchemaV2ResponseRestDTO,
+};
 use crate::endpoint::proof_schema::dto::GetProofSchemaResponseRestDTO;
 use crate::endpoint::ssi::dto::TrustCollectionResponseRestDTO;
 use crate::endpoint::trust_entity::dto::GetTrustEntityResponseRestDTO;
@@ -455,6 +457,37 @@ pub(crate) async fn ssi_get_credential_schema(
         .await;
 
     OkOrErrorResponse::from_result(result, state, "getting credential schema")
+}
+
+#[endpoint(
+    permissions = [],
+    get,
+    path = "/ssi/schema/v2/{id}",
+    params(
+        ("id" = CredentialSchemaId, Path, description = "Credential schema id")
+    ),
+    responses(
+        (status = 200, description = "OK", body = CredentialSchemaV2ResponseRestDTO),
+        (status = 404, description = "Credential schema not found"),
+        (status = 500, description = "Server error"),
+    ),
+    tag = "ssi",
+    summary = "Retrieve credential schema v2 service",
+    description = indoc::formatdoc! {"
+        Retrieve a credential schema by its UUID in v2 format.
+    "},
+)]
+pub(crate) async fn ssi_get_credential_schema_v2(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<CredentialSchemaId>, ErrorResponseRestDTO>,
+) -> OkOrErrorResponse<CredentialSchemaV2ResponseRestDTO> {
+    let result = state
+        .core
+        .credential_schema_service
+        .get_credential_schema_v2(&id)
+        .await;
+
+    OkOrErrorResponse::from_result(result, state, "getting credential schema v2")
 }
 
 #[endpoint(

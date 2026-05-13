@@ -230,7 +230,7 @@ impl CredentialSchemaService {
             .map(|f| f.format.clone())
             .collect::<Vec<_>>();
 
-        let imported_source_url = format!("{core_base_url}/ssi/schema/v1/{credential_schema_id}");
+        let imported_source_url = format!("{core_base_url}/ssi/schema/v2/{credential_schema_id}");
         let credential_schema = from_create_v2_request_with_id(
             credential_schema_id,
             request,

@@ -2502,6 +2502,54 @@ async fn test_share_credential_schema_success() {
 }
 
 #[tokio::test]
+async fn test_share_credential_schema_v2_success() {
+    let mut repository = MockCredentialSchemaRepository::default();
+    let organisation_repository = MockOrganisationRepository::default();
+
+    let schema_id: CredentialSchemaId = Uuid::new_v4().into();
+
+    repository
+        .expect_get_credential_schema()
+        .returning(|_| Ok(Some(generic_credential_schema())));
+
+    let service = setup_service(
+        repository,
+        organisation_repository,
+        Default::default(),
+        Default::default(),
+        generic_config().core,
+    );
+
+    let result = service.share_credential_schema(&schema_id).await;
+    assert!(result.is_ok());
+    let response = result.unwrap();
+    assert_eq!(response.url, "CORE_URL");
+}
+
+#[tokio::test]
+async fn test_share_credential_schema_v2_not_found() {
+    let mut repository = MockCredentialSchemaRepository::default();
+    let organisation_repository = MockOrganisationRepository::default();
+
+    let schema_id: CredentialSchemaId = Uuid::new_v4().into();
+
+    repository
+        .expect_get_credential_schema()
+        .returning(|_| Ok(None));
+
+    let service = setup_service(
+        repository,
+        organisation_repository,
+        Default::default(),
+        Default::default(),
+        generic_config().core,
+    );
+
+    let result = service.share_credential_schema(&schema_id).await;
+    assert!(result.is_err());
+}
+
+#[tokio::test]
 async fn test_import_credential_schema_success() {
     let mut repository = MockCredentialSchemaRepository::default();
     let mut organisation_repository = MockOrganisationRepository::default();

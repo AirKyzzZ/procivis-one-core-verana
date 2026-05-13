@@ -272,6 +272,10 @@ fn get_management_endpoints(
                 get(credential_schema::controller::get_credential_schema_v2),
             )
             .route(
+                "/api/credential-schema/v2/{id}/share",
+                post(credential_schema::controller::share_credential_schema_v2),
+            )
+            .route(
                 "/api/credential-schema/v2",
                 get(credential_schema::controller::get_credential_schema_list_v2)
                     .post(credential_schema::controller::post_credential_schema_v2),
@@ -767,6 +771,10 @@ fn get_external_endpoints(
             .route(
                 "/ssi/schema/v1/{id}",
                 get(ssi::controller::ssi_get_credential_schema),
+            )
+            .route(
+                "/ssi/schema/v2/{id}",
+                get(ssi::controller::ssi_get_credential_schema_v2),
             )
             .route(
                 "/ssi/proof-schema/v1/{id}",

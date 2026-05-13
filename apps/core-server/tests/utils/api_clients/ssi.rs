@@ -137,6 +137,13 @@ impl SSIApi {
         self.client.get(&url).await
     }
 
+    pub async fn get_credential_schema_v2(&self, id: impl Into<Uuid>) -> Response {
+        let credential_schema_id = id.into();
+        let url = format!("/ssi/schema/v2/{credential_schema_id}");
+
+        self.client.get(&url).await
+    }
+
     pub async fn get_trust_list(&self, id: impl Into<Uuid>) -> Response {
         let trust_anchor_id = id.into();
         let url = format!("/ssi/trust/v1/{trust_anchor_id}");
