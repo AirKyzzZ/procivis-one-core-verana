@@ -140,6 +140,14 @@ pub(crate) struct IssuanceAcceptRequestRestDTO {
     pub holder_wallet_unit_id: Option<HolderWalletInstanceId>,
 }
 
+#[derive(Clone, Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct IssuanceAcceptResponseRestDTO {
+    /// Temporary backward compatible, only present if a single credential is issued
+    pub id: Option<CredentialId>,
+    pub ids: Vec<CredentialId>,
+}
+
 #[derive(Clone, Debug, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct IssuanceRejectRequestRestDTO {

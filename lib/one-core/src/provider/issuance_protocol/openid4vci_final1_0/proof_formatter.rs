@@ -157,7 +157,7 @@ impl OpenID4VCIProofJWTFormatter {
         nonce: Option<String>,
         key_attestation: Option<String>,
         auth_fn: AuthenticationFn,
-        client_id: Option<String>,
+        client_id: Option<&String>,
     ) -> Result<String, FormatterError> {
         #[derive(Serialize)]
         struct NonceClaim {
@@ -166,7 +166,7 @@ impl OpenID4VCIProofJWTFormatter {
 
         let custom = nonce.map(|nonce| NonceClaim { nonce });
         let payload = JWTPayload {
-            issuer: client_id,
+            issuer: client_id.cloned(),
             audience: Some(vec![issuer_url]),
             custom,
             issued_at: Some(crate::clock::now_utc()),

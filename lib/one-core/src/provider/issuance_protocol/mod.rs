@@ -42,6 +42,7 @@ pub(crate) fn serialize_interaction_data<DataDTO: ?Sized + Serialize>(
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(test, derive(PartialEq))]
 pub(crate) struct HolderBindingInput {
     pub identifier: Identifier,
     pub key: Key,

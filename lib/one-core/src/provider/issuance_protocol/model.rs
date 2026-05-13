@@ -1,11 +1,11 @@
 use one_dto_mapper::{From, Into};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-use shared_types::{CredentialId, InteractionId, OrganisationId, SerializedCredential, TaskId};
+use shared_types::{InteractionId, OrganisationId, SerializedCredential, TaskId};
 use strum::Display;
 use time::OffsetDateTime;
 
-use crate::model::credential::{Credential, UpdateCredentialRequest};
+use crate::model::credential::Credential;
 use crate::model::credential_schema::{KeyStorageSecurity, UpdateCredentialSchemaRequest};
 use crate::service::ssi_holder::dto::InitiateIssuanceAuthorizationDetailDTO;
 
@@ -124,14 +124,13 @@ pub enum OpenID4VCITxCodeInputMode {
 #[derive(Clone, Debug)]
 pub(crate) struct UpdateResponse {
     pub result: SubmitIssuerResponse,
-    pub create_credential: Option<Credential>,
-    pub update_credential: Option<(CredentialId, UpdateCredentialRequest)>,
+    pub credentials: Option<Vec<Credential>>,
     pub update_credential_schema: Option<UpdateCredentialSchemaRequest>,
 }
 
 #[derive(Clone, Deserialize, Debug)]
 pub(crate) struct SubmitIssuerResponse {
-    pub credential: SerializedCredential,
+    pub credentials: Vec<SerializedCredential>,
     #[serde(rename = "redirectUri")]
     pub redirect_uri: Option<String>,
     pub notification_id: Option<String>,

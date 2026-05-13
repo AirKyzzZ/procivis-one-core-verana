@@ -22,6 +22,8 @@ use crate::mapper::opt_secret_string;
 use crate::mapper::params::deserialize_encryption_key;
 use crate::model::credential_schema::{CodeTypeEnum, CredentialSchema, LayoutProperties};
 use crate::model::history::TrustResolutionResult;
+use crate::model::identifier::Identifier;
+use crate::model::key::Key;
 use crate::proto::wrp_validator::model::TrustMode;
 use crate::provider::credential_formatter::vcdm::ContextType;
 
@@ -416,14 +418,14 @@ pub struct OpenID4VCICredentialDefinitionRequestDTO {
 }
 
 #[skip_serializing_none]
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct OpenID4VCICredentialRequestDTO {
     #[serde(flatten)]
     pub credential: OpenID4VCICredentialRequestIdentifier,
     pub proofs: Option<OpenID4VCICredentialRequestProofs>,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum OpenID4VCICredentialRequestIdentifier {
     CredentialConfigurationId(String),
@@ -431,7 +433,7 @@ pub enum OpenID4VCICredentialRequestIdentifier {
 }
 
 /// <https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#name-proof-types>
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum OpenID4VCICredentialRequestProofs {
     Jwt(Vec<String>),
@@ -757,8 +759,8 @@ pub(super) struct TokenRequestWalletAttestationRequest {
 pub(super) struct WalletAttestationResult {
     /// WIA with proof-of-possession for token request (if WIA is used)
     pub wia_request: Option<TokenRequestWalletAttestationRequest>,
-    /// WUA proof for credential request (if key attestation is required)
-    pub wua_proof: Option<String>,
+    /// WUA proofs for credential request (if key attestation is required)
+    pub wua_proofs: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone)]
@@ -767,4 +769,11 @@ pub(crate) struct PreparedMetadata {
     pub(crate) schema: CredentialSchema,
     pub(crate) credential_configurations_supported:
         IndexMap<String, OpenID4VCICredentialConfigurationData>,
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct CredentialRequestHolderKey<'a> {
+    pub identifier: &'a Identifier,
+    pub key: &'a Key,
+    pub wua_proof: Option<String>,
 }

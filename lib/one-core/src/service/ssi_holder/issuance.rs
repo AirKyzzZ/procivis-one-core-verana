@@ -26,9 +26,7 @@ use crate::model::interaction::{Interaction, InteractionRelations, InteractionTy
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::proto::oauth_client::{OAuthAuthorizationRequest, OAuthClientProvider};
 use crate::provider::issuance_protocol::dto::{ContinueIssuanceDTO, Features};
-use crate::provider::issuance_protocol::model::{
-    InvitationResponseEnum, SubmitIssuerResponse, UpdateResponse,
-};
+use crate::provider::issuance_protocol::model::InvitationResponseEnum;
 use crate::provider::issuance_protocol::openid4vci_final1_0::mapper::interaction_data_to_accepted_key_storage_security;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::CredentialSigningAlgValue;
 use crate::provider::issuance_protocol::{
@@ -53,7 +51,7 @@ impl SSIHolderService {
         identifier_id: Option<IdentifierId>,
         key_id: Option<KeyId>,
         tx_code: Option<String>,
-    ) -> Result<CredentialId, HolderServiceError> {
+    ) -> Result<Vec<CredentialId>, HolderServiceError> {
         let identifier = match (did_id, identifier_id) {
             (Some(did_id), None) => Some(
                 self.identifier_repository
@@ -106,14 +104,14 @@ impl SSIHolderService {
             None
         };
 
-        let credential_id = self
+        let credential_ids = self
             .accept_credential_final1(interaction_id, holder_binding_input, tx_code)
             .await?;
 
         tracing::info!(
-            "Accepted issuance of credential {credential_id} for interaction {interaction_id}"
+            "Accepted issuance of credentials {credential_ids:?} for interaction {interaction_id}"
         );
-        Ok(credential_id)
+        Ok(credential_ids)
     }
 
     /// specific handling for the final-1 protocol, credential gets created after issued
@@ -122,7 +120,7 @@ impl SSIHolderService {
         interaction_id: InteractionId,
         holder_binding: Option<HolderBindingInput>,
         tx_code: Option<String>,
-    ) -> Result<CredentialId, HolderServiceError> {
+    ) -> Result<Vec<CredentialId>, HolderServiceError> {
         let interaction = self
             .interaction_repository
             .get_interaction(
@@ -218,42 +216,56 @@ impl SSIHolderService {
             .await
             .error_while("accepting credential")?;
 
-        let credential = issuer_response
-            .create_credential
-            .as_ref()
+        let credentials = issuer_response
+            .credentials
             .ok_or(HolderServiceError::MappingError(
-                "Credential missing".to_string(),
-            ))?
-            .to_owned();
+                "Credentials missing".to_string(),
+            ))?;
 
-        let issuer_response = self.resolve_update_issuer_response(issuer_response).await?;
+        if let Some(update_credential_schema) = issuer_response.update_credential_schema {
+            self.credential_schema_repository
+                .update_credential_schema(update_credential_schema)
+                .await
+                .error_while("updating credential schema")?;
+        }
+
+        let issuer_response = issuer_response.result;
+        if credentials.len() != issuer_response.credentials.len() {
+            return Err(HolderServiceError::MappingError(format!(
+                "Credentials mismatch, models: {}, tokens: {}",
+                credentials.len(),
+                issuer_response.credentials.len()
+            )));
+        }
 
         let db_blob_storage = self
             .blob_storage_provider
             .get_blob_storage(BlobStorageType::Db)
             .error_while("getting blob storage")?;
 
-        let blob = Blob::new(
-            issuer_response.credential.as_ref().as_bytes().to_vec(),
-            BlobType::Credential,
-        );
-        let blob_id = blob.id;
-        db_blob_storage
-            .create(blob.clone())
-            .await
-            .error_while("creating credential blob")?;
+        let mut result = vec![];
+        for (credential, token) in credentials.into_iter().zip(issuer_response.credentials) {
+            let blob = Blob::new(token.as_ref(), BlobType::Credential);
+            let blob_id = blob.id;
+            db_blob_storage
+                .create(blob)
+                .await
+                .error_while("creating credential blob")?;
 
-        let credential_id = self
-            .credential_repository
-            .create_credential(Credential {
-                state: CredentialStateEnum::Accepted,
-                credential_blob_id: Some(blob_id),
-                ..credential
-            })
-            .await
-            .error_while("creating credential")?;
+            let credential_id = self
+                .credential_repository
+                .create_credential(Credential {
+                    state: CredentialStateEnum::Accepted,
+                    credential_blob_id: Some(blob_id),
+                    ..credential
+                })
+                .await
+                .error_while("creating credential")?;
 
-        Ok(credential_id)
+            result.push(credential_id);
+        }
+
+        Ok(result)
     }
 
     pub async fn reject_credential(
@@ -406,26 +418,6 @@ impl SSIHolderService {
                 })
             }
         }
-    }
-
-    #[tracing::instrument(level = "debug", skip_all, err(level = "warn"))]
-    async fn resolve_update_issuer_response(
-        &self,
-        update_response: UpdateResponse,
-    ) -> Result<SubmitIssuerResponse, HolderServiceError> {
-        if let Some(update_credential_schema) = update_response.update_credential_schema {
-            self.credential_schema_repository
-                .update_credential_schema(update_credential_schema)
-                .await
-                .error_while("updating credential schema")?;
-        }
-        if let Some((credential_id, update_credential)) = update_response.update_credential {
-            self.credential_repository
-                .update_credential(credential_id, update_credential)
-                .await
-                .error_while("updating credential")?;
-        }
-        Ok(update_response.result)
     }
 
     pub async fn initiate_issuance(
