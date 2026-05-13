@@ -16,6 +16,7 @@ use super::*;
 use crate::model::certificate::{Certificate, CertificateState};
 use crate::model::credential_schema::{BackgroundProperties, LayoutProperties, LayoutType};
 use crate::model::did::Did;
+use crate::model::identifier::Identifier;
 use crate::proto::certificate_validator::{MockCertificateValidator, ParsedCertificate};
 use crate::provider::credential_formatter::model::{
     CertificateDetails, CredentialSchemaMetadata, Issuer, MockSignatureProvider, MockTokenVerifier,

@@ -36,7 +36,6 @@ use crate::error::ContextWithErrorCode;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, LayoutType};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
-use crate::model::identifier::Identifier;
 use crate::model::organisation::Organisation;
 use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::Jwt;
@@ -47,6 +46,7 @@ use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
+use crate::util::key_selection::SelectedKey;
 
 #[cfg(test)]
 mod test;
@@ -126,10 +126,10 @@ impl CredentialFormatter for SDJWTFormatter {
         .await
     }
 
-    async fn format_status_list(
+    async fn format_status_list<'a>(
         &self,
         _revocation_list_url: String,
-        _issuer_identifier: &Identifier,
+        _issuer: SelectedKey<'a>,
         _encoded_list: String,
         _algorithm: KeyAlgorithmType,
         _auth_fn: AuthenticationFn,

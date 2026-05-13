@@ -1,3 +1,4 @@
+use one_core::model::certificate::{CertificateState, UpdateCertificateRequest};
 use one_core::model::revocation_list::{
     RevocationListEntityId, RevocationListEntryState, RevocationListPurpose,
 };
@@ -136,4 +137,45 @@ async fn test_fail_on_missing_signer_specific_permission() {
         .await;
 
     assert_eq!(resp.status(), 403);
+}
+
+#[tokio::test]
+async fn test_revoke_wrprc_success_revoked_cert() {
+    let (context, _org, identifier, certificate, ..) =
+        TestContext::new_with_certificate_identifier(None).await;
+    let revocation_list_id = context
+        .db
+        .revocation_lists
+        .create(
+            identifier.clone(),
+            Some(TestingRevocationListParams {
+                r#type: Some("TOKENSTATUSLIST".into()),
+                ..Default::default()
+            }),
+        )
+        .await
+        .id;
+    let entry_id = context
+        .db
+        .revocation_lists
+        .create_entry(
+            revocation_list_id,
+            RevocationListEntityId::Signature("REGISTRATION_CERTIFICATE".to_string(), None),
+            Some(0),
+        )
+        .await;
+    context
+        .db
+        .certificates
+        .update(
+            &certificate.id,
+            UpdateCertificateRequest {
+                state: Some(CertificateState::Revoked),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let resp = context.api.signatures.revoke(entry_id.into(), None).await;
+    assert_eq!(resp.status(), 204);
 }

@@ -31,7 +31,6 @@ use crate::error::ContextWithErrorCode;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, LayoutType};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
-use crate::model::identifier::Identifier;
 use crate::model::organisation::Organisation;
 use crate::proto::http_client::HttpClient;
 use crate::provider::caching_loader::json_ld_context::{ContextCache, JsonLdCachingLoader};
@@ -39,6 +38,7 @@ use crate::provider::credential_formatter::mapper::default_2_years;
 use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
+use crate::util::key_selection::SelectedKey;
 use crate::util::rdf_canonization::{json_ld_processor_options, rdf_canonize};
 use crate::util::vcdm_jsonld_contexts::{is_context_list_valid, jsonld_forbidden_claim_names};
 #[cfg(test)]
@@ -110,10 +110,10 @@ impl CredentialFormatter for JsonLdClassic {
         Ok(serde_json::to_string(&vcdm)?)
     }
 
-    async fn format_status_list(
+    async fn format_status_list<'a>(
         &self,
         revocation_list_url: String,
-        issuer_identifier: &Identifier,
+        issuer: SelectedKey<'a>,
         encoded_list: String,
         algorithm: KeyAlgorithmType,
         auth_fn: AuthenticationFn,
@@ -127,13 +127,12 @@ impl CredentialFormatter for JsonLdClassic {
             ));
         }
 
-        let issuer =
-            issuer_identifier
-                .as_url()
-                .map(Issuer::Url)
-                .ok_or(FormatterError::CouldNotFormat(
-                    "Invalid issuer DID".to_string(),
-                ))?;
+        let SelectedKey::Did { did, .. } = issuer else {
+            return Err(FormatterError::CouldNotFormat(
+                "Status list issuer must be a DID".to_string(),
+            ));
+        };
+        let issuer = Issuer::Url(did.did.clone().into_url());
 
         let credential_subject_id: Url = format!("{revocation_list_url}#list").parse()?;
         let credential_subject = VcdmCredentialSubject::new([

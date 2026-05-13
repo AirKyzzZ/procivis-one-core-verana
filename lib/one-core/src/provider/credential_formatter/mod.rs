@@ -7,12 +7,13 @@ use time::Duration;
 use crate::config::core_config::{KeyAlgorithmType, RevocationType};
 use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchema;
-use crate::model::identifier::Identifier;
 use crate::model::organisation::Organisation;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 
 pub(crate) mod common;
 pub use common::nest_claims;
+
+use crate::util::key_selection::SelectedKey;
 
 pub mod error;
 mod json_claims;
@@ -53,10 +54,10 @@ pub trait CredentialFormatter: Send + Sync {
     ) -> Result<String, error::FormatterError>;
 
     /// Formats Status List credential
-    async fn format_status_list(
+    async fn format_status_list<'a>(
         &self,
         revocation_list_url: String,
-        issuer_identifier: &Identifier,
+        issuer: SelectedKey<'a>,
         encoded_list: String,
         algorithm: KeyAlgorithmType,
         auth_fn: AuthenticationFn,

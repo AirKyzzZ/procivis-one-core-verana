@@ -47,7 +47,7 @@ use crate::provider::revocation::model::{
 use crate::provider::revocation::utils::status_purpose_to_revocation_state;
 use crate::repository::error::DataLayerError;
 use crate::repository::revocation_list_repository::RevocationListRepository;
-use crate::util::key_selection::KeyFilter;
+use crate::util::key_selection::{KeyFilter, KeySelection, SelectedKey};
 
 pub mod model;
 pub mod resolver;
@@ -703,27 +703,27 @@ pub(crate) async fn format_status_list_credential(
         ));
     }
 
-    let issuer_did = issuer_identifier
-        .did
-        .as_ref()
-        .ok_or(RevocationError::MappingError(
-            "issuer did is None".to_string(),
-        ))?
-        .clone();
-
-    let key = issuer_did
-        .find_first_matching_key(&KeyFilter::did_role(KeyRole::AssertionMethod))
+    let selection = issuer_identifier
+        .select_key(KeySelection {
+            key: KeyFilter::did_role(KeyRole::AssertionMethod),
+            ..Default::default()
+        })
         .await
-        .map_err(|_| RevocationError::KeyWithRoleNotFound(KeyRole::AssertionMethod))?
-        .ok_or(RevocationError::KeyWithRoleNotFound(
-            KeyRole::AssertionMethod,
-        ))?;
+        .error_while("selecting key")?;
 
-    let key_id = issuer_did.verification_method_id(&key);
-    let key = &key.key;
+    let key = selection.key();
+    let key_id = if let SelectedKey::Did {
+        did,
+        key: related_key,
+    } = &selection
+    {
+        Some(did.verification_method_id(related_key))
+    } else {
+        None
+    };
 
     let auth_fn = key_provider
-        .get_signature_provider(key, Some(key_id), key_algorithm_provider.clone())
+        .get_signature_provider(key, key_id, key_algorithm_provider.clone())
         .error_while("getting signature provider")?;
 
     let algorithm_type = key
@@ -733,7 +733,7 @@ pub(crate) async fn format_status_list_credential(
     let status_list = formatter
         .format_status_list(
             revocation_list_url,
-            issuer_identifier,
+            selection,
             encoded_list,
             algorithm_type,
             auth_fn,

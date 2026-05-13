@@ -3,7 +3,6 @@ use serde::{Deserialize, Serialize};
 use shared_types::{IdentifierId, KeyId, OrganisationId};
 use strum::{AsRefStr, Display};
 use time::OffsetDateTime;
-use url::Url;
 
 use super::certificate::{Certificate, CertificateRelations, CertificateRole, CertificateState};
 use super::common::GetListResponse;
@@ -39,20 +38,6 @@ pub struct Identifier {
 }
 
 impl Identifier {
-    pub(crate) fn as_url(&self) -> Option<Url> {
-        match self.r#type {
-            IdentifierType::Did => self
-                .did
-                .as_ref()
-                .map(|did| did.did.as_str())
-                .map(Url::parse)
-                .and_then(Result::ok),
-            IdentifierType::Key
-            | IdentifierType::Certificate
-            | IdentifierType::CertificateAuthority => None,
-        }
-    }
-
     pub(crate) fn active_certs(&self) -> Option<Vec<&Certificate>> {
         if self.r#type != IdentifierType::Certificate {
             return Some(vec![]);

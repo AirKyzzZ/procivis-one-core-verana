@@ -42,7 +42,6 @@ use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
-use crate::model::identifier::Identifier;
 use crate::model::organisation::Organisation;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::cose::{CoseSign1, CoseSign1Builder};
@@ -61,6 +60,7 @@ use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
+use crate::util::key_selection::SelectedKey;
 
 pub(crate) mod util;
 
@@ -244,10 +244,10 @@ impl CredentialFormatter for MdocFormatter {
         encode_cbor_base64(issuer_signed)
     }
 
-    async fn format_status_list(
+    async fn format_status_list<'a>(
         &self,
         _revocation_list_url: String,
-        _issuer_identifier: &Identifier,
+        _issuer: SelectedKey<'a>,
         _encoded_list: String,
         _algorithm: KeyAlgorithmType,
         _auth_fn: AuthenticationFn,

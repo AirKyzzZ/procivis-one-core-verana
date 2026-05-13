@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
-use one_core::model::certificate::{Certificate, CertificateRole, CertificateState};
+use one_core::model::certificate::{
+    Certificate, CertificateRole, CertificateState, UpdateCertificateRequest,
+};
 use one_core::model::key::Key;
 use one_core::model::organisation::Organisation;
 use one_core::repository::certificate_repository::CertificateRepository;
@@ -93,5 +95,12 @@ impl CertificatesDB {
 
     pub async fn get(&self, certificate_id: CertificateId) -> Certificate {
         self.repository.get(certificate_id).await.unwrap().unwrap()
+    }
+
+    pub async fn update(&self, certificate_id: &CertificateId, request: UpdateCertificateRequest) {
+        self.repository
+            .update(certificate_id, request)
+            .await
+            .unwrap();
     }
 }

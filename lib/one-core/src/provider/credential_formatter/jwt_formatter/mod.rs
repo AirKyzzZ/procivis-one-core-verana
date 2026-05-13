@@ -29,7 +29,6 @@ use crate::error::ContextWithErrorCode;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, LayoutType};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
-use crate::model::identifier::Identifier;
 use crate::model::organisation::Organisation;
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::{JWTPayload, jwt_metadata_claims};
@@ -38,6 +37,7 @@ use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
+use crate::util::key_selection::SelectedKey;
 
 #[cfg(test)]
 mod test;
@@ -135,10 +135,10 @@ impl CredentialFormatter for JWTFormatter {
             .error_while("creating JWT credential token")?)
     }
 
-    async fn format_status_list(
+    async fn format_status_list<'a>(
         &self,
         revocation_list_url: String,
-        issuer_identifier: &Identifier,
+        issuer: SelectedKey<'a>,
         encoded_list: String,
         algorithm: KeyAlgorithmType,
         auth_fn: AuthenticationFn,
@@ -156,7 +156,7 @@ impl CredentialFormatter for JWTFormatter {
             RevocationType::BitstringStatusList => {
                 self.format_bitstring_status_list(
                     revocation_list_url,
-                    issuer_identifier,
+                    issuer,
                     encoded_list,
                     jose_alg,
                     auth_fn,
@@ -167,7 +167,7 @@ impl CredentialFormatter for JWTFormatter {
             RevocationType::TokenStatusList => {
                 self.format_token_status_list(
                     revocation_list_url,
-                    issuer_identifier,
+                    issuer,
                     encoded_list,
                     jose_alg,
                     auth_fn,

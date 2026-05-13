@@ -5,8 +5,6 @@ use super::JWTFormatter;
 use super::model::{TokenStatusListContent, TokenStatusListSubject, VcClaim};
 use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::pem_chain_into_x5c;
-use crate::model::certificate::CertificateState;
-use crate::model::identifier::{Identifier, IdentifierType};
 use crate::proto::jwt::model::JWTPayload;
 use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
 use crate::provider::credential_formatter::error::FormatterError;
@@ -15,33 +13,24 @@ use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredential
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::provider::revocation::token_status_list::util::PREFERRED_ENTRY_SIZE;
+use crate::util::key_selection::SelectedKey;
 
 impl JWTFormatter {
     pub(super) async fn format_bitstring_status_list(
         &self,
         revocation_list_url: String,
-        issuer_identifier: &Identifier,
+        issuer: SelectedKey<'_>,
         encoded_list: String,
         jose_alg: String,
         auth_fn: AuthenticationFn,
         status_purpose: StatusPurpose,
     ) -> Result<String, FormatterError> {
-        if issuer_identifier.r#type != IdentifierType::Did {
+        let SelectedKey::Did { did, .. } = issuer else {
             return Err(FormatterError::CouldNotFormat(
-                "Unsupported identifier type".to_string(),
+                "Status list issuer must be a DID".to_string(),
             ));
-        }
-
-        let issuer_did = issuer_identifier
-            .did
-            .as_ref()
-            .ok_or(FormatterError::CouldNotFormat(
-                "Identifier of type DID has no related DID".to_string(),
-            ))?;
-
-        let issuer = Issuer::Url(issuer_identifier.as_url().ok_or(
-            FormatterError::CouldNotFormat("Invalid issuer DID".to_string()),
-        )?);
+        };
+        let did_value = &did.did;
 
         let revocation_list_url: Url = revocation_list_url.parse()?;
 
@@ -60,16 +49,17 @@ impl JWTFormatter {
         ])?
         .with_id(credential_subject_id.clone());
 
-        let vc = VcdmCredential::new_v2(issuer, credential_subject)
-            .add_type("BitstringStatusListCredential".to_string())
-            .with_id(credential_id);
-
-        let vc_claim = VcClaim { vc: vc.into() };
+        let vc = VcdmCredential::new_v2(
+            Issuer::Url(did_value.clone().into_url()),
+            credential_subject,
+        )
+        .add_type("BitstringStatusListCredential".to_string())
+        .with_id(credential_id);
 
         let payload = JWTPayload {
-            issuer: Some(issuer_did.did.to_string()),
+            issuer: Some(did_value.to_string()),
             subject: Some(credential_subject_id.to_string()),
-            custom: vc_claim,
+            custom: VcClaim { vc: vc.into() },
             issued_at: Some(crate::clock::now_utc()),
             ..Default::default()
         };
@@ -85,63 +75,21 @@ impl JWTFormatter {
     pub(super) async fn format_token_status_list(
         &self,
         revocation_list_url: String,
-        issuer_identifier: &Identifier,
+        issuer: SelectedKey<'_>,
         encoded_list: String,
         jose_alg: String,
         auth_fn: AuthenticationFn,
         key_alg_provider: &dyn KeyAlgorithmProvider,
     ) -> Result<String, FormatterError> {
-        let (issuer, public_key_info) = match issuer_identifier.r#type {
-            IdentifierType::Did => {
-                let issuer_did =
-                    issuer_identifier
-                        .did
-                        .as_ref()
-                        .ok_or(FormatterError::CouldNotFormat(
-                            "Identifier of type DID has no related DID".to_string(),
-                        ))?;
-
-                (Some(issuer_did.did.to_string()), None)
-            }
-            IdentifierType::Certificate => {
-                let certificates = issuer_identifier.certificates.as_ref().ok_or(
-                    FormatterError::CouldNotFormat(
-                        "Identifier of type Certificate has no related Certificates".to_string(),
-                    ),
-                )?;
-
-                let mut found_certificate = None;
-                for c in certificates
-                    .iter()
-                    .filter(|c| c.state == CertificateState::Active)
-                {
-                    if let Some(key_rel) = c.key.as_ref()
-                        && let Ok(key) = key_rel.get().await
-                        && key.public_key == auth_fn.get_public_key()
-                    {
-                        found_certificate = Some(c);
-                        break;
-                    }
-                }
-                let certificate = found_certificate.ok_or(FormatterError::CouldNotFormat(
-                    "Valid certificate not found".to_string(),
-                ))?;
-
-                (
-                    None,
-                    Some(JwtPublicKeyInfo::X5c(
-                        pem_chain_into_x5c(&certificate.chain).error_while("parsing PEM chain")?,
-                    )),
-                )
-            }
-            IdentifierType::Key => {
-                let key = issuer_identifier
-                    .key
-                    .as_ref()
-                    .ok_or(FormatterError::CouldNotFormat(
-                        "Identifier of type Key missing related key".to_string(),
-                    ))?;
-
+        let (issuer, public_key_info) = match issuer {
+            SelectedKey::Did { did, .. } => (Some(did.did.to_string()), None),
+            SelectedKey::Certificate { certificate, .. } => (
+                None,
+                Some(JwtPublicKeyInfo::X5c(
+                    pem_chain_into_x5c(&certificate.chain).error_while("parsing PEM chain")?,
+                )),
+            ),
+            SelectedKey::Key(key) => {
                 let key = key_alg_provider
                     .key_algorithm_from_key(key)
                     .error_while("getting key algorithm")?
@@ -151,12 +99,6 @@ impl JWTFormatter {
                     .error_while("getting JWK")?;
 
                 (None, Some(JwtPublicKeyInfo::Jwk(key)))
-            }
-            IdentifierType::CertificateAuthority => {
-                return Err(FormatterError::CouldNotFormat(format!(
-                    "Invalid issuer identifier type {}",
-                    issuer_identifier.r#type
-                )));
             }
         };
 

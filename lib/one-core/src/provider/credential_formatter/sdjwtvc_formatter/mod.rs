@@ -44,7 +44,6 @@ use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, LayoutType};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
-use crate::model::identifier::Identifier;
 use crate::model::organisation::Organisation;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::http_client::HttpClient;
@@ -58,6 +57,7 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::provider::revocation::token_status_list::credential_status_from_sdjwt_status;
+use crate::util::key_selection::SelectedKey;
 
 const JPEG_DATA_URI_PREFIX: &str = "data:image/jpeg;base64,";
 const PNG_DATA_URI_PREFIX: &str = "data:image/png;base64,";
@@ -294,10 +294,10 @@ impl CredentialFormatter for SDJWTVCFormatter {
         .await
     }
 
-    async fn format_status_list(
+    async fn format_status_list<'a>(
         &self,
         _revocation_list_url: String,
-        _issuer_identifier: &Identifier,
+        _issuer: SelectedKey<'a>,
         _encoded_list: String,
         _algorithm: KeyAlgorithmType,
         _auth_fn: AuthenticationFn,

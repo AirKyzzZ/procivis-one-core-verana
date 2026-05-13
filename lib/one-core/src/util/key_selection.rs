@@ -32,8 +32,8 @@ impl KeyFilter {
         }
     }
 
-    pub fn and_id(mut self, key_id: Option<KeyId>) -> Self {
-        self.id = key_id;
+    pub fn and_id(mut self, id: Option<KeyId>) -> Self {
+        self.id = id;
         self
     }
 
@@ -84,13 +84,13 @@ pub struct CertificateFilter {
     id: Option<CertificateId>,
     role: Option<CertificateRole>,
     key_usage: Option<Vec<KeyUsagePurpose>>,
-    allowed_states: Vec<CertificateState>,
+    allowed_states: Option<Vec<CertificateState>>,
 }
 
 impl Default for CertificateFilter {
     fn default() -> Self {
         Self {
-            allowed_states: vec![CertificateState::Active],
+            allowed_states: Some(vec![CertificateState::Active]),
             id: None,
             role: None,
             key_usage: None,
@@ -125,6 +125,11 @@ impl CertificateFilter {
         }
     }
 
+    pub fn allow_all_states(mut self) -> Self {
+        self.allowed_states = None;
+        self
+    }
+
     pub fn matches_certificate(&self, certificate: &Certificate) -> bool {
         if let Some(id) = self.id.as_ref()
             && id != &certificate.id
@@ -136,7 +141,9 @@ impl CertificateFilter {
         {
             return false;
         }
-        if !self.allowed_states.contains(&certificate.state) {
+        if let Some(allowed_states) = &self.allowed_states
+            && !allowed_states.contains(&certificate.state)
+        {
             return false;
         }
         if let Some(role) = self.role

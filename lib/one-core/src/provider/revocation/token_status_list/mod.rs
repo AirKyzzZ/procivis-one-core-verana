@@ -839,10 +839,17 @@ async fn format_status_list_credential(
 ) -> Result<String, RevocationError> {
     let revocation_list_url = get_revocation_list_url(revocation_list_id, core_base_url)?;
 
+    if issuer_identifier.r#type == IdentifierType::CertificateAuthority {
+        return Err(RevocationError::InvalidIdentifierType(
+            issuer_identifier.r#type,
+        ));
+    }
+
     let selection = issuer_identifier
         .select_key(KeySelection {
             certificate: CertificateFilter::key_usage(vec![KeyUsagePurpose::DigitalSignature])
-                .and_id(issuer_certificate.map(|c| c.id)),
+                .and_id(issuer_certificate.map(|c| c.id))
+                .allow_all_states(),
             key: KeyFilter::did_role(KeyRole::AssertionMethod),
             ..Default::default()
         })
@@ -850,8 +857,12 @@ async fn format_status_list_credential(
         .error_while("selecting key")?;
     let key = selection.key();
 
-    let key_id = if let SelectedKey::Did { did, key } = &selection {
-        Some(did.verification_method_id(key))
+    let key_id = if let SelectedKey::Did {
+        did,
+        key: related_key,
+    } = &selection
+    {
+        Some(did.verification_method_id(related_key))
     } else {
         None
     };
@@ -867,7 +878,7 @@ async fn format_status_list_credential(
     let status_list = formatter
         .format_status_list(
             revocation_list_url,
-            issuer_identifier,
+            selection,
             encoded_list,
             algorithm,
             auth_fn,
