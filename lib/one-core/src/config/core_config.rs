@@ -72,6 +72,12 @@ pub struct CoreConfig {
     pub signer: SignerConfig,
     pub verifier_provider: VerifierProviderConfig,
     pub http_client: HttpClientSecurityConfig,
+    #[serde(default = "default_en")]
+    pub default_language: String,
+}
+
+fn default_en() -> String {
+    "en".to_string()
 }
 
 impl CoreConfig {

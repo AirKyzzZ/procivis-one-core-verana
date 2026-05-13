@@ -34,11 +34,18 @@ pub(crate) trait CredentialSchemaImporter: Send + Sync {
 
 pub struct CredentialSchemaImporterProto {
     repository: Arc<dyn CredentialSchemaRepository>,
+    default_language: String,
 }
 
 impl CredentialSchemaImporterProto {
-    pub(crate) fn new(repository: Arc<dyn CredentialSchemaRepository>) -> Self {
-        Self { repository }
+    pub(crate) fn new(
+        repository: Arc<dyn CredentialSchemaRepository>,
+        default_language: String,
+    ) -> Self {
+        Self {
+            repository,
+            default_language,
+        }
     }
 }
 
@@ -78,9 +85,10 @@ impl CredentialSchemaImporter for CredentialSchemaImporterProto {
                 self.generate_unique_credential_schema_name(&credential_schema)?;
         }
 
-        let credential_schema = backfill_default_translations(credential_schema)
-            .await
-            .error_while("backfilling default translations")?;
+        let credential_schema =
+            backfill_default_translations(credential_schema, &self.default_language)
+                .await
+                .error_while("backfilling default translations")?;
 
         self.repository
             .create_credential_schema(credential_schema.clone())

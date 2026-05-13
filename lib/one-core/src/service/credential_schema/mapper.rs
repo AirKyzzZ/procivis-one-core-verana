@@ -278,6 +278,7 @@ pub(super) fn from_create_request_with_id(
     organisation: Organisation,
     schema_id: String,
     imported_source_url: String,
+    default_language: &str,
 ) -> Result<CredentialSchema, CredentialSchemaServiceError> {
     if request.claims.is_empty() {
         return Err(CredentialSchemaServiceError::MissingClaimSchemas);
@@ -328,19 +329,11 @@ pub(super) fn from_create_request_with_id(
             claim_mappings: Default::default(),
         }]
         .into(),
-        translations: vec![LocalizedText {
-            entity_id: id.into(),
-            field: LocalizedTextField::Name,
-            created_date: now,
-            last_modified: now,
-            lang: "en".to_string(),
-            value: request.name,
-            entity_type: LocalizedTextEntityType::CredentialSchema,
-        }]
-        .into(),
+        translations: schema_name_translation(id, request.name, now, default_language).into(),
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn from_create_v2_request_with_id(
     id: CredentialSchemaId,
     request: CreateCredentialSchemaV2RequestDTO,
@@ -349,6 +342,7 @@ pub(super) fn from_create_v2_request_with_id(
     formats: Vec<CredentialSchemaFormat>,
     claim_schemas: Vec<ClaimSchema>,
     imported_source_url: String,
+    default_language: &str,
 ) -> CredentialSchema {
     CredentialSchema {
         id,
@@ -369,17 +363,25 @@ pub(super) fn from_create_v2_request_with_id(
         transaction_code: convert_inner(request.transaction_code),
         batch_size: request.batch_size,
         formats: formats.into(),
-        translations: vec![LocalizedText {
-            entity_id: id.into(),
-            field: LocalizedTextField::Name,
-            created_date: now,
-            last_modified: now,
-            lang: "en".to_string(),
-            value: request.name,
-            entity_type: LocalizedTextEntityType::CredentialSchema,
-        }]
-        .into(),
+        translations: schema_name_translation(id, request.name, now, default_language).into(),
     }
+}
+
+fn schema_name_translation(
+    id: CredentialSchemaId,
+    name: String,
+    now: time::OffsetDateTime,
+    default_language: &str,
+) -> Vec<LocalizedText> {
+    vec![LocalizedText {
+        entity_id: id.into(),
+        field: LocalizedTextField::Name,
+        created_date: now,
+        last_modified: now,
+        lang: default_language.to_string(),
+        value: name,
+        entity_type: LocalizedTextEntityType::CredentialSchema,
+    }]
 }
 
 pub(super) fn build_format_with_claim_mappings(

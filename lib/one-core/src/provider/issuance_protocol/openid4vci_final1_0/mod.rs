@@ -1056,8 +1056,13 @@ impl OpenID4VCIFinal1_0 {
             credential.protocol = self.config_id.to_owned();
             credential.interaction = Some(interaction.to_owned());
 
-            prepare_credential_schema_updates(schema, &mut credential, &mut new_claim_schemas)
-                .await?;
+            prepare_credential_schema_updates(
+                schema,
+                &mut credential,
+                &mut new_claim_schemas,
+                &self.config.default_language,
+            )
+            .await?;
 
             if let Some(access_certificate) = &interaction_data.access_certificate {
                 self.store_trust_history_event(
@@ -3106,7 +3111,6 @@ async fn get_or_create_credential_schema(
                 conflicting_schema.id, conflicting_schema.schema_id, conflicting_schema.format
             )));
         }
-
         Ok(stored_schema)
     } else {
         match credential_schema_importer
@@ -3141,6 +3145,7 @@ async fn prepare_credential_schema_updates(
     stored_schema: &CredentialSchema,
     credential: &mut Credential,
     new_claim_schemas: &mut Vec<ClaimSchema>,
+    default_language: &str,
 ) -> Result<(), IssuanceProtocolError> {
     let claims = credential
         .claims
@@ -3188,7 +3193,7 @@ async fn prepare_credential_schema_updates(
                 });
         } else {
             new_claim_schemas.push(
-                add_fallback_translation(parsed_claim_schema)
+                add_fallback_translation(parsed_claim_schema, default_language)
                     .await
                     .error_while("adding fallback claim translation")?,
             );

@@ -94,6 +94,7 @@ fn setup_service(repositories: Repositories) -> ProofSchemaService {
         )),
         credential_schema_importer: Arc::new(CredentialSchemaImporterProto::new(
             credential_schema_repository,
+            "en".to_string(),
         )),
     }
 }
@@ -1506,6 +1507,7 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
         )),
         credential_schema_importer: Arc::new(CredentialSchemaImporterProto::new(
             credential_schema_repository,
+            "en".to_string(),
         )),
     };
 
@@ -1698,6 +1700,7 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
         )),
         credential_schema_importer: Arc::new(CredentialSchemaImporterProto::new(
             credential_schema_repository,
+            "en".to_string(),
         )),
     };
 
@@ -1858,7 +1861,8 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
         Arc::new(MockRevocationMethodProvider::new()),
     );
 
-    let importer = CredentialSchemaImporterProto::new(credential_schema_repository.clone());
+    let importer =
+        CredentialSchemaImporterProto::new(credential_schema_repository.clone(), "en".to_string());
 
     let service = ProofSchemaService {
         proof_schema_repository: Arc::new(proof_schema_repository),

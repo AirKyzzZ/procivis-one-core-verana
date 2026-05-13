@@ -88,6 +88,7 @@ impl From<ClaimSchema> for CredentialClaimSchemaDTO {
 
 pub(crate) async fn backfill_default_translations(
     mut credential_schema: CredentialSchema,
+    default_language: &str,
 ) -> Result<CredentialSchema, DataLayerError> {
     if credential_schema.translations.get().await?.is_empty() {
         credential_schema.translations = vec![LocalizedText {
@@ -95,8 +96,7 @@ pub(crate) async fn backfill_default_translations(
             field: LocalizedTextField::Name,
             created_date: credential_schema.created_date,
             last_modified: credential_schema.last_modified,
-            // TODO ONE-9686: Use fallback language from config
-            lang: "en".to_string(),
+            lang: default_language.to_string(),
             value: credential_schema.name.clone(),
             entity_type: LocalizedTextEntityType::CredentialSchema,
         }]
@@ -105,7 +105,7 @@ pub(crate) async fn backfill_default_translations(
 
     let mut claim_schemas = vec![];
     for claim_schema in credential_schema.claim_schemas.get().await? {
-        claim_schemas.push(add_fallback_translation(claim_schema).await?);
+        claim_schemas.push(add_fallback_translation(claim_schema, default_language).await?);
     }
     credential_schema.claim_schemas = claim_schemas.into();
     Ok(credential_schema)
@@ -113,6 +113,7 @@ pub(crate) async fn backfill_default_translations(
 
 pub(crate) async fn add_fallback_translation(
     mut claim_schema: ClaimSchema,
+    default_language: &str,
 ) -> Result<ClaimSchema, DataLayerError> {
     if !claim_schema.metadata && claim_schema.translations.get().await?.is_empty() {
         claim_schema.translations = vec![LocalizedText {
@@ -120,8 +121,7 @@ pub(crate) async fn add_fallback_translation(
             field: LocalizedTextField::Name,
             created_date: claim_schema.created_date,
             last_modified: claim_schema.last_modified,
-            // TODO ONE-9686: Use fallback language from config
-            lang: "en".to_string(),
+            lang: default_language.to_string(),
             value: claim_schema
                 .key
                 .rsplit_once(NESTED_CLAIM_MARKER)

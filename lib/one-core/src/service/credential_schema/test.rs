@@ -64,7 +64,8 @@ fn setup_service(
         revocation_method_provider.clone(),
     );
 
-    let importer = CredentialSchemaImporterProto::new(credential_schema_repository.clone());
+    let importer =
+        CredentialSchemaImporterProto::new(credential_schema_repository.clone(), "en".to_string());
 
     CredentialSchemaService::new(
         Some("http://127.0.0.1:4321".to_string()),

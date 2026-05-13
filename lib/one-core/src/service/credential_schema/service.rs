@@ -93,8 +93,14 @@ impl CredentialSchemaService {
             )
             .error_while("creating schemaId")?;
         let imported_source_url = format!("{core_base_url}/ssi/schema/v1/{id}");
-        let mut credential_schema =
-            from_create_request_with_id(id, request, organisation, schema_id, imported_source_url)?;
+        let mut credential_schema = from_create_request_with_id(
+            id,
+            request,
+            organisation,
+            schema_id,
+            imported_source_url,
+            &self.config.default_language,
+        )?;
 
         let metadata_claims = formatter
             .get_metadata_claims()
@@ -118,9 +124,10 @@ impl CredentialSchemaService {
 
             credential_schema.claim_schemas = claim_schemas.into();
         }
-        let credential_schema = backfill_default_translations(credential_schema)
-            .await
-            .error_while("backfilling default translations")?;
+        let credential_schema =
+            backfill_default_translations(credential_schema, &self.config.default_language)
+                .await
+                .error_while("backfilling default translations")?;
 
         let success_log = format!(
             "Created credential schema `{}` ({id}): format `{:?}`, revocation method {:?}, key storage security {}",
@@ -243,11 +250,13 @@ impl CredentialSchemaService {
             resolved_formats,
             claim_schemas,
             imported_source_url,
+            &self.config.default_language,
         );
 
-        let credential_schema = backfill_default_translations(credential_schema)
-            .await
-            .error_while("backfilling default translations")?;
+        let credential_schema =
+            backfill_default_translations(credential_schema, &self.config.default_language)
+                .await
+                .error_while("backfilling default translations")?;
 
         let success_log = format!(
             "Created credential schema v2 `{}` ({credential_schema_id}): formats `{:?}`: key storage security {}",
