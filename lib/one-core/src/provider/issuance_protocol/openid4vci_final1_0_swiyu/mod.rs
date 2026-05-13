@@ -6,7 +6,7 @@ use std::sync::Arc;
 use secrecy::SecretSlice;
 use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
-use shared_types::{CredentialId, CredentialSchemaId};
+use shared_types::{CredentialId, CredentialSchemaFormatId, CredentialSchemaId};
 use time::Duration;
 use url::Url;
 
@@ -14,7 +14,7 @@ use super::dto::{ContinueIssuanceDTO, IssuanceProtocolCapabilities};
 use super::error::{IssuanceProtocolError, OpenIDIssuanceError};
 use super::model::{
     CommonParams, ContinueIssuanceResponseDTO, InvitationResponseEnum, OpenID4VCRedirectUriParams,
-    ShareResponse, SubmitIssuerResponse, UpdateResponse,
+    ShareResponse, UpdateResponse,
 };
 use super::{HolderBindingInput, IssuanceProtocol};
 use crate::config::core_config::CoreConfig;
@@ -224,11 +224,12 @@ impl IssuanceProtocol for OpenID4VCISwiyu {
     async fn issuer_issue_credential(
         &self,
         credential_id: &CredentialId,
+        format_id: CredentialSchemaFormatId,
         holder_identifier: Identifier,
         holder_key_id: String,
-    ) -> Result<SubmitIssuerResponse, IssuanceProtocolError> {
+    ) -> Result<String, IssuanceProtocolError> {
         self.inner
-            .issuer_issue_credential(credential_id, holder_identifier, holder_key_id)
+            .issuer_issue_credential(credential_id, format_id, holder_identifier, holder_key_id)
             .await
     }
 

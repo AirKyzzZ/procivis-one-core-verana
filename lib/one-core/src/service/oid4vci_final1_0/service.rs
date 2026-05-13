@@ -1,11 +1,15 @@
+use std::collections::HashSet;
 use std::str::FromStr;
 
 use futures::FutureExt;
 use futures::future::BoxFuture;
-use one_crypto::utilities;
+use one_crypto::utilities::{self, generate_alphanumeric};
 use one_dto_mapper::convert_inner;
 use secrecy::SecretString;
-use shared_types::{CredentialId, CredentialSchemaId, IdentifierId, InteractionId};
+use shared_types::{
+    BlobId, CredentialId, CredentialSchemaFormatId, CredentialSchemaId, IdentifierId,
+    InteractionId, NonceId,
+};
 use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
 use time::Duration;
 use uuid::Uuid;
@@ -22,7 +26,7 @@ use super::mapper::interaction_data_to_dto;
 use super::nonce::{generate_nonce, validate_nonce};
 use super::validator::{
     self, extract_wallet_metadata, throw_if_access_token_invalid,
-    throw_if_credential_request_invalid, validate_pop_audience, validate_timestamps,
+    validate_credential_request_format, validate_pop_audience, validate_timestamps,
     verify_pop_signature, verify_wia_signature, verify_wua_wia_issuers_match,
 };
 use crate::config::ConfigValidationError;
@@ -33,11 +37,12 @@ use crate::mapper::exchange::{
     get_issuance_param_token_expires_in,
 };
 use crate::model::blob::{Blob, BlobType};
+use crate::model::claim::ClaimRelations;
 use crate::model::common::LockType;
 use crate::model::credential::{
     Credential, CredentialRelations, CredentialStateEnum, UpdateCredentialRequest,
 };
-use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
+use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::KeyRole;
 use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::interaction::{InteractionRelations, UpdateInteractionRequest};
@@ -47,7 +52,8 @@ use crate::proto::key_verification::KeyVerification;
 use crate::proto::transaction_manager::IsolationLevel;
 use crate::proto::wallet_instance::WalletUnitStatusCheckResponse;
 use crate::provider::credential_formatter::model::IdentifierDetails;
-use crate::provider::issuance_protocol::error::{IssuanceProtocolError, OpenID4VCIError};
+use crate::provider::issuance_protocol::IssuanceProtocol;
+use crate::provider::issuance_protocol::error::OpenID4VCIError;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
     OAuthAuthorizationServerMetadata, OpenID4VCICredentialRequestDTO,
     OpenID4VCICredentialRequestProofs, OpenID4VCIFinal1CredentialOfferDTO, OpenID4VCIFinal1Params,
@@ -233,7 +239,7 @@ impl OID4VCIFinal1_0Service {
                 &credential_id,
                 &CredentialRelations {
                     schema: Some(Default::default()),
-                    interaction: Some(InteractionRelations::default()),
+                    interaction: Some(Default::default()),
                     issuer_identifier: Some(Default::default()),
                     ..Default::default()
                 },
@@ -325,7 +331,7 @@ impl OID4VCIFinal1_0Service {
             ));
         };
 
-        throw_if_credential_request_invalid(&schema, &request).await?;
+        let format = validate_credential_request_format(&schema, &request).await?;
 
         let interaction_id = parse_access_token(access_token)?;
         let Some(interaction) = self
@@ -353,8 +359,8 @@ impl OID4VCIFinal1_0Service {
             .get_credentials_by_interaction_id(
                 &interaction.id,
                 &CredentialRelations {
-                    interaction: Some(InteractionRelations::default()),
-                    schema: Some(CredentialSchemaRelations::default()),
+                    interaction: Some(Default::default()),
+                    schema: Some(Default::default()),
                     ..Default::default()
                 },
             )
@@ -378,10 +384,120 @@ impl OID4VCIFinal1_0Service {
         let Some(OpenID4VCICredentialRequestProofs::Jwt(jwts)) = request.proofs.as_ref() else {
             return Err(OpenID4VCIError::InvalidOrMissingProof.into());
         };
-        let Some(jwt) = jwts.first() else {
-            return Err(OpenID4VCIError::InvalidOrMissingProof.into());
+        let num_proofs = jwts.len() as i32;
+
+        match schema.batch_size {
+            Some(batch_size) if num_proofs > batch_size || num_proofs < 1 => {
+                tracing::info!(
+                    "Batch issuance limit: {batch_size}, #proofs submitted: {num_proofs}"
+                );
+                return Err(OpenID4VCIError::InvalidRequest.into());
+            }
+            None if num_proofs != 1 => {
+                tracing::info!("Batch issuance not supported, #proofs submitted: {num_proofs}");
+                return Err(OpenID4VCIError::InvalidRequest.into());
+            }
+            _ => {
+                tracing::debug!("#proofs submitted: {num_proofs}");
+            }
         };
 
+        let params: OpenID4VCIFinal1Params = self
+            .config
+            .issuance_protocol
+            .get(&credential.protocol)
+            .error_while("getting protocol params")?;
+
+        let mut holder_identifiers = vec![];
+        let mut used_nonce_ids = HashSet::new();
+        for jwt in jwts {
+            let (holder_identifier, nonce_id) = self
+                .prepare_holder_identifier_for_proof(
+                    jwt,
+                    &schema,
+                    &params,
+                    credential.wallet_instance_attestation_blob_id.as_ref(),
+                )
+                .await?;
+
+            used_nonce_ids.insert(nonce_id);
+            holder_identifiers.push(holder_identifier);
+        }
+
+        // TODO: Properly keep track of _all_ the used nonces
+        // For now we allow the nonce to be rotated on credential refresh
+        let previous_nonce_id = if credential.state == CredentialStateEnum::Accepted
+            && interaction
+                .nonce_id
+                .is_some_and(|prev| !used_nonce_ids.contains(&prev))
+        {
+            interaction.nonce_id
+        } else {
+            None
+        };
+
+        // TODO: correctly handle proofs with multiple nonces, for now only store one
+        if used_nonce_ids.len() > 1 {
+            tracing::warn!("Multiple nonces used within one credential request");
+        }
+        let nonce_id = used_nonce_ids
+            .into_iter()
+            .next()
+            .ok_or(OpenID4VCIError::InvalidRequest)?;
+
+        self.interaction_repository
+            .mark_nonce_as_used(&interaction.id, nonce_id, previous_nonce_id)
+            .await
+            .map_err(|e| match e {
+                DataLayerError::RecordNotUpdated | DataLayerError::AlreadyExists => {
+                    OID4VCIFinal1_0ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidNonce)
+                }
+                e => e.error_while("marking nonce as used").into(),
+            })?;
+
+        let result = self
+            .transaction_manager
+            .tx_with_config(
+                self.issue_tx(interaction_id, holder_identifiers, credential, format.id)
+                    .boxed(),
+                Some(IsolationLevel::ReadCommitted),
+                None,
+            )
+            .await
+            .error_while("issuing credential")?;
+
+        match result {
+            Ok(result) => {
+                tracing::info!("Issued credential {}", credential.id);
+                Ok(result)
+            }
+            Err(error) => {
+                if credential.state == CredentialStateEnum::Offered {
+                    // initial issuance failed, mark as Error
+                    self.credential_repository
+                        .update_credential(
+                            credential.id,
+                            UpdateCredentialRequest {
+                                state: Some(CredentialStateEnum::Error),
+                                ..Default::default()
+                            },
+                        )
+                        .await
+                        .error_while("updating credential")?;
+                }
+
+                Err(error.error_while("issuing credential").into())
+            }
+        }
+    }
+
+    async fn prepare_holder_identifier_for_proof(
+        &self,
+        proof: &str,
+        schema: &CredentialSchema,
+        params: &OpenID4VCIFinal1Params,
+        wallet_instance_attestation_blob_id: Option<&BlobId>,
+    ) -> Result<(PreparedIdentifier, NonceId), OID4VCIFinal1_0ServiceError> {
         let token_verifier = KeyVerification {
             key_algorithm_provider: self.key_algorithm_provider.clone(),
             did_method_provider: self.did_method_provider.clone(),
@@ -393,7 +509,7 @@ impl OID4VCIFinal1_0Service {
             holder_binding,
             nonce,
             key_attestation,
-        } = OpenID4VCIProofJWTFormatter::verify_proof(jwt, &token_verifier)
+        } = OpenID4VCIProofJWTFormatter::verify_proof(proof, &token_verifier)
             .await
             .map_err(|err| {
                 tracing::debug!("holder proof validation failed: {err}");
@@ -401,44 +517,17 @@ impl OID4VCIFinal1_0Service {
             })?;
 
         let nonce = nonce.ok_or(OpenID4VCIError::InvalidNonce)?;
-        let params: OpenID4VCIFinal1Params = self
-            .config
-            .issuance_protocol
-            .get(&credential.protocol)
-            .error_while("getting protocol params")?;
-
         let Some(nonce_params) = &params.nonce else {
             return Err(
-                ConfigValidationError::TypeNotFound(credential.protocol.to_owned())
+                ConfigValidationError::EntryNotFound("nonce_params".to_string())
                     .error_while("getting nonce params")
                     .into(),
             );
         };
-
         let nonce_id =
             validate_nonce(nonce_params, self.base_url.to_owned(), &nonce).map_err(|e| {
                 tracing::debug!("Nonce validation failed: {e}");
                 OpenID4VCIError::InvalidNonce
-            })?;
-
-        // TODO: Properly keep track of _all_ the used nonces
-        // Should be changed when batch issuance is implemented
-        // For now we allow the nonce to be rotated on credential refresh
-        let previous_nonce_id = if credential.state == CredentialStateEnum::Accepted
-            && interaction.nonce_id.is_some_and(|prev| prev != nonce_id)
-        {
-            interaction.nonce_id
-        } else {
-            None
-        };
-        self.interaction_repository
-            .mark_nonce_as_used(&interaction.id, nonce_id.into(), previous_nonce_id)
-            .await
-            .map_err(|e| match e {
-                DataLayerError::RecordNotUpdated | DataLayerError::AlreadyExists => {
-                    OID4VCIFinal1_0ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidNonce)
-                }
-                e => e.error_while("marking nonce as used").into(),
             })?;
 
         // Key attestation is expected if wallet storage type is set
@@ -468,8 +557,7 @@ impl OID4VCIFinal1_0Service {
             }
 
             if schema.requires_wallet_instance_attestation {
-                let Some(wallet_instance_attestation_blob_id) =
-                    &credential.wallet_instance_attestation_blob_id
+                let Some(wallet_instance_attestation_blob_id) = wallet_instance_attestation_blob_id
                 else {
                     tracing::debug!(
                         "app attestation required but no wallet app attestation blob ID found"
@@ -543,7 +631,7 @@ impl OID4VCIFinal1_0Service {
             .await
             .error_while("getting organisation")?;
 
-        let (holder_identifier, holder_key_id) = match holder_binding {
+        let (identifier, key_id) = match holder_binding {
             OpenID4VCIProofHolderBinding::Did { did, key_id } => {
                 let (identifier, _) = self
                     .identifier_creator
@@ -576,44 +664,27 @@ impl OID4VCIFinal1_0Service {
             }
         };
 
-        let result = self
-            .transaction_manager
-            .tx_with_config(
-                self.issue_tx(
-                    interaction_id,
-                    holder_identifier,
-                    holder_key_id,
-                    credential,
-                    key_attestation,
-                )
-                .boxed(),
-                Some(IsolationLevel::ReadCommitted),
-                None,
-            )
-            .await
-            .error_while("issuing credential")??;
-        tracing::info!("Issued credential {}", credential.id);
-        Ok(result)
+        Ok((
+            PreparedIdentifier {
+                identifier,
+                key_id,
+                key_attestation,
+            },
+            nonce_id.into(),
+        ))
     }
 
     async fn issue_tx(
         &self,
         interaction_id: InteractionId,
-        holder_identifier: Identifier,
-        holder_key_id: String,
+        mut holder_identifiers: Vec<PreparedIdentifier>,
         credential: &Credential,
-        key_attestation: Option<String>,
+        format_id: CredentialSchemaFormatId,
     ) -> Result<OpenID4VCICredentialResponseDTO, OID4VCIFinal1_0ServiceError> {
         // Lock interaction, so that the issuance process is done only by one thread
         let Some(interaction) = self
             .interaction_repository
-            .get_interaction(
-                &interaction_id,
-                &InteractionRelations {
-                    organisation: Some(Default::default()),
-                },
-                Some(LockType::Update),
-            )
+            .get_interaction(&interaction_id, &Default::default(), Some(LockType::Update))
             .await
             .error_while("getting interaction")?
         else {
@@ -623,7 +694,107 @@ impl OID4VCIFinal1_0Service {
         };
         let mut interaction_data = interaction_data_to_dto(&interaction)?;
 
-        let wua_blob_id = if let Some(attestation) = key_attestation {
+        let issuance_protocol = self
+            .protocol_provider
+            .get_protocol(&credential.protocol)
+            .ok_or(MissingProviderError::ExchangeProtocol(
+                credential.protocol.to_string(),
+            ))
+            .error_while("issuing credential")?;
+
+        let mut credentials = vec![];
+
+        let identifier_for_modified_credential = if credential.state == CredentialStateEnum::Offered
+        {
+            Some(
+                holder_identifiers
+                    .pop()
+                    .ok_or(OpenID4VCIError::InvalidOrMissingProof)?,
+            )
+        } else {
+            None
+        };
+
+        let mut credential_for_copy = None;
+        for holder_identifier in holder_identifiers {
+            if credential_for_copy.is_none() {
+                credential_for_copy = Some(
+                    self.fetch_credential_for_batch_issuance_copy(credential.id)
+                        .await?,
+                );
+            }
+            let credential_for_copy =
+                credential_for_copy
+                    .as_ref()
+                    .ok_or(OID4VCIFinal1_0ServiceError::MappingError(
+                        "credential copy missing".to_string(),
+                    ))?;
+
+            let copy_id = self
+                .create_credential_copy_for_batch_issuance(credential_for_copy)
+                .await?;
+            credentials.push(
+                self.issue_single_credential(
+                    holder_identifier,
+                    copy_id,
+                    format_id,
+                    issuance_protocol.as_ref(),
+                )
+                .await?,
+            );
+        }
+
+        if let Some(identifier_for_modified_credential) = identifier_for_modified_credential {
+            credentials.push(
+                self.issue_single_credential(
+                    identifier_for_modified_credential,
+                    credential.id,
+                    format_id,
+                    issuance_protocol.as_ref(),
+                )
+                .await?,
+            );
+        }
+
+        let notification_id = match &interaction_data.notification_id {
+            Some(notification_id) => notification_id.to_owned(),
+            None => {
+                let notification_id = generate_alphanumeric(32);
+                interaction_data.notification_id = Some(notification_id.to_owned());
+                let data = serde_json::to_vec(&interaction_data)
+                    .map_err(|e| OID4VCIFinal1_0ServiceError::MappingError(e.to_string()))?;
+
+                self.interaction_repository
+                    .update_interaction(
+                        interaction.id,
+                        UpdateInteractionRequest {
+                            data: Some(Some(data)),
+                        },
+                    )
+                    .await
+                    .error_while("updating interaction")?;
+
+                notification_id
+            }
+        };
+
+        Ok(OpenID4VCICredentialResponseDTO {
+            redirect_uri: credential.redirect_uri.to_owned(),
+            credentials: Some(credentials),
+            transaction_id: None,
+            interval: None,
+            notification_id: Some(notification_id),
+        })
+    }
+
+    async fn issue_single_credential(
+        &self,
+        holder_identifier: PreparedIdentifier,
+        credential_id: CredentialId,
+        format_id: CredentialSchemaFormatId,
+        issuance_protocol: &dyn IssuanceProtocol,
+    ) -> Result<OpenID4VCICredentialResponseEntryDTO, OID4VCIFinal1_0ServiceError> {
+        let wua_blob_id = if let Some(attestation) = holder_identifier.key_attestation {
             let blob_storage = self
                 .blob_storage_provider
                 .get_blob_storage(BlobStorageType::Db)
@@ -640,76 +811,34 @@ impl OID4VCIFinal1_0Service {
         } else {
             None
         };
-        let holder_identifier_id = holder_identifier.id;
-        let issued_credential = self
-            .protocol_provider
-            .get_protocol(&credential.protocol)
-            .ok_or(OID4VCIFinal1_0ServiceError::MappingError(
-                "issuance protocol not found".to_string(),
-            ))?
-            .issuer_issue_credential(&credential.id, holder_identifier, holder_key_id)
-            .await;
 
-        match issued_credential {
-            Ok(issued_credential) => {
-                self.credential_repository
-                    .update_credential(
-                        credential.id,
-                        UpdateCredentialRequest {
-                            issuance_date: Some(crate::clock::now_utc()),
-                            holder_identifier_id: Some(holder_identifier_id),
-                            wallet_unit_attestation_blob_id: wua_blob_id,
-                            ..Default::default()
-                        },
-                    )
-                    .await
-                    .error_while("updating credential")?;
-                if let Some(notification_id) = &issued_credential.notification_id {
-                    interaction_data.notification_id = Some(notification_id.to_owned());
+        let holder_identifier_id = holder_identifier.identifier.id;
+        let issued_credential = issuance_protocol
+            .issuer_issue_credential(
+                &credential_id,
+                format_id,
+                holder_identifier.identifier,
+                holder_identifier.key_id,
+            )
+            .await
+            .error_while("issuing credential")?;
 
-                    let data = serde_json::to_vec(&interaction_data)
-                        .map_err(|e| OID4VCIFinal1_0ServiceError::MappingError(e.to_string()))?;
+        self.credential_repository
+            .update_credential(
+                credential_id,
+                UpdateCredentialRequest {
+                    issuance_date: Some(crate::clock::now_utc()),
+                    holder_identifier_id: Some(holder_identifier_id),
+                    wallet_unit_attestation_blob_id: wua_blob_id,
+                    ..Default::default()
+                },
+            )
+            .await
+            .error_while("updating credential")?;
 
-                    self.interaction_repository
-                        .update_interaction(
-                            interaction.id,
-                            UpdateInteractionRequest {
-                                data: Some(Some(data)),
-                            },
-                        )
-                        .await
-                        .error_while("updating interaction")?;
-                }
-
-                Ok(OpenID4VCICredentialResponseDTO {
-                    redirect_uri: issued_credential.redirect_uri,
-                    credentials: Some(vec![OpenID4VCICredentialResponseEntryDTO {
-                        credential: issued_credential.credential,
-                    }]),
-                    transaction_id: None,
-                    interval: None,
-                    notification_id: issued_credential.notification_id,
-                })
-            }
-            Err(err @ IssuanceProtocolError::Suspended)
-            | Err(err @ IssuanceProtocolError::RefreshTooSoon) => {
-                // propagate error to client but do _not_ put credential to Errored state¬
-                Err(err.error_while("issuing credential").into())
-            }
-            Err(error) => {
-                self.credential_repository
-                    .update_credential(
-                        credential.id,
-                        UpdateCredentialRequest {
-                            state: Some(CredentialStateEnum::Error),
-                            ..Default::default()
-                        },
-                    )
-                    .await
-                    .error_while("updating credential")?;
-                Err(error.error_while("issuing credential").into())
-            }
-        }
+        Ok(OpenID4VCICredentialResponseEntryDTO {
+            credential: issued_credential,
+        })
     }
 
     pub async fn handle_notification(
@@ -746,8 +875,8 @@ impl OID4VCIFinal1_0Service {
                         ..Default::default()
                     }),
                     issuer_certificate: Some(Default::default()),
-                    interaction: Some(InteractionRelations::default()),
-                    schema: Some(CredentialSchemaRelations::default()),
+                    interaction: Some(Default::default()),
+                    schema: Some(Default::default()),
                     key: Some(Default::default()),
                     ..Default::default()
                 },
@@ -1034,8 +1163,9 @@ impl OID4VCIFinal1_0Service {
                 .error_while("getting format config")?
                 .r#type;
 
-            // we add refresh token for mdoc
-            if credential_format_type == FormatType::Mdoc {
+            // we add refresh token for mdoc and batches
+            if credential_format_type == FormatType::Mdoc || credential_schema.batch_size.is_some()
+            {
                 response.refresh_token = Some(generate_new_token());
                 response.refresh_token_expires_in =
                     Some(Timestamp((now + refresh_token_expires_in).unix_timestamp()));
@@ -1196,4 +1326,79 @@ impl OID4VCIFinal1_0Service {
         let c_nonce = generate_nonce(params, self.base_url.to_owned()).await?;
         Ok(OpenID4VCINonceResponseDTO { c_nonce })
     }
+
+    async fn create_credential_copy_for_batch_issuance(
+        &self,
+        credential: &Credential,
+    ) -> Result<CredentialId, OID4VCIFinal1_0ServiceError> {
+        let mut claims = credential
+            .claims
+            .as_ref()
+            .ok_or(OID4VCIFinal1_0ServiceError::MappingError(
+                "Missing claims".to_string(),
+            ))?
+            .to_owned();
+
+        let now = crate::clock::now_utc();
+        let id = Uuid::new_v4().into();
+
+        for claim in claims.iter_mut() {
+            claim.id = Uuid::new_v4().into();
+            claim.credential_id = id;
+            claim.created_date = now;
+            claim.last_modified = now;
+        }
+
+        let copy = Credential {
+            id,
+            created_date: now,
+            last_modified: now,
+            credential_blob_id: None,
+            wallet_unit_attestation_blob_id: None,
+            wallet_instance_attestation_blob_id: None,
+            claims: Some(claims),
+            ..credential.to_owned()
+        };
+
+        self.credential_repository
+            .create_credential(copy)
+            .await
+            .error_while("creating credential copy")?;
+        Ok(id)
+    }
+
+    async fn fetch_credential_for_batch_issuance_copy(
+        &self,
+        credential_id: CredentialId,
+    ) -> Result<Credential, OID4VCIFinal1_0ServiceError> {
+        let credential = self
+            .credential_repository
+            .get_credential(
+                &credential_id,
+                &CredentialRelations {
+                    interaction: Some(Default::default()),
+                    schema: Some(Default::default()),
+                    claims: Some(ClaimRelations {
+                        schema: Some(Default::default()),
+                    }),
+                    issuer_identifier: Some(Default::default()),
+                    issuer_certificate: Some(Default::default()),
+                    key: Some(Default::default()),
+                    ..Default::default()
+                },
+            )
+            .await
+            .error_while("loading credential")?
+            .ok_or(OID4VCIFinal1_0ServiceError::MappingError(
+                "Missing credential".to_string(),
+            ))?;
+
+        Ok(credential)
+    }
+}
+
+struct PreparedIdentifier {
+    identifier: Identifier,
+    key_id: String,
+    key_attestation: Option<String>,
 }

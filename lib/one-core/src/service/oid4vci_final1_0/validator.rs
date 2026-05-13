@@ -8,6 +8,7 @@ use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, IssuanceProtocolType};
 use crate::error::ContextWithErrorCode;
 use crate::model::credential_schema::CredentialSchema;
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::DecomposedJwt;
 use crate::provider::credential_formatter::model::{PublicKeySource, TokenVerifier};
@@ -25,22 +26,23 @@ use crate::validator::{
     validate_expiration_time, validate_issuance_time, validate_not_before_time,
 };
 
-pub(crate) async fn throw_if_credential_request_invalid(
+pub(crate) async fn validate_credential_request_format(
     schema: &CredentialSchema,
     request: &OpenID4VCICredentialRequestDTO,
-) -> Result<(), OID4VCIFinal1_0ServiceError> {
-    if let OpenID4VCICredentialRequestIdentifier::CredentialConfigurationId(
+) -> Result<CredentialSchemaFormat, OID4VCIFinal1_0ServiceError> {
+    let OpenID4VCICredentialRequestIdentifier::CredentialConfigurationId(
         credential_configuration_id,
     ) = &request.credential
-    {
-        if &schema.schema_id().await? != credential_configuration_id {
-            return Err(OpenID4VCIError::UnsupportedCredentialType.into());
-        }
-    } else {
+    else {
         return Err(OpenID4VCIError::InvalidRequest.into());
-    }
+    };
 
-    Ok(())
+    let formats = schema.formats.get().await.error_while("getting formats")?;
+    let format = formats
+        .into_iter()
+        .find(|format| &format.schema_id == credential_configuration_id);
+
+    Ok(format.ok_or(OpenID4VCIError::UnsupportedCredentialType)?)
 }
 
 fn is_access_token_valid(

@@ -219,16 +219,26 @@ async fn test_issuer_submit_succeeds() {
         Arc::new(MockInteractionRepository::new()),
     );
 
+    let format_id = credential
+        .schema
+        .unwrap()
+        .formats
+        .get()
+        .await
+        .unwrap()
+        .first()
+        .unwrap()
+        .id;
     let result = provider
         .issuer_issue_credential(
             &credential_id,
+            format_id,
             dummy_identifier(),
             format!("{}#0", dummy_did().did),
         )
         .await;
 
     assert!(result.is_ok());
-    assert!(result.unwrap().notification_id.is_some());
 }
 
 fn generic_mdoc_credential(state: CredentialStateEnum) -> Credential {
@@ -388,9 +398,20 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         Arc::new(MockInteractionRepository::new()),
     );
 
+    let format_id = credential
+        .schema
+        .unwrap()
+        .formats
+        .get()
+        .await
+        .unwrap()
+        .first()
+        .unwrap()
+        .id;
     service
         .issuer_issue_credential(
             &credential_id,
+            format_id,
             dummy_identifier(),
             format!("{}#0", dummy_did().did),
         )
@@ -536,9 +557,20 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         Arc::new(MockInteractionRepository::new()),
     );
 
+    let format_id = credential
+        .schema
+        .unwrap()
+        .formats
+        .get()
+        .await
+        .unwrap()
+        .first()
+        .unwrap()
+        .id;
     service
         .issuer_issue_credential(
             &credential_id,
+            format_id,
             dummy_identifier(),
             format!("{}#0", dummy_did().did),
         )
@@ -646,10 +678,21 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
         Arc::new(MockInteractionRepository::new()),
     );
 
+    let format_id = credential
+        .schema
+        .unwrap()
+        .formats
+        .get()
+        .await
+        .unwrap()
+        .first()
+        .unwrap()
+        .id;
     assert!(matches!(
         service
             .issuer_issue_credential(
                 &credential_id,
+                format_id,
                 dummy_identifier(),
                 format!("{}#0", dummy_did().did)
             )

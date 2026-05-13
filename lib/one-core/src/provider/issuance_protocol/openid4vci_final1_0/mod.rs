@@ -8,13 +8,13 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use indexmap::IndexMap;
 use one_crypto::encryption::{decrypt_string, encrypt_string};
-use one_crypto::utilities::generate_alphanumeric;
 use one_dto_mapper::convert_inner;
 use secrecy::{ExposeSecret, SecretString};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use shared_types::{
-    BlobId, CredentialFormat, CredentialId, CredentialSchemaId, InteractionId, OrganisationId,
+    BlobId, CredentialFormat, CredentialId, CredentialSchemaFormatId, CredentialSchemaId,
+    InteractionId, OrganisationId,
 };
 use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
 use time::{Duration, OffsetDateTime};
@@ -2243,9 +2243,10 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
     async fn issuer_issue_credential(
         &self,
         credential_id: &CredentialId,
+        format_id: CredentialSchemaFormatId,
         holder_identifier: Identifier,
         holder_key_id: String,
-    ) -> Result<SubmitIssuerResponse, IssuanceProtocolError> {
+    ) -> Result<String, IssuanceProtocolError> {
         let Some(mut credential) = self
             .credential_repository
             .get_credential(
@@ -2285,21 +2286,27 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         let credential_state = credential.state;
 
         let format = credential_schema
-            .format()
+            .formats
+            .get()
             .await
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+            .error_while("getting formats")?
+            .into_iter()
+            .find(|format| format.id == format_id)
+            .ok_or(IssuanceProtocolError::Failed(
+                "credential_schema format missing".to_string(),
+            ))?;
 
         let credential_format_type = self
             .config
             .format
-            .get_fields(&format)
+            .get_fields(&format.format)
             .error_while("getting format config")?
             .r#type;
 
         self.validate_credential_issuable(
             credential_id,
             &credential_state,
-            &format,
+            &format.format,
             credential_format_type,
         )
         .await?;
@@ -2352,8 +2359,6 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             )
             .error_while("getting signature provider")?;
 
-        let redirect_uri = credential.redirect_uri.to_owned();
-
         let core_base_url = self.base_url.as_ref().ok_or(IssuanceProtocolError::Failed(
             "Missing core_base_url for credential issuance".to_string(),
         ))?;
@@ -2398,17 +2403,12 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         )
         .error_while("getting credential data")?;
 
-        let format = credential_schema
-            .format()
-            .await
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
-
         let token = self
             .formatter_provider
-            .get_credential_formatter(&format)
+            .get_credential_formatter(&format.format)
             .ok_or(IssuanceProtocolError::Failed(format!(
                 "formatter not found: {}",
-                format
+                format.format
             )))?
             .format_credential(credential_data, auth_fn)
             .await
@@ -2466,11 +2466,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             }
         }
 
-        Ok(SubmitIssuerResponse {
-            credential: token,
-            redirect_uri,
-            notification_id: Some(generate_alphanumeric(32)),
-        })
+        Ok(token)
     }
 
     async fn holder_continue_issuance(

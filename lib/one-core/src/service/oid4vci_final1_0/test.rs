@@ -1,7 +1,7 @@
 use std::str::FromStr;
 use std::sync::Arc;
 
-use mockall::predicate::eq;
+use mockall::predicate::{always, eq};
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use secrecy::ExposeSecret;
@@ -40,9 +40,7 @@ use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::issuance_protocol::MockIssuanceProtocol;
 use crate::provider::issuance_protocol::error::{IssuanceProtocolError, OpenID4VCIError};
-use crate::provider::issuance_protocol::model::{
-    CommonParams, OpenID4VCRedirectUriParams, SubmitIssuerResponse,
-};
+use crate::provider::issuance_protocol::model::{CommonParams, OpenID4VCRedirectUriParams};
 use crate::provider::issuance_protocol::openid4vci_final1_0::OpenID4VCIFinal1_0;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::*;
 use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProvider;
@@ -1003,7 +1001,7 @@ async fn test_create_credential_success() {
     schema.key_storage_security = None;
     let credential = dummy_credential(
         "OPENID4VCI_FINAL1",
-        CredentialStateEnum::Pending,
+        CredentialStateEnum::Offered,
         true,
         Some(schema.clone()),
     );
@@ -1051,13 +1049,7 @@ async fn test_create_credential_success() {
         issuance_protocol
             .expect_issuer_issue_credential()
             .once()
-            .return_once(|_, _, _| {
-                Ok(SubmitIssuerResponse {
-                    credential: "xyz".to_string(),
-                    redirect_uri: None,
-                    notification_id: Some("notification".to_string()),
-                })
-            });
+            .return_once(|_, _, _, _| Ok("xyz".to_string()));
         exchange_provider
             .expect_get_protocol()
             .once()
@@ -1196,7 +1188,7 @@ async fn test_create_credential_success_sd_jwt_vc() {
     schema.key_storage_security = None;
     let credential = dummy_credential(
         "OPENID4VCI_FINAL1",
-        CredentialStateEnum::Pending,
+        CredentialStateEnum::Offered,
         true,
         Some(schema.clone()),
     );
@@ -1233,18 +1225,16 @@ async fn test_create_credential_success_sd_jwt_vc() {
         interaction_repository
             .expect_mark_nonce_as_used()
             .return_once(|_, _, _| Ok(()));
+        interaction_repository
+            .expect_update_interaction()
+            .with(eq(interaction_id), always())
+            .return_once(|_, _| Ok(()));
 
         let mut issuance_protocol = MockIssuanceProtocol::default();
         issuance_protocol
             .expect_issuer_issue_credential()
             .once()
-            .return_once(|_, _, _| {
-                Ok(SubmitIssuerResponse {
-                    credential: "xyz".to_string(),
-                    redirect_uri: None,
-                    notification_id: None,
-                })
-            });
+            .return_once(|_, _, _, _| Ok("xyz".to_string()));
         exchange_provider
             .expect_get_protocol()
             .once()
@@ -1385,7 +1375,7 @@ async fn test_create_credential_success_mdoc() {
     };
     let credential = dummy_credential(
         "OPENID4VCI_FINAL1",
-        CredentialStateEnum::Pending,
+        CredentialStateEnum::Offered,
         true,
         Some(schema.clone()),
     );
@@ -1431,13 +1421,7 @@ async fn test_create_credential_success_mdoc() {
         issuance_protocol
             .expect_issuer_issue_credential()
             .once()
-            .return_once(|_, _, _| {
-                Ok(SubmitIssuerResponse {
-                    credential: "xyz".to_string(),
-                    redirect_uri: None,
-                    notification_id: None,
-                })
-            });
+            .return_once(|_, _, _, _| Ok("xyz".to_string()));
         exchange_provider
             .expect_get_protocol()
             .once()
@@ -1823,7 +1807,7 @@ async fn test_create_credential_issuer_failed() {
     schema.key_storage_security = None;
     let credential = dummy_credential(
         "OPENID4VCI_FINAL1",
-        CredentialStateEnum::Pending,
+        CredentialStateEnum::Offered,
         true,
         Some(schema.clone()),
     );
@@ -1865,7 +1849,7 @@ async fn test_create_credential_issuer_failed() {
         issuance_protocol
             .expect_issuer_issue_credential()
             .once()
-            .return_once(|_, _, _| {
+            .return_once(|_, _, _, _| {
                 Err(IssuanceProtocolError::Failed("issuing failed".to_string()))
             });
         exchange_provider
@@ -1986,10 +1970,11 @@ async fn test_create_credential_nonce_reused() {
     let mut credential_repository = MockCredentialRepository::default();
     let mut interaction_repository = MockInteractionRepository::default();
 
-    let schema = generic_credential_schema();
+    let mut schema = generic_credential_schema();
+    schema.key_storage_security = None;
     let credential = dummy_credential(
         "OPENID4VCI_FINAL1",
-        CredentialStateEnum::Pending,
+        CredentialStateEnum::Offered,
         true,
         Some(schema.clone()),
     );
@@ -2079,6 +2064,24 @@ async fn test_create_credential_nonce_reused() {
             })
         });
 
+    let mut identifier_creator = MockIdentifierCreator::new();
+    identifier_creator
+        .expect_get_or_create_remote_identifier()
+        .returning(|_, _, _| {
+            let holder_did_id: DidId = Uuid::new_v4().into();
+            Ok((
+                Identifier {
+                    id: Uuid::from(holder_did_id).into(),
+                    r#type: IdentifierType::Did,
+                    ..dummy_identifier()
+                },
+                RemoteIdentifierRelation::Did(Did {
+                    id: holder_did_id,
+                    ..dummy_did()
+                }),
+            ))
+        });
+
     let service = setup_service(Mocks {
         credential_schema_repository: repository,
         credential_repository,
@@ -2086,6 +2089,7 @@ async fn test_create_credential_nonce_reused() {
         config: generic_config().core,
         key_algorithm_provider,
         did_method_provider,
+        identifier_creator,
         ..Default::default()
     });
 

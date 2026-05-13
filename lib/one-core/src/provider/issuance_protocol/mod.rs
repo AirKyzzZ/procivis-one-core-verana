@@ -2,7 +2,7 @@ use dto::IssuanceProtocolCapabilities;
 use error::IssuanceProtocolError;
 use serde::Serialize;
 use serde::de::Deserialize;
-use shared_types::{CredentialId, CredentialSchemaId};
+use shared_types::{CredentialId, CredentialSchemaFormatId, CredentialSchemaId};
 use url::Url;
 
 use crate::model::credential::{Credential, CredentialStateEnum};
@@ -22,7 +22,7 @@ pub mod model;
 pub mod openid4vci_final1_0;
 pub mod openid4vci_final1_0_swiyu;
 pub(crate) mod provider;
-use model::{ContinueIssuanceResponseDTO, ShareResponse, SubmitIssuerResponse, UpdateResponse};
+use model::{ContinueIssuanceResponseDTO, ShareResponse, UpdateResponse};
 
 pub(crate) fn deserialize_interaction_data<DataDTO: for<'a> Deserialize<'a>>(
     data: Option<&Vec<u8>>,
@@ -99,9 +99,10 @@ pub(crate) trait IssuanceProtocol: Send + Sync {
     async fn issuer_issue_credential(
         &self,
         credential_id: &CredentialId,
+        format_id: CredentialSchemaFormatId,
         holder_identifier: Identifier,
         holder_key_id: String,
-    ) -> Result<SubmitIssuerResponse, IssuanceProtocolError>;
+    ) -> Result<String, IssuanceProtocolError>;
 
     async fn issuer_metadata(
         &self,
