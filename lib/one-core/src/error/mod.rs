@@ -949,7 +949,7 @@ impl ErrorCodeMixin for NestedError {
 impl Display for NestedError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "Error while {}.", self.context)?;
-        writeln!(f, "Caused by: {}", self.source)?;
+        write!(f, "Caused by: {}", self.source)?;
         Ok(())
     }
 }
@@ -970,5 +970,49 @@ impl<T, E: ErrorCodeMixin> ContextWithErrorCode<T, E> for Result<T, E> {
             context: context.to_string(),
             source: Box::new(e),
         })
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use similar_asserts::assert_eq;
+    use thiserror::Error;
+
+    use super::*;
+
+    #[test]
+    fn test_error_display() {
+        #[derive(Debug, Error)]
+        enum TestError {
+            #[error("Leaf")]
+            Leaf,
+
+            #[error(transparent)]
+            Nested(#[from] NestedError),
+        }
+
+        impl ErrorCodeMixin for TestError {
+            fn error_code(&self) -> ErrorCode {
+                match self {
+                    Self::Leaf => ErrorCode::BR_0000,
+                    Self::Nested(nested) => nested.error_code(),
+                }
+            }
+        }
+
+        let leaf_error = TestError::Leaf;
+        assert_eq!(leaf_error.to_string(), "Leaf");
+
+        let once_nested_error = leaf_error.error_while("nesting 1");
+        assert_eq!(
+            once_nested_error.to_string(),
+            "Error while nesting 1.\nCaused by: Leaf"
+        );
+
+        let twice_nested_error = once_nested_error.error_while("nesting 2");
+        assert_eq!(
+            twice_nested_error.to_string(),
+            "Error while nesting 2.\nCaused by: Error while nesting 1.\nCaused by: Leaf"
+        );
     }
 }
