@@ -89,7 +89,7 @@ impl OID4VCIFinal1_0SwiyuService {
 
     pub async fn handle_notification(
         &self,
-        credential_schema_id: &CredentialSchemaId,
+        credential_schema_id: CredentialSchemaId,
         access_token: &str,
         request: OpenID4VCINotificationRequestDTO,
     ) -> Result<(), OID4VCIFinal1_0ServiceError> {

@@ -3,6 +3,7 @@ use std::str::FromStr;
 
 use futures::FutureExt;
 use futures::future::BoxFuture;
+use itertools::Itertools;
 use one_crypto::utilities::{self, generate_alphanumeric};
 use one_dto_mapper::convert_inner;
 use secrecy::SecretString;
@@ -702,10 +703,36 @@ impl OID4VCIFinal1_0Service {
             ))
             .error_while("issuing credential")?;
 
-        let mut credentials = vec![];
+        let schema =
+            credential
+                .schema
+                .as_ref()
+                .ok_or(OID4VCIFinal1_0ServiceError::MappingError(
+                    "missing schema".to_string(),
+                ))?;
+        let format = schema
+            .formats
+            .get()
+            .await
+            .error_while("getting formats")?
+            .into_iter()
+            .find(|f| f.id == format_id)
+            .ok_or(OID4VCIFinal1_0ServiceError::MappingError(
+                "missing format".to_string(),
+            ))?;
+        let format_type = self
+            .config
+            .format
+            .get_fields(&format.format)
+            .error_while("getting format config")?
+            .r#type;
 
-        let identifier_for_modified_credential = if credential.state == CredentialStateEnum::Offered
-        {
+        // In case of initial issuance or MDOC single reissuance (MSO refresh), do not create new credential(s), but update the current credential instead
+        let update_current_credential = credential.state == CredentialStateEnum::Offered
+            || schema.batch_size.is_none()
+            || holder_identifiers.len() == 1 && format_type == FormatType::Mdoc;
+
+        let identifier_for_modified_credential = if update_current_credential {
             Some(
                 holder_identifiers
                     .pop()
@@ -715,6 +742,7 @@ impl OID4VCIFinal1_0Service {
             None
         };
 
+        let mut credentials = vec![];
         let mut credential_for_copy = None;
         for holder_identifier in holder_identifiers {
             if credential_for_copy.is_none() {
@@ -843,7 +871,7 @@ impl OID4VCIFinal1_0Service {
 
     pub async fn handle_notification(
         &self,
-        credential_schema_id: &CredentialSchemaId,
+        credential_schema_id: CredentialSchemaId,
         access_token: &str,
         request: OpenID4VCINotificationRequestDTO,
     ) -> Result<(), OID4VCIFinal1_0ServiceError> {
@@ -860,7 +888,7 @@ impl OID4VCIFinal1_0Service {
         let interaction_data = interaction_data_to_dto(&interaction)?;
         throw_if_access_token_invalid(&interaction_data, access_token)?;
 
-        if Some(request.notification_id) != interaction_data.notification_id {
+        if Some(&request.notification_id) != interaction_data.notification_id.as_ref() {
             return Err(OpenID4VCIError::InvalidNotificationId.into());
         }
 
@@ -884,101 +912,31 @@ impl OID4VCIFinal1_0Service {
             .await
             .error_while("getting credentials")?;
 
-        let Some(credential) = credentials.iter().find(|credential| {
-            credential
-                .schema
-                .as_ref()
-                .is_some_and(|schema| schema.id == *credential_schema_id)
-        }) else {
+        let credentials: Vec<_> = credentials
+            .into_iter()
+            .filter(|credential| {
+                credential
+                    .schema
+                    .as_ref()
+                    .is_some_and(|schema| schema.id == credential_schema_id)
+            })
+            .collect();
+        if credentials.is_empty() {
             return Err(OpenID4VCIError::InvalidNotificationRequest.into());
-        };
-
-        validate_issuance_protocol_type(self.protocol_type, &self.config, &credential.protocol)
-            .error_while("validating protocol type")?;
-
-        match (credential.state, &request.event) {
-            (
-                CredentialStateEnum::Accepted
-                | CredentialStateEnum::Suspended
-                | CredentialStateEnum::Revoked,
-                _,
-            ) => {
-                // ok, can be processed
-            }
-            // repeated requests also allowed
-            (CredentialStateEnum::Error, OpenID4VCINotificationEvent::CredentialFailure)
-            | (CredentialStateEnum::Rejected, OpenID4VCINotificationEvent::CredentialDeleted) => {
-                return Ok(());
-            }
-            // anything else is invalid
-            _ => {
-                return Err(OpenID4VCIError::InvalidNotificationRequest.into());
-            }
-        };
+        }
 
         let success_log = format!(
-            "Processed notification for credential {}: event `{}`, description: `{:?}`",
-            credential.id, request.event, request.event_description
+            "Processed notification event `{}`, description: `{:?}`, for credentials: [{}]",
+            request.event,
+            request.event_description,
+            credentials.iter().map(|c| c.id).join(", ")
         );
 
-        let new_state = match request.event {
-            OpenID4VCINotificationEvent::CredentialAccepted => {
-                // nothing to do
-                return Ok(());
-            }
-            OpenID4VCINotificationEvent::CredentialFailure => CredentialStateEnum::Error,
-            OpenID4VCINotificationEvent::CredentialDeleted => CredentialStateEnum::Rejected,
-        };
-
-        if credential.state == new_state {
-            // nothing to do
-            return Ok(());
+        for credential in credentials {
+            self.process_notification_for_credential(credential, &request)
+                .await?;
         }
 
-        let schema =
-            credential
-                .schema
-                .as_ref()
-                .ok_or(OID4VCIFinal1_0ServiceError::MappingError(
-                    "schema is None".to_string(),
-                ))?;
-
-        let revocation_method = match &schema.revocation_method {
-            Some(method_id) => Some(
-                self.revocation_method_provider
-                    .get_revocation_method(method_id)
-                    .ok_or(MissingProviderError::RevocationMethod(method_id.clone()))
-                    .error_while("getting revocation method")?,
-            ),
-            None => None,
-        };
-
-        self.credential_repository
-            .update_credential(
-                credential.id,
-                UpdateCredentialRequest {
-                    state: Some(new_state),
-                    ..Default::default()
-                },
-            )
-            .await
-            .error_while("updating credential")?;
-
-        // mark the credential as revoked (if supported and not done before)
-        if matches!(
-            credential.state,
-            CredentialStateEnum::Accepted | CredentialStateEnum::Suspended
-        ) && let Some(revocation_method) = revocation_method
-            && revocation_method
-                .get_capabilities()
-                .operations
-                .contains(&Operation::Revoke)
-        {
-            revocation_method
-                .mark_credential_as(credential, RevocationState::Revoked)
-                .await
-                .error_while("marking credential status")?;
-        }
         tracing::info!(message = success_log);
         Ok(())
     }
@@ -1394,6 +1352,96 @@ impl OID4VCIFinal1_0Service {
             ))?;
 
         Ok(credential)
+    }
+
+    async fn process_notification_for_credential(
+        &self,
+        credential: Credential,
+        notification: &OpenID4VCINotificationRequestDTO,
+    ) -> Result<(), OID4VCIFinal1_0ServiceError> {
+        validate_issuance_protocol_type(self.protocol_type, &self.config, &credential.protocol)
+            .error_while("validating protocol type")?;
+
+        match (credential.state, &notification.event) {
+            (
+                CredentialStateEnum::Accepted
+                | CredentialStateEnum::Suspended
+                | CredentialStateEnum::Revoked,
+                _,
+            ) => {
+                // ok, can be processed
+            }
+            // repeated requests also allowed
+            (CredentialStateEnum::Error, OpenID4VCINotificationEvent::CredentialFailure)
+            | (CredentialStateEnum::Rejected, OpenID4VCINotificationEvent::CredentialDeleted) => {
+                return Ok(());
+            }
+            // anything else is invalid
+            _ => {
+                return Err(OpenID4VCIError::InvalidNotificationRequest.into());
+            }
+        };
+
+        let new_state = match notification.event {
+            OpenID4VCINotificationEvent::CredentialAccepted => {
+                // nothing to do
+                return Ok(());
+            }
+            OpenID4VCINotificationEvent::CredentialFailure => CredentialStateEnum::Error,
+            OpenID4VCINotificationEvent::CredentialDeleted => CredentialStateEnum::Rejected,
+        };
+
+        if credential.state == new_state {
+            // nothing to do
+            return Ok(());
+        }
+
+        let schema =
+            credential
+                .schema
+                .as_ref()
+                .ok_or(OID4VCIFinal1_0ServiceError::MappingError(
+                    "schema is None".to_string(),
+                ))?;
+
+        let revocation_method = match &schema.revocation_method {
+            Some(method_id) => Some(
+                self.revocation_method_provider
+                    .get_revocation_method(method_id)
+                    .ok_or(MissingProviderError::RevocationMethod(method_id.clone()))
+                    .error_while("getting revocation method")?,
+            ),
+            None => None,
+        };
+
+        self.credential_repository
+            .update_credential(
+                credential.id,
+                UpdateCredentialRequest {
+                    state: Some(new_state),
+                    ..Default::default()
+                },
+            )
+            .await
+            .error_while("updating credential")?;
+
+        // mark the credential as revoked (if supported and not done before)
+        if matches!(
+            credential.state,
+            CredentialStateEnum::Accepted | CredentialStateEnum::Suspended
+        ) && let Some(revocation_method) = revocation_method
+            && revocation_method
+                .get_capabilities()
+                .operations
+                .contains(&Operation::Revoke)
+        {
+            revocation_method
+                .mark_credential_as(&credential, RevocationState::Revoked)
+                .await
+                .error_while("marking credential status")?;
+        }
+
+        Ok(())
     }
 }
 

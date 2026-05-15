@@ -432,7 +432,7 @@ pub(crate) async fn oid4vci_final1_0_credential_notification(
     let result = state
         .core
         .oid4vci_final1_0_service
-        .handle_notification(&credential_schema_id, access_token, request.into())
+        .handle_notification(credential_schema_id, access_token, request.into())
         .await;
 
     match result {
