@@ -110,8 +110,7 @@ fn wallet_provider_config(
                 },
                 "featureFlags": {
                     "trustEcosystemsEnabled": true
-                },
-                "legacyTrustManagementEnabled" : true
+                }
             })),
             private: None,
         }),

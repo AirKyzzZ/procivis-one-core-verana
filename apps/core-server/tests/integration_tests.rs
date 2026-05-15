@@ -58,12 +58,6 @@ mod ssi_tests;
 #[path = "api/task/mod.rs"]
 mod task_tests;
 
-#[path = "api/trust_anchor/mod.rs"]
-mod trust_anchor;
-
-#[path = "api/trust_entity/mod.rs"]
-mod trust_entity;
-
 #[path = "api/jsonld/mod.rs"]
 mod jsonld;
 

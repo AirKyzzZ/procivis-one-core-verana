@@ -30,8 +30,6 @@ pub mod proof;
 pub mod proof_schema;
 pub mod revocation;
 pub mod task;
-pub mod trust_anchor;
-pub mod trust_entity;
 mod trust_information;
 pub mod verifier_instance;
 pub mod version;

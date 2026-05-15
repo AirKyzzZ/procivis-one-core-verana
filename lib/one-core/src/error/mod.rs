@@ -271,32 +271,11 @@ pub enum ErrorCode {
     #[strum(message = "Incompatible proof exchange protocol")]
     BR_0112,
 
-    #[strum(message = "Trust anchor name already in use")]
-    BR_0113,
-
-    #[strum(message = "Trust anchor type not found")]
-    BR_0114,
-
-    #[strum(message = "Trust anchor not found")]
-    BR_0115,
-
     #[strum(message = "Invalid claim type (mdoc: root level claims must be objects)")]
     BR_0117,
 
     #[strum(message = "Attribute combination not allowed")]
     BR_0118,
-
-    #[strum(message = "Trust entity not found")]
-    BR_0121,
-
-    #[strum(message = "Trust anchor type is not Simple Trust List")]
-    BR_0122,
-
-    #[strum(message = "trustAnchorId and entityId are already present")]
-    BR_0120,
-
-    #[strum(message = "Trust anchor must be publish")]
-    BR_0123,
 
     #[strum(message = "Nested claims in arrays cannot be requested")]
     BR_0125,
@@ -315,9 +294,6 @@ pub enum ErrorCode {
 
     #[strum(message = "Layout properties are not supported")]
     BR_0131,
-
-    #[strum(message = "Trust management provider not found")]
-    BR_0132,
 
     #[strum(message = "Credential schema: Duplicit claim schema")]
     BR_0133,
@@ -388,9 +364,6 @@ pub enum ErrorCode {
     #[strum(message = "Multiple matching trust anchors")]
     BR_0179,
 
-    #[strum(message = "Trust entity has duplicates")]
-    BR_0180,
-
     #[strum(message = "Invalid update request")]
     BR_0181,
 
@@ -405,12 +378,6 @@ pub enum ErrorCode {
 
     #[strum(message = "No trust entity found for the given did")]
     BR_0186,
-
-    #[strum(message = "Trust anchor is disabled")]
-    BR_0187,
-
-    #[strum(message = "Trust anchor must be client")]
-    BR_0188,
 
     #[strum(message = "JSON deserialization error")]
     BR_0189,
@@ -873,9 +840,6 @@ pub enum ErrorCode {
 
     #[strum(message = "Operation not allowed by registration certificate")]
     BR_0411,
-
-    #[strum(message = "Trust management disabled")]
-    BR_0412,
 
     #[strum(message = "Invalid filter value: credential schema not found")]
     BR_0413,

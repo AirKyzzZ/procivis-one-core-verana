@@ -16,7 +16,6 @@ pub mod signer;
 pub mod task;
 pub mod trust_list_publisher;
 pub mod trust_list_subscriber;
-pub mod trust_management;
 pub mod verification_protocol;
 pub mod verifier;
 

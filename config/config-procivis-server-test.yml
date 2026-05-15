@@ -22,7 +22,6 @@ walletProvider:
           providerName: "Procivis One Test"
         featureFlags:
           trustEcosystemsEnabled: true
-        legacyTrustManagementEnabled: true
 verifierProvider:
   PROCIVIS_ONE:
     params:
@@ -30,7 +29,6 @@ verifierProvider:
         verifierName: "Procivis One Test Verifier"
         featureFlags:
           trustEcosystemsEnabled: true
-        legacyTrustManagementEnabled: true
 signer:
   REGISTRATION_CERTIFICATE:
     params:

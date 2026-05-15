@@ -41,9 +41,6 @@ pub(crate) struct ConfigRestDTO {
     /// How keys are stored.
     #[schema(example = json!({}))]
     pub key_storage: HashMap<String, Value>,
-    /// Trust management solutions.
-    #[schema(example = json!({}))]
-    pub trust_management: HashMap<String, Value>,
     /// Entities held in temporary storage.
     #[schema(example = json!({}))]
     pub cache_entities: HashMap<String, Value>,
@@ -87,7 +84,6 @@ impl From<ConfigDTO> for ConfigRestDTO {
             key_algorithm: config.key_algorithm,
             key_storage: config.key_storage,
             key_security_level: config.key_security_level,
-            trust_management: config.trust_management,
             cache_entities: config.cache_entities,
             task: config.task,
             blob_storage: config.blob_storage,

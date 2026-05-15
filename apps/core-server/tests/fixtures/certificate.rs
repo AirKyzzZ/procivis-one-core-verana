@@ -133,8 +133,6 @@ pub mod eddsa {
         ]
     });
 
-    pub const KEY_IDENTIFIER: &str = "61:20:eb:7e:ae:c1:f4:b5:bc:26:a1:5f:f0:6a:32:a6:2c:75:f5:fb";
-
     #[derive(Clone, Copy, Debug)]
     pub struct Key;
 

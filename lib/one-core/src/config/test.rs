@@ -109,7 +109,6 @@ rusty_fork_test! {
                     params: null
             keySecurityLevel: {}
             task: {}
-            trustManagement: {}
             cacheEntities: {}
             holderKeyStorage: {}
             blobStorage: {}

@@ -144,18 +144,6 @@ impl SSIApi {
         self.client.get(&url).await
     }
 
-    pub async fn get_trust_list(&self, id: impl Into<Uuid>) -> Response {
-        let trust_anchor_id = id.into();
-        let url = format!("/ssi/trust/v1/{trust_anchor_id}");
-
-        self.client.get(&url).await
-    }
-
-    pub async fn get_trust_entity_by_did_value(&self, did: impl Into<String>) -> Response {
-        let url = format!("/ssi/trust-entity/v1/{}", did.into());
-        self.client.get(&url).await
-    }
-
     pub async fn get_proof_schema(&self, id: impl Into<Uuid>) -> Response {
         let url = format!("/ssi/proof-schema/v1/{}", id.into());
         self.client.get(&url).await

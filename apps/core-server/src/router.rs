@@ -29,8 +29,8 @@ use crate::endpoint::trust_collection::controller::{
 use crate::endpoint::{
     cache, certificate, config, credential, credential_schema, did, did_resolver, history,
     holder_wallet_instance, identifier, interaction, jsonld, key, misc, organisation, proof,
-    proof_schema, signature, ssi, statistics, task, trust_anchor, trust_collection, trust_entity,
-    trust_list_publication, vc_api, verifier_instance, wallet_provider,
+    proof_schema, signature, ssi, statistics, task, trust_collection, trust_list_publication,
+    vc_api, verifier_instance, wallet_provider,
 };
 use crate::middleware::{UserInfo, get_http_request_context};
 use crate::openapi::gen_openapi_documentation;
@@ -369,10 +369,6 @@ fn get_management_endpoints(
                     .patch(organisation::controller::patch_organisation),
             )
             .route("/api/did/v1/{id}", get(did::controller::get_did))
-            .route(
-                "/api/did/v1/{id}/trust-entity",
-                get(did::controller::get_did_trust_entity),
-            )
             .route("/api/did/v1/{id}", patch(did::controller::update_did))
             .route("/api/did/v1", get(did::controller::get_did_list))
             .route("/api/did/v1", post(did::controller::post_did))
@@ -384,10 +380,6 @@ fn get_management_endpoints(
                 "/api/identifier/v1",
                 get(identifier::controller::get_identifier_list)
                     .post(identifier::controller::post_identifier),
-            )
-            .route(
-                "/api/identifier/v1/resolve-trust-entity",
-                post(identifier::controller::resolve_trust_entity),
             )
             .route(
                 "/api/identifier/v1/resolve-trust-entries",
@@ -440,36 +432,6 @@ fn get_management_endpoints(
             )
             .route("/api/task/v1/run", post(task::controller::post_task))
             .route(
-                "/api/trust-anchor/v1",
-                post(trust_anchor::controller::create_trust_anchor),
-            )
-            .route(
-                "/api/trust-anchor/v1/{id}",
-                get(trust_anchor::controller::get_trust_anchor),
-            )
-            .route(
-                "/api/trust-anchor/v1",
-                get(trust_anchor::controller::get_trust_anchors),
-            )
-            .route(
-                "/api/trust-anchor/v1/{id}",
-                delete(trust_anchor::controller::delete_trust_anchor),
-            )
-            .route(
-                "/api/trust-entity/v1",
-                post(trust_entity::controller::create_trust_entity)
-                    .get(trust_entity::controller::get_trust_entities),
-            )
-            .route(
-                "/api/trust-entity/v1/{id}",
-                patch(trust_entity::controller::update_trust_entity)
-                    .get(trust_entity::controller::get_trust_entity_details),
-            )
-            .route(
-                "/api/trust-entity/remote/v1",
-                post(trust_entity::controller::create_remote_trust_entity),
-            )
-            .route(
                 "/api/wallet-instance/v1",
                 get(wallet_provider::controller::get_wallet_unit_list),
             )
@@ -481,11 +443,6 @@ fn get_management_endpoints(
             .route(
                 "/api/wallet-instance/v1/{id}/revoke",
                 post(wallet_provider::controller::revoke_wallet_unit),
-            )
-            .route(
-                "/api/trust-entity/remote/v1/{did_id}",
-                get(trust_entity::controller::get_remote_trust_entity)
-                    .patch(trust_entity::controller::update_remote_trust_entity),
             )
             .route(
                 "/api/jsonld-context/v1",
@@ -620,7 +577,6 @@ fn get_management_endpoints(
     }
 }
 
-#[expect(deprecated)]
 fn get_external_endpoints(
     config: &ServerConfig,
     openapi_paths: &mut Option<&mut IndexMap<String, PathItem>>,
@@ -779,19 +735,6 @@ fn get_external_endpoints(
             .route(
                 "/ssi/proof-schema/v1/{id}",
                 get(ssi::controller::ssi_get_proof_schema),
-            )
-            .route(
-                "/ssi/trust/v1/{trustAnchorId}",
-                get(ssi::controller::ssi_get_trust_list),
-            )
-            .route(
-                "/ssi/trust-entity/v1/{didValue}",
-                get(ssi::controller::ssi_get_trust_entity)
-                    .patch(ssi::controller::ssi_patch_trust_entity),
-            )
-            .route(
-                "/ssi/trust-entity/v1",
-                post(ssi::controller::ssi_post_trust_entity),
             )
             .route(
                 "/ssi/vct/v1/{organisationId}/{vctType}",

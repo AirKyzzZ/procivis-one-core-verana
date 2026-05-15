@@ -9,8 +9,7 @@ use shared_types::{IdentifierId, Permission};
 
 use super::dto::{
     CreateIdentifierRequestRestDTO, GetIdentifierListResponseRestDTO, GetIdentifierQuery,
-    GetIdentifierResponseRestDTO, ResolveTrustEntitiesRequestRestDTO,
-    ResolveTrustEntitiesResponseRestDTO, ResolveTrustEntriesRequestRestDTO,
+    GetIdentifierResponseRestDTO, ResolveTrustEntriesRequestRestDTO,
     ResolvedTrustEntriesResponseRestDTO,
 };
 use crate::dto::common::EntityResponseRestDTO;
@@ -155,44 +154,6 @@ pub(crate) async fn get_identifier_list(
     }
     .await;
     OkOrErrorResponse::from_result(result, state, "getting identifiers")
-}
-
-#[endpoint(
-    permissions = [Permission::TrustEntityDetail],
-    post,
-    path = "/api/identifier/v1/resolve-trust-entity",
-    request_body = ResolveTrustEntitiesRequestRestDTO,
-    responses(OkOrErrorResponse<ResolveTrustEntitiesResponseRestDTO>),
-    tag = "identifier_management",
-    security(
-        ("bearer" = [])
-    ),
-    summary = "Resolve trust entities",
-    description = indoc::formatdoc! {"
-    Resolves trust entity information of supplied identifiers.
-
-    For holders and verifiers: get identifiers from offered credentials or shared
-    proofs and pass them here. The system checks the identifiers against your trust
-    anchors and returns information for trusted entities.
-
-    Note that trust information is informational only. Holders and verifiers can
-    decide how to proceed with any given interaction.
-"},
-)]
-#[deprecated = "Deprecated in favor of trust list publisher mechanism"]
-pub(crate) async fn resolve_trust_entity(
-    state: State<AppState>,
-    WithRejection(Json(request), _): WithRejection<
-        Json<ResolveTrustEntitiesRequestRestDTO>,
-        ErrorResponseRestDTO,
-    >,
-) -> OkOrErrorResponse<ResolveTrustEntitiesResponseRestDTO> {
-    let result = state
-        .core
-        .trust_entity_service
-        .resolve_identifiers(request.into())
-        .await;
-    OkOrErrorResponse::from_result(result, state, "resolving trust entities for identifiers")
 }
 
 #[endpoint(

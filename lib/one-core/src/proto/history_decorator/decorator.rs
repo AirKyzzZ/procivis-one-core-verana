@@ -9,7 +9,6 @@ use super::key::KeyHistoryDecorator;
 use super::organisation::OrganisationHistoryDecorator;
 use super::proof::ProofHistoryDecorator;
 use super::proof_schema::ProofSchemaHistoryDecorator;
-use super::trust_entity::TrustEntityHistoryDecorator;
 use crate::proto::history_decorator::trust_collection::TrustCollectionHistoryDecorator;
 use crate::proto::history_decorator::trust_list_publication::TrustListPublicationHistoryDecorator;
 use crate::proto::history_decorator::trust_list_subscription::TrustListSubscriptionHistoryDecorator;
@@ -37,9 +36,7 @@ use crate::repository::proof_repository::ProofRepository;
 use crate::repository::proof_schema_repository::ProofSchemaRepository;
 use crate::repository::remote_entity_cache_repository::RemoteEntityCacheRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
-use crate::repository::trust_anchor_repository::TrustAnchorRepository;
 use crate::repository::trust_collection_repository::TrustCollectionRepository;
-use crate::repository::trust_entity_repository::TrustEntityRepository;
 use crate::repository::trust_entry_repository::TrustEntryRepository;
 use crate::repository::trust_list_publication_repository::TrustListPublicationRepository;
 use crate::repository::trust_list_subscription_repository::TrustListSubscriptionRepository;
@@ -63,7 +60,6 @@ struct DecoratedDataProvider {
     did_repository: Arc<dyn DidRepository>,
     identifier_repository: Arc<dyn IdentifierRepository>,
     proof_repository: Arc<dyn ProofRepository>,
-    trust_entity_repository: Arc<dyn TrustEntityRepository>,
     trust_list_publication_repository: Arc<dyn TrustListPublicationRepository>,
     trust_collection_repository: Arc<dyn TrustCollectionRepository>,
     trust_list_subscription_repository: Arc<dyn TrustListSubscriptionRepository>,
@@ -107,9 +103,6 @@ impl DataRepository for DecoratedDataProvider {
     fn get_proof_repository(&self) -> Arc<dyn ProofRepository> {
         self.proof_repository.clone()
     }
-    fn get_trust_entity_repository(&self) -> Arc<dyn TrustEntityRepository> {
-        self.trust_entity_repository.clone()
-    }
     fn get_trust_list_publication_repository(&self) -> Arc<dyn TrustListPublicationRepository> {
         self.trust_list_publication_repository.clone()
     }
@@ -144,9 +137,6 @@ impl DataRepository for DecoratedDataProvider {
     }
     fn get_backup_repository(&self) -> Arc<dyn BackupRepository> {
         self.data_provider.get_backup_repository()
-    }
-    fn get_trust_anchor_repository(&self) -> Arc<dyn TrustAnchorRepository> {
-        self.data_provider.get_trust_anchor_repository()
     }
     fn get_trust_entry_repository(&self) -> Arc<dyn TrustEntryRepository> {
         self.data_provider.get_trust_entry_repository()
@@ -245,12 +235,6 @@ pub(crate) fn decorate_data_provider(
         session_provider: session_provider.clone(),
     });
 
-    let trust_entity_repository = Arc::new(TrustEntityHistoryDecorator {
-        inner: data_provider.get_trust_entity_repository(),
-        history_repository: data_provider.get_history_repository(),
-        session_provider: session_provider.clone(),
-    });
-
     let trust_list_publication_repository = Arc::new(TrustListPublicationHistoryDecorator {
         inner: data_provider.get_trust_list_publication_repository(),
         history_repository: data_provider.get_history_repository(),
@@ -280,7 +264,6 @@ pub(crate) fn decorate_data_provider(
         did_repository,
         identifier_repository,
         proof_repository,
-        trust_entity_repository,
         trust_list_publication_repository,
         trust_collection_repository,
         trust_list_subscription_repository,

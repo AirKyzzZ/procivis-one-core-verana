@@ -742,16 +742,6 @@ cacheEntities:
     refreshAfter: 300
     cacheRefreshTimeout: 86400
     cacheSize: 1000
-trustManagement:
-  SIMPLE_TRUST_LIST:
-    display: "trustManagement.simpleTrustList"
-    type: "SIMPLE_TRUST_LIST"
-    order: 1
-    enabled: true
-    params:
-      public:
-        enablePublishing: true
-        proofOfPossessionLeeway: 60
 trustListPublisher:
   LOTE_PUBLISHER:
     type: ETSI_LOTE

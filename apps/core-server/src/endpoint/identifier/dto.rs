@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use one_core::model::identifier::{
     ExactIdentifierFilterColumn, IdentifierState, IdentifierType, SortableIdentifierColumn,
 };
@@ -20,10 +18,6 @@ use one_core::service::identifier::dto::{
     IdentifierTrustInformationResponseDTO, IdentifierTrustInformationType,
     ResolveTrustEntriesRequestDTO, ResolvedTrustEntriesResponseDTO, ResolvedTrustEntryResponseDTO,
     ResolvedTrustEntrySourceResponseDTO,
-};
-use one_core::service::trust_entity::dto::{
-    ResolveTrustEntitiesRequestDTO, ResolveTrustEntitiesResponseDTO, ResolveTrustEntityRequestDTO,
-    ResolvedIdentifierTrustEntityResponseDTO,
 };
 use one_dto_mapper::{
     From, Into, TryFrom, TryInto, convert_inner, convert_inner_of_inner, try_convert_inner,
@@ -53,7 +47,6 @@ use crate::endpoint::trust_collection::dto::{
     TrustCollectionListItemResponseRestDTO, TrustListRoleRestEnum,
     TrustListSubscriptionStateRestEnum,
 };
-use crate::endpoint::trust_entity::dto::GetTrustEntityResponseRestDTO;
 use crate::mapper::MapperError;
 use crate::serialize::{front_time, front_time_option};
 
@@ -504,44 +497,6 @@ pub(crate) struct GetIdentifierListResponseRestDTO {
     pub total_items: u64,
     #[from(with_fn = "convert_inner")]
     pub values: Vec<GetIdentifierListItemResponseRestDTO>,
-}
-
-#[derive(Debug, Deserialize, ToSchema, Validate, Into)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-#[into(ResolveTrustEntitiesRequestDTO)]
-pub(crate) struct ResolveTrustEntitiesRequestRestDTO {
-    #[into(with_fn = "convert_inner")]
-    pub identifiers: Vec<ResolveTrustEntityRequestRestDTO>,
-}
-
-#[options_not_nullable]
-#[derive(Debug, Deserialize, ToSchema, Validate, Into)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-#[into(ResolveTrustEntityRequestDTO)]
-pub(crate) struct ResolveTrustEntityRequestRestDTO {
-    pub id: IdentifierId,
-    pub certificate_id: Option<CertificateId>,
-}
-
-#[derive(Debug, Serialize, ToSchema, From)]
-#[serde(rename_all = "camelCase")]
-#[from(ResolveTrustEntitiesResponseDTO)]
-pub(crate) struct ResolveTrustEntitiesResponseRestDTO {
-    #[serde(flatten)]
-    #[from(with_fn = "convert_inner_of_inner")]
-    pub identifier_to_trust_entity:
-        HashMap<IdentifierId, Vec<ResolvedIdentifierTrustEntityResponseRestDTO>>,
-}
-
-#[options_not_nullable]
-#[derive(Debug, Serialize, ToSchema, From)]
-#[serde(rename_all = "camelCase")]
-#[from(ResolvedIdentifierTrustEntityResponseDTO)]
-pub(crate) struct ResolvedIdentifierTrustEntityResponseRestDTO {
-    #[serde(flatten)]
-    pub trust_entity: GetTrustEntityResponseRestDTO,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub certificate_ids: Vec<CertificateId>,
 }
 
 #[options_not_nullable]

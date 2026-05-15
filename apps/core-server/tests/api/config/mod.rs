@@ -7,5 +7,4 @@ mod key_security_level;
 mod key_storage;
 mod revocation_method;
 mod transport;
-mod trust_management;
 mod verification_engagement;

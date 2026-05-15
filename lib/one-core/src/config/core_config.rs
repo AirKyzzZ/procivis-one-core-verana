@@ -61,7 +61,6 @@ pub struct CoreConfig {
     pub key_storage: KeyStorageConfig,
     pub key_security_level: KeySecurityLevelConfig,
     pub task: TaskConfig,
-    pub trust_management: TrustManagementConfig,
     pub trust_list_publisher: TrustListPublisherConfig,
     pub trust_list_subscriber: TrustListSubscriberConfig,
     pub blob_storage: BlobStorageConfig,
@@ -693,17 +692,6 @@ pub enum TaskType {
     #[serde(rename = "TRUST_COLLECTION_SYNC")]
     #[strum(serialize = "TRUST_COLLECTION_SYNC")]
     TrustCollectionSync,
-}
-
-pub type TrustManagementConfig = ConfigBlock<String, TrustManagementType>;
-
-#[derive(
-    Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
-)]
-pub enum TrustManagementType {
-    #[serde(rename = "SIMPLE_TRUST_LIST")]
-    #[strum(serialize = "SIMPLE_TRUST_LIST")]
-    SimpleTrustList,
 }
 
 pub type TrustListPublisherConfig = ConfigBlock<String, TrustListPublisherType>;

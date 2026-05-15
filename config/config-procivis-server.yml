@@ -134,7 +134,6 @@ walletProvider:
           solutionVersion: "1"
           wscdType: HYBRID
         deviceAuthLeeway: 60
-        legacyTrustManagementEnabled: false
 verifierProvider:
   PROCIVIS_ONE:
     display: verifierProvider.procivisOne

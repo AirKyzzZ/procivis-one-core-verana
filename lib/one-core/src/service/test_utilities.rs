@@ -253,16 +253,6 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                 display: 'display'
                 order: 20
         task: {}
-        trustManagement:
-              SIMPLE_TRUST_LIST:
-                  display: 'trustManagement.simpleTrustList'
-                  type: 'SIMPLE_TRUST_LIST'
-                  order: 1
-                  enabled: true
-                  params:
-                      public:
-                          enablePublishing: true
-                          proofOfPossessionLeeway: 60
         cacheEntities: {}
         blobStorage: {}
         walletProvider: {}

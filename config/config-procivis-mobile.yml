@@ -50,8 +50,3 @@ keySecurityLevel:
       public:
         holder:
           keyStorages: ["UBIQU_RSE"]
-trustManagement:
-  SIMPLE_TRUST_LIST:
-    params:
-      public:
-        enablePublishing: false

@@ -267,6 +267,7 @@ impl MigratorTrait for Migrator {
             Box::new(migrations::m20260429_083200_move_trusted_rp_required_to_holder_wallet_instance::Migration),
             Box::new(migrations::m20260429_120000_credential_schema_multiformat::Migration),
             Box::new(migrations::m20260511_120000_reset_trusted_requirements_to_false::Migration),
+            Box::new(migrations::m20260512_090000_remove_legacy_trust::Migration),
         ]
     }
 }

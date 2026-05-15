@@ -20,8 +20,6 @@ use crate::endpoint::statistics::dto::{
     IssuerSchemaStatsResponseRestDTO, SystemInteractionStatsResponseRestDTO,
     SystemManagementStatsResponseRestDTO, VerifierSchemaStatsResponseRestDTO,
 };
-use crate::endpoint::trust_anchor::dto::ListTrustAnchorsResponseItemRestDTO;
-use crate::endpoint::trust_entity::dto::ListTrustEntitiesResponseItemRestDTO;
 
 pub(crate) mod trust_detail;
 
@@ -50,10 +48,6 @@ pub(crate) type GetKeyListResponseRestDTO = GetListResponseRestDTO<KeyListItemRe
 pub(crate) type GetHistoryListResponseRestDTO = GetListResponseRestDTO<HistoryResponseRestDTO>;
 pub(crate) type GetOrganisationListResponseRestDTO =
     GetListResponseRestDTO<OrganisationListItemResponseRestDTO>;
-pub(crate) type GetTrustAnchorListResponseRestDTO =
-    GetListResponseRestDTO<ListTrustAnchorsResponseItemRestDTO>;
-pub(crate) type GetTrustEntityListResponseRestDTO =
-    GetListResponseRestDTO<ListTrustEntitiesResponseItemRestDTO>;
 pub(crate) type GetIssuerStatsResponseRestDTO =
     GetListResponseRestDTO<IssuerSchemaStatsResponseRestDTO>;
 pub(crate) type GetVerifierStatsResponseRestDTO =

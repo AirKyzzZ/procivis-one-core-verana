@@ -1043,7 +1043,7 @@ async fn test_history_org_stats_ignore_irrelevant() {
     // Irrelevant: wrong entity
     add_history(
         &db,
-        HistoryEntityType::TrustEntity,
+        HistoryEntityType::TrustListPublication,
         HistoryAction::Accepted,
         None,
         org_id,

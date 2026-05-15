@@ -27,9 +27,7 @@ use crate::repository::proof_repository::ProofRepository;
 use crate::repository::proof_schema_repository::ProofSchemaRepository;
 use crate::repository::remote_entity_cache_repository::RemoteEntityCacheRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
-use crate::repository::trust_anchor_repository::TrustAnchorRepository;
 use crate::repository::trust_collection_repository::TrustCollectionRepository;
-use crate::repository::trust_entity_repository::TrustEntityRepository;
 use crate::repository::trust_entry_repository::TrustEntryRepository;
 use crate::repository::trust_list_publication_repository::TrustListPublicationRepository;
 use crate::repository::trust_list_subscription_repository::TrustListSubscriptionRepository;
@@ -89,9 +87,6 @@ impl DataRepository for DecoratedDataProvider {
     fn get_proof_schema_repository(&self) -> Arc<dyn ProofSchemaRepository> {
         self.data_provider.get_proof_schema_repository()
     }
-    fn get_trust_entity_repository(&self) -> Arc<dyn TrustEntityRepository> {
-        self.data_provider.get_trust_entity_repository()
-    }
     fn get_claim_repository(&self) -> Arc<dyn ClaimRepository> {
         self.data_provider.get_claim_repository()
     }
@@ -115,9 +110,6 @@ impl DataRepository for DecoratedDataProvider {
     }
     fn get_backup_repository(&self) -> Arc<dyn BackupRepository> {
         self.data_provider.get_backup_repository()
-    }
-    fn get_trust_anchor_repository(&self) -> Arc<dyn TrustAnchorRepository> {
-        self.data_provider.get_trust_anchor_repository()
     }
     fn get_trust_entry_repository(&self) -> Arc<dyn TrustEntryRepository> {
         self.data_provider.get_trust_entry_repository()

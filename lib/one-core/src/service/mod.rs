@@ -30,9 +30,7 @@ pub mod statistics;
 pub mod task;
 #[cfg(any(test, feature = "mock"))]
 pub mod test_utilities;
-pub mod trust_anchor;
 pub mod trust_collection;
-pub mod trust_entity;
 pub mod trust_list_publication;
 pub mod vc_api;
 pub mod verifier_instance;

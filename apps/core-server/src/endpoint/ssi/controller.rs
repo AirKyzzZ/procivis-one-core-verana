@@ -7,8 +7,7 @@ use axum::http::{StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use axum_extra::extract::WithRejection;
 use axum_extra::typed_header::TypedHeader;
-use headers::authorization::Bearer;
-use headers::{Authorization, Mime};
+use headers::Mime;
 use one_core::error::{ErrorCode, ErrorCodeMixin};
 use one_core::service::certificate::error::CertificateServiceError;
 use one_core::service::did::error::DidServiceError;
@@ -18,24 +17,20 @@ use one_core::service::trust_list_publication::dto::TrustListContentTypeDTO;
 use one_core::service::trust_list_publication::error::TrustListPublicationServiceError;
 use proc_macros::endpoint;
 use shared_types::{
-    CertificateId, CredentialSchemaId, DidId, DidValue, OrganisationId, ProofSchemaId,
-    RevocationListId, TrustAnchorId, TrustCollectionId, TrustListPublicationId,
+    CertificateId, CredentialSchemaId, DidId, OrganisationId, ProofSchemaId, RevocationListId,
+    TrustCollectionId, TrustListPublicationId,
 };
 
 use super::dto::{
-    DidDocumentRestDTO, GetTrustAnchorResponseRestDTO, JsonLDContextResponseRestDTO,
-    PatchTrustEntityRequestRestDTO, SSIPostTrustEntityRequestRestDTO,
-    SdJwtVcTypeMetadataResponseRestDTO,
+    DidDocumentRestDTO, JsonLDContextResponseRestDTO, SdJwtVcTypeMetadataResponseRestDTO,
 };
-use crate::dto::common::EntityResponseRestDTO;
 use crate::dto::error::ErrorResponseRestDTO;
-use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
+use crate::dto::response::OkOrErrorResponse;
 use crate::endpoint::credential_schema::dto::{
     CredentialSchemaResponseRestDTO, CredentialSchemaV2ResponseRestDTO,
 };
 use crate::endpoint::proof_schema::dto::GetProofSchemaResponseRestDTO;
 use crate::endpoint::ssi::dto::TrustCollectionResponseRestDTO;
-use crate::endpoint::trust_entity::dto::GetTrustEntityResponseRestDTO;
 use crate::extractor::Accept;
 use crate::router::AppState;
 
@@ -273,159 +268,6 @@ pub(crate) async fn get_json_ld_context(
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }
     }
-}
-
-#[endpoint(
-    permissions = [],
-    get,
-    path = "/ssi/trust/v1/{trustAnchorId}",
-    params(
-        ("trustAnchorId" = TrustAnchorId, Path, description = "Trust anchor id")
-    ),
-    responses(
-        (status = 200, description = "OK", body = GetTrustAnchorResponseRestDTO),
-        (status = 400, description = "Trust anchor type is not SIMPLE_TRUST_LIST"),
-        (status = 404, description = "Trust anchor not found"),
-        (status = 500, description = "Server error"),
-    ),
-    tag = "ssi",
-    summary = "Retrieve Trust List",
-    description = indoc::formatdoc! {"
-        Retrieve a trust list by the UUID of the trust anchor.
-    "},
-)]
-#[deprecated = "Deprecated in favor of trust list publisher mechanism (ONE-8838)"]
-pub(crate) async fn ssi_get_trust_list(
-    state: State<AppState>,
-    WithRejection(Path(trust_anchor_id), _): WithRejection<
-        Path<TrustAnchorId>,
-        ErrorResponseRestDTO,
-    >,
-) -> OkOrErrorResponse<GetTrustAnchorResponseRestDTO> {
-    let result = state
-        .core
-        .trust_anchor_service
-        .get_trust_list(trust_anchor_id)
-        .await;
-
-    OkOrErrorResponse::from_result(result, state, "getting trust list")
-}
-
-#[endpoint(
-    permissions = [],
-    get,
-    path = "/ssi/trust-entity/v1/{didValue}",
-    params(
-        ("didValue" = DidValue, Path, description = "DID value")
-    ),
-    responses(OkOrErrorResponse<GetTrustEntityResponseRestDTO>),
-    security(
-        ("remote-agent" = [])
-    ),
-    tag = "ssi",
-    summary = "Retrieve a trust entity",
-    description = indoc::formatdoc! {"
-        Retrieve a trust entity by the value of the DID.
-    "},
-)]
-#[deprecated = "Deprecated in favor of trust list publisher mechanism (ONE-8838)"]
-pub(crate) async fn ssi_get_trust_entity(
-    state: State<AppState>,
-    WithRejection(Path(did_value), _): WithRejection<Path<DidValue>, ErrorResponseRestDTO>,
-    TypedHeader(bearer): TypedHeader<Authorization<Bearer>>,
-) -> OkOrErrorResponse<GetTrustEntityResponseRestDTO> {
-    let result = state
-        .core
-        .trust_entity_service
-        .publisher_get_trust_entity_for_did(did_value, bearer.token())
-        .await;
-
-    OkOrErrorResponse::from_result(result, state, "getting trust entity")
-}
-
-#[endpoint(
-    permissions = [],
-    patch,
-    path = "/ssi/trust-entity/v1/{didValue}",
-    params(
-        ("didValue" = DidValue, Path, description = "DID value")
-    ),
-    request_body = PatchTrustEntityRequestRestDTO,
-    responses(EmptyOrErrorResponse),
-    security(
-        ("remote-agent" = [])
-    ),
-    tag = "ssi",
-    summary = "Update a trust entity",
-    description = indoc::formatdoc! {"
-        Update a trust entity by its DID value.
-    "},
-)]
-#[deprecated = "Deprecated in favor of trust list publisher mechanism (ONE-8838)"]
-pub(crate) async fn ssi_patch_trust_entity(
-    state: State<AppState>,
-    TypedHeader(bearer): TypedHeader<Authorization<Bearer>>,
-    WithRejection(Path(did_value), _): WithRejection<Path<DidValue>, ErrorResponseRestDTO>,
-    WithRejection(Json(request), _): WithRejection<
-        Json<PatchTrustEntityRequestRestDTO>,
-        ErrorResponseRestDTO,
-    >,
-) -> EmptyOrErrorResponse {
-    let request = match request.try_into() {
-        Ok(request) => request,
-        Err(err) => {
-            return EmptyOrErrorResponse::from_error(&err, state.config.hide_error_response_cause);
-        }
-    };
-    let result = state
-        .core
-        .trust_entity_service
-        .update_trust_entity_by_did(did_value, request, bearer.token())
-        .await;
-
-    EmptyOrErrorResponse::from_result(result, state, "getting trust entity")
-}
-
-#[endpoint(
-    permissions = [],
-    post,
-    path = "/ssi/trust-entity/v1",
-    request_body = SSIPostTrustEntityRequestRestDTO,
-    responses(CreatedOrErrorResponse<EntityResponseRestDTO>),
-    security(
-        ("remote-agent" = [])
-    ),
-    tag = "ssi",
-    summary = "Create a trust entity",
-    description = indoc::formatdoc! {"
-        Add a trust entity to a trust anchor.
-    "},
-)]
-#[deprecated = "Deprecated in favor of trust list publisher mechanism (ONE-8838)"]
-pub(crate) async fn ssi_post_trust_entity(
-    state: State<AppState>,
-    TypedHeader(bearer): TypedHeader<Authorization<Bearer>>,
-    WithRejection(Json(request), _): WithRejection<
-        Json<SSIPostTrustEntityRequestRestDTO>,
-        ErrorResponseRestDTO,
-    >,
-) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
-    let request = match request.try_into() {
-        Ok(request) => request,
-        Err(err) => {
-            return CreatedOrErrorResponse::from_error(
-                &err,
-                state.config.hide_error_response_cause,
-            );
-        }
-    };
-    let result = state
-        .core
-        .trust_entity_service
-        .publisher_create_trust_entity_for_did(request, bearer.token())
-        .await;
-
-    CreatedOrErrorResponse::from_result(result, state, "getting trust entity")
 }
 
 #[endpoint(

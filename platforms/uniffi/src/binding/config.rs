@@ -51,9 +51,6 @@ pub struct ConfigBindingDTO {
     /// Storage options for keys.
     #[from(with_fn = serialize_config_entity)]
     pub key_storage: HashMap<String, String>,
-    /// Trust management solutions.
-    #[from(with_fn = serialize_config_entity)]
-    pub trust_management: HashMap<String, String>,
     /// Entities held in temporary storage.
     #[from(with_fn = serialize_config_entity)]
     pub cache_entities: HashMap<String, String>,

@@ -64,7 +64,6 @@ walletProvider:
           wscdType: HYBRID
         featureFlags:
           trustEcosystemsEnabled: true
-        legacyTrustManagementEnabled: false
 format:
   MDOC_SHORT_EXPIRY:
     type: "MDOC"
@@ -183,16 +182,6 @@ did:
     params:
       public:
         resolveToInsecureHttp: true
-trustManagement:
-  SIMPLE_TRUST_LIST:
-    display: "trustManagement.simpleTrustList"
-    type: "SIMPLE_TRUST_LIST"
-    order: 1
-    enabled: true
-    params:
-      public:
-        enablePublishing: true
-        proofOfPossessionLeeway: 60
 cacheEntities:
   STATUS_LIST_CREDENTIAL:
     cacheType: DB
@@ -322,6 +311,5 @@ verifierProvider:
             link: https//example.com
         featureFlags:
           trustEcosystemsEnabled: true
-        legacyTrustManagementEnabled: false
 httpClient:
   insecureHttpTransportAllowed: true

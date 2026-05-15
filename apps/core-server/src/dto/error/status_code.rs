@@ -15,8 +15,6 @@ pub(crate) fn error_code_to_http_status(code: ErrorCode) -> StatusCode {
         | ErrorCode::BR_0034
         | ErrorCode::BR_0037
         | ErrorCode::BR_0100
-        | ErrorCode::BR_0115
-        | ErrorCode::BR_0121
         | ErrorCode::BR_0172
         | ErrorCode::BR_0186
         | ErrorCode::BR_0207
@@ -85,13 +83,8 @@ pub(crate) fn error_code_to_http_status(code: ErrorCode) -> StatusCode {
         | ErrorCode::BR_0110
         | ErrorCode::BR_0111
         | ErrorCode::BR_0112
-        | ErrorCode::BR_0113
-        | ErrorCode::BR_0114
         | ErrorCode::BR_0117
         | ErrorCode::BR_0118
-        | ErrorCode::BR_0122
-        | ErrorCode::BR_0120
-        | ErrorCode::BR_0123
         | ErrorCode::BR_0125
         | ErrorCode::BR_0126
         | ErrorCode::BR_0127
@@ -119,13 +112,10 @@ pub(crate) fn error_code_to_http_status(code: ErrorCode) -> StatusCode {
         | ErrorCode::BR_0173
         | ErrorCode::BR_0177
         | ErrorCode::BR_0179
-        | ErrorCode::BR_0180
         | ErrorCode::BR_0181
         | ErrorCode::BR_0183
         | ErrorCode::BR_0184
         | ErrorCode::BR_0185
-        | ErrorCode::BR_0187
-        | ErrorCode::BR_0188
         | ErrorCode::BR_0189
         | ErrorCode::BR_0191
         | ErrorCode::BR_0192
@@ -253,7 +243,6 @@ pub(crate) fn error_code_to_http_status(code: ErrorCode) -> StatusCode {
         | ErrorCode::BR_0409
         | ErrorCode::BR_0410
         | ErrorCode::BR_0411
-        | ErrorCode::BR_0412
         | ErrorCode::BR_0413
         | ErrorCode::BR_0414
         | ErrorCode::BR_0416
@@ -290,7 +279,6 @@ pub(crate) fn error_code_to_http_status(code: ErrorCode) -> StatusCode {
         | ErrorCode::BR_0101
         | ErrorCode::BR_0103
         | ErrorCode::BR_0109
-        | ErrorCode::BR_0132
         | ErrorCode::BR_0201
         | ErrorCode::BR_0252
         | ErrorCode::BR_0328

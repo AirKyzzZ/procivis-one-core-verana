@@ -11,8 +11,6 @@ pub struct Verifier {
     #[serde(default)]
     pub trust_collections: HashMap<TrustCollectionId, TrustCollectionParams>, // FIX ME: This is a temporary solution, should be changed to a proper structure ONE-9309
     pub feature_flags: FeatureFlags,
-    #[allow(dead_code)]
-    pub legacy_trust_management_enabled: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]

@@ -206,8 +206,6 @@ pub enum HistoryEntityType {
     ProofSchema,
     Organisation,
     Backup,
-    TrustAnchor,
-    TrustEntity,
     WalletUnit,
     User,
     Provider,

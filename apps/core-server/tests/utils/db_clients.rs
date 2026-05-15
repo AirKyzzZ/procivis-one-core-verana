@@ -15,8 +15,6 @@ use self::organisations::OrganisationsDB;
 use self::proof_schemas::ProofSchemasDB;
 use self::proofs::ProofsDB;
 use self::revocation_lists::RevocationListsDB;
-use self::trust_anchors::TrustAnchorDB;
-use self::trust_entities::TrustEntityDB;
 use self::trust_entry::TrustEntryDB;
 use self::trust_list_publication::TrustListPublicationDB;
 use self::trust_list_subscription::TrustListSubscriptionDB;
@@ -46,9 +44,7 @@ pub mod proof_schemas;
 pub mod proofs;
 pub mod remote_entity_cache;
 pub mod revocation_lists;
-pub mod trust_anchors;
 pub mod trust_collections;
-pub mod trust_entities;
 pub mod trust_entry;
 pub mod trust_list_publication;
 pub mod trust_list_subscription;
@@ -74,8 +70,6 @@ pub struct DbClient {
     pub proof_schemas: ProofSchemasDB,
     pub proofs: ProofsDB,
     pub interactions: InteractionsDB,
-    pub trust_anchors: TrustAnchorDB,
-    pub trust_entities: TrustEntityDB,
     pub trust_list_publications: TrustListPublicationDB,
     pub trust_list_subscriptions: TrustListSubscriptionDB,
     pub trust_collections: TrustCollectionDB,
@@ -114,8 +108,6 @@ impl DbClient {
             proof_schemas: ProofSchemasDB::new(layer.get_proof_schema_repository()),
             proofs: ProofsDB::new(layer.get_proof_repository()),
             interactions: InteractionsDB::new(layer.get_interaction_repository()),
-            trust_anchors: TrustAnchorDB::new(layer.get_trust_anchor_repository()),
-            trust_entities: TrustEntityDB::new(layer.get_trust_entity_repository()),
             trust_list_publications: TrustListPublicationDB::new(
                 layer.get_trust_list_publication_repository(),
             ),

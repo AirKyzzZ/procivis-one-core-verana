@@ -88,8 +88,6 @@ pub(super) struct WalletProviderParams {
     #[serde(default)]
     pub trust_collections: HashMap<TrustCollectionId, TrustCollectionParams>, // FIX ME: This is a temporary solution, should be changed to a proper structure ONE-9309
     pub feature_flags: FeatureFlags,
-    #[allow(dead_code)] // TODO: remove allowed once used
-    pub legacy_trust_management_enabled: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

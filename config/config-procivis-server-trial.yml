@@ -28,7 +28,6 @@ walletProvider:
           providerName: "Procivis One Trial"
         featureFlags:
           trustEcosystemsEnabled: false
-        legacyTrustManagementEnabled: true
 verifierProvider:
   PROCIVIS_ONE:
     params:
@@ -36,7 +35,6 @@ verifierProvider:
         verifierName: "Procivis One Verifier"
         featureFlags:
           trustEcosystemsEnabled: false
-        legacyTrustManagementEnabled: true
 signer:
   REGISTRATION_CERTIFICATE:
     params:

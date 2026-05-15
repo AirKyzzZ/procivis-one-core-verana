@@ -41,11 +41,6 @@ use one_core::service::proof_schema::dto::{
     ImportProofSchemaClaimSchemaDTO, ProofSchemaFilterParamsDTO,
 };
 use one_core::service::ssi_holder::dto::{HandleInvitationResultDTO, InitiateIssuanceRequestDTO};
-use one_core::service::trust_anchor::dto::{SortableTrustAnchorColumn, TrustAnchorFilterParamsDTO};
-use one_core::service::trust_entity::dto::{
-    ResolvedIdentifierTrustEntityResponseDTO, SortableTrustEntityColumnEnum,
-    TrustEntityFilterParamsDTO, TrustListLogo, UpdateTrustEntityFromDidRequestDTO,
-};
 use one_core::service::verifier_instance::dto::EditVerifierInstanceRequestDTO;
 use one_core::service::wallet_instance::dto::{
     EditHolderWalletInstanceRequestDTO, TrustCollectionInfoDTO,
@@ -82,11 +77,6 @@ use super::proof::{
     ProofRequestClaimValueBindingDTO, ProofResponseBindingDTO,
 };
 use super::proof_schema::ImportProofSchemaClaimSchemaBindingDTO;
-use super::trust_anchor::ListTrustAnchorsFiltersBindings;
-use super::trust_entity::{
-    ListTrustEntitiesFiltersBindings, ResolvedIdentifierTrustEntityResponseBindingDTO,
-    UpdateRemoteTrustEntityFromDidRequestBindingDTO,
-};
 use super::verifier_instance::EditVerifierInstanceRequestBindingDTO;
 use super::wallet_unit::{EditHolderWalletUnitRequestBindingDTO, TrustCollectionInfoBindingDTO};
 use crate::binding::credential_schema::CredentialSchemaListQueryBindingDTO;
@@ -391,63 +381,6 @@ impl From<CredentialSchemaListItemResponseDTO> for CredentialSchemaBindingDTO {
     }
 }
 
-impl TryFrom<ListTrustAnchorsFiltersBindings>
-    for ListQueryDTO<SortableTrustAnchorColumn, TrustAnchorFilterParamsDTO>
-{
-    type Error = ErrorResponseBindingDTO;
-
-    fn try_from(value: ListTrustAnchorsFiltersBindings) -> Result<Self, Self::Error> {
-        Ok(Self {
-            page: value.page,
-            page_size: value.page_size,
-            sort: convert_inner(value.sort),
-            sort_direction: convert_inner(value.sort_direction),
-            filter: TrustAnchorFilterParamsDTO {
-                name: value.name,
-                is_publisher: value.is_publisher,
-                r#type: value.r#type,
-                exact: convert_inner_of_inner(value.exact),
-                created_date_after: into_timestamp_opt(value.created_date_after)?,
-                created_date_before: into_timestamp_opt(value.created_date_before)?,
-                last_modified_after: into_timestamp_opt(value.last_modified_after)?,
-                last_modified_before: into_timestamp_opt(value.last_modified_before)?,
-            },
-            include: None,
-        })
-    }
-}
-
-impl TryFrom<ListTrustEntitiesFiltersBindings>
-    for ListQueryDTO<SortableTrustEntityColumnEnum, TrustEntityFilterParamsDTO>
-{
-    type Error = ErrorResponseBindingDTO;
-
-    fn try_from(value: ListTrustEntitiesFiltersBindings) -> Result<Self, Self::Error> {
-        Ok(Self {
-            page: value.page,
-            page_size: value.page_size,
-            sort: convert_inner(value.sort),
-            sort_direction: convert_inner(value.sort_direction),
-            filter: TrustEntityFilterParamsDTO {
-                name: value.name,
-                exact: convert_inner_of_inner(value.exact),
-                role: convert_inner(value.role),
-                did_id: None,
-                trust_anchor: into_id_opt(value.trust_anchor)?,
-                organisation_id: into_id_opt(value.organisation_id)?,
-                types: convert_inner_of_inner(value.types),
-                states: convert_inner_of_inner(value.states),
-                entity_key: convert_inner(value.entity_key),
-                created_date_after: into_timestamp_opt(value.created_date_after)?,
-                created_date_before: into_timestamp_opt(value.created_date_before)?,
-                last_modified_after: into_timestamp_opt(value.last_modified_after)?,
-                last_modified_before: into_timestamp_opt(value.last_modified_before)?,
-            },
-            include: None,
-        })
-    }
-}
-
 impl TryFrom<CreateProofRequestBindingDTO> for CreateProofRequestDTO {
     type Error = ErrorResponseBindingDTO;
 
@@ -568,19 +501,6 @@ impl From<OptionalString> for Option<String> {
         match value {
             OptionalString::None => None,
             OptionalString::Some { value } => Some(value),
-        }
-    }
-}
-
-impl TryFrom<OptionalString> for Option<TrustListLogo> {
-    type Error = ErrorResponseBindingDTO;
-
-    fn try_from(value: OptionalString) -> Result<Self, Self::Error> {
-        match value {
-            OptionalString::None => Ok(None),
-            OptionalString::Some { value } => {
-                Some(value.try_into()).transpose().map_err(Into::into)
-            }
         }
     }
 }
@@ -798,48 +718,6 @@ impl From<ApplicableCredentialOrFailureHintEnum> for ApplicableCredentialOrFailu
                     failure_hint: (*failure_hint).into(),
                 }
             }
-        }
-    }
-}
-
-impl TryFrom<UpdateRemoteTrustEntityFromDidRequestBindingDTO>
-    for UpdateTrustEntityFromDidRequestDTO
-{
-    type Error = ErrorResponseBindingDTO;
-
-    fn try_from(
-        value: UpdateRemoteTrustEntityFromDidRequestBindingDTO,
-    ) -> Result<Self, Self::Error> {
-        Ok(Self {
-            action: value.action.map(Into::into),
-            name: value.name,
-            logo: value.logo.map(TryInto::try_into).transpose()?,
-            website: value.website.map(Into::into),
-            terms_url: value.terms_url.map(Into::into),
-            privacy_url: value.privacy_url.map(Into::into),
-            role: value.role.map(Into::into),
-            content: None,
-        })
-    }
-}
-
-impl From<ResolvedIdentifierTrustEntityResponseDTO>
-    for ResolvedIdentifierTrustEntityResponseBindingDTO
-{
-    fn from(value: ResolvedIdentifierTrustEntityResponseDTO) -> Self {
-        let certificate_ids: Vec<_> = value
-            .certificate_ids
-            .iter()
-            .map(ToString::to_string)
-            .collect();
-
-        Self {
-            trust_entity: value.trust_entity.into(),
-            certificate_ids: if certificate_ids.is_empty() {
-                None
-            } else {
-                Some(certificate_ids)
-            },
         }
     }
 }

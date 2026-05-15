@@ -8,7 +8,6 @@ keyAlgorithm: {}
 keyStorage: {}
 datatype: {}
 task: {}
-trustManagement: {}
 transport: {}
 cacheEntities: {}
 holderKeyStorage: {}

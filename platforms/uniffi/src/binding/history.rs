@@ -99,8 +99,6 @@ pub enum HistoryEntityTypeBindingEnum {
     ProofSchema,
     Organisation,
     Backup,
-    TrustAnchor,
-    TrustEntity,
     WalletUnit,
     User,
     Provider,

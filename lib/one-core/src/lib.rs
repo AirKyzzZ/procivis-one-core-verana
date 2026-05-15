@@ -56,7 +56,7 @@ use crate::provider::key_algorithm::provider::{
     KeyAlgorithmProvider, key_algorithm_provider_from_config,
 };
 use crate::provider::key_security_level::provider::key_security_level_provider_from_config;
-use crate::provider::key_storage::provider::{KeyProvider, key_provider_from_config};
+use crate::provider::key_storage::provider::key_provider_from_config;
 use crate::provider::key_storage::secure_element::NativeKeyStorage;
 use crate::provider::presentation_formatter::provider::get_presentation_formatter_provider;
 use crate::provider::revocation::provider::revocation_method_provider_from_config;
@@ -64,7 +64,6 @@ use crate::provider::signer::provider::signer_provider_from_config;
 use crate::provider::task::provider::task_provider_from_config;
 use crate::provider::trust_list_publisher::provider::trust_list_publisher_provider_from_config;
 use crate::provider::trust_list_subscriber::provider::trust_list_subscriber_provider_from_config;
-use crate::provider::trust_management::provider::trust_management_provider_from_config;
 use crate::provider::verification_protocol::provider::verification_protocol_provider_from_config;
 use crate::provider::verifier::provider::verifier_provider_from_config;
 use crate::repository::DataRepository;
@@ -95,9 +94,7 @@ use crate::service::ssi_holder::SSIHolderService;
 use crate::service::ssi_issuer::SSIIssuerService;
 use crate::service::statistics::StatisticsService;
 use crate::service::task::TaskService;
-use crate::service::trust_anchor::TrustAnchorService;
 use crate::service::trust_collection::TrustCollectionService;
-use crate::service::trust_entity::TrustEntityService;
 use crate::service::trust_list_publication::TrustListPublicationService;
 use crate::service::vc_api::VCAPIService;
 use crate::service::verifier_instance::VerifierInstanceService;
@@ -120,8 +117,6 @@ pub mod validator;
 pub struct OneCore {
     pub organisation_service: OrganisationService,
     pub backup_service: BackupService,
-    pub trust_anchor_service: TrustAnchorService,
-    pub trust_entity_service: TrustEntityService,
     pub did_service: DidService,
     pub certificate_service: CertificateService,
     pub credential_service: CredentialService,
@@ -377,12 +372,6 @@ impl OneCore {
             certificate_validator.clone(),
         );
 
-        let trust_management_provider = trust_management_provider_from_config(
-            &mut config,
-            client.clone(),
-            data_provider.get_remote_entity_cache_repository(),
-        )?;
-
         let trust_list_publisher_provider = trust_list_publisher_provider_from_config(
             &mut config,
             clock.clone(),
@@ -579,27 +568,6 @@ impl OneCore {
             )?;
 
         Ok(OneCore {
-            trust_anchor_service: TrustAnchorService::new(
-                data_provider.get_trust_anchor_repository(),
-                data_provider.get_trust_entity_repository(),
-                core_base_url.clone(),
-                config.clone(),
-            ),
-            trust_entity_service: TrustEntityService::new(
-                data_provider.get_trust_anchor_repository(),
-                data_provider.get_trust_entity_repository(),
-                data_provider.get_did_repository(),
-                data_provider.get_identifier_repository(),
-                data_provider.get_organisation_repository(),
-                did_method_provider.clone(),
-                key_algorithm_provider.clone(),
-                trust_management_provider,
-                key_provider.clone(),
-                client.clone(),
-                certificate_validator.clone(),
-                identifier_creator.clone(),
-                config.clone(),
-            ),
             backup_service: BackupService::new(
                 data_provider.get_backup_repository(),
                 data_provider.get_history_repository(),

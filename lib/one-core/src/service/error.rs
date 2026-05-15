@@ -1,8 +1,7 @@
 use one_crypto::CryptoProviderError;
 use shared_types::{
     CredentialId, CredentialSchemaId, DidId, DidValue, IdentifierId, InteractionId, OrganisationId,
-    ProofId, RevocationListEntryId, RevocationMethodId, TaskId, TrustAnchorId, TrustEntityId,
-    TrustEntityKey, TrustListSubscriberId,
+    ProofId, RevocationListEntryId, RevocationMethodId, TaskId, TrustListSubscriberId,
 };
 use thiserror::Error;
 
@@ -77,15 +76,6 @@ pub enum EntityNotFoundError {
 
     #[error("Credential schema `{0}` not found")]
     CredentialSchema(CredentialSchemaId),
-
-    #[error("Trust anchor `{0}` not found")]
-    TrustAnchor(TrustAnchorId),
-
-    #[error("Trust entity `{0}` not found")]
-    TrustEntity(TrustEntityId),
-
-    #[error("Trust entity by entity key `{0}` not found")]
-    TrustEntityByEntityKey(TrustEntityKey),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -203,9 +193,6 @@ pub enum MissingProviderError {
     #[error("Cannot find task `{0}`")]
     Task(TaskId),
 
-    #[error("Cannot find trust manager `{0}`")]
-    TrustManager(String),
-
     #[error("Cannot find signature provider `{0}`")]
     Signer(String),
 
@@ -247,8 +234,6 @@ impl ErrorCodeMixin for EntityNotFoundError {
             Self::Proof(_) => ErrorCode::BR_0012,
             Self::Organisation(_) => ErrorCode::BR_0022,
             Self::CredentialSchema(_) => ErrorCode::BR_0006,
-            Self::TrustAnchor(_) => ErrorCode::BR_0115,
-            Self::TrustEntity(_) | Self::TrustEntityByEntityKey(_) => ErrorCode::BR_0121,
             Self::Identifier(_) | Self::IdentifierByDidId(_) => ErrorCode::BR_0207,
             Self::RevocationListEntry(_) => ErrorCode::BR_0000,
         }
@@ -303,7 +288,6 @@ impl ErrorCodeMixin for MissingProviderError {
             Self::RevocationMethodByCredentialStatusType(_) => ErrorCode::BR_0045,
             Self::ExchangeProtocol(_) => ErrorCode::BR_0046,
             Self::Task(_) => ErrorCode::BR_0103,
-            Self::TrustManager(_) => ErrorCode::BR_0132,
             Self::Signer(_) => ErrorCode::BR_0326,
             Self::Verifier(_) => ErrorCode::BR_0380,
             Self::TrustListSubscriber(_) => ErrorCode::BR_0400,

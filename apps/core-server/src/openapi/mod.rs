@@ -334,28 +334,6 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                 ))
                 .build(),
             Tag::builder()
-                .name("trust_anchor")
-                .description(Some(indoc::formatdoc! {"
-                Manage trust anchors as a publisher or subscribe to trust anchors as a consumer.
-            "}))
-                .extensions(Some(
-                    Extensions::builder()
-                        .add("x-displayName", "Trust anchors")
-                        .build(),
-                ))
-                .build(),
-            Tag::builder()
-                .name("trust_entity")
-                .description(Some(indoc::formatdoc! {"
-                Manage trust entities on an anchor.
-            "}))
-                .extensions(Some(
-                    Extensions::builder()
-                        .add("x-displayName", "Trust entities")
-                        .build(),
-                ))
-                .build(),
-            Tag::builder()
                 .name("wallet_instance")
                 .description(Some(indoc::formatdoc! {"
                 For Wallet Providers, manage wallet instances and attestations issued by the system.

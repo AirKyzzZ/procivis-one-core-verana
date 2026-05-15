@@ -22,9 +22,7 @@ use self::proof_schemas::ProofSchemasApi;
 use self::proofs::ProofsApi;
 use self::ssi::SSIApi;
 use self::tasks::TasksApi;
-use self::trust_anchors::TrustAnchorsApi;
 use self::trust_collections::TrustCollectionsApi;
-use self::trust_entity::TrustEntitiesApi;
 use self::verifier_instance::VerifierIntanceApi;
 use self::wallet_units::WalletUnitsApi;
 use super::field_match::FieldHelpers;
@@ -53,9 +51,7 @@ pub mod proofs;
 pub mod signatures;
 pub mod ssi;
 pub mod tasks;
-pub mod trust_anchors;
 pub mod trust_collections;
-pub mod trust_entity;
 pub mod verifier_instance;
 pub mod wallet_units;
 
@@ -224,9 +220,7 @@ pub struct Client {
     pub tasks: TasksApi,
     pub config: ConfigApi,
     pub cache: CacheApi,
-    pub trust_anchors: TrustAnchorsApi,
     pub trust_collections: TrustCollectionsApi,
-    pub trust_entities: TrustEntitiesApi,
     pub jsonld: JsonLdApi,
     pub other: OtherApi,
     pub identifiers: IdentifiersApi,
@@ -264,9 +258,7 @@ impl Client {
             tasks: TasksApi::new(client.clone()),
             config: ConfigApi::new(client.clone()),
             cache: CacheApi::new(client.clone()),
-            trust_anchors: TrustAnchorsApi::new(client.clone()),
             trust_collections: TrustCollectionsApi::new(client.clone()),
-            trust_entities: TrustEntitiesApi::new(client.clone()),
             jsonld: JsonLdApi::new(client.clone()),
             other: OtherApi::new(client.clone()),
             identifiers: IdentifiersApi::new(client.clone()),
