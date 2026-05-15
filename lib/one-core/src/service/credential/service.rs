@@ -17,7 +17,7 @@ use super::validator::{
     throw_if_credential_state_eq, validate_format_and_did_method_compatibility,
     validate_redirect_uri, validate_webhook_url,
 };
-use crate::config::core_config::BlobStorageType;
+use crate::config::core_config::{BlobStorageType, FormatType};
 use crate::config::validator::protocol::validate_protocol_did_compatibility;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::certificate::{CertificateRelations, CertificateRole};
@@ -313,8 +313,22 @@ impl CredentialService {
             return Err(CredentialServiceError::NotFound(*credential_id));
         }
 
-        let mdoc_validity_credentials = match &credential.schema {
-            Some(schema) if schema.format().await?.as_ref() == "MDOC" => self
+        let schema_format = credential
+            .schema
+            .as_ref()
+            .ok_or(CredentialServiceError::MappingError(
+                "missing schema".to_string(),
+            ))?
+            .format()
+            .await?;
+        let format_type = self
+            .config
+            .format
+            .get_fields(&schema_format)
+            .error_while("getting format config")?
+            .r#type;
+        let mdoc_validity_credentials = match format_type {
+            FormatType::Mdoc => self
                 .validity_credential_repository
                 .get_latest_by_credential_id(*credential_id, ValidityCredentialType::Mdoc)
                 .await
