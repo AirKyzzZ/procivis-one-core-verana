@@ -71,7 +71,8 @@ async fn test_holder_wallet_unit_trust_collections() {
             "required": true
           },
           "featureFlags": {
-            "trustEcosystemsEnabled": true
+            "trustEcosystemsEnabled": true,
+            "refreshCredentialBatchEnabled": true
           },
           "trustCollections": [{
              "description": [{

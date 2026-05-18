@@ -28,6 +28,7 @@ walletProvider:
           providerName: "Procivis One Trial"
         featureFlags:
           trustEcosystemsEnabled: false
+          refreshCredentialBatchEnabled: false
 verifierProvider:
   PROCIVIS_ONE:
     params:

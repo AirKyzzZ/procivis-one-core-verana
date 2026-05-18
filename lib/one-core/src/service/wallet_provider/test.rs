@@ -109,7 +109,8 @@ fn wallet_provider_config(
                     "minimum": "v1.50.0",
                 },
                 "featureFlags": {
-                    "trustEcosystemsEnabled": true
+                    "trustEcosystemsEnabled": true,
+                    "refreshCredentialBatchEnabled": true
                 }
             })),
             private: None,

@@ -167,6 +167,7 @@ async fn holder_register_success() {
                 app_version: None,
                 feature_flags: FeatureFlags {
                     trust_ecosystems_enabled: true,
+                    refresh_credential_batch_enabled: true,
                 },
                 trust_collections: vec![],
             })
@@ -304,6 +305,7 @@ async fn holder_register_key_attestation_not_supported() {
                 app_version: None,
                 feature_flags: FeatureFlags {
                     trust_ecosystems_enabled: true,
+                    refresh_credential_batch_enabled: true,
                 },
                 trust_collections: vec![],
             })

@@ -14,12 +14,11 @@ use one_dto_mapper::{From, Into, TryInto, convert_inner, convert_inner_of_inner}
 use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
 use shared_types::{
-    CertificateId, CredentialFormat, CredentialId, CredentialSchemaId, DidId, IdentifierId, KeyId,
-    OrganisationId, RevocationMethodId,
+    CertificateId, ClaimSchemaId, CredentialFormat, CredentialId, CredentialSchemaId, DidId,
+    IdentifierId, InteractionId, KeyId, OrganisationId, RevocationMethodId,
 };
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
-use uuid::Uuid;
 
 use crate::deserialize::deserialize_timestamp;
 use crate::dto::common::ListQueryParamsRest;
@@ -39,7 +38,7 @@ use crate::serialize::{front_time, front_time_option};
 #[serde(rename_all = "camelCase")]
 #[from(CredentialListItemResponseDTO)]
 pub(crate) struct CredentialListItemResponseRestDTO {
-    pub id: Uuid,
+    pub id: CredentialId,
     #[serde(serialize_with = "front_time")]
     #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
@@ -85,8 +84,8 @@ pub(crate) struct MdocMsoValidityResponseRestDTO {
 #[options_not_nullable]
 #[derive(Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct GetCredentialResponseRestDTO<T> {
-    pub id: Uuid,
+pub(crate) struct GetCredentialResponseRestDTO<TClaim> {
+    pub id: CredentialId,
 
     #[serde(serialize_with = "front_time")]
     #[schema(example = "2023-06-09T14:19:57.000Z")]
@@ -115,7 +114,7 @@ pub(crate) struct GetCredentialResponseRestDTO<T> {
     pub issuer_certificate: Option<CertificateResponseRestDTO>,
 
     /// Claims made by the credential issuer.
-    pub claims: Vec<T>,
+    pub claims: Vec<TClaim>,
 
     /// URI holder is redirected to after credential issuance.
     pub redirect_uri: Option<String>,
@@ -125,6 +124,7 @@ pub(crate) struct GetCredentialResponseRestDTO<T> {
     /// the system received the credential as a wallet this value will be
     /// `HOLDER`.
     pub role: CredentialRoleRestEnum,
+    pub interaction_id: Option<InteractionId>,
 
     /// Scheduled date for credential reactivation.
     #[serde(serialize_with = "front_time_option")]
@@ -202,7 +202,7 @@ pub(crate) enum CredentialRoleRestEnum {
 #[serde(rename_all = "camelCase")]
 #[from(DetailCredentialSchemaResponseDTO)]
 pub(crate) struct CredentialDetailSchemaResponseRestDTO {
-    pub id: Uuid,
+    pub id: CredentialSchemaId,
     #[serde(serialize_with = "front_time")]
     #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
@@ -464,7 +464,7 @@ pub(crate) struct CreateCredentialRequestRestDTO {
 pub(crate) struct CredentialRequestClaimRestDTO {
     /// ID of the attribute from the credential schema.
     #[into(rename = "claim_schema_id")]
-    pub claim_id: Uuid,
+    pub claim_id: ClaimSchemaId,
     /// Claim being asserted in issuance.
     #[serde(default)]
     pub value: String,
@@ -497,7 +497,7 @@ pub(crate) struct SuspendCredentialRequestRestDTO {
 #[serde(rename_all = "camelCase")]
 #[from(CredentialRevocationCheckResponseDTO)]
 pub(crate) struct CredentialRevocationCheckResponseRestDTO {
-    pub credential_id: Uuid,
+    pub credential_id: CredentialId,
     pub status: CredentialStateRestEnum,
     /// Indicates whether the system performed the check as planned.
     /// When using `forceRefresh`, indicates whether the external resource

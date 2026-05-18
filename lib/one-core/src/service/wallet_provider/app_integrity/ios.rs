@@ -433,7 +433,8 @@ Q3RkxoFO2GgviGuVD2ukPNuGJ7FHCvecJ8sNRqyqBrydvuQAO2zStDp3
                         "enabled": true
                     },
                     "featureFlags": {
-                        "trustEcosystemsEnabled": true
+                        "trustEcosystemsEnabled": true,
+                        "refreshCredentialBatchEnabled": true
                     }
                 })),
                 private: None,

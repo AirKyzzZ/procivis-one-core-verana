@@ -64,6 +64,7 @@ walletProvider:
           wscdType: HYBRID
         featureFlags:
           trustEcosystemsEnabled: true
+          refreshCredentialBatchEnabled: true
 format:
   MDOC_SHORT_EXPIRY:
     type: "MDOC"

@@ -23,6 +23,7 @@ walletProvider:
           providerName: "Procivis One Dev"
         featureFlags:
           trustEcosystemsEnabled: true
+          refreshCredentialBatchEnabled: true
 verifierProvider:
   PROCIVIS_ONE:
     params:

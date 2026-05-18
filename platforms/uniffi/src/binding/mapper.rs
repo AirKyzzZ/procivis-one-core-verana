@@ -103,6 +103,9 @@ impl<IN: Into<ClaimBindingDTO>> From<CredentialDetailResponseDTO<IN>>
             claims: convert_inner(value.claims),
             redirect_uri: value.redirect_uri,
             role: value.role.into(),
+            interaction_id: value
+                .interaction_id
+                .map(|interaction_id| interaction_id.to_string()),
             suspend_end_date: value
                 .suspend_end_date
                 .map(|suspend_end_date| suspend_end_date.format_timestamp()),

@@ -13,7 +13,7 @@ impl<IN, OUT: From<IN>> TryFrom<CredentialDetailResponseDTO<IN>>
 
     fn try_from(value: CredentialDetailResponseDTO<IN>) -> Result<Self, Self::Error> {
         Ok(Self {
-            id: value.id.into(),
+            id: value.id,
             created_date: value.created_date,
             issuance_date: value.issuance_date,
             revocation_date: value.revocation_date,
@@ -25,6 +25,7 @@ impl<IN, OUT: From<IN>> TryFrom<CredentialDetailResponseDTO<IN>>
             claims: convert_inner(value.claims),
             redirect_uri: value.redirect_uri,
             role: value.role.into(),
+            interaction_id: value.interaction_id,
             suspend_end_date: value.suspend_end_date,
             mdoc_mso_validity: convert_inner(value.mdoc_mso_validity),
             holder: convert_inner(value.holder),

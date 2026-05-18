@@ -112,6 +112,7 @@ pub(crate) struct WalletProviderMetadataResponseRestDTO {
 #[from(dto::FeatureFlags)]
 pub(crate) struct FeatureFlagsRestDTO {
     pub trust_ecosystems_enabled: bool,
+    pub refresh_credential_batch_enabled: bool,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use shared_types::{
     CertificateId, ClaimSchemaId, CredentialFormat, CredentialId, CredentialSchemaId, DidId,
-    IdentifierId, KeyId, OrganisationId, RevocationMethodId,
+    IdentifierId, InteractionId, KeyId, OrganisationId, RevocationMethodId,
 };
 use strum::AsRefStr;
 use time::OffsetDateTime;
@@ -60,6 +60,7 @@ pub struct CredentialDetailResponseDTO<T> {
     pub claims: Vec<T>,
     pub redirect_uri: Option<String>,
     pub role: CredentialRole,
+    pub interaction_id: Option<InteractionId>,
     #[serde(default, with = "time::serde::rfc3339::option")]
     pub suspend_end_date: Option<OffsetDateTime>,
     pub mdoc_mso_validity: Option<MdocMsoValidityResponseDTO>,

@@ -26,7 +26,8 @@ async fn holder_register_wallet_unit_successfully() {
             "required": true
           },
           "featureFlags": {
-            "trustEcosystemsEnabled": true
+            "trustEcosystemsEnabled": true,
+            "refreshCredentialBatchEnabled": true
           },
           "trustCollections": []
         })))

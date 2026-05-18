@@ -101,6 +101,7 @@ pub(crate) async fn credential_detail_response_from_model(
         issuer: convert_inner(value.issuer_identifier),
         redirect_uri: value.redirect_uri,
         role: value.role.into(),
+        interaction_id: value.interaction.map(|i| i.id),
         suspend_end_date: value.suspend_end_date,
         mdoc_mso_validity,
         holder: convert_inner(value.holder_identifier),

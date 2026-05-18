@@ -95,6 +95,7 @@ pub struct CredentialDetailBindingDTO {
     /// be `HOLDER`. If the system verified this credential during a presentation,
     /// this value will be `VERIFIER`.
     pub role: CredentialRoleBindingDTO,
+    pub interaction_id: Option<String>,
     /// Scheduled date for credential reactivation.
     pub suspend_end_date: Option<String>,
     /// Validity details for ISO mdocs.

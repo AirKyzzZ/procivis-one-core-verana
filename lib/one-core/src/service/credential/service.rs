@@ -299,6 +299,7 @@ impl CredentialService {
                     issuer_identifier: Some(Default::default()),
                     issuer_certificate: Some(CertificateRelations::default()),
                     holder_identifier: Some(Default::default()),
+                    interaction: Some(Default::default()),
                     ..Default::default()
                 },
             )

@@ -32,7 +32,8 @@ async fn test_wallet_provider_metadata_success() {
                 "minimum":"v1.50.0"
             },
             "featureFlags": {
-              "trustEcosystemsEnabled": true
+              "trustEcosystemsEnabled": true,
+              "refreshCredentialBatchEnabled": true
             },
             "trustCollections": []
         })
@@ -91,7 +92,8 @@ async fn test_wallet_provider_metadata_success_all_fields() {
                 }
             },
             "featureFlags": {
-              "trustEcosystemsEnabled": true
+              "trustEcosystemsEnabled": true,
+              "refreshCredentialBatchEnabled": true
             },
             "trustCollections": []
         })
@@ -131,7 +133,8 @@ async fn test_wallet_provider_metadata_fails_disabled_wallet_provider() {
                 "minimum":"v1.50.0"
             },
             "featureFlags": {
-              "trustEcosystemsEnabled": true
+              "trustEcosystemsEnabled": true,
+              "refreshCredentialBatchEnabled": true
             },
             "trustCollections": []
         })
@@ -230,7 +233,8 @@ async fn test_wallet_provider_metadata_with_trust_collections() {
     assert_eq!(
         resp["featureFlags"],
         serde_json::json!( {
-          "trustEcosystemsEnabled": true
+          "trustEcosystemsEnabled": true,
+          "refreshCredentialBatchEnabled": true
         })
     );
     assert!(resp["trustCollections"].is_array());

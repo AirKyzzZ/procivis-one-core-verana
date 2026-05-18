@@ -94,6 +94,7 @@ pub(super) struct WalletProviderParams {
 #[serde(rename_all = "camelCase")]
 pub struct FeatureFlags {
     pub trust_ecosystems_enabled: bool,
+    pub refresh_credential_batch_enabled: bool,
 }
 
 #[derive(Clone, Debug, Deserialize)]

@@ -56,6 +56,7 @@ fn generate_credential_detail_response(
         claims,
         redirect_uri: None,
         role: CredentialRole::Holder,
+        interaction_id: None,
         suspend_end_date: None,
         mdoc_mso_validity: None,
         holder: None,
