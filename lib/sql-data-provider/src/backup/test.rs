@@ -653,6 +653,13 @@ async fn test_fetch_unexportable_credentials_local() {
             .schema
             .is_some()
     );
+
+    let schema = unexportable.credentials[0]
+        .schema
+        .as_ref()
+        .expect("schema present");
+    let format = schema.format().await.expect("format loadable");
+    assert_eq!(format.as_ref(), "JWT");
 }
 
 #[tokio::test]
@@ -793,9 +800,16 @@ async fn test_fetch_unexportable_credentials_dump() {
         unexportable_credentials_setup.unexportable_ids.len()
     );
     assert_eq_unordered(
-        unexportable.credentials.into_iter().map(|item| item.id),
+        unexportable.credentials.iter().map(|item| item.id),
         unexportable_credentials_setup.unexportable_ids,
     );
+
+    let schema = unexportable.credentials[0]
+        .schema
+        .as_ref()
+        .expect("schema present");
+    let format = schema.format().await.expect("format loadable from dump");
+    assert_eq!(format.as_ref(), "JWT");
 }
 
 #[tokio::test]

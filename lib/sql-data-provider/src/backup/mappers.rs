@@ -4,14 +4,17 @@ use one_core::model::claim::Claim;
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential::Credential;
 use one_core::model::credential_schema::{CredentialSchema, LayoutType, TransactionCode};
+use one_core::model::credential_schema_format::CredentialSchemaFormat;
 use one_core::model::organisation::Organisation;
-use one_core::model::relation::Related;
+use one_core::model::relation::{Related, RelatedVec};
 use one_core::repository::error::DataLayerError;
 use one_core::repository::organisation_repository::OrganisationRepository;
 use one_dto_mapper::convert_inner;
+use uuid::Uuid;
 
 use super::models::{ClaimWithSchema, UnexportableCredentialModel};
 use crate::claim_schema::mapper::claim_schema_from_model;
+use crate::credential_schema::mapper::CredentialSchemaFormatsLoader;
 use crate::transaction_context::TransactionManagerImpl;
 
 fn claim_with_schema_to_claim(value: ClaimWithSchema, db: TransactionManagerImpl) -> Claim {
@@ -50,6 +53,25 @@ pub(super) fn credential_from_unexportable_model(
         _ => return Err(DataLayerError::MappingError),
     };
 
+    let formats = match (
+        value.credential_schema_format,
+        value.credential_schema_schema_id,
+    ) {
+        (Some(format), Some(schema_id)) => RelatedVec::from(vec![CredentialSchemaFormat {
+            id: Uuid::new_v4().into(),
+            created_date: value.credential_schema_created_date,
+            last_modified: value.credential_schema_last_modified,
+            credential_schema_id: value.credential_schema_id,
+            format,
+            schema_id,
+            claim_mappings: RelatedVec::default(),
+        }]),
+        _ => RelatedVec::new(CredentialSchemaFormatsLoader {
+            id: value.credential_schema_id,
+            db: db.clone(),
+        }),
+    };
+
     Ok(Credential {
         id: value.id,
         created_date: value.created_date,
@@ -73,7 +95,7 @@ pub(super) fn credential_from_unexportable_model(
             last_modified: value.credential_schema_last_modified,
             imported_source_url: value.credential_schema_imported_source_url,
             name: value.credential_schema_name,
-            formats: Default::default(),
+            formats,
             key_storage_security: convert_inner(value.credential_schema_key_storage_security),
             revocation_method: value.credential_schema_revocation_method,
             claim_schemas: claim_schemas.into(),
