@@ -1126,7 +1126,7 @@ async fn test_revoke_check_token_update() {
         )
         .await;
 
-    let valid_credential = valid_mdoc_credential().await;
+    let valid_credential = to_be_updated_mdoc_credential().await;
     let blob = context
         .db
         .blobs
@@ -1848,6 +1848,18 @@ async fn valid_mdoc_credential() -> SerializedCredential {
         mso_expires_in: Duration::days(1),
         mso_expected_update_in: Duration::seconds(300),
         mso_minimum_refresh_time: Duration::seconds(300),
+        leeway: Duration::seconds(60),
+        ecosystem_schema_ids: vec![],
+        pid_schema_ids: vec![],
+    };
+    minimal_mdoc_credential(params).await
+}
+
+async fn to_be_updated_mdoc_credential() -> SerializedCredential {
+    let params = Params {
+        mso_expires_in: Duration::days(1),              // not expired
+        mso_expected_update_in: Duration::seconds(-10), // ready for update
+        mso_minimum_refresh_time: Duration::seconds(0), // refresh immediately
         leeway: Duration::seconds(60),
         ecosystem_schema_ids: vec![],
         pid_schema_ids: vec![],

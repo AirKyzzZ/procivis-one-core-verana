@@ -12,18 +12,24 @@ use shared_types::{
 use time::Duration;
 use url::Url;
 
-use super::dto::{ContinueIssuanceDTO, IssuanceProtocolCapabilities};
+use super::dto::{ContinueIssuanceDTO, Features, IssuanceProtocolCapabilities};
 use super::error::{IssuanceProtocolError, OpenIDIssuanceError};
 use super::model::{
     CommonParams, ContinueIssuanceResponseDTO, InvitationResponseEnum, OpenID4VCRedirectUriParams,
     ShareResponse, UpdateResponse,
 };
+use super::openid4vci_final1_0::OpenID4VCIFinal1_0;
+use super::openid4vci_final1_0::model::{
+    OpenID4VCIFinal1Params, OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCNonceParams,
+};
+use super::openid4vci_final1_0::service::create_issuer_metadata_response;
+use super::openid4vci_final1_0_swiyu::mapper::to_swiyu_data_type;
 use super::{HolderBindingInput, IssuanceProtocol};
 use crate::config::core_config::CoreConfig;
 use crate::config::core_config::DidType::WebVh;
 use crate::error::ContextWithErrorCode;
 use crate::mapper::params::deserialize_encryption_key;
-use crate::model::credential::{Credential, CredentialStateEnum};
+use crate::model::credential::Credential;
 use crate::model::identifier::Identifier;
 use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
@@ -38,13 +44,6 @@ use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::issuance_protocol::dto::Features;
-use crate::provider::issuance_protocol::openid4vci_final1_0::OpenID4VCIFinal1_0;
-use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
-    OpenID4VCIFinal1Params, OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCNonceParams,
-};
-use crate::provider::issuance_protocol::openid4vci_final1_0::service::create_issuer_metadata_response;
-use crate::provider::issuance_protocol::openid4vci_final1_0_swiyu::mapper::to_swiyu_data_type;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_security_level::provider::KeySecurityLevelProvider;
 use crate::provider::key_storage::provider::KeyProvider;
@@ -336,11 +335,11 @@ impl IssuanceProtocol for OpenID4VCISwiyu {
 
     async fn holder_refresh_credential(
         &self,
-        credential: &Credential,
-        force_refresh: bool,
-    ) -> Result<CredentialStateEnum, IssuanceProtocolError> {
+        interaction: &Interaction,
+        update_credential: Option<CredentialId>,
+    ) -> Result<Vec<CredentialId>, IssuanceProtocolError> {
         self.inner
-            .holder_refresh_credential(credential, force_refresh)
+            .holder_refresh_credential(interaction, update_credential)
             .await
     }
 }
