@@ -36,7 +36,7 @@ use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::endpoint::certificate::dto::CertificateResponseRestDTO;
 use crate::endpoint::credential::dto::{
     CredentialDetailClaimResponseRestDTO, CredentialDetailClaimValueResponseRestDTO,
-    GetCredentialResponseRestDTO,
+    GetCredentialResponseRestDTO, TrustInformationRestDTO,
 };
 use crate::endpoint::credential_schema::dto::{
     CredentialClaimSchemaResponseRestDTO, CredentialSchemaListItemResponseRestDTO,
@@ -449,6 +449,9 @@ pub(crate) struct ProofDetailResponseRestDTO {
 
     #[try_from(infallible)]
     pub webhook_destination_url: Option<String>,
+    /// Trust information of the verifier, if any.
+    #[try_from(with_fn = convert_inner, infallible)]
+    pub trust_information: Option<TrustInformationRestDTO>,
 }
 
 #[options_not_nullable]

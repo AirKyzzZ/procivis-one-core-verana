@@ -26,7 +26,7 @@ use one_dto_mapper::{From, Into, TryInto, convert_inner, try_convert_inner_of_in
 use super::common::SortDirection;
 use super::credential::{
     CredentialDetailBindingDTO, CredentialRoleBindingDTO, CredentialStateBindingEnum,
-    MdocMsoValidityResponseBindingDTO,
+    MdocMsoValidityResponseBindingDTO, TrustInformationBindingDTO,
 };
 use super::credential_schema::{
     CredentialClaimSchemaBindingDTO, CredentialSchemaBindingDTO, CredentialSchemaDetailBindingDTO,
@@ -404,6 +404,8 @@ pub struct ProofResponseBindingDTO {
     pub claims_removed_at: Option<String>,
     /// Country profile associated with this request.
     pub profile: Option<String>,
+    /// Trust information of the verifier, if any.
+    pub trust_information: Option<TrustInformationBindingDTO>,
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]

@@ -168,6 +168,7 @@ impl From<ProofDetailResponseDTO> for ProofResponseBindingDTO {
             claims_removed_at: value.claims_removed_at.map(|date| date.format_timestamp()),
             role: value.role.into(),
             profile: value.profile,
+            trust_information: convert_inner(value.trust_information),
         }
     }
 }
