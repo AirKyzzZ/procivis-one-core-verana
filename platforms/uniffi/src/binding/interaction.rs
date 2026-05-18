@@ -78,6 +78,22 @@ impl OneCore {
             .await?)
     }
 
+    /// Receive a new credential batch
+    #[uniffi::method]
+    pub async fn holder_refresh_credential(
+        &self,
+        interaction_id: String,
+    ) -> Result<HolderRefreshCredentialResponseBindingDTO, BindingError> {
+        let core = self.use_core().await?;
+        let ids = core
+            .ssi_holder_service
+            .refresh_credentials(into_id(interaction_id)?)
+            .await?;
+        Ok(HolderRefreshCredentialResponseBindingDTO {
+            credential_ids: ids.iter().map(ToString::to_string).collect(),
+        })
+    }
+
     /// For wallets, starts the OpenID4VCI Authorization Code Flow.
     #[uniffi::method]
     pub async fn initiate_issuance(
@@ -258,5 +274,11 @@ pub struct HolderAcceptCredentialRequestBindingDTO {
 #[derive(Clone, Debug, uniffi::Record)]
 #[uniffi(name = "HolderAcceptCredentialResponse")]
 pub struct HolderAcceptCredentialResponseBindingDTO {
+    pub credential_ids: Vec<String>,
+}
+
+#[derive(Clone, Debug, uniffi::Record)]
+#[uniffi(name = "HolderRefreshCredentialResponse")]
+pub struct HolderRefreshCredentialResponseBindingDTO {
     pub credential_ids: Vec<String>,
 }

@@ -5,6 +5,7 @@ use shared_types::CredentialId;
 
 use super::dto::{
     HandleInvitationResponseRestDTO, InteractionTypeRestEnum, IssuanceAcceptResponseRestDTO,
+    IssuanceRefreshResponseRestDTO,
 };
 use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::endpoint::interaction::dto::InitiateIssuanceRequestRestDTO;
@@ -90,5 +91,11 @@ impl From<Vec<CredentialId>> for IssuanceAcceptResponseRestDTO {
             None
         };
         Self { id, ids: value }
+    }
+}
+
+impl From<Vec<CredentialId>> for IssuanceRefreshResponseRestDTO {
+    fn from(ids: Vec<CredentialId>) -> Self {
+        Self { ids }
     }
 }

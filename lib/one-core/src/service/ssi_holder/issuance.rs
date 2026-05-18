@@ -268,6 +268,13 @@ impl SSIHolderService {
         Ok(result)
     }
 
+    pub async fn refresh_credentials(
+        &self,
+        _interaction_id: InteractionId,
+    ) -> Result<Vec<CredentialId>, HolderServiceError> {
+        todo!()
+    }
+
     pub async fn reject_credential(
         &self,
         interaction_id: &InteractionId,

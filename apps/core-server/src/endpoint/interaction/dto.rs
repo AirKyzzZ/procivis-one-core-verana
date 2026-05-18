@@ -148,6 +148,12 @@ pub(crate) struct IssuanceAcceptResponseRestDTO {
     pub ids: Vec<CredentialId>,
 }
 
+#[derive(Clone, Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct IssuanceRefreshResponseRestDTO {
+    pub ids: Vec<CredentialId>,
+}
+
 #[derive(Clone, Debug, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct IssuanceRejectRequestRestDTO {

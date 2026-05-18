@@ -407,6 +407,10 @@ fn get_management_endpoints(
                 post(interaction::controller::issuance_reject),
             )
             .route(
+                "/api/interaction/v1/{id}/issuance-refresh",
+                post(interaction::controller::issuance_refresh),
+            )
+            .route(
                 "/api/interaction/v1/presentation-submit",
                 post(interaction::controller::presentation_submit),
             )

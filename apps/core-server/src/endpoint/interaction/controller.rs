@@ -1,17 +1,17 @@
 use axum::Json;
-use axum::extract::State;
+use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
 use one_core::error::ContextWithErrorCode;
 use one_core::service::error::ServiceError;
 use proc_macros::endpoint;
-use shared_types::Permission;
+use shared_types::{InteractionId, Permission};
 
 use super::dto::{
     ContinueIssuanceRequestRestDTO, ContinueIssuanceResponseRestDTO,
     HandleInvitationRequestRestDTO, HandleInvitationResponseRestDTO, IssuanceAcceptRequestRestDTO,
-    IssuanceAcceptResponseRestDTO, IssuanceRejectRequestRestDTO, PresentationRejectRequestRestDTO,
-    PresentationSubmitRequestRestDTO, PresentationSubmitV2RequestRestDTO,
-    ProposeProofRequestRestDTO,
+    IssuanceAcceptResponseRestDTO, IssuanceRefreshResponseRestDTO, IssuanceRejectRequestRestDTO,
+    PresentationRejectRequestRestDTO, PresentationSubmitRequestRestDTO,
+    PresentationSubmitV2RequestRestDTO, ProposeProofRequestRestDTO,
 };
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::mapper::fallback_organisation_id_from_session;
@@ -105,6 +105,31 @@ pub(crate) async fn issuance_accept(
         )
         .await;
     OkOrErrorResponse::from_result(result, state, "accepting credential")
+}
+
+#[endpoint(
+    permissions = [Permission::InteractionIssuance],
+    post,
+    path = "/api/interaction/v1/{id}/issuance-refresh",
+    responses(OkOrErrorResponse<IssuanceRefreshResponseRestDTO>),
+    params(
+        ("id" = InteractionId, Path, description = "Interaction ID")
+    ),
+    tag = "interaction",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "Refresh credentials",
+    description = indoc::formatdoc! {"
+        Receive a new batch of credentials.
+    "},
+)]
+pub(crate) async fn issuance_refresh(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<InteractionId>, ErrorResponseRestDTO>,
+) -> OkOrErrorResponse<IssuanceRefreshResponseRestDTO> {
+    let result = state.core.ssi_holder_service.refresh_credentials(id).await;
+    OkOrErrorResponse::from_result(result, state, "refreshing credential")
 }
 
 #[endpoint(
