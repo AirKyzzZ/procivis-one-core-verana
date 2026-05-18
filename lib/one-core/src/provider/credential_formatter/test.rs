@@ -1,7 +1,9 @@
 use std::str::FromStr;
 
 use indexmap::indexset;
+use maplit::hashmap;
 use shared_types::DidValue;
+use shared_types::i18n::I18nString;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
@@ -18,7 +20,9 @@ use crate::service::credential::dto::{
     DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO,
     DetailCredentialSchemaResponseDTO,
 };
-use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
+use crate::service::credential_schema::dto::{
+    CredentialClaimSchemaDTO, CredentialClaimSchemaTranslationsDTO, CredentialSchemaTranslationsDTO,
+};
 use crate::service::test_utilities::{dummy_did, dummy_identifier, dummy_organisation};
 
 fn generate_credential_detail_response(
@@ -50,6 +54,10 @@ fn generate_credential_detail_response(
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            translations: CredentialSchemaTranslationsDTO {
+                name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+                description: None,
+            },
         },
         issuer: None,
         issuer_certificate: None,
@@ -197,6 +205,9 @@ fn test_from_credential_detail_response_nested_claim_mapping() {
                 required: false,
                 array: false,
                 claims: vec![],
+                translations: CredentialClaimSchemaTranslationsDTO {
+                    name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+                },
             },
             value: DetailCredentialClaimValueResponseDTO::Nested(vec![
                 DetailCredentialClaimResponseDTO {
@@ -210,6 +221,9 @@ fn test_from_credential_detail_response_nested_claim_mapping() {
                         required: false,
                         array: false,
                         claims: vec![],
+                        translations: CredentialClaimSchemaTranslationsDTO {
+                            name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+                        },
                     },
                     value: DetailCredentialClaimValueResponseDTO::String("123".to_string()),
                 },
@@ -224,6 +238,9 @@ fn test_from_credential_detail_response_nested_claim_mapping() {
                         required: false,
                         array: false,
                         claims: vec![],
+                        translations: CredentialClaimSchemaTranslationsDTO {
+                            name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+                        },
                     },
                     value: DetailCredentialClaimValueResponseDTO::String("456".to_string()),
                 },
@@ -240,6 +257,9 @@ fn test_from_credential_detail_response_nested_claim_mapping() {
                 required: false,
                 array: false,
                 claims: vec![],
+                translations: CredentialClaimSchemaTranslationsDTO {
+                    name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+                },
             },
             value: DetailCredentialClaimValueResponseDTO::String("some street".to_string()),
         },
@@ -320,6 +340,9 @@ fn test_from_credential_detail_response_nested_claim_mapping_array() {
                 required: false,
                 array: true,
                 claims: vec![],
+                translations: CredentialClaimSchemaTranslationsDTO {
+                    name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+                },
             },
             path: "location".to_string(),
             value: DetailCredentialClaimValueResponseDTO::Nested(vec![
@@ -333,6 +356,9 @@ fn test_from_credential_detail_response_nested_claim_mapping_array() {
                         array: false,
                         required: false,
                         claims: vec![],
+                        translations: CredentialClaimSchemaTranslationsDTO {
+                            name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+                        },
                     },
                     path: "location/0/x".to_string(),
                     value: DetailCredentialClaimValueResponseDTO::String("123".to_string()),
@@ -347,6 +373,9 @@ fn test_from_credential_detail_response_nested_claim_mapping_array() {
                         datatype: "STRING".to_string(),
                         required: false,
                         claims: vec![],
+                        translations: CredentialClaimSchemaTranslationsDTO {
+                            name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+                        },
                     },
                     path: "location/0/y".to_string(),
                     value: DetailCredentialClaimValueResponseDTO::String("456".to_string()),
@@ -363,6 +392,9 @@ fn test_from_credential_detail_response_nested_claim_mapping_array() {
                 datatype: "STRING".to_string(),
                 required: false,
                 claims: vec![],
+                translations: CredentialClaimSchemaTranslationsDTO {
+                    name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+                },
             },
             path: "street".to_string(),
             value: DetailCredentialClaimValueResponseDTO::String("some street".to_string()),

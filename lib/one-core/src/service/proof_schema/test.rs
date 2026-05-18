@@ -18,6 +18,7 @@ use crate::config::core_config::{
     ConfigEntryDisplay, CoreConfig, KeySecurityLevelFields, KeySecurityLevelType,
 };
 use crate::error::{ErrorCode, ErrorCodeMixin};
+use crate::mapper::credential_schema_claim::backfill_default_translations;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::common::GetListResponse;
 use crate::model::credential_schema::{
@@ -2148,10 +2149,13 @@ async fn test_get_proof_schema_success_nested_claims() {
             required: true,
             order: 0,
         }]),
-        credential_schema: Some(credential_schema_with_claims(vec![
-            location_claim_schema,
-            location_x_claim_schema.to_owned(),
-        ])),
+        credential_schema: Some(
+            credential_schema_with_claims(vec![
+                location_claim_schema,
+                location_x_claim_schema.to_owned(),
+            ])
+            .await,
+        ),
     }]);
 
     let service = setup_service(Repositories {
@@ -2220,11 +2224,14 @@ async fn test_get_proof_schema_success_nested_claims_not_mandatory() {
             required: true,
             order: 0,
         }]),
-        credential_schema: Some(credential_schema_with_claims(vec![
-            location_cs,
-            location_x_cs,
-            location_foo_cs.to_owned(),
-        ])),
+        credential_schema: Some(
+            credential_schema_with_claims(vec![
+                location_cs,
+                location_x_cs,
+                location_foo_cs.to_owned(),
+            ])
+            .await,
+        ),
     }]);
 
     let service = setup_service(Repositories {
@@ -2300,11 +2307,9 @@ async fn test_get_proof_schema_success_nested_claims_parent_not_mandatory() {
                 order: 1,
             },
         ]),
-        credential_schema: Some(credential_schema_with_claims(vec![
-            bar_cs,
-            location_cs,
-            location_x_cs,
-        ])),
+        credential_schema: Some(
+            credential_schema_with_claims(vec![bar_cs, location_cs, location_x_cs]).await,
+        ),
     }]);
 
     let service = setup_service(Repositories {
@@ -2343,39 +2348,44 @@ fn proof_schema_repo_expecting_get(proof_schema: ProofSchema) -> MockProofSchema
     proof_schema_repository
 }
 
-fn credential_schema_with_claims(claims: Vec<ClaimSchema>) -> CredentialSchema {
+async fn credential_schema_with_claims(claims: Vec<ClaimSchema>) -> CredentialSchema {
     let now = crate::clock::now_utc();
     let credential_schema_id = Uuid::new_v4().into();
-    CredentialSchema {
-        batch_size: None,
-        allow_revocation: None,
-        id: credential_schema_id,
-        deleted_at: None,
-        created_date: now,
-        last_modified: now,
-        name: "".to_string(),
-        formats: vec![CredentialSchemaFormat {
-            id: Uuid::new_v4().into(),
-            created_date: crate::clock::now_utc(),
-            last_modified: crate::clock::now_utc(),
-            credential_schema_id,
-            format: "".into(),
-            schema_id: "".to_owned(),
-            claim_mappings: Default::default(),
-        }]
-        .into(),
-        imported_source_url: "CORE_URL".to_string(),
-        revocation_method: None,
-        key_storage_security: None,
-        layout_type: LayoutType::Card,
-        layout_properties: None,
-        claim_schemas: claims.into(),
-        organisation: dummy_organisation(None).into(),
-        allow_suspension: true,
-        requires_wallet_instance_attestation: false,
-        transaction_code: None,
-        translations: Default::default(),
-    }
+    backfill_default_translations(
+        CredentialSchema {
+            batch_size: None,
+            allow_revocation: None,
+            id: credential_schema_id,
+            deleted_at: None,
+            created_date: now,
+            last_modified: now,
+            name: "".to_string(),
+            formats: vec![CredentialSchemaFormat {
+                id: Uuid::new_v4().into(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                credential_schema_id,
+                format: "".into(),
+                schema_id: "".to_owned(),
+                claim_mappings: Default::default(),
+            }]
+            .into(),
+            imported_source_url: "CORE_URL".to_string(),
+            revocation_method: None,
+            key_storage_security: None,
+            layout_type: LayoutType::Card,
+            layout_properties: None,
+            claim_schemas: claims.into(),
+            organisation: dummy_organisation(None).into(),
+            allow_suspension: true,
+            requires_wallet_instance_attestation: false,
+            transaction_code: None,
+            translations: Default::default(),
+        },
+        "en",
+    )
+    .await
+    .unwrap()
 }
 
 #[tokio::test]

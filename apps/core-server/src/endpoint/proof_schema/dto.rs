@@ -22,8 +22,9 @@ use crate::deserialize::deserialize_timestamp;
 use crate::dto::common::ListQueryParamsRest;
 use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::endpoint::credential_schema::dto::{
-    CredentialSchemaLayoutPropertiesRestDTO, CredentialSchemaLayoutType,
-    CredentialSchemaListItemResponseRestDTO, KeyStorageSecurityRestEnum,
+    CredentialClaimSchemaTranslationsRestDTO, CredentialSchemaLayoutPropertiesRestDTO,
+    CredentialSchemaLayoutType, CredentialSchemaListItemResponseRestDTO,
+    KeyStorageSecurityRestEnum,
 };
 use crate::serialize::{front_time, front_time_option};
 
@@ -187,6 +188,9 @@ pub(crate) struct ImportProofSchemaCredentialSchemaRestDTO {
     pub allow_suspension: Option<bool>,
     #[try_into(infallible)]
     pub requires_wallet_instance_attestation: Option<bool>,
+    #[allow(unused)]
+    #[try_into(skip)]
+    pub translations: Option<CredentialClaimSchemaTranslationsRestDTO>,
 }
 
 // list endpoint
@@ -345,10 +349,13 @@ pub(crate) struct ProofSchemaShareResponseRestDTO {
 
 #[cfg(test)]
 mod test {
+    use shared_types::i18n::I18nString;
+
     use super::*;
     use crate::endpoint::credential_schema::dto::{
         CredentialSchemaBackgroundPropertiesRestDTO, CredentialSchemaCodePropertiesRestDTO,
         CredentialSchemaCodeTypeRestEnum, CredentialSchemaLogoPropertiesRestDTO,
+        CredentialSchemaTranslationsRestDTO,
     };
 
     #[test]
@@ -403,6 +410,13 @@ mod test {
                     }),
                     allow_suspension: true,
                     requires_wallet_instance_attestation: true,
+                    translations: CredentialSchemaTranslationsRestDTO {
+                        name: I18nString(std::collections::HashMap::from([(
+                            "en".to_string(),
+                            "name".to_string(),
+                        )])),
+                        description: None,
+                    },
                 },
             }],
         };

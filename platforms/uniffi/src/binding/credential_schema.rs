@@ -1,17 +1,21 @@
+use std::collections::HashMap;
+
 use one_core::model::credential_schema::{
     CredentialSchemaExactColumn, KeyStorageSecurity, LayoutType, SortableCredentialSchemaColumn,
     TransactionCodeType,
 };
 use one_core::service::credential_schema::dto::{
-    CredentialClaimSchemaDTO, CredentialSchemaBackgroundPropertiesRequestDTO,
+    CredentialClaimSchemaDTO, CredentialClaimSchemaTranslationsDTO,
+    CredentialSchemaBackgroundPropertiesRequestDTO,
     CredentialSchemaBackgroundPropertiesResponseDTO, CredentialSchemaCodePropertiesDTO,
     CredentialSchemaCodeTypeEnum, CredentialSchemaDetailResponseDTO,
     CredentialSchemaLayoutPropertiesRequestDTO, CredentialSchemaLayoutPropertiesResponseDTO,
     CredentialSchemaListIncludeEntityTypeEnum, CredentialSchemaLogoPropertiesRequestDTO,
     CredentialSchemaLogoPropertiesResponseDTO, CredentialSchemaShareResponseDTO,
-    CredentialSchemaTransactionCodeDTO, GetCredentialSchemaListResponseDTO,
-    ImportCredentialSchemaLayoutPropertiesDTO, ImportCredentialSchemaRequestDTO,
-    ImportCredentialSchemaRequestSchemaDTO, ImportCredentialSchemaTransactionCodeDTO,
+    CredentialSchemaTransactionCodeDTO, CredentialSchemaTranslationsDTO,
+    GetCredentialSchemaListResponseDTO, ImportCredentialSchemaLayoutPropertiesDTO,
+    ImportCredentialSchemaRequestDTO, ImportCredentialSchemaRequestSchemaDTO,
+    ImportCredentialSchemaTransactionCodeDTO,
 };
 use one_dto_mapper::{From, Into, TryInto, convert_inner, try_convert_inner};
 use shared_types::CredentialSchemaId;
@@ -136,6 +140,7 @@ pub struct CredentialSchemaDetailBindingDTO {
     pub requires_wallet_instance_attestation: bool,
     #[from(with_fn = convert_inner)]
     pub transaction_code: Option<CredentialSchemaTransactionCodeBindingDTO>,
+    pub translations: CredentialSchemaTranslationsBindingDTO,
 }
 
 #[derive(Clone, Debug, uniffi::Record, From)]
@@ -163,6 +168,7 @@ pub struct CredentialSchemaBindingDTO {
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesBindingDTO>,
     pub allow_suspension: bool,
     pub requires_wallet_instance_attestation: bool,
+    pub translations: CredentialSchemaTranslationsBindingDTO,
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]
@@ -248,6 +254,7 @@ pub struct CredentialClaimSchemaBindingDTO {
     pub array: bool,
     #[from(with_fn = convert_inner)]
     pub claims: Vec<CredentialClaimSchemaBindingDTO>,
+    pub translations: CredentialClaimSchemaTranslationsBindingDTO,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, From, Into, uniffi::Enum)]
@@ -430,6 +437,34 @@ pub enum KeyStorageSecurityBindingEnum {
     Moderate,
     EnhancedBasic,
     Basic,
+}
+
+#[derive(Clone, Debug, uniffi::Record)]
+#[uniffi(name = "CredentialSchemaTranslations")]
+pub struct CredentialSchemaTranslationsBindingDTO {
+    pub name: HashMap<String, String>,
+    pub description: Option<HashMap<String, String>>,
+}
+
+impl From<CredentialSchemaTranslationsDTO> for CredentialSchemaTranslationsBindingDTO {
+    fn from(value: CredentialSchemaTranslationsDTO) -> Self {
+        Self {
+            name: value.name.0,
+            description: value.description.map(|d| d.0),
+        }
+    }
+}
+
+#[derive(Clone, Debug, uniffi::Record)]
+#[uniffi(name = "CredentialClaimSchemaTranslations")]
+pub struct CredentialClaimSchemaTranslationsBindingDTO {
+    pub name: HashMap<String, String>,
+}
+
+impl From<CredentialClaimSchemaTranslationsDTO> for CredentialClaimSchemaTranslationsBindingDTO {
+    fn from(value: CredentialClaimSchemaTranslationsDTO) -> Self {
+        Self { name: value.name.0 }
+    }
 }
 
 fn inner_to_string(value: Option<impl ToString>) -> Option<String> {

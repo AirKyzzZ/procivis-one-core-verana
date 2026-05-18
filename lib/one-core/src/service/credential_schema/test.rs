@@ -2,7 +2,9 @@ use std::sync::Arc;
 use std::vec;
 
 use assert2::let_assert;
+use maplit::hashmap;
 use mockall::predicate::*;
+use shared_types::i18n::I18nString;
 use shared_types::{CredentialSchemaId, RevocationMethodId};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
@@ -10,11 +12,12 @@ use uuid::Uuid;
 use super::CredentialSchemaService;
 use super::dto::{
     CreateCredentialSchemaRequestDTO, CredentialClaimSchemaDTO, CredentialClaimSchemaRequestDTO,
-    CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaCodePropertiesDTO,
-    CredentialSchemaCodeTypeEnum, CredentialSchemaFilterParamsDTO,
-    CredentialSchemaLayoutPropertiesRequestDTO, CredentialSchemaLogoPropertiesRequestDTO,
-    CredentialSchemaTransactionCodeRequestDTO, ImportCredentialSchemaClaimSchemaDTO,
-    ImportCredentialSchemaRequestDTO, ImportCredentialSchemaRequestSchemaDTO,
+    CredentialClaimSchemaTranslationsDTO, CredentialSchemaBackgroundPropertiesRequestDTO,
+    CredentialSchemaCodePropertiesDTO, CredentialSchemaCodeTypeEnum,
+    CredentialSchemaFilterParamsDTO, CredentialSchemaLayoutPropertiesRequestDTO,
+    CredentialSchemaLogoPropertiesRequestDTO, CredentialSchemaTransactionCodeRequestDTO,
+    ImportCredentialSchemaClaimSchemaDTO, ImportCredentialSchemaRequestDTO,
+    ImportCredentialSchemaRequestSchemaDTO,
 };
 use super::error::CredentialSchemaServiceError;
 use super::mapper::{renest_claim_schemas, unnest_claim_schemas};
@@ -28,6 +31,7 @@ use crate::model::credential_schema::{
     CredentialSchema, GetCredentialSchemaList, KeyStorageSecurity, LayoutType, TransactionCodeType,
 };
 use crate::model::credential_schema_format::CredentialSchemaFormat;
+use crate::model::localized_text::{LocalizedText, LocalizedTextEntityType, LocalizedTextField};
 use crate::proto::credential_schema::importer::{
     CredentialSchemaImporterProto, MockCredentialSchemaImporter,
 };
@@ -83,6 +87,7 @@ fn setup_service(
 fn generic_credential_schema() -> CredentialSchema {
     let now = crate::clock::now_utc();
     let credential_schema_id = Uuid::new_v4().into();
+    let claim_schema_id = Uuid::new_v4().into();
     CredentialSchema {
         batch_size: None,
         allow_revocation: None,
@@ -106,7 +111,7 @@ fn generic_credential_schema() -> CredentialSchema {
         revocation_method: None,
         claim_schemas: vec![ClaimSchema {
             business_key: None,
-            id: Uuid::new_v4().into(),
+            id: claim_schema_id,
             key: "".to_string(),
             data_type: "".to_string(),
             created_date: now,
@@ -114,7 +119,16 @@ fn generic_credential_schema() -> CredentialSchema {
             array: false,
             metadata: false,
             required: true,
-            translations: Default::default(),
+            translations: vec![LocalizedText {
+                entity_id: claim_schema_id.into(),
+                field: LocalizedTextField::Name,
+                created_date: now,
+                last_modified: now,
+                lang: "en".to_string(),
+                value: "".to_string(),
+                entity_type: LocalizedTextEntityType::ClaimSchema,
+            }]
+            .into(),
         }]
         .into(),
         organisation: dummy_organisation(None).into(),
@@ -123,7 +137,16 @@ fn generic_credential_schema() -> CredentialSchema {
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
         transaction_code: None,
-        translations: Default::default(),
+        translations: vec![LocalizedText {
+            entity_id: credential_schema_id.into(),
+            field: LocalizedTextField::Name,
+            created_date: now,
+            last_modified: now,
+            lang: "en".to_string(),
+            value: "testName".to_string(),
+            entity_type: LocalizedTextEntityType::CredentialSchema,
+        }]
+        .into(),
     }
 }
 
@@ -1774,6 +1797,9 @@ fn test_renest_claim_schemas_single_layer_of_nested_claims() {
             required: true,
             array: false,
             claims: vec![],
+            translations: CredentialClaimSchemaTranslationsDTO {
+                name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+            },
         },
         CredentialClaimSchemaDTO {
             id: uuid_location_x,
@@ -1784,6 +1810,9 @@ fn test_renest_claim_schemas_single_layer_of_nested_claims() {
             required: true,
             array: false,
             claims: vec![],
+            translations: CredentialClaimSchemaTranslationsDTO {
+                name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+            },
         },
         CredentialClaimSchemaDTO {
             id: uuid_location_y,
@@ -1794,6 +1823,9 @@ fn test_renest_claim_schemas_single_layer_of_nested_claims() {
             required: true,
             array: false,
             claims: vec![],
+            translations: CredentialClaimSchemaTranslationsDTO {
+                name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+            },
         },
     ];
 
@@ -1805,6 +1837,10 @@ fn test_renest_claim_schemas_single_layer_of_nested_claims() {
         datatype: "OBJECT".to_string(),
         required: true,
         array: false,
+        translations: CredentialClaimSchemaTranslationsDTO {
+            name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+        },
+
         claims: vec![
             CredentialClaimSchemaDTO {
                 id: uuid_location_x,
@@ -1815,6 +1851,9 @@ fn test_renest_claim_schemas_single_layer_of_nested_claims() {
                 required: true,
                 array: false,
                 claims: vec![],
+                translations: CredentialClaimSchemaTranslationsDTO {
+                    name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+                },
             },
             CredentialClaimSchemaDTO {
                 id: uuid_location_y,
@@ -1825,6 +1864,9 @@ fn test_renest_claim_schemas_single_layer_of_nested_claims() {
                 required: true,
                 array: false,
                 claims: vec![],
+                translations: CredentialClaimSchemaTranslationsDTO {
+                    name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+                },
             },
         ],
     }];
@@ -1854,6 +1896,9 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
             required: true,
             array: false,
             claims: vec![],
+            translations: CredentialClaimSchemaTranslationsDTO {
+                name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+            },
         },
         CredentialClaimSchemaDTO {
             id: uuid_address_location,
@@ -1864,6 +1909,9 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
             required: true,
             array: false,
             claims: vec![],
+            translations: CredentialClaimSchemaTranslationsDTO {
+                name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+            },
         },
         CredentialClaimSchemaDTO {
             id: uuid_address_postal_data,
@@ -1874,6 +1922,9 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
             required: true,
             array: false,
             claims: vec![],
+            translations: CredentialClaimSchemaTranslationsDTO {
+                name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+            },
         },
         CredentialClaimSchemaDTO {
             id: uuid_address_location_x,
@@ -1884,6 +1935,9 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
             required: true,
             array: false,
             claims: vec![],
+            translations: CredentialClaimSchemaTranslationsDTO {
+                name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+            },
         },
         CredentialClaimSchemaDTO {
             id: uuid_address_location_y,
@@ -1894,6 +1948,9 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
             required: true,
             array: false,
             claims: vec![],
+            translations: CredentialClaimSchemaTranslationsDTO {
+                name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+            },
         },
         CredentialClaimSchemaDTO {
             id: uuid_address_postal_data_street,
@@ -1904,6 +1961,9 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
             required: true,
             array: false,
             claims: vec![],
+            translations: CredentialClaimSchemaTranslationsDTO {
+                name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+            },
         },
         CredentialClaimSchemaDTO {
             id: uuid_address_postal_data_code,
@@ -1914,6 +1974,9 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
             required: true,
             array: false,
             claims: vec![],
+            translations: CredentialClaimSchemaTranslationsDTO {
+                name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+            },
         },
     ];
 
@@ -1925,6 +1988,10 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
         datatype: "OBJECT".to_string(),
         required: true,
         array: false,
+        translations: CredentialClaimSchemaTranslationsDTO {
+            name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+        },
+
         claims: vec![
             CredentialClaimSchemaDTO {
                 id: uuid_address_location,
@@ -1934,6 +2001,10 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
                 datatype: "OBJECT".to_string(),
                 required: true,
                 array: false,
+                translations: CredentialClaimSchemaTranslationsDTO {
+                    name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+                },
+
                 claims: vec![
                     CredentialClaimSchemaDTO {
                         id: uuid_address_location_x,
@@ -1944,6 +2015,9 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
                         required: true,
                         array: false,
                         claims: vec![],
+                        translations: CredentialClaimSchemaTranslationsDTO {
+                            name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+                        },
                     },
                     CredentialClaimSchemaDTO {
                         id: uuid_address_location_y,
@@ -1954,6 +2028,9 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
                         required: true,
                         array: false,
                         claims: vec![],
+                        translations: CredentialClaimSchemaTranslationsDTO {
+                            name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+                        },
                     },
                 ],
             },
@@ -1965,6 +2042,10 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
                 datatype: "OBJECT".to_string(),
                 required: true,
                 array: false,
+                translations: CredentialClaimSchemaTranslationsDTO {
+                    name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+                },
+
                 claims: vec![
                     CredentialClaimSchemaDTO {
                         id: uuid_address_postal_data_street,
@@ -1975,6 +2056,9 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
                         required: true,
                         array: false,
                         claims: vec![],
+                        translations: CredentialClaimSchemaTranslationsDTO {
+                            name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+                        },
                     },
                     CredentialClaimSchemaDTO {
                         id: uuid_address_postal_data_code,
@@ -1985,6 +2069,9 @@ fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
                         required: true,
                         array: false,
                         claims: vec![],
+                        translations: CredentialClaimSchemaTranslationsDTO {
+                            name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+                        },
                     },
                 ],
             },
@@ -2009,6 +2096,9 @@ fn test_renest_claim_schemas_failed_missing_parent_claim_schema() {
         required: true,
         array: false,
         claims: vec![],
+        translations: CredentialClaimSchemaTranslationsDTO {
+            name: I18nString(hashmap! { "en".to_string() => "name".to_string()}),
+        },
     }];
     assert!(matches!(
         renest_claim_schemas(request),

@@ -6,19 +6,21 @@ use uuid::Uuid;
 
 use super::dto::{
     CreateCredentialSchemaRequestDTO, CreateCredentialSchemaV2RequestDTO, CredentialClaimSchemaDTO,
-    CredentialClaimSchemaRequestDTO, CredentialClaimSchemaV2DTO,
-    CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaCodePropertiesDTO,
-    CredentialSchemaDcqlResponseDTO, CredentialSchemaDetailResponseDTO,
-    CredentialSchemaDetailV2ResponseDTO, CredentialSchemaFilterParamsDTO,
-    CredentialSchemaFilterValue, CredentialSchemaFormatResponseDTO,
-    CredentialSchemaListItemResponseDTO, CredentialSchemaListItemV2ResponseDTO,
-    CredentialSchemaLogoPropertiesRequestDTO,
+    CredentialClaimSchemaRequestDTO, CredentialClaimSchemaTranslationsDTO,
+    CredentialClaimSchemaV2DTO, CredentialSchemaBackgroundPropertiesRequestDTO,
+    CredentialSchemaCodePropertiesDTO, CredentialSchemaDcqlResponseDTO,
+    CredentialSchemaDetailResponseDTO, CredentialSchemaDetailV2ResponseDTO,
+    CredentialSchemaFilterParamsDTO, CredentialSchemaFilterValue,
+    CredentialSchemaFormatResponseDTO, CredentialSchemaListItemResponseDTO,
+    CredentialSchemaListItemV2ResponseDTO, CredentialSchemaLogoPropertiesRequestDTO,
+    CredentialSchemaTranslationsDTO,
 };
 use super::error::CredentialSchemaServiceError;
 use crate::config::core_config::{CoreConfig, FormatType};
 use crate::error::{ContextWithErrorCode, NestedError};
 use crate::mapper::credential_schema_claim::{
-    claim_schema_from_metadata_claim_schema, from_jwt_request_claim_schema,
+    claim_schema_from_metadata_claim_schema, claim_schema_to_dto, from_jwt_request_claim_schema,
+    translations_to_i18n,
 };
 use crate::mapper::{NESTED_CLAIM_MARKER, remove_first_nesting_layer};
 use crate::model::claim_schema::ClaimSchema;
@@ -50,17 +52,19 @@ pub(crate) async fn schema_to_detail_response_dto(
             "Missing formats".to_string(),
         ))?;
     let dcql = map_dcql_format_meta(format, config);
-    let claim_schemas = value
-        .claim_schemas
-        .get()
-        .await
-        .error_while("getting claim schemas")?
-        .into_iter()
-        .filter(|schema| !schema.metadata)
-        .collect::<Vec<_>>();
-    let claim_schemas = renest_claim_schemas(convert_inner(claim_schemas))?;
+    let non_metadata_claims = non_metadata_claim_schemas(&value).await?;
+    let mut claim_schema_dtos = Vec::with_capacity(non_metadata_claims.len());
+    for cs in non_metadata_claims {
+        claim_schema_dtos.push(
+            claim_schema_to_dto(cs)
+                .await
+                .map_err(|e| CredentialSchemaServiceError::MappingError(e.to_string()))?,
+        );
+    }
+    let claim_schemas = renest_claim_schemas(claim_schema_dtos)?;
 
     Ok(CredentialSchemaDetailResponseDTO {
+        translations: map_translations(&value).await?,
         id: value.id,
         created_date: value.created_date,
         last_modified: value.last_modified,
@@ -94,15 +98,7 @@ pub(crate) async fn schema_to_detail_v2_response_dto(
         })
         .collect();
 
-    let claim_schemas = value
-        .claim_schemas
-        .get()
-        .await
-        .error_while("getting claim schemas")?
-        .into_iter()
-        .filter(|schema| !schema.metadata)
-        .collect::<Vec<_>>();
-
+    let non_metadata_claim_schemas = non_metadata_claim_schemas(&value).await?;
     let mut claim_mappings_map: std::collections::HashMap<
         shared_types::ClaimSchemaId,
         Vec<CredentialClaimSchemaMappingDTO>,
@@ -126,27 +122,40 @@ pub(crate) async fn schema_to_detail_v2_response_dto(
         }
     }
 
-    let claim_schemas_v2: Vec<CredentialClaimSchemaV2DTO> = claim_schemas
-        .into_iter()
-        .map(|cs| {
-            let mappings = claim_mappings_map.remove(&cs.id);
-            CredentialClaimSchemaV2DTO {
-                id: cs.id,
-                created_date: cs.created_date,
-                last_modified: cs.last_modified,
-                key: cs.key,
-                datatype: cs.data_type,
-                required: cs.required,
-                array: cs.array,
-                claims: vec![],
-                mappings,
-            }
-        })
-        .collect();
+    let mut claim_schemas_v2 = vec![];
+    for cs in non_metadata_claim_schemas {
+        let mappings = claim_mappings_map.remove(&cs.id);
+        let translations = cs
+            .translations
+            .get()
+            .await
+            .error_while(format!("getting translations for claim schema {}", cs.id))?;
+        let dto = CredentialClaimSchemaV2DTO {
+            id: cs.id,
+            created_date: cs.created_date,
+            last_modified: cs.last_modified,
+            key: cs.key,
+            datatype: cs.data_type,
+            required: cs.required,
+            array: cs.array,
+            claims: vec![],
+            mappings,
+            translations: CredentialClaimSchemaTranslationsDTO {
+                name: translations_to_i18n(&translations, LocalizedTextField::Name).ok_or(
+                    CredentialSchemaServiceError::MappingError(format!(
+                        "No translations for `name` of claim schema {}",
+                        cs.id
+                    )),
+                )?,
+            },
+        };
+        claim_schemas_v2.push(dto);
+    }
 
     let claim_schemas_v2 = renest_claim_schemas_v2(claim_schemas_v2)?;
 
     Ok(CredentialSchemaDetailV2ResponseDTO {
+        translations: map_translations(&value).await?,
         id: value.id,
         created_date: value.created_date,
         last_modified: value.last_modified,
@@ -166,6 +175,18 @@ pub(crate) async fn schema_to_detail_v2_response_dto(
     })
 }
 
+async fn non_metadata_claim_schemas(
+    value: &CredentialSchema,
+) -> Result<Vec<ClaimSchema>, CredentialSchemaServiceError> {
+    Ok(value
+        .claim_schemas
+        .get()
+        .await
+        .error_while("getting claim schemas")?
+        .into_iter()
+        .filter(|schema| !schema.metadata)
+        .collect::<Vec<_>>())
+}
 fn renest_claim_schemas_v2(
     claim_schemas: Vec<CredentialClaimSchemaV2DTO>,
 ) -> Result<Vec<CredentialClaimSchemaV2DTO>, CredentialSchemaServiceError> {
@@ -464,6 +485,9 @@ pub(crate) async fn to_credential_schema_list_response(
     let format = credential_schema.format().await?.to_owned();
     let schema_id = credential_schema.schema_id().await?;
     Ok(CredentialSchemaListItemResponseDTO {
+        translations: map_translations(&credential_schema)
+            .await
+            .error_while("getting translations for credential schema")?,
         id: credential_schema.id,
         created_date: credential_schema.created_date,
         last_modified: credential_schema.last_modified,
@@ -500,6 +524,9 @@ pub(crate) async fn to_credential_schema_list_v2_response(
         .collect();
 
     Ok(CredentialSchemaListItemV2ResponseDTO {
+        translations: map_translations(&credential_schema)
+            .await
+            .error_while("getting translations for credential schema")?,
         id: credential_schema.id,
         created_date: credential_schema.created_date,
         last_modified: credential_schema.last_modified,
@@ -514,6 +541,25 @@ pub(crate) async fn to_credential_schema_list_v2_response(
         batch_size: credential_schema.batch_size,
         requires_wallet_instance_attestation: credential_schema
             .requires_wallet_instance_attestation,
+    })
+}
+
+async fn map_translations(
+    schema: &CredentialSchema,
+) -> Result<CredentialSchemaTranslationsDTO, CredentialSchemaServiceError> {
+    let texts = schema
+        .translations
+        .get()
+        .await
+        .error_while("getting schema translations")?;
+    Ok(CredentialSchemaTranslationsDTO {
+        name: translations_to_i18n(&texts, LocalizedTextField::Name).ok_or(
+            CredentialSchemaServiceError::MappingError(format!(
+                "No translations for `name` of credential schema {}",
+                schema.id
+            )),
+        )?,
+        description: translations_to_i18n(&texts, LocalizedTextField::Description),
     })
 }
 

@@ -48,6 +48,8 @@ async fn test_get_credential_schema_success() {
     assert_eq!(resp["layoutProperties"]["pictureAttribute"], "firstName");
     assert_eq!(resp["layoutProperties"]["code"]["attribute"], "firstName");
     assert_eq!(resp["layoutProperties"]["code"]["type"], "BARCODE");
+    assert_eq!(resp["claims"][0]["translations"]["name"]["en"], "firstName");
+    assert_eq!(resp["translations"]["name"]["en"], "test schema");
 }
 
 #[tokio::test]

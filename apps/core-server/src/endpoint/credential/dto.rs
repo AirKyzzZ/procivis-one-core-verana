@@ -28,7 +28,7 @@ use crate::endpoint::certificate::dto::CertificateResponseRestDTO;
 use crate::endpoint::credential_schema::dto::{
     CredentialClaimSchemaResponseRestDTO, CredentialSchemaLayoutPropertiesRestDTO,
     CredentialSchemaLayoutType, CredentialSchemaListItemResponseRestDTO,
-    KeyStorageSecurityRestEnum,
+    CredentialSchemaTranslationsRestDTO, KeyStorageSecurityRestEnum,
 };
 use crate::endpoint::identifier::dto::GetIdentifierListItemResponseRestDTO;
 use crate::serialize::{front_time, front_time_option};
@@ -227,6 +227,7 @@ pub(crate) struct CredentialDetailSchemaResponseRestDTO {
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
     pub allow_suspension: bool,
     pub requires_wallet_instance_attestation: bool,
+    pub translations: CredentialSchemaTranslationsRestDTO,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

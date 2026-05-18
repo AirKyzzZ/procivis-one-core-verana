@@ -64,6 +64,8 @@ async fn test_get_credential_schema_v2_success() {
     assert!(formats[0]["schemaId"].is_string());
 
     assert_eq!(resp["claims"].as_array().unwrap().len(), 2);
+    assert_eq!(resp["claims"][0]["translations"]["name"]["en"], "firstName");
+    assert_eq!(resp["translations"]["name"]["en"], "test schema");
 }
 
 #[tokio::test]

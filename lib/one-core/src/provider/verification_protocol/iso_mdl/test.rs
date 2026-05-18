@@ -9,6 +9,7 @@ use uuid::Uuid;
 
 use super::IsoMdl;
 use crate::config::core_config::VerificationEngagement;
+use crate::mapper::credential_schema_claim::backfill_default_translations;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
@@ -347,36 +348,41 @@ async fn test_get_presentation_definition_ok() {
             required: true,        translations: Default::default(),
         },
     ];
-    let credential_schema = CredentialSchema {
-        batch_size: None,
-        allow_revocation: None,
-        id: credential_schema_id,
-        created_date: crate::clock::now_utc(),
-        imported_source_url: "CORE_URL".to_string(),
-        last_modified: crate::clock::now_utc(),
-        name: "schema-name".to_string(),
-        formats: vec![CredentialSchemaFormat {
-            id: Uuid::new_v4().into(),
+    let credential_schema = backfill_default_translations(
+        CredentialSchema {
+            batch_size: None,
+            allow_revocation: None,
+            id: credential_schema_id,
             created_date: crate::clock::now_utc(),
+            imported_source_url: "CORE_URL".to_string(),
             last_modified: crate::clock::now_utc(),
-            credential_schema_id,
-            format: "ISO_MDL".into(),
-            schema_id,
-            claim_mappings: Default::default(),
-        }]
-        .into(),
-        revocation_method: None,
-        layout_type: LayoutType::Card,
-        organisation: dummy_organisation(Some(organisation_id)).into(),
-        layout_properties: None,
-        claim_schemas: claim_schemas.values().cloned().collect::<Vec<_>>().into(),
-        key_storage_security: None,
-        deleted_at: None,
-        allow_suspension: true,
-        requires_wallet_instance_attestation: false,
-        transaction_code: None,
-        translations: Default::default(),
-    };
+            name: "schema-name".to_string(),
+            formats: vec![CredentialSchemaFormat {
+                id: Uuid::new_v4().into(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                credential_schema_id,
+                format: "ISO_MDL".into(),
+                schema_id,
+                claim_mappings: Default::default(),
+            }]
+            .into(),
+            revocation_method: None,
+            layout_type: LayoutType::Card,
+            organisation: dummy_organisation(Some(organisation_id)).into(),
+            layout_properties: None,
+            claim_schemas: claim_schemas.values().cloned().collect::<Vec<_>>().into(),
+            key_storage_security: None,
+            deleted_at: None,
+            allow_suspension: true,
+            requires_wallet_instance_attestation: false,
+            transaction_code: None,
+            translations: Default::default(),
+        },
+        "en",
+    )
+    .await
+    .unwrap();
 
     let claims = vec![
         Claim {

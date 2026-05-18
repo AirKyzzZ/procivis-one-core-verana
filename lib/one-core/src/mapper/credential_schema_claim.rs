@@ -1,4 +1,7 @@
+use std::collections::HashMap;
+
 use shared_types::ClaimSchemaId;
+use shared_types::i18n::I18nString;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -9,7 +12,7 @@ use crate::model::localized_text::{LocalizedText, LocalizedTextEntityType, Local
 use crate::provider::credential_formatter::MetadataClaimSchema;
 use crate::repository::error::DataLayerError;
 use crate::service::credential_schema::dto::{
-    CredentialClaimSchemaDTO, CredentialClaimSchemaRequestDTO,
+    CredentialClaimSchemaDTO, CredentialClaimSchemaRequestDTO, CredentialClaimSchemaTranslationsDTO,
 };
 
 pub(crate) fn claim_schema_from_metadata_claim_schema(
@@ -71,19 +74,42 @@ pub(crate) fn from_jwt_request_claim_schema(
     }
 }
 
-impl From<ClaimSchema> for CredentialClaimSchemaDTO {
-    fn from(value: ClaimSchema) -> Self {
-        Self {
-            id: value.id,
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-            key: value.key,
-            datatype: value.data_type,
-            required: value.required,
-            array: value.array,
-            claims: vec![],
-        }
+pub(crate) fn translations_to_i18n(
+    texts: &[LocalizedText],
+    field: LocalizedTextField,
+) -> Option<I18nString> {
+    let translations: HashMap<_, _> = texts
+        .iter()
+        .filter(|t| t.field == field)
+        .map(|t| (t.lang.clone(), t.value.clone()))
+        .collect();
+    if translations.is_empty() {
+        return None;
     }
+    Some(I18nString(translations))
+}
+
+pub(crate) async fn claim_schema_to_dto(
+    value: ClaimSchema,
+) -> Result<CredentialClaimSchemaDTO, DataLayerError> {
+    let raw = value.translations.get().await?;
+    let Some(name) = translations_to_i18n(&raw, LocalizedTextField::Name) else {
+        return Err(DataLayerError::MissingRequiredRelation {
+            relation: "translations",
+            id: value.key.to_string(),
+        });
+    };
+    Ok(CredentialClaimSchemaDTO {
+        id: value.id,
+        created_date: value.created_date,
+        last_modified: value.last_modified,
+        key: value.key,
+        datatype: value.data_type,
+        required: value.required,
+        array: value.array,
+        claims: vec![],
+        translations: CredentialClaimSchemaTranslationsDTO { name },
+    })
 }
 
 pub(crate) async fn backfill_default_translations(

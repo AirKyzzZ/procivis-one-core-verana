@@ -2,6 +2,7 @@ use dcql::CredentialMeta;
 use one_dto_mapper::{From, Into, convert_inner, convert_inner_of_inner};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
+use shared_types::i18n::I18nString;
 use shared_types::{
     ClaimSchemaId, CredentialFormat, CredentialSchemaId, OrganisationId, RevocationMethodId,
 };
@@ -44,6 +45,7 @@ pub struct CredentialSchemaListItemResponseDTO {
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesResponseDTO>,
     pub allow_suspension: bool,
     pub requires_wallet_instance_attestation: bool,
+    pub translations: CredentialSchemaTranslationsDTO,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
@@ -69,6 +71,7 @@ pub struct CredentialClaimSchemaV2DTO {
     pub claims: Vec<CredentialClaimSchemaV2DTO>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mappings: Option<Vec<CredentialClaimSchemaMappingDTO>>,
+    pub translations: CredentialClaimSchemaTranslationsDTO,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -92,6 +95,7 @@ pub struct CredentialSchemaDetailV2ResponseDTO {
     pub batch_size: Option<i32>,
     pub requires_wallet_instance_attestation: bool,
     pub transaction_code: Option<CredentialSchemaTransactionCodeDTO>,
+    pub translations: CredentialSchemaTranslationsDTO,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -116,6 +120,7 @@ pub struct CredentialSchemaDetailResponseDTO {
     pub requires_wallet_instance_attestation: bool,
     pub transaction_code: Option<CredentialSchemaTransactionCodeDTO>,
     pub dcql: Option<CredentialSchemaDcqlResponseDTO>,
+    pub translations: CredentialSchemaTranslationsDTO,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -136,6 +141,19 @@ pub struct CredentialSchemaTransactionCodeDTO {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct CredentialSchemaTranslationsDTO {
+    pub name: I18nString,
+    pub description: Option<I18nString>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CredentialClaimSchemaTranslationsDTO {
+    pub name: I18nString,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CredentialClaimSchemaDTO {
     pub id: ClaimSchemaId,
     #[serde(with = "time::serde::rfc3339")]
@@ -148,6 +166,7 @@ pub struct CredentialClaimSchemaDTO {
     pub array: bool,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub claims: Vec<CredentialClaimSchemaDTO>,
+    pub translations: CredentialClaimSchemaTranslationsDTO,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, EnumString, Display)]
@@ -215,6 +234,7 @@ pub struct CredentialSchemaListItemV2ResponseDTO {
     pub allow_revocation: Option<bool>,
     pub batch_size: Option<i32>,
     pub requires_wallet_instance_attestation: bool,
+    pub translations: CredentialSchemaTranslationsDTO,
 }
 
 #[derive(Clone, Debug)]

@@ -62,6 +62,7 @@ use uuid::Uuid;
 use crate::fixtures::certificate::{create_ca_cert, create_cert, ecdsa, eddsa};
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::certificates::TestingCertificateParams;
+use crate::utils::db_clients::credential_schemas::add_default_translations;
 use crate::utils::db_clients::keys::eddsa_testing_params;
 use crate::utils::db_clients::proof_schemas::CreateProofInputSchema;
 
@@ -648,14 +649,15 @@ pub async fn create_credential_schema(
     let id = params
         .id
         .unwrap_or(CredentialSchemaId::from(Uuid::new_v4()));
-    let credential_schema = CredentialSchema {
+    let name = unwrap_or_random(params.name);
+    let mut credential_schema = CredentialSchema {
         batch_size: None,
         allow_revocation: None,
         id,
         created_date: params.created_date.unwrap_or(now),
         imported_source_url: "CORE_URL".to_string(),
         last_modified: params.last_modified.unwrap_or(now),
-        name: unwrap_or_random(params.name),
+        name: name.clone(),
         key_storage_security: params.key_storage_security.unwrap_or_default(),
         organisation: organisation.to_owned().into(),
         deleted_at: params.deleted_at,
@@ -679,6 +681,9 @@ pub async fn create_credential_schema(
         translations: Default::default(),
     };
 
+    add_default_translations(&mut credential_schema)
+        .await
+        .unwrap();
     data_layer
         .get_credential_schema_repository()
         .create_credential_schema(credential_schema.to_owned())
@@ -713,7 +718,7 @@ pub async fn create_credential_schema_with_claims(
         })
         .collect();
     let id = Uuid::new_v4();
-    let credential_schema = CredentialSchema {
+    let mut credential_schema = CredentialSchema {
         batch_size: None,
         allow_revocation: None,
         id: id.into(),
@@ -744,6 +749,9 @@ pub async fn create_credential_schema_with_claims(
         translations: Default::default(),
     };
 
+    add_default_translations(&mut credential_schema)
+        .await
+        .unwrap();
     data_layer
         .get_credential_schema_repository()
         .create_credential_schema(credential_schema.to_owned())

@@ -14,8 +14,9 @@ use super::dto::{
 };
 use super::error::CredentialServiceError;
 use crate::config::core_config::{CoreConfig, DatatypeType};
-use crate::error::{ContextWithErrorCode, NestedError};
+use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt, NestedError};
 use crate::mapper::NESTED_CLAIM_MARKER;
+use crate::mapper::credential_schema_claim::{claim_schema_to_dto, translations_to_i18n};
 use crate::model::blob::{Blob, BlobType};
 use crate::model::certificate::Certificate;
 use crate::model::claim::Claim;
@@ -31,10 +32,14 @@ use crate::model::list_filter::{
     ComparisonType, ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
     ValueComparison,
 };
+use crate::model::localized_text::LocalizedTextField;
 use crate::model::validity_credential::ValidityCredential;
 use crate::proto::trust_information::dto::TrustInformation;
 use crate::provider::credential_formatter::mdoc_formatter;
 use crate::service::certificate::mapper::certificate_to_response_dto;
+use crate::service::credential_schema::dto::{
+    CredentialClaimSchemaDTO, CredentialSchemaTranslationsDTO,
+};
 use crate::service::credential_schema::mapper::to_credential_schema_list_response;
 
 pub(crate) async fn credential_detail_response_from_model(
@@ -126,14 +131,26 @@ async fn from_vec_claim(
     credential_schema: &CredentialSchema,
     config: &CoreConfig,
 ) -> Result<Vec<DetailCredentialClaimResponseDTO>, CredentialServiceError> {
-    let claim_schemas = credential_schema
+    let claim_schemas_raw = credential_schema
         .claim_schemas
         .get()
         .await
-        .error_while("getting claim schemas")?;
+        .error_while("getting claim schemas")?
+        .into_iter()
+        .filter(|cs| !cs.metadata)
+        .collect::<Vec<_>>();
+
+    let mut claim_schema_dtos = Vec::with_capacity(claim_schemas_raw.len());
+    for cs in claim_schemas_raw {
+        claim_schema_dtos.push(
+            claim_schema_to_dto(cs)
+                .await
+                .map_err(|e| CredentialServiceError::MappingError(e.to_string()))?,
+        );
+    }
 
     let mut claims = claims.into_iter().try_fold(vec![], |state, claim| {
-        insert_claim(state, claim, &claim_schemas, config)
+        insert_claim(state, claim, &claim_schema_dtos, config)
     })?;
 
     sort_claims(&mut claims);
@@ -144,7 +161,7 @@ async fn from_vec_claim(
 fn insert_claim(
     mut root: Vec<DetailCredentialClaimResponseDTO>,
     claim: Claim,
-    claim_schemas: &[ClaimSchema],
+    claim_schemas: &[CredentialClaimSchemaDTO],
     config: &CoreConfig,
 ) -> Result<Vec<DetailCredentialClaimResponseDTO>, CredentialServiceError> {
     match (claim.path.rsplit_once(NESTED_CLAIM_MARKER), &claim.value) {
@@ -204,7 +221,7 @@ fn insert_claim(
 fn get_or_insert<'a>(
     root: &'a mut Vec<DetailCredentialClaimResponseDTO>,
     path: &str,
-    claim_schemas: &[ClaimSchema],
+    claim_schemas: &[CredentialClaimSchemaDTO],
 ) -> Result<&'a mut DetailCredentialClaimResponseDTO, CredentialServiceError> {
     match path.rsplit_once(NESTED_CLAIM_MARKER) {
         Some((head, _)) => {
@@ -232,7 +249,7 @@ fn get_or_insert<'a>(
 
                         claims.push(DetailCredentialClaimResponseDTO {
                             path: path.to_owned(),
-                            schema: item_schema.into(),
+                            schema: item_schema,
                             value: DetailCredentialClaimValueResponseDTO::Nested(vec![]),
                         });
                         let last = claims.len() - 1;
@@ -260,8 +277,7 @@ fn get_or_insert<'a>(
                         .ok_or_else(|| {
                             CredentialServiceError::MappingError("missing claim schema".into())
                         })?
-                        .to_owned()
-                        .into(),
+                        .to_owned(),
                     value: DetailCredentialClaimValueResponseDTO::Nested(vec![]),
                 });
                 let last = root.len() - 1;
@@ -290,7 +306,7 @@ fn from_path_to_key(
 
 fn claim_to_dto(
     claim: &Claim,
-    claim_schema: &ClaimSchema,
+    claim_schema: &CredentialClaimSchemaDTO,
     config: &CoreConfig,
 ) -> Result<DetailCredentialClaimResponseDTO, CredentialServiceError> {
     let claim_value = claim
@@ -302,7 +318,7 @@ fn claim_to_dto(
         )))?;
     let value = match config
         .datatype
-        .get_fields(&claim_schema.data_type)
+        .get_fields(&claim_schema.datatype)
         .error_while("getting datatype config")?
         .r#type
     {
@@ -329,7 +345,7 @@ fn claim_to_dto(
 
     Ok(DetailCredentialClaimResponseDTO {
         path: claim.path.to_owned(),
-        schema: claim_schema.to_owned().into(),
+        schema: claim_schema.to_owned(),
         value,
     })
 }
@@ -525,6 +541,21 @@ pub(crate) async fn to_credential_schema_detail_response(
 ) -> Result<DetailCredentialSchemaResponseDTO, NestedError> {
     let format = credential_schema.format().await?.to_owned();
     let schema_id = credential_schema.schema_id().await?;
+    let raw_translations = credential_schema
+        .translations
+        .get()
+        .await
+        .error_while("getting credential schema translations")?;
+    let translations = CredentialSchemaTranslationsDTO {
+        name: translations_to_i18n(&raw_translations, LocalizedTextField::Name).ok_or(
+            CredentialServiceError::MappingError(format!(
+                "No translations for `name` of credential schema {}",
+                credential_schema.id
+            ))
+            .error_while("mapping credential schema"),
+        )?,
+        description: translations_to_i18n(&raw_translations, LocalizedTextField::Description),
+    };
     Ok(DetailCredentialSchemaResponseDTO {
         id: credential_schema.id,
         created_date: credential_schema.created_date,
@@ -543,6 +574,7 @@ pub(crate) async fn to_credential_schema_detail_response(
         requires_wallet_instance_attestation: credential_schema
             .requires_wallet_instance_attestation,
         transaction_code: convert_inner(credential_schema.transaction_code),
+        translations,
     })
 }
 

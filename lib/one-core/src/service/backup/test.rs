@@ -7,6 +7,7 @@ use tempfile::NamedTempFile;
 use uuid::Uuid;
 
 use super::BackupService;
+use crate::mapper::credential_schema_claim::backfill_default_translations;
 use crate::model::backup::{Metadata, UnexportableEntities};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
@@ -38,7 +39,7 @@ fn setup_service(repositories: Repositories) -> BackupService {
     )
 }
 
-fn dummy_unexportable_entities() -> UnexportableEntities {
+async fn dummy_unexportable_entities() -> UnexportableEntities {
     let claim_schema_id = Uuid::new_v4().into();
 
     let credential_schema_id = Uuid::new_v4().into();
@@ -79,48 +80,55 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
             issuer_identifier: None,
             issuer_certificate: None,
             holder_identifier: None,
-            schema: Some(CredentialSchema {
-                batch_size: None,
-                allow_revocation: None,
-                id: credential_schema_id,
-                deleted_at: None,
-                imported_source_url: "CORE_URL".to_string(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                key_storage_security: Some(KeyStorageSecurity::Basic),
-                name: "name".into(),
-                formats: vec![CredentialSchemaFormat {
-                    id: Uuid::new_v4().into(),
-                    created_date: crate::clock::now_utc(),
-                    last_modified: crate::clock::now_utc(),
-                    credential_schema_id,
-                    format: "format".into(),
-                    schema_id: "CredentialSchemaId".to_owned(),
-                    claim_mappings: Default::default(),
-                }]
-                .into(),
-                revocation_method: Some("revocation_method".into()),
-                claim_schemas: vec![ClaimSchema {
-                    business_key: None,
-                    id: claim_schema_id,
-                    key: "key".into(),
-                    data_type: "STRING".into(),
-                    created_date: crate::clock::now_utc(),
-                    last_modified: crate::clock::now_utc(),
-                    array: false,
-                    metadata: false,
-                    required: false,
-                    translations: Default::default(),
-                }]
-                .into(),
-                organisation: dummy_organisation(None).into(),
-                layout_type: LayoutType::Card,
-                layout_properties: None,
-                allow_suspension: true,
-                requires_wallet_instance_attestation: false,
-                transaction_code: None,
-                translations: Default::default(),
-            }),
+            schema: Some(
+                backfill_default_translations(
+                    CredentialSchema {
+                        batch_size: None,
+                        allow_revocation: None,
+                        id: credential_schema_id,
+                        deleted_at: None,
+                        imported_source_url: "CORE_URL".to_string(),
+                        created_date: crate::clock::now_utc(),
+                        last_modified: crate::clock::now_utc(),
+                        key_storage_security: Some(KeyStorageSecurity::Basic),
+                        name: "name".into(),
+                        formats: vec![CredentialSchemaFormat {
+                            id: Uuid::new_v4().into(),
+                            created_date: crate::clock::now_utc(),
+                            last_modified: crate::clock::now_utc(),
+                            credential_schema_id,
+                            format: "format".into(),
+                            schema_id: "CredentialSchemaId".to_owned(),
+                            claim_mappings: Default::default(),
+                        }]
+                        .into(),
+                        revocation_method: Some("revocation_method".into()),
+                        claim_schemas: vec![ClaimSchema {
+                            business_key: None,
+                            id: claim_schema_id,
+                            key: "key".into(),
+                            data_type: "STRING".into(),
+                            created_date: crate::clock::now_utc(),
+                            last_modified: crate::clock::now_utc(),
+                            array: false,
+                            metadata: false,
+                            required: false,
+                            translations: Default::default(),
+                        }]
+                        .into(),
+                        organisation: dummy_organisation(None).into(),
+                        layout_type: LayoutType::Card,
+                        layout_properties: None,
+                        allow_suspension: true,
+                        requires_wallet_instance_attestation: false,
+                        transaction_code: None,
+                        translations: Default::default(),
+                    },
+                    "en",
+                )
+                .await
+                .unwrap(),
+            ),
             interaction: None,
             key: None,
             credential_blob_id: None,
@@ -157,11 +165,12 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
 async fn test_fetch_unexportable() {
     let mut repositories = Repositories::default();
 
+    let entities = dummy_unexportable_entities().await;
     repositories
         .backup_repository
         .expect_fetch_unexportable()
         .once()
-        .return_once(|_| Ok(dummy_unexportable_entities()));
+        .return_once(move |_| Ok(entities));
 
     let service = setup_service(repositories);
     service.backup_info().await.unwrap();
@@ -221,11 +230,12 @@ async fn test_backup_flow() {
             })
         });
 
+    let entities = dummy_unexportable_entities().await;
     repositories
         .backup_repository
         .expect_fetch_unexportable()
         .once()
-        .return_once(|_| Ok(dummy_unexportable_entities()));
+        .return_once(move |_| Ok(entities));
 
     repositories
         .backup_repository

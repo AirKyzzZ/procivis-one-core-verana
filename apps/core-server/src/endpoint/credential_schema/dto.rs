@@ -2,14 +2,16 @@ use dcql::CredentialMeta;
 use one_core::model::credential_schema::{CredentialSchemaExactColumn, TransactionCodeType};
 use one_core::service::credential_schema::dto::{
     CreateCredentialSchemaRequestDTO, CreateCredentialSchemaV2RequestDTO, CredentialClaimSchemaDTO,
-    CredentialClaimSchemaMappingDTO, CredentialClaimSchemaRequestDTO, CredentialClaimSchemaV2DTO,
+    CredentialClaimSchemaMappingDTO, CredentialClaimSchemaRequestDTO,
+    CredentialClaimSchemaTranslationsDTO, CredentialClaimSchemaV2DTO,
     CredentialSchemaDcqlResponseDTO, CredentialSchemaDetailResponseDTO,
     CredentialSchemaDetailV2ResponseDTO, CredentialSchemaFilterParamsDTO,
     CredentialSchemaFormatRequestDTO, CredentialSchemaFormatResponseDTO,
     CredentialSchemaListIncludeEntityTypeEnum, CredentialSchemaListItemResponseDTO,
     CredentialSchemaListItemV2ResponseDTO, CredentialSchemaTransactionCodeDTO,
-    CredentialSchemaTransactionCodeRequestDTO, ImportCredentialSchemaV2FormatDTO,
-    ImportCredentialSchemaV2RequestDTO, ImportCredentialSchemaV2RequestSchemaDTO,
+    CredentialSchemaTransactionCodeRequestDTO, CredentialSchemaTranslationsDTO,
+    ImportCredentialSchemaV2FormatDTO, ImportCredentialSchemaV2RequestDTO,
+    ImportCredentialSchemaV2RequestSchemaDTO,
 };
 use one_core::service::error::ServiceError;
 use one_dto_mapper::{
@@ -17,6 +19,7 @@ use one_dto_mapper::{
 };
 use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
+use shared_types::i18n::I18nString;
 use shared_types::{
     ClaimSchemaId, CredentialFormat, CredentialSchemaId, OrganisationId, RevocationMethodId,
 };
@@ -65,6 +68,7 @@ pub(crate) struct CredentialSchemaListItemResponseRestDTO {
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
     pub allow_suspension: bool,
     pub requires_wallet_instance_attestation: bool,
+    pub translations: CredentialSchemaTranslationsRestDTO,
 }
 
 #[options_not_nullable]
@@ -96,6 +100,7 @@ pub(crate) struct CredentialSchemaListItemV2ResponseRestDTO {
     pub allow_revocation: Option<bool>,
     pub batch_size: Option<i32>,
     pub requires_wallet_instance_attestation: bool,
+    pub translations: CredentialSchemaTranslationsRestDTO,
 }
 
 #[options_not_nullable]
@@ -135,6 +140,7 @@ pub(crate) struct CredentialSchemaResponseRestDTO {
     pub transaction_code: Option<CredentialSchemaTransactionCodeRestDTO>,
     #[from(with_fn = convert_inner)]
     pub dcql: Option<CredentialSchemaDcqlResponseRestDTO>,
+    pub translations: CredentialSchemaTranslationsRestDTO,
 }
 
 #[options_not_nullable]
@@ -175,6 +181,7 @@ pub(crate) struct CredentialClaimSchemaResponseRestDTO {
     #[from(with_fn = convert_inner)]
     #[schema(no_recursion)]
     pub claims: Vec<CredentialClaimSchemaResponseRestDTO>,
+    pub translations: CredentialClaimSchemaTranslationsRestDTO,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, ToSchema, Into)]
@@ -592,6 +599,9 @@ pub(crate) struct ImportCredentialSchemaRequestSchemaRestDTO {
     #[try_into(skip)]
     #[allow(unused)]
     pub dcql: Option<CredentialSchemaDcqlResponseRestDTO>,
+    #[try_into(skip)]
+    #[allow(unused)]
+    pub translations: Option<CredentialSchemaTranslationsRestDTO>,
 }
 
 #[options_not_nullable]
@@ -630,6 +640,9 @@ pub(crate) struct ImportCredentialSchemaClaimSchemaRestDTO {
     #[serde(default)]
     #[into(with_fn = convert_inner_of_inner)]
     pub mapping: Option<Vec<CredentialClaimSchemaMappingRestDTO>>,
+    #[allow(unused)]
+    #[into(skip)]
+    pub translations: Option<CredentialClaimSchemaTranslationsRestDTO>,
 }
 
 #[options_not_nullable]
@@ -764,6 +777,7 @@ pub(crate) struct CredentialClaimSchemaV2ResponseRestDTO {
     pub claims: Vec<CredentialClaimSchemaV2ResponseRestDTO>,
     #[from(with_fn = convert_inner_of_inner)]
     pub mappings: Option<Vec<CredentialClaimSchemaMappingResponseRestDTO>>,
+    pub translations: CredentialClaimSchemaTranslationsRestDTO,
 }
 
 #[options_not_nullable]
@@ -797,6 +811,22 @@ pub(crate) struct CredentialSchemaV2ResponseRestDTO {
     pub requires_wallet_instance_attestation: bool,
     #[from(with_fn = convert_inner)]
     pub transaction_code: Option<CredentialSchemaTransactionCodeRestDTO>,
+    pub translations: CredentialSchemaTranslationsRestDTO,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
+#[from(CredentialSchemaTranslationsDTO)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CredentialSchemaTranslationsRestDTO {
+    pub name: I18nString,
+    pub description: Option<I18nString>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
+#[from(CredentialClaimSchemaTranslationsDTO)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CredentialClaimSchemaTranslationsRestDTO {
+    pub name: I18nString,
 }
 
 #[options_not_nullable]
@@ -900,6 +930,12 @@ mod test {
                 required: true,
                 array: true,
                 claims: vec![],
+                translations: CredentialClaimSchemaTranslationsRestDTO {
+                    name: I18nString(std::collections::HashMap::from([(
+                        "en".to_string(),
+                        "key".to_string(),
+                    )])),
+                },
             }],
             key_storage_security: Some(KeyStorageSecurityRestEnum::Basic),
             schema_id: "schema_id".to_string(),
@@ -931,6 +967,13 @@ mod test {
                 description: Some("description".to_string()),
             }),
             dcql: None,
+            translations: CredentialSchemaTranslationsRestDTO {
+                name: I18nString(std::collections::HashMap::from([(
+                    "en".to_string(),
+                    "name".to_string(),
+                )])),
+                description: None,
+            },
         };
 
         let serialized = serde_json::to_value(shared).unwrap();

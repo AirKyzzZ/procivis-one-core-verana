@@ -18,7 +18,7 @@ use crate::proto::trust_information::dto::TrustInformation;
 use crate::service::certificate::dto::CertificateResponseDTO;
 use crate::service::credential_schema::dto::{
     CredentialClaimSchemaDTO, CredentialSchemaLayoutPropertiesResponseDTO,
-    CredentialSchemaListItemResponseDTO,
+    CredentialSchemaListItemResponseDTO, CredentialSchemaTranslationsDTO,
 };
 use crate::service::identifier::dto::GetIdentifierListItemResponseDTO;
 
@@ -121,6 +121,7 @@ pub struct DetailCredentialSchemaResponseDTO {
     pub allow_suspension: bool,
     pub requires_wallet_instance_attestation: bool,
     pub transaction_code: Option<DetailCredentialSchemaTransactionCodeDTO>,
+    pub translations: CredentialSchemaTranslationsDTO,
 }
 
 #[skip_serializing_none]

@@ -18,6 +18,7 @@ use super::error::CredentialServiceError;
 use super::validator::validate_create_request;
 use crate::config::core_config::CoreConfig;
 use crate::error::{ErrorCode, ErrorCodeMixin};
+use crate::mapper::credential_schema_claim::backfill_default_translations;
 use crate::model::certificate::{Certificate, CertificateState};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
@@ -91,7 +92,7 @@ fn setup_service(repositories: Repositories) -> CredentialService {
     )
 }
 
-fn generic_credential() -> Credential {
+async fn generic_credential() -> Credential {
     let now = crate::clock::now_utc();
 
     let claim_schema = ClaimSchema {
@@ -177,36 +178,43 @@ fn generic_credential() -> Credential {
         }),
         issuer_certificate: None,
         holder_identifier: None,
-        schema: Some(CredentialSchema {
-            batch_size: None,
-            allow_revocation: None,
-            id: credential_schema_id,
-            deleted_at: None,
-            imported_source_url: "CORE_URL".to_string(),
-            created_date: now,
-            last_modified: now,
-            name: "schema".to_string(),
-            key_storage_security: None,
-            revocation_method: None,
-            claim_schemas: vec![claim_schema].into(),
-            organisation: organisation.into(),
-            layout_type: LayoutType::Card,
-            layout_properties: None,
-            allow_suspension: true,
-            requires_wallet_instance_attestation: false,
-            transaction_code: None,
-            translations: Default::default(),
-            formats: vec![CredentialSchemaFormat {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                credential_schema_id,
-                format: "JWT".into(),
-                schema_id: "CredentialSchemaId".to_owned(),
-                claim_mappings: Default::default(),
-            }]
-            .into(),
-        }),
+        schema: Some(
+            backfill_default_translations(
+                CredentialSchema {
+                    batch_size: None,
+                    allow_revocation: None,
+                    id: credential_schema_id,
+                    deleted_at: None,
+                    imported_source_url: "CORE_URL".to_string(),
+                    created_date: now,
+                    last_modified: now,
+                    name: "schema".to_string(),
+                    key_storage_security: None,
+                    revocation_method: None,
+                    claim_schemas: vec![claim_schema].into(),
+                    organisation: organisation.into(),
+                    layout_type: LayoutType::Card,
+                    layout_properties: None,
+                    allow_suspension: true,
+                    requires_wallet_instance_attestation: false,
+                    transaction_code: None,
+                    translations: Default::default(),
+                    formats: vec![CredentialSchemaFormat {
+                        id: Uuid::new_v4().into(),
+                        created_date: crate::clock::now_utc(),
+                        last_modified: crate::clock::now_utc(),
+                        credential_schema_id,
+                        format: "JWT".into(),
+                        schema_id: "CredentialSchemaId".to_owned(),
+                        claim_mappings: Default::default(),
+                    }]
+                    .into(),
+                },
+                "en",
+            )
+            .await
+            .unwrap(),
+        ),
         interaction: None,
         key: None,
         profile: None,
@@ -217,7 +225,7 @@ fn generic_credential() -> Credential {
     }
 }
 
-fn generic_credential_list_entity() -> Credential {
+async fn generic_credential_list_entity() -> Credential {
     let now = crate::clock::now_utc();
 
     let credential_schema_id = Uuid::new_v4().into();
@@ -262,36 +270,43 @@ fn generic_credential_list_entity() -> Credential {
         }),
         issuer_certificate: None,
         holder_identifier: None,
-        schema: Some(CredentialSchema {
-            batch_size: None,
-            allow_revocation: None,
-            id: credential_schema_id,
-            deleted_at: None,
-            imported_source_url: "CORE_URL".to_string(),
-            created_date: now,
-            last_modified: now,
-            name: "schema".to_string(),
-            key_storage_security: None,
-            formats: vec![CredentialSchemaFormat {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                credential_schema_id,
-                format: "JWT".into(),
-                schema_id: "CredentialSchemaId".to_owned(),
-                claim_mappings: Default::default(),
-            }]
-            .into(),
-            revocation_method: None,
-            claim_schemas: Default::default(),
-            organisation: dummy_organisation(None).into(),
-            layout_type: LayoutType::Card,
-            layout_properties: None,
-            allow_suspension: true,
-            requires_wallet_instance_attestation: false,
-            transaction_code: None,
-            translations: Default::default(),
-        }),
+        schema: Some(
+            backfill_default_translations(
+                CredentialSchema {
+                    batch_size: None,
+                    allow_revocation: None,
+                    id: credential_schema_id,
+                    deleted_at: None,
+                    imported_source_url: "CORE_URL".to_string(),
+                    created_date: now,
+                    last_modified: now,
+                    name: "schema".to_string(),
+                    key_storage_security: None,
+                    formats: vec![CredentialSchemaFormat {
+                        id: Uuid::new_v4().into(),
+                        created_date: crate::clock::now_utc(),
+                        last_modified: crate::clock::now_utc(),
+                        credential_schema_id,
+                        format: "JWT".into(),
+                        schema_id: "CredentialSchemaId".to_owned(),
+                        claim_mappings: Default::default(),
+                    }]
+                    .into(),
+                    revocation_method: None,
+                    claim_schemas: Default::default(),
+                    organisation: dummy_organisation(None).into(),
+                    layout_type: LayoutType::Card,
+                    layout_properties: None,
+                    allow_suspension: true,
+                    requires_wallet_instance_attestation: false,
+                    transaction_code: None,
+                    translations: Default::default(),
+                },
+                "en",
+            )
+            .await
+            .unwrap(),
+        ),
         interaction: None,
         key: None,
         profile: None,
@@ -307,9 +322,10 @@ async fn test_delete_credential_success() {
     let mut credential_repository = MockCredentialRepository::default();
     let credential_schema_repository = MockCredentialSchemaRepository::default();
 
+    let credential = generic_credential().await;
     credential_repository
         .expect_get_credential()
-        .returning(|_, _| Ok(Some(generic_credential())));
+        .returning(move |_, _| Ok(Some(credential.clone())));
     credential_repository
         .expect_delete_credential()
         .returning(|_| Ok(()));
@@ -322,7 +338,7 @@ async fn test_delete_credential_success() {
     });
 
     service
-        .delete_credential(&generic_credential().id)
+        .delete_credential(&generic_credential().await.id)
         .await
         .unwrap();
 }
@@ -341,7 +357,9 @@ async fn test_delete_credential_failed_credential_missing() {
         ..Default::default()
     });
 
-    let result = service.delete_credential(&generic_credential().id).await;
+    let result = service
+        .delete_credential(&generic_credential().await.id)
+        .await;
     assert!(matches!(result, Err(CredentialServiceError::NotFound(_))));
 }
 
@@ -349,7 +367,7 @@ async fn test_delete_credential_failed_credential_missing() {
 async fn test_delete_credential_incorrect_state() {
     let mut credential_repository = MockCredentialRepository::default();
 
-    let mut credential = generic_credential();
+    let mut credential = generic_credential().await;
     credential.schema.as_mut().unwrap().revocation_method = Some("BITSTRINGSTATUSLIST".into());
     credential.state = CredentialStateEnum::Accepted;
     credential.role = CredentialRole::Issuer;
@@ -375,11 +393,11 @@ async fn test_delete_credential_incorrect_state() {
 #[tokio::test]
 async fn test_get_credential_list_success() {
     let mut credential_repository = MockCredentialRepository::default();
-    let mut c = generic_credential_list_entity();
+    let mut c = generic_credential_list_entity().await;
     c.state = CredentialStateEnum::Revoked;
 
     let credentials = GetCredentialList {
-        values: vec![generic_credential_list_entity(), c],
+        values: vec![generic_credential_list_entity().await, c],
         total_pages: 1,
         total_items: 2,
     };
@@ -443,7 +461,7 @@ async fn test_get_credential_list_success() {
 async fn test_get_credential_success() {
     let mut credential_repository = MockCredentialRepository::default();
 
-    let credential = generic_credential();
+    let credential = generic_credential().await;
     {
         let clone = credential.clone();
         credential_repository
@@ -472,7 +490,7 @@ async fn test_get_credential_success() {
 async fn test_get_credential_success_suspended_credential_with_end_date() {
     let mut credential_repository = MockCredentialRepository::default();
 
-    let mut credential = generic_credential();
+    let mut credential = generic_credential().await;
     let now = crate::clock::now_utc();
     let suspend_end_date = now.add(Duration::hours(1));
     credential.state = CredentialStateEnum::Suspended;
@@ -510,7 +528,7 @@ async fn test_get_credential_deleted() {
 
     let credential = Credential {
         deleted_at: Some(crate::clock::now_utc()),
-        ..generic_credential()
+        ..generic_credential().await
     };
     {
         let clone = credential.clone();
@@ -536,7 +554,7 @@ async fn test_get_credential_deleted() {
 async fn test_get_revoked_credential_success() {
     let mut credential_repository = MockCredentialRepository::default();
 
-    let mut credential = generic_credential();
+    let mut credential = generic_credential().await;
     credential.state = CredentialStateEnum::Revoked;
     credential.suspend_end_date = None;
 
@@ -568,7 +586,7 @@ async fn test_get_revoked_credential_success() {
 async fn test_get_credential_fail_credential_schema_is_none() {
     let mut credential_repository = MockCredentialRepository::default();
 
-    let mut credential = generic_credential();
+    let mut credential = generic_credential().await;
     credential.schema = None;
     {
         let clone = credential.clone();
@@ -619,7 +637,7 @@ async fn test_share_credential_success() {
         .times(1)
         .returning(move |_| Some(protocol.clone()));
 
-    let credential = generic_credential();
+    let credential = generic_credential().await;
     {
         let clone = credential.clone();
         credential_repository
@@ -666,7 +684,7 @@ async fn test_share_credential_success() {
 async fn test_share_credential_failed_invalid_state() {
     let mut credential_repository = MockCredentialRepository::default();
 
-    let mut credential = generic_credential();
+    let mut credential = generic_credential().await;
     credential.state = CredentialStateEnum::Accepted;
     {
         let clone = credential.clone();
@@ -691,7 +709,7 @@ async fn test_share_credential_failed_invalid_state() {
 async fn test_share_credential_failed_inactive_identifier() {
     let mut credential_repository = MockCredentialRepository::default();
 
-    let mut credential = generic_credential();
+    let mut credential = generic_credential().await;
     credential.issuer_identifier.as_mut().unwrap().state = IdentifierState::Deactivated;
     {
         let clone = credential.clone();
@@ -718,7 +736,7 @@ async fn test_create_credential_based_on_issuer_did_success() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut identifier_repository = MockIdentifierRepository::default();
 
-    let credential = generic_credential();
+    let credential = generic_credential().await;
     {
         let clone = credential.clone();
         let issuer_did = credential.issuer_identifier.clone().unwrap().did.unwrap();
@@ -829,7 +847,7 @@ async fn test_create_credential_based_on_issuer_identifier_success() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut identifier_repository = MockIdentifierRepository::default();
 
-    let credential = generic_credential();
+    let credential = generic_credential().await;
     {
         let clone = credential.clone();
         let issuer_identifier = credential.issuer_identifier.clone().unwrap();
@@ -930,7 +948,7 @@ async fn test_create_credential_failed_unsupported_wallet_storage_type() {
         claims,
         issuer_identifier,
         ..
-    } = generic_credential();
+    } = generic_credential().await;
 
     let mut schema = schema.unwrap();
     let claims = claims.unwrap();
@@ -985,7 +1003,7 @@ async fn test_create_credential_failed_formatter_doesnt_support_did_identifiers(
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut identifier_repository = MockIdentifierRepository::default();
 
-    let credential = generic_credential();
+    let credential = generic_credential().await;
     {
         let issuer_did = credential
             .issuer_identifier
@@ -1101,7 +1119,7 @@ async fn test_create_credential_failed_issuance_did_method_incompatible() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut identifier_repository = MockIdentifierRepository::default();
 
-    let credential = generic_credential();
+    let credential = generic_credential().await;
     {
         let issuer_did = credential
             .issuer_identifier
@@ -1241,7 +1259,7 @@ async fn test_create_credential_fails_if_did_is_deactivated() {
             }))
         });
 
-    let credential = generic_credential();
+    let credential = generic_credential().await;
     let credential_schema = credential.schema.clone().unwrap();
     credential_schema_repository
         .expect_get_credential_schema()
@@ -1310,7 +1328,7 @@ async fn test_create_credential_one_required_claim_missing_success() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut identifier_repository = MockIdentifierRepository::default();
 
-    let credential = generic_credential();
+    let credential = generic_credential().await;
     let credential_schema = CredentialSchema {
         claim_schemas: vec![
             ClaimSchema {
@@ -1449,7 +1467,7 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut identifier_repository = MockIdentifierRepository::default();
 
-    let credential = generic_credential();
+    let credential = generic_credential().await;
     let credential_schema = CredentialSchema {
         claim_schemas: vec![
             ClaimSchema {
@@ -1584,7 +1602,7 @@ async fn test_create_credential_schema_deleted() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut identifier_repository = MockIdentifierRepository::default();
 
-    let credential = generic_credential();
+    let credential = generic_credential().await;
     let credential_schema = CredentialSchema {
         deleted_at: Some(crate::clock::now_utc()),
         ..credential.schema.clone().unwrap()
@@ -1689,7 +1707,7 @@ async fn test_create_credential_key_with_issuer_key() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut identifier_repository = MockIdentifierRepository::default();
 
-    let credential = generic_credential();
+    let credential = generic_credential().await;
     let issuer_did = credential
         .issuer_identifier
         .as_ref()
@@ -1808,7 +1826,7 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut identifier_repository = MockIdentifierRepository::default();
 
-    let credential = generic_credential();
+    let credential = generic_credential().await;
     let key_id = Uuid::new_v4();
     let issuer_did = Did {
         keys: vec![
@@ -1954,7 +1972,7 @@ async fn test_fail_to_create_credential_no_assertion_key() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut identifier_repository = MockIdentifierRepository::default();
 
-    let credential = generic_credential();
+    let credential = generic_credential().await;
     let issuer_did = Did {
         keys: vec![RelatedKey {
             role: KeyRole::KeyAgreement,
@@ -2074,7 +2092,7 @@ async fn test_fail_to_create_credential_unknown_key_id() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut identifier_repository = MockIdentifierRepository::default();
 
-    let credential = generic_credential();
+    let credential = generic_credential().await;
     let issuer_did = credential
         .issuer_identifier
         .as_ref()
@@ -2182,7 +2200,7 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut identifier_repository = MockIdentifierRepository::default();
 
-    let credential = generic_credential();
+    let credential = generic_credential().await;
     let key_id = Uuid::new_v4();
     let issuer_did = Did {
         keys: vec![RelatedKey {
@@ -2302,7 +2320,7 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut identifier_repository = MockIdentifierRepository::default();
 
-    let credential = generic_credential();
+    let credential = generic_credential().await;
     let key_id = Uuid::new_v4();
     let issuer_did = Did {
         keys: vec![RelatedKey {
@@ -2422,7 +2440,7 @@ async fn test_create_credential_fail_incompatible_format_and_tranposrt_protocol(
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut identifier_repository = MockIdentifierRepository::default();
 
-    let credential = generic_credential();
+    let credential = generic_credential().await;
     {
         let credential_schema = credential.schema.clone().unwrap();
         credential_schema_repository
@@ -2530,7 +2548,7 @@ async fn test_create_credential_fail_invalid_redirect_uri() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut identifier_repository = MockIdentifierRepository::default();
 
-    let credential = generic_credential();
+    let credential = generic_credential().await;
     let issuer_did = credential.issuer_identifier.clone().unwrap().did.unwrap();
     let credential_schema = credential.schema.clone().unwrap();
 
@@ -2635,7 +2653,7 @@ async fn test_create_credential_fail_webhook_not_allowed() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut identifier_repository = MockIdentifierRepository::default();
 
-    let credential = generic_credential();
+    let credential = generic_credential().await;
     {
         let issuer_identifier = credential.issuer_identifier.clone().unwrap();
         let credential_schema = credential.schema.clone().unwrap();
@@ -3130,11 +3148,16 @@ async fn test_get_credential_success_with_non_required_nested_object() {
         translations: Default::default(),
     };
 
-    let mut credential = generic_credential();
+    let mut credential = generic_credential().await;
 
     credential.schema.as_mut().unwrap().claim_schemas =
         vec![location_claim_schema, location_x_claim_schema.to_owned()].into();
 
+    credential.schema = Some(
+        backfill_default_translations(credential.schema.unwrap(), "en")
+            .await
+            .unwrap(),
+    );
     *credential.claims.as_mut().unwrap() = vec![Claim {
         id: Uuid::new_v4().into(),
         credential_id: credential.id,
@@ -3322,36 +3345,43 @@ async fn test_get_credential_success_array_complex_nested_all() {
         }),
         issuer_certificate: None,
         holder_identifier: None,
-        schema: Some(CredentialSchema {
-            batch_size: None,
-            allow_revocation: None,
-            id: credential_schema_id,
-            deleted_at: None,
-            created_date: now,
-            imported_source_url: "CORE_URL".to_string(),
-            last_modified: now,
-            name: "schema".to_string(),
-            key_storage_security: None,
-            formats: vec![CredentialSchemaFormat {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                credential_schema_id,
-                format: "JWT".into(),
-                schema_id: "CredentialSchemaId".to_owned(),
-                claim_mappings: Default::default(),
-            }]
-            .into(),
-            revocation_method: None,
-            claim_schemas: claim_schemas.into(),
-            organisation: organisation.into(),
-            layout_type: LayoutType::Card,
-            layout_properties: None,
-            allow_suspension: true,
-            requires_wallet_instance_attestation: false,
-            transaction_code: None,
-            translations: Default::default(),
-        }),
+        schema: Some(
+            backfill_default_translations(
+                CredentialSchema {
+                    batch_size: None,
+                    allow_revocation: None,
+                    id: credential_schema_id,
+                    deleted_at: None,
+                    created_date: now,
+                    imported_source_url: "CORE_URL".to_string(),
+                    last_modified: now,
+                    name: "schema".to_string(),
+                    key_storage_security: None,
+                    formats: vec![CredentialSchemaFormat {
+                        id: Uuid::new_v4().into(),
+                        created_date: crate::clock::now_utc(),
+                        last_modified: crate::clock::now_utc(),
+                        credential_schema_id,
+                        format: "JWT".into(),
+                        schema_id: "CredentialSchemaId".to_owned(),
+                        claim_mappings: Default::default(),
+                    }]
+                    .into(),
+                    revocation_method: None,
+                    claim_schemas: claim_schemas.into(),
+                    organisation: organisation.into(),
+                    layout_type: LayoutType::Card,
+                    layout_properties: None,
+                    allow_suspension: true,
+                    requires_wallet_instance_attestation: false,
+                    transaction_code: None,
+                    translations: Default::default(),
+                },
+                "en",
+            )
+            .await
+            .unwrap(),
+        ),
         interaction: None,
         key: None,
         profile: None,
@@ -3379,7 +3409,8 @@ async fn test_get_credential_success_array_complex_nested_all() {
 
     let result = service.get_credential(&credential.id).await.unwrap();
 
-    let expected_claims = json!([{
+    let expected_claims = json!([
+      {
         "path": "root",
         "schema": {
           "id": schema_root.id,
@@ -3388,9 +3419,15 @@ async fn test_get_credential_success_array_complex_nested_all() {
           "key": "root",
           "datatype": "OBJECT",
           "required": true,
-          "array": true
+          "array": true,
+          "translations": {
+            "name": {
+              "en": "root"
+            }
+          }
         },
-        "value": [{
+        "value": [
+          {
             "path": "root/0",
             "schema": {
               "id": schema_root.id,
@@ -3399,9 +3436,15 @@ async fn test_get_credential_success_array_complex_nested_all() {
               "key": "root",
               "datatype": "OBJECT",
               "required": true,
-              "array": false
+              "array": false,
+              "translations": {
+                "name": {
+                  "en": "root"
+                }
+              }
             },
-            "value": [{
+            "value": [
+              {
                 "path": "root/0/indexlist",
                 "schema": {
                   "id": schema_root_index_list.id,
@@ -3410,9 +3453,15 @@ async fn test_get_credential_success_array_complex_nested_all() {
                   "key": "root/indexlist",
                   "datatype": "NUMBER",
                   "required": true,
-                  "array": true
+                  "array": true,
+                  "translations": {
+                    "name": {
+                      "en": "indexlist"
+                    }
+                  }
                 },
-                "value": [{
+                "value": [
+                  {
                     "path": "root/0/indexlist/0",
                     "schema": {
                       "id": schema_root_index_list.id,
@@ -3421,7 +3470,12 @@ async fn test_get_credential_success_array_complex_nested_all() {
                       "key": "root/indexlist",
                       "datatype": "NUMBER",
                       "required": true,
-                      "array": false
+                      "array": false,
+                      "translations": {
+                        "name": {
+                          "en": "indexlist"
+                        }
+                      }
                     },
                     "value": 123
                   },
@@ -3434,7 +3488,12 @@ async fn test_get_credential_success_array_complex_nested_all() {
                       "key": "root/indexlist",
                       "datatype": "NUMBER",
                       "required": true,
-                      "array": false
+                      "array": false,
+                      "translations": {
+                        "name": {
+                          "en": "indexlist"
+                        }
+                      }
                     },
                     "value": 123
                   }
@@ -3449,7 +3508,12 @@ async fn test_get_credential_success_array_complex_nested_all() {
                   "key": "root/name",
                   "datatype": "STRING",
                   "required": true,
-                  "array": false
+                  "array": false,
+                  "translations": {
+                    "name": {
+                      "en": "name"
+                    }
+                  }
                 },
                 "value": "123"
               },
@@ -3462,9 +3526,15 @@ async fn test_get_credential_success_array_complex_nested_all() {
                   "key": "root/cap",
                   "datatype": "STRING",
                   "required": true,
-                  "array": true
+                  "array": true,
+                  "translations": {
+                    "name": {
+                      "en": "cap"
+                    }
+                  }
                 },
-                "value": [{
+                "value": [
+                  {
                     "path": "root/0/cap/0",
                     "schema": {
                       "id": schema_root_cap.id,
@@ -3473,7 +3543,12 @@ async fn test_get_credential_success_array_complex_nested_all() {
                       "key": "root/cap",
                       "datatype": "STRING",
                       "required": true,
-                      "array": false
+                      "array": false,
+                      "translations": {
+                        "name": {
+                          "en": "cap"
+                        }
+                      }
                     },
                     "value": "invoke"
                   },
@@ -3486,7 +3561,12 @@ async fn test_get_credential_success_array_complex_nested_all() {
                       "key": "root/cap",
                       "datatype": "STRING",
                       "required": true,
-                      "array": false
+                      "array": false,
+                      "translations": {
+                        "name": {
+                          "en": "cap"
+                        }
+                      }
                     },
                     "value": "revoke"
                   },
@@ -3499,12 +3579,17 @@ async fn test_get_credential_success_array_complex_nested_all() {
                       "key": "root/cap",
                       "datatype": "STRING",
                       "required": true,
-                      "array": false
+                      "array": false,
+                      "translations": {
+                        "name": {
+                          "en": "cap"
+                        }
+                      }
                     },
                     "value": "delete"
                   }
                 ]
-              },
+              }
             ]
           },
           {
@@ -3516,9 +3601,15 @@ async fn test_get_credential_success_array_complex_nested_all() {
               "key": "root",
               "datatype": "OBJECT",
               "required": true,
-              "array": false
+              "array": false,
+              "translations": {
+                "name": {
+                  "en": "root"
+                }
+              }
             },
-            "value": [{
+            "value": [
+              {
                 "path": "root/1/indexlist",
                 "schema": {
                   "id": schema_root_index_list.id,
@@ -3527,9 +3618,15 @@ async fn test_get_credential_success_array_complex_nested_all() {
                   "key": "root/indexlist",
                   "datatype": "NUMBER",
                   "required": true,
-                  "array": true
+                  "array": true,
+                  "translations": {
+                    "name": {
+                      "en": "indexlist"
+                    }
+                  }
                 },
-                "value": [{
+                "value": [
+                  {
                     "path": "root/1/indexlist/0",
                     "schema": {
                       "id": schema_root_index_list.id,
@@ -3538,7 +3635,12 @@ async fn test_get_credential_success_array_complex_nested_all() {
                       "key": "root/indexlist",
                       "datatype": "NUMBER",
                       "required": true,
-                      "array": false
+                      "array": false,
+                      "translations": {
+                        "name": {
+                          "en": "indexlist"
+                        }
+                      }
                     },
                     "value": 456
                   },
@@ -3551,7 +3653,12 @@ async fn test_get_credential_success_array_complex_nested_all() {
                       "key": "root/indexlist",
                       "datatype": "NUMBER",
                       "required": true,
-                      "array": false
+                      "array": false,
+                      "translations": {
+                        "name": {
+                          "en": "indexlist"
+                        }
+                      }
                     },
                     "value": 456
                   }
@@ -3566,7 +3673,12 @@ async fn test_get_credential_success_array_complex_nested_all() {
                   "key": "root/name",
                   "datatype": "STRING",
                   "required": true,
-                  "array": false
+                  "array": false,
+                  "translations": {
+                    "name": {
+                      "en": "name"
+                    }
+                  }
                 },
                 "value": "456"
               },
@@ -3579,9 +3691,15 @@ async fn test_get_credential_success_array_complex_nested_all() {
                   "key": "root/cap",
                   "datatype": "STRING",
                   "required": true,
-                  "array": true
+                  "array": true,
+                  "translations": {
+                    "name": {
+                      "en": "cap"
+                    }
+                  }
                 },
-                "value": [{
+                "value": [
+                  {
                     "path": "root/1/cap/0",
                     "schema": {
                       "id": schema_root_cap.id,
@@ -3590,7 +3708,12 @@ async fn test_get_credential_success_array_complex_nested_all() {
                       "key": "root/cap",
                       "datatype": "STRING",
                       "required": true,
-                      "array": false
+                      "array": false,
+                      "translations": {
+                        "name": {
+                          "en": "cap"
+                        }
+                      }
                     },
                     "value": "invoke"
                   },
@@ -3603,7 +3726,12 @@ async fn test_get_credential_success_array_complex_nested_all() {
                       "key": "root/cap",
                       "datatype": "STRING",
                       "required": true,
-                      "array": false
+                      "array": false,
+                      "translations": {
+                        "name": {
+                          "en": "cap"
+                        }
+                      }
                     },
                     "value": "revoke"
                   },
@@ -3616,12 +3744,17 @@ async fn test_get_credential_success_array_complex_nested_all() {
                       "key": "root/cap",
                       "datatype": "STRING",
                       "required": true,
-                      "array": false
+                      "array": false,
+                      "translations": {
+                        "name": {
+                          "en": "cap"
+                        }
+                      }
                     },
                     "value": "delete"
                   }
                 ]
-              },
+              }
             ]
           }
         ]
@@ -3635,9 +3768,15 @@ async fn test_get_credential_success_array_complex_nested_all() {
           "key": "other",
           "datatype": "OBJECT",
           "required": true,
-          "array": false
+          "array": false,
+          "translations": {
+            "name": {
+              "en": "other"
+            }
+          }
         },
-        "value": [{
+        "value": [
+          {
             "path": "other/0",
             "schema": {
               "id": schema_other_0.id,
@@ -3646,9 +3785,15 @@ async fn test_get_credential_success_array_complex_nested_all() {
               "key": "other/0",
               "datatype": "OBJECT",
               "required": true,
-              "array": true
+              "array": true,
+              "translations": {
+                "name": {
+                  "en": "0"
+                }
+              }
             },
-            "value": [{
+            "value": [
+              {
                 "path": "other/0/0",
                 "schema": {
                   "id": schema_other_0.id,
@@ -3657,21 +3802,33 @@ async fn test_get_credential_success_array_complex_nested_all() {
                   "key": "other/0",
                   "datatype": "OBJECT",
                   "required": true,
-                  "array": false
+                  "array": false,
+                  "translations": {
+                    "name": {
+                      "en": "0"
+                    }
+                  }
                 },
-                "value": [{
-                  "path": "other/0/0/name",
-                  "schema": {
-                    "id": schema_other_0_name.id,
-                    "createdDate": "2005-04-02T21:37:00+01:00",
-                    "lastModified": "2005-04-02T21:37:00+01:00",
-                    "key": "other/0/name",
-                    "datatype": "STRING",
-                    "required": true,
-                    "array": false
-                  },
-                  "value": "name1"
-                }]
+                "value": [
+                  {
+                    "path": "other/0/0/name",
+                    "schema": {
+                      "id": schema_other_0_name.id,
+                      "createdDate": "2005-04-02T21:37:00+01:00",
+                      "lastModified": "2005-04-02T21:37:00+01:00",
+                      "key": "other/0/name",
+                      "datatype": "STRING",
+                      "required": true,
+                      "array": false,
+                      "translations": {
+                        "name": {
+                          "en": "name"
+                        }
+                      }
+                    },
+                    "value": "name1"
+                  }
+                ]
               },
               {
                 "path": "other/0/1",
@@ -3682,21 +3839,33 @@ async fn test_get_credential_success_array_complex_nested_all() {
                   "key": "other/0",
                   "datatype": "OBJECT",
                   "required": true,
-                  "array": false
+                  "array": false,
+                  "translations": {
+                    "name": {
+                      "en": "0"
+                    }
+                  }
                 },
-                "value": [{
-                  "path": "other/0/1/name",
-                  "schema": {
-                    "id": schema_other_0_name.id,
-                    "createdDate": "2005-04-02T21:37:00+01:00",
-                    "lastModified": "2005-04-02T21:37:00+01:00",
-                    "key": "other/0/name",
-                    "datatype": "STRING",
-                    "required": true,
-                    "array": false
-                  },
-                  "value": "name2"
-                }]
+                "value": [
+                  {
+                    "path": "other/0/1/name",
+                    "schema": {
+                      "id": schema_other_0_name.id,
+                      "createdDate": "2005-04-02T21:37:00+01:00",
+                      "lastModified": "2005-04-02T21:37:00+01:00",
+                      "key": "other/0/name",
+                      "datatype": "STRING",
+                      "required": true,
+                      "array": false,
+                      "translations": {
+                        "name": {
+                          "en": "name"
+                        }
+                      }
+                    },
+                    "value": "name2"
+                  }
+                ]
               }
             ]
           },
@@ -3709,9 +3878,15 @@ async fn test_get_credential_success_array_complex_nested_all() {
               "key": "other/1",
               "datatype": "STRING",
               "required": true,
-              "array": true
+              "array": true,
+              "translations": {
+                "name": {
+                  "en": "1"
+                }
+              }
             },
-            "value": [{
+            "value": [
+              {
                 "path": "other/1/0",
                 "schema": {
                   "id": schema_other_1.id,
@@ -3720,7 +3895,12 @@ async fn test_get_credential_success_array_complex_nested_all() {
                   "key": "other/1",
                   "datatype": "STRING",
                   "required": true,
-                  "array": false
+                  "array": false,
+                  "translations": {
+                    "name": {
+                      "en": "1"
+                    }
+                  }
                 },
                 "value": "other1"
               },
@@ -3733,7 +3913,12 @@ async fn test_get_credential_success_array_complex_nested_all() {
                   "key": "other/1",
                   "datatype": "STRING",
                   "required": true,
-                  "array": false
+                  "array": false,
+                  "translations": {
+                    "name": {
+                      "en": "1"
+                    }
+                  }
                 },
                 "value": "other2"
               },
@@ -3746,7 +3931,12 @@ async fn test_get_credential_success_array_complex_nested_all() {
                   "key": "other/1",
                   "datatype": "STRING",
                   "required": true,
-                  "array": false
+                  "array": false,
+                  "translations": {
+                    "name": {
+                      "en": "1"
+                    }
+                  }
                 },
                 "value": "other3"
               }
@@ -3763,9 +3953,15 @@ async fn test_get_credential_success_array_complex_nested_all() {
           "key": "str",
           "datatype": "STRING",
           "required": true,
-          "array": true
+          "array": true,
+          "translations": {
+            "name": {
+              "en": "str"
+            }
+          }
         },
-        "value": [{
+        "value": [
+          {
             "path": "str/0",
             "schema": {
               "id": schema_str.id,
@@ -3774,7 +3970,12 @@ async fn test_get_credential_success_array_complex_nested_all() {
               "key": "str",
               "datatype": "STRING",
               "required": true,
-              "array": false
+              "array": false,
+              "translations": {
+                "name": {
+                  "en": "str"
+                }
+              }
             },
             "value": "str1"
           },
@@ -3787,7 +3988,12 @@ async fn test_get_credential_success_array_complex_nested_all() {
               "key": "str",
               "datatype": "STRING",
               "required": true,
-              "array": false
+              "array": false,
+              "translations": {
+                "name": {
+                  "en": "str"
+                }
+              }
             },
             "value": "str1"
           },
@@ -3800,14 +4006,18 @@ async fn test_get_credential_success_array_complex_nested_all() {
               "key": "str",
               "datatype": "STRING",
               "required": true,
-              "array": false
+              "array": false,
+              "translations": {
+                "name": {
+                  "en": "str"
+                }
+              }
             },
             "value": "str1"
           }
         ]
       }
     ]);
-
     assert_eq!(
         expected_claims,
         serde_json::to_value(result.claims).unwrap()
@@ -3899,36 +4109,43 @@ async fn test_get_credential_success_array_index_sorting() {
         }),
         issuer_certificate: None,
         holder_identifier: None,
-        schema: Some(CredentialSchema {
-            batch_size: None,
-            allow_revocation: None,
-            id: credential_schema_id,
-            imported_source_url: "CORE_URL".to_string(),
-            deleted_at: None,
-            created_date: now,
-            last_modified: now,
-            name: "schema".to_string(),
-            key_storage_security: None,
-            formats: vec![CredentialSchemaFormat {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                credential_schema_id,
-                format: "JWT".into(),
-                schema_id: "CredentialSchemaId".to_owned(),
-                claim_mappings: Default::default(),
-            }]
-            .into(),
-            revocation_method: None,
-            claim_schemas: claim_schemas.into(),
-            organisation: organisation.into(),
-            layout_type: LayoutType::Card,
-            layout_properties: None,
-            allow_suspension: true,
-            requires_wallet_instance_attestation: false,
-            transaction_code: None,
-            translations: Default::default(),
-        }),
+        schema: Some(
+            backfill_default_translations(
+                CredentialSchema {
+                    batch_size: None,
+                    allow_revocation: None,
+                    id: credential_schema_id,
+                    imported_source_url: "CORE_URL".to_string(),
+                    deleted_at: None,
+                    created_date: now,
+                    last_modified: now,
+                    name: "schema".to_string(),
+                    key_storage_security: None,
+                    formats: vec![CredentialSchemaFormat {
+                        id: Uuid::new_v4().into(),
+                        created_date: crate::clock::now_utc(),
+                        last_modified: crate::clock::now_utc(),
+                        credential_schema_id,
+                        format: "JWT".into(),
+                        schema_id: "CredentialSchemaId".to_owned(),
+                        claim_mappings: Default::default(),
+                    }]
+                    .into(),
+                    revocation_method: None,
+                    claim_schemas: claim_schemas.into(),
+                    organisation: organisation.into(),
+                    layout_type: LayoutType::Card,
+                    layout_properties: None,
+                    allow_suspension: true,
+                    requires_wallet_instance_attestation: false,
+                    transaction_code: None,
+                    translations: Default::default(),
+                },
+                "en",
+            )
+            .await
+            .unwrap(),
+        ),
         interaction: None,
         key: None,
         profile: None,
@@ -3955,7 +4172,6 @@ async fn test_get_credential_success_array_index_sorting() {
     });
 
     let result = service.get_credential(&credential.id).await.unwrap();
-
     let expected_claims = json!([
       {
         "path": "str",
@@ -3966,7 +4182,12 @@ async fn test_get_credential_success_array_index_sorting() {
           "key": "str",
           "datatype": "STRING",
           "required": true,
-          "array": true
+          "array": true,
+          "translations": {
+            "name": {
+              "en": "str"
+            }
+          }
         },
         "value": [
           {
@@ -3978,7 +4199,12 @@ async fn test_get_credential_success_array_index_sorting() {
               "key": "str",
               "datatype": "STRING",
               "required": true,
-              "array": false
+              "array": false,
+              "translations": {
+                "name": {
+                  "en": "str"
+                }
+              }
             },
             "value": "str1"
           },
@@ -3991,7 +4217,12 @@ async fn test_get_credential_success_array_index_sorting() {
               "key": "str",
               "datatype": "STRING",
               "required": true,
-              "array": false
+              "array": false,
+              "translations": {
+                "name": {
+                  "en": "str"
+                }
+              }
             },
             "value": "str1"
           },
@@ -4004,7 +4235,12 @@ async fn test_get_credential_success_array_index_sorting() {
               "key": "str",
               "datatype": "STRING",
               "required": true,
-              "array": false
+              "array": false,
+              "translations": {
+                "name": {
+                  "en": "str"
+                }
+              }
             },
             "value": "str1"
           },
@@ -4017,7 +4253,12 @@ async fn test_get_credential_success_array_index_sorting() {
               "key": "str",
               "datatype": "STRING",
               "required": true,
-              "array": false
+              "array": false,
+              "translations": {
+                "name": {
+                  "en": "str"
+                }
+              }
             },
             "value": "str1"
           },
@@ -4030,7 +4271,12 @@ async fn test_get_credential_success_array_index_sorting() {
               "key": "str",
               "datatype": "STRING",
               "required": true,
-              "array": false
+              "array": false,
+              "translations": {
+                "name": {
+                  "en": "str"
+                }
+              }
             },
             "value": "str1"
           },
@@ -4043,7 +4289,12 @@ async fn test_get_credential_success_array_index_sorting() {
               "key": "str",
               "datatype": "STRING",
               "required": true,
-              "array": false
+              "array": false,
+              "translations": {
+                "name": {
+                  "en": "str"
+                }
+              }
             },
             "value": "str1"
           },
@@ -4056,7 +4307,12 @@ async fn test_get_credential_success_array_index_sorting() {
               "key": "str",
               "datatype": "STRING",
               "required": true,
-              "array": false
+              "array": false,
+              "translations": {
+                "name": {
+                  "en": "str"
+                }
+              }
             },
             "value": "str1"
           },
@@ -4069,7 +4325,12 @@ async fn test_get_credential_success_array_index_sorting() {
               "key": "str",
               "datatype": "STRING",
               "required": true,
-              "array": false
+              "array": false,
+              "translations": {
+                "name": {
+                  "en": "str"
+                }
+              }
             },
             "value": "str1"
           },
@@ -4082,7 +4343,12 @@ async fn test_get_credential_success_array_index_sorting() {
               "key": "str",
               "datatype": "STRING",
               "required": true,
-              "array": false
+              "array": false,
+              "translations": {
+                "name": {
+                  "en": "str"
+                }
+              }
             },
             "value": "str1"
           },
@@ -4095,7 +4361,12 @@ async fn test_get_credential_success_array_index_sorting() {
               "key": "str",
               "datatype": "STRING",
               "required": true,
-              "array": false
+              "array": false,
+              "translations": {
+                "name": {
+                  "en": "str"
+                }
+              }
             },
             "value": "str1"
           },
@@ -4108,7 +4379,12 @@ async fn test_get_credential_success_array_index_sorting() {
               "key": "str",
               "datatype": "STRING",
               "required": true,
-              "array": false
+              "array": false,
+              "translations": {
+                "name": {
+                  "en": "str"
+                }
+              }
             },
             "value": "str1"
           },
@@ -4121,7 +4397,12 @@ async fn test_get_credential_success_array_index_sorting() {
               "key": "str",
               "datatype": "STRING",
               "required": true,
-              "array": false
+              "array": false,
+              "translations": {
+                "name": {
+                  "en": "str"
+                }
+              }
             },
             "value": "str1"
           },
@@ -4134,10 +4415,15 @@ async fn test_get_credential_success_array_index_sorting() {
               "key": "str",
               "datatype": "STRING",
               "required": true,
-              "array": false
+              "array": false,
+              "translations": {
+                "name": {
+                  "en": "str"
+                }
+              }
             },
             "value": "str1"
-          },
+          }
         ]
       }
     ]);
@@ -4225,36 +4511,43 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
         }),
         issuer_certificate: None,
         holder_identifier: None,
-        schema: Some(CredentialSchema {
-            batch_size: None,
-            allow_revocation: None,
-            id: credential_schema_id,
-            deleted_at: None,
-            imported_source_url: "CORE_URL".to_string(),
-            created_date: now,
-            last_modified: now,
-            name: "schema".to_string(),
-            key_storage_security: None,
-            formats: vec![CredentialSchemaFormat {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                credential_schema_id,
-                format: "MDOC".into(),
-                schema_id: "CredentialSchemaId".to_owned(),
-                claim_mappings: Default::default(),
-            }]
-            .into(),
-            revocation_method: None,
-            claim_schemas: claim_schemas.into(),
-            organisation: organisation.into(),
-            layout_type: LayoutType::Card,
-            layout_properties: None,
-            allow_suspension: true,
-            requires_wallet_instance_attestation: false,
-            transaction_code: None,
-            translations: Default::default(),
-        }),
+        schema: Some(
+            backfill_default_translations(
+                CredentialSchema {
+                    batch_size: None,
+                    allow_revocation: None,
+                    id: credential_schema_id,
+                    deleted_at: None,
+                    imported_source_url: "CORE_URL".to_string(),
+                    created_date: now,
+                    last_modified: now,
+                    name: "schema".to_string(),
+                    key_storage_security: None,
+                    formats: vec![CredentialSchemaFormat {
+                        id: Uuid::new_v4().into(),
+                        created_date: crate::clock::now_utc(),
+                        last_modified: crate::clock::now_utc(),
+                        credential_schema_id,
+                        format: "MDOC".into(),
+                        schema_id: "CredentialSchemaId".to_owned(),
+                        claim_mappings: Default::default(),
+                    }]
+                    .into(),
+                    revocation_method: None,
+                    claim_schemas: claim_schemas.into(),
+                    organisation: organisation.into(),
+                    layout_type: LayoutType::Card,
+                    layout_properties: None,
+                    allow_suspension: true,
+                    requires_wallet_instance_attestation: false,
+                    transaction_code: None,
+                    translations: Default::default(),
+                },
+                "en",
+            )
+            .await
+            .unwrap(),
+        ),
         interaction: None,
         key: None,
         profile: None,
@@ -4296,7 +4589,6 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
     });
 
     let result = service.get_credential(&credential.id).await.unwrap();
-
     let expected_claims = json!([
       {
         "path": "root",
@@ -4307,7 +4599,12 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
           "key": "root",
           "datatype": "OBJECT",
           "required": true,
-          "array": true
+          "array": true,
+          "translations": {
+            "name": {
+              "en": "root"
+            }
+          }
         },
         "value": [
           {
@@ -4319,7 +4616,12 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
               "key": "root",
               "datatype": "OBJECT",
               "required": true,
-              "array": false
+              "array": false,
+              "translations": {
+                "name": {
+                  "en": "root"
+                }
+              }
             },
             "value": [
               {
@@ -4331,7 +4633,12 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
                   "key": "root/indexlist",
                   "datatype": "NUMBER",
                   "required": true,
-                  "array": true
+                  "array": true,
+                  "translations": {
+                    "name": {
+                      "en": "indexlist"
+                    }
+                  }
                 },
                 "value": [
                   {
@@ -4343,7 +4650,12 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
                       "key": "root/indexlist",
                       "datatype": "NUMBER",
                       "required": true,
-                      "array": false
+                      "array": false,
+                      "translations": {
+                        "name": {
+                          "en": "indexlist"
+                        }
+                      }
                     },
                     "value": 123
                   },
@@ -4356,7 +4668,12 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
                       "key": "root/indexlist",
                       "datatype": "NUMBER",
                       "required": true,
-                      "array": false
+                      "array": false,
+                      "translations": {
+                        "name": {
+                          "en": "indexlist"
+                        }
+                      }
                     },
                     "value": 123
                   }
@@ -4454,36 +4771,43 @@ async fn test_get_credential_success_array_single_element() {
         }),
         issuer_certificate: None,
         holder_identifier: None,
-        schema: Some(CredentialSchema {
-            batch_size: None,
-            allow_revocation: None,
-            id: credential_schema_id,
-            deleted_at: None,
-            created_date: now,
-            last_modified: now,
-            imported_source_url: "CORE_URL".to_string(),
-            name: "schema".to_string(),
-            key_storage_security: None,
-            formats: vec![CredentialSchemaFormat {
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                credential_schema_id,
-                format: "JWT".into(),
-                schema_id: "CredentialSchemaId".to_owned(),
-                claim_mappings: Default::default(),
-            }]
-            .into(),
-            revocation_method: None,
-            claim_schemas: claim_schemas.into(),
-            organisation: organisation.into(),
-            layout_type: LayoutType::Card,
-            layout_properties: None,
-            allow_suspension: true,
-            requires_wallet_instance_attestation: false,
-            transaction_code: None,
-            translations: Default::default(),
-        }),
+        schema: Some(
+            backfill_default_translations(
+                CredentialSchema {
+                    batch_size: None,
+                    allow_revocation: None,
+                    id: credential_schema_id,
+                    deleted_at: None,
+                    created_date: now,
+                    last_modified: now,
+                    imported_source_url: "CORE_URL".to_string(),
+                    name: "schema".to_string(),
+                    key_storage_security: None,
+                    formats: vec![CredentialSchemaFormat {
+                        id: Uuid::new_v4().into(),
+                        created_date: crate::clock::now_utc(),
+                        last_modified: crate::clock::now_utc(),
+                        credential_schema_id,
+                        format: "JWT".into(),
+                        schema_id: "CredentialSchemaId".to_owned(),
+                        claim_mappings: Default::default(),
+                    }]
+                    .into(),
+                    revocation_method: None,
+                    claim_schemas: claim_schemas.into(),
+                    organisation: organisation.into(),
+                    layout_type: LayoutType::Card,
+                    layout_properties: None,
+                    allow_suspension: true,
+                    requires_wallet_instance_attestation: false,
+                    transaction_code: None,
+                    translations: Default::default(),
+                },
+                "en",
+            )
+            .await
+            .unwrap(),
+        ),
         interaction: None,
         key: None,
         profile: None,
@@ -4521,7 +4845,12 @@ async fn test_get_credential_success_array_single_element() {
           "key": "root",
           "datatype": "OBJECT",
           "required": true,
-          "array": true
+          "array": true,
+          "translations": {
+            "name": {
+              "en": "root"
+            }
+          }
         },
         "value": [
           {
@@ -4533,7 +4862,12 @@ async fn test_get_credential_success_array_single_element() {
               "key": "root",
               "datatype": "OBJECT",
               "required": true,
-              "array": false
+              "array": false,
+              "translations": {
+                "name": {
+                  "en": "root"
+                }
+              }
             },
             "value": [
               {
@@ -4545,7 +4879,12 @@ async fn test_get_credential_success_array_single_element() {
                   "key": "root/indexlist",
                   "datatype": "NUMBER",
                   "required": true,
-                  "array": true
+                  "array": true,
+                  "translations": {
+                    "name": {
+                      "en": "indexlist"
+                    }
+                  }
                 },
                 "value": [
                   {
@@ -4557,7 +4896,12 @@ async fn test_get_credential_success_array_single_element() {
                       "key": "root/indexlist",
                       "datatype": "NUMBER",
                       "required": true,
-                      "array": false
+                      "array": false,
+                      "translations": {
+                        "name": {
+                          "en": "indexlist"
+                        }
+                      }
                     },
                     "value": 123
                   }
@@ -4931,13 +5275,14 @@ async fn test_create_credential_number_named_claims() {
 #[tokio::test]
 async fn test_create_credential_session_org_mismatch() {
     let mut identifier_repository = MockIdentifierRepository::new();
+    let credential = generic_credential().await;
     identifier_repository
         .expect_get()
-        .return_once(|_, _| Ok(Some(generic_credential().issuer_identifier.unwrap())));
+        .return_once(|_, _| Ok(Some(credential.issuer_identifier.unwrap())));
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     credential_schema_repository
         .expect_get_credential_schema()
-        .return_once(|_| Ok(Some(generic_credential().schema.unwrap())));
+        .return_once(|_| Ok(Some(credential.schema.unwrap())));
     let service = setup_service(Repositories {
         credential_schema_repository,
         config: generic_config().core,
@@ -5141,9 +5486,10 @@ async fn test_list_credential_session_org_mismatch() {
 #[tokio::test]
 async fn test_credential_ops_session_org_mismatch() {
     let mut credential_repository = MockCredentialRepository::default();
+    let credential = generic_credential().await;
     credential_repository
         .expect_get_credential()
-        .returning(|_, _| Ok(Some(generic_credential())));
+        .returning(move |_, _| Ok(Some(credential.clone())));
     let service = setup_service(Repositories {
         credential_repository,
         config: generic_config().core,

@@ -21,6 +21,7 @@ use crate::config::core_config::{
     CoreConfig, Fields, IdentifierType, KeyStorageType, TransportType, VerificationProtocolType,
 };
 use crate::error::{ErrorCode, ErrorCodeMixin};
+use crate::mapper::credential_schema_claim::backfill_default_translations;
 use crate::model::certificate::CertificateRelations;
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchema;
@@ -449,48 +450,55 @@ async fn test_get_proof_exists() {
                     required: true,
                     order: 0,
                 }]),
-                credential_schema: Some(CredentialSchema {
-                    batch_size: None,
-                    allow_revocation: None,
-                    id: credential_schema_id,
-                    deleted_at: None,
-                    created_date: crate::clock::now_utc(),
-                    key_storage_security: Some(KeyStorageSecurity::Basic),
-                    imported_source_url: "CORE_URL".to_string(),
-                    last_modified: crate::clock::now_utc(),
-                    name: "credential schema".to_string(),
-                    formats: vec![CredentialSchemaFormat {
-                        id: Uuid::new_v4().into(),
-                        created_date: crate::clock::now_utc(),
-                        last_modified: crate::clock::now_utc(),
-                        credential_schema_id,
-                        format: "JWT".into(),
-                        schema_id: "CredentialSchemaId".to_owned(),
-                        claim_mappings: Default::default(),
-                    }]
-                    .into(),
-                    revocation_method: None,
-                    claim_schemas: vec![ClaimSchema {
-                        business_key: None,
-                        id: Uuid::new_v4().into(),
-                        key: "ClaimKey".to_owned(),
-                        data_type: "STRING".to_owned(),
-                        created_date: crate::clock::now_utc(),
-                        last_modified: crate::clock::now_utc(),
-                        array: false,
-                        metadata: false,
-                        required: true,
-                        translations: Default::default(),
-                    }]
-                    .into(),
-                    organisation: dummy_organisation(None).into(),
-                    layout_type: LayoutType::Card,
-                    layout_properties: None,
-                    allow_suspension: true,
-                    requires_wallet_instance_attestation: false,
-                    transaction_code: None,
-                    translations: Default::default(),
-                }),
+                credential_schema: Some(
+                    backfill_default_translations(
+                        CredentialSchema {
+                            batch_size: None,
+                            allow_revocation: None,
+                            id: credential_schema_id,
+                            deleted_at: None,
+                            created_date: crate::clock::now_utc(),
+                            key_storage_security: Some(KeyStorageSecurity::Basic),
+                            imported_source_url: "CORE_URL".to_string(),
+                            last_modified: crate::clock::now_utc(),
+                            name: "credential schema".to_string(),
+                            formats: vec![CredentialSchemaFormat {
+                                id: Uuid::new_v4().into(),
+                                created_date: crate::clock::now_utc(),
+                                last_modified: crate::clock::now_utc(),
+                                credential_schema_id,
+                                format: "JWT".into(),
+                                schema_id: "CredentialSchemaId".to_owned(),
+                                claim_mappings: Default::default(),
+                            }]
+                            .into(),
+                            revocation_method: None,
+                            claim_schemas: vec![ClaimSchema {
+                                business_key: None,
+                                id: Uuid::new_v4().into(),
+                                key: "ClaimKey".to_owned(),
+                                data_type: "STRING".to_owned(),
+                                created_date: crate::clock::now_utc(),
+                                last_modified: crate::clock::now_utc(),
+                                array: false,
+                                metadata: false,
+                                required: true,
+                                translations: Default::default(),
+                            }]
+                            .into(),
+                            organisation: dummy_organisation(None).into(),
+                            layout_type: LayoutType::Card,
+                            layout_properties: None,
+                            allow_suspension: true,
+                            requires_wallet_instance_attestation: false,
+                            transaction_code: None,
+                            translations: Default::default(),
+                        },
+                        "en",
+                    )
+                    .await
+                    .unwrap(),
+                ),
             }]),
         }),
         claims: Some(vec![]),
@@ -613,36 +621,41 @@ async fn test_get_proof_with_array_holder() {
     };
 
     let credential_schema_id = Uuid::new_v4().into();
-    let credential_schema = CredentialSchema {
-        batch_size: None,
-        allow_revocation: None,
-        id: credential_schema_id,
-        deleted_at: None,
-        imported_source_url: "CORE_URL".to_string(),
-        created_date: crate::clock::now_utc(),
-        key_storage_security: None,
-        last_modified: crate::clock::now_utc(),
-        name: "credential schema".to_string(),
-        formats: vec![CredentialSchemaFormat {
-            id: Uuid::new_v4().into(),
+    let credential_schema = backfill_default_translations(
+        CredentialSchema {
+            batch_size: None,
+            allow_revocation: None,
+            id: credential_schema_id,
+            deleted_at: None,
+            imported_source_url: "CORE_URL".to_string(),
             created_date: crate::clock::now_utc(),
+            key_storage_security: None,
             last_modified: crate::clock::now_utc(),
-            credential_schema_id,
-            format: "JWT".into(),
-            schema_id: "CredentialSchemaId".to_owned(),
-            claim_mappings: Default::default(),
-        }]
-        .into(),
-        revocation_method: None,
-        claim_schemas: vec![claim_schema.clone()].into(),
-        organisation: organisation.clone().into(),
-        layout_type: LayoutType::Card,
-        layout_properties: None,
-        allow_suspension: true,
-        requires_wallet_instance_attestation: false,
-        transaction_code: None,
-        translations: Default::default(),
-    };
+            name: "credential schema".to_string(),
+            formats: vec![CredentialSchemaFormat {
+                id: Uuid::new_v4().into(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                credential_schema_id,
+                format: "JWT".into(),
+                schema_id: "CredentialSchemaId".to_owned(),
+                claim_mappings: Default::default(),
+            }]
+            .into(),
+            revocation_method: None,
+            claim_schemas: vec![claim_schema.clone()].into(),
+            organisation: organisation.clone().into(),
+            layout_type: LayoutType::Card,
+            layout_properties: None,
+            allow_suspension: true,
+            requires_wallet_instance_attestation: false,
+            transaction_code: None,
+            translations: Default::default(),
+        },
+        "en",
+    )
+    .await
+    .unwrap();
 
     let credential = Credential {
         id: Uuid::new_v4().into(),
@@ -879,36 +892,41 @@ async fn test_get_proof_with_array_in_object_holder() {
     ];
 
     let credential_schema_id = Uuid::new_v4().into();
-    let credential_schema = CredentialSchema {
-        batch_size: None,
-        allow_revocation: None,
-        id: credential_schema_id,
-        deleted_at: None,
-        imported_source_url: "CORE_URL".to_string(),
-        created_date: crate::clock::now_utc(),
-        key_storage_security: None,
-        last_modified: crate::clock::now_utc(),
-        name: "credential schema".to_string(),
-        formats: vec![CredentialSchemaFormat {
-            id: Uuid::new_v4().into(),
+    let credential_schema = backfill_default_translations(
+        CredentialSchema {
+            batch_size: None,
+            allow_revocation: None,
+            id: credential_schema_id,
+            deleted_at: None,
+            imported_source_url: "CORE_URL".to_string(),
             created_date: crate::clock::now_utc(),
+            key_storage_security: None,
             last_modified: crate::clock::now_utc(),
-            credential_schema_id,
-            format: "JWT".into(),
-            schema_id: "CredentialSchemaId".to_owned(),
-            claim_mappings: Default::default(),
-        }]
-        .into(),
-        revocation_method: None,
-        claim_schemas: claim_schemas.clone().into(),
-        organisation: organisation.clone().into(),
-        layout_type: LayoutType::Card,
-        layout_properties: None,
-        allow_suspension: true,
-        requires_wallet_instance_attestation: false,
-        transaction_code: None,
-        translations: Default::default(),
-    };
+            name: "credential schema".to_string(),
+            formats: vec![CredentialSchemaFormat {
+                id: Uuid::new_v4().into(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                credential_schema_id,
+                format: "JWT".into(),
+                schema_id: "CredentialSchemaId".to_owned(),
+                claim_mappings: Default::default(),
+            }]
+            .into(),
+            revocation_method: None,
+            claim_schemas: claim_schemas.clone().into(),
+            organisation: organisation.clone().into(),
+            layout_type: LayoutType::Card,
+            layout_properties: None,
+            allow_suspension: true,
+            requires_wallet_instance_attestation: false,
+            transaction_code: None,
+            translations: Default::default(),
+        },
+        "en",
+    )
+    .await
+    .unwrap();
 
     let credential = Credential {
         id: Uuid::new_v4().into(),
@@ -1160,36 +1178,41 @@ async fn test_get_proof_with_object_array_holder() {
     ];
 
     let credential_schema_id = Uuid::new_v4().into();
-    let credential_schema = CredentialSchema {
-        batch_size: None,
-        allow_revocation: None,
-        id: credential_schema_id,
-        deleted_at: None,
-        created_date: crate::clock::now_utc(),
-        key_storage_security: None,
-        imported_source_url: "CORE_URL".to_string(),
-        last_modified: crate::clock::now_utc(),
-        name: "credential schema".to_string(),
-        formats: vec![CredentialSchemaFormat {
-            id: Uuid::new_v4().into(),
+    let credential_schema = backfill_default_translations(
+        CredentialSchema {
+            batch_size: None,
+            allow_revocation: None,
+            id: credential_schema_id,
+            deleted_at: None,
             created_date: crate::clock::now_utc(),
+            key_storage_security: None,
+            imported_source_url: "CORE_URL".to_string(),
             last_modified: crate::clock::now_utc(),
-            credential_schema_id,
-            format: "JWT".into(),
-            schema_id: "CredentialSchemaId".to_owned(),
-            claim_mappings: Default::default(),
-        }]
-        .into(),
-        revocation_method: None,
-        claim_schemas: claim_schemas.clone().into(),
-        organisation: organisation.clone().into(),
-        layout_type: LayoutType::Card,
-        layout_properties: None,
-        allow_suspension: true,
-        requires_wallet_instance_attestation: false,
-        transaction_code: None,
-        translations: Default::default(),
-    };
+            name: "credential schema".to_string(),
+            formats: vec![CredentialSchemaFormat {
+                id: Uuid::new_v4().into(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                credential_schema_id,
+                format: "JWT".into(),
+                schema_id: "CredentialSchemaId".to_owned(),
+                claim_mappings: Default::default(),
+            }]
+            .into(),
+            revocation_method: None,
+            claim_schemas: claim_schemas.clone().into(),
+            organisation: organisation.clone().into(),
+            layout_type: LayoutType::Card,
+            layout_properties: None,
+            allow_suspension: true,
+            requires_wallet_instance_attestation: false,
+            transaction_code: None,
+            translations: Default::default(),
+        },
+        "en",
+    )
+    .await
+    .unwrap();
 
     let credential = Credential {
         id: Uuid::new_v4().into(),
@@ -1445,36 +1468,41 @@ async fn test_get_proof_with_array() {
     };
 
     let credential_schema_id = Uuid::new_v4().into();
-    let credential_schema = CredentialSchema {
-        batch_size: None,
-        allow_revocation: None,
-        id: credential_schema_id,
-        deleted_at: None,
-        created_date: crate::clock::now_utc(),
-        key_storage_security: None,
-        imported_source_url: "CORE_URL".to_string(),
-        last_modified: crate::clock::now_utc(),
-        name: "credential schema".to_string(),
-        formats: vec![CredentialSchemaFormat {
-            id: Uuid::new_v4().into(),
+    let credential_schema = backfill_default_translations(
+        CredentialSchema {
+            batch_size: None,
+            allow_revocation: None,
+            id: credential_schema_id,
+            deleted_at: None,
             created_date: crate::clock::now_utc(),
+            key_storage_security: None,
+            imported_source_url: "CORE_URL".to_string(),
             last_modified: crate::clock::now_utc(),
-            credential_schema_id,
-            format: "JWT".into(),
-            schema_id: "CredentialSchemaId".to_owned(),
-            claim_mappings: Default::default(),
-        }]
-        .into(),
-        revocation_method: None,
-        claim_schemas: vec![claim_schema.clone()].into(),
-        organisation: organisation.clone().into(),
-        layout_type: LayoutType::Card,
-        layout_properties: None,
-        allow_suspension: true,
-        requires_wallet_instance_attestation: false,
-        transaction_code: None,
-        translations: Default::default(),
-    };
+            name: "credential schema".to_string(),
+            formats: vec![CredentialSchemaFormat {
+                id: Uuid::new_v4().into(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                credential_schema_id,
+                format: "JWT".into(),
+                schema_id: "CredentialSchemaId".to_owned(),
+                claim_mappings: Default::default(),
+            }]
+            .into(),
+            revocation_method: None,
+            claim_schemas: vec![claim_schema.clone()].into(),
+            organisation: organisation.clone().into(),
+            layout_type: LayoutType::Card,
+            layout_properties: None,
+            allow_suspension: true,
+            requires_wallet_instance_attestation: false,
+            transaction_code: None,
+            translations: Default::default(),
+        },
+        "en",
+    )
+    .await
+    .unwrap();
 
     let credential = Credential {
         id: Uuid::new_v4().into(),
@@ -1718,36 +1746,41 @@ async fn test_get_proof_with_array_in_object() {
     ];
 
     let credential_schema_id = Uuid::new_v4().into();
-    let credential_schema = CredentialSchema {
-        batch_size: None,
-        allow_revocation: None,
-        id: credential_schema_id,
-        deleted_at: None,
-        imported_source_url: "CORE_URL".to_string(),
-        created_date: crate::clock::now_utc(),
-        key_storage_security: None,
-        last_modified: crate::clock::now_utc(),
-        name: "credential schema".to_string(),
-        formats: vec![CredentialSchemaFormat {
-            id: Uuid::new_v4().into(),
+    let credential_schema = backfill_default_translations(
+        CredentialSchema {
+            batch_size: None,
+            allow_revocation: None,
+            id: credential_schema_id,
+            deleted_at: None,
+            imported_source_url: "CORE_URL".to_string(),
             created_date: crate::clock::now_utc(),
+            key_storage_security: None,
             last_modified: crate::clock::now_utc(),
-            credential_schema_id,
-            format: "JWT".into(),
-            schema_id: "CredentialSchemaId".to_owned(),
-            claim_mappings: Default::default(),
-        }]
-        .into(),
-        revocation_method: None,
-        claim_schemas: claim_schemas.clone().into(),
-        organisation: organisation.clone().into(),
-        layout_type: LayoutType::Card,
-        layout_properties: None,
-        allow_suspension: true,
-        requires_wallet_instance_attestation: false,
-        transaction_code: None,
-        translations: Default::default(),
-    };
+            name: "credential schema".to_string(),
+            formats: vec![CredentialSchemaFormat {
+                id: Uuid::new_v4().into(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                credential_schema_id,
+                format: "JWT".into(),
+                schema_id: "CredentialSchemaId".to_owned(),
+                claim_mappings: Default::default(),
+            }]
+            .into(),
+            revocation_method: None,
+            claim_schemas: claim_schemas.clone().into(),
+            organisation: organisation.clone().into(),
+            layout_type: LayoutType::Card,
+            layout_properties: None,
+            allow_suspension: true,
+            requires_wallet_instance_attestation: false,
+            transaction_code: None,
+            translations: Default::default(),
+        },
+        "en",
+    )
+    .await
+    .unwrap();
 
     let credential = Credential {
         id: Uuid::new_v4().into(),
@@ -2007,36 +2040,41 @@ async fn test_get_proof_with_object_array() {
     ];
 
     let credential_schema_id = Uuid::new_v4().into();
-    let credential_schema = CredentialSchema {
-        batch_size: None,
-        allow_revocation: None,
-        id: credential_schema_id,
-        deleted_at: None,
-        created_date: crate::clock::now_utc(),
-        key_storage_security: None,
-        imported_source_url: "CORE_URL".to_string(),
-        last_modified: crate::clock::now_utc(),
-        name: "credential schema".to_string(),
-        formats: vec![CredentialSchemaFormat {
-            id: Uuid::new_v4().into(),
+    let credential_schema = backfill_default_translations(
+        CredentialSchema {
+            batch_size: None,
+            allow_revocation: None,
+            id: credential_schema_id,
+            deleted_at: None,
             created_date: crate::clock::now_utc(),
+            key_storage_security: None,
+            imported_source_url: "CORE_URL".to_string(),
             last_modified: crate::clock::now_utc(),
-            credential_schema_id,
-            format: "JWT".into(),
-            schema_id: "CredentialSchemaId".to_owned(),
-            claim_mappings: Default::default(),
-        }]
-        .into(),
-        revocation_method: None,
-        claim_schemas: claim_schemas.clone().into(),
-        organisation: organisation.clone().into(),
-        layout_type: LayoutType::Card,
-        layout_properties: None,
-        allow_suspension: true,
-        requires_wallet_instance_attestation: false,
-        transaction_code: None,
-        translations: Default::default(),
-    };
+            name: "credential schema".to_string(),
+            formats: vec![CredentialSchemaFormat {
+                id: Uuid::new_v4().into(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                credential_schema_id,
+                format: "JWT".into(),
+                schema_id: "CredentialSchemaId".to_owned(),
+                claim_mappings: Default::default(),
+            }]
+            .into(),
+            revocation_method: None,
+            claim_schemas: claim_schemas.clone().into(),
+            organisation: organisation.clone().into(),
+            layout_type: LayoutType::Card,
+            layout_properties: None,
+            allow_suspension: true,
+            requires_wallet_instance_attestation: false,
+            transaction_code: None,
+            translations: Default::default(),
+        },
+        "en",
+    )
+    .await
+    .unwrap();
 
     let credential = Credential {
         id: Uuid::new_v4().into(),

@@ -7,6 +7,7 @@ use one_core::model::credential_schema::{
     TransactionCode,
 };
 use one_core::model::credential_schema_format::CredentialSchemaFormat;
+use one_core::model::localized_text::{LocalizedText, LocalizedTextEntityType, LocalizedTextField};
 use one_core::model::organisation::Organisation;
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
 use one_core::repository::error::DataLayerError;
@@ -75,7 +76,7 @@ impl CredentialSchemasDB {
         });
 
         let id = params.id.unwrap_or(Uuid::new_v4().into());
-        let credential_schema = CredentialSchema {
+        let mut credential_schema = CredentialSchema {
             batch_size: None,
             allow_revocation: None,
             id,
@@ -123,6 +124,7 @@ impl CredentialSchemasDB {
             translations: Default::default(),
         };
 
+        add_default_translations(&mut credential_schema).await?;
         let id = self
             .repository
             .create_credential_schema(credential_schema)
@@ -164,7 +166,7 @@ impl CredentialSchemasDB {
         };
         let claim_schemas = vec![claim_schema.to_owned()];
 
-        let credential_schema = CredentialSchema {
+        let mut credential_schema = CredentialSchema {
             batch_size: None,
             allow_revocation: None,
             id: id.into(),
@@ -195,6 +197,9 @@ impl CredentialSchemasDB {
             translations: Default::default(),
         };
 
+        add_default_translations(&mut credential_schema)
+            .await
+            .unwrap();
         let id = self
             .repository
             .create_credential_schema(credential_schema)
@@ -280,7 +285,7 @@ impl CredentialSchemasDB {
         ];
 
         let id = Uuid::new_v4();
-        let credential_schema = CredentialSchema {
+        let mut credential_schema = CredentialSchema {
             batch_size: None,
             allow_revocation: None,
             id: id.into(),
@@ -311,6 +316,9 @@ impl CredentialSchemasDB {
             translations: Default::default(),
         };
 
+        add_default_translations(&mut credential_schema)
+            .await
+            .unwrap();
         let id = self
             .repository
             .create_credential_schema(credential_schema)
@@ -396,7 +404,7 @@ impl CredentialSchemasDB {
         ];
 
         let id = Uuid::new_v4();
-        let credential_schema = CredentialSchema {
+        let mut credential_schema = CredentialSchema {
             batch_size: None,
             allow_revocation: None,
             id: id.into(),
@@ -427,6 +435,9 @@ impl CredentialSchemasDB {
             translations: Default::default(),
         };
 
+        add_default_translations(&mut credential_schema)
+            .await
+            .unwrap();
         let id = self
             .repository
             .create_credential_schema(credential_schema)
@@ -525,7 +536,7 @@ impl CredentialSchemasDB {
         ];
 
         let id = Uuid::new_v4();
-        let credential_schema = CredentialSchema {
+        let mut credential_schema = CredentialSchema {
             batch_size: None,
             allow_revocation: None,
             id: id.into(),
@@ -556,6 +567,9 @@ impl CredentialSchemasDB {
             translations: Default::default(),
         };
 
+        add_default_translations(&mut credential_schema)
+            .await
+            .unwrap();
         let id = self
             .repository
             .create_credential_schema(credential_schema)
@@ -758,7 +772,7 @@ impl CredentialSchemasDB {
         ];
 
         let id = Uuid::new_v4();
-        let credential_schema = CredentialSchema {
+        let mut credential_schema = CredentialSchema {
             batch_size: None,
             allow_revocation: None,
             id: id.into(),
@@ -789,6 +803,9 @@ impl CredentialSchemasDB {
             translations: Default::default(),
         };
 
+        add_default_translations(&mut credential_schema)
+            .await
+            .unwrap();
         let id = self
             .repository
             .create_credential_schema(credential_schema)
@@ -818,7 +835,7 @@ impl CredentialSchemasDB {
         let claim_schemas = vec![claim_schema.to_owned()];
 
         let new_id = Uuid::new_v4();
-        let credential_schema = CredentialSchema {
+        let mut credential_schema = CredentialSchema {
             batch_size: None,
             allow_revocation: None,
             id: new_id.into(),
@@ -849,6 +866,9 @@ impl CredentialSchemasDB {
             translations: Default::default(),
         };
 
+        add_default_translations(&mut credential_schema)
+            .await
+            .unwrap();
         let id = self
             .repository
             .create_credential_schema(credential_schema.clone())
@@ -885,7 +905,7 @@ impl CredentialSchemasDB {
             })
             .collect();
 
-        let credential_schema = CredentialSchema {
+        let mut credential_schema = CredentialSchema {
             batch_size: None,
             allow_revocation: None,
             id: id.to_owned().into(),
@@ -926,6 +946,9 @@ impl CredentialSchemasDB {
             translations: Default::default(),
         };
 
+        add_default_translations(&mut credential_schema)
+            .await
+            .unwrap();
         let id = self
             .repository
             .create_credential_schema(credential_schema.clone())
@@ -1045,4 +1068,42 @@ impl CredentialSchemasDB {
             .unwrap();
         response.values
     }
+}
+
+pub async fn add_default_translations(schema: &mut CredentialSchema) -> Result<(), DataLayerError> {
+    let now = get_dummy_date();
+    schema.translations = vec![LocalizedText {
+        entity_id: schema.id.into(),
+        field: LocalizedTextField::Name,
+        created_date: now,
+        last_modified: now,
+        lang: "en".to_string(),
+        value: schema.name.clone(),
+        entity_type: LocalizedTextEntityType::CredentialSchema,
+    }]
+    .into();
+
+    let mut claim_schemas = schema.claim_schemas.get().await?;
+    for cs in claim_schemas.iter_mut() {
+        if !cs.metadata {
+            let label = cs
+                .key
+                .rsplit_once('/')
+                .map(|(_, end)| end)
+                .unwrap_or(&cs.key)
+                .to_string();
+            cs.translations = vec![LocalizedText {
+                entity_id: cs.id.into(),
+                field: LocalizedTextField::Name,
+                created_date: now,
+                last_modified: now,
+                lang: "en".to_string(),
+                value: label,
+                entity_type: LocalizedTextEntityType::ClaimSchema,
+            }]
+            .into();
+        }
+    }
+    schema.claim_schemas = claim_schemas.into();
+    Ok(())
 }

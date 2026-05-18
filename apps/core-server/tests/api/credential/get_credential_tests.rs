@@ -68,6 +68,7 @@ async fn test_get_credential_success() {
     resp["id"].assert_eq(&credential.id);
     resp["schema"]["organisationId"].assert_eq(&organisation.id);
     assert_eq!(resp["schema"]["name"], "test");
+    assert_eq!(resp["schema"]["translations"]["name"]["en"], "test");
     assert!(resp["revocationDate"].is_null());
     assert_eq!(resp["state"], "CREATED");
     assert_eq!(resp["role"], "ISSUER");
@@ -83,6 +84,14 @@ async fn test_get_credential_success() {
     assert_eq!(
         resp["walletInstanceAttestation"]["attestation"],
         "eyJhbGciOiJFUzI1NiIsInR5cCI6Im9hdXRoLWNsaWVudC1hdHRlc3RhdGlvbitqd3QifQ.eyJpYXQiOjE3NTY3MDc1NTcsImV4cCI6MTc1Njc5Mzk1NywibmJmIjoxNzU2NzA3NTU3LCJpc3MiOiJodHRwczovL2NvcmUuZGV2LnByb2NpdmlzLW9uZS5jb20iLCJzdWIiOiJodHRwczovL2NvcmUuZGV2LnByb2NpdmlzLW9uZS5jb20vUFJPQ0lWSVNfT05FIiwiY25mIjp7Imp3ayI6eyJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwieCI6IkdtbV9IbWd3SHZPNUpWZ1lPX3k0TG9hSTRLMzVoVDlmYzByb0lkZjVpRUEifX19.0QT5ybzrQx0d0ID2xx4hzH5NUodykyju2fyo3wIu7ZSobA26gYjcMvZZstg-GcZxjguo9rEkrzdm9ZUt-44wTw"
+    );
+    assert_eq!(
+        resp["claims"][0]["schema"]["translations"]["name"]["en"],
+        "firstName"
+    );
+    assert_eq!(
+        resp["claims"][1]["schema"]["translations"]["name"]["en"],
+        "isOver18"
     );
 }
 
