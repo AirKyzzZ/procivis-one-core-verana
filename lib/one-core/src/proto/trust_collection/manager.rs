@@ -13,6 +13,7 @@ use crate::model::trust_collection::{
     GetTrustCollectionList, TrustCollection, TrustCollectionFilterValue, TrustCollectionListQuery,
 };
 use crate::proto::transaction_manager::TransactionManager;
+use crate::repository::error::DataLayerError;
 use crate::repository::trust_collection_repository::TrustCollectionRepository;
 
 pub(crate) struct TrustCollectionManagerImpl {
@@ -43,31 +44,39 @@ impl TrustCollectionManager for TrustCollectionManagerImpl {
         let provider_url = Url::parse(provider_metadata_url)?;
         let now = crate::clock::now_utc();
 
-        let mut result = vec![];
+        let mut collection_ids = vec![];
         self.tx_manager
             .tx(async {
                 for collection in collections {
                     let trust_collection_url =
                         get_trust_collection_url(provider_url.clone(), collection.id)?;
 
-                    result.push(
-                        self.repository
-                            .create(TrustCollection {
-                                id: Uuid::new_v4().into(),
-                                name: collection.name.clone(),
-                                created_date: now,
-                                last_modified: now,
-                                deactivated_at: None,
-                                remote_trust_collection_url: Some(trust_collection_url),
-                                organisation_id,
-                                organisation: None,
-                            })
-                            .await
+                    let result = self.repository
+                        .create(TrustCollection {
+                            id: Uuid::new_v4().into(),
+                            name: collection.name.clone(),
+                            created_date: now,
+                            last_modified: now,
+                            deactivated_at: None,
+                            remote_trust_collection_url: Some(trust_collection_url),
+                            organisation_id,
+                            organisation: None,
+                        })
+                        .await;
+                    match result {
+                        Ok(id) => {
+                            collection_ids.push(id);
+                        }
+                        Err(DataLayerError::AlreadyExists) => {
+                            tracing::info!("Skipping trust collection with name `{}`: already exists", collection.name);
+                            continue;
+                        }
+                        Err(err) => return Err(err)
                             .error_while(format!(
                                 "creating trust collection with name `{}` in organisation {organisation_id}",
                                 collection.name,
-                            ))?,
-                    );
+                            )).map_err(Into::into),
+                    }
                 }
 
                 Ok::<_, Error>(())
@@ -76,7 +85,7 @@ impl TrustCollectionManager for TrustCollectionManagerImpl {
             .await
             .error_while("creating trust collections")??;
 
-        Ok(result)
+        Ok(collection_ids)
     }
 
     async fn sync_remote_trust_collections(

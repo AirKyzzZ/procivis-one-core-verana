@@ -11,6 +11,7 @@ use crate::proto::transaction_manager::NoTransactionManager;
 use crate::proto::trust_collection::TrustCollectionManager;
 use crate::proto::trust_collection::dto::RemoteTrustCollectionInfoDTO;
 use crate::proto::trust_collection::manager::TrustCollectionManagerImpl;
+use crate::repository::error::DataLayerError;
 use crate::repository::trust_collection_repository::MockTrustCollectionRepository;
 
 const DUMMY_URL: &str = "https://example.com/trust-collection";
@@ -65,6 +66,27 @@ async fn test_collection_sync() {
     assert!(result.contains(&to_keep.id));
     assert!(!result.contains(&to_not_touch.id));
     assert!(!result.contains(&to_delete.id));
+}
+
+#[tokio::test]
+async fn test_skip_already_existing() {
+    let org_id = Uuid::new_v4().into();
+    let mut repository = MockTrustCollectionRepository::new();
+    repository
+        .expect_create()
+        .once()
+        .withf(|c| c.name == "already_exists" && c.remote_trust_collection_url.is_some())
+        .returning(|_| Err(DataLayerError::AlreadyExists));
+
+    let provider =
+        TrustCollectionManagerImpl::new(Arc::new(repository), Arc::new(NoTransactionManager));
+
+    let remote_collections = vec![remote_test_collection("already_exists")];
+    let result = provider
+        .create_empty_trust_collections("https://provider.url", remote_collections, org_id)
+        .await
+        .unwrap(); // does not fail
+    assert!(result.is_empty()); // No new collections created
 }
 
 fn remote_test_collection(name: &str) -> RemoteTrustCollectionInfoDTO {
