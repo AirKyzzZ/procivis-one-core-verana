@@ -22,6 +22,7 @@ use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::Did;
 use crate::model::identifier::{Identifier, IdentifierType};
 use crate::model::interaction::{Interaction, InteractionType};
+use crate::model::localized_text::{LocalizedText, LocalizedTextEntityType, LocalizedTextField};
 use crate::model::organisation::Organisation;
 use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::credential_schema::importer::MockCredentialSchemaImporter;
@@ -217,19 +218,31 @@ fn generic_credential_schema() -> CredentialSchema {
         }]
         .into(),
         revocation_method: None,
-        claim_schemas: vec![ClaimSchema {
-            business_key: None,
-            array: false,
-            created_date: get_dummy_date(),
-            last_modified: get_dummy_date(),
-            data_type: "STRING".to_string(),
-            key: "key".to_string(),
-            id: Uuid::new_v4().into(),
-            metadata: false,
-            required: true,
-            translations: Default::default(),
-        }]
-        .into(),
+        claim_schemas: {
+            let claim_schema_id: shared_types::ClaimSchemaId = Uuid::new_v4().into();
+            vec![ClaimSchema {
+                business_key: None,
+                array: false,
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                data_type: "STRING".to_string(),
+                key: "key".to_string(),
+                id: claim_schema_id,
+                metadata: false,
+                required: true,
+                translations: vec![LocalizedText {
+                    entity_id: claim_schema_id.into(),
+                    field: LocalizedTextField::Name,
+                    created_date: get_dummy_date(),
+                    last_modified: get_dummy_date(),
+                    lang: "en".to_string(),
+                    value: "key".to_string(),
+                    entity_type: LocalizedTextEntityType::ClaimSchema,
+                }]
+                .into(),
+            }]
+            .into()
+        },
         organisation: dummy_organisation(None).into(),
         layout_type: LayoutType::Card,
         layout_properties: None,
@@ -655,6 +668,7 @@ async fn test_get_issuer_metadata_mdoc() {
     .into();
     schema.organisation = generic_organisation().into();
     let now = crate::clock::now_utc();
+    let claim_schema_id: shared_types::ClaimSchemaId = Uuid::new_v4().into();
     schema.claim_schemas = vec![
         ClaimSchema {
             business_key: None,
@@ -670,7 +684,7 @@ async fn test_get_issuer_metadata_mdoc() {
         },
         ClaimSchema {
             business_key: None,
-            id: Uuid::new_v4().into(),
+            id: claim_schema_id,
             key: "location/X".to_string(),
             data_type: "STRING".to_string(),
             created_date: now,
@@ -678,7 +692,16 @@ async fn test_get_issuer_metadata_mdoc() {
             array: false,
             metadata: false,
             required: true,
-            translations: Default::default(),
+            translations: vec![LocalizedText {
+                entity_id: claim_schema_id.into(),
+                field: LocalizedTextField::Name,
+                created_date: now,
+                last_modified: now,
+                lang: "en".to_string(),
+                value: "X".to_string(),
+                entity_type: LocalizedTextEntityType::ClaimSchema,
+            }]
+            .into(),
         },
     ]
     .into();
@@ -754,6 +777,315 @@ async fn test_get_issuer_metadata_mdoc() {
     // mDoc uses doctype and order fields instead
     assert!(credential.doctype.is_some());
     assert!(credential.vct.is_none()); // vct is not used for mdoc
+}
+
+#[tokio::test]
+async fn test_get_issuer_metadata_includes_schema_translations() {
+    let mut did_method_provider = MockDidMethodProvider::default();
+    did_method_provider
+        .expect_supported_method_names()
+        .return_once(|| vec!["key".to_string()]);
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
+    key_algorithm_provider
+        .expect_supported_verification_jose_alg_ids()
+        .return_once(|| vec!["ES256".to_string()]);
+
+    let mut key_algorithm = MockKeyAlgorithm::default();
+    key_algorithm
+        .expect_issuance_jose_alg_id()
+        .return_once(|| "ES256".to_string());
+
+    key_algorithm_provider
+        .expect_key_algorithm_from_type()
+        .with(eq(KeyAlgorithmType::Ecdsa))
+        .return_once(move |_| Ok(Arc::new(key_algorithm)));
+
+    let mut formatter = MockCredentialFormatter::default();
+    formatter
+        .expect_get_capabilities()
+        .return_once(|| FormatterCapabilities {
+            signing_key_algorithms: vec![KeyAlgorithmType::Ecdsa],
+            holder_identifier_types: vec![IdentifierType::Did.into()],
+            ..Default::default()
+        });
+
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .with(eq(CredentialFormat::from("JWT")))
+        .return_once(move |_| Some(Arc::new(formatter)));
+
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+    let mut schema = generic_credential_schema();
+    schema.organisation = generic_organisation().into();
+
+    let now = crate::clock::now_utc();
+    schema.translations = vec![
+        LocalizedText {
+            entity_id: schema.id.into(),
+            field: LocalizedTextField::Name,
+            created_date: now,
+            last_modified: now,
+            lang: "en".to_string(),
+            value: "English Name".to_string(),
+            entity_type: LocalizedTextEntityType::CredentialSchema,
+        },
+        LocalizedText {
+            entity_id: schema.id.into(),
+            field: LocalizedTextField::Name,
+            created_date: now,
+            last_modified: now,
+            lang: "de".to_string(),
+            value: "German Name".to_string(),
+            entity_type: LocalizedTextEntityType::CredentialSchema,
+        },
+        LocalizedText {
+            entity_id: schema.id.into(),
+            field: LocalizedTextField::Description,
+            created_date: now,
+            last_modified: now,
+            lang: "de".to_string(),
+            value: "German Description".to_string(),
+            entity_type: LocalizedTextEntityType::CredentialSchema,
+        },
+    ]
+    .into();
+
+    {
+        let clone = schema.clone();
+        credential_schema_repository
+            .expect_get_credential_schema()
+            .times(1)
+            .with(eq(schema.id.to_owned()))
+            .returning(move |_| Ok(Some(clone.clone())));
+    }
+
+    let issuance_protocol = setup_protocol(ProtocolMocks {
+        credential_schema_repository,
+        did_method_provider,
+        key_algorithm_provider,
+        formatter_provider,
+        ..Default::default()
+    });
+
+    let identifier = dummy_identifier();
+    let identifier_id = identifier.id;
+
+    let mut identifier_repository = MockIdentifierRepository::default();
+    identifier_repository
+        .expect_get()
+        .returning(move |_, _| Ok(Some(identifier.clone())));
+
+    let mut issuance_protocol_provider = MockIssuanceProtocolProvider::default();
+    issuance_protocol_provider
+        .expect_get_protocol()
+        .return_once(|_| Some(Arc::new(issuance_protocol)));
+
+    let service = setup_service(Mocks {
+        exchange_provider: issuance_protocol_provider,
+        config: generic_config().core,
+        identifier_repository,
+        ..Default::default()
+    });
+
+    let result = service
+        .get_issuer_metadata(
+            "OPENID4VCI_FINAL1",
+            &identifier_id,
+            &schema.id,
+            OID4VCIFinal1_0IssuerMetadataResponseTypeEnum::Model,
+        )
+        .await
+        .unwrap();
+
+    let OID4VCIFinal1_0IssuerMetadataResponseEnum::Model(model) = result else {
+        panic!("assertion failed: Expected an IssuerMetadataResponseEnum::Model")
+    };
+
+    let credential_configuration = model.credential_configurations_supported[0].to_owned();
+    let displays = credential_configuration
+        .credential_metadata
+        .unwrap()
+        .display
+        .unwrap();
+
+    assert_eq!(2, displays.len());
+
+    let en_display = displays
+        .iter()
+        .find(|d| d.locale.as_deref() == Some("en"))
+        .unwrap();
+    assert_eq!("English Name", en_display.name);
+    assert!(en_display.description.is_none());
+
+    let de_display = displays
+        .iter()
+        .find(|d| d.locale.as_deref() == Some("de"))
+        .unwrap();
+    assert_eq!("German Name", de_display.name);
+    assert_eq!(
+        Some("German Description"),
+        de_display.description.as_deref()
+    );
+}
+
+#[tokio::test]
+async fn test_get_issuer_metadata_includes_claim_translations() {
+    let mut did_method_provider = MockDidMethodProvider::default();
+    did_method_provider
+        .expect_supported_method_names()
+        .return_once(|| vec!["key".to_string()]);
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
+    key_algorithm_provider
+        .expect_supported_verification_jose_alg_ids()
+        .return_once(|| vec!["ES256".to_string()]);
+
+    let mut key_algorithm = MockKeyAlgorithm::default();
+    key_algorithm
+        .expect_issuance_jose_alg_id()
+        .return_once(|| "ES256".to_string());
+
+    key_algorithm_provider
+        .expect_key_algorithm_from_type()
+        .with(eq(KeyAlgorithmType::Ecdsa))
+        .return_once(move |_| Ok(Arc::new(key_algorithm)));
+
+    let mut formatter = MockCredentialFormatter::default();
+    formatter
+        .expect_get_capabilities()
+        .return_once(|| FormatterCapabilities {
+            signing_key_algorithms: vec![KeyAlgorithmType::Ecdsa],
+            holder_identifier_types: vec![IdentifierType::Did.into()],
+            ..Default::default()
+        });
+
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .with(eq(CredentialFormat::from("JWT")))
+        .return_once(move |_| Some(Arc::new(formatter)));
+
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+    let mut schema = generic_credential_schema();
+    schema.organisation = generic_organisation().into();
+
+    let now = crate::clock::now_utc();
+    let claim_schema_id = schema
+        .claim_schemas
+        .get()
+        .await
+        .unwrap()
+        .first()
+        .unwrap()
+        .id;
+
+    schema.claim_schemas = vec![ClaimSchema {
+        business_key: None,
+        array: false,
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        data_type: "STRING".to_string(),
+        key: "key".to_string(),
+        id: claim_schema_id,
+        metadata: false,
+        required: true,
+        translations: vec![
+            LocalizedText {
+                entity_id: claim_schema_id.into(),
+                field: LocalizedTextField::Name,
+                created_date: now,
+                last_modified: now,
+                lang: "en".to_string(),
+                value: "English Claim".to_string(),
+                entity_type: LocalizedTextEntityType::ClaimSchema,
+            },
+            LocalizedText {
+                entity_id: claim_schema_id.into(),
+                field: LocalizedTextField::Name,
+                created_date: now,
+                last_modified: now,
+                lang: "fr".to_string(),
+                value: "French Claim".to_string(),
+                entity_type: LocalizedTextEntityType::ClaimSchema,
+            },
+        ]
+        .into(),
+    }]
+    .into();
+
+    {
+        let clone = schema.clone();
+        credential_schema_repository
+            .expect_get_credential_schema()
+            .times(1)
+            .with(eq(schema.id.to_owned()))
+            .returning(move |_| Ok(Some(clone.clone())));
+    }
+
+    let issuance_protocol = setup_protocol(ProtocolMocks {
+        credential_schema_repository,
+        did_method_provider,
+        key_algorithm_provider,
+        formatter_provider,
+        ..Default::default()
+    });
+
+    let identifier = dummy_identifier();
+    let identifier_id = identifier.id;
+
+    let mut identifier_repository = MockIdentifierRepository::default();
+    identifier_repository
+        .expect_get()
+        .returning(move |_, _| Ok(Some(identifier.clone())));
+
+    let mut issuance_protocol_provider = MockIssuanceProtocolProvider::default();
+    issuance_protocol_provider
+        .expect_get_protocol()
+        .return_once(|_| Some(Arc::new(issuance_protocol)));
+
+    let service = setup_service(Mocks {
+        exchange_provider: issuance_protocol_provider,
+        config: generic_config().core,
+        identifier_repository,
+        ..Default::default()
+    });
+
+    let result = service
+        .get_issuer_metadata(
+            "OPENID4VCI_FINAL1",
+            &identifier_id,
+            &schema.id,
+            OID4VCIFinal1_0IssuerMetadataResponseTypeEnum::Model,
+        )
+        .await
+        .unwrap();
+
+    let OID4VCIFinal1_0IssuerMetadataResponseEnum::Model(model) = result else {
+        panic!("assertion failed: Expected an IssuerMetadataResponseEnum::Model")
+    };
+
+    let credential_configuration = model.credential_configurations_supported[0].to_owned();
+    let claims = credential_configuration
+        .credential_metadata
+        .unwrap()
+        .claims
+        .unwrap();
+
+    assert_eq!(1, claims.len());
+    let claim_displays = claims[0].display.as_ref().unwrap();
+    assert_eq!(2, claim_displays.len());
+
+    let en_display = claim_displays
+        .iter()
+        .find(|d| d.locale.as_deref() == Some("en"))
+        .unwrap();
+    assert_eq!(Some("English Claim"), en_display.name.as_deref());
+
+    let fr_display = claim_displays
+        .iter()
+        .find(|d| d.locale.as_deref() == Some("fr"))
+        .unwrap();
+    assert_eq!(Some("French Claim"), fr_display.name.as_deref());
 }
 
 #[tokio::test]

@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::str::FromStr;
 
 use indexmap::IndexMap;
@@ -16,10 +17,12 @@ use super::model::{
 };
 use super::validator::throw_if_credential_state_not_eq;
 use crate::config::core_config::FormatType;
+use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::Identifier;
 use crate::model::interaction::Interaction;
+use crate::model::localized_text::LocalizedTextField;
 use crate::provider::issuance_protocol::error::{OpenID4VCIError, OpenIDIssuanceError};
 use crate::provider::issuance_protocol::model::{OpenID4VCIProofTypeSupported, OpenID4VCITxCode};
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
@@ -87,49 +90,11 @@ pub(crate) async fn credential_configuration_supported(
     proof_types_supported: IndexMap<String, OpenID4VCIProofTypeSupported>,
     credential_signing_alg_values_supported: Vec<String>,
 ) -> Result<OpenID4VCICredentialConfigurationData, OpenID4VCIError> {
-    let credential_metadata_claims: Vec<OpenID4VCICredentialMetadataClaimResponseDTO> = {
-        let claims = credential_schema
-            .claim_schemas
-            .get()
-            .await
-            .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?;
-
-        claims
-            .iter()
-            .filter_map(|claim| {
-                if claim.data_type == "OBJECT" {
-                    return None;
-                }
-
-                if claim.metadata {
-                    return None;
-                }
-
-                let path = claim
-                    .key
-                    .split('/')
-                    .map(|s| s.to_string())
-                    .collect::<Vec<String>>();
-
-                let name = path.last().unwrap_or(&claim.key).to_owned();
-
-                Some(OpenID4VCICredentialMetadataClaimResponseDTO {
-                    path,
-                    mandatory: Some(claim.required),
-                    additional_values: None,
-                    display: Some(vec![OpenID4VCIIssuerMetadataClaimDisplay {
-                        name: Some(name),
-                        locale: Some("en".to_string()),
-                    }]),
-                })
-            })
-            .collect()
-    };
-
-    let display_dto = create_display_dto_from_schema(credential_schema);
+    let credential_metadata_claims = create_claims_dtos_from_claims(credential_schema).await?;
+    let display_dtos = create_display_dtos_from_schema(credential_schema).await?;
 
     let credential_metadata = OpenID4VCICredentialMetadataResponseDTO {
-        display: Some(vec![display_dto]),
+        display: Some(display_dtos),
         claims: Some(credential_metadata_claims),
     };
     let proof_types_supported = Some(proof_types_supported);
@@ -172,7 +137,40 @@ pub(crate) async fn credential_configuration_supported(
     })
 }
 
-pub(crate) fn create_display_dto_from_schema(
+async fn create_claims_dtos_from_claims(
+    credential_schema: &CredentialSchema,
+) -> Result<Vec<OpenID4VCICredentialMetadataClaimResponseDTO>, OpenID4VCIError> {
+    let claims = credential_schema
+        .claim_schemas
+        .get()
+        .await
+        .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?;
+
+    let mut result = vec![];
+    for claim in claims.iter() {
+        if claim.data_type == "OBJECT" || claim.metadata {
+            continue;
+        }
+
+        let path = claim
+            .key
+            .split('/')
+            .map(|s| s.to_string())
+            .collect::<Vec<String>>();
+
+        let display = create_claim_display_dtos(claim).await?;
+
+        result.push(OpenID4VCICredentialMetadataClaimResponseDTO {
+            path,
+            mandatory: Some(claim.required),
+            additional_values: None,
+            display: Some(display),
+        });
+    }
+    Ok(result)
+}
+
+fn create_display_dto_from_schema(
     credential_schema: &CredentialSchema,
 ) -> OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO {
     let mut display = OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO {
@@ -230,6 +228,70 @@ pub(crate) fn create_display_dto_from_schema(
     }
 
     display
+}
+
+async fn create_display_dtos_from_schema(
+    credential_schema: &CredentialSchema,
+) -> Result<Vec<OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO>, OpenID4VCIError> {
+    let translations = credential_schema
+        .translations
+        .get()
+        .await
+        .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?;
+
+    if translations.is_empty() {
+        return Ok(vec![create_display_dto_from_schema(credential_schema)]);
+    }
+
+    let visual_base = create_display_dto_from_schema(credential_schema);
+
+    let mut by_lang: HashMap<String, (Option<String>, Option<String>)> = HashMap::new();
+    for translation in translations.iter() {
+        let entry = by_lang.entry(translation.lang.clone()).or_default();
+        match translation.field {
+            LocalizedTextField::Name => entry.0 = Some(translation.value.clone()),
+            LocalizedTextField::Description => entry.1 = Some(translation.value.clone()),
+        }
+    }
+
+    let displays = by_lang
+        .into_iter()
+        .map(
+            |(lang, (name, description))| OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO {
+                name: name.unwrap_or_else(|| credential_schema.name.clone()),
+                locale: Some(lang),
+                description,
+                ..visual_base.clone()
+            },
+        )
+        .collect();
+
+    Ok(displays)
+}
+
+async fn create_claim_display_dtos(
+    claim: &ClaimSchema,
+) -> Result<Vec<OpenID4VCIIssuerMetadataClaimDisplay>, OpenID4VCIError> {
+    let translations = claim
+        .translations
+        .get()
+        .await
+        .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?;
+
+    if translations.is_empty() {
+        return Err(OpenID4VCIError::RuntimeError(
+            "Claim schema should have at least one translation".to_string(),
+        ));
+    }
+
+    Ok(translations
+        .iter()
+        .filter(|t| t.field == LocalizedTextField::Name)
+        .map(|t| OpenID4VCIIssuerMetadataClaimDisplay {
+            name: Some(t.value.clone()),
+            locale: Some(t.lang.clone()),
+        })
+        .collect())
 }
 
 fn jsonld_configuration(
