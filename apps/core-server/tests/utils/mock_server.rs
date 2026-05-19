@@ -94,17 +94,21 @@ impl MockServer {
         &self,
         schema_id: impl Display,
         bearer_auth: impl Display,
-        credential: impl Display,
+        credentials: &[impl Display],
         expected_calls: u64,
         notification_id: Option<&str>,
     ) {
+        let credentials: Vec<_> = credentials
+            .iter()
+            .map(|credential| json!({"credential": credential.to_string()}))
+            .collect();
         Mock::given(method(Method::POST))
             .and(path(format!(
                 "/ssi/openid4vci/final-1.0/{schema_id}/credential"
             )))
             .and(header(AUTHORIZATION, format!("Bearer {bearer_auth}")))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
-                "credentials": [{"credential": credential.to_string()}],
+                "credentials": credentials,
                 "notification_id": notification_id
             })))
             .expect(expected_calls)

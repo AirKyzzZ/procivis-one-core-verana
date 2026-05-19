@@ -169,7 +169,7 @@ async fn test_issuance_accept_openid4vc() {
 
     context
         .server_mock
-        .ssi_credential_endpoint(credential_schema.id, "123", jwt_credential, 1, None)
+        .ssi_credential_endpoint(credential_schema.id, "123", &[jwt_credential], 1, None)
         .await;
 
     context
@@ -371,7 +371,7 @@ async fn test_issuance_accept_schema_name_already_exists() {
 
     context
         .server_mock
-        .ssi_credential_endpoint(credential_schema.id, "123", jwt_credential, 1, None)
+        .ssi_credential_endpoint(credential_schema.id, "123", &[jwt_credential], 1, None)
         .await;
 
     context
@@ -512,7 +512,13 @@ async fn test_issuance_accept_openid4vc_issuer_invalid_signature() {
 
     context
         .server_mock
-        .ssi_credential_endpoint(credential_schema.id, "123", document_invalid_sig, 1, None)
+        .ssi_credential_endpoint(
+            credential_schema.id,
+            "123",
+            &[document_invalid_sig],
+            1,
+            None,
+        )
         .await;
 
     context
@@ -648,7 +654,7 @@ async fn test_issuance_accept_openid4vc_with_key_id() {
     .await;
     context
         .server_mock
-        .ssi_credential_endpoint(credential_schema.id, "123", jwt_credential, 1, None)
+        .ssi_credential_endpoint(credential_schema.id, "123", &[jwt_credential], 1, None)
         .await;
 
     context
@@ -754,7 +760,7 @@ async fn test_issuance_accept_autogenerate_holder_binding() {
 
     context
         .server_mock
-        .ssi_credential_endpoint(credential_schema.id, "123", jwt_credential, 1, None)
+        .ssi_credential_endpoint(credential_schema.id, "123", &[jwt_credential], 1, None)
         .await;
 
     context
@@ -1457,7 +1463,7 @@ async fn test_issuance_accept_openid4vc_with_tx_code() {
     .await;
     context
         .server_mock
-        .ssi_credential_endpoint(credential_schema.id, "123", jwt_credential, 1, None)
+        .ssi_credential_endpoint(credential_schema.id, "123", &[jwt_credential], 1, None)
         .await;
 
     context
@@ -1660,7 +1666,7 @@ async fn test_wia_pop_iss_equals_wia_sub() {
 
     context
         .server_mock
-        .ssi_credential_endpoint(credential_schema.id, "123", jwt_credential, 1, None)
+        .ssi_credential_endpoint(credential_schema.id, "123", &[jwt_credential], 1, None)
         .await;
 
     context

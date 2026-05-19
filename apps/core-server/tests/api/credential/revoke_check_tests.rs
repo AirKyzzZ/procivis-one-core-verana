@@ -724,7 +724,7 @@ async fn test_revoke_check_mdoc_update() {
     let valid_credential = valid_mdoc_credential().await;
     context
         .server_mock
-        .ssi_credential_endpoint(&credential_schema.id, "123", &valid_credential, 1, None)
+        .ssi_credential_endpoint(&credential_schema.id, "123", &[&valid_credential], 1, None)
         .await;
 
     // WHEN
@@ -868,7 +868,7 @@ async fn test_revoke_check_mdoc_update_invalid() {
         .ssi_credential_endpoint(
             &credential_schema.id,
             "123",
-            "this is not a valid mdoc",
+            &["this is not a valid mdoc"],
             1,
             None,
         )
@@ -1015,7 +1015,7 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
     let valid_credential2 = valid_mdoc_credential().await;
     context
         .server_mock
-        .ssi_credential_endpoint(&credential_schema.id, "123", &valid_credential2, 2, None)
+        .ssi_credential_endpoint(&credential_schema.id, "123", &[&valid_credential2], 2, None)
         .await;
 
     // WHEN
@@ -1559,7 +1559,7 @@ async fn test_suspended_to_valid_mdoc() {
     let valid_credential = valid_mdoc_credential().await;
     context
         .server_mock
-        .ssi_credential_endpoint(&credential_schema.id, "321", &valid_credential, 1, None)
+        .ssi_credential_endpoint(&credential_schema.id, "321", &[&valid_credential], 1, None)
         .await;
     let history_previous = context
         .db

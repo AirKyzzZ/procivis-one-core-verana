@@ -22,8 +22,6 @@ use crate::mapper::opt_secret_string;
 use crate::mapper::params::deserialize_encryption_key;
 use crate::model::credential_schema::{CodeTypeEnum, CredentialSchema, LayoutProperties};
 use crate::model::history::TrustResolutionResult;
-use crate::model::identifier::Identifier;
-use crate::model::key::Key;
 use crate::proto::wrp_validator::model::TrustMode;
 use crate::provider::credential_formatter::vcdm::ContextType;
 
@@ -769,11 +767,4 @@ pub(crate) struct PreparedMetadata {
     pub(crate) schema: CredentialSchema,
     pub(crate) credential_configurations_supported:
         IndexMap<String, OpenID4VCICredentialConfigurationData>,
-}
-
-#[derive(Debug, Clone)]
-pub(super) struct CredentialRequestHolderKey<'a> {
-    pub identifier: &'a Identifier,
-    pub key: &'a Key,
-    pub wua_proof: Option<String>,
 }

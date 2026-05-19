@@ -18,6 +18,7 @@ pub struct InteractionDataParams {
     pub format: Option<String>,
     pub notification_id: Option<String>,
     pub notification_endpoint: Option<String>,
+    pub batch_size: Option<u32>,
 }
 
 impl InteractionDataParams {
@@ -111,6 +112,9 @@ pub fn dummy_interaction_data(
     }
     if let Some(notification_id) = params.notification_id {
         value["notification_id"] = json!(notification_id);
+    }
+    if let Some(batch_size) = params.batch_size {
+        value["batch_size"] = json!(batch_size);
     }
     serde_json::to_vec(&value).unwrap()
 }

@@ -29,6 +29,7 @@ pub struct TestingCreateSchemaParams {
     pub requires_wallet_instance_attestation: bool,
     pub deleted_at: Option<OffsetDateTime>,
     pub transaction_code: Option<TransactionCode>,
+    pub batch_size: Option<i32>,
 }
 
 fn claim_name_translation(id: ClaimSchemaId, key: &str) -> LocalizedText {
@@ -90,7 +91,7 @@ impl CredentialSchemasDB {
 
         let id = params.id.unwrap_or(Uuid::new_v4().into());
         let mut credential_schema = CredentialSchema {
-            batch_size: None,
+            batch_size: params.batch_size,
             allow_revocation: None,
             id,
             imported_source_url: params.imported_source_url.unwrap_or("CORE_URL".to_string()),
@@ -180,7 +181,7 @@ impl CredentialSchemasDB {
         let claim_schemas = vec![claim_schema.to_owned()];
 
         let mut credential_schema = CredentialSchema {
-            batch_size: None,
+            batch_size: params.batch_size,
             allow_revocation: None,
             id: id.into(),
             imported_source_url: "CORE_URL".to_string(),
@@ -299,7 +300,7 @@ impl CredentialSchemasDB {
 
         let id = Uuid::new_v4();
         let mut credential_schema = CredentialSchema {
-            batch_size: None,
+            batch_size: params.batch_size,
             allow_revocation: None,
             id: id.into(),
             imported_source_url: "CORE_URL".to_string(),
@@ -418,7 +419,7 @@ impl CredentialSchemasDB {
 
         let id = Uuid::new_v4();
         let mut credential_schema = CredentialSchema {
-            batch_size: None,
+            batch_size: params.batch_size,
             allow_revocation: None,
             id: id.into(),
             imported_source_url: "CORE_URL".to_string(),
@@ -550,7 +551,7 @@ impl CredentialSchemasDB {
 
         let id = Uuid::new_v4();
         let mut credential_schema = CredentialSchema {
-            batch_size: None,
+            batch_size: params.batch_size,
             allow_revocation: None,
             id: id.into(),
             imported_source_url: "CORE_URL".to_string(),
@@ -832,7 +833,7 @@ impl CredentialSchemasDB {
 
         let id = Uuid::new_v4();
         let mut credential_schema = CredentialSchema {
-            batch_size: None,
+            batch_size: params.batch_size,
             allow_revocation: None,
             id: id.into(),
             imported_source_url: "CORE_URL".to_string(),

@@ -270,9 +270,64 @@ impl SSIHolderService {
 
     pub async fn refresh_credentials(
         &self,
-        _interaction_id: InteractionId,
+        interaction_id: InteractionId,
     ) -> Result<Vec<CredentialId>, HolderServiceError> {
-        todo!()
+        let interaction = self
+            .interaction_repository
+            .get_interaction(
+                &interaction_id,
+                &InteractionRelations {
+                    organisation: Some(Default::default()),
+                },
+                None,
+            )
+            .await
+            .error_while("getting interaction")?
+            .ok_or(HolderServiceError::MissingCredentialsForInteraction(
+                interaction_id,
+            ))?;
+        throw_if_org_not_matching_session(
+            interaction.organisation.as_ref(),
+            &*self.session_provider,
+        )
+        .error_while("checking interaction organisation")?;
+
+        if interaction.interaction_type != InteractionType::Issuance {
+            return Err(HolderServiceError::MissingCredentialsForInteraction(
+                interaction_id,
+            ));
+        }
+
+        let data: issuance_protocol::openid4vci_final1_0::model::HolderInteractionData =
+            deserialize_interaction_data(interaction.data.as_ref())
+                .error_while("parsing holder interaction data")?;
+
+        if data.batch_size.is_none() || data.refresh_token.is_none() {
+            tracing::debug!(
+                "Interaction batch: {}, refresh_token: {}",
+                data.batch_size.is_some(),
+                data.refresh_token.is_some()
+            );
+            return Err(HolderServiceError::MissingCredentialsForInteraction(
+                interaction_id,
+            ));
+        }
+
+        let protocol = self
+            .issuance_protocol_provider
+            .get_protocol(&data.protocol)
+            .ok_or(MissingProviderError::ExchangeProtocol(data.protocol))
+            .error_while("getting protocol")?;
+
+        let credential_ids = protocol
+            .holder_refresh_credential(&interaction, None)
+            .await
+            .error_while("refreshing credential batch")?;
+
+        tracing::info!(
+            "Batch issued, new credentials {credential_ids:?} for interaction {interaction_id}"
+        );
+        Ok(credential_ids)
     }
 
     pub async fn reject_credential(

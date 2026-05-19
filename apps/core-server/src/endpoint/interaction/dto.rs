@@ -140,6 +140,7 @@ pub(crate) struct IssuanceAcceptRequestRestDTO {
     pub holder_wallet_unit_id: Option<HolderWalletInstanceId>,
 }
 
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct IssuanceAcceptResponseRestDTO {
@@ -148,9 +149,9 @@ pub(crate) struct IssuanceAcceptResponseRestDTO {
     pub ids: Vec<CredentialId>,
 }
 
-#[derive(Clone, Debug, Serialize, ToSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct IssuanceRefreshResponseRestDTO {
+pub struct IssuanceRefreshResponseRestDTO {
     pub ids: Vec<CredentialId>,
 }
 

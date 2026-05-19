@@ -6,17 +6,37 @@ use std::fmt::Debug;
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use attestations::{AttestationType, requires_wia};
 use indexmap::IndexMap;
+use mapper::{
+    credential_config_to_holder_signing_algs_and_key_storage_security, get_credential_offer_url,
+    map_cryptographic_binding_methods_supported, map_proof_types_supported,
+    parse_credential_issuer_params,
+};
+use model::{
+    ChallengeResponseDTO, EtsiIssuerInfoAttestationFormat, EtsiIssuerInfoResponseDTO,
+    HolderInteractionData, OAuthAuthorizationServerMetadata, OpenID4VCIAuthorizationCodeGrant,
+    OpenID4VCICredentialConfigurationData, OpenID4VCICredentialRequestDTO,
+    OpenID4VCICredentialRequestIdentifier, OpenID4VCICredentialRequestProofs,
+    OpenID4VCIFinal1CredentialOfferDTO, OpenID4VCIFinal1Params, OpenID4VCIGrants,
+    OpenID4VCIIssuerInteractionDataDTO, OpenID4VCIIssuerMetadataResponseDTO,
+    OpenID4VCINonceResponseDTO, OpenID4VCINotificationEvent, OpenID4VCINotificationRequestDTO,
+    OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO, PreparedMetadata,
+    TokenRequestWalletAttestationRequest, WalletAttestationResult,
+};
 use one_crypto::encryption::{decrypt_string, encrypt_string};
-use one_dto_mapper::convert_inner;
+use proof_formatter::{OpenID4VCIProofJWTFormatter, PublicKeyInfo};
 use secrecy::{ExposeSecret, SecretString};
+use serde::Deserialize;
 use serde::de::DeserializeOwned;
-use serde::{Deserialize, Serialize};
+use service::{
+    create_credential_offer, create_issuer_metadata_response, credential_configuration_supported,
+    get_protocol_base_url,
+};
 use shared_types::{
     BlobId, CredentialFormat, CredentialId, CredentialSchemaFormatId, CredentialSchemaId,
     InteractionId, OrganisationId, SerializedCredential,
 };
-use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
@@ -28,30 +48,8 @@ use super::mapper::{
     interaction_from_handle_invitation,
 };
 use super::model::{
-    ContinueIssuanceResponseDTO, InvitationResponseEnum, KeyStorageSecurityLevel,
-    OpenID4VCIProofTypeSupported, ShareResponse, SubmitIssuerResponse, UpdateResponse,
-};
-use super::openid4vci_final1_0::mapper::{
-    credential_config_to_holder_signing_algs_and_key_storage_security, get_credential_offer_url,
-    interaction_data_to_accepted_key_storage_security, map_cryptographic_binding_methods_supported,
-    map_proof_types_supported, parse_credential_issuer_params,
-};
-use super::openid4vci_final1_0::model::{
-    ChallengeResponseDTO, CredentialRequestHolderKey, EtsiIssuerInfoAttestationFormat,
-    EtsiIssuerInfoResponseDTO, HolderInteractionData, OAuthAuthorizationServerMetadata,
-    OpenID4VCIAuthorizationCodeGrant, OpenID4VCICredentialConfigurationData,
-    OpenID4VCICredentialMetadataResponseDTO, OpenID4VCICredentialRequestDTO,
-    OpenID4VCICredentialRequestIdentifier, OpenID4VCICredentialRequestProofs,
-    OpenID4VCIFinal1CredentialOfferDTO, OpenID4VCIFinal1Params, OpenID4VCIGrants,
-    OpenID4VCIIssuerInteractionDataDTO, OpenID4VCIIssuerMetadataResponseDTO,
-    OpenID4VCINonceResponseDTO, OpenID4VCINotificationEvent, OpenID4VCINotificationRequestDTO,
-    OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO, PreparedMetadata,
-    TokenRequestWalletAttestationRequest, WalletAttestationResult,
-};
-use super::openid4vci_final1_0::proof_formatter::{OpenID4VCIProofJWTFormatter, PublicKeyInfo};
-use super::openid4vci_final1_0::service::{
-    create_credential_offer, create_issuer_metadata_response, credential_configuration_supported,
-    get_protocol_base_url,
+    ContinueIssuanceResponseDTO, InvitationResponseEnum, OpenID4VCIProofTypeSupported,
+    ShareResponse, SubmitIssuerResponse, UpdateResponse,
 };
 use super::{
     HolderBindingInput, IssuanceProtocol, IssuanceProtocolError, deserialize_interaction_data,
@@ -62,57 +60,36 @@ use crate::config::core_config::{
     BlobStorageType, CoreConfig, DidType as ConfigDidType, FormatType,
 };
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
-use crate::mapper::credential_schema_claim::add_fallback_translation;
-use crate::mapper::oidc::map_from_oidc_format_to_core_detailed;
 use crate::mapper::x509::x5c_into_pem_chain;
 use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
 use crate::model::certificate::CertificateRelations;
 use crate::model::claim::ClaimRelations;
-use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
+use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{Credential, CredentialRelations, CredentialStateEnum};
-use crate::model::credential_schema::{
-    CredentialSchema, KeyStorageSecurity, LayoutType, UpdateCredentialSchemaRequest,
-};
-use crate::model::credential_schema_format::CredentialSchemaFormat;
+use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity};
 use crate::model::did::KeyRole;
-use crate::model::history::{
-    HistoryAction, HistoryMetadata, TrustResolutionMetadata, TrustResolutionResult,
-    WalletRelyingPartyMetadata,
-};
-use crate::model::holder_wallet_instance::HolderWalletInstance;
-use crate::model::holder_wallet_instance::HolderWalletInstanceFilterValue::OrganisationIds;
+use crate::model::history::TrustResolutionResult;
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierType};
 use crate::model::identifier_trust_information::{IdentifierTrustInformation, SchemaFormat};
 use crate::model::interaction::{Interaction, UpdateInteractionRequest};
 use crate::model::key::{Key, KeyRelations};
-use crate::model::list_filter::ListFilterValue;
-use crate::model::list_query::ListQuery;
-use crate::model::localized_text::{LocalizedText, LocalizedTextEntityType, LocalizedTextField};
 use crate::model::organisation::Organisation;
 use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
-use crate::model::wallet_instance::WalletInstanceStatus;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::credential_schema::importer::CredentialSchemaImporter;
 use crate::proto::http_client::HttpClient;
-use crate::proto::identifier_creator::{
-    IdentifierCreator, IdentifierRole, RemoteIdentifierRelation,
-};
-use crate::proto::jwt::Jwt;
-use crate::proto::jwt::model::{DecomposedJwt, JWTPayload};
+use crate::proto::identifier_creator::IdentifierCreator;
+use crate::proto::jwt::model::DecomposedJwt;
 use crate::proto::key_verification::KeyVerification;
 use crate::proto::session_provider::SessionProvider;
-use crate::proto::wallet_instance::{
-    HolderWalletUnitProto, IssueWalletAttestationRequest, WIARequestParams, WUARequestParams,
-};
+use crate::proto::wallet_instance::HolderWalletUnitProto;
 use crate::proto::wrp_validator::WRPValidator;
 use crate::proto::wrp_validator::model::{AccessCertificateResult, TrustMode};
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
 use crate::provider::credential_formatter::mapper::credential_data_from_credential_detail_response;
 use crate::provider::credential_formatter::mdoc_formatter;
-use crate::provider::credential_formatter::model::{
-    AuthenticationFn, CertificateDetails, IdentifierDetails, VerificationFn,
-};
+use crate::provider::credential_formatter::model::VerificationFn;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -135,9 +112,9 @@ use crate::service::oid4vci_final1_0::dto::{
 use crate::service::ssi_holder::dto::InitiateIssuanceAuthorizationDetailDTO;
 use crate::util::key_selection::KeyFilter;
 use crate::util::vcdm_jsonld_contexts::vcdm_v2_base_context;
-use crate::validator::key_security::match_key_security_level;
-use crate::validator::validate_issuance_time;
 
+mod attestations;
+mod holder_credentials;
 pub(crate) mod mapper;
 pub mod model;
 pub mod proof_formatter;
@@ -311,6 +288,7 @@ impl OpenID4VCIFinal1_0 {
         latest_state: &CredentialStateEnum,
         format: &CredentialFormat,
         format_type: FormatType,
+        supports_batch_issuance: bool,
     ) -> Result<(), IssuanceProtocolError> {
         match (latest_state, format_type) {
             (CredentialStateEnum::Accepted, FormatType::Mdoc) => {
@@ -336,6 +314,7 @@ impl OpenID4VCIFinal1_0 {
                 return Err(IssuanceProtocolError::Suspended);
             }
             (CredentialStateEnum::Offered, _) => {}
+            (CredentialStateEnum::Accepted, _) if supports_batch_issuance => {}
             _ => {
                 return Err(IssuanceProtocolError::InvalidRequest(
                     "invalid state".to_string(),
@@ -640,523 +619,6 @@ impl OpenID4VCIFinal1_0 {
         Ok(response.attestation_challenge)
     }
 
-    /// Prepares wallet attestations (WIA/WUA) based on issuer requirements.
-    async fn prepare_wallet_attestations(
-        &self,
-        interaction_data: &HolderInteractionData,
-        attested_keys: &[&Key],
-        organisation_id: OrganisationId,
-        attestation_types: &[AttestationType],
-    ) -> Result<WalletAttestationResult, IssuanceProtocolError> {
-        let holder_wallet_unit = self.get_current_wallet_unit(organisation_id).await?;
-        let wallet_unit_provided = holder_wallet_unit
-            .as_ref()
-            .is_some_and(|unit| unit.status == WalletInstanceStatus::Active);
-
-        // WIA requirements
-
-        // DEVIATION: RFC8414 specifies `client_secret_basic` as the default when
-        // token_endpoint_auth_methods_supported is absent, but some issuers (e.g. swiyu) don't publish this field.
-        // Treating empty/missing as `none` to avoid interop issues
-        let default_auth_methods = [TokenEndpointAuthMethod::None];
-        let token_endpoint_auth_methods = interaction_data
-            .token_endpoint_auth_methods_supported
-            .as_deref()
-            .unwrap_or(&default_auth_methods);
-
-        let wallet_attestation_supported =
-            token_endpoint_auth_methods.contains(&TokenEndpointAuthMethod::AttestJwtClientAuth);
-        let wallet_attestation_required = requires_wia(token_endpoint_auth_methods);
-
-        if attestation_types.contains(&AttestationType::WIA)
-            && wallet_attestation_required
-            && !wallet_unit_provided
-        {
-            return Err(IssuanceProtocolError::Failed(
-                "Active holder wallet unit id is required".to_string(),
-            ));
-        }
-
-        let use_wallet_attestation = attestation_types.contains(&AttestationType::WIA)
-            && (wallet_attestation_required
-                || (wallet_attestation_supported && wallet_unit_provided));
-
-        // WUA requirements
-        let required_key_storage_security_level =
-            if attestation_types.contains(&AttestationType::WUA) {
-                let issuer_accepted_levels =
-                    interaction_data_to_accepted_key_storage_security(interaction_data);
-
-                issuer_accepted_levels
-                    .map(|accepted_levels| {
-                        Ok::<_, IssuanceProtocolError>(
-                            match_key_security_level(
-                                &attested_keys
-                                    .first()
-                                    .ok_or(IssuanceProtocolError::Failed(
-                                        "No keys for holder binding".to_string(),
-                                    ))?
-                                    .storage_type,
-                                &accepted_levels,
-                                &*self.key_security_level_provider,
-                            )
-                            .error_while("matching key security")?,
-                        )
-                    })
-                    .transpose()?
-            } else {
-                None
-            };
-
-        if required_key_storage_security_level.is_some() && !wallet_unit_provided {
-            return Err(IssuanceProtocolError::Failed(
-                "key storage attestation requires active holder wallet unit id".to_string(),
-            ));
-        }
-
-        let attestations_issuance_request =
-            match (use_wallet_attestation, required_key_storage_security_level) {
-                (true, Some(security_level)) => Some(IssueWalletAttestationRequest::WuaAndWia(
-                    WUARequestParams {
-                        attested_keys,
-                        security_level,
-                    },
-                    self.prepare_wia_request_params(interaction_data)?,
-                )),
-                (true, None) => Some(IssueWalletAttestationRequest::Wia(
-                    self.prepare_wia_request_params(interaction_data)?,
-                )),
-                (false, Some(security_level)) => {
-                    Some(IssueWalletAttestationRequest::Wua(WUARequestParams {
-                        attested_keys,
-                        security_level,
-                    }))
-                }
-                (false, None) => None,
-            };
-
-        let attestations_issuance_response = match attestations_issuance_request {
-            None => None,
-            Some(request) => {
-                let holder_wallet_unit_id = holder_wallet_unit
-                    .as_ref()
-                    .ok_or(IssuanceProtocolError::Failed(
-                        "holder wallet unit is required".to_string(),
-                    ))?
-                    .id;
-
-                let response = self
-                    .holder_wallet_unit_proto
-                    .issue_wallet_attestations(&holder_wallet_unit_id, request)
-                    .await
-                    .error_while("issuing attestations")?;
-
-                Some(response)
-            }
-        };
-
-        // Create WIA proof-of-possession if using WIA
-        let wia_tokens =
-            match (use_wallet_attestation, &attestations_issuance_response) {
-                (true, Some(issuance_response)) => {
-                    let wia = issuance_response.provider_response.wia.first().ok_or(
-                        IssuanceProtocolError::Failed("Wallet attestation is required".to_string()),
-                    )?;
-
-                    let wia_pop_key = issuance_response.wia_pop_key.as_ref().ok_or(
-                        IssuanceProtocolError::Failed("WIA PoP key missing".to_string()),
-                    )?;
-
-                    // Per https://drafts.oauth.net/draft-ietf-oauth-attestation-based-client-auth/draft-ietf-oauth-attestation-based-client-auth.html#section-5
-                    // The WIA sub (subject) claim MUST specify client_id value of the OAuth Client.
-                    let wia_jwt: Jwt<()> = Jwt::build_from_token(wia, None, None)
-                        .await
-                        .error_while("parsing WIA JWT")?;
-
-                    let client_id =
-                        wia_jwt
-                            .payload
-                            .subject
-                            .ok_or(IssuanceProtocolError::Failed(
-                                "WIA missing subject claim".to_string(),
-                            ))?;
-
-                    let challenge =
-                        if let Some(challenge_endpoint) = &interaction_data.challenge_endpoint {
-                            Some(self.holder_fetch_challenge(challenge_endpoint).await?)
-                        } else {
-                            None
-                        };
-
-                    let signed_proof = create_wallet_unit_attestation_pop(
-                        wia_pop_key,
-                        &interaction_data.issuer_url,
-                        challenge,
-                        &client_id,
-                    )
-                    .await?;
-
-                    Ok(Some(TokenRequestWalletAttestationRequest {
-                        wallet_attestation: wia.to_owned(),
-                        wallet_attestation_pop: signed_proof,
-                    }))
-                }
-                (true, None) => Err(IssuanceProtocolError::Failed(
-                    "Wallet attestation issuance failed".to_string(),
-                )),
-                (false, _) => Ok(None),
-            }?;
-
-        // Extract WUA proof if key attestation is required
-        let key_attestations_required = required_key_storage_security_level.is_some();
-        let wua_proofs = match (key_attestations_required, attestations_issuance_response) {
-            (true, Some(issuance_response)) => Ok(Some(issuance_response.provider_response.wua)),
-            (true, None) => Err(IssuanceProtocolError::Failed(
-                "Key attestation is required".to_string(),
-            )),
-            (false, _) => Ok(None),
-        }?;
-
-        Ok(WalletAttestationResult {
-            wia_tokens,
-            wua_proofs,
-        })
-    }
-
-    fn prepare_wia_request_params(
-        &self,
-        interaction_data: &HolderInteractionData,
-    ) -> Result<WIARequestParams, IssuanceProtocolError> {
-        let alg_values_supported = interaction_data
-            .client_attestation_pop_signing_alg_values_supported
-            .as_ref()
-            .ok_or(IssuanceProtocolError::InvalidRequest(
-                "token auth method attest_jwt_client_auth speicified, but client_attestation_pop_signing_alg_values_supported missing".to_string(),
-            ))?;
-
-        for alg in alg_values_supported {
-            if let Some((key_algorithm, _)) =
-                self.key_algorithm_provider.key_algorithm_from_jose_alg(alg)
-            {
-                return Ok(WIARequestParams { key_algorithm });
-            }
-        }
-
-        Err(IssuanceProtocolError::InvalidRequest(format!(
-            "No suitable alg found in client_attestation_pop_signing_alg_values_supported: {alg_values_supported:?}"
-        )))
-    }
-
-    async fn get_current_wallet_unit(
-        &self,
-        organisation_id: OrganisationId,
-    ) -> Result<Option<HolderWalletInstance>, IssuanceProtocolError> {
-        let list = self
-            .holder_wallet_unit_repository
-            .list(ListQuery {
-                filtering: Some(OrganisationIds(vec![organisation_id]).condition()),
-                ..Default::default()
-            })
-            .await
-            .error_while("getting holder wallet instance")?;
-        Ok(list.values.into_iter().next())
-    }
-
-    async fn holder_process_accepted_credentials(
-        &self,
-        issuer_response: SubmitIssuerResponse,
-        interaction_data: &HolderInteractionData,
-        holder_bindings: Vec<HolderBindingInput>,
-        organisation: &Organisation,
-        interaction: &Interaction,
-    ) -> Result<UpdateResponse, IssuanceProtocolError> {
-        if holder_bindings.len() != issuer_response.credentials.len() {
-            return Err(IssuanceProtocolError::Failed(format!(
-                "Different number of credentials, requested: {}, received: {}",
-                holder_bindings.len(),
-                issuer_response.credentials.len()
-            )));
-        }
-
-        let format_type = map_from_oidc_format_to_core_detailed(
-            &interaction_data.format,
-            issuer_response
-                .credentials
-                .first()
-                .map(|c| c.as_ref().to_string())
-                .as_ref(),
-        )?;
-
-        let (format, formatter) = self
-            .formatter_provider
-            .get_formatter_by_type(format_type)
-            .ok_or_else(|| {
-                IssuanceProtocolError::Failed(format!("{format_type} formatter not found"))
-            })?;
-
-        let mut trust_resolution = interaction_data.trust_resolution;
-
-        let mut credentials = vec![];
-        let mut new_claim_schemas: Vec<ClaimSchema> = vec![];
-        let mut credential_schema = None;
-        for (issued_credential, holder_binding) in issuer_response.credentials.iter().zip(
-            // we assume the credentials were sent in the same order as the holder binding proofs
-            holder_bindings,
-        ) {
-            let mut credential = formatter
-                .parse_credential(
-                    issued_credential,
-                    organisation.to_owned(),
-                    self.verification_fn(),
-                )
-                .await
-                .map_err(|e| IssuanceProtocolError::CredentialVerificationFailed(e.into()))?;
-
-            validate_issuance_time(&credential.issuance_date, formatter.get_leeway())
-                .error_while("validating issuance time")?;
-
-            let identifier_details = match credential.issuer_identifier.as_ref() {
-                Some(Identifier {
-                    did: Some(did),
-                    r#type,
-                    ..
-                }) if r#type == &IdentifierType::Did => IdentifierDetails::Did(did.did.to_owned()),
-                Some(Identifier {
-                    certificates: Some(certificates),
-                    r#type,
-                    ..
-                }) if r#type == &IdentifierType::Certificate => {
-                    let certificate = certificates
-                        .first()
-                        .ok_or(IssuanceProtocolError::Failed(
-                            "Missing certificate".to_string(),
-                        ))?
-                        .to_owned();
-                    IdentifierDetails::Certificate(CertificateDetails {
-                        chain: certificate.chain,
-                        fingerprint: certificate.fingerprint,
-                        expiry: certificate.expiry_date,
-                        subject_common_name: None,
-                    })
-                }
-                Some(Identifier {
-                    key: Some(key),
-                    r#type,
-                    ..
-                }) if r#type == &IdentifierType::Key => {
-                    let key_handle = self
-                        .key_algorithm_provider
-                        .reconstruct_key(
-                            key.key_algorithm_type()
-                                .error_while("getting key algorithm tye")?,
-                            &key.public_key,
-                            None,
-                            None,
-                        )
-                        .error_while("reconstructing key")?;
-                    IdentifierDetails::Key(
-                        key_handle.public_key_as_jwk().error_while("getting JWK")?,
-                    )
-                }
-                _ => {
-                    return Err(IssuanceProtocolError::Failed(
-                        "Invalid parsed issuer identifier".to_string(),
-                    ));
-                }
-            };
-
-            let (issuer_identifier, issuer_identifier_relation) = self
-                .identifier_creator
-                .get_or_create_remote_identifier(
-                    &Some(organisation.to_owned()),
-                    &identifier_details,
-                    IdentifierRole::Issuer,
-                )
-                .await
-                .error_while("creating issuer identifier")?;
-            let issuer_certificate = if let RemoteIdentifierRelation::Certificate(certificate) =
-                issuer_identifier_relation
-            {
-                Some(certificate)
-            } else {
-                None
-            };
-
-            if credential_schema.is_none() {
-                let mut schema = credential
-                    .schema
-                    .as_ref()
-                    .ok_or(IssuanceProtocolError::Failed("Missing schema".to_string()))?
-                    .to_owned();
-
-                let metadata = interaction_data.credential_metadata.as_ref();
-                let now = now_utc();
-                apply_issuer_metadata_to_schema(
-                    &mut schema,
-                    metadata,
-                    &self.config.default_language,
-                    now,
-                )
-                .await?;
-
-                let schema_id = schema.schema_id().await?;
-                schema.formats = vec![CredentialSchemaFormat {
-                    id: Uuid::new_v4().into(),
-                    created_date: now,
-                    last_modified: now,
-                    credential_schema_id: schema.id,
-                    format: format.to_owned(),
-                    schema_id,
-                    claim_mappings: Default::default(),
-                }]
-                .into();
-                schema.batch_size = interaction_data.batch_size.map(|size| size as _);
-                schema.organisation = organisation.to_owned().into();
-                schema.layout_type = LayoutType::Card;
-                schema.key_storage_security = interaction_data
-                    .proof_types_supported
-                    .as_ref()
-                    .and_then(|map| map.get("jwt"))
-                    .and_then(|jwt| jwt.key_attestations_required.as_ref())
-                    .and_then(|att_list| {
-                        (!att_list.key_storage.is_empty()).then_some(&att_list.key_storage)
-                    })
-                    .and_then(|levels| {
-                        convert_inner(KeyStorageSecurityLevel::select_lowest(levels))
-                    });
-
-                let stored_schema = get_or_create_credential_schema(
-                    self.credential_schema_importer.as_ref(),
-                    self.credential_schema_repository.as_ref(),
-                    schema,
-                    organisation.id,
-                )
-                .await?;
-
-                credential_schema = Some(stored_schema);
-            }
-            let schema = credential_schema
-                .as_ref()
-                .ok_or(IssuanceProtocolError::Failed("Missing schema".to_string()))?;
-
-            if trust_resolution == TrustResolutionResult::Trusted
-                && let Err(err) = self
-                    .wrp_validator
-                    .validate_credential_issuer(
-                        issuer_certificate
-                            .as_ref()
-                            .map(|certificate| certificate.chain.as_str()),
-                        schema,
-                        organisation.id,
-                    )
-                    .await
-            {
-                tracing::info!(%err, "Credential issuer trust not verified");
-                trust_resolution = TrustResolutionResult::Untrusted;
-            }
-
-            credential.issuer_identifier = Some(issuer_identifier);
-            credential.issuer_certificate = issuer_certificate;
-            credential.redirect_uri = issuer_response.redirect_uri.clone();
-            credential.state = CredentialStateEnum::Accepted;
-            credential.holder_identifier = Some(holder_binding.identifier);
-            credential.key = Some(holder_binding.key);
-            credential.protocol = self.config_id.to_owned();
-            credential.interaction = Some(interaction.to_owned());
-
-            prepare_credential_schema_updates(
-                schema,
-                &mut credential,
-                &mut new_claim_schemas,
-                &self.config.default_language,
-            )
-            .await?;
-
-            if let Some(access_certificate) = &interaction_data.access_certificate {
-                self.store_trust_history_event(
-                    HistoryAction::WrpAcReceived,
-                    credential.id,
-                    organisation.id,
-                    Some(access_certificate.to_owned()),
-                    None,
-                )
-                .await?;
-            }
-
-            if let (Some(registration_certificate), Some(relying_party_name)) = (
-                &interaction_data.registration_certificate,
-                &interaction_data.relying_party_name,
-            ) {
-                self.store_trust_history_event(
-                    HistoryAction::WrpRcReceived,
-                    credential.id,
-                    organisation.id,
-                    Some(registration_certificate.to_owned()),
-                    Some(HistoryMetadata::WalletRelyingParty(
-                        WalletRelyingPartyMetadata {
-                            name: relying_party_name.to_string(),
-                            ..Default::default()
-                        },
-                    )),
-                )
-                .await?;
-            }
-
-            if let (Some(national_registry_data), Some(relying_party_name)) = (
-                &interaction_data.national_registry_data,
-                &interaction_data.relying_party_name,
-            ) {
-                self.store_trust_history_event(
-                    HistoryAction::WrpNrReceived,
-                    credential.id,
-                    organisation.id,
-                    Some(national_registry_data.to_owned()),
-                    Some(HistoryMetadata::WalletRelyingParty(
-                        WalletRelyingPartyMetadata {
-                            name: relying_party_name.to_string(),
-                            ..Default::default()
-                        },
-                    )),
-                )
-                .await?;
-            }
-
-            self.store_trust_history_event(
-                HistoryAction::TrustResolved,
-                credential.id,
-                organisation.id,
-                None,
-                Some(HistoryMetadata::TrustResolution(TrustResolutionMetadata {
-                    result: trust_resolution,
-                })),
-            )
-            .await?;
-
-            credentials.push(credential);
-        }
-
-        let update_credential_schema = if new_claim_schemas.is_empty() {
-            None
-        } else {
-            Some(UpdateCredentialSchemaRequest {
-                id: credential_schema
-                    .ok_or(IssuanceProtocolError::Failed("Missing schema".to_string()))?
-                    .id,
-                revocation_method: None,
-                format: None,
-                claim_schemas: Some(new_claim_schemas),
-                layout_type: None,
-                layout_properties: None,
-            })
-        };
-
-        Ok(UpdateResponse {
-            result: issuer_response,
-            update_credential_schema,
-            credentials: Some(credentials),
-        })
-    }
-
     async fn send_notification(
         &self,
         message: OpenID4VCINotificationRequestDTO,
@@ -1178,12 +640,53 @@ impl OpenID4VCIFinal1_0 {
         Ok(())
     }
 
-    async fn holder_request_credential<'a>(
+    async fn holder_request_credential(
         &self,
         interaction_data: &HolderInteractionData,
-        holder_bindings: Vec<CredentialRequestHolderKey<'a>>,
+        holder_binding_inputs: &[HolderBindingInput],
+        wua_proofs: Option<Vec<String>>,
         access_token: &SecretString,
     ) -> Result<SubmitIssuerResponse, IssuanceProtocolError> {
+        struct CredentialRequestHolderKey<'a> {
+            pub identifier: &'a Identifier,
+            pub key: &'a Key,
+            pub wua_proof: Option<String>,
+        }
+
+        let holder_bindings: Vec<_> = if let Some(wua_proofs) = wua_proofs {
+            if wua_proofs.len() != holder_binding_inputs.len() {
+                return Err(IssuanceProtocolError::Failed(format!(
+                    "Different number of WUA received: {}, requested: {}",
+                    wua_proofs.len(),
+                    holder_binding_inputs.len()
+                )));
+            }
+
+            // we assume the WUA proofs came in the same order as the requested keys were sent
+            holder_binding_inputs
+                .iter()
+                .zip(wua_proofs)
+                .map(|(HolderBindingInput { identifier, key }, wua_proof)| {
+                    CredentialRequestHolderKey {
+                        identifier,
+                        key,
+                        wua_proof: Some(wua_proof),
+                    }
+                })
+                .collect()
+        } else {
+            holder_binding_inputs
+                .iter()
+                .map(
+                    |HolderBindingInput { identifier, key }| CredentialRequestHolderKey {
+                        identifier,
+                        key,
+                        wua_proof: None,
+                    },
+                )
+                .collect()
+        };
+
         let nonce = self.holder_fetch_nonce(interaction_data).await?;
 
         let client_id = interaction_data
@@ -1822,86 +1325,6 @@ impl OpenID4VCIFinal1_0 {
             credential_configurations_supported,
         })
     }
-
-    async fn process_credential_refresh(
-        &self,
-        credential: &Credential,
-        mut response: SubmitIssuerResponse,
-        organisation_id: OrganisationId,
-        check_trust: bool,
-    ) -> Result<(), IssuanceProtocolError> {
-        if response.credentials.len() != 1 {
-            return Err(IssuanceProtocolError::Failed(
-                "Refresh with multiple credentials".to_string(),
-            ));
-        }
-        let updated_credential =
-            response
-                .credentials
-                .pop()
-                .ok_or(IssuanceProtocolError::Failed(
-                    "Missing credential schema".to_string(),
-                ))?;
-
-        let schema = credential
-            .schema
-            .as_ref()
-            .ok_or(IssuanceProtocolError::Failed(
-                "Missing credential schema".to_string(),
-            ))?;
-        let credential_schema_format = schema.format().await?;
-        let formatter = self
-            .formatter_provider
-            .get_credential_formatter(&credential_schema_format)
-            .ok_or_else(|| MissingProviderError::Formatter(credential_schema_format.to_string()))
-            .error_while("getting credential formatter")?;
-
-        let extracted = formatter
-            .extract_credentials(&updated_credential, Some(schema), self.verification_fn())
-            .await
-            .error_while("extracting credential")?;
-
-        let issuer_certificate =
-            if let IdentifierDetails::Certificate(certificate) = extracted.issuer {
-                Some(certificate)
-            } else {
-                None
-            };
-
-        if check_trust {
-            self.wrp_validator
-                .validate_credential_issuer(
-                    issuer_certificate
-                        .as_ref()
-                        .map(|certificate| certificate.chain.as_str()),
-                    schema,
-                    organisation_id,
-                )
-                .await
-                .error_while("validating credential issuer trust")?;
-        }
-
-        let db_blob_storage = self
-            .blob_storage_provider
-            .get_blob_storage(BlobStorageType::Db)
-            .error_while("getting blob storage")?;
-
-        let blob_id = credential
-            .credential_blob_id
-            .ok_or(IssuanceProtocolError::Failed(
-                "Missing credential blob id".to_string(),
-            ))?;
-        db_blob_storage
-            .update(
-                &blob_id,
-                UpdateBlobRequest {
-                    value: Some(updated_credential.as_ref().into()),
-                },
-            )
-            .await
-            .error_while("updating credential blob")?;
-        Ok(())
-    }
 }
 
 #[async_trait]
@@ -2065,40 +1488,6 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             )
             .await?;
 
-        let holder_bindings = if let Some(wua_proofs) = attestation_result.wua_proofs {
-            if wua_proofs.len() != holder_binding.len() {
-                return Err(IssuanceProtocolError::Failed(format!(
-                    "Different number of WUA received: {}, requested: {}",
-                    wua_proofs.len(),
-                    holder_binding.len()
-                )));
-            }
-
-            // we assume the WUA proofs came in the same order as the requested keys were sent
-            holder_binding
-                .iter()
-                .zip(wua_proofs)
-                .map(|(HolderBindingInput { identifier, key }, wua_proof)| {
-                    CredentialRequestHolderKey {
-                        identifier,
-                        key,
-                        wua_proof: Some(wua_proof),
-                    }
-                })
-                .collect()
-        } else {
-            holder_binding
-                .iter()
-                .map(
-                    |HolderBindingInput { identifier, key }| CredentialRequestHolderKey {
-                        identifier,
-                        key,
-                        wua_proof: None,
-                    },
-                )
-                .collect()
-        };
-
         let token_response = self
             .holder_fetch_token(&interaction_data, tx_code, attestation_result.wia_tokens)
             .await?;
@@ -2113,24 +1502,22 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         interaction_data.access_token_expires_at =
             OffsetDateTime::from_unix_timestamp(token_response.expires_in.0).ok();
 
-        // only mdoc credentials support refreshing, do not store refresh tokens otherwise
-        if interaction_data.format == "mso_mdoc" {
-            interaction_data.refresh_token = token_response
-                .refresh_token
-                .map(|token| encrypt_string(&token, &self.params.encryption))
-                .transpose()
-                .map_err(|err| {
-                    IssuanceProtocolError::Failed(format!("failed to encrypt refresh token: {err}"))
-                })?;
-            interaction_data.refresh_token_expires_at = token_response
-                .refresh_token_expires_in
-                .and_then(|expires_in| OffsetDateTime::from_unix_timestamp(expires_in.0).ok());
-        }
+        interaction_data.refresh_token = token_response
+            .refresh_token
+            .map(|token| encrypt_string(&token, &self.params.encryption))
+            .transpose()
+            .map_err(|err| {
+                IssuanceProtocolError::Failed(format!("failed to encrypt refresh token: {err}"))
+            })?;
+        interaction_data.refresh_token_expires_at = token_response
+            .refresh_token_expires_in
+            .and_then(|expires_in| OffsetDateTime::from_unix_timestamp(expires_in.0).ok());
 
         let credential_response = self
             .holder_request_credential(
                 &interaction_data,
-                holder_bindings,
+                &holder_binding,
+                attestation_result.wua_proofs,
                 &token_response.access_token,
             )
             .await?;
@@ -2393,6 +1780,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             &credential_state,
             &format.format,
             credential_format_type,
+            credential_schema.batch_size.is_some(),
         )
         .await?;
 
@@ -2448,7 +1836,6 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             "Missing core_base_url for credential issuance".to_string(),
         ))?;
 
-        // TODO - remove organisation usage from here when moved to open core
         let credential_detail = credential_detail_response_from_model(
             credential.clone(),
             &self.config,
@@ -2676,114 +2063,142 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         interaction: &Interaction,
         update_credential: Option<CredentialId>,
     ) -> Result<Vec<CredentialId>, IssuanceProtocolError> {
-        let organisation_id = interaction
-            .organisation
-            .as_ref()
-            .ok_or(IssuanceProtocolError::Failed(
-                "Missing organisation".to_string(),
-            ))?
-            .id;
+        let organisation =
+            interaction
+                .organisation
+                .as_ref()
+                .ok_or(IssuanceProtocolError::Failed(
+                    "Missing organisation".to_string(),
+                ))?;
         let mut interaction_data: HolderInteractionData =
             deserialize_interaction_data(interaction.data.as_ref())
                 .error_while("deserializing interaction data")?;
 
-        // TODO (ONE-9702): implement support for batch reissuance
-        // for now only supporting single credential (MDOC) refresh
-        let credential_id = update_credential.ok_or(IssuanceProtocolError::Failed(
-            "Missing credential".to_string(),
-        ))?;
+        let (holder_binding_inputs, updated_credential) =
+            if let Some(credential_id) = update_credential {
+                // MSO refresh: create no new credentials, request single credential and update the credential blob/state
 
-        let credential = self
-            .credential_repository
-            .get_credential(
-                &credential_id,
-                &CredentialRelations {
-                    schema: Some(Default::default()),
-                    holder_identifier: Some(IdentifierRelations {
-                        did: Some(Default::default()),
-                        key: Some(Default::default()),
-                        ..Default::default()
-                    }),
-                    key: Some(Default::default()),
-                    ..Default::default()
-                },
-            )
-            .await
-            .error_while("getting credential")?
-            .ok_or(IssuanceProtocolError::Failed(
-                "Missing credential".to_string(),
-            ))?;
+                let credential = self
+                    .credential_repository
+                    .get_credential(
+                        &credential_id,
+                        &CredentialRelations {
+                            schema: Some(Default::default()),
+                            holder_identifier: Some(IdentifierRelations {
+                                did: Some(Default::default()),
+                                key: Some(Default::default()),
+                                ..Default::default()
+                            }),
+                            key: Some(Default::default()),
+                            ..Default::default()
+                        },
+                    )
+                    .await
+                    .error_while("getting credential")?
+                    .ok_or(IssuanceProtocolError::Failed(
+                        "Missing credential".to_string(),
+                    ))?;
 
-        let identifier =
-            credential
-                .holder_identifier
-                .as_ref()
-                .ok_or(IssuanceProtocolError::Failed(
-                    "Missing holder_identifier".to_string(),
-                ))?;
+                // reusing old key for holder binding
+                let identifier = credential
+                    .holder_identifier
+                    .as_ref()
+                    .ok_or(IssuanceProtocolError::Failed(
+                        "Missing holder_identifier".to_string(),
+                    ))?
+                    .to_owned();
 
-        let key = credential
-            .key
-            .as_ref()
-            .ok_or(IssuanceProtocolError::Failed("Missing key".to_string()))?;
+                let key = credential
+                    .key
+                    .as_ref()
+                    .ok_or(IssuanceProtocolError::Failed("Missing key".to_string()))?
+                    .to_owned();
+
+                (
+                    vec![HolderBindingInput { identifier, key }],
+                    Some(credential),
+                )
+            } else {
+                (
+                    self.create_holder_binding(&interaction_data, organisation)
+                        .await?,
+                    None,
+                )
+            };
 
         let access_token = self
-            .holder_reuse_or_refresh_token(interaction.id, organisation_id, &mut interaction_data)
+            .holder_reuse_or_refresh_token(interaction.id, organisation.id, &mut interaction_data)
             .await?;
 
-        let wua_proof = self
+        let attested_keys: Vec<_> = holder_binding_inputs.iter().map(|b| &b.key).collect();
+        let attestation_result = self
             .prepare_wallet_attestations(
                 &interaction_data,
-                &[key],
-                organisation_id,
+                &attested_keys,
+                organisation.id,
                 &[AttestationType::WUA],
             )
-            .await?
-            .wua_proofs
-            .and_then(|proofs| proofs.into_iter().next());
+            .await?;
 
         let response = self
             .holder_request_credential(
                 &interaction_data,
-                vec![CredentialRequestHolderKey {
-                    identifier,
-                    key,
-                    wua_proof,
-                }],
+                &holder_binding_inputs,
+                attestation_result.wua_proofs,
                 &access_token,
             )
             .await?;
 
-        self.process_credential_refresh(
-            &credential,
-            response,
-            organisation_id,
-            interaction_data.trust_mode == TrustMode::TrustMandatory,
-        )
-        .await?;
+        let notification_id = response.notification_id.to_owned();
+        if let Some(notification_id) = notification_id.to_owned() {
+            interaction_data.notification_id = Some(notification_id);
+            self.interaction_repository
+                .update_interaction(
+                    interaction.id,
+                    UpdateInteractionRequest {
+                        data: Some(Some(serialize_interaction_data(&interaction_data)?)),
+                    },
+                )
+                .await
+                .error_while("updating interaction")?;
+        }
 
-        Ok(vec![credential.id])
+        let result = self
+            .holder_process_refresh(
+                &interaction_data,
+                holder_binding_inputs,
+                response,
+                organisation,
+                updated_credential,
+                interaction,
+            )
+            .await;
+
+        if let (Err(err), Some(notification_id), Some(notification_endpoint)) = (
+            &result,
+            notification_id,
+            interaction_data.notification_endpoint,
+        ) {
+            let notification = OpenID4VCINotificationRequestDTO {
+                notification_id,
+                event: OpenID4VCINotificationEvent::CredentialFailure,
+                event_description: Some(err.to_string()),
+            };
+
+            if let Err(error) = self
+                .send_notification(
+                    notification,
+                    notification_endpoint.as_str(),
+                    access_token.expose_secret(),
+                )
+                .await
+            {
+                tracing::warn!(%error, "Notification failure");
+            }
+        }
+
+        result
     }
-}
-
-#[derive(Debug, PartialEq)]
-#[expect(clippy::upper_case_acronyms)]
-enum AttestationType {
-    WUA,
-    WIA,
-}
-
-fn requires_wia(token_endpoint_auth_methods: &[TokenEndpointAuthMethod]) -> bool {
-    // See https://gitlab.procivis.ch/procivis/one/one-core/-/merge_requests/2585#note_86705
-    // Some issuers advertise "public", which is not documented / defined by any specification
-    // We treat it as the rfc7591 defined "none"
-    let public_auth_supported = token_endpoint_auth_methods
-        .contains(&TokenEndpointAuthMethod::None)
-        || token_endpoint_auth_methods
-            .contains(&TokenEndpointAuthMethod::Other("public".to_string()));
-
-    token_endpoint_auth_methods.contains(&TokenEndpointAuthMethod::AttestJwtClientAuth)
-        && !public_auth_supported
 }
 
 struct PrepareIssuanceSuccess {
@@ -3020,284 +2435,6 @@ async fn create_and_store_interaction(
         .error_while("creating interaction")?;
 
     Ok(interaction)
-}
-
-async fn get_or_create_credential_schema(
-    credential_schema_importer: &dyn CredentialSchemaImporter,
-    credential_schema_repository: &dyn CredentialSchemaRepository,
-    credential_schema: CredentialSchema,
-    organisation_id: OrganisationId,
-) -> Result<CredentialSchema, IssuanceProtocolError> {
-    let parsed_schema_id = credential_schema
-        .schema_id()
-        .await
-        .error_while("getting parsed schema_id")?;
-    let parsed_format = credential_schema
-        .format()
-        .await
-        .error_while("getting parsed format")?;
-    let stored_schema = credential_schema_repository
-        .get_by_schema_id_and_organisation(&parsed_schema_id, organisation_id)
-        .await
-        .error_while("getting credential schema")?;
-
-    if let Some(stored_schema) = stored_schema {
-        if let Some(conflicting_schema) = stored_schema
-            .formats
-            .get()
-            .await
-            .error_while("getting credential schema formats")?
-            .iter()
-            .find(|format| format.schema_id == parsed_schema_id && format.format != parsed_format)
-        {
-            return Err(IssuanceProtocolError::Failed(format!(
-                "Credential schema conflict: credential schema with id {} has matching schema_id {} but different format {}",
-                conflicting_schema.id, conflicting_schema.schema_id, conflicting_schema.format
-            )));
-        }
-        Ok(stored_schema)
-    } else {
-        match credential_schema_importer
-            .import_credential_schema(credential_schema)
-            .await
-        {
-            Ok(schema) => {
-                return Ok(schema);
-            }
-            Err(error) if error.error_code() == ErrorCode::BR_0007 => {
-                tracing::debug!("Conflicting schema detected during parsing, refetching");
-            }
-            Err(e) => {
-                return Err(IssuanceProtocolError::Failed(e.to_string()));
-            }
-        };
-
-        // refetch and try again
-        let stored_schema = credential_schema_repository
-            .get_by_schema_id_and_organisation(&parsed_schema_id, organisation_id)
-            .await
-            .error_while("getting credential schema")?
-            .ok_or(IssuanceProtocolError::Failed(
-                "Credential schema not found".to_string(),
-            ))?;
-
-        Ok(stored_schema)
-    }
-}
-
-async fn prepare_credential_schema_updates(
-    stored_schema: &CredentialSchema,
-    credential: &mut Credential,
-    new_claim_schemas: &mut Vec<ClaimSchema>,
-    default_language: &str,
-) -> Result<(), IssuanceProtocolError> {
-    let claims = credential
-        .claims
-        .as_mut()
-        .ok_or(IssuanceProtocolError::Failed("Missing claims".to_string()))?;
-
-    let stored_claim_schemas = stored_schema
-        .claim_schemas
-        .get()
-        .await
-        .error_while("getting claim schemas")?;
-
-    let parsed_claim_schemas = credential
-        .schema
-        .as_ref()
-        .ok_or(IssuanceProtocolError::Failed("Missing schema".to_string()))?
-        .claim_schemas
-        .get()
-        .await
-        .error_while("getting claim schemas")?;
-
-    for parsed_claim_schema in parsed_claim_schemas {
-        let mut known_claim_schema = stored_claim_schemas
-            .iter()
-            .find(|schema| schema.key == parsed_claim_schema.key);
-
-        if known_claim_schema.is_none() {
-            known_claim_schema = new_claim_schemas
-                .iter()
-                .find(|schema| schema.key == parsed_claim_schema.key);
-        }
-
-        if let Some(known_claim_schema) = known_claim_schema {
-            // link all matching credential claims to the stored claim_schema
-            claims
-                .iter_mut()
-                .filter(|claim| {
-                    claim
-                        .schema
-                        .as_ref()
-                        .is_some_and(|schema| schema.id == parsed_claim_schema.id)
-                })
-                .for_each(|claim| {
-                    claim.schema = Some(known_claim_schema.to_owned());
-                });
-        } else {
-            new_claim_schemas.push(
-                add_fallback_translation(parsed_claim_schema, default_language)
-                    .await
-                    .error_while("adding fallback claim translation")?,
-            );
-        }
-    }
-
-    credential.schema = Some(stored_schema.to_owned());
-
-    Ok(())
-}
-
-async fn apply_issuer_metadata_to_schema(
-    schema: &mut CredentialSchema,
-    metadata: Option<&OpenID4VCICredentialMetadataResponseDTO>,
-    default_language: &str,
-    now: OffsetDateTime,
-) -> Result<(), IssuanceProtocolError> {
-    let all_displays = metadata.and_then(|m| m.display.as_deref()).unwrap_or(&[]);
-
-    let metadata_display = all_displays.iter().find(|display| {
-        display
-            .locale
-            .as_deref()
-            .is_none_or(|locale| locale == default_language)
-    });
-
-    if let Some(name) = metadata_display.map(|d| d.name.to_owned()) {
-        schema.name = name;
-    }
-
-    let schema_translations: Vec<LocalizedText> = all_displays
-        .iter()
-        .flat_map(|display| {
-            let lang = display
-                .locale
-                .as_deref()
-                .unwrap_or(default_language)
-                .to_owned();
-            let mut entries: Vec<LocalizedText> = vec![LocalizedText {
-                entity_id: schema.id.into(),
-                field: LocalizedTextField::Name,
-                created_date: now,
-                last_modified: now,
-                lang: lang.clone(),
-                value: display.name.clone(),
-                entity_type: LocalizedTextEntityType::CredentialSchema,
-            }];
-            if let Some(description) = &display.description {
-                entries.push(LocalizedText {
-                    entity_id: schema.id.into(),
-                    field: LocalizedTextField::Description,
-                    created_date: now,
-                    last_modified: now,
-                    lang,
-                    value: description.clone(),
-                    entity_type: LocalizedTextEntityType::CredentialSchema,
-                });
-            }
-            entries
-        })
-        .collect();
-
-    if !schema_translations.is_empty() {
-        schema.translations = schema_translations.into();
-    }
-
-    let metadata_claims = metadata.and_then(|m| m.claims.as_deref()).unwrap_or(&[]);
-
-    if !metadata_claims.is_empty() {
-        let claim_schemas = schema
-            .claim_schemas
-            .get()
-            .await
-            .error_while("getting claim schemas")?;
-
-        let updated_claim_schemas = claim_schemas
-            .into_iter()
-            .map(|mut claim_schema| {
-                if claim_schema.metadata {
-                    return claim_schema;
-                }
-                let metadata_claim = metadata_claims
-                    .iter()
-                    .find(|mc| mc.path.join("/") == claim_schema.key);
-
-                if let Some(mc) = metadata_claim {
-                    let claim_translations: Vec<LocalizedText> = mc
-                        .display
-                        .as_deref()
-                        .unwrap_or(&[])
-                        .iter()
-                        .filter_map(|display| {
-                            let name = display.name.as_ref()?;
-                            let lang = display
-                                .locale
-                                .as_deref()
-                                .unwrap_or(default_language)
-                                .to_owned();
-                            Some(LocalizedText {
-                                entity_id: claim_schema.id.into(),
-                                field: LocalizedTextField::Name,
-                                created_date: now,
-                                last_modified: now,
-                                lang,
-                                value: name.clone(),
-                                entity_type: LocalizedTextEntityType::ClaimSchema,
-                            })
-                        })
-                        .collect();
-                    if !claim_translations.is_empty() {
-                        claim_schema.translations = claim_translations.into();
-                    }
-                }
-                claim_schema
-            })
-            .collect::<Vec<_>>();
-
-        schema.claim_schemas = updated_claim_schemas.into();
-    }
-
-    schema.layout_properties = metadata_display.and_then(|display| display.to_owned().into());
-
-    Ok(())
-}
-
-async fn create_wallet_unit_attestation_pop(
-    auth_fn: &AuthenticationFn,
-    audience: &str,
-    challenge: Option<String>,
-    client_id: &str,
-) -> Result<String, IssuanceProtocolError> {
-    #[derive(Serialize)]
-    struct WalletUnitPopCustomClaims {
-        #[serde(skip_serializing_if = "Option::is_none")]
-        challenge: Option<String>,
-    }
-
-    let now = crate::clock::now_utc();
-    let proof = Jwt::new(
-        "oauth-client-attestation-pop+jwt".to_string(),
-        auth_fn.jose_alg().error_while("getting JOSE alg")?,
-        auth_fn.get_key_id(),
-        None,
-        JWTPayload {
-            issued_at: Some(now),
-            expires_at: Some(now + Duration::minutes(60)),
-            invalid_before: Some(now),
-            audience: Some(vec![audience.to_string()]),
-            jwt_id: Some(Uuid::new_v4().to_string()),
-            issuer: Some(client_id.to_string()),
-            subject: None,
-            proof_of_possession_key: None,
-            custom: WalletUnitPopCustomClaims { challenge },
-        },
-    );
-
-    Ok(proof
-        .tokenize(Some(auth_fn.as_ref()))
-        .await
-        .error_while("creating proof token")?)
 }
 
 impl IdentifierTrustInformation {

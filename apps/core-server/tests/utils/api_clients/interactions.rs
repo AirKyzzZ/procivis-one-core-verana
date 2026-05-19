@@ -59,6 +59,14 @@ impl InteractionsApi {
             .await
     }
 
+    pub async fn issuance_refresh(&self, interaction_id: impl Into<Uuid>) -> Response {
+        let url = format!(
+            "/api/interaction/v1/{}/issuance-refresh",
+            interaction_id.into(),
+        );
+        self.client.post(&url, None).await
+    }
+
     pub async fn initiate_issuance(
         &self,
         organisation_id: impl Into<Uuid>,
