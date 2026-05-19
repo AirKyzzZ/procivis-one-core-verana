@@ -349,13 +349,11 @@ pub(crate) struct ProofSchemaShareResponseRestDTO {
 
 #[cfg(test)]
 mod test {
-    use shared_types::i18n::I18nString;
 
     use super::*;
     use crate::endpoint::credential_schema::dto::{
         CredentialSchemaBackgroundPropertiesRestDTO, CredentialSchemaCodePropertiesRestDTO,
         CredentialSchemaCodeTypeRestEnum, CredentialSchemaLogoPropertiesRestDTO,
-        CredentialSchemaTranslationsRestDTO,
     };
 
     #[test]
@@ -410,13 +408,6 @@ mod test {
                     }),
                     allow_suspension: true,
                     requires_wallet_instance_attestation: true,
-                    translations: CredentialSchemaTranslationsRestDTO {
-                        name: I18nString(std::collections::HashMap::from([(
-                            "en".to_string(),
-                            "name".to_string(),
-                        )])),
-                        description: None,
-                    },
                 },
             }],
         };

@@ -45,7 +45,6 @@ pub struct CredentialSchemaListItemResponseDTO {
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesResponseDTO>,
     pub allow_suspension: bool,
     pub requires_wallet_instance_attestation: bool,
-    pub translations: CredentialSchemaTranslationsDTO,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
@@ -234,7 +233,6 @@ pub struct CredentialSchemaListItemV2ResponseDTO {
     pub allow_revocation: Option<bool>,
     pub batch_size: Option<i32>,
     pub requires_wallet_instance_attestation: bool,
-    pub translations: CredentialSchemaTranslationsDTO,
 }
 
 #[derive(Clone, Debug)]

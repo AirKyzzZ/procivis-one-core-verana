@@ -68,7 +68,6 @@ pub(crate) struct CredentialSchemaListItemResponseRestDTO {
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
     pub allow_suspension: bool,
     pub requires_wallet_instance_attestation: bool,
-    pub translations: CredentialSchemaTranslationsRestDTO,
 }
 
 #[options_not_nullable]
@@ -100,7 +99,6 @@ pub(crate) struct CredentialSchemaListItemV2ResponseRestDTO {
     pub allow_revocation: Option<bool>,
     pub batch_size: Option<i32>,
     pub requires_wallet_instance_attestation: bool,
-    pub translations: CredentialSchemaTranslationsRestDTO,
 }
 
 #[options_not_nullable]

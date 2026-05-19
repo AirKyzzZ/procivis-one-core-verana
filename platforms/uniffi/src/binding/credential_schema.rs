@@ -168,7 +168,6 @@ pub struct CredentialSchemaBindingDTO {
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesBindingDTO>,
     pub allow_suspension: bool,
     pub requires_wallet_instance_attestation: bool,
-    pub translations: CredentialSchemaTranslationsBindingDTO,
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]

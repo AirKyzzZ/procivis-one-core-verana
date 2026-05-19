@@ -522,9 +522,6 @@ pub(crate) async fn to_credential_schema_list_response(
     let format = credential_schema.format().await?.to_owned();
     let schema_id = credential_schema.schema_id().await?;
     Ok(CredentialSchemaListItemResponseDTO {
-        translations: map_translations(&credential_schema)
-            .await
-            .error_while("getting translations for credential schema")?,
         id: credential_schema.id,
         created_date: credential_schema.created_date,
         last_modified: credential_schema.last_modified,
@@ -561,9 +558,6 @@ pub(crate) async fn to_credential_schema_list_v2_response(
         .collect();
 
     Ok(CredentialSchemaListItemV2ResponseDTO {
-        translations: map_translations(&credential_schema)
-            .await
-            .error_while("getting translations for credential schema")?,
         id: credential_schema.id,
         created_date: credential_schema.created_date,
         last_modified: credential_schema.last_modified,
