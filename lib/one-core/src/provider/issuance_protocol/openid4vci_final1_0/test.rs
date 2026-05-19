@@ -42,6 +42,7 @@ use crate::model::holder_wallet_instance::HolderWalletInstance;
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::Key;
+use crate::model::localized_text::{LocalizedTextEntityType, LocalizedTextField};
 use crate::model::wallet_instance::{WalletInstanceStatus, WalletProviderType};
 use crate::proto::certificate_validator::{MockCertificateValidator, ParsedCertificate};
 use crate::proto::credential_schema::importer::MockCredentialSchemaImporter;
@@ -68,6 +69,10 @@ use crate::provider::issuance_protocol::dto::ContinueIssuanceDTO;
 use crate::provider::issuance_protocol::model::{
     CommonParams, InvitationResponseEnum, KeyStorageSecurityLevel,
     OpenID4VCIKeyAttestationsRequired, OpenID4VCIProofTypeSupported, OpenID4VCRedirectUriParams,
+};
+use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
+    OpenID4VCICredentialMetadataClaimResponseDTO, OpenID4VCICredentialMetadataResponseDTO,
+    OpenID4VCIIssuerMetadataClaimDisplay, OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
 };
 use crate::provider::issuance_protocol::{HolderBindingInput, IssuanceProtocol};
 use crate::provider::key_algorithm::ecdsa::Ecdsa;
@@ -107,6 +112,7 @@ struct TestInputs {
     pub metadata_cache: MockOpenIDMetadataFetcher,
     pub validity_credential_repository: MockValidityCredentialRepository,
     pub credential_schema_repository: MockCredentialSchemaRepository,
+    pub credential_schema_importer: Option<MockCredentialSchemaImporter>,
     pub formatter_provider: MockCredentialFormatterProvider,
     pub revocation_provider: MockRevocationMethodProvider,
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
@@ -135,7 +141,10 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCIFinal1_0 {
         Arc::new(inputs.credential_repository),
         Arc::new(inputs.key_repository),
         Arc::new(inputs.identifier_creator),
-        Arc::new(MockCredentialSchemaImporter::new()),
+        inputs
+            .credential_schema_importer
+            .map(|m| Arc::new(m) as _)
+            .unwrap_or_else(|| Arc::new(MockCredentialSchemaImporter::new())),
         Arc::new(inputs.validity_credential_repository),
         Arc::new(inputs.credential_schema_repository),
         Arc::new(inputs.formatter_provider),
@@ -3182,6 +3191,723 @@ async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_att
     let issuer_response = result.result;
     assert_eq!(issuer_response.credentials, vec!["credential".into()]);
     assert_eq!(issuer_response.notification_id.unwrap(), "notification_id");
+}
+
+async fn interaction_with_metadata(
+    credential: &Credential,
+    credential_metadata: OpenID4VCICredentialMetadataResponseDTO,
+    mock_server_uri: &str,
+) -> Interaction {
+    let interaction_data = HolderInteractionData {
+        issuer_url: mock_server_uri.to_owned(),
+        credential_endpoint: format!("{mock_server_uri}/credential"),
+        token_endpoint: Some(format!("{mock_server_uri}/token")),
+        nonce_endpoint: Some(format!("{mock_server_uri}/nonce")),
+        notification_endpoint: None,
+        challenge_endpoint: None,
+        grants: Some(OpenID4VCIGrants::PreAuthorizedCode(
+            OpenID4VCIPreAuthorizedCodeGrant {
+                pre_authorized_code: "code".to_string(),
+                tx_code: None,
+                authorization_server: None,
+            },
+        )),
+        batch_size: None,
+        access_token: None,
+        access_token_expires_at: None,
+        refresh_token: None,
+        token_endpoint_auth_methods_supported: None,
+        client_attestation_pop_signing_alg_values_supported: None,
+        refresh_token_expires_at: None,
+        cryptographic_binding_methods_supported: Some(vec!["jwk".to_string()]),
+        credential_signing_alg_values_supported: None,
+        proof_types_supported: None,
+        continue_issuance: None,
+        credential_configuration_id: "CredentialSchemaId".to_owned(),
+        credential_metadata: Some(credential_metadata),
+        notification_id: None,
+        protocol: "OPENID4VCI_FINAL1".to_string(),
+        format: "jwt_vc_json".to_string(),
+        access_certificate: None,
+        registration_certificate: None,
+        national_registry_data: None,
+        relying_party_name: None,
+        trust_resolution: TrustResolutionResult::Unknown,
+        trust_mode: TrustMode::Disabled,
+    };
+
+    Interaction {
+        id: Uuid::new_v4().into(),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        data: Some(serde_json::to_vec(&interaction_data).unwrap()),
+        organisation: Some(
+            credential
+                .schema
+                .as_ref()
+                .unwrap()
+                .organisation
+                .get()
+                .await
+                .unwrap(),
+        ),
+        nonce_id: None,
+        interaction_type: InteractionType::Issuance,
+        expires_at: None,
+    }
+}
+
+#[tokio::test]
+async fn test_holder_accept_credential_stores_all_translations_from_metadata() {
+    // GIVEN
+    let mock_server = MockServer::start().await;
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    let mut key_provider = MockKeyProvider::default();
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+    let mut interaction_repository = MockInteractionRepository::default();
+    let mut credential_schema_importer = MockCredentialSchemaImporter::new();
+
+    let credential = generic_credential_key();
+
+    let credential_metadata = OpenID4VCICredentialMetadataResponseDTO {
+        display: Some(vec![
+            OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO {
+                name: "My Credential".to_string(),
+                locale: Some("en".to_string()),
+                description: Some("English description".to_string()),
+                ..Default::default()
+            },
+            OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO {
+                name: "Mein Ausweis".to_string(),
+                locale: Some("de".to_string()),
+                description: None,
+                ..Default::default()
+            },
+        ]),
+        claims: None,
+    };
+
+    let interaction =
+        interaction_with_metadata(&credential, credential_metadata, &mock_server.uri()).await;
+
+    Mock::given(method(Method::POST))
+        .and(path("/token"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "access_token": "tok",
+            "token_type": "bearer",
+            "expires_in": crate::clock::now_utc().unix_timestamp() + 3600,
+        })))
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method(Method::POST))
+        .and(path("/nonce"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({"c_nonce": "nonce"})))
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method(Method::POST))
+        .and(path("/credential"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "credentials": [{"credential": "credential"}]
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let mut formatter = MockCredentialFormatter::new();
+    formatter
+        .expect_get_leeway()
+        .return_const(Duration::seconds(1000));
+    formatter.expect_parse_credential().returning({
+        let clone = credential.clone();
+        move |_, _, _| Ok(clone.clone())
+    });
+
+    let formatter = Arc::new(formatter);
+    let formatter_clone = formatter.clone();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .returning(move |_| Some(formatter_clone.clone()));
+    formatter_provider
+        .expect_get_formatter_by_type()
+        .returning(move |_| Some(("JWT".into(), formatter.clone())));
+
+    credential_schema_repository
+        .expect_get_by_schema_id_and_organisation()
+        .once()
+        .returning(|_, _| Ok(None));
+
+    let captured_schema: Arc<Mutex<Option<CredentialSchema>>> = Arc::new(Mutex::new(None));
+    let captured_schema_clone = captured_schema.clone();
+
+    credential_schema_importer
+        .expect_import_credential_schema()
+        .once()
+        .returning(move |schema| {
+            *captured_schema_clone.lock().unwrap() = Some(schema.clone());
+            Ok(schema)
+        });
+
+    interaction_repository
+        .expect_update_interaction()
+        .once()
+        .returning(|_, _| Ok(()));
+
+    key_provider
+        .expect_get_signature_provider()
+        .returning(move |_, _, _| {
+            let mut mock_signature_provider = MockSignatureProvider::new();
+            mock_signature_provider
+                .expect_jose_alg()
+                .returning(|| Ok("EdDSA".to_string()));
+            mock_signature_provider
+                .expect_get_key_id()
+                .returning(|| Some("key-id".to_string()));
+            mock_signature_provider
+                .expect_sign()
+                .returning(|_| Ok(vec![0; 32]));
+            Ok(Box::new(mock_signature_provider))
+        });
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_reconstruct_key()
+        .returning(|_, _, _, _| {
+            let mut key_handle = MockSignaturePublicKeyHandle::default();
+            key_handle.expect_as_jwk().return_once(|| {
+                Ok(PublicJwk::Ec(PublicJwkEc {
+                    alg: None,
+                    r#use: None,
+                    kid: None,
+                    crv: "P-256".to_string(),
+                    x: "igrFmi0whuihKnj9R3Om1SoMph72wUGeFaBbzG2vzns".to_owned(),
+                    y: Some("efsX5b10x8yjyrj4ny3pGfLcY7Xby1KzgqOdqnsrJIM".to_owned()),
+                }))
+            });
+            Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
+                Arc::new(key_handle),
+            )))
+        });
+
+    let mut identifier_creator = MockIdentifierCreator::new();
+    identifier_creator
+        .expect_get_or_create_remote_identifier()
+        .once()
+        .with(always(), always(), eq(IdentifierRole::Issuer))
+        .return_once(|_, _, _| {
+            Ok((
+                dummy_identifier(),
+                RemoteIdentifierRelation::Key(dummy_key()),
+            ))
+        });
+
+    let mut holder_wallet_unit_repository = MockHolderWalletInstanceRepository::new();
+    holder_wallet_unit_repository
+        .expect_list()
+        .once()
+        .return_once(|_| Ok(GetListResponse::empty()));
+
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .once()
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
+    let mut config = dummy_config();
+    config.default_language = "en".to_string();
+
+    let openid_provider = setup_protocol(TestInputs {
+        formatter_provider,
+        key_provider,
+        key_algorithm_provider,
+        identifier_creator,
+        credential_schema_repository,
+        credential_schema_importer: Some(credential_schema_importer),
+        holder_wallet_unit_repository,
+        interaction_repository,
+        history_repository,
+        config,
+        ..Default::default()
+    });
+
+    // WHEN
+    let key = dummy_key();
+    openid_provider
+        .holder_accept_credential(
+            interaction,
+            Some(HolderBindingInput {
+                identifier: Identifier {
+                    r#type: IdentifierType::Key,
+                    key: Some(key.clone()),
+                    ..dummy_identifier()
+                },
+                key,
+            }),
+            None,
+        )
+        .await
+        .unwrap();
+
+    // THEN
+    let schema = captured_schema.lock().unwrap().take().unwrap();
+    let translations = schema.translations.get().await.unwrap();
+    assert_eq!(
+        translations.len(),
+        3,
+        "expected Name(en), Description(en), Name(de)"
+    );
+
+    let en_name = translations
+        .iter()
+        .find(|t| t.lang == "en" && t.field == LocalizedTextField::Name)
+        .expect("en Name translation missing");
+    assert_eq!(en_name.value, "My Credential");
+    assert_eq!(
+        en_name.entity_type,
+        LocalizedTextEntityType::CredentialSchema
+    );
+
+    let en_desc = translations
+        .iter()
+        .find(|t| t.lang == "en" && t.field == LocalizedTextField::Description)
+        .expect("en Description translation missing");
+    assert_eq!(en_desc.value, "English description");
+
+    let de_name = translations
+        .iter()
+        .find(|t| t.lang == "de" && t.field == LocalizedTextField::Name)
+        .expect("de Name translation missing");
+    assert_eq!(de_name.value, "Mein Ausweis");
+}
+
+#[tokio::test]
+async fn test_holder_accept_credential_uses_default_language_for_display_without_locale() {
+    // GIVEN
+    let mock_server = MockServer::start().await;
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    let mut key_provider = MockKeyProvider::default();
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+    let mut interaction_repository = MockInteractionRepository::default();
+    let mut credential_schema_importer = MockCredentialSchemaImporter::new();
+
+    let credential = generic_credential_key();
+
+    let credential_metadata = OpenID4VCICredentialMetadataResponseDTO {
+        display: Some(vec![
+            OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO {
+                name: "Mein Ausweis".to_string(),
+                locale: None, // no locale — should fall back to default_language
+                description: None,
+                ..Default::default()
+            },
+        ]),
+        claims: None,
+    };
+
+    let interaction =
+        interaction_with_metadata(&credential, credential_metadata, &mock_server.uri()).await;
+
+    Mock::given(method(Method::POST))
+        .and(path("/token"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "access_token": "tok",
+            "token_type": "bearer",
+            "expires_in": crate::clock::now_utc().unix_timestamp() + 3600,
+        })))
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method(Method::POST))
+        .and(path("/nonce"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({"c_nonce": "nonce"})))
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method(Method::POST))
+        .and(path("/credential"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "credentials": [{"credential": "credential"}]
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let mut formatter = MockCredentialFormatter::new();
+    formatter
+        .expect_get_leeway()
+        .return_const(Duration::seconds(1000));
+    formatter.expect_parse_credential().returning({
+        let clone = credential.clone();
+        move |_, _, _| Ok(clone.clone())
+    });
+
+    let formatter = Arc::new(formatter);
+    let formatter_clone = formatter.clone();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .returning(move |_| Some(formatter_clone.clone()));
+    formatter_provider
+        .expect_get_formatter_by_type()
+        .returning(move |_| Some(("JWT".into(), formatter.clone())));
+
+    credential_schema_repository
+        .expect_get_by_schema_id_and_organisation()
+        .once()
+        .returning(|_, _| Ok(None));
+
+    let captured_schema: Arc<Mutex<Option<CredentialSchema>>> = Arc::new(Mutex::new(None));
+    let captured_schema_clone = captured_schema.clone();
+
+    credential_schema_importer
+        .expect_import_credential_schema()
+        .once()
+        .returning(move |schema| {
+            *captured_schema_clone.lock().unwrap() = Some(schema.clone());
+            Ok(schema)
+        });
+
+    interaction_repository
+        .expect_update_interaction()
+        .once()
+        .returning(|_, _| Ok(()));
+
+    key_provider
+        .expect_get_signature_provider()
+        .returning(move |_, _, _| {
+            let mut mock_signature_provider = MockSignatureProvider::new();
+            mock_signature_provider
+                .expect_jose_alg()
+                .returning(|| Ok("EdDSA".to_string()));
+            mock_signature_provider
+                .expect_get_key_id()
+                .returning(|| Some("key-id".to_string()));
+            mock_signature_provider
+                .expect_sign()
+                .returning(|_| Ok(vec![0; 32]));
+            Ok(Box::new(mock_signature_provider))
+        });
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_reconstruct_key()
+        .returning(|_, _, _, _| {
+            let mut key_handle = MockSignaturePublicKeyHandle::default();
+            key_handle.expect_as_jwk().return_once(|| {
+                Ok(PublicJwk::Ec(PublicJwkEc {
+                    alg: None,
+                    r#use: None,
+                    kid: None,
+                    crv: "P-256".to_string(),
+                    x: "igrFmi0whuihKnj9R3Om1SoMph72wUGeFaBbzG2vzns".to_owned(),
+                    y: Some("efsX5b10x8yjyrj4ny3pGfLcY7Xby1KzgqOdqnsrJIM".to_owned()),
+                }))
+            });
+            Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
+                Arc::new(key_handle),
+            )))
+        });
+
+    let mut identifier_creator = MockIdentifierCreator::new();
+    identifier_creator
+        .expect_get_or_create_remote_identifier()
+        .once()
+        .with(always(), always(), eq(IdentifierRole::Issuer))
+        .return_once(|_, _, _| {
+            Ok((
+                dummy_identifier(),
+                RemoteIdentifierRelation::Key(dummy_key()),
+            ))
+        });
+
+    let mut holder_wallet_unit_repository = MockHolderWalletInstanceRepository::new();
+    holder_wallet_unit_repository
+        .expect_list()
+        .once()
+        .return_once(|_| Ok(GetListResponse::empty()));
+
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .once()
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
+    let mut config = dummy_config();
+    config.default_language = "fr".to_string(); // custom default language
+
+    let openid_provider = setup_protocol(TestInputs {
+        formatter_provider,
+        key_provider,
+        key_algorithm_provider,
+        identifier_creator,
+        credential_schema_repository,
+        credential_schema_importer: Some(credential_schema_importer),
+        holder_wallet_unit_repository,
+        interaction_repository,
+        history_repository,
+        config,
+        ..Default::default()
+    });
+
+    // WHEN
+    let key = dummy_key();
+    openid_provider
+        .holder_accept_credential(
+            interaction,
+            Some(HolderBindingInput {
+                identifier: Identifier {
+                    r#type: IdentifierType::Key,
+                    key: Some(key.clone()),
+                    ..dummy_identifier()
+                },
+                key,
+            }),
+            None,
+        )
+        .await
+        .unwrap();
+
+    // THEN
+    let schema = captured_schema.lock().unwrap().take().unwrap();
+    let translations = schema.translations.get().await.unwrap();
+    assert_eq!(translations.len(), 1);
+
+    let translation = &translations[0];
+    assert_eq!(
+        translation.lang, "fr",
+        "locale-less display should use default_language"
+    );
+    assert_eq!(translation.field, LocalizedTextField::Name);
+    assert_eq!(translation.value, "Mein Ausweis");
+}
+
+#[tokio::test]
+async fn test_holder_accept_credential_stores_claim_schema_translations_from_metadata() {
+    // GIVEN
+    let mock_server = MockServer::start().await;
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    let mut key_provider = MockKeyProvider::default();
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+    let mut interaction_repository = MockInteractionRepository::default();
+    let mut credential_schema_importer = MockCredentialSchemaImporter::new();
+
+    // generic_credential_key() has a claim schema with key "NUMBER"
+    let credential = generic_credential_key();
+
+    let credential_metadata = OpenID4VCICredentialMetadataResponseDTO {
+        display: Some(vec![
+            OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO {
+                name: "My Credential".to_string(),
+                locale: Some("en".to_string()),
+                ..Default::default()
+            },
+        ]),
+        claims: Some(vec![OpenID4VCICredentialMetadataClaimResponseDTO {
+            path: vec!["NUMBER".to_string()],
+            display: Some(vec![
+                OpenID4VCIIssuerMetadataClaimDisplay {
+                    name: Some("Number".to_string()),
+                    locale: Some("en".to_string()),
+                },
+                OpenID4VCIIssuerMetadataClaimDisplay {
+                    name: Some("Nummer".to_string()),
+                    locale: Some("de".to_string()),
+                },
+            ]),
+            mandatory: None,
+            additional_values: None,
+        }]),
+    };
+
+    let interaction =
+        interaction_with_metadata(&credential, credential_metadata, &mock_server.uri()).await;
+
+    Mock::given(method(Method::POST))
+        .and(path("/token"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "access_token": "tok",
+            "token_type": "bearer",
+            "expires_in": crate::clock::now_utc().unix_timestamp() + 3600,
+        })))
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method(Method::POST))
+        .and(path("/nonce"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({"c_nonce": "nonce"})))
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method(Method::POST))
+        .and(path("/credential"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "credentials": [{"credential": "credential"}]
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let mut formatter = MockCredentialFormatter::new();
+    formatter
+        .expect_get_leeway()
+        .return_const(Duration::seconds(1000));
+    formatter.expect_parse_credential().returning({
+        let clone = credential.clone();
+        move |_, _, _| Ok(clone.clone())
+    });
+
+    let formatter = Arc::new(formatter);
+    let formatter_clone = formatter.clone();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .returning(move |_| Some(formatter_clone.clone()));
+    formatter_provider
+        .expect_get_formatter_by_type()
+        .returning(move |_| Some(("JWT".into(), formatter.clone())));
+
+    credential_schema_repository
+        .expect_get_by_schema_id_and_organisation()
+        .once()
+        .returning(|_, _| Ok(None));
+
+    let captured_schema: Arc<Mutex<Option<CredentialSchema>>> = Arc::new(Mutex::new(None));
+    let captured_schema_clone = captured_schema.clone();
+
+    credential_schema_importer
+        .expect_import_credential_schema()
+        .once()
+        .returning(move |schema| {
+            *captured_schema_clone.lock().unwrap() = Some(schema.clone());
+            Ok(schema)
+        });
+
+    interaction_repository
+        .expect_update_interaction()
+        .once()
+        .returning(|_, _| Ok(()));
+
+    key_provider
+        .expect_get_signature_provider()
+        .returning(move |_, _, _| {
+            let mut mock_signature_provider = MockSignatureProvider::new();
+            mock_signature_provider
+                .expect_jose_alg()
+                .returning(|| Ok("EdDSA".to_string()));
+            mock_signature_provider
+                .expect_get_key_id()
+                .returning(|| Some("key-id".to_string()));
+            mock_signature_provider
+                .expect_sign()
+                .returning(|_| Ok(vec![0; 32]));
+            Ok(Box::new(mock_signature_provider))
+        });
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_reconstruct_key()
+        .returning(|_, _, _, _| {
+            let mut key_handle = MockSignaturePublicKeyHandle::default();
+            key_handle.expect_as_jwk().return_once(|| {
+                Ok(PublicJwk::Ec(PublicJwkEc {
+                    alg: None,
+                    r#use: None,
+                    kid: None,
+                    crv: "P-256".to_string(),
+                    x: "igrFmi0whuihKnj9R3Om1SoMph72wUGeFaBbzG2vzns".to_owned(),
+                    y: Some("efsX5b10x8yjyrj4ny3pGfLcY7Xby1KzgqOdqnsrJIM".to_owned()),
+                }))
+            });
+            Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
+                Arc::new(key_handle),
+            )))
+        });
+
+    let mut identifier_creator = MockIdentifierCreator::new();
+    identifier_creator
+        .expect_get_or_create_remote_identifier()
+        .once()
+        .with(always(), always(), eq(IdentifierRole::Issuer))
+        .return_once(|_, _, _| {
+            Ok((
+                dummy_identifier(),
+                RemoteIdentifierRelation::Key(dummy_key()),
+            ))
+        });
+
+    let mut holder_wallet_unit_repository = MockHolderWalletInstanceRepository::new();
+    holder_wallet_unit_repository
+        .expect_list()
+        .once()
+        .return_once(|_| Ok(GetListResponse::empty()));
+
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .once()
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
+    let mut config = dummy_config();
+    config.default_language = "en".to_string();
+
+    let openid_provider = setup_protocol(TestInputs {
+        formatter_provider,
+        key_provider,
+        key_algorithm_provider,
+        identifier_creator,
+        credential_schema_repository,
+        credential_schema_importer: Some(credential_schema_importer),
+        holder_wallet_unit_repository,
+        interaction_repository,
+        history_repository,
+        config,
+        ..Default::default()
+    });
+
+    // WHEN
+    let key = dummy_key();
+    openid_provider
+        .holder_accept_credential(
+            interaction,
+            Some(HolderBindingInput {
+                identifier: Identifier {
+                    r#type: IdentifierType::Key,
+                    key: Some(key.clone()),
+                    ..dummy_identifier()
+                },
+                key,
+            }),
+            None,
+        )
+        .await
+        .unwrap();
+
+    // THEN
+    let schema = captured_schema.lock().unwrap().take().unwrap();
+    let claim_schemas = schema.claim_schemas.get().await.unwrap();
+    let number_claim = claim_schemas
+        .iter()
+        .find(|cs| cs.key == "NUMBER")
+        .expect("NUMBER claim schema missing");
+
+    let claim_translations = number_claim.translations.get().await.unwrap();
+    assert_eq!(
+        claim_translations.len(),
+        2,
+        "expected Name(en) and Name(de) for NUMBER claim"
+    );
+
+    let en = claim_translations
+        .iter()
+        .find(|t| t.lang == "en")
+        .expect("en translation missing");
+    assert_eq!(en.field, LocalizedTextField::Name);
+    assert_eq!(en.value, "Number");
+    assert_eq!(en.entity_type, LocalizedTextEntityType::ClaimSchema);
+
+    let de = claim_translations
+        .iter()
+        .find(|t| t.lang == "de")
+        .expect("de translation missing");
+    assert_eq!(de.field, LocalizedTextField::Name);
+    assert_eq!(de.value, "Nummer");
+    assert_eq!(de.entity_type, LocalizedTextEntityType::ClaimSchema);
 }
 
 fn test_params(issuance_url_scheme: &str) -> OpenID4VCIFinal1Params {

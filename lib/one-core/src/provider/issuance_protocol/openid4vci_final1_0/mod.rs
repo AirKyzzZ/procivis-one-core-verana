@@ -40,9 +40,10 @@ use super::openid4vci_final1_0::model::{
     ChallengeResponseDTO, CredentialRequestHolderKey, EtsiIssuerInfoAttestationFormat,
     EtsiIssuerInfoResponseDTO, HolderInteractionData, OAuthAuthorizationServerMetadata,
     OpenID4VCIAuthorizationCodeGrant, OpenID4VCICredentialConfigurationData,
-    OpenID4VCICredentialRequestDTO, OpenID4VCICredentialRequestIdentifier,
-    OpenID4VCICredentialRequestProofs, OpenID4VCIFinal1CredentialOfferDTO, OpenID4VCIFinal1Params,
-    OpenID4VCIGrants, OpenID4VCIIssuerInteractionDataDTO, OpenID4VCIIssuerMetadataResponseDTO,
+    OpenID4VCICredentialMetadataResponseDTO, OpenID4VCICredentialRequestDTO,
+    OpenID4VCICredentialRequestIdentifier, OpenID4VCICredentialRequestProofs,
+    OpenID4VCIFinal1CredentialOfferDTO, OpenID4VCIFinal1Params, OpenID4VCIGrants,
+    OpenID4VCIIssuerInteractionDataDTO, OpenID4VCIIssuerMetadataResponseDTO,
     OpenID4VCINonceResponseDTO, OpenID4VCINotificationEvent, OpenID4VCINotificationRequestDTO,
     OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO, PreparedMetadata,
     TokenRequestWalletAttestationRequest, WalletAttestationResult,
@@ -86,6 +87,7 @@ use crate::model::interaction::{Interaction, UpdateInteractionRequest};
 use crate::model::key::{Key, KeyRelations};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListQuery;
+use crate::model::localized_text::{LocalizedText, LocalizedTextEntityType, LocalizedTextField};
 use crate::model::organisation::Organisation;
 use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
 use crate::model::wallet_instance::WalletInstanceStatus;
@@ -988,19 +990,15 @@ impl OpenID4VCIFinal1_0 {
                     .to_owned();
 
                 let metadata = interaction_data.credential_metadata.as_ref();
-                let metadata_display = metadata
-                    .and_then(|metadata| metadata.display.as_ref())
-                    .and_then(|display| {
-                        display.iter().find(|display| {
-                            display.locale.as_ref().is_none_or(|locale| locale == "en")
-                        })
-                    });
-
-                if let Some(name) = metadata_display.map(|display| display.name.to_owned()) {
-                    schema.name = name;
-                }
-
                 let now = now_utc();
+                apply_issuer_metadata_to_schema(
+                    &mut schema,
+                    metadata,
+                    &self.config.default_language,
+                    now,
+                )
+                .await?;
+
                 let schema_id = schema.schema_id().await?;
                 schema.formats = vec![CredentialSchemaFormat {
                     id: Uuid::new_v4().into(),
@@ -1015,8 +1013,6 @@ impl OpenID4VCIFinal1_0 {
                 schema.batch_size = interaction_data.batch_size.map(|size| size as _);
                 schema.organisation = organisation.to_owned().into();
                 schema.layout_type = LayoutType::Card;
-                schema.layout_properties =
-                    metadata_display.and_then(|display| display.to_owned().into());
                 schema.key_storage_security = interaction_data
                     .proof_types_supported
                     .as_ref()
@@ -3149,6 +3145,120 @@ async fn prepare_credential_schema_updates(
     }
 
     credential.schema = Some(stored_schema.to_owned());
+
+    Ok(())
+}
+
+async fn apply_issuer_metadata_to_schema(
+    schema: &mut CredentialSchema,
+    metadata: Option<&OpenID4VCICredentialMetadataResponseDTO>,
+    default_language: &str,
+    now: OffsetDateTime,
+) -> Result<(), IssuanceProtocolError> {
+    let all_displays = metadata.and_then(|m| m.display.as_deref()).unwrap_or(&[]);
+
+    let metadata_display = all_displays.iter().find(|display| {
+        display
+            .locale
+            .as_deref()
+            .is_none_or(|locale| locale == default_language)
+    });
+
+    if let Some(name) = metadata_display.map(|d| d.name.to_owned()) {
+        schema.name = name;
+    }
+
+    let schema_translations: Vec<LocalizedText> = all_displays
+        .iter()
+        .flat_map(|display| {
+            let lang = display
+                .locale
+                .as_deref()
+                .unwrap_or(default_language)
+                .to_owned();
+            let mut entries: Vec<LocalizedText> = vec![LocalizedText {
+                entity_id: schema.id.into(),
+                field: LocalizedTextField::Name,
+                created_date: now,
+                last_modified: now,
+                lang: lang.clone(),
+                value: display.name.clone(),
+                entity_type: LocalizedTextEntityType::CredentialSchema,
+            }];
+            if let Some(description) = &display.description {
+                entries.push(LocalizedText {
+                    entity_id: schema.id.into(),
+                    field: LocalizedTextField::Description,
+                    created_date: now,
+                    last_modified: now,
+                    lang,
+                    value: description.clone(),
+                    entity_type: LocalizedTextEntityType::CredentialSchema,
+                });
+            }
+            entries
+        })
+        .collect();
+
+    if !schema_translations.is_empty() {
+        schema.translations = schema_translations.into();
+    }
+
+    let metadata_claims = metadata.and_then(|m| m.claims.as_deref()).unwrap_or(&[]);
+
+    if !metadata_claims.is_empty() {
+        let claim_schemas = schema
+            .claim_schemas
+            .get()
+            .await
+            .error_while("getting claim schemas")?;
+
+        let updated_claim_schemas = claim_schemas
+            .into_iter()
+            .map(|mut claim_schema| {
+                if claim_schema.metadata {
+                    return claim_schema;
+                }
+                let metadata_claim = metadata_claims
+                    .iter()
+                    .find(|mc| mc.path.join("/") == claim_schema.key);
+
+                if let Some(mc) = metadata_claim {
+                    let claim_translations: Vec<LocalizedText> = mc
+                        .display
+                        .as_deref()
+                        .unwrap_or(&[])
+                        .iter()
+                        .filter_map(|display| {
+                            let name = display.name.as_ref()?;
+                            let lang = display
+                                .locale
+                                .as_deref()
+                                .unwrap_or(default_language)
+                                .to_owned();
+                            Some(LocalizedText {
+                                entity_id: claim_schema.id.into(),
+                                field: LocalizedTextField::Name,
+                                created_date: now,
+                                last_modified: now,
+                                lang,
+                                value: name.clone(),
+                                entity_type: LocalizedTextEntityType::ClaimSchema,
+                            })
+                        })
+                        .collect();
+                    if !claim_translations.is_empty() {
+                        claim_schema.translations = claim_translations.into();
+                    }
+                }
+                claim_schema
+            })
+            .collect::<Vec<_>>();
+
+        schema.claim_schemas = updated_claim_schemas.into();
+    }
+
+    schema.layout_properties = metadata_display.and_then(|display| display.to_owned().into());
 
     Ok(())
 }
