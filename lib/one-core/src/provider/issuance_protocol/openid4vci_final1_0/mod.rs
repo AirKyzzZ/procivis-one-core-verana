@@ -1038,6 +1038,13 @@ impl OpenID4VCIFinal1_0 {
                 ))
             })?;
 
+        validator::validate_key_requirements_supported(
+            self.key_algorithm_provider.as_ref(),
+            self.key_provider.as_ref(),
+            self.key_security_level_provider.as_ref(),
+            credential_config,
+        )?;
+
         let (
             access_certificate,
             registration_certificate,
@@ -1427,6 +1434,14 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         let tx_code = credential_offer.grants.tx_code().cloned();
         let requires_wallet_instance_attestation =
             requires_wia(&oauth_metadata.token_endpoint_auth_methods_supported);
+
+        if requires_wallet_instance_attestation {
+            validator::validate_has_active_wallet_instance(
+                self.holder_wallet_unit_repository.as_ref(),
+                organisation.id,
+            )
+            .await?;
+        }
 
         let PrepareIssuanceSuccess {
             interaction_id,

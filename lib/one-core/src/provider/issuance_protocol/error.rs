@@ -36,6 +36,10 @@ pub enum IssuanceProtocolError {
     Untrusted,
     #[error("Refresh not possible: refresh token missing or expired")]
     RefreshNotPossible,
+    #[error("Requirements for key not supported")]
+    KeyRequirementsNotSupported,
+    #[error("Wallet instance required")]
+    WalletInstanceRequired,
 
     #[error("JSON error: `{0}`")]
     Json(#[from] serde_json::Error),
@@ -65,6 +69,8 @@ impl ErrorCodeMixin for IssuanceProtocolError {
             | Self::CertificateMismatch
             | Self::CredentialVerificationFailed(_) => ErrorCode::BR_0173,
             Self::BindingAutogenerationFailure(_) => ErrorCode::BR_0217,
+            Self::KeyRequirementsNotSupported => ErrorCode::BR_0225,
+            Self::WalletInstanceRequired => ErrorCode::BR_0081,
             Self::DisallowedCredentialConfiguration => ErrorCode::BR_0411,
             Self::Suspended | Self::RefreshTooSoon | Self::RefreshNotPossible => ErrorCode::BR_0238,
             Self::FromUtf8Error(_) | Self::TrustInformationError(_) => ErrorCode::BR_0047,
