@@ -325,8 +325,7 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
         let credentials = if let Some(credential_blob_id) = credential.credential_blob_id {
             let blob_storage = self
                 .blob_storage_provider
-                .get_blob_storage(BlobStorageType::Db)
-                .error_while("getting blob storage")?;
+                .get_blob_storage(BlobStorageType::Db)?;
 
             blob_storage
                 .get(&credential_blob_id)

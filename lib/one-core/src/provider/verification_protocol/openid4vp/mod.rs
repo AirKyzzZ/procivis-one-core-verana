@@ -231,9 +231,11 @@ fn get_jwt_signer<'a>(
             "verifier_key is None".to_string(),
         ))?;
 
-    let auth_fn = key_provider
-        .get_signature_provider(verifier_key, None, key_algorithm_provider.to_owned())
-        .error_while("getting signature provider")?;
+    let auth_fn = key_provider.get_signature_provider(
+        verifier_key,
+        None,
+        key_algorithm_provider.to_owned(),
+    )?;
 
     let key_algorithm = key_algorithm_provider
         .key_algorithm_from_key(verifier_key)

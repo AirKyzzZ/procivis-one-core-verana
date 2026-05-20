@@ -27,7 +27,6 @@ use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
 };
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
-use crate::provider::provider_directory::ProviderDirectoryError;
 use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
 use crate::provider::trust_list_subscriber::TrustListSubscriber;
 use crate::provider::trust_list_subscriber::error::TrustListSubscriberError;
@@ -251,13 +250,8 @@ fn setup_subscriber(time: OffsetDateTime, reference: &Url) -> EtsiLoteSubscriber
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
         .expect_key_algorithm_from_type()
-        .returning(|r#type| match r#type {
-            KeyAlgorithmType::Ecdsa => Ok(Arc::new(Ecdsa)),
-            _ => Err(ProviderDirectoryError::MissingProvider {
-                config_key: "".to_string(),
-                provider_type: "".to_string(),
-            }),
-        });
+        .with(eq(KeyAlgorithmType::Ecdsa))
+        .returning(|_| Ok(Arc::new(Ecdsa)));
     key_algorithm_provider
         .expect_key_algorithm_from_jose_alg()
         .returning(|_| Some((KeyAlgorithmType::Ecdsa, Arc::new(Ecdsa))));
@@ -358,13 +352,8 @@ fn setup_subscriber_xml(time: OffsetDateTime, reference: &Url) -> EtsiLoteSubscr
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
         .expect_key_algorithm_from_type()
-        .returning(|r#type| match r#type {
-            KeyAlgorithmType::Ecdsa => Ok(Arc::new(Ecdsa)),
-            _ => Err(ProviderDirectoryError::MissingProvider {
-                config_key: "".to_string(),
-                provider_type: "".to_string(),
-            }),
-        });
+        .with(eq(KeyAlgorithmType::Ecdsa))
+        .returning(|_| Ok(Arc::new(Ecdsa)));
     let key_algorithm_provider = Arc::new(key_algorithm_provider);
     let cache_storage = Arc::new(InMemoryStorage::new(HashMap::new()));
 

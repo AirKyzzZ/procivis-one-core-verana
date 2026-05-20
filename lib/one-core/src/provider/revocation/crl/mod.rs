@@ -405,10 +405,7 @@ impl CRLRevocation {
             .await
             .error_while("loading certificate key")?;
 
-        let key_storage = self
-            .key_provider
-            .get_key_storage(&key.storage_type)
-            .error_while("getting key storage")?;
+        let key_storage = self.key_provider.get_key_storage(&key.storage_type)?;
 
         let signing_key =
             SigningKeyAdapter::new(key, key_storage, tokio::runtime::Handle::current())

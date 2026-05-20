@@ -406,10 +406,7 @@ impl WalletUnitService {
         os: WalletInstanceOs,
         organisation: Organisation,
     ) -> Result<Registration, HolderWalletInstanceError> {
-        let key_storage = self
-            .key_provider
-            .get_key_storage(key_storage_id)
-            .error_while("getting key storage")?;
+        let key_storage = self.key_provider.get_key_storage(key_storage_id)?;
 
         let key = self
             .new_key(key_storage_id, key_type, organisation, &key_storage)
@@ -419,10 +416,11 @@ impl WalletUnitService {
             .key_handle(&key)
             .error_while("getting key handle")?;
 
-        let auth_fn = self
-            .key_provider
-            .get_signature_provider(&key, None, self.key_algorithm_provider.clone())
-            .error_while("getting signature provider")?;
+        let auth_fn = self.key_provider.get_signature_provider(
+            &key,
+            None,
+            self.key_algorithm_provider.clone(),
+        )?;
         let signed_proof = self
             .create_signed_key_possession_proof(
                 self.clock.now_utc(),
@@ -474,10 +472,7 @@ impl WalletUnitService {
             return Err(HolderWalletInstanceError::AppIntegrityCheckNotRequired);
         };
 
-        let key_storage = self
-            .key_provider
-            .get_key_storage(key_storage_id)
-            .error_while("getting key storage")?;
+        let key_storage = self.key_provider.get_key_storage(key_storage_id)?;
 
         let key_id = Uuid::new_v4().into();
         let attestation_key = match key_storage
@@ -511,14 +506,11 @@ impl WalletUnitService {
             .error_while("getting attestation")?;
 
         // Use SignatureProvider that uses the attestation key and the key_storage.sign_with_attestation_key method
-        let auth_fn = self
-            .key_provider
-            .get_attestation_signature_provider(
-                &attestation_key,
-                None,
-                self.key_algorithm_provider.clone(),
-            )
-            .error_while("getting attestation signature provider")?;
+        let auth_fn = self.key_provider.get_attestation_signature_provider(
+            &attestation_key,
+            None,
+            self.key_algorithm_provider.clone(),
+        )?;
         let attestation_key_proof = self
             .create_signed_key_possession_proof(
                 self.clock.now_utc(),
@@ -538,14 +530,11 @@ impl WalletUnitService {
                 .key_handle(&device_signing_key)
                 .error_while("getting key handle")?;
 
-            let auth_fn = self
-                .key_provider
-                .get_signature_provider(
-                    &device_signing_key,
-                    None,
-                    self.key_algorithm_provider.clone(),
-                )
-                .error_while("getting signature provider")?;
+            let auth_fn = self.key_provider.get_signature_provider(
+                &device_signing_key,
+                None,
+                self.key_algorithm_provider.clone(),
+            )?;
             let signed_proof = self
                 .create_device_signing_key_pop(
                     self.clock.now_utc(),

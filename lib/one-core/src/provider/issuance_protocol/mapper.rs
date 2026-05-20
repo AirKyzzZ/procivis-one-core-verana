@@ -7,7 +7,6 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::config::core_config::KeyAlgorithmType;
-use crate::error::ContextWithErrorCode;
 use crate::model::credential::{Clearable, CredentialStateEnum, UpdateCredentialRequest};
 use crate::model::credential_schema::{TransactionCode, TransactionCodeType};
 use crate::model::interaction::{Interaction, InteractionType};
@@ -230,9 +229,7 @@ fn pick_key_configuration(
         }
 
         for key_storage_id in security_level.get_key_storages() {
-            let storage = key_provider
-                .get_key_storage(key_storage_id)
-                .error_while("getting key storage")?;
+            let storage = key_provider.get_key_storage(key_storage_id)?;
 
             for (algorithm, _) in key_algorithm_provider.ordered_by_holder_priority() {
                 if !storage.get_capabilities().algorithms.contains(&algorithm) {

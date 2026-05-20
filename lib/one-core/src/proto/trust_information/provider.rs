@@ -187,8 +187,7 @@ impl TrustInformationProvider for TrustInformationProviderImpl {
         }
         let blob_storage = self
             .blob_storage_provider
-            .get_blob_storage(BlobStorageType::Db)
-            .error_while("getting blob storage")?;
+            .get_blob_storage(BlobStorageType::Db)?;
         let access_certificate = self
             .parsed_access_cert_from_history(id, &history, &*blob_storage)
             .await?;

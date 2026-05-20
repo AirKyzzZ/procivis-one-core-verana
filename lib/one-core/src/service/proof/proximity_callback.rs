@@ -207,8 +207,7 @@ impl ProofService {
 
         let blob_storage = self
             .blob_storage_provider
-            .get_blob_storage(BlobStorageType::Db)
-            .error_while("getting blob storage")?;
+            .get_blob_storage(BlobStorageType::Db)?;
 
         let blob_value = serde_json::to_string(&unpacked_request.submission_data).map_err(|e| {
             ProofServiceError::MappingError(format!("failed to serialize proof blob data: {e}"))

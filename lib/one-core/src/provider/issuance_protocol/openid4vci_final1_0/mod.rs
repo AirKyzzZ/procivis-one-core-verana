@@ -705,10 +705,11 @@ impl OpenID4VCIFinal1_0 {
                 .public_key_info_from_meta_and_holder_binding(interaction_data, identifier, key)
                 .await?;
 
-            let auth_fn = self
-                .key_provider
-                .get_signature_provider(key, None, self.key_algorithm_provider.clone())
-                .error_while("getting signature provider")?;
+            let auth_fn = self.key_provider.get_signature_provider(
+                key,
+                None,
+                self.key_algorithm_provider.clone(),
+            )?;
 
             // As per https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#name-proof-types
             // the iss field in the proof JWT MUST be the client_id of the Client making the Credential request.
@@ -844,8 +845,7 @@ impl OpenID4VCIFinal1_0 {
     ) -> Result<BlobId, IssuanceProtocolError> {
         let db_blob_storage = self
             .blob_storage_provider
-            .get_blob_storage(BlobStorageType::Db)
-            .error_while("getting blob storage")?;
+            .get_blob_storage(BlobStorageType::Db)?;
 
         let credential_blob_id = match credential.credential_blob_id {
             None => {
@@ -1193,8 +1193,7 @@ impl OpenID4VCIFinal1_0 {
         };
         let blob_storage = self
             .blob_storage_provider
-            .get_blob_storage(BlobStorageType::Db)
-            .error_while("getting blob storage")?;
+            .get_blob_storage(BlobStorageType::Db)?;
 
         let formats = credential_schema
             .formats
@@ -1837,15 +1836,12 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                     "missing issuer identifier".to_string(),
                 ))?;
 
-        let auth_fn = self
-            .key_provider
-            .get_signature_provider(
-                key,
-                self.jwk_key_id_from_identifier(issuer_identifier, key)
-                    .await?,
-                self.key_algorithm_provider.clone(),
-            )
-            .error_while("getting signature provider")?;
+        let auth_fn = self.key_provider.get_signature_provider(
+            key,
+            self.jwk_key_id_from_identifier(issuer_identifier, key)
+                .await?,
+            self.key_algorithm_provider.clone(),
+        )?;
 
         let core_base_url = self.base_url.as_ref().ok_or(IssuanceProtocolError::Failed(
             "Missing core_base_url for credential issuance".to_string(),

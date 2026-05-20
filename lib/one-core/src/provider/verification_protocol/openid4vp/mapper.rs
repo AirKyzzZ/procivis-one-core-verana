@@ -773,9 +773,8 @@ pub(crate) async fn format_authorization_request_client_id_scheme_verifier_attes
     .await
     .error_while("creating attestation JWT")?;
 
-    let auth_fn = key_provider
-        .get_signature_provider(verifier_key, None, key_algorithm_provider.clone())
-        .error_while("getting signature provider")?;
+    let auth_fn =
+        key_provider.get_signature_provider(verifier_key, None, key_algorithm_provider.clone())?;
 
     let request_jwt = Jwt {
         header: JWTHeader {

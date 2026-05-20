@@ -209,10 +209,11 @@ impl RegistrationCertificate {
             .key_algorithm_from_key(&key)
             .error_while("getting key algorithm")?;
 
-        let signer = self
-            .key_provider
-            .get_signature_provider(&key, None, self.key_algorithm_provider.clone())
-            .error_while("getting signature provider")?;
+        let signer = self.key_provider.get_signature_provider(
+            &key,
+            None,
+            self.key_algorithm_provider.clone(),
+        )?;
         let jwt = WRPRegistrationCertificate::new(
             "rc-wrp+jwt".to_owned(),
             key_algorithm.issuance_jose_alg_id(),

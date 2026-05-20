@@ -80,8 +80,7 @@ impl KeyStorage for InternalKeyProvider {
     ) -> Result<StorageGeneratedKey, KeyStorageError> {
         let key_pair = self
             .key_algorithm_provider
-            .key_algorithm_from_type(key_type)
-            .error_while("getting key algorithm")?
+            .key_algorithm_from_type(key_type)?
             .generate_key()
             .error_while("generating key")?;
 
@@ -103,8 +102,7 @@ impl KeyStorage for InternalKeyProvider {
 
         let key_pair = self
             .key_algorithm_provider
-            .key_algorithm_from_type(key_type)
-            .error_while("getting key algorithm")?
+            .key_algorithm_from_type(key_type)?
             .parse_private_jwk(jwk)
             .error_while("parsing private JWK")?;
 

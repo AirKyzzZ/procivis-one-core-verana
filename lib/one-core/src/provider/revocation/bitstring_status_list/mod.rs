@@ -725,9 +725,8 @@ pub(crate) async fn format_status_list_credential(
         None
     };
 
-    let auth_fn = key_provider
-        .get_signature_provider(key, key_id, key_algorithm_provider.clone())
-        .error_while("getting signature provider")?;
+    let auth_fn =
+        key_provider.get_signature_provider(key, key_id, key_algorithm_provider.clone())?;
 
     let algorithm_type = key
         .key_algorithm_type()

@@ -68,8 +68,7 @@ impl KeyVerification {
             )))?;
         let alg = self
             .key_algorithm_provider
-            .key_algorithm_from_type(algorithm)
-            .error_while("getting key algorithm")?;
+            .key_algorithm_from_type(algorithm)?;
 
         let public_key = alg
             .parse_jwk(&method.public_key_jwk)
@@ -109,8 +108,7 @@ impl TokenVerifier for KeyVerification {
             PublicKeySource::Jwk { jwk } => {
                 let alg = self
                     .key_algorithm_provider
-                    .key_algorithm_from_type(algorithm)
-                    .error_while("getting key algorithm")?;
+                    .key_algorithm_from_type(algorithm)?;
                 alg.parse_jwk(&jwk).error_while("parsing JWK")?
             }
         };

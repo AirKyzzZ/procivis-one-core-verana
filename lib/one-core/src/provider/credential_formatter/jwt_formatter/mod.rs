@@ -148,8 +148,7 @@ impl CredentialFormatter for JWTFormatter {
     ) -> Result<String, FormatterError> {
         let key_algorithm = self
             .key_algorithm_provider
-            .key_algorithm_from_type(algorithm)
-            .error_while("getting key algorithm")?;
+            .key_algorithm_from_type(algorithm)?;
 
         let jose_alg = key_algorithm.issuance_jose_alg_id();
 

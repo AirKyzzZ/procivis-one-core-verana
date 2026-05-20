@@ -173,8 +173,7 @@ impl OpenID4VCIFinal1_0 {
         let metadata_blob_id = if let Some(blob_content) = blob_content {
             let blob_storage = self
                 .blob_storage_provider
-                .get_blob_storage(BlobStorageType::Db)
-                .error_while("getting blob storage")?;
+                .get_blob_storage(BlobStorageType::Db)?;
 
             let blob = Blob::new(blob_content, BlobType::HistoryMetadata);
 

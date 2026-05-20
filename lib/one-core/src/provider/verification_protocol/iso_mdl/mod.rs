@@ -179,14 +179,11 @@ impl VerificationProtocol for IsoMdl {
                     "no credentials to format".into(),
                 ))?;
 
-        let auth_fn = self
-            .key_provider
-            .get_signature_provider(
-                &credential_presentation.key,
-                credential_presentation.jwk_key_id.to_owned(),
-                self.key_algorithm_provider.clone(),
-            )
-            .error_while("getting signature provider")?;
+        let auth_fn = self.key_provider.get_signature_provider(
+            &credential_presentation.key,
+            credential_presentation.jwk_key_id.to_owned(),
+            self.key_algorithm_provider.clone(),
+        )?;
 
         let holder_did = credential_presentation
             .holder_did

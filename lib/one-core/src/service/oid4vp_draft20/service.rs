@@ -317,8 +317,7 @@ impl OID4VPDraft20Service {
 
         let blob_storage = self
             .blob_storage_provider
-            .get_blob_storage(BlobStorageType::Db)
-            .error_while("getting blob storage")?;
+            .get_blob_storage(BlobStorageType::Db)?;
 
         let blob_value = serde_json::to_string(&unpacked_request.submission_data).map_err(|e| {
             OID4VPDraft20ServiceError::MappingError(format!(
@@ -496,10 +495,7 @@ impl OID4VPDraft20Service {
                         OID4VPDraft20ServiceError::ValidationError("Invalid JWE key_id".to_string())
                     })?;
 
-                let key_storage = self
-                    .key_provider
-                    .get_key_storage(&key.storage_type)
-                    .error_while("getting key storage")?;
+                let key_storage = self.key_provider.get_key_storage(&key.storage_type)?;
 
                 let key = key_storage
                     .key_handle(&key)

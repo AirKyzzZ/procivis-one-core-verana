@@ -85,13 +85,11 @@ pub(crate) async fn pex_submission_data(
         let (_, presentation_formatter) =  presentation_formatter_provider.get_presentation_formatter_by_type(presentation_format_type)
             .ok_or(VerificationProtocolError::Failed(format!("No matching formatter found for presentation format type {presentation_format_type}")))?;
 
-        let auth_fn = key_provider
-            .get_signature_provider(
-                &credential.key,
-                credential.jwk_key_id,
-                key_algorithm_provider.clone(),
-            )
-            .error_while("getting signature provider")?;
+        let auth_fn = key_provider.get_signature_provider(
+            &credential.key,
+            credential.jwk_key_id,
+            key_algorithm_provider.clone(),
+        )?;
 
         let client_id = if protocol == VerificationProtocolType::OpenId4VpDraft25 {
             &encode_client_id_with_scheme_draft25(

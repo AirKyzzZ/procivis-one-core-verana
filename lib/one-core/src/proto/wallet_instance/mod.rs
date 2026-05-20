@@ -189,10 +189,7 @@ impl HolderWalletUnitProtoImpl {
             .key_algorithm_from_key(key)
             .error_while("getting key algorithm")?;
 
-        let key_storage = self
-            .key_provider
-            .get_key_storage(&key.storage_type)
-            .error_while("getting key storage")?;
+        let key_storage = self.key_provider.get_key_storage(&key.storage_type)?;
 
         let key_handle = key_storage
             .key_handle(key)

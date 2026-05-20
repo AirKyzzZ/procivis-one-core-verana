@@ -296,8 +296,7 @@ impl OpenID4VCIFinal1_0 {
 
         let db_blob_storage = self
             .blob_storage_provider
-            .get_blob_storage(BlobStorageType::Db)
-            .error_while("getting blob storage")?;
+            .get_blob_storage(BlobStorageType::Db)?;
 
         let blob_id = credential
             .credential_blob_id

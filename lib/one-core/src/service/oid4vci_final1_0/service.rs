@@ -568,8 +568,7 @@ impl OID4VCIFinal1_0Service {
 
                 let db_blob_storage = self
                     .blob_storage_provider
-                    .get_blob_storage(BlobStorageType::Db)
-                    .error_while("getting blob storage")?;
+                    .get_blob_storage(BlobStorageType::Db)?;
 
                 let wallet_instance_attestation_blob = db_blob_storage
                     .get(wallet_instance_attestation_blob_id)
@@ -825,8 +824,7 @@ impl OID4VCIFinal1_0Service {
         let wua_blob_id = if let Some(attestation) = holder_identifier.key_attestation {
             let blob_storage = self
                 .blob_storage_provider
-                .get_blob_storage(BlobStorageType::Db)
-                .error_while("getting blob storage")?;
+                .get_blob_storage(BlobStorageType::Db)?;
 
             let wua_dto = serde_json::to_vec(&WalletUnitAttestationDTO { attestation })
                 .map_err(|e| OID4VCIFinal1_0ServiceError::MappingError(e.to_string()))?;
@@ -1073,8 +1071,7 @@ impl OID4VCIFinal1_0Service {
                         Some(wallet_instance_attestation_token) => {
                             let blob_storage = self
                                 .blob_storage_provider
-                                .get_blob_storage(BlobStorageType::Db)
-                                .error_while("getting blob storage")?;
+                                .get_blob_storage(BlobStorageType::Db)?;
 
                             let attestation_token =
                                 serde_json::to_vec(&wallet_instance_attestation_token).map_err(

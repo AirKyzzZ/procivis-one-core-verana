@@ -91,8 +91,7 @@ impl JsonLdBbsplus {
             .error_while("resolving issuer DID")?;
         let algo_provider = self
             .key_algorithm_provider
-            .key_algorithm_from_type(KeyAlgorithmType::BbsPlus)
-            .error_while("getting key algorithm")?;
+            .key_algorithm_from_type(KeyAlgorithmType::BbsPlus)?;
 
         let verification_method = if let Some(multikey) = did_document
             .verification_method

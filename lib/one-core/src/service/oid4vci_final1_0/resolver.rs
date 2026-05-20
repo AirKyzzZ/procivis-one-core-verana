@@ -165,19 +165,19 @@ impl CredentialIssuerMetadataResolver {
             None
         };
 
-        let auth_fn = self
-            .key_provider
-            .get_signature_provider(signing_key.key(), kid, self.key_algorithm_provider.clone())
-            .error_while("getting signature provider")?;
+        let auth_fn = self.key_provider.get_signature_provider(
+            signing_key.key(),
+            kid,
+            self.key_algorithm_provider.clone(),
+        )?;
 
         let (key_info, issuer) = match signing_key {
             SelectedKey::Key(key) => {
                 let key_handle = self
                     .key_provider
-                    .get_key_storage(&key.storage_type)
-                    .error_while("getting key storage")?
+                    .get_key_storage(&key.storage_type)?
                     .key_handle(key)
-                    .error_while("getting key storage")?;
+                    .error_while("getting key handle")?;
                 (
                     Some(JwtPublicKeyInfo::Jwk(
                         key_handle.public_key_as_jwk().error_while("getting JWK")?,

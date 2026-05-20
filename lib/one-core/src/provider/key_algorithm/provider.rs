@@ -14,11 +14,9 @@ use super::key::KeyHandle;
 use super::ml_dsa::MlDsa;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, KeyAlgorithmFields, KeyAlgorithmType};
-use crate::error::ContextWithErrorCode;
+use crate::error::{ContextWithErrorCode, NestedError};
 use crate::model::key::Key;
-use crate::provider::provider_directory::{
-    InitializationError, ProviderDirectory, ProviderDirectoryError,
-};
+use crate::provider::provider_directory::{InitializationError, ProviderDirectory};
 
 #[derive(Clone)]
 pub struct ParsedKey {
@@ -31,7 +29,7 @@ pub trait KeyAlgorithmProvider: Send + Sync {
     fn key_algorithm_from_type(
         &self,
         algorithm: KeyAlgorithmType,
-    ) -> Result<Arc<dyn KeyAlgorithm>, ProviderDirectoryError>;
+    ) -> Result<Arc<dyn KeyAlgorithm>, NestedError>;
 
     fn key_algorithm_from_key(
         &self,
@@ -70,7 +68,7 @@ impl KeyAlgorithmProvider for KeyAlgorithmProviderImpl {
     fn key_algorithm_from_type(
         &self,
         algorithm: KeyAlgorithmType,
-    ) -> Result<Arc<dyn KeyAlgorithm>, ProviderDirectoryError> {
+    ) -> Result<Arc<dyn KeyAlgorithm>, NestedError> {
         self.directory.provider(&algorithm)
     }
 
@@ -81,10 +79,7 @@ impl KeyAlgorithmProvider for KeyAlgorithmProviderImpl {
         let key_type = key
             .key_algorithm_type()
             .error_while("getting key algorithm type")?;
-        self.directory
-            .provider(&key_type)
-            .error_while("getting key algorithm provider")
-            .map_err(Into::into)
+        self.directory.provider(&key_type).map_err(Into::into)
     }
 
     fn key_algorithm_from_jose_alg(
@@ -150,9 +145,7 @@ impl KeyAlgorithmProvider for KeyAlgorithmProviderImpl {
         private_key: Option<SecretSlice<u8>>,
         r#use: Option<JwkUse>,
     ) -> Result<KeyHandle, KeyAlgorithmProviderError> {
-        let algorithm = self
-            .key_algorithm_from_type(algorithm)
-            .error_while("getting key algorithm")?;
+        let algorithm = self.key_algorithm_from_type(algorithm)?;
         Ok(algorithm
             .reconstruct_key(public_key, private_key, r#use)
             .error_while("reconstructing key")?)

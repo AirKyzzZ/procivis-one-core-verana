@@ -169,8 +169,7 @@ impl SignatureService {
     ) -> Result<(), SignatureServiceError> {
         let blob_storage = self
             .blob_storage_provider
-            .get_blob_storage(BlobStorageType::Db)
-            .error_while("getting blob storage")?;
+            .get_blob_storage(BlobStorageType::Db)?;
 
         let blob = Blob::new(
             create_signature_response.result.clone(),

@@ -153,8 +153,7 @@ impl Task for RetainProofCheck {
 
                 let blob_storage = self
                     .blob_storage_provider
-                    .get_blob_storage(BlobStorageType::Db)
-                    .error_while("getting blob storage")?;
+                    .get_blob_storage(BlobStorageType::Db)?;
 
                 let credential_blob_ids = self
                     .credential_repository
@@ -186,8 +185,7 @@ impl Task for RetainProofCheck {
                 if let Some(proof_blob_id) = proof.proof_blob_id {
                     let blob_storage = self
                         .blob_storage_provider
-                        .get_blob_storage(BlobStorageType::Db)
-                        .error_while("getting blob storage")?;
+                        .get_blob_storage(BlobStorageType::Db)?;
 
                     blob_storage
                         .delete(&proof_blob_id)

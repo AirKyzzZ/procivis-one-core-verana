@@ -71,9 +71,7 @@ pub(crate) fn make_keyref(
     key: &Key,
     key_provider: &dyn KeyProvider,
 ) -> Result<KeyRef, DidMethodError> {
-    let storage = key_provider
-        .get_key_storage(&key.storage_type)
-        .error_while("getting key storage")?;
+    let storage = key_provider.get_key_storage(&key.storage_type)?;
 
     let key_handle = storage.key_handle(key).error_while("getting key handle")?;
 

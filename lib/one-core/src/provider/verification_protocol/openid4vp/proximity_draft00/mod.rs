@@ -751,14 +751,11 @@ pub(super) async fn create_presentation(
             .get_presentation_formatter(&presentation_format.to_string())
             .ok_or_else(|| VerificationProtocolError::Failed("Formatter not found".to_string()))?;
 
-        let auth_fn = params
-            .key_provider
-            .get_signature_provider(
-                &credential_presentation.key,
-                credential_presentation.jwk_key_id.to_owned(),
-                params.key_algorithm_provider.clone(),
-            )
-            .error_while("getting signature provider")?;
+        let auth_fn = params.key_provider.get_signature_provider(
+            &credential_presentation.key,
+            credential_presentation.jwk_key_id.to_owned(),
+            params.key_algorithm_provider.clone(),
+        )?;
 
         let credentials = CredentialToPresent {
             credential_token: credential_presentation.presentation.to_owned(),
@@ -872,22 +869,16 @@ pub(super) async fn prepare_proof_share(
 
     let verifier_jwk_key_id = verifier_did.verification_method_id(&verifier_key);
 
-    let auth_fn_ble = params
-        .key_provider
-        .get_signature_provider(
-            &verifier_key.key,
-            Some(verifier_jwk_key_id.clone()),
-            params.key_algorithm_provider.clone(),
-        )
-        .error_while("getting signature provider")?;
-    let auth_fn_mqtt = params
-        .key_provider
-        .get_signature_provider(
-            &verifier_key.key,
-            Some(verifier_jwk_key_id),
-            params.key_algorithm_provider,
-        )
-        .error_while("getting signature provider")?;
+    let auth_fn_ble = params.key_provider.get_signature_provider(
+        &verifier_key.key,
+        Some(verifier_jwk_key_id.clone()),
+        params.key_algorithm_provider.clone(),
+    )?;
+    let auth_fn_mqtt = params.key_provider.get_signature_provider(
+        &verifier_key.key,
+        Some(verifier_jwk_key_id),
+        params.key_algorithm_provider,
+    )?;
 
     Ok((
         presentation_definition,

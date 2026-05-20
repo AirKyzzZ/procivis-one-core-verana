@@ -52,8 +52,7 @@ impl DidMethod for KeyDidMethod {
 
         let jwk = self
             .key_algorithm_provider
-            .key_algorithm_from_type(decoded.r#type)
-            .error_while("getting key algorithm")?
+            .key_algorithm_from_type(decoded.r#type)?
             .reconstruct_key(&decoded.decoded_multibase, None, None)
             .map_err(|err| {
                 DidMethodError::ResolutionError(format!(

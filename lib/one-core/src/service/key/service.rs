@@ -72,10 +72,7 @@ impl KeyService {
             ));
         }
 
-        let provider = self
-            .key_provider
-            .get_key_storage(&request.storage_type)
-            .error_while("getting key storage")?;
+        let provider = self.key_provider.get_key_storage(&request.storage_type)?;
 
         let key_type = KeyAlgorithmType::from_str(&request.key_type)
             .map_err(|_| KeyServiceError::InvalidKeyAlgorithm(request.key_type.to_string()))?;

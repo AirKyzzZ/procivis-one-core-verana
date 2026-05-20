@@ -279,10 +279,11 @@ impl EtsiLotePublisher {
 
         let x5c = pem_chain_into_x5c(&certificate.chain)?;
 
-        let signer = self
-            .key_provider
-            .get_signature_provider(key, None, self.key_algorithm_provider.clone())
-            .error_while("getting signature provider")?;
+        let signer = self.key_provider.get_signature_provider(
+            key,
+            None,
+            self.key_algorithm_provider.clone(),
+        )?;
 
         match self.params.content_type {
             LoteContentType::Xml => {

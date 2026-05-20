@@ -128,9 +128,7 @@ async fn map_trust_information(
     blob_storage_provider: &dyn BlobStorageProvider,
     trust_information: Vec<IdentifierTrustInformation>,
 ) -> Result<Vec<IdentifierTrustInformationResponseDTO>, IdentifierServiceError> {
-    let blob_storage = blob_storage_provider
-        .get_blob_storage(BlobStorageType::Db)
-        .error_while("getting blob storage")?;
+    let blob_storage = blob_storage_provider.get_blob_storage(BlobStorageType::Db)?;
     let mut trust_info_dtos = vec![];
     for entry in trust_information {
         let blob = blob_storage

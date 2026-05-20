@@ -103,8 +103,7 @@ impl CsrCreatorImpl {
         })?;
         let key_algorithm = self
             .key_algorithm_provider
-            .key_algorithm_from_type(key_type)
-            .error_while("getting key algorithm")?;
+            .key_algorithm_from_type(key_type)?;
 
         if !key_algorithm
             .get_capabilities()
@@ -128,10 +127,7 @@ impl CsrCreator for CsrCreatorImpl {
     ) -> Result<String, CsrCreationError> {
         self.validate_key_algorithm_for_csr(&key)?;
 
-        let key_storage = self
-            .key_provider
-            .get_key_storage(&key.storage_type)
-            .error_while("getting key storage")?;
+        let key_storage = self.key_provider.get_key_storage(&key.storage_type)?;
         let signing_key =
             SigningKeyAdapter::new(key, key_storage, tokio::runtime::Handle::current())
                 .error_while("creating signing key adapter")?;

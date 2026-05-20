@@ -11,34 +11,30 @@ use super::remote_secure_element::RemoteSecureElementKeyProvider;
 use super::secure_element::{NativeKeyStorage, SecureElementKeyProvider};
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, Fields, KeyAlgorithmType, KeyStorageType};
-use crate::error::ContextWithErrorCode;
+use crate::error::{ContextWithErrorCode, NestedError};
 use crate::model::key::Key;
 use crate::proto::http_client::HttpClient;
 use crate::provider::credential_formatter::model::{AuthenticationFn, SignatureProvider};
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::provider::provider_directory::{
-    InitializationError, ProviderDirectory, ProviderDirectoryError,
-};
+use crate::provider::provider_directory::{InitializationError, ProviderDirectory};
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 pub trait KeyProvider: Send + Sync {
-    fn get_key_storage(
-        &self,
-        key_provider_id: &str,
-    ) -> Result<Arc<dyn KeyStorage>, ProviderDirectoryError>;
+    fn get_key_storage(&self, key_provider_id: &str) -> Result<Arc<dyn KeyStorage>, NestedError>;
 
     fn get_signature_provider(
         &self,
         key: &Key,
         jwk_key_id: Option<String>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-    ) -> Result<AuthenticationFn, ProviderDirectoryError> {
+    ) -> Result<AuthenticationFn, NestedError> {
         let key_handle = self
-            .get_key_storage(&key.storage_type)?
+            .get_key_storage(&key.storage_type)
+            .error_while("getting key storage for signature provider")?
             .key_handle(key)
-            .error_while("getting key handle")?;
+            .error_while("getting key handle for signature provider")?;
 
         Ok(Box::new(SignatureProviderImpl {
             key: key.to_owned(),
@@ -53,8 +49,10 @@ pub trait KeyProvider: Send + Sync {
         key: &Key,
         jwk_key_id: Option<String>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-    ) -> Result<AuthenticationFn, ProviderDirectoryError> {
-        let key_storage = self.get_key_storage(&key.storage_type)?;
+    ) -> Result<AuthenticationFn, NestedError> {
+        let key_storage = self
+            .get_key_storage(&key.storage_type)
+            .error_while("getting key storage for attestation signature provider")?;
 
         Ok(Box::new(AttestationSignatureProvider {
             key: key.to_owned(),
@@ -66,10 +64,7 @@ pub trait KeyProvider: Send + Sync {
 }
 
 impl KeyProvider for ProviderDirectory<String, Fields<KeyStorageType>, dyn KeyStorage> {
-    fn get_key_storage(
-        &self,
-        key_provider_id: &str,
-    ) -> Result<Arc<dyn KeyStorage>, ProviderDirectoryError> {
+    fn get_key_storage(&self, key_provider_id: &str) -> Result<Arc<dyn KeyStorage>, NestedError> {
         self.provider(key_provider_id)
     }
 }

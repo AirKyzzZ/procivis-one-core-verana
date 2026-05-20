@@ -52,21 +52,18 @@ impl ErrorCodeMixin for InitializationError {
 }
 
 #[derive(Debug, Error)]
-pub enum ProviderDirectoryError {
+pub(crate) enum ProviderDirectoryError {
     #[error("Missing provider `{config_key}` of type `{provider_type}`")]
     MissingProvider {
         config_key: String,
         provider_type: String,
     },
-    #[error(transparent)]
-    Nested(#[from] NestedError),
 }
 
 impl ErrorCodeMixin for ProviderDirectoryError {
     fn error_code(&self) -> ErrorCode {
         match self {
             ProviderDirectoryError::MissingProvider { .. } => ErrorCode::BR_0430,
-            ProviderDirectoryError::Nested(nested) => nested.error_code(),
         }
     }
 }
@@ -104,31 +101,32 @@ where
         Ok(Self { providers, configs })
     }
 
-    pub fn provider<K>(&self, config_id: &K) -> Result<Arc<P>, ProviderDirectoryError>
+    pub fn provider<K>(&self, config_id: &K) -> Result<Arc<P>, NestedError>
     where
         K: Hash + Eq + ?Sized + Display,
         C: Borrow<K>,
     {
-        self.providers
-            .get(config_id)
-            .cloned()
-            .ok_or(ProviderDirectoryError::MissingProvider {
+        self.providers.get(config_id).cloned().ok_or(
+            ProviderDirectoryError::MissingProvider {
                 config_key: config_id.to_string(),
                 provider_type: std::any::type_name::<P>().to_string(),
-            })
+            }
+            .into(),
+        )
     }
 
     pub fn iter(&self) -> impl Iterator<Item = (&C, &Arc<P>)> {
         self.providers.iter()
     }
 
-    pub fn config(&self, config_id: &C) -> Result<&CF, ProviderDirectoryError> {
-        self.configs
-            .get(config_id)
-            .ok_or(ProviderDirectoryError::MissingProvider {
+    pub fn config(&self, config_id: &C) -> Result<&CF, NestedError> {
+        self.configs.get(config_id).ok_or(
+            ProviderDirectoryError::MissingProvider {
                 config_key: config_id.to_string(),
                 provider_type: std::any::type_name::<P>().to_string(),
-            })
+            }
+            .into(),
+        )
     }
 
     pub fn iter_configs(&self) -> impl Iterator<Item = (&C, &CF)> {

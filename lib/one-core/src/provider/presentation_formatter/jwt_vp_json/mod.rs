@@ -110,8 +110,7 @@ impl PresentationFormatter for JwtVpPresentationFormatter {
                 .error_while("getting key algorithm type")?;
             let key_algorithm = self
                 .key_algorithm_provider
-                .key_algorithm_from_type(key_algorithm)
-                .error_while("getting key algorithm")?;
+                .key_algorithm_from_type(key_algorithm)?;
             let jwk = key_algorithm
                 .reconstruct_key(&holder_binding_fn.get_public_key(), None, None)
                 .error_while("reconstructing key")?

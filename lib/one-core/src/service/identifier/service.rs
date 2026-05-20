@@ -282,8 +282,7 @@ impl IdentifierService {
     ) -> Result<(), IdentifierServiceError> {
         let blob_storage = self
             .blob_storage_provider
-            .get_blob_storage(BlobStorageType::Db)
-            .error_while("getting blob storage")?;
+            .get_blob_storage(BlobStorageType::Db)?;
         let now = OffsetDateTime::now_utc();
 
         let rp_id = self.etsi_rp_id_for_identifier(identifier).await?;

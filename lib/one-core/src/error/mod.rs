@@ -5,6 +5,8 @@ use std::fmt::{Display, Formatter};
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumMessage, IntoStaticStr};
 
+use crate::provider::provider_directory::ProviderDirectoryError;
+
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, IntoStaticStr, EnumMessage, Display,
 )]
@@ -922,7 +924,7 @@ pub trait ErrorCodeMixinExt: ErrorCodeMixin {
 impl<T: ErrorCodeMixin> ErrorCodeMixinExt for T {
     fn error_while(self, context: impl Display) -> NestedError {
         NestedError {
-            context: context.to_string(),
+            context: Some(context.to_string()),
             source: Box::new(self),
         }
     }
@@ -930,8 +932,8 @@ impl<T: ErrorCodeMixin> ErrorCodeMixinExt for T {
 
 #[derive(Debug)]
 pub struct NestedError {
-    pub context: String,
-    pub source: Box<dyn ErrorCodeMixin>,
+    context: Option<String>,
+    source: Box<dyn ErrorCodeMixin>,
 }
 
 impl Error for NestedError {
@@ -948,8 +950,12 @@ impl ErrorCodeMixin for NestedError {
 
 impl Display for NestedError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Error while {}.", self.context)?;
-        write!(f, "Caused by: {}", self.source)?;
+        if let Some(context) = &self.context {
+            writeln!(f, "Error while {context}.")?;
+            write!(f, "Caused by: {}", self.source)?;
+        } else {
+            write!(f, "{}", self.source)?;
+        }
         Ok(())
     }
 }
@@ -967,9 +973,19 @@ pub trait ContextWithErrorCode<T, E: ErrorCodeMixin> {
 impl<T, E: ErrorCodeMixin> ContextWithErrorCode<T, E> for Result<T, E> {
     fn error_while(self, context: impl Display) -> Result<T, NestedError> {
         self.map_err(|e| NestedError {
-            context: context.to_string(),
+            context: Some(context.to_string()),
             source: Box::new(e),
         })
+    }
+}
+
+// ProviderDirectoryError already describes the context, no need for nesting
+impl From<ProviderDirectoryError> for NestedError {
+    fn from(error: ProviderDirectoryError) -> Self {
+        Self {
+            context: None,
+            source: Box::new(error),
+        }
     }
 }
 

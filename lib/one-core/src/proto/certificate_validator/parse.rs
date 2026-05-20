@@ -176,8 +176,7 @@ impl CertificateValidatorImpl {
 
         let key_algorithm = self
             .key_algorithm_provider
-            .key_algorithm_from_type(alg_type)
-            .error_while("getting key algorithm")?;
+            .key_algorithm_from_type(alg_type)?;
 
         let key_handle = key_algorithm
             .parse_der(certificate.subject_pki.raw)

@@ -371,8 +371,7 @@ impl CredentialService {
 
         let db_blob_storage = self
             .blob_storage_provider
-            .get_blob_storage(BlobStorageType::Db)
-            .error_while("getting blob storage")?;
+            .get_blob_storage(BlobStorageType::Db)?;
 
         let wallet_instance_attestation_blob = match &credential.wallet_instance_attestation_blob_id
         {

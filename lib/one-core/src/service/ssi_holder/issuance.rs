@@ -240,8 +240,7 @@ impl SSIHolderService {
 
         let db_blob_storage = self
             .blob_storage_provider
-            .get_blob_storage(BlobStorageType::Db)
-            .error_while("getting blob storage")?;
+            .get_blob_storage(BlobStorageType::Db)?;
 
         let mut result = vec![];
         for (credential, token) in credentials.into_iter().zip(issuer_response.credentials) {

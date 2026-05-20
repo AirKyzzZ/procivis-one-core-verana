@@ -250,8 +250,7 @@ impl SSIHolderService {
 
                 let db_blob_storage = self
                     .blob_storage_provider
-                    .get_blob_storage(BlobStorageType::Db)
-                    .error_while("getting blob storage")?;
+                    .get_blob_storage(BlobStorageType::Db)?;
                 let credential_blob = db_blob_storage
                     .get(&credential_blob_id)
                     .await
@@ -628,8 +627,7 @@ impl SSIHolderService {
     ) -> Result<(FormattedCredentialPresentation, Vec<Claim>), HolderServiceError> {
         let blob_storage = self
             .blob_storage_provider
-            .get_blob_storage(BlobStorageType::Db)
-            .error_while("getting blob storage")?;
+            .get_blob_storage(BlobStorageType::Db)?;
 
         let credential = self
             .credential_repository

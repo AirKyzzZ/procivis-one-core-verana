@@ -275,14 +275,11 @@ impl OpenID4VPFinal1_0 {
                         VerificationProtocolError::Failed("Formatter not found".to_string())
                     })?;
 
-                let auth_fn = self
-                    .key_provider
-                    .get_signature_provider(
-                        &credential_presentation.key,
-                        credential_presentation.jwk_key_id,
-                        self.key_algorithm_provider.clone(),
-                    )
-                    .error_while("getting signature provider")?;
+                let auth_fn = self.key_provider.get_signature_provider(
+                    &credential_presentation.key,
+                    credential_presentation.jwk_key_id,
+                    self.key_algorithm_provider.clone(),
+                )?;
 
                 let credentials = CredentialToPresent {
                     credential_token: credential_presentation.presentation,

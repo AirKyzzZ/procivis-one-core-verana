@@ -1043,17 +1043,17 @@ impl WalletProviderService {
             None
         };
 
-        let auth_fn = self
-            .key_provider
-            .get_signature_provider(issuer_key, key_id, self.key_algorithm_provider.clone())
-            .error_while("getting signature provider")?;
+        let auth_fn = self.key_provider.get_signature_provider(
+            issuer_key,
+            key_id,
+            self.key_algorithm_provider.clone(),
+        )?;
 
         let public_key_info = match issuer_identifier.r#type {
             IdentifierType::Key | IdentifierType::Did => {
                 let key_handle = self
                     .key_provider
-                    .get_key_storage(&issuer_key.storage_type)
-                    .error_while("getting key storage")?
+                    .get_key_storage(&issuer_key.storage_type)?
                     .key_handle(issuer_key)
                     .map_err(|e| {
                         WalletProviderError::MappingError(format!("Failed to get key handle: {e}"))

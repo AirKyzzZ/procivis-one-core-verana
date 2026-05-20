@@ -196,9 +196,7 @@ fn security_level_and_algs_supported(
             )))?;
 
     for storage_id in security_level.get_key_storages() {
-        let storage = key_storage_provider
-            .get_key_storage(storage_id)
-            .error_while("getting key storage")?;
+        let storage = key_storage_provider.get_key_storage(storage_id)?;
 
         if !storage.enabled() {
             continue;

@@ -4,10 +4,8 @@ use super::BlobStorage;
 use super::db::RepositoryBlobStorage;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{BlobStorageFields, BlobStorageType, CoreConfig};
-use crate::error::ContextWithErrorCode;
-use crate::provider::provider_directory::{
-    InitializationError, ProviderDirectory, ProviderDirectoryError,
-};
+use crate::error::{ContextWithErrorCode, NestedError};
+use crate::provider::provider_directory::{InitializationError, ProviderDirectory};
 use crate::repository::blob_repository::BlobRepository;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
@@ -15,7 +13,7 @@ pub trait BlobStorageProvider: Send + Sync {
     fn get_blob_storage(
         &self,
         r#type: BlobStorageType,
-    ) -> Result<Arc<dyn BlobStorage>, ProviderDirectoryError>;
+    ) -> Result<Arc<dyn BlobStorage>, NestedError>;
 }
 
 impl BlobStorageProvider
@@ -24,7 +22,7 @@ impl BlobStorageProvider
     fn get_blob_storage(
         &self,
         r#type: BlobStorageType,
-    ) -> Result<Arc<dyn BlobStorage>, ProviderDirectoryError> {
+    ) -> Result<Arc<dyn BlobStorage>, NestedError> {
         self.provider(&r#type)
     }
 }

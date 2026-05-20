@@ -340,8 +340,7 @@ impl OID4VPFinal1_0Service {
 
         let blob_storage = self
             .blob_storage_provider
-            .get_blob_storage(BlobStorageType::Db)
-            .error_while("getting blob storage")?;
+            .get_blob_storage(BlobStorageType::Db)?;
 
         let blob_value = serde_json::to_string(&unpacked_request.submission_data)
             .map_err(OID4VPFinal1_0ServiceError::from)
@@ -472,10 +471,7 @@ impl OID4VPFinal1_0Service {
                         )
                     })?;
 
-                let key_storage = self
-                    .key_provider
-                    .get_key_storage(&key.storage_type)
-                    .error_while("getting key storage")?;
+                let key_storage = self.key_provider.get_key_storage(&key.storage_type)?;
 
                 let key = key_storage
                     .key_handle(&key)
@@ -575,8 +571,7 @@ impl OID4VPFinal1_0Service {
 
         let blob_storage = self
             .blob_storage_provider
-            .get_blob_storage(BlobStorageType::Db)
-            .error_while("getting blob storage")?;
+            .get_blob_storage(BlobStorageType::Db)?;
 
         let mut verifier_info = vec![];
 
