@@ -391,6 +391,7 @@ pub(crate) enum ExactCredentialFilterColumnRestEnum {
 #[into(CredentialListIncludeEntityTypeEnum)]
 pub(crate) enum CredentialListIncludeEntityTypeRestEnum {
     LayoutProperties,
+    Translations,
 }
 
 pub(crate) type GetCredentialQuery = ListQueryParamsRest<

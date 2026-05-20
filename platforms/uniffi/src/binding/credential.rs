@@ -211,7 +211,7 @@ pub struct CredentialListQueryBindingDTO {
 #[uniffi(name = "CredentialListIncludeEntityType")]
 pub enum CredentialListIncludeEntityTypeBindingEnum {
     LayoutProperties,
-    Credential,
+    Translations,
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]

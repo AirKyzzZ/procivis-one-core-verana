@@ -434,6 +434,10 @@ impl CredentialService {
         )
         .error_while("checking session")?;
 
+        let include_translations = filter_params
+            .include
+            .as_ref()
+            .is_some_and(|i| i.contains(&CredentialListIncludeEntityTypeEnum::Translations));
         let result = self
             .credential_repository
             .get_credential_list(filter_params.into())
@@ -442,7 +446,7 @@ impl CredentialService {
 
         let mut response_dtos = Vec::with_capacity(result.values.len());
         for value in result.values {
-            response_dtos.push(to_credential_list_response(value).await?);
+            response_dtos.push(to_credential_list_response(value, include_translations).await?);
         }
         Ok(GetCredentialListResponseDTO {
             values: response_dtos,

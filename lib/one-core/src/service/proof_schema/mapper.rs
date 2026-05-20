@@ -176,7 +176,7 @@ async fn convert_input_schema_to_response(
             )?,
             datatype_config,
         )?,
-        credential_schema: to_credential_schema_list_response(credential_schema)
+        credential_schema: to_credential_schema_list_response(credential_schema, false)
             .await
             .map_err(|e: NestedError| ProofSchemaServiceError::MappingError(e.to_string()))?,
     })

@@ -418,7 +418,7 @@ pub(super) async fn get_verifier_proof_detail(
             })?;
 
         let credential_schema_dto: CredentialSchemaListItemResponseDTO =
-            to_credential_schema_list_response(credential_schema.clone())
+            to_credential_schema_list_response(credential_schema.clone(), false)
                 .await
                 .map_err(|e: NestedError| ProofServiceError::MappingError(e.to_string()))?;
 
@@ -682,7 +682,7 @@ pub(super) async fn get_holder_proof_detail(
             .await
             .error_while("getting claim schemas")?;
         let credential_schema_dto: CredentialSchemaListItemResponseDTO =
-            to_credential_schema_list_response(credential_schema.clone())
+            to_credential_schema_list_response(credential_schema.clone(), false)
                 .await
                 .map_err(|e: NestedError| ProofServiceError::MappingError(e.to_string()))?;
 

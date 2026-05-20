@@ -68,6 +68,8 @@ pub(crate) struct CredentialSchemaListItemResponseRestDTO {
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
     pub allow_suspension: bool,
     pub requires_wallet_instance_attestation: bool,
+    #[from(with_fn = convert_inner)]
+    pub translations: Option<CredentialSchemaTranslationsRestDTO>,
 }
 
 #[options_not_nullable]
@@ -279,6 +281,7 @@ pub(crate) struct CredentialSchemasFilterQueryParamsRest {
 #[into(CredentialSchemaListIncludeEntityTypeEnum)]
 pub(crate) enum CredentialSchemaListIncludeEntityTypeRestEnum {
     LayoutProperties,
+    Translations,
 }
 
 pub(crate) type GetCredentialSchemaQuery = ListQueryParamsRest<

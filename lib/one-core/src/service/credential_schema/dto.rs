@@ -45,6 +45,7 @@ pub struct CredentialSchemaListItemResponseDTO {
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesResponseDTO>,
     pub allow_suspension: bool,
     pub requires_wallet_instance_attestation: bool,
+    pub translations: Option<CredentialSchemaTranslationsDTO>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
@@ -172,6 +173,7 @@ pub struct CredentialClaimSchemaDTO {
 #[strum(serialize_all = "camelCase")]
 pub enum CredentialSchemaListIncludeEntityTypeEnum {
     LayoutProperties,
+    Translations,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

@@ -363,6 +363,7 @@ fn sort_claims(claims: &mut [DetailCredentialClaimResponseDTO]) {
 
 pub(super) async fn to_credential_list_response(
     credential: Credential,
+    include_translations: bool,
 ) -> Result<CredentialListItemResponseDTO, CredentialServiceError> {
     let schema = credential
         .schema
@@ -376,7 +377,7 @@ pub(super) async fn to_credential_list_response(
         revocation_date: get_revocation_date(&credential.state, &credential.last_modified),
         state: credential.state.into(),
         last_modified: credential.last_modified,
-        schema: to_credential_schema_list_response(schema).await?,
+        schema: to_credential_schema_list_response(schema, include_translations).await?,
         issuer: convert_inner(credential.issuer_identifier),
         role: credential.role.into(),
         suspend_end_date: credential.suspend_end_date,

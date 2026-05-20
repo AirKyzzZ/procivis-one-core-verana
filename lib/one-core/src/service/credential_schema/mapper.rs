@@ -518,9 +518,19 @@ pub(super) fn build_format_with_claim_mappings(
 
 pub(crate) async fn to_credential_schema_list_response(
     credential_schema: CredentialSchema,
+    include_translations: bool,
 ) -> Result<CredentialSchemaListItemResponseDTO, NestedError> {
     let format = credential_schema.format().await?.to_owned();
     let schema_id = credential_schema.schema_id().await?;
+    let translations = if include_translations {
+        Some(
+            map_translations(&credential_schema)
+                .await
+                .error_while("mapping translations")?,
+        )
+    } else {
+        None
+    };
     Ok(CredentialSchemaListItemResponseDTO {
         id: credential_schema.id,
         created_date: credential_schema.created_date,
@@ -537,6 +547,7 @@ pub(crate) async fn to_credential_schema_list_response(
         allow_suspension: credential_schema.allow_suspension,
         requires_wallet_instance_attestation: credential_schema
             .requires_wallet_instance_attestation,
+        translations,
     })
 }
 

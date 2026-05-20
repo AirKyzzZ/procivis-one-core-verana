@@ -90,6 +90,41 @@ async fn test_get_list_credential_schema_include_layout_properties_success() {
 }
 
 #[tokio::test]
+async fn test_get_list_credential_schema_include_translations_success() {
+    // GIVEN
+    let (context, organisation, ..) = TestContext::new_with_did(None).await;
+    context
+        .db
+        .credential_schemas
+        .create("test", &organisation, None, Default::default())
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credential_schemas
+        .list(
+            0,
+            10,
+            &organisation.id,
+            Some(vec![
+                CredentialSchemaListIncludeEntityTypeEnum::Translations,
+            ]),
+            None,
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    assert_eq!(resp["totalItems"], 1);
+    assert_eq!(resp["totalPages"], 1);
+    assert_eq!(resp["values"].as_array().unwrap().len(), 1);
+    assert_eq!(resp["values"][0]["translations"]["name"]["en"], "test");
+}
+
+#[tokio::test]
 async fn test_list_filter_wia_credential_schema_success() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;

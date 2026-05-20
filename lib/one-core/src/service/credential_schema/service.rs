@@ -439,6 +439,10 @@ impl CredentialSchemaService {
         )
         .error_while("checking session")?;
 
+        let include_translations = filter_params
+            .include
+            .as_ref()
+            .is_some_and(|i| i.contains(&CredentialSchemaListIncludeEntityTypeEnum::Translations));
         let result = self
             .credential_schema_repository
             .get_credential_schema_list(filter_params.into())
@@ -449,7 +453,7 @@ impl CredentialSchemaService {
             Vec::with_capacity(result.values.len());
         for credential_schema in result.values {
             items.push(
-                to_credential_schema_list_response(credential_schema)
+                to_credential_schema_list_response(credential_schema, include_translations)
                     .await
                     .error_while("mapping credential schemas")?,
             );

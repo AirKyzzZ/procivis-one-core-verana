@@ -168,6 +168,7 @@ pub struct CredentialSchemaBindingDTO {
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesBindingDTO>,
     pub allow_suspension: bool,
     pub requires_wallet_instance_attestation: bool,
+    pub translations: Option<CredentialSchemaTranslationsBindingDTO>,
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]
@@ -336,6 +337,7 @@ pub enum CredentialSchemaCodeTypeBindingDTO {
 #[uniffi(name = "CredentialSchemaListIncludeEntityType")]
 pub enum CredentialSchemaListIncludeEntityType {
     LayoutProperties,
+    Translations,
 }
 
 #[derive(Clone, Debug, TryInto, uniffi::Record)]

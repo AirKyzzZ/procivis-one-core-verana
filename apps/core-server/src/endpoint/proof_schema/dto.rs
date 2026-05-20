@@ -408,6 +408,7 @@ mod test {
                     }),
                     allow_suspension: true,
                     requires_wallet_instance_attestation: true,
+                    translations: None,
                 },
             }],
         };

@@ -145,5 +145,5 @@ pub enum ExactCredentialFilterColumn {
 #[strum(serialize_all = "camelCase")]
 pub enum CredentialListIncludeEntityTypeEnum {
     LayoutProperties,
-    Credential,
+    Translations,
 }

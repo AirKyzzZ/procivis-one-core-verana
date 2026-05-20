@@ -409,6 +409,54 @@ async fn test_get_list_credential_include_layout_properties_success() {
 }
 
 #[tokio::test]
+async fn test_get_list_credential_include_translations_success() {
+    // GIVEN
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, None, Default::default())
+        .await;
+
+    context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams::default(),
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .list(
+            0,
+            8,
+            &organisation.id,
+            Filters::none(),
+            Some(vec![CredentialListIncludeEntityTypeEnum::Translations]),
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    assert_eq!(resp["totalItems"], 1);
+    assert_eq!(resp["totalPages"], 1);
+    assert_eq!(resp["values"].as_array().unwrap().len(), 1);
+    assert_eq!(
+        resp["values"][0]["schema"]["translations"]["name"]["en"],
+        "test"
+    );
+}
+
+#[tokio::test]
 async fn test_get_list_credential_filter_by_schema_name() {
     // GIVEN
     let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
