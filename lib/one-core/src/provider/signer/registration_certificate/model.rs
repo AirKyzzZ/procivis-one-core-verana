@@ -166,6 +166,7 @@ pub struct Credential {
 #[serde(deny_unknown_fields)]
 pub struct Claim {
     pub path: dcql::ClaimPath,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub values: Option<Vec<dcql::ClaimValue>>,
 }
 

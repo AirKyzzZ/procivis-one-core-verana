@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use dcql::CredentialMeta;
+use dcql::{CredentialMeta, PathSegment};
 use one_dto_mapper::convert_inner_of_inner;
 use serde::Deserialize;
 use standardized_types::jwa::EncryptionAlgorithm;
@@ -352,7 +352,27 @@ fn query_claim_matches_reg_cert_claim(
     query: &dcql::ClaimQuery,
     claim: &registration_certificate::model::Claim,
 ) -> bool {
-    if query.path != claim.path {
+    if query.path.segments.len() < claim.path.segments.len() {
+        // The query is less specific (i.e. matches more claims) than what would be allowed by the reg cert.
+        return false;
+    }
+    if !query
+        .path
+        .segments
+        .iter()
+        .zip(&claim.path.segments)
+        .all(|(requested, allowed)| match (requested, allowed) {
+            (PathSegment::PropertyName(requested), PathSegment::PropertyName(allowed)) => {
+                requested == allowed
+            }
+            (PathSegment::ArrayIndex(requested), PathSegment::ArrayIndex(allowed)) => {
+                requested == allowed
+            }
+            (PathSegment::ArrayIndex(_), PathSegment::ArrayAll)
+            | (PathSegment::ArrayAll, PathSegment::ArrayAll) => true,
+            _ => false,
+        })
+    {
         return false;
     }
 
