@@ -135,8 +135,12 @@ pub(crate) async fn backfill_default_translations(
     mut credential_schema: CredentialSchema,
     default_language: &str,
 ) -> Result<CredentialSchema, DataLayerError> {
-    if credential_schema.translations.get().await?.is_empty() {
-        credential_schema.translations = vec![LocalizedText {
+    let mut translations = credential_schema.translations.get().await?;
+    if !translations
+        .iter()
+        .any(|t| t.lang == default_language && t.field == LocalizedTextField::Name)
+    {
+        translations.push(LocalizedText {
             entity_id: credential_schema.id.into(),
             field: LocalizedTextField::Name,
             created_date: credential_schema.created_date,
@@ -144,8 +148,8 @@ pub(crate) async fn backfill_default_translations(
             lang: default_language.to_string(),
             value: credential_schema.name.clone(),
             entity_type: LocalizedTextEntityType::CredentialSchema,
-        }]
-        .into()
+        });
+        credential_schema.translations = translations.into()
     }
 
     let mut claim_schemas = vec![];
@@ -160,8 +164,13 @@ pub(crate) async fn add_fallback_translation(
     mut claim_schema: ClaimSchema,
     default_language: &str,
 ) -> Result<ClaimSchema, DataLayerError> {
-    if !claim_schema.metadata && claim_schema.translations.get().await?.is_empty() {
-        claim_schema.translations = vec![LocalizedText {
+    let mut translations = claim_schema.translations.get().await?;
+    if !claim_schema.metadata
+        && !translations
+            .iter()
+            .any(|t| t.lang == default_language && t.field == LocalizedTextField::Name)
+    {
+        translations.push(LocalizedText {
             entity_id: claim_schema.id.into(),
             field: LocalizedTextField::Name,
             created_date: claim_schema.created_date,
@@ -173,8 +182,8 @@ pub(crate) async fn add_fallback_translation(
                 .map(|(_, end)| end.to_string())
                 .unwrap_or(claim_schema.key.clone()),
             entity_type: LocalizedTextEntityType::ClaimSchema,
-        }]
-        .into();
+        });
+        claim_schema.translations = translations.into();
     }
     Ok(claim_schema)
 }

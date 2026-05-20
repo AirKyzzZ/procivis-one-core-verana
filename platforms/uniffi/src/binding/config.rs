@@ -66,6 +66,7 @@ pub struct ConfigBindingDTO {
     pub wallet_provider: HashMap<String, String>,
     #[from(with_fn = serialize_config_entity)]
     pub verifier_provider: HashMap<String, String>,
+    pub default_language: String,
 }
 
 fn serialize_config_entity(input: HashMap<String, serde_json::Value>) -> HashMap<String, String> {

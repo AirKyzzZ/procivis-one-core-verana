@@ -2,6 +2,7 @@ use core_server::endpoint::credential_schema::dto::{
     CredentialSchemaTransactionCodeRequestRestDTO, TransactionCodeTypeRestEnum,
 };
 use one_core::model::localized_text::{LocalizedTextEntityType, LocalizedTextField};
+use shared_types::EntityId;
 use similar_asserts::assert_eq;
 
 use crate::utils::api_clients::credential_schemas::{CreateSchemaV2Params, TestClaim};
@@ -690,6 +691,55 @@ async fn test_create_credential_schema_v2_with_translations() {
         schema_translations
             .iter()
             .all(|t| t.entity_type == LocalizedTextEntityType::CredentialSchema)
+    );
+}
+
+#[tokio::test]
+async fn test_create_credential_schema_v2_with_translations_non_default() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credential_schemas
+        .create_v2(CreateSchemaV2Params {
+            name: "v2 schema".into(),
+            organisation_id: organisation.id.into(),
+            formats: vec![jwt_format()],
+            claims: default_claims(),
+            translations: Some(serde_json::json!({
+                "name": {
+                    "de": "Schema Name auf Deutsch"
+                }
+            })),
+            ..Default::default()
+        })
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+    let resp_json = resp.json_value().await;
+    let schema_translations = context
+        .db
+        .localized_text
+        .get(resp_json["id"].parse::<EntityId>())
+        .await;
+    assert_eq!(schema_translations.len(), 2);
+    assert!(
+        schema_translations
+            .iter()
+            .any(|t| t.lang == "en" && t.value == "v2 schema")
+    );
+    assert!(
+        schema_translations
+            .iter()
+            .any(|t| t.lang == "de" && t.value == "Schema Name auf Deutsch")
+    );
+    assert!(
+        schema_translations
+            .iter()
+            .all(|t| t.field == LocalizedTextField::Name)
     );
 }
 

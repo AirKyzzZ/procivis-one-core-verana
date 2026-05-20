@@ -68,6 +68,7 @@ pub(crate) struct ConfigRestDTO {
     pub trust_list_subscriber: HashMap<String, Value>,
     #[schema(example = json!({}))]
     pub verifier_provider: HashMap<String, Value>,
+    pub default_language: String,
 }
 
 impl From<ConfigDTO> for ConfigRestDTO {
@@ -95,6 +96,7 @@ impl From<ConfigDTO> for ConfigRestDTO {
             trust_list_publisher: config.trust_list_publisher,
             trust_list_subscriber: config.trust_list_subscriber,
             verifier_provider: config.verifier_provider,
+            default_language: config.default_language,
         }
     }
 }
