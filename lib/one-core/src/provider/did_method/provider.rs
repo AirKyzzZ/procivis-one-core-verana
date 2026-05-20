@@ -131,7 +131,7 @@ pub(crate) fn did_method_provider_from_config(
 ) -> Result<Arc<dyn DidMethodProvider>, ConfigValidationError> {
     let mut did_configs = config.did.iter().collect::<Vec<_>>();
     // sort by `order`
-    did_configs.sort_by(|(_, fields1), (_, fields2)| fields1.order.cmp(&fields2.order));
+    did_configs.sort_by_key(|(_, fields1)| fields1.order);
 
     let mut did_methods: IndexMap<String, Arc<dyn DidMethod>> = IndexMap::new();
     let mut did_webvh_params: Vec<(String, webvh::Params)> = vec![];

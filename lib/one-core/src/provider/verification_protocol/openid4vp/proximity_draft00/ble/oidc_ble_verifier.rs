@@ -672,7 +672,7 @@ async fn read_presentation_submission<S: DeserializeOwned>(
     }
     info!("Received all chunks");
 
-    received_chunks.sort_by(|a, b| a.index.cmp(&b.index));
+    received_chunks.sort_by_key(|a| a.index);
 
     let presentation_request: Vec<u8> = received_chunks
         .into_iter()

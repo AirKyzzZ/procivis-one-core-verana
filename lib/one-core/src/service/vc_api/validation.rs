@@ -131,15 +131,14 @@ pub(super) async fn validate_verifiable_credential(
     }
 
     match &credential.related_resource {
-        None => {}
-        Some(resource) => {
+        Some(resource)
             if resource
                 .iter()
-                .any(|r| r.digest_sri.is_none() && r.digest_multibase.is_none())
-            {
-                return Err(VcValidationError::InvalidRelatedResource);
-            }
+                .any(|r| r.digest_sri.is_none() && r.digest_multibase.is_none()) =>
+        {
+            return Err(VcValidationError::InvalidRelatedResource);
         }
+        _ => {}
     }
 
     Ok(())

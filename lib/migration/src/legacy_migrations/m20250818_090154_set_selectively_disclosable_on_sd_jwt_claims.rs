@@ -144,8 +144,8 @@ async fn process_credential_schema(
                             acc
                         },
                     )
-                    .into_iter()
-                    .flat_map(|(_, claims)| claims.into_iter().map(|claim| claim.id))
+                    .into_values()
+                    .flat_map(|claims| claims.into_iter().map(|claim| claim.id))
                     .collect::<Vec<_>>();
                 db.execute(
                     backend.build(

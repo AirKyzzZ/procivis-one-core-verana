@@ -1083,11 +1083,7 @@ fn get_nonselectively_disclosable_children<'a, 'b>(
     let mut result = vec![];
 
     let mut parent_paths = VecDeque::from_iter(of_parent_paths);
-    loop {
-        let Some(parent_path) = parent_paths.pop_front() else {
-            break;
-        };
-
+    while let Some(parent_path) = parent_paths.pop_front() {
         let nonselectively_disclosable_children = all_claims
             .iter()
             .filter(|claim| !claim.selectively_disclosable)
