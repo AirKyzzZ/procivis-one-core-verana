@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use standardized_types::etsi_119_602::{
     Extension, MultiLangString, MultiLangUri, OtherLoTEPointer, PolicyOrLegalNoticeItem,
     SchemeOperatorAddress, ServiceSupplyPoint, TEAddress,
@@ -11,6 +12,7 @@ pub(crate) struct AddEntryParams {
     pub service: ServiceInfoParams,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 #[serde(default, deny_unknown_fields, rename_all = "camelCase")]
 pub(crate) struct EntityInfoParams {
@@ -21,6 +23,7 @@ pub(crate) struct EntityInfoParams {
     pub extensions: Option<Vec<Extension>>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 #[serde(default, deny_unknown_fields, rename_all = "camelCase")]
 pub(crate) struct ServiceInfoParams {
@@ -31,6 +34,7 @@ pub(crate) struct ServiceInfoParams {
     pub extensions: Option<Vec<Extension>>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 #[serde(default, deny_unknown_fields, rename_all = "camelCase")]
 pub(crate) struct CreateTrustListParams {
