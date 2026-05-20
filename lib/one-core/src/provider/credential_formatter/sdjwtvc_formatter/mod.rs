@@ -188,18 +188,29 @@ impl CredentialFormatter for SDJWTVCFormatter {
             self.key_algorithm_provider.as_ref(),
             organisation.to_owned(),
         )?;
-        let holder_identifier = parsed_credential
-            .payload
-            .subject
-            .map(|did| DidValue::from_str(&did))
-            .transpose()
-            .map_err(DidMethodError::DidValueError)
-            .error_while("parsing subject DID")?
-            .map(IdentifierDetails::Did)
-            .map(|details| {
-                prepare_identifier(&details, self.key_algorithm_provider.as_ref(), organisation)
-            })
-            .transpose()?;
+
+        let holder_identifier = if let Some(proof_of_possession_key) =
+            parsed_credential.payload.proof_of_possession_key
+        {
+            Some(prepare_identifier(
+                &IdentifierDetails::Key(proof_of_possession_key.jwk.jwk().to_owned()),
+                self.key_algorithm_provider.as_ref(),
+                organisation,
+            )?)
+        } else {
+            parsed_credential
+                .payload
+                .subject
+                .map(|did| DidValue::from_str(&did))
+                .transpose()
+                .map_err(DidMethodError::DidValueError)
+                .error_while("parsing subject DID")?
+                .map(IdentifierDetails::Did)
+                .map(|details| {
+                    prepare_identifier(&details, self.key_algorithm_provider.as_ref(), organisation)
+                })
+                .transpose()?
+        };
 
         Ok(Credential {
             id: credential_id,

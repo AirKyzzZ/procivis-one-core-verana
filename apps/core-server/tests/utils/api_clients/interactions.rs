@@ -59,6 +59,7 @@ impl InteractionsApi {
             .await
     }
 
+    #[expect(unused)]
     pub async fn issuance_refresh(&self, interaction_id: impl Into<Uuid>) -> Response {
         let url = format!(
             "/api/interaction/v1/{}/issuance-refresh",

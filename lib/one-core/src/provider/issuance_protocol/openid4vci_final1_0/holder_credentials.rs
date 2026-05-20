@@ -43,18 +43,10 @@ impl OpenID4VCIFinal1_0 {
         &self,
         issuer_response: SubmitIssuerResponse,
         interaction_data: &HolderInteractionData,
-        holder_bindings: Vec<HolderBindingInput>,
+        mut holder_bindings: Vec<HolderBindingInput>,
         organisation: &Organisation,
         interaction: &Interaction,
     ) -> Result<UpdateResponse, IssuanceProtocolError> {
-        if holder_bindings.len() != issuer_response.credentials.len() {
-            return Err(IssuanceProtocolError::Failed(format!(
-                "Different number of credentials, requested: {}, received: {}",
-                holder_bindings.len(),
-                issuer_response.credentials.len()
-            )));
-        }
-
         let format_type = map_from_oidc_format_to_core_detailed(
             &interaction_data.format,
             issuer_response
@@ -76,14 +68,11 @@ impl OpenID4VCIFinal1_0 {
         let mut credentials = vec![];
         let mut new_claim_schemas: Vec<ClaimSchema> = vec![];
         let mut credential_schema = None;
-        for (issued_credential, holder_binding) in issuer_response.credentials.iter().zip(
-            // we assume the credentials were sent in the same order as the holder binding proofs
-            holder_bindings,
-        ) {
+        for issued_credential in &issuer_response.credentials {
             let mut credential = self
                 .prepare_issued_credential(
                     issued_credential,
-                    holder_binding,
+                    &mut holder_bindings,
                     &issuer_response,
                     organisation,
                     interaction,
@@ -331,18 +320,10 @@ impl OpenID4VCIFinal1_0 {
         &self,
         issuer_response: SubmitIssuerResponse,
         interaction_data: &HolderInteractionData,
-        holder_bindings: Vec<HolderBindingInput>,
+        mut holder_bindings: Vec<HolderBindingInput>,
         organisation: &Organisation,
         interaction: &Interaction,
     ) -> Result<Vec<CredentialId>, IssuanceProtocolError> {
-        if holder_bindings.len() != issuer_response.credentials.len() {
-            return Err(IssuanceProtocolError::Failed(format!(
-                "Different number of credentials, requested: {}, received: {}",
-                holder_bindings.len(),
-                issuer_response.credentials.len()
-            )));
-        }
-
         let schema = self
             .credential_repository
             .get_credentials_by_interaction_id(
@@ -381,14 +362,11 @@ impl OpenID4VCIFinal1_0 {
         let mut trust_resolution = interaction_data.trust_resolution;
 
         let mut result = vec![];
-        for (issued_credential, holder_binding) in issuer_response.credentials.iter().zip(
-            // we assume the credentials were sent in the same order as the holder binding proofs
-            holder_bindings,
-        ) {
+        for issued_credential in &issuer_response.credentials {
             let mut credential = self
                 .prepare_issued_credential(
                     issued_credential,
-                    holder_binding,
+                    &mut holder_bindings,
                     &issuer_response,
                     organisation,
                     interaction,
@@ -456,7 +434,7 @@ impl OpenID4VCIFinal1_0 {
     async fn prepare_issued_credential(
         &self,
         issued_credential: &SerializedCredential,
-        holder_binding: HolderBindingInput,
+        holder_bindings: &mut Vec<HolderBindingInput>,
         issuer_response: &SubmitIssuerResponse,
         organisation: &Organisation,
         interaction: &Interaction,
@@ -543,10 +521,19 @@ impl OpenID4VCIFinal1_0 {
         credential.issuer_certificate = issuer_certificate;
         credential.redirect_uri = issuer_response.redirect_uri.clone();
         credential.state = CredentialStateEnum::Accepted;
-        credential.holder_identifier = Some(holder_binding.identifier);
-        credential.key = Some(holder_binding.key);
         credential.protocol = self.config_id.to_owned();
         credential.interaction = Some(interaction.to_owned());
+
+        if issuer_response.credentials.len() == 1 && holder_bindings.len() == 1 {
+            // if only single credential issued, the provided holder binding should match
+            let holder_binding = holder_bindings
+                .pop()
+                .ok_or(IssuanceProtocolError::Failed("Missing binding".to_string()))?;
+            credential.holder_identifier = Some(holder_binding.identifier);
+            credential.key = Some(holder_binding.key);
+        } else {
+            attach_matching_holder_binding(&mut credential, holder_bindings)?;
+        }
 
         Ok(credential)
     }
@@ -846,4 +833,66 @@ async fn apply_issuer_metadata_to_schema(
     schema.layout_properties = metadata_display.and_then(|display| display.to_owned().into());
 
     Ok(())
+}
+
+fn attach_matching_holder_binding(
+    credential: &mut Credential,
+    holder_bindings: &mut Vec<HolderBindingInput>,
+) -> Result<(), IssuanceProtocolError> {
+    let parsed_identifier =
+        credential
+            .holder_identifier
+            .take()
+            .ok_or(IssuanceProtocolError::Failed(
+                "No parsed holder identifier".to_string(),
+            ))?;
+
+    let Some(position) = holder_bindings.iter().position(|holder_binding| {
+        holder_binding_matching_parsed_identifier(holder_binding, &parsed_identifier)
+    }) else {
+        return Err(IssuanceProtocolError::Failed(
+            "No matching holder identifier".to_string(),
+        ));
+    };
+
+    let matching_holder_binding = holder_bindings.swap_remove(position);
+    credential.holder_identifier = Some(matching_holder_binding.identifier);
+    credential.key = Some(matching_holder_binding.key);
+
+    Ok(())
+}
+
+fn holder_binding_matching_parsed_identifier(
+    holder_binding: &HolderBindingInput,
+    parsed_identifier: &Identifier,
+) -> bool {
+    match parsed_identifier.r#type {
+        IdentifierType::Key => {
+            let Some(parsed_key) = &parsed_identifier.key else {
+                return false;
+            };
+
+            holder_binding.key.key_type == parsed_key.key_type
+                && holder_binding.key.public_key == parsed_key.public_key
+        }
+        IdentifierType::Did => {
+            let Some(parsed_did) = &parsed_identifier.did else {
+                return false;
+            };
+            let Some(holder_binding_did) = &holder_binding.identifier.did else {
+                return false;
+            };
+
+            holder_binding_did.did == parsed_did.did
+        }
+        IdentifierType::Certificate | IdentifierType::CertificateAuthority => {
+            // No credential format uses certificates for holder binding at this point
+            tracing::warn!(
+                "Invalid parsed holder binding type: {}",
+                parsed_identifier.r#type
+            );
+
+            false
+        }
+    }
 }

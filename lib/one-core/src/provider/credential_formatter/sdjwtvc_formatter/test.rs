@@ -1719,11 +1719,26 @@ async fn test_parse_credential_eudi() {
             }
         });
 
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_parse_jwk()
+        .once()
+        .return_once(|_| {
+            let mut public_key = MockSignaturePublicKeyHandle::new();
+            public_key.expect_as_raw().returning(|| vec![0x0, 0x1]);
+            Ok(ParsedKey {
+                algorithm_type: KeyAlgorithmType::Eddsa,
+                key: KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(Arc::new(
+                    public_key,
+                ))),
+            })
+        });
+
     let formatter = SDJWTVCFormatter::new(
         params,
         crypto,
         Arc::new(MockDidMethodProvider::new()),
-        Arc::new(MockKeyAlgorithmProvider::new()),
+        Arc::new(key_algorithm_provider),
         Arc::new(MockVctTypeMetadataFetcher::new()),
         Arc::new(certificate_validator),
         generic_config().core.datatype,
