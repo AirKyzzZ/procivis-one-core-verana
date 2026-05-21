@@ -11,6 +11,7 @@ use one_core::provider::verification_protocol::dto::{
     PresentationDefinitionV2ResponseDTO,
 };
 use one_core::provider::verification_protocol::openid4vp::model::ClientIdScheme;
+use one_core::service::credential_schema::dto::CredentialSchemaDetailResponseDTO;
 use one_core::service::error::ServiceError;
 use one_core::service::proof::dto::{
     GetProofListResponseDTO, ProofClaimDTO, ProofInputDTO, ProofListItemResponseDTO,
@@ -28,13 +29,15 @@ use super::credential::{
     CredentialDetailBindingDTO, CredentialRoleBindingDTO, CredentialStateBindingEnum,
     MdocMsoValidityResponseBindingDTO, TrustInformationBindingDTO,
 };
-use super::credential_schema::{
-    CredentialClaimSchemaBindingDTO, CredentialSchemaBindingDTO, CredentialSchemaDetailBindingDTO,
-};
 use super::identifier::{CertificateResponseBindingDTO, GetIdentifierListItemBindingDTO};
 use super::mapper::{optional_identifier_id_string, optional_time};
 use super::proof_schema::{GetProofSchemaListItemBindingDTO, ProofClaimSchemaBindingDTO};
 use crate::OneCore;
+use crate::binding::credential::{CredentialClaimSchemaBindingDTO, CredentialSchemaBindingDTO};
+use crate::binding::credential_schema::{
+    CredentialSchemaLayoutPropertiesBindingDTO, CredentialSchemaTransactionCodeBindingDTO,
+    CredentialSchemaTranslationsBindingDTO, KeyStorageSecurityBindingEnum, LayoutTypeBindingEnum,
+};
 use crate::binding::trust_information::TrustInformationDetailResponseBindingDTO;
 use crate::error::BindingError;
 use crate::utils::{TimestampFormat, into_id};
@@ -698,6 +701,42 @@ pub(crate) struct CredentialQueryFailureHintResponseBindingDTO {
     pub reason: CredentialQueryFailureReasonBindingEnum,
     #[from(with_fn = "convert_inner")]
     pub credential_schema: Option<CredentialSchemaDetailBindingDTO>,
+}
+
+#[derive(Clone, Debug, From, uniffi::Record)]
+#[from(CredentialSchemaDetailResponseDTO)]
+#[uniffi(name = "CredentialSchemaDetailInfo")]
+pub struct CredentialSchemaDetailBindingDTO {
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub id: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub created_date: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub last_modified: String,
+    pub name: String,
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub format: String,
+    #[from(with_fn = inner_to_string)]
+    pub revocation_method: Option<String>,
+    #[from(with_fn = convert_inner)]
+    pub claims: Vec<CredentialClaimSchemaBindingDTO>,
+    #[from(with_fn = convert_inner)]
+    pub key_storage_security: Option<KeyStorageSecurityBindingEnum>,
+    pub schema_id: String,
+    pub imported_source_url: String,
+    #[from(with_fn = convert_inner)]
+    pub layout_type: Option<LayoutTypeBindingEnum>,
+    #[from(with_fn = convert_inner)]
+    pub layout_properties: Option<CredentialSchemaLayoutPropertiesBindingDTO>,
+    pub allow_suspension: bool,
+    pub requires_wallet_instance_attestation: bool,
+    #[from(with_fn = convert_inner)]
+    pub transaction_code: Option<CredentialSchemaTransactionCodeBindingDTO>,
+    pub translations: CredentialSchemaTranslationsBindingDTO,
+}
+
+fn inner_to_string(value: Option<impl ToString>) -> Option<String> {
+    value.map(|inner| inner.to_string())
 }
 
 #[derive(Debug, From, uniffi::Enum)]

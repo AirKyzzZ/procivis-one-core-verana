@@ -5,23 +5,29 @@ use one_core::model::credential_schema::{
     TransactionCodeType,
 };
 use one_core::service::credential_schema::dto::{
-    CredentialClaimSchemaDTO, CredentialClaimSchemaTranslationsDTO,
-    CredentialSchemaBackgroundPropertiesRequestDTO,
+    CreateCredentialSchemaV2RequestDTO, CredentialClaimSchemaMappingDTO,
+    CredentialClaimSchemaRequestDTO, CredentialClaimSchemaTranslationsDTO,
+    CredentialClaimSchemaV2DTO, CredentialSchemaBackgroundPropertiesRequestDTO,
     CredentialSchemaBackgroundPropertiesResponseDTO, CredentialSchemaCodePropertiesDTO,
-    CredentialSchemaCodeTypeEnum, CredentialSchemaDetailResponseDTO,
+    CredentialSchemaCodeTypeEnum, CredentialSchemaDetailV2ResponseDTO,
+    CredentialSchemaFormatRequestDTO, CredentialSchemaFormatResponseDTO,
     CredentialSchemaLayoutPropertiesRequestDTO, CredentialSchemaLayoutPropertiesResponseDTO,
-    CredentialSchemaListIncludeEntityTypeEnum, CredentialSchemaLogoPropertiesRequestDTO,
-    CredentialSchemaLogoPropertiesResponseDTO, CredentialSchemaShareResponseDTO,
-    CredentialSchemaTransactionCodeDTO, CredentialSchemaTranslationsDTO,
-    GetCredentialSchemaListResponseDTO, ImportCredentialSchemaLayoutPropertiesDTO,
-    ImportCredentialSchemaRequestDTO, ImportCredentialSchemaRequestSchemaDTO,
-    ImportCredentialSchemaTransactionCodeDTO,
+    CredentialSchemaListIncludeEntityTypeEnum, CredentialSchemaListItemV2ResponseDTO,
+    CredentialSchemaLogoPropertiesRequestDTO, CredentialSchemaLogoPropertiesResponseDTO,
+    CredentialSchemaShareResponseDTO, CredentialSchemaTransactionCodeDTO,
+    CredentialSchemaTransactionCodeRequestDTO, CredentialSchemaTranslationsDTO,
+    GetCredentialSchemaListV2ResponseDTO, ImportCredentialSchemaLayoutPropertiesDTO,
+    ImportCredentialSchemaTransactionCodeDTO, ImportCredentialSchemaV2FormatDTO,
+    ImportCredentialSchemaV2RequestDTO, ImportCredentialSchemaV2RequestSchemaDTO,
 };
-use one_dto_mapper::{From, Into, TryInto, convert_inner, try_convert_inner};
+use one_dto_mapper::{
+    From, Into, TryInto, convert_inner, convert_inner_of_inner, try_convert_inner,
+};
 use shared_types::CredentialSchemaId;
 
 use super::OneCore;
 use super::common::SortDirection;
+use super::mapper::{from_i18n_string, from_i18n_string_opt, to_i18n_string, to_i18n_string_opt};
 use crate::error::{BindingError, ErrorResponseBindingDTO};
 use crate::utils::{TimestampFormat, into_id, into_timestamp};
 
@@ -37,13 +43,13 @@ impl OneCore {
     pub async fn get_credential_schema(
         &self,
         credential_schema_id: String,
-    ) -> Result<CredentialSchemaDetailBindingDTO, BindingError> {
+    ) -> Result<CredentialSchemaDetailV2BindingDTO, BindingError> {
         let credential_schema_id: CredentialSchemaId = into_id(&credential_schema_id)?;
 
         let core = self.use_core().await?;
         Ok(core
             .credential_schema_service
-            .get_credential_schema(&credential_schema_id)
+            .get_credential_schema_v2(&credential_schema_id)
             .await?
             .into())
     }
@@ -53,11 +59,11 @@ impl OneCore {
     pub async fn list_credential_schemas(
         &self,
         query: CredentialSchemaListQueryBindingDTO,
-    ) -> Result<CredentialSchemaListBindingDTO, BindingError> {
+    ) -> Result<CredentialSchemaListV2BindingDTO, BindingError> {
         let core = self.use_core().await?;
         Ok(core
             .credential_schema_service
-            .get_credential_schema_list(query.try_into()?)
+            .get_credential_schema_list_v2(query.try_into()?)
             .await?
             .into())
     }
@@ -83,16 +89,16 @@ impl OneCore {
     #[uniffi::method]
     pub async fn import_credential_schema(
         &self,
-        request: ImportCredentialSchemaRequestBindingDTO,
+        request: ImportCredentialSchemaV2RequestBindingDTO,
     ) -> Result<String, BindingError> {
         let request = request.try_into()?;
 
         let core = self.use_core().await?;
         Ok(core
             .credential_schema_service
-            .import_credential_schema(request)
-            .await
-            .map(|schema| schema.to_string())?)
+            .import_credential_schema_v2(request)
+            .await?
+            .to_string())
     }
 
     /// Permanently removes a credential schema.
@@ -109,38 +115,21 @@ impl OneCore {
             .delete_credential_schema(&credential_schema_id)
             .await?)
     }
-}
 
-#[derive(Clone, Debug, From, uniffi::Record)]
-#[from(CredentialSchemaDetailResponseDTO)]
-#[uniffi(name = "CredentialSchemaDetail")]
-pub struct CredentialSchemaDetailBindingDTO {
-    #[from(with_fn_ref = "ToString::to_string")]
-    pub id: String,
-    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
-    pub created_date: String,
-    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
-    pub last_modified: String,
-    pub name: String,
-    #[from(with_fn_ref = "ToString::to_string")]
-    pub format: String,
-    #[from(with_fn = inner_to_string)]
-    pub revocation_method: Option<String>,
-    #[from(with_fn = convert_inner)]
-    pub claims: Vec<CredentialClaimSchemaBindingDTO>,
-    #[from(with_fn = convert_inner)]
-    pub key_storage_security: Option<KeyStorageSecurityBindingEnum>,
-    pub schema_id: String,
-    pub imported_source_url: String,
-    #[from(with_fn = convert_inner)]
-    pub layout_type: Option<LayoutTypeBindingEnum>,
-    #[from(with_fn = convert_inner)]
-    pub layout_properties: Option<CredentialSchemaLayoutPropertiesBindingDTO>,
-    pub allow_suspension: bool,
-    pub requires_wallet_instance_attestation: bool,
-    #[from(with_fn = convert_inner)]
-    pub transaction_code: Option<CredentialSchemaTransactionCodeBindingDTO>,
-    pub translations: CredentialSchemaTranslationsBindingDTO,
+    /// Creates a credential schema
+    #[uniffi::method]
+    pub async fn create_credential_schema(
+        &self,
+        request: CreateCredentialSchemaV2RequestBindingDTO,
+    ) -> Result<String, BindingError> {
+        let request: CreateCredentialSchemaV2RequestDTO = request.try_into()?;
+        let core = self.use_core().await?;
+        Ok(core
+            .credential_schema_service
+            .create_credential_schema_v2(request)
+            .await
+            .map(|id| id.to_string())?)
+    }
 }
 
 #[derive(Clone, Debug, uniffi::Record, From)]
@@ -150,35 +139,6 @@ pub struct CredentialSchemaTransactionCodeBindingDTO {
     pub r#type: TransactionCodeTypeBindingEnum,
     pub length: u32,
     pub description: Option<String>,
-}
-
-#[derive(Clone, Debug, uniffi::Record)]
-#[uniffi(name = "CredentialSchemaListItem")]
-pub struct CredentialSchemaBindingDTO {
-    pub id: String,
-    pub created_date: String,
-    pub last_modified: String,
-    pub name: String,
-    pub format: String,
-    pub revocation_method: Option<String>,
-    pub key_storage_security: Option<KeyStorageSecurityBindingEnum>,
-    pub schema_id: String,
-    pub layout_type: Option<LayoutTypeBindingEnum>,
-    pub imported_source_url: String,
-    pub layout_properties: Option<CredentialSchemaLayoutPropertiesBindingDTO>,
-    pub allow_suspension: bool,
-    pub requires_wallet_instance_attestation: bool,
-    pub translations: Option<CredentialSchemaTranslationsBindingDTO>,
-}
-
-#[derive(Clone, Debug, From, uniffi::Record)]
-#[from(GetCredentialSchemaListResponseDTO)]
-#[uniffi(name = "CredentialSchemaList")]
-pub struct CredentialSchemaListBindingDTO {
-    #[from(with_fn = convert_inner)]
-    pub values: Vec<CredentialSchemaBindingDTO>,
-    pub total_pages: u64,
-    pub total_items: u64,
 }
 
 #[derive(Clone, Debug, uniffi::Record)]
@@ -220,15 +180,6 @@ pub struct CredentialSchemaShareResponseBindingDTO {
     pub url: String,
 }
 
-#[derive(Clone, Debug, TryInto, uniffi::Record)]
-#[try_into(T = ImportCredentialSchemaRequestDTO, Error = ErrorResponseBindingDTO)]
-#[uniffi(name = "ImportCredentialSchemaRequest")]
-pub struct ImportCredentialSchemaRequestBindingDTO {
-    #[try_into(with_fn_ref = into_id)]
-    pub organisation_id: String,
-    pub schema: ImportCredentialSchemaRequestSchemaBindingDTO,
-}
-
 #[derive(Clone, Debug, Into, uniffi::Enum)]
 #[into(SortableCredentialSchemaColumn)]
 #[uniffi(name = "SortableCredentialSchemaColumn")]
@@ -236,25 +187,6 @@ pub enum SortableCredentialSchemaColumnBindingEnum {
     Name,
     Format,
     CreatedDate,
-}
-
-#[derive(Clone, Debug, From, uniffi::Record)]
-#[from(CredentialClaimSchemaDTO)]
-#[uniffi(name = "ClaimSchema")]
-pub struct CredentialClaimSchemaBindingDTO {
-    #[from(with_fn_ref = "ToString::to_string")]
-    pub id: String,
-    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
-    pub created_date: String,
-    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
-    pub last_modified: String,
-    pub key: String,
-    pub datatype: String,
-    pub required: bool,
-    pub array: bool,
-    #[from(with_fn = convert_inner)]
-    pub claims: Vec<CredentialClaimSchemaBindingDTO>,
-    pub translations: CredentialClaimSchemaTranslationsBindingDTO,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, From, Into, uniffi::Enum)]
@@ -340,44 +272,6 @@ pub enum CredentialSchemaListIncludeEntityType {
     Translations,
 }
 
-#[derive(Clone, Debug, TryInto, uniffi::Record)]
-#[try_into(T = ImportCredentialSchemaRequestSchemaDTO, Error = ErrorResponseBindingDTO)]
-#[uniffi(name = "ImportCredentialSchemaRequestSchema")]
-pub struct ImportCredentialSchemaRequestSchemaBindingDTO {
-    #[try_into(with_fn_ref = into_id)]
-    pub id: String,
-    #[try_into(with_fn_ref = into_timestamp)]
-    pub created_date: String,
-    #[try_into(with_fn_ref = into_timestamp)]
-    pub last_modified: String,
-    #[try_into(infallible)]
-    pub name: String,
-    #[try_into(infallible)]
-    pub format: String,
-    #[try_into(infallible)]
-    pub revocation_method: String,
-    #[try_into(with_fn_ref = into_id)]
-    pub organisation_id: String,
-    #[try_into(with_fn = try_convert_inner)]
-    pub claims: Vec<ImportCredentialSchemaClaimSchemaBindingDTO>,
-    #[try_into(infallible, with_fn = convert_inner)]
-    pub key_storage_security: Option<KeyStorageSecurityBindingEnum>,
-    #[try_into(infallible)]
-    pub schema_id: String,
-    #[try_into(infallible)]
-    pub imported_source_url: String,
-    #[try_into(infallible, with_fn = convert_inner)]
-    pub layout_type: Option<LayoutTypeBindingEnum>,
-    #[try_into(with_fn = try_convert_inner)]
-    pub layout_properties: Option<ImportCredentialSchemaLayoutPropertiesBindingDTO>,
-    #[try_into(infallible, with_fn = convert_inner)]
-    pub allow_suspension: Option<bool>,
-    #[try_into(with_fn = try_convert_inner)]
-    pub requires_wallet_instance_attestation: Option<bool>,
-    #[try_into(with_fn = try_convert_inner)]
-    pub transaction_code: Option<ImportCredentialSchemaTransactionCodeBindingDTO>,
-}
-
 #[derive(Clone, Debug, uniffi::Record, TryInto)]
 #[try_into(T = ImportCredentialSchemaTransactionCodeDTO, Error = ErrorResponseBindingDTO)]
 #[uniffi(name = "ImportCredentialSchemaTransactionCode")]
@@ -396,19 +290,6 @@ pub struct ImportCredentialSchemaTransactionCodeBindingDTO {
 pub enum TransactionCodeTypeBindingEnum {
     Numeric,
     Alphanumeric,
-}
-
-#[derive(Clone, Debug, uniffi::Record)]
-#[uniffi(name = "ImportCredentialSchemaClaimSchema")]
-pub struct ImportCredentialSchemaClaimSchemaBindingDTO {
-    pub id: String,
-    pub created_date: String,
-    pub last_modified: String,
-    pub required: bool,
-    pub key: String,
-    pub datatype: String,
-    pub array: Option<bool>,
-    pub claims: Option<Vec<ImportCredentialSchemaClaimSchemaBindingDTO>>,
 }
 
 #[derive(Clone, Debug, TryInto, uniffi::Record)]
@@ -440,34 +321,273 @@ pub enum KeyStorageSecurityBindingEnum {
     Basic,
 }
 
-#[derive(Clone, Debug, uniffi::Record)]
+#[derive(Clone, Debug, From, Into, uniffi::Record)]
+#[from(CredentialSchemaTranslationsDTO)]
+#[into(CredentialSchemaTranslationsDTO)]
 #[uniffi(name = "CredentialSchemaTranslations")]
 pub struct CredentialSchemaTranslationsBindingDTO {
+    #[from(with_fn = from_i18n_string)]
+    #[into(with_fn = to_i18n_string)]
     pub name: HashMap<String, String>,
+    #[from(with_fn = from_i18n_string_opt)]
+    #[into(with_fn = to_i18n_string_opt)]
     pub description: Option<HashMap<String, String>>,
 }
 
-impl From<CredentialSchemaTranslationsDTO> for CredentialSchemaTranslationsBindingDTO {
-    fn from(value: CredentialSchemaTranslationsDTO) -> Self {
-        Self {
-            name: value.name.0,
-            description: value.description.map(|d| d.0),
-        }
-    }
-}
-
-#[derive(Clone, Debug, uniffi::Record)]
+#[derive(Clone, Debug, From, Into, uniffi::Record)]
+#[from(CredentialClaimSchemaTranslationsDTO)]
+#[into(CredentialClaimSchemaTranslationsDTO)]
 #[uniffi(name = "CredentialClaimSchemaTranslations")]
 pub struct CredentialClaimSchemaTranslationsBindingDTO {
+    #[from(with_fn = from_i18n_string)]
+    #[into(with_fn = to_i18n_string)]
     pub name: HashMap<String, String>,
 }
 
-impl From<CredentialClaimSchemaTranslationsDTO> for CredentialClaimSchemaTranslationsBindingDTO {
-    fn from(value: CredentialClaimSchemaTranslationsDTO) -> Self {
-        Self { name: value.name.0 }
-    }
+#[derive(Clone, Debug, From, uniffi::Record)]
+#[from(CredentialSchemaFormatResponseDTO)]
+#[uniffi(name = "CredentialSchemaFormatResponse")]
+pub struct CredentialSchemaFormatResponseBindingDTO {
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub format: String,
+    pub schema_id: String,
 }
 
-fn inner_to_string(value: Option<impl ToString>) -> Option<String> {
-    value.map(|inner| inner.to_string())
+#[derive(Clone, Debug, From, Into, uniffi::Record)]
+#[from(CredentialClaimSchemaMappingDTO)]
+#[into(CredentialClaimSchemaMappingDTO)]
+#[uniffi(name = "CredentialClaimSchemaMapping")]
+pub struct CredentialClaimSchemaMappingBindingDTO {
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub format: String,
+    pub technical_key: String,
+    pub namespace: Option<String>,
+}
+
+#[derive(Clone, Debug, From, uniffi::Record)]
+#[from(CredentialClaimSchemaV2DTO)]
+#[uniffi(name = "ClaimSchema")]
+pub struct CredentialClaimSchemaV2BindingDTO {
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub id: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub created_date: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub last_modified: String,
+    pub key: String,
+    pub datatype: String,
+    pub required: bool,
+    pub array: bool,
+    #[from(with_fn = convert_inner)]
+    pub claims: Vec<CredentialClaimSchemaV2BindingDTO>,
+    #[from(with_fn = convert_inner_of_inner)]
+    pub mappings: Option<Vec<CredentialClaimSchemaMappingBindingDTO>>,
+    pub translations: CredentialClaimSchemaTranslationsBindingDTO,
+}
+
+#[derive(Clone, Debug, From, uniffi::Record)]
+#[from(CredentialSchemaDetailV2ResponseDTO)]
+#[uniffi(name = "CredentialSchemaDetail")]
+pub struct CredentialSchemaDetailV2BindingDTO {
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub id: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub created_date: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub last_modified: String,
+    pub name: String,
+    #[from(with_fn = convert_inner)]
+    pub formats: Vec<CredentialSchemaFormatResponseBindingDTO>,
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub organisation_id: String,
+    #[from(with_fn = convert_inner)]
+    pub claims: Vec<CredentialClaimSchemaV2BindingDTO>,
+    #[from(with_fn = convert_inner)]
+    pub key_storage_security: Option<KeyStorageSecurityBindingEnum>,
+    pub imported_source_url: String,
+    #[from(with_fn = convert_inner)]
+    pub layout_type: Option<LayoutTypeBindingEnum>,
+    #[from(with_fn = convert_inner)]
+    pub layout_properties: Option<CredentialSchemaLayoutPropertiesBindingDTO>,
+    pub allow_suspension: bool,
+    pub allow_revocation: Option<bool>,
+    pub batch_size: Option<i32>,
+    pub requires_wallet_instance_attestation: bool,
+    #[from(with_fn = convert_inner)]
+    pub transaction_code: Option<CredentialSchemaTransactionCodeBindingDTO>,
+    pub translations: CredentialSchemaTranslationsBindingDTO,
+}
+
+#[derive(Clone, Debug, From, uniffi::Record)]
+#[from(CredentialSchemaListItemV2ResponseDTO)]
+#[uniffi(name = "CredentialSchemaListItem")]
+pub struct CredentialSchemaListItemV2BindingDTO {
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub id: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub created_date: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub last_modified: String,
+    pub name: String,
+    #[from(with_fn = convert_inner)]
+    pub formats: Vec<CredentialSchemaFormatResponseBindingDTO>,
+    #[from(with_fn = convert_inner)]
+    pub key_storage_security: Option<KeyStorageSecurityBindingEnum>,
+    pub imported_source_url: String,
+    #[from(with_fn = convert_inner)]
+    pub layout_type: Option<LayoutTypeBindingEnum>,
+    #[from(with_fn = convert_inner)]
+    pub layout_properties: Option<CredentialSchemaLayoutPropertiesBindingDTO>,
+    pub allow_suspension: bool,
+    pub allow_revocation: Option<bool>,
+    pub batch_size: Option<i32>,
+    pub requires_wallet_instance_attestation: bool,
+}
+
+#[derive(Clone, Debug, From, uniffi::Record)]
+#[from(GetCredentialSchemaListV2ResponseDTO)]
+#[uniffi(name = "CredentialSchemaList")]
+pub struct CredentialSchemaListV2BindingDTO {
+    #[from(with_fn = convert_inner)]
+    pub values: Vec<CredentialSchemaListItemV2BindingDTO>,
+    pub total_pages: u64,
+    pub total_items: u64,
+}
+
+#[derive(Clone, Debug, Into, uniffi::Record)]
+#[into(CredentialSchemaFormatRequestDTO)]
+#[uniffi(name = "CredentialSchemaFormatRequest")]
+pub struct CredentialSchemaFormatRequestBindingDTO {
+    pub format: String,
+    pub schema_id: Option<String>,
+}
+
+#[derive(Clone, Debug, Into, uniffi::Record)]
+#[into(CredentialClaimSchemaRequestDTO)]
+#[uniffi(name = "CredentialClaimSchemaRequest")]
+pub struct CredentialClaimSchemaRequestBindingDTO {
+    pub key: String,
+    pub datatype: String,
+    pub required: bool,
+    pub array: Option<bool>,
+    #[into(with_fn = convert_inner)]
+    pub claims: Vec<CredentialClaimSchemaRequestBindingDTO>,
+    #[into(with_fn = convert_inner_of_inner)]
+    pub mappings: Option<Vec<CredentialClaimSchemaMappingBindingDTO>>,
+    #[into(with_fn = convert_inner)]
+    pub translations: Option<CredentialClaimSchemaTranslationsBindingDTO>,
+}
+
+#[derive(Clone, Debug, TryInto, uniffi::Record)]
+#[try_into(T = CredentialSchemaTransactionCodeRequestDTO, Error = ErrorResponseBindingDTO)]
+#[uniffi(name = "CredentialSchemaTransactionCodeRequest")]
+pub struct CredentialSchemaTransactionCodeRequestBindingDTO {
+    #[try_into(infallible)]
+    pub r#type: TransactionCodeTypeBindingEnum,
+    pub length: u32,
+    #[try_into(infallible)]
+    pub description: Option<String>,
+}
+
+#[derive(Clone, Debug, TryInto, uniffi::Record)]
+#[try_into(T = CreateCredentialSchemaV2RequestDTO, Error = ErrorResponseBindingDTO)]
+#[uniffi(name = "CreateCredentialSchemaRequest")]
+pub struct CreateCredentialSchemaV2RequestBindingDTO {
+    #[try_into(infallible)]
+    pub name: String,
+    #[try_into(infallible, with_fn = convert_inner)]
+    pub formats: Vec<CredentialSchemaFormatRequestBindingDTO>,
+    #[try_into(with_fn_ref = into_id)]
+    pub organisation_id: String,
+    #[try_into(infallible, with_fn = convert_inner)]
+    pub claims: Vec<CredentialClaimSchemaRequestBindingDTO>,
+    #[try_into(infallible, with_fn = convert_inner)]
+    pub key_storage_security: Option<KeyStorageSecurityBindingEnum>,
+    #[try_into(infallible)]
+    pub layout_type: LayoutTypeBindingEnum,
+    #[try_into(with_fn = try_convert_inner)]
+    pub layout_properties: Option<CredentialSchemaLayoutPropertiesBindingDTO>,
+    #[try_into(infallible)]
+    pub allow_suspension: Option<bool>,
+    #[try_into(infallible)]
+    pub allow_revocation: Option<bool>,
+    #[try_into(infallible)]
+    pub batch_size: Option<i32>,
+    #[try_into(infallible)]
+    pub requires_wallet_instance_attestation: bool,
+    #[try_into(with_fn = try_convert_inner)]
+    pub transaction_code: Option<CredentialSchemaTransactionCodeRequestBindingDTO>,
+    #[try_into(infallible, with_fn = convert_inner)]
+    pub translations: Option<CredentialSchemaTranslationsBindingDTO>,
+}
+
+#[derive(Clone, Debug, Into, uniffi::Record)]
+#[into(ImportCredentialSchemaV2FormatDTO)]
+#[uniffi(name = "ImportCredentialSchemaFormat")]
+pub struct ImportCredentialSchemaV2FormatBindingDTO {
+    pub format: String,
+    pub schema_id: String,
+}
+
+#[derive(Clone, Debug, uniffi::Record)]
+#[uniffi(name = "ImportCredentialSchemaClaimSchema")]
+pub struct ImportCredentialSchemaV2ClaimSchemaBindingDTO {
+    pub id: String,
+    pub created_date: String,
+    pub last_modified: String,
+    pub required: bool,
+    pub key: String,
+    pub datatype: String,
+    pub array: Option<bool>,
+    pub claims: Option<Vec<ImportCredentialSchemaV2ClaimSchemaBindingDTO>>,
+    pub mappings: Option<Vec<CredentialClaimSchemaMappingBindingDTO>>,
+}
+
+#[derive(Clone, Debug, TryInto, uniffi::Record)]
+#[try_into(T = ImportCredentialSchemaV2RequestSchemaDTO, Error = ErrorResponseBindingDTO)]
+#[uniffi(name = "ImportCredentialSchemaRequestSchema")]
+pub struct ImportCredentialSchemaV2RequestSchemaBindingDTO {
+    #[try_into(with_fn_ref = into_id)]
+    pub id: String,
+    #[try_into(with_fn_ref = into_timestamp)]
+    pub created_date: String,
+    #[try_into(with_fn_ref = into_timestamp)]
+    pub last_modified: String,
+    #[try_into(infallible)]
+    pub name: String,
+    #[try_into(infallible, with_fn = convert_inner)]
+    pub formats: Vec<ImportCredentialSchemaV2FormatBindingDTO>,
+    #[try_into(with_fn_ref = into_id)]
+    pub organisation_id: String,
+    #[try_into(with_fn = try_convert_inner)]
+    pub claims: Vec<ImportCredentialSchemaV2ClaimSchemaBindingDTO>,
+    #[try_into(infallible, with_fn = convert_inner)]
+    pub key_storage_security: Option<KeyStorageSecurityBindingEnum>,
+    #[try_into(infallible)]
+    pub imported_source_url: String,
+    #[try_into(infallible, with_fn = convert_inner)]
+    pub layout_type: Option<LayoutTypeBindingEnum>,
+    #[try_into(with_fn = try_convert_inner)]
+    pub layout_properties: Option<ImportCredentialSchemaLayoutPropertiesBindingDTO>,
+    #[try_into(infallible)]
+    pub allow_suspension: Option<bool>,
+    #[try_into(infallible)]
+    pub requires_wallet_instance_attestation: Option<bool>,
+    #[try_into(with_fn = try_convert_inner)]
+    pub transaction_code: Option<ImportCredentialSchemaTransactionCodeBindingDTO>,
+    #[try_into(infallible)]
+    pub allow_revocation: Option<bool>,
+    #[try_into(infallible)]
+    pub batch_size: Option<i32>,
+    #[try_into(infallible, with_fn = convert_inner)]
+    pub translations: Option<CredentialSchemaTranslationsBindingDTO>,
+}
+
+#[derive(Clone, Debug, TryInto, uniffi::Record)]
+#[try_into(T = ImportCredentialSchemaV2RequestDTO, Error = ErrorResponseBindingDTO)]
+#[uniffi(name = "ImportCredentialSchemaRequest")]
+pub struct ImportCredentialSchemaV2RequestBindingDTO {
+    #[try_into(with_fn_ref = into_id)]
+    pub organisation_id: String,
+    pub schema: ImportCredentialSchemaV2RequestSchemaBindingDTO,
 }

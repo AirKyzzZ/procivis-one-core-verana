@@ -12,10 +12,11 @@ use shared_types::ProofSchemaId;
 use super::OneCore;
 use super::common::SortDirection;
 use super::credential_schema::{
-    CredentialSchemaBindingDTO, CredentialSchemaLayoutPropertiesBindingDTO,
-    KeyStorageSecurityBindingEnum, LayoutTypeBindingEnum,
+    CredentialSchemaLayoutPropertiesBindingDTO, KeyStorageSecurityBindingEnum,
+    LayoutTypeBindingEnum,
 };
 use super::mapper::optional_time;
+use crate::binding::credential::CredentialSchemaBindingDTO;
 use crate::error::{BindingError, ErrorResponseBindingDTO};
 use crate::utils::{TimestampFormat, into_id, into_timestamp, into_timestamp_opt};
 

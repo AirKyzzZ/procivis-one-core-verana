@@ -6,12 +6,16 @@ use one_core::service::credential::dto::{
     CredentialRole, CredentialSearchTypeDTO, CredentialStateEnum, DetailCredentialClaimResponseDTO,
     GetCredentialListResponseDTO,
 };
+use one_core::service::credential_schema::dto::CredentialClaimSchemaDTO;
 use one_dto_mapper::{From, Into, convert_inner};
 
 use super::common::SortDirection;
-use super::credential_schema::{CredentialClaimSchemaBindingDTO, CredentialSchemaBindingDTO};
 use super::identifier::GetIdentifierListItemBindingDTO;
 use crate::OneCore;
+use crate::binding::credential_schema::{
+    CredentialClaimSchemaTranslationsBindingDTO, CredentialSchemaLayoutPropertiesBindingDTO,
+    CredentialSchemaTranslationsBindingDTO, KeyStorageSecurityBindingEnum, LayoutTypeBindingEnum,
+};
 use crate::binding::history::TrustResolutionResultBindingEnum;
 use crate::binding::trust_information::TrustInformationDetailResponseBindingDTO;
 use crate::error::BindingError;
@@ -70,6 +74,25 @@ impl OneCore {
             .delete_credential(&into_id(&credential_id)?)
             .await?)
     }
+}
+
+#[derive(Clone, Debug, uniffi::Record)]
+#[uniffi(name = "CredentialSchemaInfo")]
+pub struct CredentialSchemaBindingDTO {
+    pub id: String,
+    pub created_date: String,
+    pub last_modified: String,
+    pub name: String,
+    pub format: String,
+    pub revocation_method: Option<String>,
+    pub key_storage_security: Option<KeyStorageSecurityBindingEnum>,
+    pub schema_id: String,
+    pub layout_type: Option<LayoutTypeBindingEnum>,
+    pub imported_source_url: String,
+    pub layout_properties: Option<CredentialSchemaLayoutPropertiesBindingDTO>,
+    pub allow_suspension: bool,
+    pub requires_wallet_instance_attestation: bool,
+    pub translations: Option<CredentialSchemaTranslationsBindingDTO>,
 }
 
 #[derive(Clone, Debug, uniffi::Record)]
@@ -246,6 +269,25 @@ pub enum CredentialStateBindingEnum {
     Suspended,
     Error,
     InteractionExpired,
+}
+
+#[derive(Clone, Debug, From, uniffi::Record)]
+#[from(CredentialClaimSchemaDTO)]
+#[uniffi(name = "ClaimSchemaInfo")]
+pub struct CredentialClaimSchemaBindingDTO {
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub id: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub created_date: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub last_modified: String,
+    pub key: String,
+    pub datatype: String,
+    pub required: bool,
+    pub array: bool,
+    #[from(with_fn = convert_inner)]
+    pub claims: Vec<CredentialClaimSchemaBindingDTO>,
+    pub translations: CredentialClaimSchemaTranslationsBindingDTO,
 }
 
 #[derive(Clone, Debug, uniffi::Record, From)]

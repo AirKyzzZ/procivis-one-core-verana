@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use one_core::model::credential::{CredentialListIncludeEntityTypeEnum, SortableCredentialColumn};
 use one_core::model::credential_schema::SortableCredentialSchemaColumn;
 use one_core::model::did::SortableDidColumn;
@@ -48,15 +50,17 @@ use one_core::service::wallet_instance::dto::{
 use one_dto_mapper::{convert_inner, convert_inner_of_inner, try_convert_inner};
 use serde_json::json;
 use shared_types::KeyId;
+use shared_types::i18n::I18nString;
 use time::OffsetDateTime;
 
 use super::ble::DeviceInfoBindingDTO;
 use super::credential::{
     ClaimBindingDTO, ClaimValueBindingDTO, CredentialDetailBindingDTO,
-    CredentialListItemBindingDTO, CredentialListQueryBindingDTO, MdocMsoValidityResponseBindingDTO,
+    CredentialListItemBindingDTO, CredentialListQueryBindingDTO, CredentialSchemaBindingDTO,
+    MdocMsoValidityResponseBindingDTO,
 };
 use super::credential_schema::{
-    CredentialSchemaBindingDTO, ImportCredentialSchemaClaimSchemaBindingDTO,
+    CredentialSchemaListQueryBindingDTO, ImportCredentialSchemaV2ClaimSchemaBindingDTO,
 };
 use super::did::{DidListQueryBindingDTO, DidRequestBindingDTO, DidRequestKeysBindingDTO};
 use super::history::{
@@ -76,11 +80,11 @@ use super::proof::{
     PresentationDefinitionV2CredentialDetailBindingDTO, ProofListQueryBindingDTO,
     ProofRequestClaimValueBindingDTO, ProofResponseBindingDTO,
 };
-use super::proof_schema::ImportProofSchemaClaimSchemaBindingDTO;
+use super::proof_schema::{
+    ImportProofSchemaClaimSchemaBindingDTO, ListProofSchemasFiltersBindingDTO,
+};
 use super::verifier_instance::EditVerifierInstanceRequestBindingDTO;
 use super::wallet_unit::{EditHolderWalletUnitRequestBindingDTO, TrustCollectionInfoBindingDTO};
-use crate::binding::credential_schema::CredentialSchemaListQueryBindingDTO;
-use crate::binding::proof_schema::ListProofSchemasFiltersBindingDTO;
 use crate::error::ErrorResponseBindingDTO;
 use crate::utils::{
     TimestampFormat, into_id, into_id_opt, into_id_opt_vec, into_timestamp, into_timestamp_opt,
@@ -458,10 +462,12 @@ impl TryFrom<ImportProofSchemaClaimSchemaBindingDTO> for ImportProofSchemaClaimS
     }
 }
 
-impl TryFrom<ImportCredentialSchemaClaimSchemaBindingDTO> for ImportCredentialSchemaClaimSchemaDTO {
+impl TryFrom<ImportCredentialSchemaV2ClaimSchemaBindingDTO>
+    for ImportCredentialSchemaClaimSchemaDTO
+{
     type Error = ServiceError;
 
-    fn try_from(value: ImportCredentialSchemaClaimSchemaBindingDTO) -> Result<Self, Self::Error> {
+    fn try_from(value: ImportCredentialSchemaV2ClaimSchemaBindingDTO) -> Result<Self, Self::Error> {
         let claims = value.claims.unwrap_or_default();
         Ok(Self {
             id: into_id(&value.id)?,
@@ -472,7 +478,9 @@ impl TryFrom<ImportCredentialSchemaClaimSchemaBindingDTO> for ImportCredentialSc
             datatype: value.datatype,
             array: value.array,
             claims: try_convert_inner(claims)?,
-            mappings: None,
+            mappings: value
+                .mappings
+                .map(|ms| ms.into_iter().map(Into::into).collect()),
         })
     }
 }
@@ -939,4 +947,17 @@ impl TryFrom<CredentialSchemaListQueryBindingDTO>
                 .map(|incl| incl.into_iter().map(Into::into).collect()),
         })
     }
+}
+
+pub(crate) fn to_i18n_string(value: HashMap<String, String>) -> I18nString {
+    I18nString(value)
+}
+pub(crate) fn from_i18n_string(value: I18nString) -> HashMap<String, String> {
+    value.0
+}
+pub(crate) fn to_i18n_string_opt(value: Option<HashMap<String, String>>) -> Option<I18nString> {
+    value.map(to_i18n_string)
+}
+pub(crate) fn from_i18n_string_opt(value: Option<I18nString>) -> Option<HashMap<String, String>> {
+    value.map(from_i18n_string)
 }
