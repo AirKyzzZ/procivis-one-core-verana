@@ -1,5 +1,3 @@
-app:
-  traceLevel: "debug,hyper=error,sea_orm=info,sqlx::query=error,reqwest=error"
 walletProvider:
   PROCIVIS_ONE:
     params:

@@ -4,7 +4,7 @@ app:
   serverIp: "0.0.0.0"
   serverPort: 3000
   traceJson: false
-  traceLevel: "debug,hyper=error,sea_orm=info,sqlx::query=error,reqwest=error"
+  traceLevel: "debug,hyper=error,h2=error,sea_orm=info,sqlx::query=error,reqwest=error"
   hideErrorResponseCause: false
   insecureVcApiEndpointsEnabled: true
   enableMetrics: true
