@@ -15,8 +15,6 @@ use yasna::Tag;
 use yasna::models::ObjectIdentifier;
 
 use crate::config::core_config::{IdentifierType, KeyAlgorithmType, RevocationType};
-use crate::error::ContextWithErrorCode;
-use crate::proto::session_provider::SessionProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::provider::RevocationMethodProvider;
@@ -29,7 +27,6 @@ use crate::provider::signer::validity::{SignatureValidity, calculate_signature_v
 use crate::provider::signer::x509_utils::{
     CaSigningInfo, IdentifierInfo, RevocationInfo, prepare_params_and_ca_issuer,
 };
-use crate::validator::permissions::RequiredPermissions;
 
 #[derive(Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -102,7 +99,6 @@ pub struct AccessCertificateSigner {
     params: Params,
     key_provider: Arc<dyn KeyProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
-    session_provider: Arc<dyn SessionProvider>,
 }
 
 impl AccessCertificateSigner {
@@ -111,7 +107,6 @@ impl AccessCertificateSigner {
         params: Params,
         key_provider: Arc<dyn KeyProvider>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
-        session_provider: Arc<dyn SessionProvider>,
         core_base_url: String,
     ) -> Self {
         Self {
@@ -120,7 +115,6 @@ impl AccessCertificateSigner {
             params,
             key_provider,
             revocation_method_provider,
-            session_provider,
         }
     }
 }
@@ -147,11 +141,6 @@ impl Signer for AccessCertificateSigner {
         issuer: Issuer,
         request: CreateSignatureRequest,
     ) -> Result<CreateSignatureResponseDTO, SignerError> {
-        // Check permissions in provider because internal calls for `Issuer::Key` do _not_ go through the service
-        RequiredPermissions::at_least_one(self.get_capabilities().sign_required_permissions)
-            .check(&*self.session_provider)
-            .error_while("validating provider required permissions")?;
-
         let (identifier, certificate, key) = match issuer {
             Issuer::Identifier {
                 identifier,

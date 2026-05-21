@@ -7,8 +7,6 @@ use shared_types::{Permission, SignerId};
 use uuid::Uuid;
 
 use crate::config::core_config::{IdentifierType, KeyAlgorithmType, RevocationType};
-use crate::error::ContextWithErrorCode;
-use crate::proto::session_provider::SessionProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::provider::RevocationMethodProvider;
@@ -24,7 +22,6 @@ use crate::provider::signer::x509_utils::{
     CaSigningInfo, IdentifierInfo, RevocationInfo, prepare_params_and_ca_issuer,
     signing_key_adapter,
 };
-use crate::validator::permissions::RequiredPermissions;
 
 pub(crate) mod dto;
 mod mapper;
@@ -35,7 +32,6 @@ pub(crate) struct X509CertificateSigner {
     params: Params,
     key_provider: Arc<dyn KeyProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
-    session_provider: Arc<dyn SessionProvider>,
 }
 
 impl X509CertificateSigner {
@@ -44,14 +40,12 @@ impl X509CertificateSigner {
         params: Params,
         key_provider: Arc<dyn KeyProvider>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
-        session_provider: Arc<dyn SessionProvider>,
     ) -> Self {
         Self {
             config_name,
             params,
             key_provider,
             revocation_method_provider,
-            session_provider,
         }
     }
 }
@@ -83,11 +77,6 @@ impl Signer for X509CertificateSigner {
         issuer: Issuer,
         request: CreateSignatureRequest,
     ) -> Result<CreateSignatureResponseDTO, SignerError> {
-        // Check permissions in provider because internal calls for `Issuer::Key` do _not_ go through the service
-        RequiredPermissions::at_least_one(self.get_capabilities().sign_required_permissions)
-            .check(&*self.session_provider)
-            .error_while("validating provider required permissions")?;
-
         let validity =
             calculate_signature_validity(self.params.payload.max_validity_duration, &request)?;
 

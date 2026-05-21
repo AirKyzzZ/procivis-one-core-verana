@@ -21,7 +21,6 @@ use crate::model::identifier::Identifier;
 use crate::model::key::Key;
 use crate::proto::clock::Clock;
 use crate::proto::jwt::JwtPublicKeyInfo;
-use crate::proto::session_provider::SessionProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::RevocationMethod;
@@ -35,7 +34,6 @@ use crate::provider::signer::registration_certificate::model::{
 };
 use crate::provider::signer::validity::{SignatureValidity, calculate_signature_validity};
 use crate::util::key_selection::{CertificateFilter, KeyFilter, KeySelection, SelectedKey};
-use crate::validator::permissions::RequiredPermissions;
 
 #[derive(Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -60,7 +58,6 @@ pub struct RegistrationCertificate {
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-    session_provider: Arc<dyn SessionProvider>,
 }
 
 impl RegistrationCertificate {
@@ -71,7 +68,6 @@ impl RegistrationCertificate {
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
         key_provider: Arc<dyn KeyProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-        session_provider: Arc<dyn SessionProvider>,
     ) -> Self {
         Self {
             config_key: config_name,
@@ -80,7 +76,6 @@ impl RegistrationCertificate {
             revocation_method_provider,
             key_provider,
             key_algorithm_provider,
-            session_provider,
         }
     }
 
@@ -139,11 +134,6 @@ impl Signer for RegistrationCertificate {
         issuer: Issuer,
         request: CreateSignatureRequest,
     ) -> Result<CreateSignatureResponseDTO, SignerError> {
-        // Check permissions in provider because internal calls for `Issuer::Key` do _not_ go through the service
-        RequiredPermissions::at_least_one(self.get_capabilities().sign_required_permissions)
-            .check(&*self.session_provider)
-            .error_while("validating provider required permissions")?;
-
         let now = self.clock.now_utc();
         let SignatureValidity { start, end } = calculate_signature_validity(
             Duration::seconds(self.params.payload.max_validity_duration),

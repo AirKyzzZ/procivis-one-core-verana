@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use shared_types::{RevocationMethodId, SignerId};
 use uuid::Uuid;
 
+use super::decorators::PermissionChecked;
 use super::{Signer, access_certificate, registration_certificate, x509_certificate};
 use crate::config::core_config::{
     ConfigBlock, ConfigExt, CoreConfig, Fields, RevocationConfig, RevocationType, SignerType,
@@ -81,7 +82,6 @@ fn initialize_provider(
     key_provider: &Arc<dyn KeyProvider>,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     revocation_method_provider: &Arc<dyn RevocationMethodProvider>,
-    session_provider: &Arc<dyn SessionProvider>,
 ) -> Result<Arc<dyn Signer>, InitializationError> {
     let provider: Arc<dyn Signer> = match fields.r#type {
         SignerType::RegistrationCertificate => {
@@ -97,7 +97,6 @@ fn initialize_provider(
                 revocation_method_provider.clone(),
                 key_provider.clone(),
                 key_algorithm_provider.clone(),
-                session_provider.clone(),
             );
 
             validate_revocation_method_compatibility(
@@ -121,7 +120,6 @@ fn initialize_provider(
                 params.clone(),
                 key_provider.clone(),
                 revocation_method_provider.clone(),
-                session_provider.clone(),
                 core_base_url
                     .clone()
                     .ok_or(InitializationError::MissingDependency(
@@ -152,7 +150,6 @@ fn initialize_provider(
                 params.clone(),
                 key_provider.clone(),
                 revocation_method_provider.clone(),
-                session_provider.clone(),
             );
 
             if let Some(revocation_method) = &params.revocation_method {
@@ -185,7 +182,7 @@ pub(crate) fn signer_provider_from_config(
     let directory = ProviderDirectory::initialize(
         config.signer.iter_mut(),
         |name: &SignerId, fields: &Fields<SignerType>| {
-            initialize_provider(
+            let provider = initialize_provider(
                 name,
                 fields,
                 revocation_config,
@@ -194,8 +191,14 @@ pub(crate) fn signer_provider_from_config(
                 &key_provider,
                 &key_algorithm_provider,
                 &revocation_method_provider,
-                &session_provider,
-            )
+            )?;
+
+            let provider: Arc<dyn Signer> = Arc::new(PermissionChecked {
+                inner: provider,
+                session_provider: session_provider.to_owned(),
+            });
+
+            Ok::<_, InitializationError>(provider)
         },
     )
     .error_while("initializing signer providers")?;
