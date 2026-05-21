@@ -2846,7 +2846,7 @@ async fn test_holder_accept_credential_fails_without_wallet_unit_id_when_key_att
                 .returning(|| KeySecurityLevelCapabilities {
                     openid_security_level: vec![KeyStorageSecurityLevel::Basic],
                 });
-            Some(Arc::new(security))
+            Ok(Arc::new(security))
         });
 
     let mut holder_wallet_unit_repository = MockHolderWalletInstanceRepository::new();
@@ -3111,7 +3111,7 @@ async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_att
                 .returning(|| KeySecurityLevelCapabilities {
                     openid_security_level: vec![KeyStorageSecurityLevel::Basic],
                 });
-            Some(Arc::new(security))
+            Ok(Arc::new(security))
         });
 
     let mut holder_wallet_unit_repository = MockHolderWalletInstanceRepository::new();

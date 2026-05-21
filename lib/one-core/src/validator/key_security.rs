@@ -15,7 +15,9 @@ pub(crate) fn match_key_security_level(
     let mut security_levels = issuer_accepted_levels
         .iter()
         .filter_map(|level| {
-            key_security_level_provider.get_from_type(KeySecurityLevelType::from(*level))
+            key_security_level_provider
+                .get_from_type(KeySecurityLevelType::from(*level))
+                .ok()
         })
         .collect::<Vec<_>>();
     security_levels.sort_by_key(|p| Reverse(p.get_priority()));

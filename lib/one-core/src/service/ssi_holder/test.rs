@@ -1012,7 +1012,7 @@ async fn test_accept_credential() {
     key_security_level_provider
         .expect_get_from_type()
         .returning(|_| {
-            Some(Arc::new(Basic::new(Params {
+            Ok(Arc::new(Basic::new(Params {
                 holder: HolderParams {
                     priority: 0,
                     key_storages: vec!["foo".to_string()],
@@ -1146,7 +1146,7 @@ async fn test_accept_credential_with_did() {
     key_security_level_provider
         .expect_get_from_type()
         .returning(|_| {
-            Some(Arc::new(Basic::new(Params {
+            Ok(Arc::new(Basic::new(Params {
                 holder: HolderParams {
                     priority: 0,
                     key_storages: vec!["foo".to_string()],

@@ -188,12 +188,7 @@ fn security_level_and_algs_supported(
     key_storage_provider: &dyn KeyProvider,
     key_security_provider: &dyn KeySecurityLevelProvider,
 ) -> Result<bool, IssuanceProtocolError> {
-    let security_level =
-        key_security_provider
-            .get_from_type(level)
-            .ok_or(IssuanceProtocolError::Failed(format!(
-                "Security level {level} not defined"
-            )))?;
+    let security_level = key_security_provider.get_from_type(level)?;
 
     for storage_id in security_level.get_key_storages() {
         let storage = key_storage_provider.get_key_storage(storage_id)?;
