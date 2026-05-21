@@ -91,7 +91,10 @@ impl CredentialSchema {
             .into_iter()
             .next()
             .ok_or_else(|| {
-                ServiceError::MappingError("Missing credential schema format".to_string())
+                ServiceError::MappingError(format!(
+                    "Credential schema {} has no credential schema format",
+                    self.id
+                ))
             })
             .error_while("Failed to retrieve credential format")
     }
