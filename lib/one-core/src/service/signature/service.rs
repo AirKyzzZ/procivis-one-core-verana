@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use one_dto_mapper::convert_inner;
+use shared_types::SignerId;
 use uuid::Uuid;
 
 use super::SignatureService;
@@ -23,9 +24,7 @@ impl SignatureService {
         &self,
         request: CreateSignatureRequestDTO,
     ) -> Result<CreateSignatureResponseDTO, SignatureServiceError> {
-        let Some(signer) = self.signer_provider.get(request.signer.as_str()) else {
-            return Err(SignatureServiceError::MissingSignerProvider(request.signer));
-        };
+        let signer = self.signer_provider.get(&request.signer)?;
         let signature_type = request.signer.to_owned();
         let issuer = self
             .identifier_repository
@@ -94,11 +93,7 @@ impl SignatureService {
     }
 
     pub async fn revoke(&self, id: Uuid) -> Result<(), SignatureServiceError> {
-        let (signer_name, signer) = self
-            .signer_provider
-            .get_for_signature_id(id)
-            .await
-            .error_while("getting signer provider")?;
+        let (signer_name, signer) = self.signer_provider.get_for_signature_id(id).await?;
         RequiredPermissions::at_least_one(signer.get_capabilities().revoke_required_permissions)
             .check(&*self.session_provider)
             .error_while("validating provider required permissions")?;
@@ -146,7 +141,7 @@ impl SignatureService {
                 entity_type: HistoryEntityType::Signature,
                 metadata: None,
                 metadata_blob_id: None,
-                name: signer_name,
+                name: signer_name.to_string(),
                 target: Some(issuer.id.to_string()),
                 organisation_id: None,
                 user: self.session_provider.session().user(),
@@ -163,7 +158,7 @@ impl SignatureService {
     async fn store_sign_history(
         &self,
         create_signature_response: &CreateSignatureResponseDTO,
-        signature_type: &str,
+        signature_type: &SignerId,
         issuer_id: shared_types::IdentifierId,
         organisation_id: shared_types::OrganisationId,
     ) -> Result<(), SignatureServiceError> {
@@ -192,7 +187,7 @@ impl SignatureService {
                 entity_type: HistoryEntityType::Signature,
                 metadata: None,
                 metadata_blob_id: Some(blob_id),
-                name: signature_type.to_owned(),
+                name: signature_type.to_string(),
                 target: Some(issuer_id.to_string()),
                 organisation_id: Some(organisation_id),
                 user: self.session_provider.session().user(),

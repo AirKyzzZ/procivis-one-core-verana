@@ -1,4 +1,4 @@
-use shared_types::{CertificateId, IdentifierId, KeyId, OrganisationId};
+use shared_types::{CertificateId, IdentifierId, KeyId, OrganisationId, SignerId};
 use time::OffsetDateTime;
 
 use crate::model::certificate::{CertificateRole, CertificateState};
@@ -22,7 +22,7 @@ pub struct CreateCertificateContentDTO {
     pub subject: KeyGenerateCSRRequestSubjectDTO,
     pub subject_alternative_name: Option<KeyGenerateCSRRequestSubjectAlternativeNameDTO>,
     pub certificate_authority: CreateCertificateCaDTO,
-    pub signer: String,
+    pub signer: SignerId,
     pub validity_start: Option<OffsetDateTime>,
     pub validity_end: Option<OffsetDateTime>,
 }

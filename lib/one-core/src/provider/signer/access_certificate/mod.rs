@@ -2,13 +2,14 @@ mod mapper;
 
 use std::sync::Arc;
 
+use proc_macros::Provider;
 use rcgen::{
     CertificateParams, CustomExtension, ExtendedKeyUsagePurpose, IsCa, KeyUsagePurpose,
     OtherNameValue, SanType,
 };
 use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
-use shared_types::{CertificateId, Permission, RevocationMethodId};
+use shared_types::{CertificateId, Permission, RevocationMethodId, SignerId};
 use time::Duration;
 use yasna::Tag;
 use yasna::models::ObjectIdentifier;
@@ -94,8 +95,9 @@ impl AccessCertificatePolicy {
     }
 }
 
+#[derive(Provider)]
 pub struct AccessCertificateSigner {
-    config_name: String,
+    config_name: SignerId,
     core_base_url: String,
     params: Params,
     key_provider: Arc<dyn KeyProvider>,
@@ -105,7 +107,7 @@ pub struct AccessCertificateSigner {
 
 impl AccessCertificateSigner {
     pub fn new(
-        config_name: String,
+        config_name: SignerId,
         params: Params,
         key_provider: Arc<dyn KeyProvider>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
@@ -125,6 +127,10 @@ impl AccessCertificateSigner {
 
 #[async_trait::async_trait]
 impl Signer for AccessCertificateSigner {
+    fn config_name(&self) -> &SignerId {
+        &self.config_name
+    }
+
     fn get_capabilities(&self) -> SignerCapabilities {
         SignerCapabilities {
             features: vec![],
@@ -206,7 +212,7 @@ impl Signer for AccessCertificateSigner {
                 key,
             },
             RevocationInfo {
-                config_name: self.config_name.clone(),
+                config_name: self.config_name.to_owned(),
                 revocation_method: self.revocation_method(),
             },
             self.key_provider.clone(),

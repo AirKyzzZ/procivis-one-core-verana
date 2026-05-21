@@ -7,7 +7,7 @@ use futures::FutureExt;
 use num_traits::ToPrimitive;
 use serde::{Deserialize, Serialize};
 use serde_with::DurationSeconds;
-use shared_types::{RevocationListEntryId, RevocationListId, RevocationMethodId};
+use shared_types::{RevocationListEntryId, RevocationListId, RevocationMethodId, SignerId};
 use standardized_types::x509::CertificateSerial;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -144,7 +144,7 @@ impl RevocationMethod for CRLRevocation {
 
     async fn add_signature<'a>(
         &self,
-        signature_type: String,
+        signature_type: SignerId,
         issuer: &'a Identifier,
         certificate: Option<&'a Certificate>,
     ) -> Result<(RevocationListEntryId, CredentialRevocationInfo), RevocationError> {

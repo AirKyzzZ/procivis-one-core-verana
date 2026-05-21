@@ -8,7 +8,8 @@ use futures::FutureExt;
 use resolver::{StatusListCacheEntry, StatusListResolver};
 use serde::{Deserialize, Serialize};
 use shared_types::{
-    CredentialId, RevocationListEntryId, RevocationListId, RevocationMethodId, SerializedCredential,
+    CredentialId, RevocationListEntryId, RevocationListId, RevocationMethodId,
+    SerializedCredential, SignerId,
 };
 use uuid::Uuid;
 
@@ -367,7 +368,7 @@ impl RevocationMethod for BitstringStatusList {
 
     async fn add_signature<'a>(
         &self,
-        _signature_type: String,
+        _signature_type: SignerId,
         _issuer: &'a Identifier,
         _certificate: Option<&'a Certificate>,
     ) -> Result<(RevocationListEntryId, CredentialRevocationInfo), RevocationError> {

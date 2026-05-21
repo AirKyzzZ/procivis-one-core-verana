@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use shared_types::{
-    CredentialSchemaId, IdentifierId, KeyId, OrganisationId, ProofSchemaId, TrustCollectionId,
-    TrustListSubscriberId, TrustListSubscriptionId,
+    CredentialSchemaId, IdentifierId, KeyId, OrganisationId, ProofSchemaId, SignerId,
+    TrustCollectionId, TrustListSubscriberId, TrustListSubscriptionId,
 };
 use time::OffsetDateTime;
 
@@ -137,7 +137,7 @@ pub struct CreateCertificateAuthorityRequestDTO {
 #[derive(Clone, Debug)]
 pub struct CreateSelfSignedCertificateAuthorityRequestDTO {
     pub content: CreateSelfSignedCertificateAuthorityContentRequestDTO,
-    pub signer: String,
+    pub signer: SignerId,
     pub validity_start: Option<OffsetDateTime>,
     pub validity_end: Option<OffsetDateTime>,
 }

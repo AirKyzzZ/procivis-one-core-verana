@@ -1,4 +1,4 @@
-use shared_types::{RevocationListEntryId, RevocationListId};
+use shared_types::{RevocationListEntryId, RevocationListId, SignerId};
 
 use crate::model::certificate::Certificate;
 use crate::model::credential::Credential;
@@ -81,7 +81,7 @@ pub trait RevocationMethod: Send + Sync {
     /// Issuer: create a status list entry before generating signature
     async fn add_signature<'a>(
         &self,
-        signature_type: String,
+        signature_type: SignerId,
         issuer: &'a Identifier,
         certificate: Option<&'a Certificate>,
     ) -> Result<(RevocationListEntryId, CredentialRevocationInfo), RevocationError>;

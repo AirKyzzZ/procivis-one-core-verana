@@ -1,12 +1,17 @@
+use std::fmt::{Display, Formatter};
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use proc_macros::provider_mock;
+use shared_types::SignerId;
 
+use crate::provider::Provider;
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::signer::dto::Issuer;
 use crate::provider::signer::error::SignerError;
 
 mod access_certificate;
+mod decorators;
 pub mod dto;
 pub mod error;
 pub mod model;
@@ -16,9 +21,9 @@ mod validity;
 pub mod x509_certificate;
 mod x509_utils;
 
-#[cfg_attr(any(test, feature = "mock"), mockall::automock)]
+#[provider_mock]
 #[async_trait]
-pub trait Signer: Send + Sync {
+pub trait Signer: Provider + Send + Sync {
     fn get_capabilities(&self) -> model::SignerCapabilities;
 
     async fn sign(
@@ -28,4 +33,12 @@ pub trait Signer: Send + Sync {
     ) -> Result<dto::CreateSignatureResponseDTO, SignerError>;
 
     fn revocation_method(&self) -> Option<Arc<dyn RevocationMethod>>;
+
+    fn config_name(&self) -> &SignerId;
+}
+
+impl Display for dyn Signer {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Signer `{}`", self.config_name())
+    }
 }

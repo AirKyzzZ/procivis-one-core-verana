@@ -289,7 +289,7 @@ impl RevocationListRepository for RevocationListProvider {
             index: Set(index_on_status_list.map(|index| index as _)),
             credential_id: Set(credential_id),
             r#type: Set(r#type),
-            signature_type: Set(signature_type),
+            signature_type: Set(signature_type.map(|t| t.to_string())),
             state: Set(RevocationListEntryState::Active),
             serial: Set(serial),
         }
@@ -429,7 +429,7 @@ impl RevocationListProvider {
                             } else {
                                 None
                             };
-                            Ok(RevocationListEntityInfo::Signature(value, serial))
+                            Ok(RevocationListEntityInfo::Signature(value.into(), serial))
                         }
                         None => Err(DataLayerError::MappingError),
                     },

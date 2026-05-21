@@ -109,7 +109,7 @@ async fn test_add_signature_new_list() {
     let before_adding = crate::clock::now_utc().replace_millisecond(0).unwrap();
 
     let (_, info) = revocation_method
-        .add_signature("signature_type".to_string(), &issuer, Some(&certificate))
+        .add_signature("signature_type".into(), &issuer, Some(&certificate))
         .await
         .unwrap();
 
@@ -184,10 +184,7 @@ async fn test_revoke_signature() {
                     id: signature_id,
                     created_date: revocation_time,
                     last_modified: revocation_time,
-                    entity_info: RevocationListEntityInfo::Signature(
-                        "type".to_string(),
-                        Some(serial),
-                    ),
+                    entity_info: RevocationListEntityInfo::Signature("type".into(), Some(serial)),
                     index: None,
                     state: RevocationListEntryState::Revoked,
                 }])

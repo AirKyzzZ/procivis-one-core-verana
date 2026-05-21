@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use shared_types::{RevocationListEntryId, RevocationListId};
+use shared_types::{RevocationListEntryId, RevocationListId, SignerId};
 
 use crate::error::ContextWithErrorCode;
 use crate::model::certificate::Certificate;
@@ -162,7 +162,7 @@ impl RevocationMethod for StatusList2021 {
 
     async fn add_signature<'a>(
         &self,
-        _signature_type: String,
+        _signature_type: SignerId,
         _issuer: &'a Identifier,
         _certificate: Option<&'a Certificate>,
     ) -> Result<(RevocationListEntryId, CredentialRevocationInfo), RevocationError> {

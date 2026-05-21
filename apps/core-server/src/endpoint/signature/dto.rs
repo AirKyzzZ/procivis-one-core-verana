@@ -7,7 +7,7 @@ use one_core::service::signature::dto::{
 use one_dto_mapper::{From, Into};
 use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
-use shared_types::{CertificateId, IdentifierId, KeyId};
+use shared_types::{CertificateId, IdentifierId, KeyId, SignerId};
 use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -76,7 +76,7 @@ pub(crate) struct SignatureRevocationCheckResponseRestDTO {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct SignatureStatusInfoRestDTO {
     pub state: SignatureStateRestEnum,
-    pub r#type: String,
+    pub r#type: SignerId,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

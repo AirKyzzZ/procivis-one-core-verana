@@ -1,5 +1,5 @@
 use one_dto_mapper::Into;
-use shared_types::{CertificateId, IdentifierId, KeyId};
+use shared_types::{CertificateId, IdentifierId, KeyId, SignerId};
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug, Into)]
@@ -12,7 +12,7 @@ pub struct CreateSignatureRequestDTO {
     #[into(skip)]
     pub issuer_certificate: Option<CertificateId>,
     #[into(skip)]
-    pub signer: String,
+    pub signer: SignerId,
     /// Signer-specific payload, each signer handles parsing individually
     pub data: serde_json::Value,
     pub validity_start: Option<OffsetDateTime>,
@@ -21,7 +21,7 @@ pub struct CreateSignatureRequestDTO {
 
 pub struct SignatureStatusInfo {
     pub state: SignatureState,
-    pub r#type: String,
+    pub r#type: SignerId,
 }
 
 pub enum SignatureState {

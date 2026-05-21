@@ -193,9 +193,6 @@ pub enum MissingProviderError {
     #[error("Cannot find task `{0}`")]
     Task(TaskId),
 
-    #[error("Cannot find signature provider `{0}`")]
-    Signer(String),
-
     #[error("Cannot find verifier provider `{0}`")]
     Verifier(String),
 
@@ -288,7 +285,6 @@ impl ErrorCodeMixin for MissingProviderError {
             Self::RevocationMethodByCredentialStatusType(_) => ErrorCode::BR_0045,
             Self::ExchangeProtocol(_) => ErrorCode::BR_0046,
             Self::Task(_) => ErrorCode::BR_0103,
-            Self::Signer(_) => ErrorCode::BR_0326,
             Self::Verifier(_) => ErrorCode::BR_0380,
             Self::TrustListSubscriber(_) => ErrorCode::BR_0400,
         }

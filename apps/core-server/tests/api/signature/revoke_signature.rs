@@ -29,7 +29,7 @@ async fn test_revoke_wrprc_success() {
         .revocation_lists
         .create_entry(
             revocation_list_id,
-            RevocationListEntityId::Signature("REGISTRATION_CERTIFICATE".to_string(), None),
+            RevocationListEntityId::Signature("REGISTRATION_CERTIFICATE".into(), None),
             Some(0),
         )
         .await;
@@ -96,7 +96,7 @@ async fn test_revoke_fail_on_missing_signer() {
         .revocation_lists
         .create_entry(
             revocation_list_id,
-            RevocationListEntityId::Signature("NO_SUCH_THING".to_string(), None),
+            RevocationListEntityId::Signature("NO_SUCH_THING".into(), None),
             Some(0),
         )
         .await;
@@ -125,7 +125,7 @@ async fn test_fail_on_missing_signer_specific_permission() {
         .revocation_lists
         .create_entry(
             revocation_list_id,
-            RevocationListEntityId::Signature("REGISTRATION_CERTIFICATE".to_string(), None),
+            RevocationListEntityId::Signature("REGISTRATION_CERTIFICATE".into(), None),
             Some(0),
         )
         .await;
@@ -160,7 +160,7 @@ async fn test_revoke_wrprc_success_revoked_cert() {
         .revocation_lists
         .create_entry(
             revocation_list_id,
-            RevocationListEntityId::Signature("REGISTRATION_CERTIFICATE".to_string(), None),
+            RevocationListEntityId::Signature("REGISTRATION_CERTIFICATE".into(), None),
             Some(0),
         )
         .await;

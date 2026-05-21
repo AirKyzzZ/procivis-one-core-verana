@@ -6,7 +6,7 @@ use rcgen::{
 };
 use rustls_pki_types::CertificateDer;
 use rustls_pki_types::pem::PemObject;
-use shared_types::{CertificateId, KeyId};
+use shared_types::{CertificateId, KeyId, SignerId};
 use uuid::Uuid;
 use x509_parser::prelude::{GeneralName, ParsedExtension, X509Certificate};
 
@@ -28,7 +28,7 @@ pub(super) struct IdentifierInfo<'a> {
 }
 
 pub(super) struct RevocationInfo {
-    pub config_name: String,
+    pub config_name: SignerId,
     pub revocation_method: Option<Arc<dyn RevocationMethod>>,
 }
 
@@ -172,7 +172,7 @@ async fn handle_x509_revocation(
     params: &mut CertificateParams,
     identifier: &Identifier,
     certificate: &Certificate,
-    provider_config_name: String,
+    provider_config_name: SignerId,
     revocation_method: &dyn RevocationMethod,
 ) -> Result<Uuid, SignerError> {
     let (id, revocation_info) = revocation_method

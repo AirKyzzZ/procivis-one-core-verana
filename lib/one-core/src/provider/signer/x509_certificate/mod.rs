@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
 use dto::{Params, RequestData};
+use proc_macros::Provider;
 use rcgen::{BasicConstraints, CertificateParams, IsCa, KeyUsagePurpose, PublicKeyData};
-use shared_types::Permission;
+use shared_types::{Permission, SignerId};
 use uuid::Uuid;
 
 use crate::config::core_config::{IdentifierType, KeyAlgorithmType, RevocationType};
@@ -28,8 +29,9 @@ use crate::validator::permissions::RequiredPermissions;
 pub(crate) mod dto;
 mod mapper;
 
+#[derive(Provider)]
 pub(crate) struct X509CertificateSigner {
-    config_name: String,
+    config_name: SignerId,
     params: Params,
     key_provider: Arc<dyn KeyProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
@@ -38,7 +40,7 @@ pub(crate) struct X509CertificateSigner {
 
 impl X509CertificateSigner {
     pub fn new(
-        config_name: String,
+        config_name: SignerId,
         params: Params,
         key_provider: Arc<dyn KeyProvider>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
@@ -56,6 +58,10 @@ impl X509CertificateSigner {
 
 #[async_trait::async_trait]
 impl Signer for X509CertificateSigner {
+    fn config_name(&self) -> &SignerId {
+        &self.config_name
+    }
+
     fn get_capabilities(&self) -> SignerCapabilities {
         let mut features = vec![Feature::SupportsCaSigned];
         if self.params.payload.allow_ca_signing {
@@ -113,7 +119,7 @@ impl Signer for X509CertificateSigner {
                         key,
                     },
                     RevocationInfo {
-                        config_name: self.config_name.clone(),
+                        config_name: self.config_name.to_owned(),
                         revocation_method: self.revocation_method(),
                     },
                     self.key_provider.clone(),

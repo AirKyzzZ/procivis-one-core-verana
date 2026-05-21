@@ -7,8 +7,6 @@ use crate::model::identifier::IdentifierType;
 
 #[derive(Debug, Error)]
 pub enum SignatureServiceError {
-    #[error("Missing provider for signature type `{0}`")]
-    MissingSignerProvider(String),
     #[error("Invalid signature id {0}")]
     InvalidSignatureId(Uuid),
     #[error("Identifier {0} not found")]
@@ -26,7 +24,6 @@ pub enum SignatureServiceError {
 impl ErrorCodeMixin for SignatureServiceError {
     fn error_code(&self) -> ErrorCode {
         match self {
-            Self::MissingSignerProvider { .. } => ErrorCode::BR_0326,
             Self::InvalidSignatureId(_) => ErrorCode::BR_0327,
             Self::UnsupportedIdentifierType(_) => ErrorCode::BR_0330,
             Self::IdentifierNotFound(_) => ErrorCode::BR_0207,

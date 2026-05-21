@@ -371,11 +371,7 @@ impl IdentifierCreatorProto {
                     return Err(Error::InvalidSignerType(signer_type));
                 }
 
-                let signer = self
-                    .signer_provider
-                    .get(&content.signer)
-                    .ok_or(MissingProviderError::Signer(content.signer.clone()))
-                    .error_while("getting signer")?;
+                let signer = self.signer_provider.get(&content.signer)?;
 
                 let identifier = self
                     .identifier_repository
@@ -518,11 +514,7 @@ impl IdentifierCreatorProto {
                     return Err(Error::InvalidSignerType(signer_type));
                 }
 
-                let signer = self
-                    .signer_provider
-                    .get(&self_signed.signer)
-                    .ok_or(MissingProviderError::Signer(self_signed.signer.clone()))
-                    .error_while("getting signer")?;
+                let signer = self.signer_provider.get(&self_signed.signer)?;
 
                 signer
                     .sign(

@@ -8,7 +8,7 @@ use futures::FutureExt;
 use rcgen::KeyUsagePurpose;
 use resolver::{StatusListCacheEntry, StatusListResolver};
 use serde::{Deserialize, Serialize};
-use shared_types::{RevocationListEntryId, RevocationListId, RevocationMethodId};
+use shared_types::{RevocationListEntryId, RevocationListId, RevocationMethodId, SignerId};
 use uuid::Uuid;
 
 use self::resolver::StatusListCachingLoader;
@@ -470,7 +470,7 @@ impl RevocationMethod for TokenStatusList {
 
     async fn add_signature<'a>(
         &self,
-        signature_type: String,
+        signature_type: SignerId,
         issuer: &'a Identifier,
         certificate: Option<&'a Certificate>,
     ) -> Result<(RevocationListEntryId, CredentialRevocationInfo), RevocationError> {

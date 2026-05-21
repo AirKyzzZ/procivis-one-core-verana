@@ -5,9 +5,10 @@ mod test;
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use proc_macros::Provider;
 use serde::Deserialize;
 use serde::de::Error;
-use shared_types::{Permission, RevocationMethodId};
+use shared_types::{Permission, RevocationMethodId, SignerId};
 use time::Duration;
 use url::Url;
 use uuid::Uuid;
@@ -51,8 +52,9 @@ pub struct PayloadParams {
     pub max_validity_duration: i64,
 }
 
+#[derive(Provider)]
 pub struct RegistrationCertificate {
-    config_key: String,
+    config_key: SignerId,
     params: Params,
     clock: Arc<dyn Clock>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
@@ -63,7 +65,7 @@ pub struct RegistrationCertificate {
 
 impl RegistrationCertificate {
     pub fn new(
-        config_name: String,
+        config_name: SignerId,
         params: Params,
         clock: Arc<dyn Clock>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
@@ -94,7 +96,7 @@ impl RegistrationCertificate {
                 ))?;
         let (id, revocation_info) = revocation_method
             .add_signature(
-                self.config_key.clone(),
+                self.config_key.to_owned(),
                 identifier,
                 selected_key.certificate(),
             )
@@ -111,6 +113,10 @@ impl RegistrationCertificate {
 
 #[async_trait]
 impl Signer for RegistrationCertificate {
+    fn config_name(&self) -> &SignerId {
+        &self.config_key
+    }
+
     fn get_capabilities(&self) -> SignerCapabilities {
         use crate::config::core_config::IdentifierType;
         SignerCapabilities {

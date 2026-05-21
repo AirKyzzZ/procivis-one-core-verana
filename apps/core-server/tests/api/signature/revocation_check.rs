@@ -13,7 +13,7 @@ async fn test_sign_wrprc_success() {
         .revocation_lists
         .create_entry(
             revocation_list.id,
-            RevocationListEntityId::Signature("SIGNATURE_TYPE".to_string(), None),
+            RevocationListEntityId::Signature("SIGNATURE_TYPE".into(), None),
             Some(0),
         )
         .await;
@@ -22,7 +22,7 @@ async fn test_sign_wrprc_success() {
         .revocation_lists
         .create_entry(
             revocation_list.id,
-            RevocationListEntityId::Signature("OTHER_SIGNATURE_TYPE".to_string(), None),
+            RevocationListEntityId::Signature("OTHER_SIGNATURE_TYPE".into(), None),
             Some(1),
         )
         .await;

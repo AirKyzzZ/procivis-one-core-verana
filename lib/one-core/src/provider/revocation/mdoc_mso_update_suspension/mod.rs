@@ -1,7 +1,7 @@
 //! Implementation of ISO mDL (ISO/IEC 18013-5:2021).
 //! https://www.iso.org/standard/69084.html
 
-use shared_types::{RevocationListEntryId, RevocationListId};
+use shared_types::{RevocationListEntryId, RevocationListId, SignerId};
 
 use super::model::{CredentialRevocationInfo, Operation};
 use crate::model::certificate::Certificate;
@@ -88,7 +88,7 @@ impl RevocationMethod for MdocMsoUpdateSuspensionRevocation {
 
     async fn add_signature<'a>(
         &self,
-        _signature_type: String,
+        _signature_type: SignerId,
         _issuer: &'a Identifier,
         _certificate: Option<&'a Certificate>,
     ) -> Result<(RevocationListEntryId, CredentialRevocationInfo), RevocationError> {

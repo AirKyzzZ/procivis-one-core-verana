@@ -260,7 +260,7 @@ async fn test_create_signature_entry_with_serial() {
         .create_entry(
             setup.list_id,
             RevocationListEntityId::Signature(
-                "type".to_string(),
+                "type".into(),
                 Some(vec![0x00, 0x01].try_into().unwrap()),
             ),
             None,
@@ -277,7 +277,7 @@ async fn test_create_signature_entry_with_index() {
         .provider
         .create_entry(
             setup.list_id,
-            RevocationListEntityId::Signature("type".to_string(), None),
+            RevocationListEntityId::Signature("type".into(), None),
             Some(0),
         )
         .await
@@ -293,7 +293,7 @@ async fn test_create_certificate_entry_fail_with_both_serial_and_index() {
         .create_entry(
             setup.list_id,
             RevocationListEntityId::Signature(
-                "type".to_string(),
+                "type".into(),
                 Some(vec![0x00, 0x01].try_into().unwrap()),
             ),
             Some(0),

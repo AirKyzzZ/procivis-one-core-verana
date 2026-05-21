@@ -17,7 +17,7 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{Value, json};
 use serde_with::{DurationSeconds, serde_as, skip_serializing_none};
-use shared_types::{CredentialFormat, RevocationMethodId, TaskId, TrustListSubscriberId};
+use shared_types::{CredentialFormat, RevocationMethodId, SignerId, TaskId, TrustListSubscriberId};
 use strum::{AsRefStr, Display, EnumString};
 use time::Duration;
 
@@ -838,7 +838,7 @@ pub struct CertificateValidationConfig {
     pub leeway: time::Duration,
 }
 
-pub type SignerConfig = ConfigBlock<String, SignerType>;
+pub type SignerConfig = ConfigBlock<SignerId, SignerType>;
 
 #[derive(
     Debug,
