@@ -575,7 +575,7 @@ async fn test_run_task_holder_check_credential_status_with_params_none_existing_
         .create(
             Some(organisation.clone()),
             TestingDidParams {
-                did_method: Some("KEY".to_string()),
+                did_method: Some("KEY".into()),
                 did: Some(
                     "did:key:z6MkktrwmJpuMHHkkqY3g5xUP6KKB1eXxLo6KZDZ5LpfBhrc"
                         .parse()
@@ -610,7 +610,7 @@ async fn test_run_task_holder_check_credential_status_with_params_none_existing_
         .create(
             Some(organisation.clone()),
             TestingDidParams {
-                did_method: Some("KEY".to_string()),
+                did_method: Some("KEY".into()),
                 did: Some(
                     "did:key:z6MkhhtucZ67S8yAvHPoJtMVx28z3BfcPN1gpjfni5DT7qSe"
                         .parse()

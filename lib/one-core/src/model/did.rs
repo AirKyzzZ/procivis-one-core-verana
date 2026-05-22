@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use shared_types::{DidId, DidValue, KeyId, OrganisationId};
+use shared_types::{DidId, DidMethodId, DidValue, KeyId, OrganisationId};
 use strum::Display;
 use time::OffsetDateTime;
 
@@ -51,7 +51,7 @@ pub struct Did {
     pub name: String,
     pub did: DidValue,
     pub did_type: DidType,
-    pub did_method: String,
+    pub did_method: DidMethodId,
     pub deactivated: bool,
     pub log: Option<String>,
 
@@ -89,7 +89,7 @@ pub enum ExactDidFilterColumn {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum DidFilterValue {
     Name(StringMatch),
-    Method(String),
+    Method(DidMethodId),
     Type(DidType),
     Did(StringMatch),
     OrganisationId(OrganisationId),
@@ -98,7 +98,7 @@ pub enum DidFilterValue {
     KeyRoles(Vec<KeyRole>),
     KeyStorages(Vec<String>),
     KeyIds(Vec<KeyId>),
-    DidMethods(Vec<String>),
+    DidMethods(Vec<DidMethodId>),
 }
 
 impl DidFilterValue {

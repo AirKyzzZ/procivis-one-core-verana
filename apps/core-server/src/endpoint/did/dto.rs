@@ -9,7 +9,7 @@ use one_dto_mapper::{
 };
 use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
-use shared_types::{DidId, DidValue, KeyId, OrganisationId};
+use shared_types::{DidId, DidMethodId, DidValue, KeyId, OrganisationId};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 
@@ -49,7 +49,7 @@ pub(crate) struct DidListItemResponseRestDTO {
     #[serde(rename = "type")]
     pub did_type: DidType,
     #[serde(rename = "method")]
-    pub did_method: String,
+    pub did_method: DidMethodId,
     pub deactivated: bool,
 }
 
@@ -79,7 +79,7 @@ pub(crate) struct DidResponseRestDTO {
     pub did_type: DidType,
     #[try_from(infallible)]
     #[serde(rename = "method")]
-    pub did_method: String,
+    pub did_method: DidMethodId,
     pub keys: DidResponseKeysRestDTO,
     #[try_from(infallible)]
     pub deactivated: bool,
@@ -120,7 +120,7 @@ pub(crate) struct CreateDidRequestRestDTO {
     /// instance.
     #[schema(example = "WEB")]
     #[try_into(infallible, rename = "did_method")]
-    pub method: String,
+    pub method: DidMethodId,
     #[try_into(infallible)]
     pub keys: CreateDidRequestKeysRestDTO,
     /// The parameters passed into the DID method.
@@ -231,7 +231,7 @@ pub(crate) struct DidFilterQueryParamsRest {
     /// of the configuration for supported options.
     #[try_into(infallible)]
     #[param(rename = "didMethods[]", nullable = false)]
-    pub did_methods: Option<Vec<String>>,
+    pub did_methods: Option<Vec<DidMethodId>>,
 }
 
 #[options_not_nullable]

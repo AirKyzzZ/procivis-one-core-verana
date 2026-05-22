@@ -42,9 +42,7 @@ impl IdentifierCreatorProto {
                 let did_method = self
                     .did_method_provider
                     .get_did_method_id(did_value)
-                    .ok_or(MissingProviderError::DidMethod(
-                        did_value.method().to_string(),
-                    ))
+                    .ok_or(MissingProviderError::DidMethod(did_value.method().into()))
                     .error_while("getting did provider")?;
                 let did = Did {
                     id: DidId::from(id),

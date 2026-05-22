@@ -36,7 +36,7 @@ impl DidsDB {
                 .did
                 .unwrap_or(DidValue::from_str(&format!("did:test:{did_id}")).unwrap()),
             did_type: params.did_type.unwrap_or(DidType::Local),
-            did_method: params.did_method.unwrap_or("KEY".to_string()),
+            did_method: params.did_method.unwrap_or("KEY".into()),
             deactivated: params.deactivated.unwrap_or(false),
             keys: params.keys.unwrap_or_default().into(),
             log: params.log,

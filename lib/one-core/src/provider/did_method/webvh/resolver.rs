@@ -129,6 +129,7 @@ mod test {
     use mockall::predicate::eq;
     use serde_json::json;
     use serde_json_path::JsonPath;
+    use shared_types::DidMethodId;
     use similar_asserts::assert_eq;
     use standardized_types::jwk::{PublicJwk, PublicJwkEc};
     use time::macros::datetime;
@@ -541,18 +542,18 @@ mod test {
                 .unwrap())
         }
 
-        fn get_did_method(&self, _did_method_id: &str) -> Option<Arc<dyn DidMethod>> {
+        fn get_did_method(&self, _did_method_id: &DidMethodId) -> Option<Arc<dyn DidMethod>> {
             unimplemented!()
         }
 
-        fn get_did_method_id(&self, _did: &DidValue) -> Option<String> {
+        fn get_did_method_id(&self, _did: &DidValue) -> Option<DidMethodId> {
             unimplemented!()
         }
 
         fn get_did_method_by_method_name(
             &self,
             _method_name: &str,
-        ) -> Option<(String, Arc<dyn DidMethod>)> {
+        ) -> Option<(DidMethodId, Arc<dyn DidMethod>)> {
             unimplemented!()
         }
 

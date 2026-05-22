@@ -1,6 +1,6 @@
 use one_dto_mapper::Into;
 use serde::{Deserialize, Serialize};
-use shared_types::{IdentifierId, KeyId, OrganisationId};
+use shared_types::{DidMethodId, IdentifierId, KeyId, OrganisationId};
 use strum::{AsRefStr, Display};
 use time::OffsetDateTime;
 
@@ -104,7 +104,7 @@ pub enum IdentifierFilterValue {
     Types(Vec<IdentifierType>),
     States(Vec<IdentifierState>),
     OrganisationId(OrganisationId),
-    DidMethods(Vec<String>),
+    DidMethods(Vec<DidMethodId>),
     IsRemote(bool),
     KeyAlgorithms(Vec<String>),
     KeyRoles(Vec<KeyRole>),

@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use shared_types::{
-    CredentialSchemaId, IdentifierId, KeyId, OrganisationId, ProofSchemaId, SignerId,
+    CredentialSchemaId, DidMethodId, IdentifierId, KeyId, OrganisationId, ProofSchemaId, SignerId,
     TrustCollectionId, TrustListSubscriberId, TrustListSubscriptionId,
 };
 use time::OffsetDateTime;
@@ -54,7 +54,7 @@ pub struct IdentifierFilterParamsDTO {
     pub name: Option<String>,
     pub types: Option<Vec<IdentifierType>>,
     pub states: Option<Vec<IdentifierState>>,
-    pub did_methods: Option<Vec<String>>,
+    pub did_methods: Option<Vec<DidMethodId>>,
     pub is_remote: Option<bool>,
     pub key_algorithms: Option<Vec<String>>,
     pub key_roles: Option<Vec<KeyRole>>,
@@ -116,7 +116,7 @@ pub struct CreateIdentifierTrustInformationRequestDTO {
 #[derive(Clone, Debug)]
 pub struct CreateIdentifierDidRequestDTO {
     pub name: Option<String>,
-    pub method: String,
+    pub method: DidMethodId,
     pub keys: CreateDidRequestKeysDTO,
     pub params: Option<serde_json::Value>,
 }

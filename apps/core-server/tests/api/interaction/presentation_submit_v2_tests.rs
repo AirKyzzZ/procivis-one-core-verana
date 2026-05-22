@@ -309,7 +309,7 @@ async fn setup_submittable_presentation_dcql(
         &context.db.db_conn,
         organisation,
         Some(TestingDidParams {
-            did_method: Some("KEY".to_string()),
+            did_method: Some("KEY".into()),
             did: Some(
                 "did:key:zDnaeTDHP1rEYDFKYtQtH9Yx6Aycyxj7y9PXYDSeDKHnWUFP6"
                     .parse()

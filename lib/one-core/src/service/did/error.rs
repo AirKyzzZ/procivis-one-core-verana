@@ -1,4 +1,4 @@
-use shared_types::{DidId, KeyId, OrganisationId};
+use shared_types::{DidId, DidMethodId, KeyId, OrganisationId};
 
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 
@@ -7,7 +7,7 @@ pub enum DidServiceError {
     #[error("Did `{0}` not found")]
     NotFound(DidId),
     #[error("Invalid DID method: {method}")]
-    InvalidMethod { method: String },
+    InvalidMethod { method: DidMethodId },
     #[error("DID {0} is deactivated")]
     Deactivated(DidId),
 
@@ -19,11 +19,11 @@ pub enum DidServiceError {
     MissingKey(KeyId),
 
     #[error("DID {method} already has the same value `{value}` for deactivated field")]
-    DeactivatedSameValue { value: bool, method: String },
+    DeactivatedSameValue { value: bool, method: DidMethodId },
     #[error("DID method {method} cannot be deactivated")]
-    CannotBeDeactivated { method: String },
+    CannotBeDeactivated { method: DidMethodId },
     #[error("DID method {method} cannot be reactivated")]
-    CannotBeReactivated { method: String },
+    CannotBeReactivated { method: DidMethodId },
     #[error("Remote DID cannot be deactivated")]
     RemoteDid,
 

@@ -473,7 +473,7 @@ async fn test_create_local_identifier_did() {
             CreateLocalIdentifierRequest::Did(CreateDidRequestDTO {
                 name: "did-name".to_string(),
                 organisation_id: organisation.id,
-                did_method: "KEY".to_string(),
+                did_method: "KEY".into(),
                 keys: CreateDidRequestKeysDTO {
                     authentication: vec![key_id],
                     assertion_method: vec![key_id],
@@ -567,7 +567,7 @@ async fn test_create_local_identifier_did_did_value_already_exists() {
             CreateLocalIdentifierRequest::Did(CreateDidRequestDTO {
                 name: "did-name".to_string(),
                 organisation_id: organisation.id,
-                did_method: "KEY".to_string(),
+                did_method: "KEY".into(),
                 keys: CreateDidRequestKeysDTO {
                     authentication: vec![key_id],
                     assertion_method: vec![key_id],
@@ -618,7 +618,7 @@ async fn test_create_local_identifier_did_invalid_num_keys() {
             CreateLocalIdentifierRequest::Did(CreateDidRequestDTO {
                 name: "did-name".to_string(),
                 organisation_id: organisation.id,
-                did_method: "KEY".to_string(),
+                did_method: "KEY".into(),
                 keys: CreateDidRequestKeysDTO {
                     authentication: vec![key_id],
                     assertion_method: vec![key_id],

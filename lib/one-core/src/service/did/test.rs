@@ -66,7 +66,7 @@ async fn test_get_did_exists() {
         organisation: Some(dummy_organisation(None).into()),
         did: "did:key:abc".parse().unwrap(),
         did_type: DidType::Local,
-        did_method: "KEY".to_string(),
+        did_method: "KEY".into(),
         keys: vec![RelatedKey {
             role: KeyRole::Authentication,
             key: Key {
@@ -144,7 +144,7 @@ async fn test_get_did_list() {
         organisation: Some(dummy_organisation(Some(organisation_id)).into()),
         did: "did:key:abc".parse().unwrap(),
         did_type: DidType::Local,
-        did_method: "KEY".to_string(),
+        did_method: "KEY".into(),
         keys: Default::default(),
         deactivated: false,
         log: None,
@@ -210,7 +210,7 @@ async fn test_create_did_success() {
     let create_request = CreateDidRequestDTO {
         name: "name".to_string(),
         organisation_id: Uuid::new_v4().into(),
-        did_method: "KEY".to_string(),
+        did_method: "KEY".into(),
         keys: CreateDidRequestKeysDTO {
             authentication: vec![key_id.into()],
             assertion_method: vec![],
@@ -261,7 +261,7 @@ async fn test_update_did() {
         organisation: Some(dummy_organisation(None).into()),
         did: "did:web:abc".parse().unwrap(),
         did_type: DidType::Local,
-        did_method: "KEY".to_string(),
+        did_method: "KEY".into(),
         keys: Default::default(),
         deactivated: false,
         log: None,
@@ -330,7 +330,7 @@ async fn test_update_did_fail_reactivation() {
         organisation: Some(dummy_organisation(None).into()),
         did: "did:web:abc".parse().unwrap(),
         did_type: DidType::Local,
-        did_method: "KEY".to_string(),
+        did_method: "KEY".into(),
         keys: Default::default(),
         deactivated: true,
         log: None,
@@ -420,7 +420,7 @@ async fn test_did_ops_session_org_mismatch() {
         organisation: Some(dummy_organisation(None).into()),
         did: "did:web:abc".parse().unwrap(),
         did_type: DidType::Local,
-        did_method: "KEY".to_string(),
+        did_method: "KEY".into(),
         keys: Default::default(),
         deactivated: false,
         log: None,

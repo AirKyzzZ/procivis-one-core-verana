@@ -36,6 +36,7 @@ use crate::proto::http_client::HttpClient;
 use crate::provider::caching_loader::json_ld_context::{ContextCache, JsonLdCachingLoader};
 use crate::provider::credential_formatter::mapper::default_2_years;
 use crate::provider::data_type::provider::DataTypeProvider;
+use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::util::key_selection::SelectedKey;
@@ -49,6 +50,7 @@ pub struct JsonLdClassic {
     caching_loader: ContextCache,
     data_type_provider: Arc<dyn DataTypeProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    did_method_provider: Arc<dyn DidMethodProvider>,
     params: Params,
 }
 
@@ -351,6 +353,7 @@ impl CredentialFormatter for JsonLdClassic {
         let issuer_identifier = prepare_identifier(
             &IdentifierDetails::Did(vcdm.issuer.to_did_value()?),
             self.key_algorithm_provider.as_ref(),
+            self.did_method_provider.as_ref(),
             organisation.to_owned(),
         )?;
 
@@ -364,7 +367,12 @@ impl CredentialFormatter for JsonLdClassic {
             .and_then(|id| DidValue::from_did_url(id).ok())
             .map(IdentifierDetails::Did)
             .map(|details| {
-                prepare_identifier(&details, self.key_algorithm_provider.as_ref(), organisation)
+                prepare_identifier(
+                    &details,
+                    self.key_algorithm_provider.as_ref(),
+                    self.did_method_provider.as_ref(),
+                    organisation,
+                )
             })
             .transpose()?;
 
@@ -405,6 +413,7 @@ impl JsonLdClassic {
         caching_loader: JsonLdCachingLoader,
         data_type_provider: Arc<dyn DataTypeProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+        did_method_provider: Arc<dyn DidMethodProvider>,
         client: Arc<dyn HttpClient>,
     ) -> Self {
         Self {
@@ -413,6 +422,7 @@ impl JsonLdClassic {
             caching_loader: ContextCache::new(caching_loader, client),
             data_type_provider,
             key_algorithm_provider,
+            did_method_provider,
         }
     }
 

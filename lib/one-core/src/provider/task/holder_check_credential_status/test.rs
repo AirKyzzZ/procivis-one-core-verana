@@ -217,7 +217,7 @@ fn generic_credential() -> Credential {
         organisation: Some(organisation.clone().into()),
         did: "did:example:1".parse().unwrap(),
         did_type: DidType::Local,
-        did_method: "KEY".to_string(),
+        did_method: "KEY".into(),
         keys: vec![RelatedKey {
             role: KeyRole::AssertionMethod,
             key: Key {

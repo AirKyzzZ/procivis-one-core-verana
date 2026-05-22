@@ -219,7 +219,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc_array_claim() {
         &context.db.db_conn,
         &organisation,
         Some(TestingDidParams {
-            did_method: Some("KEY".to_string()),
+            did_method: Some("KEY".into()),
             did: Some(
                 "did:key:zDnaeTDHP1rEYDFKYtQtH9Yx6Aycyxj7y9PXYDSeDKHnWUFP6"
                     .parse()
@@ -664,7 +664,7 @@ async fn setup_submittable_presentation(
                 &context.db.db_conn,
                 organisation,
                 Some(TestingDidParams {
-                    did_method: Some("KEY".to_string()),
+                    did_method: Some("KEY".into()),
                     did: Some(
                         "did:key:zDnaeTDHP1rEYDFKYtQtH9Yx6Aycyxj7y9PXYDSeDKHnWUFP6"
                             .parse()
@@ -852,7 +852,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
         .create(
             Some(organisation.to_owned()),
             TestingDidParams {
-                did_method: Some("KEY".to_string()),
+                did_method: Some("KEY".into()),
                 did: Some(
                     "did:key:zDnaeTDHP1rEYDFKYtQtH9Yx6Aycyxj7y9PXYDSeDKHnWUFP6"
                         .parse()
@@ -1303,7 +1303,7 @@ async fn setup_submittable_presentation_dcql(
         &context.db.db_conn,
         organisation,
         Some(TestingDidParams {
-            did_method: Some("KEY".to_string()),
+            did_method: Some("KEY".into()),
             did: Some(
                 "did:key:zDnaeTDHP1rEYDFKYtQtH9Yx6Aycyxj7y9PXYDSeDKHnWUFP6"
                     .parse()

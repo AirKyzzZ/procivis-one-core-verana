@@ -24,7 +24,7 @@ async fn test_get_did_web_document_ecdsa_success() {
         Some(TestingDidParams {
             did: Some(format!("did:web:{id}").parse().unwrap()),
             id: Some(id.into()),
-            did_method: Some("WEB".to_string()),
+            did_method: Some("WEB".into()),
             keys: Some(vec![
                 RelatedKey {
                     role: KeyRole::Authentication,
@@ -119,7 +119,7 @@ async fn test_get_did_web_document_eddsa_success() {
         &organisation,
         Some(TestingDidParams {
             did: Some("did:web:test".parse().unwrap()),
-            did_method: Some("WEB".to_string()),
+            did_method: Some("WEB".into()),
             keys: Some(vec![
                 RelatedKey {
                     role: KeyRole::Authentication,
@@ -216,7 +216,7 @@ async fn test_get_did_web_document_deactivated() {
         &db_conn,
         &organisation,
         Some(TestingDidParams {
-            did_method: Some("WEB".to_string()),
+            did_method: Some("WEB".into()),
             deactivated: Some(true),
             ..Default::default()
         }),

@@ -92,6 +92,7 @@ pub(crate) fn credential_formatter_provider_from_config(
                 Arc::new(JWTFormatter::new(
                     params,
                     key_algorithm_provider.clone(),
+                    did_method_provider.clone(),
                     data_type_provider.clone(),
                 ))
             }
@@ -128,6 +129,7 @@ pub(crate) fn credential_formatter_provider_from_config(
                     json_ld_cache.clone(),
                     data_type_provider.clone(),
                     key_algorithm_provider.clone(),
+                    did_method_provider.clone(),
                     client.clone(),
                 ))
             }

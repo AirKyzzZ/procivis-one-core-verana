@@ -8,6 +8,7 @@ mod credential_schema_format_claim_schema_id;
 mod credential_schema_format_id;
 mod credential_schema_id;
 mod did_id;
+mod did_method_id;
 mod did_value;
 mod entity_id;
 mod history_id;
@@ -52,6 +53,7 @@ pub use credential_schema_format_claim_schema_id::CredentialSchemaFormatClaimSch
 pub use credential_schema_format_id::CredentialSchemaFormatId;
 pub use credential_schema_id::CredentialSchemaId;
 pub use did_id::DidId;
+pub use did_method_id::DidMethodId;
 pub use did_value::{DidValue, DidValueError};
 pub use entity_id::EntityId;
 pub use history_id::HistoryId;

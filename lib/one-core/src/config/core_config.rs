@@ -17,7 +17,9 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{Value, json};
 use serde_with::{DurationSeconds, serde_as, skip_serializing_none};
-use shared_types::{CredentialFormat, RevocationMethodId, SignerId, TaskId, TrustListSubscriberId};
+use shared_types::{
+    CredentialFormat, DidMethodId, RevocationMethodId, SignerId, TaskId, TrustListSubscriberId,
+};
 use strum::{AsRefStr, Display, EnumString};
 use time::Duration;
 
@@ -402,7 +404,7 @@ pub enum RevocationType {
     CRL,
 }
 
-pub type DidConfig = ConfigBlock<String, DidType>;
+pub type DidConfig = ConfigBlock<DidMethodId, DidType>;
 
 #[derive(
     Debug,

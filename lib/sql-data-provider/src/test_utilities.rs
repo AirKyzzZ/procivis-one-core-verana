@@ -13,9 +13,10 @@ use sea_orm::ActiveValue::NotSet;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
 use shared_types::{
     BlobId, CertificateId, ClaimId, ClaimSchemaId, CredentialId, CredentialSchemaFormatId,
-    CredentialSchemaId, DidId, DidValue, EntityId, HistoryId, IdentifierId, InteractionId, KeyId,
-    NonceId, OrganisationId, ProofId, ProofSchemaId, RevocationListEntryId, RevocationListId,
-    RevocationMethodId, TrustCollectionId, WalletInstanceAttestedKeyId, WalletInstanceId,
+    CredentialSchemaId, DidId, DidMethodId, DidValue, EntityId, HistoryId, IdentifierId,
+    InteractionId, KeyId, NonceId, OrganisationId, ProofId, ProofSchemaId, RevocationListEntryId,
+    RevocationListId, RevocationMethodId, TrustCollectionId, WalletInstanceAttestedKeyId,
+    WalletInstanceId,
 };
 use similar_asserts::assert_eq;
 use standardized_types::jwk::PublicJwk;
@@ -482,7 +483,7 @@ pub async fn insert_did(
     did_id: DidId,
     did: DidValue,
     organisation_id: OrganisationId,
-    method: impl Into<String>,
+    method: impl Into<DidMethodId>,
     did_type: DidType,
     deactivated: impl Into<Option<bool>>,
 ) -> Result<DidId, DbErr> {

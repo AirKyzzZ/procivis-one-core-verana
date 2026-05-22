@@ -1,7 +1,8 @@
 use one_crypto::CryptoProviderError;
 use shared_types::{
-    CredentialId, CredentialSchemaId, DidId, DidValue, IdentifierId, InteractionId, OrganisationId,
-    ProofId, RevocationListEntryId, RevocationMethodId, TaskId, TrustListSubscriberId,
+    CredentialId, CredentialSchemaId, DidId, DidMethodId, DidValue, IdentifierId, InteractionId,
+    OrganisationId, ProofId, RevocationListEntryId, RevocationMethodId, TaskId,
+    TrustListSubscriberId,
 };
 use thiserror::Error;
 
@@ -84,7 +85,7 @@ pub enum BusinessLogicError {
     OrganisationNotSpecified,
 
     #[error("Invalid DID method: {method}")]
-    InvalidDidMethod { method: String },
+    InvalidDidMethod { method: DidMethodId },
 
     #[error("Invalid Credential state: {state}")]
     InvalidCredentialState { state: CredentialStateEnum },
@@ -179,7 +180,7 @@ pub enum MissingProviderError {
     KeyStorage(String),
 
     #[error("Cannot find `{0}` in did method provider")]
-    DidMethod(String),
+    DidMethod(DidMethodId),
 
     #[error("Cannot find `{0}` in revocation method provider")]
     RevocationMethod(RevocationMethodId),

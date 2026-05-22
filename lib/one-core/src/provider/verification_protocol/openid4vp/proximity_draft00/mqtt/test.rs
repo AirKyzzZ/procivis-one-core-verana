@@ -167,7 +167,7 @@ async fn test_handle_invitation_success() {
                     name: "did".to_string(),
                     did: did.did_value().unwrap().to_owned(),
                     did_type: DidType::Remote,
-                    did_method: "KEY".to_string(),
+                    did_method: "KEY".into(),
                     deactivated: false,
                     keys: Default::default(),
                     organisation: None,

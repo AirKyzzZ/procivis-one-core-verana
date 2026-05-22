@@ -140,7 +140,7 @@ async fn test_create_did() {
             did_type: DidType::Local,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
-            did_method: "KEY".to_string(),
+            did_method: "KEY".into(),
             keys: vec![RelatedKey {
                 role: KeyRole::Authentication,
                 key,
@@ -190,7 +190,7 @@ async fn test_create_did_invalid_organisation() {
             did_type: DidType::Local,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
-            did_method: "KEY".to_string(),
+            did_method: "KEY".into(),
             keys: Default::default(),
             deactivated: false,
             log: None,
@@ -218,7 +218,7 @@ async fn test_get_did_by_value_existing_inside_organisation() {
 
     let content = result.unwrap().unwrap();
     assert_eq!(content.id, did_id);
-    assert_eq!(content.did_method, "KEY");
+    assert_eq!(content.did_method, "KEY".into());
     assert_eq!(content.did_type, DidType::Local);
     assert_eq!(content.did, did_value);
     assert_eq!(content.name, did_name);
@@ -308,7 +308,7 @@ async fn test_get_did_existing() {
 
     let content = result.unwrap().unwrap();
     assert_eq!(content.id, did_id);
-    assert_eq!(content.did_method, "KEY");
+    assert_eq!(content.did_method, "KEY".into());
     assert_eq!(content.did_type, DidType::Local);
     assert_eq!(content.did, did_value);
     assert_eq!(content.name, did_name);
@@ -576,7 +576,7 @@ async fn test_get_did_list_sorting() {
         last_modified: Set(get_dummy_date()),
         name: Set("a".to_owned()),
         type_field: Set(did::DidType::Local),
-        method: Set("KEY".to_string()),
+        method: Set("KEY".into()),
         organisation_id: Set(Some(organisation.id)),
         deactivated: Set(false),
         deleted_at: NotSet,
@@ -593,7 +593,7 @@ async fn test_get_did_list_sorting() {
         last_modified: Set(get_dummy_date()),
         name: Set("b".to_owned()),
         type_field: Set(did::DidType::Local),
-        method: Set("KEY".to_string()),
+        method: Set("KEY".into()),
         organisation_id: Set(Some(organisation.id)),
         deactivated: Set(false),
         deleted_at: NotSet,
@@ -764,7 +764,7 @@ async fn test_get_did_list_complex_filter_condition() {
         last_modified: Set(get_dummy_date()),
         name: Set("a".to_owned()),
         type_field: Set(did::DidType::Local),
-        method: Set("KEY".to_string()),
+        method: Set("KEY".into()),
         organisation_id: Set(Some(organisation.id)),
         deactivated: Set(false),
         deleted_at: NotSet,
@@ -781,7 +781,7 @@ async fn test_get_did_list_complex_filter_condition() {
         last_modified: Set(get_dummy_date()),
         name: Set("b".to_owned()),
         type_field: Set(did::DidType::Local),
-        method: Set("KEY".to_string()),
+        method: Set("KEY".into()),
         organisation_id: Set(Some(organisation.id)),
         deactivated: Set(false),
         deleted_at: NotSet,

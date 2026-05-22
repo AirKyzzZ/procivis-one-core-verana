@@ -644,7 +644,7 @@ async fn test_get_client_metadata_success() {
                 ),
                 did: "did:example:1".parse().unwrap(),
                 did_type: DidType::Local,
-                did_method: "KEY".to_string(),
+                did_method: "KEY".into(),
                 keys: vec![RelatedKey {
                     role: KeyRole::KeyAgreement,
                     key: verifier_key.clone(),

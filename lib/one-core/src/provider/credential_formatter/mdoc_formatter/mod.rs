@@ -515,6 +515,7 @@ impl CredentialFormatter for MdocFormatter {
         let issuer_identifier = prepare_identifier(
             &IdentifierDetails::Certificate(issuer_certificate),
             self.key_algorithm_provider.as_ref(),
+            self.did_method_provider.as_ref(),
             organisation.to_owned(),
         )?;
 
@@ -522,6 +523,7 @@ impl CredentialFormatter for MdocFormatter {
         let holder_identifier = prepare_identifier(
             &IdentifierDetails::Key(holder_jwk),
             self.key_algorithm_provider.as_ref(),
+            self.did_method_provider.as_ref(),
             organisation,
         )?;
 

@@ -160,7 +160,7 @@ async fn setup_empty() -> TestSetup {
         organisation: Some(dummy_organisation(Some(organisation_id)).into()),
         did: "did:key:123".parse().unwrap(),
         did_type: one_core::model::did::DidType::Local,
-        did_method: "KEY".to_string(),
+        did_method: "KEY".into(),
         keys: Default::default(),
         deactivated: false,
         log: None,

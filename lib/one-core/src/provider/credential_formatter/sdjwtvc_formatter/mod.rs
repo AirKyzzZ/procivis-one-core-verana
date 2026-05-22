@@ -186,6 +186,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
         let issuer_identifier = prepare_identifier(
             &issuer,
             self.key_algorithm_provider.as_ref(),
+            self.did_method_provider.as_ref(),
             organisation.to_owned(),
         )?;
 
@@ -195,6 +196,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             Some(prepare_identifier(
                 &IdentifierDetails::Key(proof_of_possession_key.jwk.jwk().to_owned()),
                 self.key_algorithm_provider.as_ref(),
+                self.did_method_provider.as_ref(),
                 organisation,
             )?)
         } else {
@@ -207,7 +209,12 @@ impl CredentialFormatter for SDJWTVCFormatter {
                 .error_while("parsing subject DID")?
                 .map(IdentifierDetails::Did)
                 .map(|details| {
-                    prepare_identifier(&details, self.key_algorithm_provider.as_ref(), organisation)
+                    prepare_identifier(
+                        &details,
+                        self.key_algorithm_provider.as_ref(),
+                        self.did_method_provider.as_ref(),
+                        organisation,
+                    )
                 })
                 .transpose()?
         };

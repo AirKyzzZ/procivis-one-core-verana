@@ -29,6 +29,8 @@ use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredential
 use crate::provider::credential_formatter::{CredentialFormatter, nest_claims};
 use crate::provider::data_type::model::ExtractedClaim;
 use crate::provider::data_type::provider::MockDataTypeProvider;
+use crate::provider::did_method::MockDidMethod;
+use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::service::test_utilities::{dummy_did, dummy_identifier, dummy_organisation};
@@ -153,6 +155,7 @@ async fn create_token(include_layout: bool) -> Value {
         prepare_caching_loader(None),
         Arc::new(MockDataTypeProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
+        Arc::new(MockDidMethodProvider::new()),
         client,
     );
 
@@ -275,11 +278,17 @@ async fn test_parse_credential() {
     let hasher = Arc::new(hasher);
 
     let mut crypto = MockCryptoProvider::default();
-
     crypto
         .expect_get_hasher()
         .with(eq("sha-256"))
         .returning(move |_| Ok(hasher.clone()));
+
+    let mut did_method_provider = MockDidMethodProvider::new();
+    did_method_provider
+        .expect_get_did_method_by_method_name()
+        .times(2)
+        .returning(|name| Some((name.into(), Arc::new(MockDidMethod::new()))));
+
     let formatter = JsonLdClassic::new(
         Params {
             leeway: Duration::seconds(60),
@@ -291,6 +300,7 @@ async fn test_parse_credential() {
         prepare_caching_loader(None),
         Arc::new(datatype_provider),
         Arc::new(MockKeyAlgorithmProvider::new()),
+        Arc::new(did_method_provider),
         Arc::new(ReqwestClient::default()),
     );
 

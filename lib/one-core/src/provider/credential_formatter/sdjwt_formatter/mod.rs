@@ -369,6 +369,7 @@ impl CredentialFormatter for SDJWTFormatter {
         let issuer_identifier = prepare_identifier(
             &issuer,
             self.key_algorithm_provider.as_ref(),
+            self.did_method_provider.as_ref(),
             organisation.to_owned(),
         )?;
         let holder_identifier = parsed_credential
@@ -380,7 +381,12 @@ impl CredentialFormatter for SDJWTFormatter {
             .error_while("parsing subject DID")?
             .map(IdentifierDetails::Did)
             .map(|details| {
-                prepare_identifier(&details, self.key_algorithm_provider.as_ref(), organisation)
+                prepare_identifier(
+                    &details,
+                    self.key_algorithm_provider.as_ref(),
+                    self.did_method_provider.as_ref(),
+                    organisation,
+                )
             })
             .transpose()?;
 

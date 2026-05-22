@@ -283,7 +283,7 @@ fn test_proof(proof_id: Uuid, credential_format: CredentialFormat) -> Proof {
                 name: "did".to_string(),
                 did: "did:example:123".parse().unwrap(),
                 did_type: DidType::Local,
-                did_method: "KEY".to_string(),
+                did_method: "KEY".into(),
                 deactivated: false,
                 keys: vec![RelatedKey {
                     role: KeyRole::Authentication,

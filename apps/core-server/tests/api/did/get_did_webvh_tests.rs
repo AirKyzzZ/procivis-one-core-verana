@@ -23,7 +23,7 @@ async fn test_get_did_webvh_ok() {
             TestingDidParams {
                 log: Some(log.clone()),
                 did_type: Some(DidType::Local),
-                did_method: Some("WEBVH".to_string()),
+                did_method: Some("WEBVH".into()),
                 did: Some(did_value),
                 ..Default::default()
             },
@@ -59,7 +59,7 @@ async fn test_get_did_webvh_success_did_deactivated() {
             TestingDidParams {
                 log: Some(log.clone()),
                 did_type: Some(DidType::Local),
-                did_method: Some("WEBVH".to_string()),
+                did_method: Some("WEBVH".into()),
                 did: Some(did_value),
                 deactivated: Some(true),
                 ..Default::default()

@@ -54,7 +54,7 @@ async fn test_revoke_check_failed_if_not_holder_role() {
         .create(
             Some(organisation.clone()),
             TestingDidParams {
-                did_method: Some("KEY".to_string()),
+                did_method: Some("KEY".into()),
                 did: Some(
                     "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX"
                         .parse()
@@ -269,7 +269,7 @@ async fn test_revoke_check_success_statuslist2021() {
         .create(
             Some(organisation.clone()),
             TestingDidParams {
-                did_method: Some("KEY".to_string()),
+                did_method: Some("KEY".into()),
                 did: Some(issuer_did.parse().unwrap()),
                 ..Default::default()
             },
@@ -522,7 +522,7 @@ async fn setup_bitstring_status_list_success(
         .create(
             Some(organisation.clone()),
             TestingDidParams {
-                did_method: Some("KEY".to_string()),
+                did_method: Some("KEY".into()),
                 did: Some(issuer_did.parse().unwrap()),
                 did_type: Some(DidType::Local),
                 ..Default::default()
@@ -629,7 +629,7 @@ async fn test_revoke_check_mdoc_update() {
         .create(
             Some(organisation.clone()),
             TestingDidParams {
-                did_method: Some("KEY".to_string()),
+                did_method: Some("KEY".into()),
                 did: Some(
                     "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX"
                         .parse()
@@ -772,7 +772,7 @@ async fn test_revoke_check_mdoc_update_invalid() {
         .create(
             Some(organisation.clone()),
             TestingDidParams {
-                did_method: Some("KEY".to_string()),
+                did_method: Some("KEY".into()),
                 did: Some(
                     "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX"
                         .parse()
@@ -918,7 +918,7 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
         .create(
             Some(organisation.clone()),
             TestingDidParams {
-                did_method: Some("KEY".to_string()),
+                did_method: Some("KEY".into()),
                 did: Some(
                     "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX"
                         .parse()
@@ -1067,7 +1067,7 @@ async fn test_revoke_check_token_update() {
         .create(
             Some(organisation.clone()),
             TestingDidParams {
-                did_method: Some("KEY".to_string()),
+                did_method: Some("KEY".into()),
                 did: Some(
                     "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX"
                         .parse()
@@ -1199,7 +1199,7 @@ async fn test_revoke_check_mdoc_tokens_expired() {
         .create(
             Some(organisation.clone()),
             TestingDidParams {
-                did_method: Some("KEY".to_string()),
+                did_method: Some("KEY".into()),
                 did: Some(
                     "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX"
                         .parse()
@@ -1334,7 +1334,7 @@ async fn test_revoke_check_mdoc_fail_to_update_token_valid_mso() {
         .create(
             Some(organisation.clone()),
             TestingDidParams {
-                did_method: Some("KEY".to_string()),
+                did_method: Some("KEY".into()),
                 did: Some(
                     "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX"
                         .parse()
@@ -1455,7 +1455,7 @@ async fn test_suspended_to_valid_mdoc() {
         .create(
             Some(organisation.clone()),
             TestingDidParams {
-                did_method: Some("KEY".to_string()),
+                did_method: Some("KEY".into()),
                 did: Some(
                     "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX"
                         .parse()
@@ -1636,7 +1636,7 @@ async fn test_suspended_to_suspended_update_failed() {
         .create(
             Some(organisation.clone()),
             TestingDidParams {
-                did_method: Some("KEY".to_string()),
+                did_method: Some("KEY".into()),
                 did: Some(
                     "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX"
                         .parse()
@@ -1771,7 +1771,7 @@ async fn test_revoke_check_failed_deleted_credential() {
         .create(
             Some(organisation.clone()),
             TestingDidParams {
-                did_method: Some("KEY".to_string()),
+                did_method: Some("KEY".into()),
                 did: Some(
                     "did:key:z6MkktrwmJpuMHHkkqY3g5xUP6KKB1eXxLo6KZDZ5LpfBhrc"
                         .parse()
@@ -1927,7 +1927,7 @@ async fn minimal_mdoc_credential(params: Params) -> SerializedCredential {
                     .parse()
                     .unwrap(),
                 did_type: DidType::Local,
-                did_method: "KEY".to_string(),
+                did_method: "KEY".into(),
                 deactivated: false,
                 log: None,
                 keys: Default::default(),

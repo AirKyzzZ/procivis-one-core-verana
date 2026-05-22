@@ -213,7 +213,7 @@ fn test_verifier_proof(format: CredentialFormat, verifier_key: Option<RelatedKey
                 name: "did".to_string(),
                 did: "did:example:123".parse().unwrap(),
                 did_type: DidType::Local,
-                did_method: "KEY".to_string(),
+                did_method: "KEY".into(),
                 deactivated: false,
                 keys: verifier_key
                     .map(|k| vec![k])

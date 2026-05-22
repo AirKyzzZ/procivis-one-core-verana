@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use indexmap::IndexMap;
 use serde_json::json;
-use shared_types::DidValue;
+use shared_types::{DidMethodId, DidValue};
 
 use super::dto::DidDocumentDTO;
 use super::error::DidMethodProviderError;
@@ -32,14 +32,14 @@ use crate::repository::remote_entity_cache_repository::RemoteEntityCacheReposito
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
 pub trait DidMethodProvider: Send + Sync {
-    fn get_did_method(&self, did_method_id: &str) -> Option<Arc<dyn DidMethod>>;
+    fn get_did_method(&self, did_method_id: &DidMethodId) -> Option<Arc<dyn DidMethod>>;
 
-    fn get_did_method_id(&self, did: &DidValue) -> Option<String>;
+    fn get_did_method_id(&self, did: &DidValue) -> Option<DidMethodId>;
 
     fn get_did_method_by_method_name(
         &self,
         method_name: &str,
-    ) -> Option<(String, Arc<dyn DidMethod>)>;
+    ) -> Option<(DidMethodId, Arc<dyn DidMethod>)>;
 
     async fn resolve(&self, did: &DidValue) -> Result<DidDocument, DidMethodProviderError>;
 
@@ -48,14 +48,14 @@ pub trait DidMethodProvider: Send + Sync {
 
 struct DidMethodProviderImpl {
     caching_loader: DidCachingLoader,
-    did_methods: IndexMap<String, Arc<dyn DidMethod>>,
+    did_methods: IndexMap<DidMethodId, Arc<dyn DidMethod>>,
     resolver: Arc<DidResolver>,
 }
 
 impl DidMethodProviderImpl {
     fn new(
         caching_loader: DidCachingLoader,
-        did_methods: IndexMap<String, Arc<dyn DidMethod>>,
+        did_methods: IndexMap<DidMethodId, Arc<dyn DidMethod>>,
     ) -> Self {
         let resolver = DidResolver {
             did_methods: did_methods.clone(),
@@ -71,11 +71,11 @@ impl DidMethodProviderImpl {
 
 #[async_trait::async_trait]
 impl DidMethodProvider for DidMethodProviderImpl {
-    fn get_did_method(&self, did_method_id: &str) -> Option<Arc<dyn DidMethod>> {
+    fn get_did_method(&self, did_method_id: &DidMethodId) -> Option<Arc<dyn DidMethod>> {
         self.did_methods.get(did_method_id).cloned()
     }
 
-    fn get_did_method_id(&self, did: &DidValue) -> Option<String> {
+    fn get_did_method_id(&self, did: &DidValue) -> Option<DidMethodId> {
         self.did_methods
             .iter()
             .find(|(_, method)| {
@@ -91,7 +91,7 @@ impl DidMethodProvider for DidMethodProviderImpl {
     fn get_did_method_by_method_name(
         &self,
         method_name: &str,
-    ) -> Option<(String, Arc<dyn DidMethod>)> {
+    ) -> Option<(DidMethodId, Arc<dyn DidMethod>)> {
         self.did_methods
             .iter()
             .find(|(_, method)| {
@@ -133,8 +133,8 @@ pub(crate) fn did_method_provider_from_config(
     // sort by `order`
     did_configs.sort_by_key(|(_, fields1)| fields1.order);
 
-    let mut did_methods: IndexMap<String, Arc<dyn DidMethod>> = IndexMap::new();
-    let mut did_webvh_params: Vec<(String, webvh::Params)> = vec![];
+    let mut did_methods: IndexMap<DidMethodId, Arc<dyn DidMethod>> = IndexMap::new();
+    let mut did_webvh_params: Vec<(DidMethodId, webvh::Params)> = vec![];
 
     for (name, field) in did_configs {
         let did_method: Arc<dyn DidMethod> = match field.r#type {
@@ -154,7 +154,7 @@ pub(crate) fn did_method_provider_from_config(
                 let params: webvh::Params = config.did.get(name)?;
                 // did:webvh cannot be constructed yet, as it needs a did resolver internally
                 // -> save for later
-                did_webvh_params.push((name.to_string(), params));
+                did_webvh_params.push((name.to_owned(), params));
                 continue;
             }
         };

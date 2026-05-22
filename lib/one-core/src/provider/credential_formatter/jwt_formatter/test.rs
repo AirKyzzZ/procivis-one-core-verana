@@ -32,6 +32,8 @@ use crate::provider::credential_formatter::vcdm::{
 use crate::provider::credential_formatter::{CredentialFormatter, nest_claims};
 use crate::provider::data_type::model::ExtractedClaim;
 use crate::provider::data_type::provider::MockDataTypeProvider;
+use crate::provider::did_method::MockDidMethod;
+use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
@@ -186,6 +188,7 @@ async fn test_format_credential() {
             expiration_time,
         },
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
+        did_method_provider: Arc::new(MockDidMethodProvider::new()),
         data_type_provider: Arc::new(MockDataTypeProvider::new()),
     };
 
@@ -282,6 +285,7 @@ async fn test_format_credential_with_layout_properties() {
             expiration_time: Duration::days(1),
         },
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
+        did_method_provider: Arc::new(MockDidMethodProvider::new()),
         data_type_provider: Arc::new(MockDataTypeProvider::new()),
     };
 
@@ -375,6 +379,7 @@ async fn test_format_credential_nested_array() {
             expiration_time: Duration::days(1),
         },
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
+        did_method_provider: Arc::new(MockDidMethodProvider::new()),
         data_type_provider: Arc::new(MockDataTypeProvider::new()),
     };
 
@@ -458,6 +463,7 @@ async fn test_extract_credentials() {
             expiration_time: Duration::days(1),
         },
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
+        did_method_provider: Arc::new(MockDidMethodProvider::new()),
         data_type_provider: Arc::new(MockDataTypeProvider::new()),
     };
 
@@ -566,6 +572,7 @@ async fn test_extract_credentials_nested_array() {
             expiration_time: Duration::days(1),
         },
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
+        did_method_provider: Arc::new(MockDidMethodProvider::new()),
         data_type_provider: Arc::new(MockDataTypeProvider::new()),
     };
 
@@ -669,6 +676,7 @@ async fn test_format_credential_presentation() {
             expiration_time: Duration::days(1),
         },
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
+        did_method_provider: Arc::new(MockDidMethodProvider::new()),
         data_type_provider: Arc::new(MockDataTypeProvider::new()),
     };
 
@@ -706,6 +714,7 @@ fn test_get_capabilities() {
             expiration_time: Duration::days(1),
         },
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
+        did_method_provider: Arc::new(MockDidMethodProvider::new()),
         data_type_provider: Arc::new(MockDataTypeProvider::new()),
     };
 
@@ -728,6 +737,7 @@ fn test_schema_id() {
             expiration_time: Duration::days(1),
         },
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
+        did_method_provider: Arc::new(MockDidMethodProvider::new()),
         data_type_provider: Arc::new(MockDataTypeProvider::new()),
     };
     let request_dto = CreateCredentialSchemaRequestDTO {
@@ -773,6 +783,12 @@ async fn test_parse_credential() {
             })
         });
 
+    let mut did_method_provider = MockDidMethodProvider::new();
+    did_method_provider
+        .expect_get_did_method_by_method_name()
+        .times(2)
+        .returning(|name| Some((name.into(), Arc::new(MockDidMethod::new()))));
+
     let jwt_formatter = JWTFormatter {
         params: Params {
             leeway: Duration::seconds(45),
@@ -780,6 +796,7 @@ async fn test_parse_credential() {
             expiration_time: Duration::days(1),
         },
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
+        did_method_provider: Arc::new(did_method_provider),
         data_type_provider: Arc::new(datatype_provider),
     };
     let mut verify_mock = MockTokenVerifier::new();

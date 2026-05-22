@@ -36,6 +36,7 @@ use crate::provider::credential_formatter::vcdm::{
 };
 use crate::provider::credential_formatter::{CredentialFormatter, nest_claims};
 use crate::provider::data_type::provider::MockDataTypeProvider;
+use crate::provider::did_method::MockDidMethod;
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
@@ -1113,10 +1114,16 @@ async fn test_parse_credential() {
             }
         });
 
+    let mut did_method_provider = MockDidMethodProvider::new();
+    did_method_provider
+        .expect_get_did_method_by_method_name()
+        .times(2)
+        .returning(|name| Some((name.into(), Arc::new(MockDidMethod::new()))));
+
     let formatter = SDJWTFormatter::new(
         params,
         crypto,
-        Arc::new(MockDidMethodProvider::new()),
+        Arc::new(did_method_provider),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(datatype_provider),
         Arc::new(MockHttpClient::new()),

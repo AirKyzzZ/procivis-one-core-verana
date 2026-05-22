@@ -26,8 +26,8 @@ use one_dto_mapper::{
 use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
 use shared_types::{
-    CertificateId, CredentialSchemaId, IdentifierId, KeyId, OrganisationId, ProofSchemaId,
-    TrustCollectionId, TrustListSubscriberId, TrustListSubscriptionId,
+    CertificateId, CredentialSchemaId, DidMethodId, IdentifierId, KeyId, OrganisationId,
+    ProofSchemaId, TrustCollectionId, TrustListSubscriberId, TrustListSubscriptionId,
 };
 use standardized_types::etsi_119_602::TrustedEntityInformation;
 use time::OffsetDateTime;
@@ -386,7 +386,7 @@ pub(crate) struct IdentifierFilterQueryParamsRestDTO {
     /// Filter by one or more DID methods.
     #[param(rename = "didMethods[]", nullable = false)]
     #[try_into(infallible)]
-    pub did_methods: Option<Vec<String>>,
+    pub did_methods: Option<Vec<DidMethodId>>,
     /// If true, return only identifiers from interactions with external
     /// actors. If false, return only identifiers local to the system.
     #[param(inline, nullable = false)]

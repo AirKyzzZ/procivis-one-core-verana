@@ -9,7 +9,7 @@ use one_crypto::hasher::sha256::SHA256;
 use one_crypto::signer::eddsa::{EDDSASigner, KeyPair};
 use one_crypto::{CryptoProviderImpl, Hasher, MockCryptoProvider, MockHasher, Signer};
 use serde_json::json;
-use shared_types::{DidValue, OrganisationId};
+use shared_types::{DidMethodId, DidValue, OrganisationId};
 use similar_asserts::assert_eq;
 use standardized_types::jwk::{PublicJwk, PublicJwkEc};
 use time::{Duration, OffsetDateTime};
@@ -1567,18 +1567,18 @@ impl DidMethodProvider for FakeDidMethodProvider {
         Ok(method.resolve(did).await.unwrap())
     }
 
-    fn get_did_method(&self, _did_method_id: &str) -> Option<Arc<dyn DidMethod>> {
+    fn get_did_method(&self, _did_method_id: &DidMethodId) -> Option<Arc<dyn DidMethod>> {
         unimplemented!()
     }
 
-    fn get_did_method_id(&self, _did: &DidValue) -> Option<String> {
+    fn get_did_method_id(&self, _did: &DidValue) -> Option<DidMethodId> {
         unimplemented!()
     }
 
     fn get_did_method_by_method_name(
         &self,
         _method_name: &str,
-    ) -> Option<(String, Arc<dyn DidMethod>)> {
+    ) -> Option<(DidMethodId, Arc<dyn DidMethod>)> {
         unimplemented!()
     }
 

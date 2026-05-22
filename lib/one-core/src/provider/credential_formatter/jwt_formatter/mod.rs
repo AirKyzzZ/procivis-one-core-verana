@@ -35,6 +35,7 @@ use crate::proto::jwt::model::{JWTPayload, jwt_metadata_claims};
 use crate::provider::credential_formatter::mapper::default_2_years;
 use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::did_method::error::DidMethodError;
+use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::util::key_selection::SelectedKey;
@@ -49,6 +50,7 @@ mod status_list;
 pub struct JWTFormatter {
     params: Params,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    did_method_provider: Arc<dyn DidMethodProvider>,
     data_type_provider: Arc<dyn DataTypeProvider>,
 }
 
@@ -68,11 +70,13 @@ impl JWTFormatter {
     pub fn new(
         params: Params,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+        did_method_provider: Arc<dyn DidMethodProvider>,
         data_type_provider: Arc<dyn DataTypeProvider>,
     ) -> Self {
         Self {
             params,
             key_algorithm_provider,
+            did_method_provider,
             data_type_provider,
         }
     }
@@ -410,6 +414,7 @@ impl CredentialFormatter for JWTFormatter {
         let issuer_identifier = prepare_identifier(
             &IdentifierDetails::Did(issuer),
             self.key_algorithm_provider.as_ref(),
+            self.did_method_provider.as_ref(),
             organisation.to_owned(),
         )?;
         let holder_identifier = jwt
@@ -421,7 +426,12 @@ impl CredentialFormatter for JWTFormatter {
             .error_while("parsing subject")?
             .map(IdentifierDetails::Did)
             .map(|details| {
-                prepare_identifier(&details, self.key_algorithm_provider.as_ref(), organisation)
+                prepare_identifier(
+                    &details,
+                    self.key_algorithm_provider.as_ref(),
+                    self.did_method_provider.as_ref(),
+                    organisation,
+                )
             })
             .transpose()?;
 

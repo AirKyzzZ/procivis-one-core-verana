@@ -498,6 +498,7 @@ impl CredentialFormatter for JsonLdBbsplus {
         let issuer_identifier = prepare_identifier(
             &IdentifierDetails::Did(vcdm.issuer.to_did_value()?),
             self.key_algorithm_provider.as_ref(),
+            self.did_method_provider.as_ref(),
             organisation.to_owned(),
         )?;
 
@@ -511,7 +512,12 @@ impl CredentialFormatter for JsonLdBbsplus {
             .and_then(|id| DidValue::from_did_url(id).ok())
             .map(IdentifierDetails::Did)
             .map(|details| {
-                prepare_identifier(&details, self.key_algorithm_provider.as_ref(), organisation)
+                prepare_identifier(
+                    &details,
+                    self.key_algorithm_provider.as_ref(),
+                    self.did_method_provider.as_ref(),
+                    organisation,
+                )
             })
             .transpose()?;
 

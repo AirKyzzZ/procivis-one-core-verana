@@ -536,7 +536,7 @@ mod tests {
             name: "IssuerDid".to_string(),
             did: "did:issuer:123".parse().unwrap(),
             did_type: DidType::Remote,
-            did_method: "didMethod".to_string(),
+            did_method: "didMethod".into(),
             deactivated: false,
             keys: Default::default(),
             organisation: None,

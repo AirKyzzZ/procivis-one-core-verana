@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use indexmap::IndexMap;
-use shared_types::DidValue;
+use shared_types::{DidMethodId, DidValue};
 use time::OffsetDateTime;
 
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
@@ -13,7 +13,7 @@ use crate::provider::did_method::error::{DidMethodError, DidMethodProviderError}
 use crate::service::error::MissingProviderError;
 
 pub struct DidResolver {
-    pub did_methods: IndexMap<String, Arc<dyn DidMethod>>,
+    pub did_methods: IndexMap<DidMethodId, Arc<dyn DidMethod>>,
 }
 
 pub type DidCachingLoader = CachingLoader<DidMethodProviderError>;
@@ -62,7 +62,7 @@ impl DidResolver {
                     .any(|val| val == did_value.method())
             })
             .ok_or(
-                MissingProviderError::DidMethod(did_value.method().to_string())
+                MissingProviderError::DidMethod(did_value.method().into())
                     .error_while("getting did provider"),
             )?)
     }

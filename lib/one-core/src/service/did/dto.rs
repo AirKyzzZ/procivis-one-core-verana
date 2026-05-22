@@ -1,6 +1,6 @@
 use one_dto_mapper::From;
 use serde::{Deserialize, Serialize};
-use shared_types::{DidId, DidValue, KeyId, OrganisationId};
+use shared_types::{DidId, DidMethodId, DidValue, KeyId, OrganisationId};
 use time::OffsetDateTime;
 
 use crate::model::common::GetListResponse;
@@ -16,7 +16,7 @@ pub struct DidResponseDTO {
     pub organisation_id: Option<OrganisationId>,
     pub did: DidValue,
     pub did_type: DidType,
-    pub did_method: String,
+    pub did_method: DidMethodId,
     pub keys: DidResponseKeysDTO,
     pub deactivated: bool,
 }
@@ -44,7 +44,7 @@ pub struct DidListItemResponseDTO {
     #[serde(rename = "type")]
     pub did_type: DidType,
     #[serde(rename = "method")]
-    pub did_method: String,
+    pub did_method: DidMethodId,
     pub deactivated: bool,
 }
 
@@ -61,7 +61,7 @@ pub struct DidFilterParamsDTO {
     pub key_roles: Option<Vec<KeyRole>>,
     pub key_storages: Option<Vec<String>>,
     pub key_ids: Option<Vec<KeyId>>,
-    pub did_methods: Option<Vec<String>>,
+    pub did_methods: Option<Vec<DidMethodId>>,
     pub organisation_id: OrganisationId,
 }
 
@@ -69,7 +69,7 @@ pub struct DidFilterParamsDTO {
 pub struct CreateDidRequestDTO {
     pub name: String,
     pub organisation_id: OrganisationId,
-    pub did_method: String,
+    pub did_method: DidMethodId,
     pub keys: CreateDidRequestKeysDTO,
     pub params: Option<serde_json::Value>,
 }

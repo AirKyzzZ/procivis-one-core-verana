@@ -13,6 +13,7 @@ use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::provider::credential_formatter::model::IdentifierDetails;
 use crate::provider::data_type::provider::DataTypeProvider;
+use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
 /// Parse model claims/claimSchemas from a JSON-based credential
@@ -227,6 +228,7 @@ fn is_same_type(a: &CredentialClaimValue, b: &CredentialClaimValue) -> bool {
 pub fn prepare_identifier(
     detail: &IdentifierDetails,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
+    did_method_provider: &dyn DidMethodProvider,
     organisation: Organisation,
 ) -> Result<Identifier, FormatterError> {
     let now = crate::clock::now_utc();
@@ -261,6 +263,13 @@ pub fn prepare_identifier(
             )
         }
         IdentifierDetails::Did(did) => {
+            let (did_method, _) = did_method_provider
+                .get_did_method_by_method_name(did.method())
+                .ok_or(FormatterError::CouldNotExtractCredentials(format!(
+                    "DID method not recognized: {}",
+                    did.method()
+                )))?;
+
             let did_model = crate::model::did::Did {
                 id: Uuid::new_v4().into(),
                 created_date: now,
@@ -268,7 +277,7 @@ pub fn prepare_identifier(
                 name: format!("did {identifier_id}"),
                 did: did.to_owned(),
                 did_type: crate::model::did::DidType::Remote,
-                did_method: did.method().to_string(),
+                did_method,
                 deactivated: false,
                 log: None,
                 keys: Default::default(),

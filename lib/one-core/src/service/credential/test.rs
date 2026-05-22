@@ -118,7 +118,7 @@ async fn generic_credential() -> Credential {
         organisation: Some(organisation.clone().into()),
         did: "did:example:1".parse().unwrap(),
         did_type: DidType::Local,
-        did_method: "KEY".to_string(),
+        did_method: "KEY".into(),
         keys: vec![RelatedKey {
             role: KeyRole::AssertionMethod,
             key: Key {
@@ -259,7 +259,7 @@ async fn generic_credential_list_entity() -> Credential {
                 organisation: None,
                 did: "did:example:1".parse().unwrap(),
                 did_type: DidType::Local,
-                did_method: "KEY".to_string(),
+                did_method: "KEY".into(),
                 keys: Default::default(),
                 deactivated: false,
                 log: None,
@@ -1244,7 +1244,7 @@ async fn test_create_credential_fails_if_did_is_deactivated() {
         organisation: None,
         did: "did:example:1".parse().unwrap(),
         did_type: DidType::Local,
-        did_method: "KEY".to_string(),
+        did_method: "KEY".into(),
         keys: Default::default(),
         deactivated: true,
         log: None,
@@ -3319,7 +3319,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
                 organisation: Some(organisation.clone().into()),
                 did: "did:example:1".parse().unwrap(),
                 did_type: DidType::Local,
-                did_method: "KEY".to_string(),
+                did_method: "KEY".into(),
                 keys: vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
                     key: Key {
@@ -4083,7 +4083,7 @@ async fn test_get_credential_success_array_index_sorting() {
                 organisation: Some(organisation.clone().into()),
                 did: "did:example:1".parse().unwrap(),
                 did_type: DidType::Local,
-                did_method: "KEY".to_string(),
+                did_method: "KEY".into(),
                 keys: vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
                     key: Key {
@@ -4485,7 +4485,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
                 organisation: Some(organisation.clone().into()),
                 did: "did:example:1".parse().unwrap(),
                 did_type: DidType::Local,
-                did_method: "KEY".to_string(),
+                did_method: "KEY".into(),
                 keys: vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
                     key: Key {
@@ -4745,7 +4745,7 @@ async fn test_get_credential_success_array_single_element() {
                 organisation: Some(organisation.clone().into()),
                 did: "did:example:1".parse().unwrap(),
                 did_type: DidType::Local,
-                did_method: "KEY".to_string(),
+                did_method: "KEY".into(),
                 keys: vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
                     key: Key {
@@ -4984,7 +4984,7 @@ async fn test_create_credential_array(
     }
 
     let did = Did {
-        did_method: "KEY".to_string(),
+        did_method: "KEY".into(),
         keys: vec![RelatedKey {
             role: KeyRole::AssertionMethod,
             key: dummy_key(),

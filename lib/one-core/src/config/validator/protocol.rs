@@ -1,4 +1,5 @@
 use serde::Serialize;
+use shared_types::DidMethodId;
 
 use crate::config::core_config::{
     ConfigBlock, ConfigExt, DidConfig, DidType, IdentifierConfig, IdentifierType,
@@ -42,7 +43,7 @@ pub fn validate_protocol_type<T: Serialize + Clone>(
 
 pub(crate) fn validate_protocol_did_compatibility(
     capabilities: &[DidType],
-    did_method: &str,
+    did_method: &DidMethodId,
     config: &DidConfig,
 ) -> Result<(), ServiceError> {
     let did_method_type = config
@@ -51,7 +52,7 @@ pub(crate) fn validate_protocol_did_compatibility(
         .r#type;
     if !capabilities.contains(&did_method_type) {
         return Err(BusinessLogicError::InvalidDidMethod {
-            method: did_method.to_string(),
+            method: did_method.to_owned(),
         }
         .into());
     }

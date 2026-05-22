@@ -182,7 +182,7 @@ fn generic_credential_did() -> Credential {
         name: "did1".to_string(),
         did: "did:example:123".parse().unwrap(),
         did_type: DidType::Remote,
-        did_method: "KEY".to_string(),
+        did_method: "KEY".into(),
         keys: Default::default(),
         deactivated: false,
         organisation: Some(dummy_organisation(None).into()),

@@ -279,7 +279,7 @@ async fn test_submit_proof_succeeds() {
             reference: "1".to_string(),
         }]
         .into(),
-        did_method: "KEY".to_string(),
+        did_method: "KEY".into(),
         ..dummy_did()
     };
     let mut identifier_repository = MockIdentifierRepository::default();
@@ -479,7 +479,7 @@ async fn test_submit_proof_multiple_credentials_succeeds() {
             reference: "1".to_string(),
         }]
         .into(),
-        did_method: "KEY".to_string(),
+        did_method: "KEY".into(),
         ..dummy_did()
     };
 
@@ -698,7 +698,7 @@ async fn test_submit_proof_repeating_claims() {
             reference: "1".to_string(),
         }]
         .into(),
-        did_method: "KEY".to_string(),
+        did_method: "KEY".into(),
         ..dummy_did()
     };
     let identifier = Identifier {
@@ -939,7 +939,7 @@ async fn test_accept_credential() {
                     reference: "1".to_string(),
                 }]
                 .into(),
-                did_method: "KEY".to_string(),
+                did_method: "KEY".into(),
                 ..dummy_did()
             }),
             organisation: Some(dummy_organisation(None)),
@@ -1073,7 +1073,7 @@ async fn test_accept_credential_with_did() {
                         reference: "1".to_string(),
                     }]
                     .into(),
-                    did_method: "KEY".to_string(),
+                    did_method: "KEY".into(),
                     ..dummy_did()
                 }),
                 organisation: Some(dummy_organisation(None)),
@@ -1302,7 +1302,7 @@ async fn test_accept_credential_wrong_tx_code() {
                         reference: "1".to_string(),
                     }]
                     .into(),
-                    did_method: "KEY".to_string(),
+                    did_method: "KEY".into(),
                     ..dummy_did()
                 }),
                 organisation: Some(dummy_organisation(None)),
@@ -1723,7 +1723,7 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
                 name: "issuer_did".to_string(),
                 did: "did:key:123".parse().unwrap(),
                 did_type: DidType::Remote,
-                did_method: "KEY".to_string(),
+                did_method: "KEY".into(),
                 keys: Default::default(),
                 organisation: None,
                 deactivated: false,
@@ -1834,7 +1834,7 @@ async fn test_accept_credential_identifier_org_mismatch() {
                     reference: "1".to_string(),
                 }]
                 .into(),
-                did_method: "KEY".to_string(),
+                did_method: "KEY".into(),
                 ..dummy_did()
             }),
             organisation: Some(dummy_organisation(Some(organisation_id))),
@@ -1875,7 +1875,7 @@ async fn test_accept_interaction_credential_org_mismatch() {
                     reference: "1".to_string(),
                 }]
                 .into(),
-                did_method: "KEY".to_string(),
+                did_method: "KEY".into(),
                 ..dummy_did()
             }),
             organisation: Some(dummy_organisation(Some(session_organisation_id))),
@@ -1936,7 +1936,7 @@ async fn test_reject_credential_credential_org_mismatch() {
                     reference: "1".to_string(),
                 }]
                 .into(),
-                did_method: "KEY".to_string(),
+                did_method: "KEY".into(),
                 ..dummy_did()
             }),
             organisation: Some(dummy_organisation(Some(session_organisation_id))),

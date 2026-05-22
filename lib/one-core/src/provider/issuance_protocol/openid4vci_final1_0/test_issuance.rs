@@ -861,7 +861,7 @@ fn dummy_did() -> Did {
         name: "John".to_string(),
         did: "did:example:123".parse().unwrap(),
         did_type: DidType::Local,
-        did_method: "John".to_string(),
+        did_method: "John".into(),
         keys: Default::default(),
         organisation: None,
         deactivated: false,

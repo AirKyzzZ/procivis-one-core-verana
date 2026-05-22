@@ -49,8 +49,8 @@ use sea_orm::sqlx::{Executor, raw_sql};
 use sea_orm::{ConnectionTrait, DatabaseConnection, DbBackend, Statement};
 use secrecy::{SecretSlice, SecretString};
 use shared_types::{
-    BlobId, ClaimSchemaId, CredentialFormat, CredentialSchemaId, DidId, DidValue, EntityId,
-    IdentifierId, InteractionId, KeyId, ProofId, RevocationMethodId,
+    BlobId, ClaimSchemaId, CredentialFormat, CredentialSchemaId, DidId, DidMethodId, DidValue,
+    EntityId, IdentifierId, InteractionId, KeyId, ProofId, RevocationMethodId,
 };
 use similar_asserts::assert_eq;
 use sql_data_provider::test_utilities::*;
@@ -440,7 +440,7 @@ pub struct TestingDidParams {
     pub name: Option<String>,
     pub did: Option<DidValue>,
     pub did_type: Option<DidType>,
-    pub did_method: Option<String>,
+    pub did_method: Option<DidMethodId>,
     pub deactivated: Option<bool>,
     pub keys: Option<Vec<RelatedKey>>,
     pub log: Option<String>,
@@ -466,7 +466,7 @@ pub async fn create_did(
             .did
             .unwrap_or(DidValue::from_str(&format!("did:test:{did_id}")).unwrap()),
         did_type: params.did_type.unwrap_or(DidType::Local),
-        did_method: params.did_method.unwrap_or("KEY".to_string()),
+        did_method: params.did_method.unwrap_or("KEY".into()),
         deactivated: params.deactivated.unwrap_or(false),
         keys: params.keys.unwrap_or_default().into(),
         log: None,

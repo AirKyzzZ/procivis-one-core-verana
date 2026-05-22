@@ -282,7 +282,7 @@ impl TryFrom<DidRequestBindingDTO> for CreateDidRequestDTO {
         Ok(Self {
             organisation_id: into_id(&request.organisation_id)?,
             name: request.name,
-            did_method: request.did_method,
+            did_method: request.did_method.into(),
             keys: request.keys.try_into()?,
             params: Some(json!(request.params)),
         })
@@ -610,7 +610,7 @@ impl TryFrom<CreateIdentifierDidRequestBindingDTO> for CreateIdentifierDidReques
     fn try_from(value: CreateIdentifierDidRequestBindingDTO) -> Result<Self, Self::Error> {
         Ok(Self {
             name: value.name,
-            method: value.method,
+            method: value.method.into(),
             keys: value.keys.try_into()?,
             params: Some(json!(value.params)),
         })
@@ -793,7 +793,7 @@ impl TryFrom<IdentifierListQueryBindingDTO>
                 name: value.name,
                 types: convert_inner_of_inner(value.types),
                 states: convert_inner_of_inner(value.states),
-                did_methods: value.did_methods,
+                did_methods: convert_inner_of_inner(value.did_methods),
                 is_remote: value.is_remote,
                 key_algorithms: value.key_algorithms,
                 key_roles: convert_inner_of_inner(value.key_roles),
@@ -834,7 +834,7 @@ impl TryFrom<DidListQueryBindingDTO> for ListQueryDTO<SortableDidColumn, DidFilt
                 key_roles: convert_inner_of_inner(value.key_roles),
                 key_storages: value.key_storages,
                 key_ids: into_id_opt_vec(&value.key_ids)?,
-                did_methods: value.did_methods,
+                did_methods: convert_inner_of_inner(value.did_methods),
                 organisation_id: into_id(&value.organisation_id)?,
             },
             include: None,

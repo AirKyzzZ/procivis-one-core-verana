@@ -2,6 +2,7 @@ use std::collections::VecDeque;
 
 use itertools::Itertools;
 use regex::Regex;
+use shared_types::DidMethodId;
 use url::Url;
 
 use super::dto::CredentialRequestClaimDTO;
@@ -523,7 +524,7 @@ fn validate_format_and_exchange_protocol_compatibility(
 }
 
 pub(crate) fn validate_format_and_did_method_compatibility(
-    did_method: &str,
+    did_method: &DidMethodId,
     formatter_capabilities: &FormatterCapabilities,
     config: &CoreConfig,
 ) -> Result<(), CredentialServiceError> {
