@@ -1,4 +1,5 @@
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
+use futures::future::join_all;
 use one_core::model::certificate::CertificateRole;
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
@@ -1297,4 +1298,48 @@ async fn test_create_credential_success_with_webhook_url() {
 
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
     assert_eq!(credential.webhook_url.unwrap(), webhook_url);
+}
+
+#[tokio::test]
+async fn test_create_credential_parallel_no_deadlock() {
+    // GIVEN
+    let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, None, Default::default())
+        .await;
+    let claim_id = credential_schema.claim_schemas.as_ref().await.unwrap()[0].id;
+    let claim_id1 = credential_schema.claim_schemas.as_ref().await.unwrap()[1].id;
+    let issuer_did = did.id.to_string();
+
+    // WHEN — fire many concurrent creates that share the same schema, issuer
+    // identifier and key. Without READ COMMITTED on the insert transaction this
+    // triggers InnoDB gap-lock deadlocks (1213/40001) on MySQL. See ONE-7015.
+    let requests = (0..10).map(|_| {
+        context.api.credentials.create(
+            credential_schema.id,
+            "OPENID4VCI_FINAL1",
+            serde_json::json!([
+                {
+                    "claimId": claim_id.to_string(),
+                    "value": "foo",
+                    "path": "firstName"
+                },
+                {
+                    "claimId": claim_id1.to_string(),
+                    "value": "true",
+                    "path": "isOver18"
+                }
+            ]),
+            CreateCredentialTestParams {
+                issuer_did: Some(issuer_did.clone().into()),
+                ..Default::default()
+            },
+        )
+    });
+    let responses = join_all(requests).await;
+
+    // THEN
+    assert!(responses.iter().all(|resp| resp.status() == 201));
 }

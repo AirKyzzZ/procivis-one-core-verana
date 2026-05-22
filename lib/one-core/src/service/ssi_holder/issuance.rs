@@ -26,6 +26,7 @@ use crate::model::identifier::IdentifierRelations;
 use crate::model::interaction::{Interaction, InteractionRelations, InteractionType};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::proto::oauth_client::{OAuthAuthorizationRequest, OAuthClientProvider};
+use crate::proto::transaction_manager::IsolationLevel;
 use crate::provider::blob_storage::BlobStorage;
 use crate::provider::issuance_protocol::dto::{ContinueIssuanceDTO, Features};
 use crate::provider::issuance_protocol::model::{CredentialWithBlob, InvitationResponseEnum};
@@ -221,16 +222,26 @@ impl SSIHolderService {
 
         let main_credential_id = issuer_response.main_credential.credential.id;
         self.transaction_manager
-            .tx(async {
-                self.create_credential(issuer_response.main_credential, db_blob_storage.as_ref())
+            .tx_with_config(
+                async {
+                    self.create_credential(
+                        issuer_response.main_credential,
+                        db_blob_storage.as_ref(),
+                    )
                     .await?;
-                for batch_item in issuer_response.batch_items {
-                    self.create_credential(batch_item, db_blob_storage.as_ref())
-                        .await?;
+                    for batch_item in issuer_response.batch_items {
+                        self.create_credential(batch_item, db_blob_storage.as_ref())
+                            .await?;
+                    }
+                    Ok::<_, HolderServiceError>(())
                 }
-                Ok::<_, HolderServiceError>(())
-            }
-            .boxed())
+                .boxed(),
+                // `CredentialRepository::create_credential` opens a READ COMMITTED
+                // transaction to avoid InnoDB gap-lock deadlocks (ONES-54). Nesting
+                // requires the enclosing transaction to use the same isolation level.
+                Some(IsolationLevel::ReadCommitted),
+                None,
+            )
             .await
             .error_while("creating credentials")??;
         Ok(main_credential_id)

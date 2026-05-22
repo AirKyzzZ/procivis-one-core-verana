@@ -3,6 +3,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use autometrics::autometrics;
+use futures::FutureExt;
 use one_core::model::claim::{Claim, ClaimRelations};
 use one_core::model::credential::{
     Credential, CredentialListIncludeEntityTypeEnum, CredentialListQuery, CredentialRelations,
@@ -10,6 +11,7 @@ use one_core::model::credential::{
 };
 use one_core::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
 use one_core::model::identifier::{Identifier, IdentifierRelations};
+use one_core::proto::transaction_manager::IsolationLevel;
 use one_core::repository::claim_repository::ClaimRepository;
 use one_core::repository::credential_repository::CredentialRepository;
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
@@ -404,7 +406,8 @@ impl CredentialRepository for CredentialProvider {
             return Err(anyhow::anyhow!("Claim credential-id mismatch!").into());
         }
 
-        request_to_active_model(
+        let credential_id = request.id;
+        let active_model = request_to_active_model(
             &request,
             schema,
             issuer_identifier_id,
@@ -415,19 +418,37 @@ impl CredentialRepository for CredentialProvider {
             request.credential_blob_id,
             request.wallet_unit_attestation_blob_id,
             request.wallet_instance_attestation_blob_id,
-        )
-        .insert(&self.db)
-        .await
-        .map_err(|e| match e.sql_err() {
-            Some(SqlErr::UniqueConstraintViolation(_)) => DataLayerError::AlreadyExists,
-            _ => DataLayerError::Db(e.into()),
-        })?;
+        );
 
-        if !claims.is_empty() {
-            self.claim_repository.create_claim_list(claims).await?;
-        }
+        self.db
+            .tx_with_config(
+                async {
+                    active_model
+                        .insert(&self.db)
+                        .await
+                        .map_err(|e| match e.sql_err() {
+                            Some(SqlErr::UniqueConstraintViolation(_)) => {
+                                DataLayerError::AlreadyExists
+                            }
+                            _ => DataLayerError::Db(e.into()),
+                        })?;
 
-        Ok(request.id)
+                    if !claims.is_empty() {
+                        self.claim_repository.create_claim_list(claims).await?;
+                    }
+
+                    Ok::<_, DataLayerError>(())
+                }
+                .boxed(),
+                // In isolation mode "read committed" InnoDB will _not_ create gap locks. Given there
+                // are multiple unique indexes, this is necessary to avoid deadlocks during parallel
+                // inserts.
+                Some(IsolationLevel::ReadCommitted),
+                None,
+            )
+            .await??;
+
+        Ok(credential_id)
     }
 
     async fn delete_credentials(&self, credentials: &[Credential]) -> Result<(), DataLayerError> {
