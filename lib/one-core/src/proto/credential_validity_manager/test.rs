@@ -98,7 +98,7 @@ async fn test_check_revocation_non_revocable() {
 
     revocation_method_provider
         .expect_get_revocation_method()
-        .returning(|_| Some(Arc::new(MockRevocationMethod::default())));
+        .returning(|_| Ok(Arc::new(MockRevocationMethod::default())));
 
     let credential = Credential {
         state: CredentialStateEnum::Accepted,
@@ -213,7 +213,7 @@ async fn test_check_revocation_being_revoked() {
     revocation_method_provider
         .expect_get_revocation_method()
         .with(eq::<RevocationMethodId>("mock".into()))
-        .returning(move |_| Some(revocation_method.clone()));
+        .returning(move |_| Ok(revocation_method.clone()));
 
     let credential = {
         let mut cred = Credential {
@@ -383,7 +383,7 @@ async fn test_revoke_credential_success_with_accepted_credential() {
         .expect_get_revocation_method()
         .with(eq::<RevocationMethodId>("mock".into()))
         .times(1)
-        .returning(move |_| Some(revocation_method.clone()));
+        .returning(move |_| Ok(revocation_method.clone()));
 
     let validity_manager = setup_validity_manager(Repositories {
         credential_repository,
@@ -438,7 +438,7 @@ async fn test_revoke_credential_success_with_suspended_credential() {
         .expect_get_revocation_method()
         .with(eq::<RevocationMethodId>("mock".into()))
         .times(1)
-        .returning(move |_| Some(revocation_method.clone()));
+        .returning(move |_| Ok(revocation_method.clone()));
 
     let validity_manager = setup_validity_manager(Repositories {
         credential_repository,
@@ -540,7 +540,7 @@ async fn test_suspend_credential_success() {
         .expect_get_revocation_method()
         .with(eq::<RevocationMethodId>("mock".into()))
         .times(1)
-        .returning(move |_| Some(revocation_method.clone()));
+        .returning(move |_| Ok(revocation_method.clone()));
 
     let validity_manager = setup_validity_manager(Repositories {
         credential_repository,
@@ -598,7 +598,7 @@ async fn test_reactivate_credential_success() {
         .expect_get_revocation_method()
         .with(eq::<RevocationMethodId>("mock".into()))
         .times(1)
-        .returning(move |_| Some(revocation_method.clone()));
+        .returning(move |_| Ok(revocation_method.clone()));
 
     let validity_manager = setup_validity_manager(Repositories {
         credential_repository,

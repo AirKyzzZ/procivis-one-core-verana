@@ -98,7 +98,10 @@ impl SignatureService {
             .check(&*self.session_provider)
             .error_while("validating provider required permissions")?;
 
-        let Some(revocation_method) = signer.revocation_method() else {
+        let Some(revocation_method) = signer
+            .revocation_method()
+            .error_while("getting signer revocation method")?
+        else {
             return Err(SignatureServiceError::RevocationNotSupported);
         };
         let list = self

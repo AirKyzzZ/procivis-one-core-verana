@@ -52,7 +52,7 @@ pub struct RevocationMethodCapabilities {
     pub operations: Vec<Operation>,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Display)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum Operation {
     Revoke,

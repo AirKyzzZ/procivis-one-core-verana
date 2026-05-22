@@ -2,13 +2,14 @@ use std::ops::Add;
 use std::sync::{Arc, Mutex};
 
 use mockall::predicate::{always, eq};
+use serde_json::json;
 use shared_types::{RevocationListId, RevocationMethodId};
 use similar_asserts::assert_eq;
 use standardized_types::x509::CertificateSerial;
 use time::Duration;
 use uuid::Uuid;
 
-use super::{CRLRevocation, Params};
+use super::CRLRevocation;
 use crate::model::certificate::{Certificate, CertificateState};
 use crate::model::identifier::Identifier;
 use crate::model::revocation_list::{
@@ -103,8 +104,9 @@ async fn test_add_signature_new_list() {
         Arc::new(revocation_list_repository),
         Arc::new(NoTransactionManager),
         Arc::new(key_provider),
-        Params { refresh_interval },
-    );
+        json!({ "refreshInterval": refresh_interval.whole_seconds() }),
+    )
+    .unwrap();
 
     let before_adding = crate::clock::now_utc().replace_millisecond(0).unwrap();
 
@@ -229,8 +231,9 @@ async fn test_revoke_signature() {
         Arc::new(revocation_list_repository),
         Arc::new(NoTransactionManager),
         Arc::new(key_provider),
-        Params { refresh_interval },
-    );
+        json!({ "refreshInterval": refresh_interval.whole_seconds() }),
+    )
+    .unwrap();
 
     let before_revocation = crate::clock::now_utc().replace_millisecond(0).unwrap();
 
@@ -297,8 +300,9 @@ async fn test_get_updated_list_no_update() {
         Arc::new(revocation_list_repository),
         Arc::new(NoTransactionManager),
         Arc::new(MockKeyProvider::new()),
-        Params { refresh_interval },
-    );
+        json!({ "refreshInterval": refresh_interval.whole_seconds() }),
+    )
+    .unwrap();
 
     let list = revocation_method.get_updated_list(list_id).await.unwrap();
 
@@ -370,8 +374,9 @@ async fn test_get_updated_list_with_update() {
         Arc::new(revocation_list_repository),
         Arc::new(NoTransactionManager),
         Arc::new(key_provider),
-        Params { refresh_interval },
-    );
+        json!({ "refreshInterval": refresh_interval.whole_seconds() }),
+    )
+    .unwrap();
 
     let list = revocation_method.get_updated_list(list_id).await.unwrap();
 

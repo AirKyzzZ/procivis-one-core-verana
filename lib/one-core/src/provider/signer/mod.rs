@@ -32,7 +32,7 @@ pub trait Signer: Provider + Send + Sync {
         request: dto::CreateSignatureRequest,
     ) -> Result<dto::CreateSignatureResponseDTO, SignerError>;
 
-    fn revocation_method(&self) -> Option<Arc<dyn RevocationMethod>>;
+    fn revocation_method(&self) -> Result<Option<Arc<dyn RevocationMethod>>, SignerError>;
 
     fn config_name(&self) -> &SignerId;
 }

@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use serde_json::json;
 use time::Duration;
 use uuid::Uuid;
 
@@ -92,8 +93,9 @@ async fn revocation_status(suspension: bool) -> Vec<CredentialRevocationInfo> {
         Arc::new(revocation_list_repository),
         Arc::new(NoTransactionManager),
         client,
-        None,
-    );
+        json!({}),
+    )
+    .unwrap();
 
     let mut credential = dummy_credential();
     credential.issuer_identifier = Some(Identifier {

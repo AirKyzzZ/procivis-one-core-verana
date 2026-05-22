@@ -195,11 +195,7 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
 
         let revocation_method = self
             .revocation_method_provider
-            .get_revocation_method(revocation_method_id)
-            .ok_or(MissingProviderError::RevocationMethod(
-                revocation_method_id.to_owned(),
-            ))
-            .error_while("getting revocation method")?;
+            .get_revocation_method(revocation_method_id)?;
 
         revocation_method
             .mark_credential_as(&credential, revocation_state.to_owned())
@@ -372,9 +368,7 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
         let revocation_method = match &credential_schema.revocation_method {
             Some(method_id) => self
                 .revocation_method_provider
-                .get_revocation_method(method_id)
-                .ok_or(MissingProviderError::RevocationMethod(method_id.clone()))
-                .error_while("getting revocation method")?,
+                .get_revocation_method(method_id)?,
             None => {
                 return Ok(CredentialValidityCheckResult {
                     credential_id,

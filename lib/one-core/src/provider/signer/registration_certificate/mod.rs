@@ -85,7 +85,7 @@ impl RegistrationCertificate {
         selected_key: &SelectedKey<'_>,
     ) -> Result<(Uuid, Status), SignerError> {
         let revocation_method =
-            self.revocation_method()
+            self.revocation_method()?
                 .ok_or(SignerError::MissingRevocationMethod(
                     self.params.revocation_method.clone(),
                 ))?;
@@ -187,9 +187,11 @@ impl Signer for RegistrationCertificate {
         })
     }
 
-    fn revocation_method(&self) -> Option<Arc<dyn RevocationMethod>> {
-        self.revocation_method_provider
-            .get_revocation_method(&self.params.revocation_method)
+    fn revocation_method(&self) -> Result<Option<Arc<dyn RevocationMethod>>, SignerError> {
+        Ok(Some(
+            self.revocation_method_provider
+                .get_revocation_method(&self.params.revocation_method)?,
+        ))
     }
 }
 

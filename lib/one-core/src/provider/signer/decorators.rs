@@ -43,7 +43,7 @@ impl<T: Provider + Signer + Display + ?Sized> Signer for DisabledProvider<T> {
         self.disabled_error()
     }
 
-    fn revocation_method(&self) -> Option<Arc<dyn RevocationMethod>> {
+    fn revocation_method(&self) -> Result<Option<Arc<dyn RevocationMethod>>, SignerError> {
         self.inner().revocation_method()
     }
 
@@ -94,7 +94,7 @@ impl Signer for CapabilityChecked {
         self.0.sign(issuer, request).await
     }
 
-    fn revocation_method(&self) -> Option<Arc<dyn RevocationMethod>> {
+    fn revocation_method(&self) -> Result<Option<Arc<dyn RevocationMethod>>, SignerError> {
         self.0.revocation_method()
     }
 
@@ -134,7 +134,7 @@ impl Signer for PermissionChecked {
         self.inner.sign(issuer, request).await
     }
 
-    fn revocation_method(&self) -> Option<Arc<dyn RevocationMethod>> {
+    fn revocation_method(&self) -> Result<Option<Arc<dyn RevocationMethod>>, SignerError> {
         self.inner.revocation_method()
     }
 

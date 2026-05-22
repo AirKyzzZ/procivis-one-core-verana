@@ -101,6 +101,11 @@ where
         Ok(Self { providers, configs })
     }
 
+    /// insert a custom provider not mentioned in the config
+    pub fn insert_non_config(&mut self, config_id: C, provider: Arc<P>) {
+        self.providers.insert(config_id, provider);
+    }
+
     pub fn provider<K>(&self, config_id: &K) -> Result<Arc<P>, NestedError>
     where
         K: Hash + Eq + ?Sized + Display,

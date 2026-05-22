@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
-use shared_types::{RevocationListEntryId, RevocationListId, SignerId};
+use proc_macros::Provider;
+use shared_types::{RevocationListEntryId, RevocationListId, RevocationMethodId, SignerId};
 
 use crate::error::ContextWithErrorCode;
 use crate::model::certificate::Certificate;
@@ -26,11 +27,13 @@ use crate::provider::revocation::model::{
 };
 use crate::provider::revocation::utils::status_purpose_to_revocation_state;
 
+#[derive(Provider)]
 pub(crate) struct StatusList2021 {
     pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     pub did_method_provider: Arc<dyn DidMethodProvider>,
     pub client: Arc<dyn HttpClient>,
     pub certificate_validator: Arc<dyn CertificateValidator>,
+    pub config_name: RevocationMethodId,
 }
 
 const CREDENTIAL_STATUS_TYPE: &str = "StatusList2021Entry";
@@ -193,5 +196,9 @@ impl RevocationMethod for StatusList2021 {
         RevocationMethodCapabilities {
             operations: vec![Operation::Revoke, Operation::Suspend],
         }
+    }
+
+    fn config_name(&self) -> &RevocationMethodId {
+        &self.config_name
     }
 }

@@ -43,6 +43,7 @@ use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{Features, FormatterCapabilities};
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
+use crate::provider::provider_directory::ProviderDirectoryError;
 use crate::provider::revocation::MockRevocationMethod;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
@@ -1008,19 +1009,29 @@ async fn test_create_credential_schema_failed_unique_claims_error() {
 
 #[tokio::test]
 async fn test_create_credential_schema_fail_validation() {
-    let repository = MockCredentialSchemaRepository::default();
-    let organisation_repository = MockOrganisationRepository::default();
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
         .expect_get_credential_formatter()
         .times(4)
         .returning(|_| Some(Arc::new(MockCredentialFormatter::default())));
 
+    let mut revocation_provider = MockRevocationMethodProvider::default();
+    revocation_provider
+        .expect_get_revocation_method()
+        .once()
+        .return_once(|id| {
+            Err(ProviderDirectoryError::MissingProvider {
+                config_key: id.to_string(),
+                provider_type: "revocation".to_string(),
+            }
+            .into())
+        });
+
     let service = setup_service(
-        repository,
-        organisation_repository,
+        MockCredentialSchemaRepository::default(),
+        MockOrganisationRepository::default(),
         formatter_provider,
-        MockRevocationMethodProvider::default(),
+        revocation_provider,
         generic_config().core,
     );
 
@@ -1079,7 +1090,7 @@ async fn test_create_credential_schema_fail_validation() {
         .await;
     assert_eq!(
         non_existing_revocation_method.unwrap_err().error_code(),
-        ErrorCode::BR_0089
+        ErrorCode::BR_0430
     );
 
     let wrong_datatype = service
@@ -1310,14 +1321,15 @@ async fn test_create_credential_schema_fail_incompatible_revocation_and_format()
         .once()
         .return_once(|_| Some(Arc::new(formatter)));
 
-    let revocation_method = MockRevocationMethod::default();
+    let mut revocation_method = MockRevocationMethod::default();
+    revocation_method.expect_enabled().once().returning(|| true);
 
     let mut revocation_method_provider = MockRevocationMethodProvider::new();
     revocation_method_provider
         .expect_get_revocation_method()
         .with(eq::<RevocationMethodId>("BITSTRINGSTATUSLIST".into()))
         .once()
-        .return_once(move |_| Some(Arc::new(revocation_method)));
+        .return_once(move |_| Ok(Arc::new(revocation_method)));
 
     let service = setup_service(
         MockCredentialSchemaRepository::default(),

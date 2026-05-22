@@ -144,7 +144,7 @@ async fn test_issuer_submit_succeeds() {
         .expect_get_revocation_method()
         .with(eq::<RevocationMethodId>("mock".into()))
         .once()
-        .return_once(move |_| Some(Arc::new(revocation_method)));
+        .return_once(move |_| Ok(Arc::new(revocation_method)));
 
     let mut formatter = MockCredentialFormatter::new();
     formatter

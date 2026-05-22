@@ -76,9 +76,7 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
         let revocation_method = match &dto.schema.revocation_method {
             Some(method_id) => Some(
                 self.revocation_method_provider
-                    .get_revocation_method(method_id)
-                    .ok_or(MissingProviderError::RevocationMethod(method_id.clone()))
-                    .error_while("getting revocation provider")?,
+                    .get_revocation_method(method_id)?,
             ),
             None => None,
         };

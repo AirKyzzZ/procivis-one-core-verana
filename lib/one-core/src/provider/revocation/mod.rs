@@ -1,19 +1,24 @@
-use shared_types::{RevocationListEntryId, RevocationListId, SignerId};
+use std::fmt::{Display, Formatter};
 
+use proc_macros::provider_mock;
+use shared_types::{RevocationListEntryId, RevocationListId, RevocationMethodId, SignerId};
+
+use self::error::RevocationError;
+use self::model::{
+    CredentialDataByRole, CredentialRevocationInfo, RevocationMethodCapabilities, RevocationState,
+};
 use crate::model::certificate::Certificate;
 use crate::model::credential::Credential;
 use crate::model::identifier::Identifier;
 use crate::model::wallet_instance_attested_key::{
     WalletInstanceAttestedKey, WalletInstanceAttestedKeyRevocationInfo,
 };
+use crate::provider::Provider;
 use crate::provider::credential_formatter::model::{CredentialStatus, IdentifierDetails};
-use crate::provider::revocation::error::RevocationError;
-use crate::provider::revocation::model::{
-    CredentialDataByRole, CredentialRevocationInfo, RevocationMethodCapabilities, RevocationState,
-};
 
 pub mod bitstring_status_list;
 pub mod crl;
+mod decorators;
 pub mod error;
 mod mapper;
 pub mod mdoc_mso_update_suspension;
@@ -23,9 +28,9 @@ pub mod status_list_2021;
 pub mod token_status_list;
 mod utils;
 
-#[cfg_attr(any(test, feature = "mock"), mockall::automock)]
+#[provider_mock]
 #[async_trait::async_trait]
-pub trait RevocationMethod: Send + Sync {
+pub trait RevocationMethod: Provider + Send + Sync {
     /// Returns the revocation method as a string for the `credentialStatus` field of the VC.
     fn get_status_type(&self) -> String;
 
@@ -99,4 +104,12 @@ pub trait RevocationMethod: Send + Sync {
     /// Revocation method capabilities include the operations possible for each revocation
     /// method.
     fn get_capabilities(&self) -> RevocationMethodCapabilities;
+
+    fn config_name(&self) -> &RevocationMethodId;
+}
+
+impl Display for dyn RevocationMethod {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Revocation method `{}`", self.config_name())
+    }
 }

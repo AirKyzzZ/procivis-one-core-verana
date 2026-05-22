@@ -109,7 +109,7 @@ impl Signer for X509CertificateSigner {
                     },
                     RevocationInfo {
                         config_name: self.config_name.to_owned(),
-                        revocation_method: self.revocation_method(),
+                        revocation_method: self.revocation_method()?,
                     },
                     self.key_provider.clone(),
                 )
@@ -146,9 +146,17 @@ impl Signer for X509CertificateSigner {
         Ok(CreateSignatureResponseDTO { id, result: chain })
     }
 
-    fn revocation_method(&self) -> Option<Arc<dyn RevocationMethod>> {
-        self.revocation_method_provider
-            .get_revocation_method(self.params.revocation_method.as_ref()?)
+    fn revocation_method(&self) -> Result<Option<Arc<dyn RevocationMethod>>, SignerError> {
+        Ok(
+            if let Some(revocation_method) = &self.params.revocation_method {
+                Some(
+                    self.revocation_method_provider
+                        .get_revocation_method(revocation_method)?,
+                )
+            } else {
+                None
+            },
+        )
     }
 }
 

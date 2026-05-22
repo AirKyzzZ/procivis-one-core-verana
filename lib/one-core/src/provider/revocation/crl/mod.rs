@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use futures::FutureExt;
 use num_traits::ToPrimitive;
+use proc_macros::Provider;
 use serde::{Deserialize, Serialize};
 use serde_with::DurationSeconds;
 use shared_types::{RevocationListEntryId, RevocationListId, RevocationMethodId, SignerId};
@@ -30,6 +31,7 @@ use crate::proto::certificate_validator::parse::extract_leaf_pem_from_chain;
 use crate::proto::transaction_manager::TransactionManager;
 use crate::provider::credential_formatter::model::{CredentialStatus, IdentifierDetails};
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::provider_directory::InitializationError;
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::{
@@ -43,11 +45,12 @@ mod test;
 #[serde_with::serde_as]
 #[derive(Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct Params {
+struct Params {
     #[serde_as(as = "DurationSeconds<i64>")]
     pub refresh_interval: time::Duration,
 }
 
+#[derive(Provider)]
 pub struct CRLRevocation {
     config_id: RevocationMethodId,
     core_base_url: Option<String>,
@@ -64,16 +67,22 @@ impl CRLRevocation {
         revocation_list_repository: Arc<dyn RevocationListRepository>,
         transaction_manager: Arc<dyn TransactionManager>,
         key_provider: Arc<dyn KeyProvider>,
-        params: Params,
-    ) -> Self {
-        Self {
+        params: serde_json::Value,
+    ) -> Result<Self, InitializationError> {
+        let params =
+            serde_json::from_value(params).map_err(|err| InitializationError::InvalidParams {
+                key: config_id.to_string(),
+                source: err,
+            })?;
+
+        Ok(Self {
             config_id,
             core_base_url,
             revocation_list_repository,
             transaction_manager,
             key_provider,
             params,
-        }
+        })
     }
 }
 
@@ -305,6 +314,10 @@ impl RevocationMethod for CRLRevocation {
         RevocationMethodCapabilities {
             operations: vec![Operation::Revoke],
         }
+    }
+
+    fn config_name(&self) -> &RevocationMethodId {
+        &self.config_id
     }
 }
 

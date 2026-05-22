@@ -1,7 +1,8 @@
 //! Implementation of ISO mDL (ISO/IEC 18013-5:2021).
 //! https://www.iso.org/standard/69084.html
 
-use shared_types::{RevocationListEntryId, RevocationListId, SignerId};
+use proc_macros::Provider;
+use shared_types::{RevocationListEntryId, RevocationListId, RevocationMethodId, SignerId};
 
 use super::model::{CredentialRevocationInfo, Operation};
 use crate::model::certificate::Certificate;
@@ -17,7 +18,10 @@ use crate::provider::revocation::model::{
     CredentialDataByRole, RevocationMethodCapabilities, RevocationState,
 };
 
-pub struct MdocMsoUpdateSuspensionRevocation {}
+#[derive(Provider)]
+pub struct MdocMsoUpdateSuspensionRevocation {
+    pub config_id: RevocationMethodId,
+}
 
 #[async_trait::async_trait]
 impl RevocationMethod for MdocMsoUpdateSuspensionRevocation {
@@ -119,5 +123,9 @@ impl RevocationMethod for MdocMsoUpdateSuspensionRevocation {
         RevocationMethodCapabilities {
             operations: vec![Operation::Suspend],
         }
+    }
+
+    fn config_name(&self) -> &RevocationMethodId {
+        &self.config_id
     }
 }

@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use futures::FutureExt;
+use proc_macros::Provider;
 use resolver::{StatusListCacheEntry, StatusListResolver};
 use serde::{Deserialize, Serialize};
 use shared_types::{
@@ -41,6 +42,7 @@ use crate::provider::credential_formatter::vcdm::VcdmCredential;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::provider_directory::InitializationError;
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::{
@@ -63,18 +65,16 @@ const CREDENTIAL_STATUS_TYPE: &str = "BitstringStatusListEntry";
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct Params {
+struct Params {
+    #[serde(default = "default_format")]
     pub format: StatusListCredentialFormat,
 }
 
-impl Default for Params {
-    fn default() -> Self {
-        Self {
-            format: StatusListCredentialFormat::Jwt,
-        }
-    }
+fn default_format() -> StatusListCredentialFormat {
+    StatusListCredentialFormat::Jwt
 }
 
+#[derive(Provider)]
 pub struct BitstringStatusList {
     config_id: RevocationMethodId,
     core_base_url: Option<String>,
@@ -104,9 +104,15 @@ impl BitstringStatusList {
         revocation_list_repository: Arc<dyn RevocationListRepository>,
         transaction_manager: Arc<dyn TransactionManager>,
         client: Arc<dyn HttpClient>,
-        params: Option<Params>,
-    ) -> Self {
-        Self {
+        params: serde_json::Value,
+    ) -> Result<Self, InitializationError> {
+        let params =
+            serde_json::from_value(params).map_err(|err| InitializationError::InvalidParams {
+                key: config_id.to_string(),
+                source: err,
+            })?;
+
+        Ok(Self {
             config_id,
             core_base_url,
             key_algorithm_provider,
@@ -118,10 +124,8 @@ impl BitstringStatusList {
             revocation_list_repository,
             transaction_manager,
             resolver: Arc::new(StatusListResolver::new(client)),
-            params: params.unwrap_or(Params {
-                format: StatusListCredentialFormat::Jwt,
-            }),
-        }
+            params,
+        })
     }
 }
 
@@ -399,6 +403,10 @@ impl RevocationMethod for BitstringStatusList {
         RevocationMethodCapabilities {
             operations: vec![Operation::Revoke, Operation::Suspend],
         }
+    }
+
+    fn config_name(&self) -> &RevocationMethodId {
+        &self.config_id
     }
 }
 

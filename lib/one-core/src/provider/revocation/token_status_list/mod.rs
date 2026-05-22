@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use futures::FutureExt;
+use proc_macros::Provider;
 use rcgen::KeyUsagePurpose;
 use resolver::{StatusListCacheEntry, StatusListResolver};
 use serde::{Deserialize, Serialize};
@@ -44,6 +45,7 @@ use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVcStat
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::provider_directory::InitializationError;
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::provider::revocation::error::RevocationError;
@@ -69,18 +71,16 @@ const CREDENTIAL_STATUS_TYPE: &str = "TokenStatusListEntry";
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct Params {
+struct Params {
+    #[serde(default = "default_format")]
     pub format: StatusListCredentialFormat,
 }
 
-impl Default for Params {
-    fn default() -> Self {
-        Self {
-            format: StatusListCredentialFormat::Jwt,
-        }
-    }
+fn default_format() -> StatusListCredentialFormat {
+    StatusListCredentialFormat::Jwt
 }
 
+#[derive(Provider)]
 pub struct TokenStatusList {
     config_id: RevocationMethodId,
     core_base_url: Option<String>,
@@ -114,14 +114,20 @@ impl TokenStatusList {
         identifier_repository: Arc<dyn IdentifierRepository>,
         transaction_manager: Arc<dyn TransactionManager>,
         client: Arc<dyn HttpClient>,
-        params: Option<Params>,
-    ) -> Result<Self, RevocationError> {
-        let params = params.unwrap_or_default();
+        params: serde_json::Value,
+    ) -> Result<Self, InitializationError> {
+        let params: Params =
+            serde_json::from_value(params).map_err(|err| InitializationError::InvalidParams {
+                key: config_id.to_string(),
+                source: err,
+            })?;
 
         if params.format != StatusListCredentialFormat::Jwt {
             return Err(RevocationError::ValidationError(
                 "Token revocation format must be JWT".to_string(),
-            ));
+            )
+            .error_while("validating config")
+            .into());
         }
 
         Ok(Self {
@@ -572,6 +578,10 @@ impl RevocationMethod for TokenStatusList {
         RevocationMethodCapabilities {
             operations: vec![Operation::Revoke, Operation::Suspend],
         }
+    }
+
+    fn config_name(&self) -> &RevocationMethodId {
+        &self.config_id
     }
 }
 

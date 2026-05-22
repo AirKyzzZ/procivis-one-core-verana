@@ -66,7 +66,6 @@ use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::model::{CredentialRevocationInfo, RevocationState};
 use crate::service::common_dto::ListQueryDTO;
-use crate::service::error::MissingProviderError;
 use crate::util::key_selection::KeyFilter;
 use crate::validator::{throw_if_org_id_not_matching_session, throw_if_org_not_matching_session};
 
@@ -659,12 +658,8 @@ impl WalletProviderService {
             .map(|revocation_method| {
                 self.revocation_method_provider
                     .get_revocation_method(revocation_method)
-                    .ok_or(MissingProviderError::RevocationMethod(
-                        revocation_method.to_owned(),
-                    ))
             })
-            .transpose()
-            .error_while("getting revocation method")?;
+            .transpose()?;
 
         let key = public_key_from_wallet_unit(&wallet_unit, &*self.key_algorithm_provider)?;
         let bearer_token = Jwt::<NoncePayload>::decompose_token(bearer_token)
@@ -1248,11 +1243,7 @@ impl WalletProviderService {
         if !keys.is_empty() {
             let revocation_method = self
                 .revocation_method_provider
-                .get_revocation_method(revocation_method)
-                .ok_or(MissingProviderError::RevocationMethod(
-                    revocation_method.to_owned(),
-                ))
-                .error_while("getting revocation method")?;
+                .get_revocation_method(revocation_method)?;
 
             revocation_method
                 .update_attestation_entries(keys, RevocationState::Revoked)

@@ -6,7 +6,6 @@ use super::error::RevocationServiceError;
 use crate::config::core_config::RevocationType;
 use crate::error::ContextWithErrorCode;
 use crate::model::revocation_list::RevocationListRelations;
-use crate::service::error::MissingProviderError;
 
 impl RevocationListService {
     pub async fn get_revocation_list_by_id(
@@ -64,9 +63,7 @@ impl RevocationListService {
 
         let revocation_method = self
             .revocation_method_provider
-            .get_revocation_method(&list.r#type)
-            .ok_or(MissingProviderError::RevocationMethod(list.r#type))
-            .error_while("getting revocation method")?;
+            .get_revocation_method(&list.r#type)?;
 
         let updated_list = revocation_method
             .get_updated_list(list.id)
