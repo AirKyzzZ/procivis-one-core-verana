@@ -1310,7 +1310,6 @@ impl OID4VCIFinal1_0Service {
             last_modified: now,
             credential_blob_id: None,
             wallet_unit_attestation_blob_id: None,
-            wallet_instance_attestation_blob_id: None,
             claims: Some(claims),
             ..credential.to_owned()
         };
