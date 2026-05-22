@@ -11,12 +11,10 @@ use one_core::service::credential_schema::dto::CredentialSchemaListIncludeEntity
 use one_dto_mapper::convert_inner;
 use sea_orm::ActiveValue::Set;
 use sea_orm::sea_query::Query;
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, Unchanged,
-};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Unchanged};
 use shared_types::{CredentialSchemaId, OrganisationId};
 
-use crate::common::calculate_pages_count;
+use crate::common::list_query_with_custom_model;
 use crate::credential_schema::CredentialSchemaProvider;
 use crate::credential_schema::mapper::{claim_schemas_to_model_vec, credential_schema_from_models};
 use crate::entity::credential_schema::LayoutType;
@@ -24,7 +22,7 @@ use crate::entity::{
     claim_schema, credential_schema, credential_schema_format,
     credential_schema_format_claim_schema,
 };
-use crate::list_query_generic::SelectWithListQuery;
+use crate::list_query_generic::{SelectWithFilterJoin, SelectWithListQuery};
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 
 #[autometrics]
@@ -147,41 +145,26 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
         &self,
         query_params: CredentialSchemaListQuery,
     ) -> Result<GetCredentialSchemaList, DataLayerError> {
-        let limit = query_params
-            .pagination
-            .as_ref()
-            .map(|pagination| pagination.page_size as _);
-
         let query = credential_schema::Entity::find()
             .filter(credential_schema::Column::DeletedAt.is_null())
+            .with_filter_join(&query_params)
             .with_list_query(&query_params)
             .order_by_desc(credential_schema::Column::CreatedDate)
             .order_by_desc(credential_schema::Column::Id);
 
-        let (items_count, credential_schemas) =
-            tokio::join!(query.to_owned().count(&self.db), query.all(&self.db));
-
-        let items_count = items_count.map_err(|e| DataLayerError::Db(e.into()))?;
-        let credential_schemas = credential_schemas.map_err(|e| DataLayerError::Db(e.into()))?;
-
         let skip_layout_properties = !query_params.include.as_ref().is_some_and(|include| {
             include.contains(&CredentialSchemaListIncludeEntityTypeEnum::LayoutProperties)
         });
-        Ok(GetCredentialSchemaList {
-            values: credential_schemas
-                .into_iter()
-                .map(|credential_schema| {
-                    credential_schema_from_models(
-                        credential_schema,
-                        skip_layout_properties,
-                        self.db.to_owned(),
-                        &self.organisation_repository,
-                    )
-                })
-                .collect::<Result<_, _>>()?,
-            total_pages: calculate_pages_count(items_count, limit.unwrap_or(0)),
-            total_items: items_count,
+
+        list_query_with_custom_model(query, query_params, &self.db, |model| {
+            credential_schema_from_models(
+                model,
+                skip_layout_properties,
+                self.db.to_owned(),
+                &self.organisation_repository,
+            )
         })
+        .await
     }
 
     async fn update_credential_schema(

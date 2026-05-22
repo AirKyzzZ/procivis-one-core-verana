@@ -108,7 +108,7 @@ async fn test_db_schema_credential_schema() {
         .nullable(true);
     credential_schema
         .column("layout_properties")
-        .r#type(ColumnType::Json)
+        .r#type(ColumnType::JsonBinary)
         .nullable(true);
     credential_schema
         .column("layout_type")

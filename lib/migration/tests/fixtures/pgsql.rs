@@ -289,6 +289,7 @@ impl From<ColumnType> for Type {
             ColumnType::Boolean => Self::Boolean,
             ColumnType::Blob => Self::Bytea,
             ColumnType::Json => Self::Json,
+            ColumnType::JsonBinary => Self::JsonBinary,
             ColumnType::Text => Self::Text,
             ColumnType::VarBinary(_) => Self::Bytea,
         }

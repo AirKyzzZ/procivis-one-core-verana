@@ -140,7 +140,7 @@ impl CredentialSchemaService {
             .credential_schema_repository
             .create_credential_schema(credential_schema)
             .await
-            .error_while("getting credential schema")?;
+            .error_while("creating credential schema")?;
 
         tracing::info!(message = success_log);
         Ok(schema_id)

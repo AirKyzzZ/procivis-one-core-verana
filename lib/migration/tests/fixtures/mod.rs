@@ -57,7 +57,9 @@ pub(super) enum ColumnType {
     BigInt,
     Boolean,
     Blob,
+    #[allow(dead_code)]
     Json,
+    JsonBinary,
     Text,
     VarBinary(Option<u32>),
 }

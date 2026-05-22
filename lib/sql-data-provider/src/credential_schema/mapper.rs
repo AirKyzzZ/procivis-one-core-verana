@@ -14,7 +14,10 @@ use one_dto_mapper::convert_inner;
 use sea_orm::ActiveValue::Set;
 use sea_orm::sea_query::query::IntoCondition;
 use sea_orm::sea_query::{ExprTrait, Query, SimpleExpr};
-use sea_orm::{ColumnTrait, Condition, EntityTrait, IntoSimpleExpr, QueryFilter, QueryOrder};
+use sea_orm::{
+    ColumnTrait, Condition, EntityTrait, IntoSimpleExpr, JoinType, QueryFilter, QueryOrder,
+    RelationTrait,
+};
 use shared_types::CredentialSchemaId;
 use uuid::Uuid;
 
@@ -24,8 +27,8 @@ use crate::credential_schema_format::mapper::credential_schema_format_from_model
 use crate::entity::credential_schema::KeyStorageSecurity;
 use crate::entity::{claim_schema, credential_schema, credential_schema_format};
 use crate::list_query_generic::{
-    IntoFilterCondition, IntoSortingColumn, get_comparison_condition, get_equals_condition,
-    get_string_match_condition,
+    IntoFilterCondition, IntoJoinRelations, IntoSortingColumn, JoinRelation,
+    get_comparison_condition, get_equals_condition, get_string_match_condition,
 };
 use crate::localized_text::LocalizedTextLoader;
 use crate::mapper::to_data_layer_error;
@@ -47,52 +50,20 @@ impl IntoFilterCondition for CredentialSchemaFilterValue {
                 get_string_match_condition(credential_schema::Column::Name, string_match)
             }
             Self::SchemaId(string_match) => Condition::any()
-                .add(
-                    credential_schema::Column::Id.in_subquery(
-                        Query::select()
-                            .column(credential_schema_format::Column::CredentialSchemaId)
-                            .from(credential_schema_format::Entity)
-                            .cond_where(
-                                get_string_match_condition(
-                                    credential_schema_format::Column::SchemaId,
-                                    string_match.clone(),
-                                )
-                                .into_condition(),
-                            )
-                            .to_owned(),
-                    ),
-                )
                 .add(get_string_match_condition(
                     credential_schema::Column::SchemaId,
+                    string_match.clone(),
+                ))
+                .add(get_string_match_condition(
+                    credential_schema_format::Column::SchemaId,
                     string_match,
                 )),
             Self::SchemaIds(schema_ids) => Condition::any()
-                .add(
-                    credential_schema::Column::Id.in_subquery(
-                        Query::select()
-                            .column(credential_schema_format::Column::CredentialSchemaId)
-                            .from(credential_schema_format::Entity)
-                            .cond_where(
-                                credential_schema_format::Column::SchemaId
-                                    .is_in(schema_ids.clone()),
-                            )
-                            .to_owned(),
-                    ),
-                )
-                .add(credential_schema::Column::SchemaId.is_in(schema_ids)),
+                .add(credential_schema::Column::SchemaId.is_in(&schema_ids))
+                .add(credential_schema_format::Column::SchemaId.is_in(&schema_ids)),
             Self::Formats(formats) => Condition::any()
-                .add(
-                    credential_schema::Column::Id.in_subquery(
-                        Query::select()
-                            .column(credential_schema_format::Column::CredentialSchemaId)
-                            .from(credential_schema_format::Entity)
-                            .cond_where(
-                                credential_schema_format::Column::Format.is_in(formats.clone()),
-                            )
-                            .to_owned(),
-                    ),
-                )
-                .add(credential_schema::Column::Format.is_in(formats)),
+                .add(credential_schema::Column::Format.is_in(&formats))
+                .add(credential_schema_format::Column::Format.is_in(&formats)),
             Self::OrganisationId(organisation_id) => get_equals_condition(
                 credential_schema::Column::OrganisationId,
                 organisation_id.to_string(),
@@ -151,6 +122,21 @@ impl IntoFilterCondition for CredentialSchemaFilterValue {
                         .into_condition()
                 }
             }
+        }
+    }
+}
+
+impl IntoJoinRelations for CredentialSchemaFilterValue {
+    fn get_join(&self) -> Vec<JoinRelation> {
+        match self {
+            CredentialSchemaFilterValue::SchemaId(_)
+            | CredentialSchemaFilterValue::SchemaIds(_)
+            | CredentialSchemaFilterValue::Formats(_) => vec![JoinRelation {
+                join_type: JoinType::InnerJoin,
+                relation_def: credential_schema::Relation::CredentialSchemaFormat.def(),
+                alias: None,
+            }],
+            _ => vec![],
         }
     }
 }

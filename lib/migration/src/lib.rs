@@ -268,7 +268,8 @@ impl MigratorTrait for Migrator {
             Box::new(migrations::m20260429_120000_credential_schema_multiformat::Migration),
             Box::new(migrations::m20260511_120000_reset_trusted_requirements_to_false::Migration),
             Box::new(migrations::m20260512_090000_remove_legacy_trust::Migration),
-            Box::new(migrations::m20260512_062412_localized_text::Migration)
+            Box::new(migrations::m20260512_062412_localized_text::Migration),
+            Box::new(migrations::m20260522_120000_credential_schema_layout_properties_to_jsonb::Migration),
         ]
     }
 }
