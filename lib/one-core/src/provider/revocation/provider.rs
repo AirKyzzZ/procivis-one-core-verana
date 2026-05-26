@@ -7,6 +7,7 @@ use super::RevocationMethod;
 use super::bitstring_status_list::BitstringStatusList;
 use super::bitstring_status_list::resolver::StatusListCachingLoader;
 use super::crl::CRLRevocation;
+use super::decorators::CapabilityChecked;
 use super::mdoc_mso_update_suspension::MdocMsoUpdateSuspensionRevocation;
 use super::status_list_2021::StatusList2021;
 use super::token_status_list::TokenStatusList;
@@ -133,7 +134,7 @@ fn initialize_provider(
             fields.merge_fields(),
         )?),
     };
-    Ok(revocation_method)
+    Ok(Arc::new(CapabilityChecked(revocation_method)))
 }
 
 #[expect(clippy::too_many_arguments)]

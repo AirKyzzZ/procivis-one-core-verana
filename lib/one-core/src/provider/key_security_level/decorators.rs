@@ -2,20 +2,13 @@ use std::fmt::Display;
 use std::sync::Arc;
 
 use super::{KeySecurityLevel, KeySecurityLevelCapabilities};
-use crate::config::core_config::{ConfigFields, KeySecurityLevelType};
+use crate::config::core_config::KeySecurityLevelType;
 use crate::provider::disabled_provider::DisabledProvider;
-use crate::provider::provider_directory::WithDecorators;
+use crate::provider::provider_directory::WithDisabledDecorator;
 
-impl WithDecorators for dyn KeySecurityLevel {
-    fn decorate(
-        self: Arc<dyn KeySecurityLevel>,
-        fields: &impl ConfigFields,
-    ) -> Arc<dyn KeySecurityLevel> {
-        if fields.enabled() {
-            self
-        } else {
-            Arc::new(DisabledProvider::new(self))
-        }
+impl WithDisabledDecorator for dyn KeySecurityLevel {
+    fn decorate(self: Arc<dyn KeySecurityLevel>) -> Arc<dyn KeySecurityLevel> {
+        Arc::new(DisabledProvider::new(self))
     }
 }
 

@@ -6,20 +6,16 @@ use shared_types::{DidId, DidMethodId, DidValue};
 use super::error::DidMethodError;
 use super::model::{DidCapabilities, DidDocument, Operation};
 use super::{DidCreated, DidKeys, DidMethod, DidUpdate, Keys};
-use crate::config::core_config::{ConfigFields, KeyAlgorithmType};
+use crate::config::core_config::KeyAlgorithmType;
 use crate::error::ContextWithErrorCode;
 use crate::model::key::Key;
 use crate::provider::Provider;
 use crate::provider::disabled_provider::DisabledProvider;
-use crate::provider::provider_directory::WithDecorators;
+use crate::provider::provider_directory::WithDisabledDecorator;
 
-impl WithDecorators for dyn DidMethod {
-    fn decorate(self: Arc<dyn DidMethod>, fields: &impl ConfigFields) -> Arc<dyn DidMethod> {
-        if fields.enabled() {
-            Arc::new(CapabilityChecked(self))
-        } else {
-            Arc::new(DisabledProvider::new(self))
-        }
+impl WithDisabledDecorator for dyn DidMethod {
+    fn decorate(self: Arc<dyn DidMethod>) -> Arc<dyn DidMethod> {
+        Arc::new(DisabledProvider::new(self))
     }
 }
 
@@ -69,7 +65,7 @@ impl<T: Provider + DidMethod + Display + ?Sized> DidMethod for DisabledProvider<
 }
 
 /// Checks supported operations
-struct CapabilityChecked(Arc<dyn DidMethod>);
+pub(super) struct CapabilityChecked(pub Arc<dyn DidMethod>);
 
 impl Provider for CapabilityChecked {
     fn capabilities(&self) -> Option<serde_json::Value> {

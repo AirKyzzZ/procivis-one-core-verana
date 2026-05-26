@@ -8,7 +8,6 @@ use super::error::RevocationError;
 use super::model::{
     CredentialDataByRole, CredentialRevocationInfo, RevocationMethodCapabilities, RevocationState,
 };
-use crate::config::core_config::ConfigFields;
 use crate::model::certificate::Certificate;
 use crate::model::credential::Credential;
 use crate::model::identifier::Identifier;
@@ -18,19 +17,12 @@ use crate::model::wallet_instance_attested_key::{
 use crate::provider::Provider;
 use crate::provider::credential_formatter::model::{CredentialStatus, IdentifierDetails};
 use crate::provider::disabled_provider::DisabledProvider;
-use crate::provider::provider_directory::WithDecorators;
+use crate::provider::provider_directory::WithDisabledDecorator;
 use crate::provider::revocation::model::Operation;
 
-impl WithDecorators for dyn RevocationMethod {
-    fn decorate(
-        self: Arc<dyn RevocationMethod>,
-        fields: &impl ConfigFields,
-    ) -> Arc<dyn RevocationMethod> {
-        if fields.enabled() {
-            Arc::new(CapabilityChecked(self))
-        } else {
-            Arc::new(DisabledProvider::new(self))
-        }
+impl WithDisabledDecorator for dyn RevocationMethod {
+    fn decorate(self: Arc<dyn RevocationMethod>) -> Arc<dyn RevocationMethod> {
+        Arc::new(DisabledProvider::new(self))
     }
 }
 
@@ -129,7 +121,7 @@ impl<T: Provider + RevocationMethod + Display + ?Sized> RevocationMethod for Dis
 }
 
 /// Checks supported operations
-struct CapabilityChecked(Arc<dyn RevocationMethod>);
+pub(super) struct CapabilityChecked(pub Arc<dyn RevocationMethod>);
 
 impl Provider for CapabilityChecked {
     fn capabilities(&self) -> Option<serde_json::Value> {

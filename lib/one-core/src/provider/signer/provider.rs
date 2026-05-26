@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use shared_types::{RevocationMethodId, SignerId};
 use uuid::Uuid;
 
-use super::decorators::PermissionChecked;
+use super::decorators::{CapabilityChecked, PermissionChecked};
 use super::{Signer, access_certificate, registration_certificate, x509_certificate};
 use crate::config::core_config::{
     ConfigBlock, ConfigExt, CoreConfig, Fields, RevocationConfig, RevocationType, SignerType,
@@ -193,10 +193,12 @@ pub(crate) fn signer_provider_from_config(
                 &revocation_method_provider,
             )?;
 
-            let provider: Arc<dyn Signer> = Arc::new(PermissionChecked {
+            let provider = Arc::new(PermissionChecked {
                 inner: provider,
                 session_provider: session_provider.to_owned(),
             });
+
+            let provider: Arc<dyn Signer> = Arc::new(CapabilityChecked(provider));
 
             Ok::<_, InitializationError>(provider)
         },

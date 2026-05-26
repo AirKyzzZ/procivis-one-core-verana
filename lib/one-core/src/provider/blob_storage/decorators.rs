@@ -5,18 +5,14 @@ use shared_types::BlobId;
 
 use super::BlobStorage;
 use super::error::BlobStorageError;
-use crate::config::core_config::{BlobStorageType, ConfigFields};
+use crate::config::core_config::BlobStorageType;
 use crate::model::blob::{Blob, UpdateBlobRequest};
 use crate::provider::disabled_provider::DisabledProvider;
-use crate::provider::provider_directory::WithDecorators;
+use crate::provider::provider_directory::WithDisabledDecorator;
 
-impl WithDecorators for dyn BlobStorage {
-    fn decorate(self: Arc<dyn BlobStorage>, fields: &impl ConfigFields) -> Arc<dyn BlobStorage> {
-        if fields.enabled() {
-            self
-        } else {
-            Arc::new(DisabledProvider::new(self))
-        }
+impl WithDisabledDecorator for dyn BlobStorage {
+    fn decorate(self: Arc<dyn BlobStorage>) -> Arc<dyn BlobStorage> {
+        Arc::new(DisabledProvider::new(self))
     }
 }
 

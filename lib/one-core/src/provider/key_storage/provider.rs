@@ -6,6 +6,7 @@ use one_crypto::CryptoProvider;
 
 use super::KeyStorage;
 use super::azure_vault::AzureVaultKeyProvider;
+use super::decorators::CapabilityCheckedKeyStorage;
 use super::internal::InternalKeyProvider;
 use super::remote_secure_element::RemoteSecureElementKeyProvider;
 use super::secure_element::{NativeKeyStorage, SecureElementKeyProvider};
@@ -215,5 +216,5 @@ fn initialize_provider(
             Arc::new(RemoteSecureElementKeyProvider::new(name, native_storage))
         }
     };
-    Ok(provider)
+    Ok(Arc::new(CapabilityCheckedKeyStorage { inner: provider }))
 }

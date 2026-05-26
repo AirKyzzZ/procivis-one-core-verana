@@ -5,7 +5,7 @@ use serde_json::Value;
 use shared_types::KeyId;
 use standardized_types::jwk::PrivateJwk;
 
-use crate::config::core_config::{ConfigFields, KeyAlgorithmType};
+use crate::config::core_config::KeyAlgorithmType;
 use crate::error::ContextWithErrorCode;
 use crate::model::key::Key;
 use crate::provider::Provider;
@@ -14,16 +14,11 @@ use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_storage::KeyStorage;
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::key_storage::model::{Features, KeyStorageCapabilities, StorageGeneratedKey};
-use crate::provider::provider_directory::WithDecorators;
+use crate::provider::provider_directory::WithDisabledDecorator;
 
-impl WithDecorators for dyn KeyStorage {
-    fn decorate(self: Arc<dyn KeyStorage>, fields: &impl ConfigFields) -> Arc<dyn KeyStorage> {
-        let provider: Arc<dyn KeyStorage> = if fields.enabled() {
-            self
-        } else {
-            Arc::new(DisabledProvider::new(self))
-        };
-        Arc::new(CapabilityCheckedKeyStorage { inner: provider })
+impl WithDisabledDecorator for dyn KeyStorage {
+    fn decorate(self: Arc<dyn KeyStorage>) -> Arc<dyn KeyStorage> {
+        Arc::new(DisabledProvider::new(self))
     }
 }
 
@@ -87,8 +82,8 @@ impl<T: KeyStorage + Display + ?Sized> KeyStorage for DisabledProvider<T> {
     }
 }
 
-pub struct CapabilityCheckedKeyStorage {
-    inner: Arc<dyn KeyStorage>,
+pub(super) struct CapabilityCheckedKeyStorage {
+    pub inner: Arc<dyn KeyStorage>,
 }
 
 impl Provider for CapabilityCheckedKeyStorage {
@@ -181,18 +176,14 @@ impl KeyStorage for CapabilityCheckedKeyStorage {
 mod test {
     use std::sync::Arc;
 
-    use similar_asserts::assert_eq;
     use standardized_types::jwk::{PrivateJwk, PrivateJwkEc};
     use uuid::Uuid;
 
-    use crate::config::core_config::{
-        ConfigEntryDisplay, Fields, KeyAlgorithmType, KeyStorageType,
-    };
-    use crate::error::{ErrorCode, ErrorCodeMixin};
+    use super::*;
+    use crate::config::core_config::KeyAlgorithmType;
     use crate::provider::key_storage::error::KeyStorageError;
     use crate::provider::key_storage::model::KeyStorageCapabilities;
     use crate::provider::key_storage::{KeyStorage, MockKeyStorage};
-    use crate::provider::provider_directory::WithDecorators;
 
     #[tokio::test]
     async fn test_generate_unsupported() {
@@ -205,15 +196,7 @@ mod test {
             });
         let inner: Arc<dyn KeyStorage> = Arc::new(inner);
 
-        let provider = inner.decorate(&Fields {
-            r#type: KeyStorageType::Internal,
-            display: ConfigEntryDisplay::TranslationId("foo".to_string()),
-            order: None,
-            priority: None,
-            enabled: true,
-            capabilities: None,
-            params: None,
-        });
+        let provider = CapabilityCheckedKeyStorage { inner };
 
         let result = provider
             .generate(Uuid::new_v4().into(), KeyAlgorithmType::MlDsa)
@@ -222,34 +205,6 @@ mod test {
             result,
             Err(KeyStorageError::UnsupportedKeyType { .. })
         ));
-    }
-
-    #[tokio::test]
-    async fn test_generate_disabled() {
-        let mut inner = MockKeyStorage::new();
-        inner
-            .expect_get_capabilities()
-            .returning(|| KeyStorageCapabilities {
-                features: vec![],
-                algorithms: vec![KeyAlgorithmType::MlDsa],
-            });
-        inner.expect_config_name().returning(|| "foo".to_string());
-        let inner: Arc<dyn KeyStorage> = Arc::new(inner);
-
-        let provider = inner.decorate(&Fields {
-            r#type: KeyStorageType::Internal,
-            display: ConfigEntryDisplay::TranslationId("foo".to_string()),
-            order: None,
-            priority: None,
-            enabled: false,
-            capabilities: None,
-            params: None,
-        });
-
-        let result = provider
-            .generate(Uuid::new_v4().into(), KeyAlgorithmType::MlDsa)
-            .await;
-        assert_eq!(result.err().unwrap().error_code(), ErrorCode::BR_0431)
     }
 
     #[tokio::test]
@@ -263,15 +218,7 @@ mod test {
             });
         let inner: Arc<dyn KeyStorage> = Arc::new(inner);
 
-        let provider = inner.decorate(&Fields {
-            r#type: KeyStorageType::Internal,
-            display: ConfigEntryDisplay::TranslationId("foo".to_string()),
-            order: None,
-            priority: None,
-            enabled: true,
-            capabilities: None,
-            params: None,
-        });
+        let provider = CapabilityCheckedKeyStorage { inner };
 
         let result = provider
             .import(

@@ -7,6 +7,7 @@ use serde_json::json;
 use shared_types::{DidMethodId, DidValue};
 
 use super::DidMethod;
+use super::decorators::CapabilityChecked;
 use super::dto::DidDocumentDTO;
 use super::error::DidMethodProviderError;
 use super::jwk::JWKDidMethod;
@@ -171,7 +172,7 @@ fn initialize_non_webvh_provider(
             );
         }
     };
-    Ok(provider)
+    Ok(Arc::new(CapabilityChecked(provider)))
 }
 
 fn initialize_webvh_provider(
@@ -182,15 +183,15 @@ fn initialize_webvh_provider(
     key_provider: &Arc<dyn KeyProvider>,
     client: &Arc<dyn HttpClient>,
 ) -> Result<Arc<dyn DidMethod>, InitializationError> {
-    let did_webvh = DidWebVh::new(
+    let did_webvh = Arc::new(DidWebVh::new(
         name.to_owned(),
         fields.merge_fields(),
         core_base_url.clone(),
         client.clone(),
         intermediary_provider.clone(),
         key_provider.clone(),
-    )?;
-    Ok(Arc::new(did_webvh))
+    )?);
+    Ok(Arc::new(CapabilityChecked(did_webvh)))
 }
 
 pub(crate) fn did_method_provider_from_config(

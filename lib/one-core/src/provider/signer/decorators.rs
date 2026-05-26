@@ -4,12 +4,11 @@ use std::sync::Arc;
 use shared_types::SignerId;
 
 use super::Signer;
-use crate::config::core_config::ConfigFields;
 use crate::error::ContextWithErrorCode;
 use crate::proto::session_provider::SessionProvider;
 use crate::provider::Provider;
 use crate::provider::disabled_provider::DisabledProvider;
-use crate::provider::provider_directory::WithDecorators;
+use crate::provider::provider_directory::WithDisabledDecorator;
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::signer::Issuer;
 use crate::provider::signer::dto::{CreateSignatureRequest, CreateSignatureResponseDTO};
@@ -17,13 +16,9 @@ use crate::provider::signer::error::SignerError;
 use crate::provider::signer::model::SignerCapabilities;
 use crate::validator::permissions::RequiredPermissions;
 
-impl WithDecorators for dyn Signer {
-    fn decorate(self: Arc<dyn Signer>, fields: &impl ConfigFields) -> Arc<dyn Signer> {
-        if fields.enabled() {
-            Arc::new(CapabilityChecked(self))
-        } else {
-            Arc::new(DisabledProvider::new(self))
-        }
+impl WithDisabledDecorator for dyn Signer {
+    fn decorate(self: Arc<dyn Signer>) -> Arc<dyn Signer> {
+        Arc::new(DisabledProvider::new(self))
     }
 }
 
@@ -53,7 +48,7 @@ impl<T: Provider + Signer + Display + ?Sized> Signer for DisabledProvider<T> {
 }
 
 /// Checks supported identifier/key type used for signing
-struct CapabilityChecked(Arc<dyn Signer>);
+pub(super) struct CapabilityChecked(pub Arc<dyn Signer>);
 
 impl Provider for CapabilityChecked {
     fn capabilities(&self) -> Option<serde_json::Value> {

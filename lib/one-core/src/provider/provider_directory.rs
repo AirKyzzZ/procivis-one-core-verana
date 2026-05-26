@@ -10,14 +10,6 @@ use crate::config::core_config::{ConfigFields, ConfigKey};
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 use crate::provider::Provider;
 
-pub trait WithDecorators {
-    /// Should decorate:
-    /// - disabled flag handling
-    /// - common capability checks
-    /// - provider level permission checks (if any)
-    fn decorate(self: Arc<Self>, fields: &impl ConfigFields) -> Arc<Self>;
-}
-
 pub struct ProviderDirectory<C, CF, P>
 where
     C: ConfigKey,
@@ -86,11 +78,16 @@ impl ErrorCodeMixin for ProviderError {
     }
 }
 
+pub trait WithDisabledDecorator {
+    /// returns a decorated version with disabled flag handling
+    fn decorate(self: Arc<Self>) -> Arc<Self>;
+}
+
 impl<C, CF, P> ProviderDirectory<C, CF, P>
 where
     C: ConfigKey,
     CF: ConfigFields,
-    P: Provider + WithDecorators + ?Sized + 'static,
+    P: Provider + ?Sized + 'static,
 {
     pub fn initialize<'a, K>(
         config_blocks: impl Iterator<Item = (&'a C, &'a mut CF)>,
@@ -100,20 +97,24 @@ where
         K: ?Sized,
         C: 'a + Borrow<K>,
         CF: 'a + ConfigFields,
+        P: WithDisabledDecorator,
     {
         let mut providers = HashMap::new();
         let mut configs = HashMap::new();
 
         for (config_id, field) in config_blocks {
-            let provider = initializer(config_id.borrow(), field)?;
-            let decorated = P::decorate(provider, field);
+            let mut provider = initializer(config_id.borrow(), field)?;
+            if !field.enabled() {
+                provider = P::decorate(provider);
+            }
+
             configs.insert(config_id.clone(), field.clone());
 
-            if let Some(capabilities) = decorated.capabilities() {
+            if let Some(capabilities) = provider.capabilities() {
                 field.set_capabilities(capabilities);
             }
 
-            providers.insert(config_id.clone(), decorated);
+            providers.insert(config_id.clone(), provider);
         }
 
         Ok(Self { providers, configs })

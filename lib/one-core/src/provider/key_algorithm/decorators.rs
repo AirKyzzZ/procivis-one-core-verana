@@ -4,22 +4,18 @@ use std::sync::Arc;
 use secrecy::SecretSlice;
 use standardized_types::jwk::{JwkUse, PrivateJwk, PublicJwk};
 
-use crate::config::core_config::{ConfigFields, KeyAlgorithmType};
+use crate::config::core_config::KeyAlgorithmType;
 use crate::provider::Provider;
 use crate::provider::disabled_provider::DisabledProvider;
 use crate::provider::key_algorithm::KeyAlgorithm;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::model::{GeneratedKey, KeyAlgorithmCapabilities};
-use crate::provider::provider_directory::WithDecorators;
+use crate::provider::provider_directory::WithDisabledDecorator;
 
-impl WithDecorators for dyn KeyAlgorithm {
-    fn decorate(self: Arc<dyn KeyAlgorithm>, fields: &impl ConfigFields) -> Arc<dyn KeyAlgorithm> {
-        if fields.enabled() {
-            self
-        } else {
-            Arc::new(DisabledProvider::new(self))
-        }
+impl WithDisabledDecorator for dyn KeyAlgorithm {
+    fn decorate(self: Arc<dyn KeyAlgorithm>) -> Arc<dyn KeyAlgorithm> {
+        Arc::new(DisabledProvider::new(self))
     }
 }
 
