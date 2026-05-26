@@ -4,6 +4,7 @@ use assert2::check;
 use mockall::predicate::eq;
 use shared_types::OrganisationId;
 use similar_asserts::assert_eq;
+use url::Url;
 use uuid::Uuid;
 
 use super::VerifierInstanceService;
@@ -203,7 +204,9 @@ async fn test_get_trust_collections() {
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
                     deactivated_at: None,
-                    remote_trust_collection_url: None,
+                    remote_trust_collection_url: Some(
+                        Url::parse("https://collection.com").unwrap(),
+                    ),
                     organisation_id,
                     organisation: None,
                 }],

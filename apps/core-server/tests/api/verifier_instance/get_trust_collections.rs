@@ -1,5 +1,6 @@
 use serde_json::json;
 use similar_asserts::assert_eq;
+use url::Url;
 use wiremock::http::Method;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -107,6 +108,7 @@ async fn get_verifier_instance_trust_collections_one_collection() {
             org,
             TestTrustCollectionParams {
                 name: Some("collection".to_string()),
+                remote_trust_collection_url: Some(Url::parse("https://provider.com").unwrap()),
                 ..Default::default()
             },
         )

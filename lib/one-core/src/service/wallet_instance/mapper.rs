@@ -91,16 +91,17 @@ pub(crate) async fn prepare_trust_collection_info(
         .error_while("getting local trust collections")?
         .values;
 
-    if provider_metadata_trust_collections.len() != local_trust_collections.len() {
-        return Err(HolderWalletInstanceError::TrustCollectionsNotInSync);
-    }
-
     let mut local_id_to_metadata = HashMap::<TrustCollectionId, ProviderTrustCollectionDTO>::new();
     for metadata_collection in provider_metadata_trust_collections {
         let local_collection = local_trust_collections
             .iter()
             .find(|lc| lc.name == metadata_collection.name)
             .ok_or(HolderWalletInstanceError::TrustCollectionsNotInSync)?;
+        if local_collection.remote_trust_collection_url.is_none() {
+            // There is a local collection with the same name (which we prefer over remote ones).
+            // Hence this collection should be skipped and not shown as a selection option.
+            continue;
+        }
 
         local_id_to_metadata.insert(local_collection.id, metadata_collection);
     }
