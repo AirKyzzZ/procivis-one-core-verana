@@ -402,6 +402,64 @@ async fn test_get_credential_schema_not_found() {
     assert!(matches!(result, Ok(None)));
 }
 
+// Legacy schemas (format/schema_id on the parent row, no credential_schema_format
+// row) fall back to a synthesized CredentialSchemaFormat. Its id must be stable
+// across loads or OID4VCIFinal1_0Service::issue_tx fails with "missing format".
+#[tokio::test]
+async fn test_legacy_credential_schema_format_id_is_stable_across_loads() {
+    let TestSetup {
+        db,
+        organisation,
+        repository,
+        ..
+    } = setup_empty(Repositories::default()).await;
+
+    let credential_schema_id: CredentialSchemaId = Uuid::new_v4().into();
+    credential_schema::ActiveModel {
+        id: Set(credential_schema_id),
+        created_date: Set(get_dummy_date()),
+        last_modified: Set(get_dummy_date()),
+        name: Set("legacy schema".to_owned()),
+        format: Set(Some("JWT".into())),
+        schema_id: Set(Some(credential_schema_id.to_string())),
+        organisation_id: Set(organisation.id),
+        imported_source_url: Set("CORE_URL".to_string()),
+        layout_type: Set(LayoutType::Card.into()),
+        layout_properties: Set(None),
+        allow_suspension: Set(true),
+        requires_wallet_instance_attestation: Set(false),
+        revocation_method: Set(None),
+        key_storage_security: Set(None),
+        deleted_at: Set(None),
+        batch_size: Set(None),
+        allow_revocation: Set(None),
+        transaction_code_type: Set(None),
+        transaction_code_length: Set(None),
+        transaction_code_description: Set(None),
+    }
+    .insert(&db)
+    .await
+    .unwrap();
+
+    let load = || async {
+        repository
+            .get_credential_schema(&credential_schema_id)
+            .await
+            .unwrap()
+            .expect("schema should exist")
+            .formats
+            .get()
+            .await
+            .unwrap()
+    };
+
+    let first = load().await;
+    let second = load().await;
+
+    assert_eq!(first.len(), 1);
+    assert_eq!(first[0].id, second[0].id);
+}
+
 #[tokio::test]
 async fn test_delete_credential_schema_success() {
     let TestSetupWithCredentialSchema {

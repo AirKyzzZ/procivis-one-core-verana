@@ -222,8 +222,11 @@ pub(super) fn credential_schema_from_models(
 
     let id = credential_schema.id;
     let formats = match (credential_schema.format, credential_schema.schema_id) {
+        // Stable id (reuse schema id) so successive loads of the same legacy row
+        // yield the same CredentialSchemaFormatId — required by issue_tx's
+        // format-by-id lookup. Legacy rows are single-format so no collision.
         (Some(format), Some(schema_id)) => RelatedVec::from(vec![CredentialSchemaFormat {
-            id: Uuid::new_v4().into(),
+            id: Uuid::from(credential_schema.id).into(),
             created_date: credential_schema.created_date,
             last_modified: credential_schema.last_modified,
             credential_schema_id: credential_schema.id,
