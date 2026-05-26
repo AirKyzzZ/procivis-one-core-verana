@@ -10,13 +10,13 @@ use super::dto::{
 };
 use super::error::CredentialSchemaServiceError;
 use super::mapper::create_unique_name_check_request;
-use crate::config::ConfigValidationError;
 use crate::config::core_config::{ConfigExt, CoreConfig, DatatypeType, FormatType};
 use crate::config::validator::datatype::validate_datatypes;
 use crate::config::validator::format::validate_format;
-use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt, NestedError};
+use crate::error::{ContextWithErrorCode, NestedError};
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::credential_schema::{GetCredentialSchemaList, KeyStorageSecurity};
+use crate::provider::ProviderExt;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::{Features, FormatterCapabilities};
 use crate::provider::revocation::RevocationMethod;
@@ -84,11 +84,7 @@ pub(crate) fn validate_create_request(
     let revocation_method = match &request.revocation_method {
         Some(method_id) => {
             let revocation_method = revocation_method_provider.get_revocation_method(method_id)?;
-            if !revocation_method.enabled() {
-                return Err(ConfigValidationError::EntryDisabled(method_id.to_string())
-                    .error_while("validating revocation method")
-                    .into());
-            }
+            revocation_method.ensure_enabled()?;
             Some(revocation_method)
         }
         None => None,

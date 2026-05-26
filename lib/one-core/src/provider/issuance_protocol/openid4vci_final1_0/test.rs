@@ -2099,8 +2099,7 @@ async fn test_holder_reject_credential() {
         method
             .expect_get_reference_for_key()
             .return_once(|_| Ok("1".to_string()));
-
-        Some(Arc::new(method))
+        Ok(Arc::new(method))
     });
 
     interaction_repository

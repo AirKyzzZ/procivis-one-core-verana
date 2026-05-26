@@ -28,6 +28,20 @@ where
     configs: HashMap<C, CF>,
 }
 
+impl<C, CF, P> Clone for ProviderDirectory<C, CF, P>
+where
+    C: ConfigKey,
+    CF: ConfigFields,
+    P: Provider + ?Sized,
+{
+    fn clone(&self) -> Self {
+        Self {
+            providers: self.providers.clone(),
+            configs: self.configs.clone(),
+        }
+    }
+}
+
 #[derive(Debug, Error)]
 pub enum InitializationError {
     #[error("failed to deserialize params for config entry `{key}`: {source}")]
@@ -52,18 +66,22 @@ impl ErrorCodeMixin for InitializationError {
 }
 
 #[derive(Debug, Error)]
-pub(crate) enum ProviderDirectoryError {
+pub(crate) enum ProviderError {
     #[error("Missing provider `{config_key}` of type `{provider_type}`")]
     MissingProvider {
         config_key: String,
         provider_type: String,
     },
+
+    #[error("Provider `{provider}` is disabled")]
+    ProviderDisabled { provider: String },
 }
 
-impl ErrorCodeMixin for ProviderDirectoryError {
+impl ErrorCodeMixin for ProviderError {
     fn error_code(&self) -> ErrorCode {
         match self {
-            ProviderDirectoryError::MissingProvider { .. } => ErrorCode::BR_0430,
+            ProviderError::MissingProvider { .. } => ErrorCode::BR_0430,
+            ProviderError::ProviderDisabled { .. } => ErrorCode::BR_0431,
         }
     }
 }
@@ -106,13 +124,19 @@ where
         self.providers.insert(config_id, provider);
     }
 
+    /// Merge two directories of the same type together
+    pub fn merge(&mut self, other: Self) {
+        self.providers.extend(other.providers);
+        self.configs.extend(other.configs);
+    }
+
     pub fn provider<K>(&self, config_id: &K) -> Result<Arc<P>, NestedError>
     where
         K: Hash + Eq + ?Sized + Display,
         C: Borrow<K>,
     {
         self.providers.get(config_id).cloned().ok_or(
-            ProviderDirectoryError::MissingProvider {
+            ProviderError::MissingProvider {
                 config_key: config_id.to_string(),
                 provider_type: std::any::type_name::<P>().to_string(),
             }
@@ -126,7 +150,7 @@ where
 
     pub fn config(&self, config_id: &C) -> Result<&CF, NestedError> {
         self.configs.get(config_id).ok_or(
-            ProviderDirectoryError::MissingProvider {
+            ProviderError::MissingProvider {
                 config_key: config_id.to_string(),
                 provider_type: std::any::type_name::<P>().to_string(),
             }

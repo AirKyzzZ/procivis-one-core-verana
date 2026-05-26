@@ -3,10 +3,10 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use indexmap::IndexMap;
 use serde_json::json;
 use shared_types::{DidMethodId, DidValue};
 
+use super::DidMethod;
 use super::dto::DidDocumentDTO;
 use super::error::DidMethodProviderError;
 use super::jwk::JWKDidMethod;
@@ -15,31 +15,36 @@ use super::model::DidDocument;
 use super::resolver::{DidCachingLoader, DidResolver};
 use super::universal::UniversalDidMethod;
 use super::web::WebDidMethod;
-use super::{DidMethod, universal, web, webvh};
+use super::webvh::DidWebVh;
+use crate::config::ConfigValidationError;
 use crate::config::core_config::{
-    CacheEntitiesConfig, CacheEntityCacheType, CoreConfig, DidType, Fields,
+    self, CacheEntitiesConfig, CacheEntityCacheType, CoreConfig, DidType, Fields,
 };
-use crate::config::{ConfigValidationError, core_config};
-use crate::error::ContextWithErrorCode;
+use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt, NestedError};
 use crate::proto::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::provider_directory::{InitializationError, ProviderDirectory};
 use crate::provider::remote_entity_storage::db_storage::DbStorage;
 use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
 use crate::provider::remote_entity_storage::{RemoteEntityStorage, RemoteEntityType};
 use crate::repository::remote_entity_cache_repository::RemoteEntityCacheRepository;
+use crate::service::error::ServiceError;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
 pub trait DidMethodProvider: Send + Sync {
-    fn get_did_method(&self, did_method_id: &DidMethodId) -> Option<Arc<dyn DidMethod>>;
+    fn get_did_method(
+        &self,
+        did_method_id: &DidMethodId,
+    ) -> Result<Arc<dyn DidMethod>, NestedError>;
 
-    fn get_did_method_id(&self, did: &DidValue) -> Option<DidMethodId>;
+    fn get_did_method_id(&self, did: &DidValue) -> Result<DidMethodId, DidMethodProviderError>;
 
     fn get_did_method_by_method_name(
         &self,
         method_name: &str,
-    ) -> Option<(DidMethodId, Arc<dyn DidMethod>)>;
+    ) -> Result<(DidMethodId, Arc<dyn DidMethod>), DidMethodProviderError>;
 
     async fn resolve(&self, did: &DidValue) -> Result<DidDocument, DidMethodProviderError>;
 
@@ -48,22 +53,22 @@ pub trait DidMethodProvider: Send + Sync {
 
 struct DidMethodProviderImpl {
     caching_loader: DidCachingLoader,
-    did_methods: IndexMap<DidMethodId, Arc<dyn DidMethod>>,
+    directory: ProviderDirectory<DidMethodId, Fields<DidType>, dyn DidMethod>,
     resolver: Arc<DidResolver>,
 }
 
 impl DidMethodProviderImpl {
     fn new(
         caching_loader: DidCachingLoader,
-        did_methods: IndexMap<DidMethodId, Arc<dyn DidMethod>>,
+        directory: ProviderDirectory<DidMethodId, Fields<DidType>, dyn DidMethod>,
     ) -> Self {
         let resolver = DidResolver {
-            did_methods: did_methods.clone(),
+            directory: directory.clone(),
         };
 
         Self {
             caching_loader,
-            did_methods,
+            directory,
             resolver: Arc::new(resolver),
         }
     }
@@ -71,28 +76,33 @@ impl DidMethodProviderImpl {
 
 #[async_trait::async_trait]
 impl DidMethodProvider for DidMethodProviderImpl {
-    fn get_did_method(&self, did_method_id: &DidMethodId) -> Option<Arc<dyn DidMethod>> {
-        self.did_methods.get(did_method_id).cloned()
+    fn get_did_method(
+        &self,
+        did_method_id: &DidMethodId,
+    ) -> Result<Arc<dyn DidMethod>, NestedError> {
+        self.directory.provider(did_method_id)
     }
 
-    fn get_did_method_id(&self, did: &DidValue) -> Option<DidMethodId> {
-        self.did_methods
+    fn get_did_method_id(&self, did: &DidValue) -> Result<DidMethodId, DidMethodProviderError> {
+        let did_method = did.method();
+        self.directory
             .iter()
             .find(|(_, method)| {
                 method
                     .get_capabilities()
                     .method_names
                     .iter()
-                    .any(|v| v == did.method())
+                    .any(|v| v == did_method)
             })
             .map(|(id, _)| id.clone())
+            .ok_or_else(|| DidMethodProviderError::UnknownDidMethod(did_method.to_string()))
     }
 
     fn get_did_method_by_method_name(
         &self,
         method_name: &str,
-    ) -> Option<(DidMethodId, Arc<dyn DidMethod>)> {
-        self.did_methods
+    ) -> Result<(DidMethodId, Arc<dyn DidMethod>), DidMethodProviderError> {
+        self.directory
             .iter()
             .find(|(_, method)| {
                 method
@@ -101,6 +111,7 @@ impl DidMethodProvider for DidMethodProviderImpl {
                     .contains(&method_name.to_string())
             })
             .map(|(id, method)| (id.clone(), method.clone()))
+            .ok_or_else(|| DidMethodProviderError::UnknownDidMethod(method_name.to_string()))
     }
 
     async fn resolve(&self, did: &DidValue) -> Result<DidDocument, DidMethodProviderError> {
@@ -114,11 +125,72 @@ impl DidMethodProvider for DidMethodProviderImpl {
     }
 
     fn supported_method_names(&self) -> Vec<String> {
-        self.did_methods
-            .values()
-            .flat_map(|did_method| did_method.get_capabilities().method_names)
+        self.directory
+            .iter()
+            .flat_map(|(_, did_method)| did_method.get_capabilities().method_names)
             .collect()
     }
+}
+
+fn initialize_non_webvh_provider(
+    name: &DidMethodId,
+    fields: &Fields<DidType>,
+    core_base_url: &Option<String>,
+    key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
+    client: &Arc<dyn HttpClient>,
+) -> Result<Arc<dyn DidMethod>, InitializationError> {
+    let provider: Arc<dyn DidMethod> = match fields.r#type {
+        DidType::Key => Arc::new(KeyDidMethod::new(
+            name.to_owned(),
+            key_algorithm_provider.clone(),
+        )),
+        DidType::Web => {
+            let did_web = WebDidMethod::new(
+                name.to_owned(),
+                core_base_url,
+                client.clone(),
+                fields.merge_fields(),
+            )
+            .error_while(format!("initalizing DID web: `{name}`"))?;
+            Arc::new(did_web)
+        }
+        DidType::Jwk => Arc::new(JWKDidMethod::new(
+            name.to_owned(),
+            key_algorithm_provider.clone(),
+        )),
+        DidType::Universal => Arc::new(UniversalDidMethod::new(
+            name.to_owned(),
+            fields.merge_fields(),
+            client.clone(),
+        )?),
+        DidType::WebVh => {
+            return Err(
+                ServiceError::MappingError("Invalid intialization".to_string())
+                    .error_while("initializing DID webvh")
+                    .into(),
+            );
+        }
+    };
+    Ok(provider)
+}
+
+fn initialize_webvh_provider(
+    name: &DidMethodId,
+    fields: &Fields<DidType>,
+    core_base_url: &Option<String>,
+    intermediary_provider: &Arc<dyn DidMethodProvider>,
+    key_provider: &Arc<dyn KeyProvider>,
+    client: &Arc<dyn HttpClient>,
+) -> Result<Arc<dyn DidMethod>, InitializationError> {
+    let did_webvh = DidWebVh::new(
+        name.to_owned(),
+        fields.merge_fields(),
+        core_base_url.clone(),
+        client.clone(),
+        intermediary_provider.clone(),
+        key_provider.clone(),
+    )?;
+    Ok(Arc::new(did_webvh))
 }
 
 pub(crate) fn did_method_provider_from_config(
@@ -129,81 +201,67 @@ pub(crate) fn did_method_provider_from_config(
     client: Arc<dyn HttpClient>,
     remote_entity_cache_repository: Arc<dyn RemoteEntityCacheRepository>,
 ) -> Result<Arc<dyn DidMethodProvider>, ConfigValidationError> {
-    let mut did_configs = config.did.iter().collect::<Vec<_>>();
-    // sort by `order`
-    did_configs.sort_by_key(|(_, fields1)| fields1.order);
+    // did:webvh cannot be constructed directly, as it needs a did resolver internally
+    let directory = {
+        let (webvh, non_webvh): (Vec<_>, Vec<_>) = config
+            .did
+            .iter_mut()
+            .partition(|(_, entry)| entry.r#type == DidType::WebVh);
 
-    let mut did_methods: IndexMap<DidMethodId, Arc<dyn DidMethod>> = IndexMap::new();
-    let mut did_webvh_params: Vec<(DidMethodId, webvh::Params)> = vec![];
+        let non_webvh_directory = ProviderDirectory::initialize(
+            non_webvh.into_iter(),
+            |name: &DidMethodId, fields: &Fields<DidType>| {
+                initialize_non_webvh_provider(
+                    name,
+                    fields,
+                    &core_base_url,
+                    &key_algorithm_provider,
+                    &client,
+                )
+            },
+        )
+        .error_while("initializing DID providers")?;
 
-    for (name, field) in did_configs {
-        let did_method: Arc<dyn DidMethod> = match field.r#type {
-            DidType::Key => Arc::new(KeyDidMethod::new(key_algorithm_provider.clone())),
-            DidType::Web => {
-                let params: web::Params = config.did.get(name)?;
-                let did_web = WebDidMethod::new(&core_base_url, client.clone(), params)
-                    .map_err(|_| ConfigValidationError::EntryNotFound("Base url".to_string()))?;
-                Arc::new(did_web)
-            }
-            DidType::Jwk => Arc::new(JWKDidMethod::new(key_algorithm_provider.clone())),
-            DidType::Universal => {
-                let params: universal::Params = config.did.get(name)?;
-                Arc::new(UniversalDidMethod::new(params, client.clone()))
-            }
-            DidType::WebVh => {
-                let params: webvh::Params = config.did.get(name)?;
-                // did:webvh cannot be constructed yet, as it needs a did resolver internally
-                // -> save for later
-                did_webvh_params.push((name.to_owned(), params));
-                continue;
-            }
-        };
-        did_methods.insert(name.to_owned(), did_method);
-    }
-
-    let did_caching_loader = initialize_did_caching_loader(
-        &config.cache_entities,
-        remote_entity_cache_repository.clone(),
-    );
-    let intermediary_provider = Arc::new(DidMethodProviderImpl::new(
-        did_caching_loader,
-        did_methods.clone(),
-    ));
-
-    // Separately construct the did:webvh providers using the intermediary provider
-    for (name, params) in did_webvh_params {
-        let did_webvh = webvh::DidWebVh::new(
-            params,
-            core_base_url.clone(),
-            client.clone(),
-            intermediary_provider.clone(),
-            key_provider.clone(),
+        let did_caching_loader = initialize_did_caching_loader(
+            &config.cache_entities,
+            remote_entity_cache_repository.clone(),
         );
-        did_methods.insert(name, Arc::new(did_webvh));
-    }
+        let intermediary_provider: Arc<dyn DidMethodProvider> = Arc::new(
+            DidMethodProviderImpl::new(did_caching_loader, non_webvh_directory.clone()),
+        );
 
-    for (key, value) in config.did.iter_mut() {
-        if let Some(entity) = did_methods.get(key) {
-            let params = entity.get_keys().map(|keys| core_config::Params {
-                public: Some(json!({
-                    "keys": keys,
-                })),
-                private: None,
-            });
+        let mut directory = ProviderDirectory::initialize(
+            webvh.into_iter(),
+            |name: &DidMethodId, fields: &Fields<DidType>| {
+                initialize_webvh_provider(
+                    name,
+                    fields,
+                    &core_base_url,
+                    &intermediary_provider,
+                    &key_provider,
+                    &client,
+                )
+            },
+        )
+        .error_while("initializing webvh DID providers")?;
 
-            *value = Fields {
-                capabilities: Some(json!(entity.get_capabilities())),
-                params,
-                ..value.clone()
-            }
-        }
+        directory.merge(non_webvh_directory);
+        directory
+    };
+
+    for (key, fields) in config.did.iter_mut() {
+        let method = directory.provider(key)?;
+        fields.params = method.get_keys().map(|keys| core_config::Params {
+            public: Some(json!({ "keys": keys })),
+            private: None,
+        });
     }
 
     let did_caching_loader =
         initialize_did_caching_loader(&config.cache_entities, remote_entity_cache_repository);
     Ok(Arc::new(DidMethodProviderImpl::new(
         did_caching_loader,
-        did_methods,
+        directory,
     )))
 }
 

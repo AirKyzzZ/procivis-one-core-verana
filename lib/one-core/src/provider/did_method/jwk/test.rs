@@ -20,7 +20,7 @@ use crate::service::test_utilities::dummy_organisation;
 
 #[tokio::test]
 async fn test_resolve_jwk_did_without_use_field() {
-    let provider = JWKDidMethod::new(Arc::new(MockKeyAlgorithmProvider::default()));
+    let provider = JWKDidMethod::new("jwk".into(), Arc::new(MockKeyAlgorithmProvider::default()));
 
     let result = provider
         .resolve(
@@ -62,7 +62,7 @@ async fn test_resolve_jwk_did_without_use_field() {
 
 #[tokio::test]
 async fn test_resolve_jwk_did_with_use_enc_field() {
-    let provider = JWKDidMethod::new(Arc::new(MockKeyAlgorithmProvider::default()));
+    let provider = JWKDidMethod::new("jwk".into(), Arc::new(MockKeyAlgorithmProvider::default()));
 
     let result = provider
         .resolve(
@@ -103,7 +103,7 @@ async fn test_resolve_jwk_did_with_use_enc_field() {
 
 #[tokio::test]
 async fn test_resolve_jwk_did_with_use_sig_field() {
-    let provider = JWKDidMethod::new(Arc::new(MockKeyAlgorithmProvider::default()));
+    let provider = JWKDidMethod::new("jwk".into(), Arc::new(MockKeyAlgorithmProvider::default()));
 
     let result = provider
         .resolve(
@@ -144,7 +144,7 @@ async fn test_resolve_jwk_did_with_use_sig_field() {
 
 #[tokio::test]
 async fn test_fail_to_resolve_jwk_did_invalid_did_prefix() {
-    let provider = JWKDidMethod::new(Arc::new(MockKeyAlgorithmProvider::default()));
+    let provider = JWKDidMethod::new("jwk".into(), Arc::new(MockKeyAlgorithmProvider::default()));
 
     let result = provider
         .resolve(
@@ -156,7 +156,7 @@ async fn test_fail_to_resolve_jwk_did_invalid_did_prefix() {
 
 #[tokio::test]
 async fn test_fail_to_resolve_jwk_did_invalid_encoding() {
-    let provider = JWKDidMethod::new(Arc::new(MockKeyAlgorithmProvider::default()));
+    let provider = JWKDidMethod::new("jwk".into(), Arc::new(MockKeyAlgorithmProvider::default()));
 
     let result = provider.resolve(&"did:jwk:eyJrdHk".parse().unwrap()).await;
 
@@ -165,7 +165,7 @@ async fn test_fail_to_resolve_jwk_did_invalid_encoding() {
 
 #[tokio::test]
 async fn test_fail_to_resolve_jwk_did_invalid_jwk_format() {
-    let provider = JWKDidMethod::new(Arc::new(MockKeyAlgorithmProvider::default()));
+    let provider = JWKDidMethod::new("jwk".into(), Arc::new(MockKeyAlgorithmProvider::default()));
 
     let result = provider
         .resolve(
@@ -204,7 +204,7 @@ async fn test_create_did_jwk_success() {
         .once()
         .return_once(move |_| Ok(Arc::new(key_algorithm)));
 
-    let provider = JWKDidMethod::new(Arc::new(key_algorithm_provider));
+    let provider = JWKDidMethod::new("jwk".into(), Arc::new(key_algorithm_provider));
 
     let keys = vec![Key {
         id: Uuid::new_v4().into(),
@@ -242,7 +242,7 @@ async fn test_create_did_jwk_success() {
 
 #[test]
 fn test_get_capabilities() {
-    let provider = JWKDidMethod::new(Arc::new(MockKeyAlgorithmProvider::default()));
+    let provider = JWKDidMethod::new("jwk".into(), Arc::new(MockKeyAlgorithmProvider::default()));
 
     assert_eq!(
         vec![Operation::RESOLVE, Operation::CREATE],
@@ -252,7 +252,7 @@ fn test_get_capabilities() {
 
 #[test]
 fn test_validate_keys() {
-    let did_method = JWKDidMethod::new(Arc::new(MockKeyAlgorithmProvider::default()));
+    let did_method = JWKDidMethod::new("jwk".into(), Arc::new(MockKeyAlgorithmProvider::default()));
     let keys = AmountOfKeys {
         global: 1,
         authentication: 1,
@@ -266,7 +266,7 @@ fn test_validate_keys() {
 
 #[test]
 fn test_validate_keys_no_keys() {
-    let did_method = JWKDidMethod::new(Arc::new(MockKeyAlgorithmProvider::default()));
+    let did_method = JWKDidMethod::new("jwk".into(), Arc::new(MockKeyAlgorithmProvider::default()));
     let keys = AmountOfKeys {
         global: 0,
         authentication: 0,
@@ -280,7 +280,7 @@ fn test_validate_keys_no_keys() {
 
 #[test]
 fn test_validate_keys_too_much_keys() {
-    let did_method = JWKDidMethod::new(Arc::new(MockKeyAlgorithmProvider::default()));
+    let did_method = JWKDidMethod::new("jwk".into(), Arc::new(MockKeyAlgorithmProvider::default()));
     let keys = AmountOfKeys {
         global: 2,
         authentication: 1,
@@ -294,7 +294,7 @@ fn test_validate_keys_too_much_keys() {
 
 #[test]
 fn test_validate_keys_missing_key() {
-    let did_method = JWKDidMethod::new(Arc::new(MockKeyAlgorithmProvider::default()));
+    let did_method = JWKDidMethod::new("jwk".into(), Arc::new(MockKeyAlgorithmProvider::default()));
     let keys = AmountOfKeys {
         global: 1,
         authentication: 1,

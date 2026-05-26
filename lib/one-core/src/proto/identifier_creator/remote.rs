@@ -19,7 +19,6 @@ use crate::model::organisation::Organisation;
 use crate::proto::certificate_validator::{CertificateValidationOptions, ParsedCertificate};
 use crate::proto::identifier_creator::RemoteIdentifierRelation;
 use crate::provider::credential_formatter::model::IdentifierDetails;
-use crate::service::error::MissingProviderError;
 
 impl IdentifierCreatorProto {
     pub(super) async fn get_or_create_did_and_identifier(
@@ -42,8 +41,7 @@ impl IdentifierCreatorProto {
                 let did_method = self
                     .did_method_provider
                     .get_did_method_id(did_value)
-                    .ok_or(MissingProviderError::DidMethod(did_value.method().into()))
-                    .error_while("getting did provider")?;
+                    .error_while("getting did method")?;
                 let did = Did {
                     id: DidId::from(id),
                     created_date: now,

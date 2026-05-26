@@ -447,7 +447,7 @@ async fn test_create_local_identifier_did() {
                 .expect_get_reference_for_key()
                 .once()
                 .returning(|_| Ok("ref".to_string()));
-            move |_| Some(Arc::new(did_method))
+            move |_| Ok(Arc::new(did_method))
         });
 
     let mut did_repository = MockDidRepository::new();
@@ -542,7 +542,7 @@ async fn test_create_local_identifier_did_did_value_already_exists() {
                 .expect_get_reference_for_key()
                 .once()
                 .returning(|_| Ok("ref".to_string()));
-            move |_| Some(Arc::new(did_method))
+            move |_| Ok(Arc::new(did_method))
         });
 
     let mut did_repository = MockDidRepository::new();
@@ -602,7 +602,7 @@ async fn test_create_local_identifier_did_invalid_num_keys() {
                 .expect_validate_keys()
                 .once()
                 .returning(|_| false);
-            move |_| Some(Arc::new(did_method))
+            move |_| Ok(Arc::new(did_method))
         });
 
     let creator = setup_creator(Mocks {

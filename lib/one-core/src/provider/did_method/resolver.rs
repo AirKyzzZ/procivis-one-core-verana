@@ -1,19 +1,20 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use indexmap::IndexMap;
 use shared_types::{DidMethodId, DidValue};
 use time::OffsetDateTime;
 
+use crate::config::core_config::{DidType, Fields};
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::provider::caching_loader::{CachingLoader, ResolveResult, Resolver};
 use crate::provider::did_method::DidMethod;
 use crate::provider::did_method::dto::DidDocumentDTO;
 use crate::provider::did_method::error::{DidMethodError, DidMethodProviderError};
+use crate::provider::provider_directory::ProviderDirectory;
 use crate::service::error::MissingProviderError;
 
 pub struct DidResolver {
-    pub did_methods: IndexMap<DidMethodId, Arc<dyn DidMethod>>,
+    pub directory: ProviderDirectory<DidMethodId, Fields<DidType>, dyn DidMethod>,
 }
 
 pub type DidCachingLoader = CachingLoader<DidMethodProviderError>;
@@ -52,15 +53,16 @@ impl DidResolver {
         did_value: &DidValue,
     ) -> Result<&Arc<dyn DidMethod>, DidMethodProviderError> {
         Ok(self
-            .did_methods
-            .values()
-            .find(|method| {
+            .directory
+            .iter()
+            .find(|(_, method)| {
                 method
                     .get_capabilities()
                     .method_names
                     .iter()
                     .any(|val| val == did_value.method())
             })
+            .map(|(_, method)| method)
             .ok_or(
                 MissingProviderError::DidMethod(did_value.method().into())
                     .error_while("getting did provider"),

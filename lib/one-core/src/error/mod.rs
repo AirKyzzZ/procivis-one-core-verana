@@ -5,7 +5,7 @@ use std::fmt::{Display, Formatter};
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumMessage, IntoStaticStr};
 
-use crate::provider::provider_directory::ProviderDirectoryError;
+use crate::provider::provider_directory::ProviderError;
 
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, IntoStaticStr, EnumMessage, Display,
@@ -979,9 +979,9 @@ impl<T, E: ErrorCodeMixin> ContextWithErrorCode<T, E> for Result<T, E> {
     }
 }
 
-// ProviderDirectoryError already describes the context, no need for nesting
-impl From<ProviderDirectoryError> for NestedError {
-    fn from(error: ProviderDirectoryError) -> Self {
+// ProviderError already describes the context, no need for nesting
+impl From<ProviderError> for NestedError {
+    fn from(error: ProviderError) -> Self {
         Self {
             context: None,
             source: Box::new(error),

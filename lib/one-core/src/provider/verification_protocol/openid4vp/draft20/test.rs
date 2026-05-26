@@ -678,7 +678,7 @@ async fn test_handle_invitation_proof_with_client_request_ok() {
 #[tokio::test]
 async fn test_handle_invitation_proof_with_client_id_scheme_in_client_request_token_ok() {
     let client_id = "did:jwk:eyJjcnYiOiJQLTI1NiIsImt0eSI6IkVDIiwieCI6ImFjYklRaXVNczNpOF91c3pFakoydHBUdFJNNEVVM3l6OTFQSDZDZEgyVjAiLCJ5IjoiX0tjeUxqOXZXTXB0bm1LdG00NkdxRHo4d2Y3NEk1TEtncmwyR3pIM25TRSJ9";
-    let did_method = JWKDidMethod::new(Arc::new(MockKeyAlgorithmProvider::new()));
+    let did_method = JWKDidMethod::new("JWK".into(), Arc::new(MockKeyAlgorithmProvider::new()));
     let mut did_method_provider = MockDidMethodProvider::new();
     let did_document = did_method
         .resolve(&client_id.parse().unwrap())

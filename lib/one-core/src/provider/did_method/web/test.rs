@@ -1,6 +1,7 @@
 use std::str::FromStr;
 use std::sync::Arc;
 
+use serde_json::json;
 use shared_types::DidId;
 use similar_asserts::assert_eq;
 use standardized_types::jwk::{PublicJwk, PublicJwkEc, PublicJwkRsa};
@@ -9,15 +10,12 @@ use wiremock::http::Method;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
+use super::{WebDidMethod, did_value_to_url, fetch_did_web_document};
 use crate::proto::http_client::reqwest_client::ReqwestClient;
 use crate::proto::http_client::{HttpClient, MockHttpClient};
 use crate::provider::did_method::DidMethod;
 use crate::provider::did_method::error::DidMethodError;
-use crate::provider::did_method::keys::{Keys, MinMax};
 use crate::provider::did_method::model::AmountOfKeys;
-use crate::provider::did_method::web::{
-    Params, WebDidMethod, did_value_to_url, fetch_did_web_document,
-};
 
 static JSON_DATA: &str = r#"
     {
@@ -89,9 +87,10 @@ async fn test_did_web_create() {
     let base_url = "https://test-domain.com".to_string();
 
     let did_web_method = WebDidMethod::new(
+        "web".into(),
         &Some(base_url),
         Arc::new(MockHttpClient::new()),
-        Default::default(),
+        json!({}),
     )
     .unwrap();
 
@@ -114,9 +113,10 @@ async fn test_did_web_create_with_port() {
     let base_url = "https://test-domain.com:54812".to_string();
 
     let did_web_method = WebDidMethod::new(
+        "web".into(),
         &Some(base_url),
         Arc::new(MockHttpClient::new()),
-        Default::default(),
+        json!({}),
     )
     .unwrap();
 
@@ -136,8 +136,13 @@ async fn test_did_web_create_with_port() {
 
 #[tokio::test]
 async fn test_did_web_create_fail_no_base_url() {
-    let did_web_method =
-        WebDidMethod::new(&None, Arc::new(MockHttpClient::new()), Default::default()).unwrap();
+    let did_web_method = WebDidMethod::new(
+        "web".into(),
+        &None,
+        Arc::new(MockHttpClient::new()),
+        json!({}),
+    )
+    .unwrap();
 
     let id = DidId::from(Uuid::from_str("2389ba3f-81d5-4931-9222-c23ec721deb7").unwrap());
 
@@ -312,8 +317,13 @@ async fn test_did_web_fetch() {
 
 #[test]
 fn test_validate_default_keys() {
-    let did_method =
-        WebDidMethod::new(&None, Arc::new(MockHttpClient::new()), Default::default()).unwrap();
+    let did_method = WebDidMethod::new(
+        "web".into(),
+        &None,
+        Arc::new(MockHttpClient::new()),
+        json!({}),
+    )
+    .unwrap();
     let keys = AmountOfKeys {
         global: 1,
         authentication: 1,
@@ -327,8 +337,13 @@ fn test_validate_default_keys() {
 
 #[test]
 fn test_validate_default_keys_no_keys() {
-    let did_method =
-        WebDidMethod::new(&None, Arc::new(MockHttpClient::new()), Default::default()).unwrap();
+    let did_method = WebDidMethod::new(
+        "web".into(),
+        &None,
+        Arc::new(MockHttpClient::new()),
+        json!({}),
+    )
+    .unwrap();
     let keys = AmountOfKeys {
         global: 0,
         authentication: 0,
@@ -342,8 +357,13 @@ fn test_validate_default_keys_no_keys() {
 
 #[test]
 fn test_validate_default_keys_too_much_keys() {
-    let did_method =
-        WebDidMethod::new(&None, Arc::new(MockHttpClient::new()), Default::default()).unwrap();
+    let did_method = WebDidMethod::new(
+        "web".into(),
+        &None,
+        Arc::new(MockHttpClient::new()),
+        json!({}),
+    )
+    .unwrap();
     let keys = AmountOfKeys {
         global: 2,
         authentication: 1,
@@ -357,8 +377,13 @@ fn test_validate_default_keys_too_much_keys() {
 
 #[test]
 fn test_validate_default_keys_missing_key() {
-    let did_method =
-        WebDidMethod::new(&None, Arc::new(MockHttpClient::new()), Default::default()).unwrap();
+    let did_method = WebDidMethod::new(
+        "web".into(),
+        &None,
+        Arc::new(MockHttpClient::new()),
+        json!({}),
+    )
+    .unwrap();
     let keys = AmountOfKeys {
         global: 1,
         authentication: 1,
@@ -373,19 +398,20 @@ fn test_validate_default_keys_missing_key() {
 #[test]
 fn test_validate_keys() {
     let did_method = WebDidMethod::new(
+        "web".into(),
         &None,
         Arc::new(MockHttpClient::new()),
-        Params {
-            keys: Keys {
-                global: MinMax { min: 2, max: 3 },
-                authentication: MinMax { min: 2, max: 3 },
-                assertion_method: MinMax { min: 2, max: 3 },
-                key_agreement: MinMax { min: 2, max: 3 },
-                capability_invocation: MinMax { min: 2, max: 3 },
-                capability_delegation: MinMax { min: 2, max: 3 },
-            },
-            ..Default::default()
-        },
+        json!({
+            "keys": {
+                "min": 2,
+                "max": 3,
+                "authentication": { "min": 2, "max": 3 },
+                "assertionMethod": { "min": 2, "max": 3 },
+                "keyAgreement": { "min": 2, "max": 3 },
+                "capabilityInvocation": { "min": 2, "max": 3 },
+                "capabilityDelegation": { "min": 2, "max": 3 }
+            }
+        }),
     )
     .unwrap();
     let keys = AmountOfKeys {
@@ -402,19 +428,20 @@ fn test_validate_keys() {
 #[test]
 fn test_validate_keys_no_keys() {
     let did_method = WebDidMethod::new(
+        "web".into(),
         &None,
         Arc::new(MockHttpClient::new()),
-        Params {
-            keys: Keys {
-                global: MinMax { min: 2, max: 3 },
-                authentication: MinMax { min: 2, max: 3 },
-                assertion_method: MinMax { min: 2, max: 3 },
-                key_agreement: MinMax { min: 2, max: 3 },
-                capability_invocation: MinMax { min: 2, max: 3 },
-                capability_delegation: MinMax { min: 2, max: 3 },
-            },
-            ..Default::default()
-        },
+        json!({
+            "keys": {
+                "min": 2,
+                "max": 3,
+                "authentication": { "min": 2, "max": 3 },
+                "assertionMethod": { "min": 2, "max": 3 },
+                "keyAgreement": { "min": 2, "max": 3 },
+                "capabilityInvocation": { "min": 2, "max": 3 },
+                "capabilityDelegation": { "min": 2, "max": 3 }
+            }
+        }),
     )
     .unwrap();
     let keys = AmountOfKeys {
@@ -429,21 +456,22 @@ fn test_validate_keys_no_keys() {
 }
 
 #[test]
-fn test_validate_keys_too_much_keys() {
+fn test_validate_keys_too_many_keys() {
     let did_method = WebDidMethod::new(
+        "web".into(),
         &None,
         Arc::new(MockHttpClient::new()),
-        Params {
-            keys: Keys {
-                global: MinMax { min: 2, max: 3 },
-                authentication: MinMax { min: 2, max: 3 },
-                assertion_method: MinMax { min: 2, max: 3 },
-                key_agreement: MinMax { min: 2, max: 3 },
-                capability_invocation: MinMax { min: 2, max: 3 },
-                capability_delegation: MinMax { min: 2, max: 3 },
-            },
-            ..Default::default()
-        },
+        json!({
+            "keys": {
+                "min": 2,
+                "max": 3,
+                "authentication": { "min": 2, "max": 3 },
+                "assertionMethod": { "min": 2, "max": 3 },
+                "keyAgreement": { "min": 2, "max": 3 },
+                "capabilityInvocation": { "min": 2, "max": 3 },
+                "capabilityDelegation": { "min": 2, "max": 3 }
+            }
+        }),
     )
     .unwrap();
     let keys = AmountOfKeys {
@@ -460,19 +488,20 @@ fn test_validate_keys_too_much_keys() {
 #[test]
 fn test_validate_keys_missing_key() {
     let did_method = WebDidMethod::new(
+        "web".into(),
         &None,
         Arc::new(MockHttpClient::new()),
-        Params {
-            keys: Keys {
-                global: MinMax { min: 2, max: 3 },
-                authentication: MinMax { min: 2, max: 3 },
-                assertion_method: MinMax { min: 2, max: 3 },
-                key_agreement: MinMax { min: 2, max: 3 },
-                capability_invocation: MinMax { min: 2, max: 3 },
-                capability_delegation: MinMax { min: 2, max: 3 },
-            },
-            ..Default::default()
-        },
+        json!({
+            "keys": {
+                "min": 2,
+                "max": 3,
+                "authentication": { "min": 2, "max": 3 },
+                "assertionMethod": { "min": 2, "max": 3 },
+                "keyAgreement": { "min": 2, "max": 3 },
+                "capabilityInvocation": { "min": 2, "max": 3 },
+                "capabilityDelegation": { "min": 2, "max": 3 }
+            }
+        }),
     )
     .unwrap();
     let keys = AmountOfKeys {

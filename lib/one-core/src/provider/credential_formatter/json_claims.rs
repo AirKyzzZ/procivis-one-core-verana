@@ -265,10 +265,7 @@ pub fn prepare_identifier(
         IdentifierDetails::Did(did) => {
             let (did_method, _) = did_method_provider
                 .get_did_method_by_method_name(did.method())
-                .ok_or(FormatterError::CouldNotExtractCredentials(format!(
-                    "DID method not recognized: {}",
-                    did.method()
-                )))?;
+                .error_while("getting did method")?;
 
             let did_model = crate::model::did::Did {
                 id: Uuid::new_v4().into(),

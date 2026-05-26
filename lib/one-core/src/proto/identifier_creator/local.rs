@@ -8,7 +8,6 @@ use uuid::Uuid;
 use super::Error;
 use super::creator::IdentifierCreatorProto;
 use crate::config::core_config::SignerType;
-use crate::config::validator::did::validate_did_method;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::certificate::{Certificate, CertificateState};
 use crate::model::did::Did;
@@ -29,7 +28,6 @@ use crate::service::did::dto::CreateDidRequestDTO;
 use crate::service::did::mapper::did_from_did_request;
 use crate::service::did::service::{build_keys_request, generate_update_key};
 use crate::service::did::validator::validate_request_amount_of_keys;
-use crate::service::error::MissingProviderError;
 use crate::service::identifier::dto::CreateCertificateAuthorityRequestDTO;
 use crate::service::key::dto::KeyGenerateCSRRequestProfile;
 
@@ -217,15 +215,9 @@ impl IdentifierCreatorProto {
             return Err(Error::MappingError("Organisation ID mismatch".to_string()));
         }
 
-        validate_did_method(&request.did_method, &self.config.did)
-            .error_while("validating did request")?;
-
-        let did_method_key = &request.did_method;
         let did_method = self
             .did_method_provider
-            .get_did_method(did_method_key)
-            .ok_or(MissingProviderError::DidMethod(did_method_key.to_owned()))
-            .error_while("getting did provider")?;
+            .get_did_method(&request.did_method)?;
 
         validate_request_amount_of_keys(did_method.deref(), request.keys.to_owned())
             .error_while("validating did request")?;

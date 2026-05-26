@@ -5,9 +5,10 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use create::{DidDocKeys, UpdateKeys};
+use proc_macros::Provider;
 use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
-use shared_types::{DidId, DidValue};
+use shared_types::{DidId, DidMethodId, DidValue};
 use time::Duration;
 use url::Url;
 
@@ -25,6 +26,7 @@ use crate::provider::did_method::webvh::common::{
 use crate::provider::did_method::webvh::deserialize::DidLogEntry;
 use crate::provider::did_method::webvh::mapper::url_to_did;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::provider_directory::InitializationError;
 
 mod common;
 mod create;
@@ -40,7 +42,7 @@ mod test;
 #[serde_as]
 #[derive(Debug, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
-pub struct Params {
+struct Params {
     #[serde(default)]
     pub keys: Keys,
     #[serde(default)]
@@ -58,7 +60,9 @@ struct DidCreateParams {
     external_hosting_url: Url,
 }
 
+#[derive(Provider)]
 pub struct DidWebVh {
+    config_id: DidMethodId,
     params: Params,
     core_base_url: Option<String>,
     client: Arc<dyn HttpClient>,
@@ -68,19 +72,28 @@ pub struct DidWebVh {
 
 impl DidWebVh {
     pub fn new(
-        params: Params,
+        config_id: DidMethodId,
+        params: serde_json::Value,
         core_base_url: Option<String>,
         client: Arc<dyn HttpClient>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_provider: Arc<dyn KeyProvider>,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, InitializationError> {
+        let params = serde_json::from_value(params).map_err(|source| {
+            InitializationError::InvalidParams {
+                key: config_id.to_string(),
+                source,
+            }
+        })?;
+
+        Ok(Self {
+            config_id,
             params,
             core_base_url,
             client,
             did_method_provider,
             key_provider,
-        }
+        })
     }
 
     fn domain(
@@ -250,5 +263,9 @@ impl DidMethod for DidWebVh {
 
     fn get_reference_for_key(&self, key: &Key) -> Result<String, DidMethodError> {
         Ok(format!("key-{}", key.id))
+    }
+
+    fn config_name(&self) -> &DidMethodId {
+        &self.config_id
     }
 }

@@ -65,6 +65,9 @@ pub enum DidMethodProviderError {
     #[error("JSON parse error: `{0}`")]
     JsonParse(#[from] serde_json::Error),
 
+    #[error("Unknown DID method: `{0}`")]
+    UnknownDidMethod(String),
+
     #[error(transparent)]
     Nested(#[from] NestedError),
 }
@@ -73,6 +76,7 @@ impl ErrorCodeMixin for DidMethodProviderError {
     fn error_code(&self) -> ErrorCode {
         match self {
             Self::JsonParse(_) => ErrorCode::BR_0064,
+            Self::UnknownDidMethod(_) => ErrorCode::BR_0031,
             Self::Nested(nested) => nested.error_code(),
         }
     }

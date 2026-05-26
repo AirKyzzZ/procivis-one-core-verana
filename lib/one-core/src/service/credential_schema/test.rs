@@ -43,7 +43,7 @@ use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{Features, FormatterCapabilities};
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
-use crate::provider::provider_directory::ProviderDirectoryError;
+use crate::provider::provider_directory::ProviderError;
 use crate::provider::revocation::MockRevocationMethod;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
@@ -1020,7 +1020,7 @@ async fn test_create_credential_schema_fail_validation() {
         .expect_get_revocation_method()
         .once()
         .return_once(|id| {
-            Err(ProviderDirectoryError::MissingProvider {
+            Err(ProviderError::MissingProvider {
                 config_key: id.to_string(),
                 provider_type: "revocation".to_string(),
             }

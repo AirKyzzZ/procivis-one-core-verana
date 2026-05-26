@@ -4,7 +4,8 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use shared_types::{DidId, DidValue};
+use proc_macros::Provider;
+use shared_types::{DidId, DidMethodId, DidValue};
 
 use super::common::expect_one_key;
 use super::{DidCreated, DidKeys, DidUpdate};
@@ -18,13 +19,19 @@ use crate::provider::did_method::keys::Keys;
 use crate::provider::did_method::model::{AmountOfKeys, DidCapabilities, DidDocument, Operation};
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
+#[derive(Provider)]
 pub struct KeyDidMethod {
-    pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    config_id: DidMethodId,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
 }
 
 impl KeyDidMethod {
-    pub fn new(key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>) -> Self {
+    pub fn new(
+        config_id: DidMethodId,
+        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    ) -> Self {
         Self {
+            config_id,
             key_algorithm_provider,
         }
     }
@@ -102,6 +109,10 @@ impl DidMethod for KeyDidMethod {
 
     fn get_reference_for_key(&self, key: &Key) -> Result<String, DidMethodError> {
         self.get_multibase(key)
+    }
+
+    fn config_name(&self) -> &DidMethodId {
+        &self.config_id
     }
 }
 

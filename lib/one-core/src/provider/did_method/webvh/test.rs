@@ -14,6 +14,7 @@ use crate::provider::key_storage::provider::MockKeyProvider;
 #[case("https://example.com:1234/a/b/c/", "example.com%3A1234:a:b:c")]
 fn test_use_domain_with_external_host(#[case] external_hosting_url: &str, #[case] expected: &str) {
     let method = DidWebVh {
+        config_id: "webvh".into(),
         params: Params {
             keys: Keys::default(),
             max_did_log_entry_check: None,
@@ -46,6 +47,7 @@ fn test_use_domain_with_external_host(#[case] external_hosting_url: &str, #[case
 )]
 fn test_use_domain_with_core_base_url(#[case] base_url: &str, #[case] expected: &str) {
     let method = DidWebVh {
+        config_id: "webvh".into(),
         params: Params::default(),
         core_base_url: Some(base_url.to_string()),
         client: Arc::new(MockHttpClient::new()),

@@ -1,3 +1,9 @@
+use std::fmt::Display;
+use std::sync::Arc;
+
+use crate::error::NestedError;
+use crate::provider::provider_directory::ProviderError;
+
 pub mod blob_storage;
 pub mod caching_loader;
 pub mod credential_formatter;
@@ -26,5 +32,23 @@ pub trait Provider {
     /// Whether the provider is enabled
     fn enabled(&self) -> bool {
         true
+    }
+}
+
+pub trait ProviderExt {
+    /// Fails if provider not enabled
+    fn ensure_enabled(&self) -> Result<(), NestedError>;
+}
+
+impl<P: Provider + Display + ?Sized> ProviderExt for Arc<P> {
+    fn ensure_enabled(&self) -> Result<(), NestedError> {
+        if self.enabled() {
+            Ok(())
+        } else {
+            Err(ProviderError::ProviderDisabled {
+                provider: self.to_string(),
+            }
+            .into())
+        }
     }
 }

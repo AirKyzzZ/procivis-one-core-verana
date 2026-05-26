@@ -287,7 +287,7 @@ async fn test_parse_credential() {
     did_method_provider
         .expect_get_did_method_by_method_name()
         .times(2)
-        .returning(|name| Some((name.into(), Arc::new(MockDidMethod::new()))));
+        .returning(|name| Ok((name.into(), Arc::new(MockDidMethod::new()))));
 
     let formatter = JsonLdClassic::new(
         Params {

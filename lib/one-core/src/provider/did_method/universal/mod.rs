@@ -4,8 +4,9 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use proc_macros::Provider;
 use serde::Deserialize;
-use shared_types::{DidId, DidValue};
+use shared_types::{DidId, DidMethodId, DidValue};
 
 use super::{DidCreated, DidKeys, DidUpdate};
 use crate::model::key::Key;
@@ -15,6 +16,7 @@ use crate::provider::did_method::dto::DidDocumentDTO;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::keys::Keys;
 use crate::provider::did_method::model::{AmountOfKeys, DidCapabilities, DidDocument, Operation};
+use crate::provider::provider_directory::InitializationError;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -24,19 +26,36 @@ struct ResolutionResponse {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Params {
+struct Params {
     pub resolver_url: String,
     pub supported_method_names: Vec<String>,
 }
 
+#[derive(Provider)]
 pub struct UniversalDidMethod {
-    pub params: Params,
-    pub client: Arc<dyn HttpClient>,
+    config_id: DidMethodId,
+    params: Params,
+    client: Arc<dyn HttpClient>,
 }
 
 impl UniversalDidMethod {
-    pub fn new(params: Params, client: Arc<dyn HttpClient>) -> Self {
-        Self { params, client }
+    pub fn new(
+        config_id: DidMethodId,
+        params: serde_json::Value,
+        client: Arc<dyn HttpClient>,
+    ) -> Result<Self, InitializationError> {
+        let params = serde_json::from_value(params).map_err(|source| {
+            InitializationError::InvalidParams {
+                key: config_id.to_string(),
+                source,
+            }
+        })?;
+
+        Ok(Self {
+            config_id,
+            params,
+            client,
+        })
     }
 }
 
@@ -102,6 +121,10 @@ impl DidMethod for UniversalDidMethod {
 
     fn get_reference_for_key(&self, _key: &Key) -> Result<String, DidMethodError> {
         unimplemented!()
+    }
+
+    fn config_name(&self) -> &DidMethodId {
+        &self.config_id
     }
 }
 

@@ -7,15 +7,20 @@
 //! Use this module to perform all operations associated with the relevant
 //! DID method.
 
+use std::fmt::{Display, Formatter};
+
 use async_trait::async_trait;
 use error::DidMethodError;
 use keys::Keys;
 use model::{AmountOfKeys, DidCapabilities, DidDocument};
-use shared_types::{DidId, DidValue};
+use proc_macros::provider_mock;
+use shared_types::{DidId, DidMethodId, DidValue};
 
 use crate::model::key::Key;
+use crate::provider::Provider;
 
 pub mod common;
+mod decorators;
 pub mod did_document;
 pub mod dto;
 pub mod error;
@@ -31,9 +36,9 @@ pub mod web;
 pub mod webvh;
 
 /// Performs operations on DIDs and provides DID utilities.
-#[cfg_attr(any(test, feature = "mock"), mockall::automock)]
+#[provider_mock]
 #[async_trait]
-pub trait DidMethod: Send + Sync {
+pub trait DidMethod: Provider + Send + Sync {
     /// Creates a DID.
     async fn create(
         &self,
@@ -69,6 +74,14 @@ pub trait DidMethod: Send + Sync {
 
     /// Provide reference value for verification method for the provided key
     fn get_reference_for_key(&self, key: &Key) -> Result<String, DidMethodError>;
+
+    fn config_name(&self) -> &DidMethodId;
+}
+
+impl Display for dyn DidMethod {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "DID method `{}`", self.config_name())
+    }
 }
 
 #[derive(Debug, Clone)]

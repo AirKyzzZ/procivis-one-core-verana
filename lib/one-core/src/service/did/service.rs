@@ -236,12 +236,7 @@ impl DidService {
         .error_while("checking session")?;
 
         let did_method_key = &did.did_method;
-        let did_method = self
-            .did_method_provider
-            .get_did_method(did_method_key)
-            .ok_or(DidServiceError::InvalidMethod {
-                method: did_method_key.to_owned(),
-            })?;
+        let did_method = self.did_method_provider.get_did_method(did_method_key)?;
 
         if let Some(deactivated) = request.deactivated {
             validate_deactivation_request(&did, did_method.as_ref(), deactivated)?;

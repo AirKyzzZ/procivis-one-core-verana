@@ -4,8 +4,9 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use proc_macros::Provider;
 use serde::Deserialize;
-use shared_types::{DidId, DidValue};
+use shared_types::{DidId, DidMethodId, DidValue};
 use url::Url;
 
 use super::{DidCreated, DidKeys, DidUpdate};
@@ -20,23 +21,26 @@ use crate::provider::did_method::model::{AmountOfKeys, DidCapabilities, DidDocum
 
 #[derive(Debug, Clone, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
-pub struct Params {
+struct Params {
     #[serde(default)]
     pub keys: Keys,
     pub resolve_to_insecure_http: Option<bool>,
 }
 
+#[derive(Provider)]
 pub struct WebDidMethod {
-    pub did_base_string: Option<String>,
-    pub client: Arc<dyn HttpClient>,
-    pub params: Params,
+    config_id: DidMethodId,
+    did_base_string: Option<String>,
+    client: Arc<dyn HttpClient>,
+    params: Params,
 }
 
 impl WebDidMethod {
     pub fn new(
+        config_id: DidMethodId,
         base_url: &Option<String>,
         client: Arc<dyn HttpClient>,
-        params: Params,
+        params: serde_json::Value,
     ) -> Result<Self, DidMethodError> {
         let did_base_string = if let Some(base_url) = base_url {
             let url = Url::parse(base_url)?;
@@ -59,7 +63,10 @@ impl WebDidMethod {
             None
         };
 
+        let params = serde_json::from_value(params)?;
+
         Ok(Self {
+            config_id,
             did_base_string,
             client,
             params,
@@ -132,6 +139,10 @@ impl DidMethod for WebDidMethod {
 
     fn get_reference_for_key(&self, key: &Key) -> Result<String, DidMethodError> {
         Ok(format!("key-{}", key.id))
+    }
+
+    fn config_name(&self) -> &DidMethodId {
+        &self.config_id
     }
 }
 

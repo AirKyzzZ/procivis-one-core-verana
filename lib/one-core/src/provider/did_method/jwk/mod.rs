@@ -8,7 +8,8 @@ use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 
 pub(crate) mod jwk_helpers;
 
-use shared_types::{DidId, DidValue};
+use proc_macros::Provider;
+use shared_types::{DidId, DidMethodId, DidValue};
 use standardized_types::jwk::PublicJwk;
 
 use super::common::expect_one_key;
@@ -23,13 +24,19 @@ use crate::provider::did_method::keys::Keys;
 use crate::provider::did_method::model::{AmountOfKeys, DidCapabilities, DidDocument, Operation};
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
+#[derive(Provider)]
 pub struct JWKDidMethod {
+    config_id: DidMethodId,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
 }
 
 impl JWKDidMethod {
-    pub fn new(key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>) -> Self {
+    pub fn new(
+        config_id: DidMethodId,
+        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    ) -> Self {
         Self {
+            config_id,
             key_algorithm_provider,
         }
     }
@@ -99,6 +106,10 @@ impl DidMethod for JWKDidMethod {
 
     fn get_reference_for_key(&self, _key: &Key) -> Result<String, DidMethodError> {
         Ok("0".to_string())
+    }
+
+    fn config_name(&self) -> &DidMethodId {
+        &self.config_id
     }
 }
 

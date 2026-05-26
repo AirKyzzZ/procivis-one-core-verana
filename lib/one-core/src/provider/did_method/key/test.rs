@@ -35,7 +35,7 @@ fn setup_key_did_method(
         .expect_key_algorithm_from_key()
         .returning(move |_| Ok(alg.clone()));
 
-    KeyDidMethod::new(Arc::new(key_algorithm_provider))
+    KeyDidMethod::new("key".into(), Arc::new(key_algorithm_provider))
 }
 
 #[tokio::test]

@@ -136,6 +136,7 @@ mod test {
 
     use super::*;
     use crate::config::core_config::KeyAlgorithmType;
+    use crate::error::NestedError;
     use crate::proto::http_client::{Method, MockHttpClient, Request, Response, StatusCode};
     use crate::provider::credential_formatter::vcdm::VcdmProof;
     use crate::provider::did_method::DidMethod;
@@ -536,24 +537,30 @@ mod test {
     #[async_trait::async_trait]
     impl DidMethodProvider for FakeDidMethodProvider {
         async fn resolve(&self, did: &DidValue) -> Result<DidDocument, DidMethodProviderError> {
-            Ok(KeyDidMethod::new(self.0.clone())
+            Ok(KeyDidMethod::new("fake".into(), self.0.clone())
                 .resolve(did)
                 .await
                 .unwrap())
         }
 
-        fn get_did_method(&self, _did_method_id: &DidMethodId) -> Option<Arc<dyn DidMethod>> {
+        fn get_did_method(
+            &self,
+            _did_method_id: &DidMethodId,
+        ) -> Result<Arc<dyn DidMethod>, NestedError> {
             unimplemented!()
         }
 
-        fn get_did_method_id(&self, _did: &DidValue) -> Option<DidMethodId> {
+        fn get_did_method_id(
+            &self,
+            _did: &DidValue,
+        ) -> Result<DidMethodId, DidMethodProviderError> {
             unimplemented!()
         }
 
         fn get_did_method_by_method_name(
             &self,
             _method_name: &str,
-        ) -> Option<(DidMethodId, Arc<dyn DidMethod>)> {
+        ) -> Result<(DidMethodId, Arc<dyn DidMethod>), DidMethodProviderError> {
             unimplemented!()
         }
 
