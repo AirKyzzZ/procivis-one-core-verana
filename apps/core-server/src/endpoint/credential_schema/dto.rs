@@ -315,6 +315,7 @@ pub(crate) enum KeyStorageSecurityRestEnum {
 #[try_into(T=CreateCredentialSchemaRequestDTO, Error=ServiceError)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct CreateCredentialSchemaRequestRestDTO {
+    /// Provide a name for this schema.
     #[validate(length(min = 1))]
     #[try_into(infallible)]
     pub name: String,
@@ -350,6 +351,7 @@ pub(crate) struct CreateCredentialSchemaRequestRestDTO {
     #[schema(default = CredentialSchemaLayoutType::default)]
     #[try_into(infallible)]
     pub layout_type: CredentialSchemaLayoutType,
+    /// Credential appearance design.
     #[serde(default)]
     #[try_into(with_fn = try_convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
@@ -437,6 +439,8 @@ pub(crate) struct CredentialClaimSchemaRequestRestDTO {
     /// The type of data accepted for this attribute.
     #[modify_schema(field = datatype)]
     pub datatype: String,
+    /// If `true`, a value must be provided for this claim to complete
+    /// issuance.
     pub required: bool,
     /// If `true`, an array can be passed for this attribute during issuance.
     pub array: Option<bool>,
@@ -449,7 +453,7 @@ pub(crate) struct CredentialClaimSchemaRequestRestDTO {
     #[serde(default)]
     #[into(with_fn = convert_inner_of_inner)]
     pub mappings: Option<Vec<CredentialClaimSchemaMappingRestDTO>>,
-    /// Translations for this claim's display name.
+    /// Localized display strings for this claim's display name.
     #[serde(default)]
     #[into(with_fn = convert_inner)]
     pub translations: Option<CredentialClaimSchemaTranslationsRestDTO>,
@@ -740,7 +744,8 @@ pub(crate) struct CreateCredentialSchemaV2RequestRestDTO {
     #[serde(default)]
     #[try_into(with_fn = try_convert_inner)]
     pub transaction_code: Option<CredentialSchemaTransactionCodeRequestRestDTO>,
-    /// Translations for the credential schema name and optional description.
+    /// Localized display strings for the credential schema name and optional
+    /// description.
     #[serde(default)]
     #[try_into(infallible, with_fn = convert_inner)]
     pub translations: Option<CredentialSchemaTranslationsRestDTO>,
