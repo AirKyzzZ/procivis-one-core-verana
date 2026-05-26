@@ -15,7 +15,7 @@ use crate::provider::did_method::DidMethod;
 use crate::provider::did_method::dto::DidDocumentDTO;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::keys::Keys;
-use crate::provider::did_method::model::{AmountOfKeys, DidCapabilities, DidDocument, Operation};
+use crate::provider::did_method::model::{DidCapabilities, DidDocument, Operation};
 use crate::provider::provider_directory::InitializationError;
 
 #[derive(Debug, Deserialize)]
@@ -63,9 +63,9 @@ impl UniversalDidMethod {
 impl DidMethod for UniversalDidMethod {
     async fn create(
         &self,
-        _id: Option<DidId>,
+        _id: DidId,
         _params: &Option<serde_json::Value>,
-        _keys: Option<DidKeys>,
+        _keys: DidKeys,
     ) -> Result<DidCreated, DidMethodError> {
         Err(DidMethodError::OperationNotSupported)
     }
@@ -109,10 +109,6 @@ impl DidMethod for UniversalDidMethod {
             features: vec![],
             supported_update_key_types: vec![],
         }
-    }
-
-    fn validate_keys(&self, _keys: AmountOfKeys) -> bool {
-        unimplemented!()
     }
 
     fn get_keys(&self) -> Option<Keys> {

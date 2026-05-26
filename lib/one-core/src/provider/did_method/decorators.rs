@@ -4,7 +4,7 @@ use std::sync::Arc;
 use shared_types::{DidId, DidMethodId, DidValue};
 
 use super::error::DidMethodError;
-use super::model::{AmountOfKeys, DidCapabilities, DidDocument, Operation};
+use super::model::{DidCapabilities, DidDocument, Operation};
 use super::{DidCreated, DidKeys, DidMethod, DidUpdate, Keys};
 use crate::config::core_config::{ConfigFields, KeyAlgorithmType};
 use crate::error::ContextWithErrorCode;
@@ -27,9 +27,9 @@ impl WithDecorators for dyn DidMethod {
 impl<T: Provider + DidMethod + Display + ?Sized> DidMethod for DisabledProvider<T> {
     async fn create(
         &self,
-        _id: Option<DidId>,
+        _id: DidId,
         _params: &Option<serde_json::Value>,
-        _keys: Option<DidKeys>,
+        _keys: DidKeys,
     ) -> Result<DidCreated, DidMethodError> {
         self.disabled_error()
     }
@@ -53,10 +53,6 @@ impl<T: Provider + DidMethod + Display + ?Sized> DidMethod for DisabledProvider<
             .operations
             .retain(|op| op != &Operation::CREATE);
         capabilities
-    }
-
-    fn validate_keys(&self, keys: AmountOfKeys) -> bool {
-        self.inner().validate_keys(keys)
     }
 
     fn get_keys(&self) -> Option<Keys> {
@@ -104,30 +100,34 @@ fn check_key_types<'a, I: Iterator<Item = &'a Key>>(
 impl DidMethod for CapabilityChecked {
     async fn create(
         &self,
-        id: Option<DidId>,
+        id: DidId,
         params: &Option<serde_json::Value>,
-        keys: Option<DidKeys>,
+        keys: DidKeys,
     ) -> Result<DidCreated, DidMethodError> {
         let capabilities = self.0.get_capabilities();
         if !capabilities.operations.contains(&Operation::CREATE) {
             return Err(DidMethodError::OperationNotSupported);
         }
 
-        if let Some(keys) = &keys {
-            if let Some(update_keys) = &keys.update_keys {
-                check_key_types(update_keys.iter(), &capabilities.supported_update_key_types)?;
-            }
+        if let Some(update_keys) = &keys.update_keys {
+            check_key_types(update_keys.iter(), &capabilities.supported_update_key_types)?;
+        }
 
-            let content_keys = vec![
-                &keys.authentication,
-                &keys.assertion_method,
-                &keys.key_agreement,
-                &keys.capability_invocation,
-                &keys.capability_delegation,
-            ]
-            .into_iter()
-            .flatten();
-            check_key_types(content_keys, &capabilities.key_algorithms)?;
+        let content_keys = vec![
+            &keys.authentication,
+            &keys.assertion_method,
+            &keys.key_agreement,
+            &keys.capability_invocation,
+            &keys.capability_delegation,
+        ]
+        .into_iter()
+        .flatten();
+        check_key_types(content_keys, &capabilities.key_algorithms)?;
+
+        if let Some(limits) = self.0.get_keys()
+            && !limits.validate_keys(&keys)
+        {
+            return Err(DidMethodError::InvalidNumberOfKeys);
         }
 
         self.0.create(id, params, keys).await
@@ -166,10 +166,6 @@ impl DidMethod for CapabilityChecked {
 
     fn get_capabilities(&self) -> DidCapabilities {
         self.0.get_capabilities()
-    }
-
-    fn validate_keys(&self, keys: AmountOfKeys) -> bool {
-        self.0.validate_keys(keys)
     }
 
     fn get_keys(&self) -> Option<Keys> {

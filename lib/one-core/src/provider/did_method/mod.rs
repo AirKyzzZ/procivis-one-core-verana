@@ -12,7 +12,7 @@ use std::fmt::{Display, Formatter};
 use async_trait::async_trait;
 use error::DidMethodError;
 use keys::Keys;
-use model::{AmountOfKeys, DidCapabilities, DidDocument};
+use model::{DidCapabilities, DidDocument};
 use proc_macros::provider_mock;
 use shared_types::{DidId, DidMethodId, DidValue};
 
@@ -42,9 +42,9 @@ pub trait DidMethod: Provider + Send + Sync {
     /// Creates a DID.
     async fn create(
         &self,
-        id: Option<DidId>,
+        id: DidId,
         params: &Option<serde_json::Value>,
-        keys: Option<DidKeys>,
+        keys: DidKeys,
     ) -> Result<DidCreated, DidMethodError>;
 
     /// Resolve a DID to its DID document.
@@ -62,12 +62,6 @@ pub trait DidMethod: Provider + Send + Sync {
     ///
     /// [dmc]: https://docs.procivis.ch/api/resources/dids#did-method-capabilities
     fn get_capabilities(&self) -> DidCapabilities;
-
-    /// Validates whether the number of keys assigned is supported by the DID method.
-    ///
-    /// Different DID methods support different numbers of keys for verification relationships.
-    /// This method validates whether the method of the DID supports the keys associated with it.
-    fn validate_keys(&self, keys: AmountOfKeys) -> bool;
 
     /// Returns the key restrictions associated with this DID method.
     fn get_keys(&self) -> Option<Keys>;

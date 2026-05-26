@@ -7,9 +7,7 @@ use uuid::Uuid;
 use crate::model::key::Key;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::jwk::JWKDidMethod;
-use crate::provider::did_method::model::{
-    AmountOfKeys, DidDocument, DidVerificationMethod, Operation,
-};
+use crate::provider::did_method::model::{DidDocument, DidVerificationMethod, Operation};
 use crate::provider::did_method::{DidKeys, DidMethod};
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::key::{
@@ -219,16 +217,16 @@ async fn test_create_did_jwk_success() {
     }];
     let result = provider
         .create(
-            Some(Uuid::new_v4().into()),
+            Uuid::new_v4().into(),
             &None,
-            Some(DidKeys {
+            DidKeys {
                 authentication: keys.clone(),
                 assertion_method: keys.clone(),
                 key_agreement: keys.clone(),
                 capability_invocation: keys.clone(),
                 capability_delegation: keys.clone(),
                 update_keys: None,
-            }),
+            },
         )
         .await
         .unwrap()
@@ -248,60 +246,4 @@ fn test_get_capabilities() {
         vec![Operation::RESOLVE, Operation::CREATE],
         provider.get_capabilities().operations
     );
-}
-
-#[test]
-fn test_validate_keys() {
-    let did_method = JWKDidMethod::new("jwk".into(), Arc::new(MockKeyAlgorithmProvider::default()));
-    let keys = AmountOfKeys {
-        global: 1,
-        authentication: 1,
-        assertion_method: 1,
-        key_agreement: 1,
-        capability_invocation: 1,
-        capability_delegation: 1,
-    };
-    assert!(did_method.validate_keys(keys));
-}
-
-#[test]
-fn test_validate_keys_no_keys() {
-    let did_method = JWKDidMethod::new("jwk".into(), Arc::new(MockKeyAlgorithmProvider::default()));
-    let keys = AmountOfKeys {
-        global: 0,
-        authentication: 0,
-        assertion_method: 0,
-        key_agreement: 0,
-        capability_invocation: 0,
-        capability_delegation: 0,
-    };
-    assert!(!did_method.validate_keys(keys));
-}
-
-#[test]
-fn test_validate_keys_too_much_keys() {
-    let did_method = JWKDidMethod::new("jwk".into(), Arc::new(MockKeyAlgorithmProvider::default()));
-    let keys = AmountOfKeys {
-        global: 2,
-        authentication: 1,
-        assertion_method: 1,
-        key_agreement: 1,
-        capability_invocation: 1,
-        capability_delegation: 1,
-    };
-    assert!(!did_method.validate_keys(keys));
-}
-
-#[test]
-fn test_validate_keys_missing_key() {
-    let did_method = JWKDidMethod::new("jwk".into(), Arc::new(MockKeyAlgorithmProvider::default()));
-    let keys = AmountOfKeys {
-        global: 1,
-        authentication: 1,
-        assertion_method: 0,
-        key_agreement: 1,
-        capability_invocation: 1,
-        capability_delegation: 1,
-    };
-    assert!(!did_method.validate_keys(keys));
 }

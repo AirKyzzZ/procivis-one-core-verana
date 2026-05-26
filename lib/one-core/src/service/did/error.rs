@@ -27,8 +27,6 @@ pub enum DidServiceError {
     #[error("Remote DID cannot be deactivated")]
     RemoteDid,
 
-    #[error("DID: Invalid key number")]
-    InvalidNumberOfKeys,
     #[error("Key storage `{0}` invalid")]
     InvalidKeyStorage(String),
 
@@ -47,7 +45,6 @@ impl ErrorCodeMixin for DidServiceError {
             Self::Deactivated(_) | Self::DeactivatedSameValue { .. } => ErrorCode::BR_0027,
             Self::CannotBeDeactivated { .. } | Self::RemoteDid => ErrorCode::BR_0029,
             Self::CannotBeReactivated { .. } => ErrorCode::BR_0256,
-            Self::InvalidNumberOfKeys => ErrorCode::BR_0030,
             Self::MissingOrganisation(_) => ErrorCode::BR_0088,
             Self::OrganisationDeactivated(_) => ErrorCode::BR_0241,
             Self::MissingKey(_) => ErrorCode::BR_0037,

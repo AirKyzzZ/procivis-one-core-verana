@@ -21,7 +21,7 @@ use crate::provider::did_method::DidMethod;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::jwk::jwk_helpers::{extract_jwk, generate_document};
 use crate::provider::did_method::keys::Keys;
-use crate::provider::did_method::model::{AmountOfKeys, DidCapabilities, DidDocument, Operation};
+use crate::provider::did_method::model::{DidCapabilities, DidDocument, Operation};
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
 #[derive(Provider)]
@@ -46,11 +46,10 @@ impl JWKDidMethod {
 impl DidMethod for JWKDidMethod {
     async fn create(
         &self,
-        _id: Option<DidId>,
+        _id: DidId,
         _params: &Option<serde_json::Value>,
-        keys: Option<DidKeys>,
+        keys: DidKeys,
     ) -> Result<DidCreated, DidMethodError> {
-        let keys = keys.ok_or(DidMethodError::CreationError("Missing keys".to_string()))?;
         let key = expect_one_key(&keys)?;
 
         let key_algorithm = self
@@ -94,10 +93,6 @@ impl DidMethod for JWKDidMethod {
             features: vec![],
             supported_update_key_types: vec![],
         }
-    }
-
-    fn validate_keys(&self, keys: AmountOfKeys) -> bool {
-        Keys::default().validate_keys(keys)
     }
 
     fn get_keys(&self) -> Option<Keys> {

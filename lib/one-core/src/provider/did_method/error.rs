@@ -19,6 +19,8 @@ pub enum DidMethodError {
     Deactivated,
     #[error("Could not initialize: `{0}`")]
     InitializationError(String),
+    #[error("DID: Invalid key number")]
+    InvalidNumberOfKeys,
 
     #[error("JSON serialization error: `{0}`")]
     Json(#[from] serde_json::Error),
@@ -43,6 +45,7 @@ impl ErrorCodeMixin for DidMethodError {
     fn error_code(&self) -> ErrorCode {
         match self {
             Self::Deactivated => ErrorCode::BR_0027,
+            Self::InvalidNumberOfKeys => ErrorCode::BR_0030,
             Self::CouldNotDeactivate(_) => ErrorCode::BR_0029,
             Self::ResolutionError(_) => ErrorCode::BR_0363,
             Self::DidValueError(_) => ErrorCode::BR_0364,

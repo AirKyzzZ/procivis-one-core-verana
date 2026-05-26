@@ -13,9 +13,8 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 use super::{WebDidMethod, did_value_to_url, fetch_did_web_document};
 use crate::proto::http_client::reqwest_client::ReqwestClient;
 use crate::proto::http_client::{HttpClient, MockHttpClient};
-use crate::provider::did_method::DidMethod;
 use crate::provider::did_method::error::DidMethodError;
-use crate::provider::did_method::model::AmountOfKeys;
+use crate::provider::did_method::{DidKeys, DidMethod};
 
 static JSON_DATA: &str = r#"
     {
@@ -97,7 +96,7 @@ async fn test_did_web_create() {
     let id = DidId::from(Uuid::from_str("2389ba3f-81d5-4931-9222-c23ec721deb7").unwrap());
 
     let result = did_web_method
-        .create(Some(id), &None, None)
+        .create(id, &None, DidKeys::default())
         .await
         .unwrap()
         .did;
@@ -123,7 +122,7 @@ async fn test_did_web_create_with_port() {
     let id = DidId::from(Uuid::from_str("2389ba3f-81d5-4931-9222-c23ec721deb7").unwrap());
 
     let result = did_web_method
-        .create(Some(id), &None, None)
+        .create(id, &None, DidKeys::default())
         .await
         .unwrap()
         .did;
@@ -146,7 +145,7 @@ async fn test_did_web_create_fail_no_base_url() {
 
     let id = DidId::from(Uuid::from_str("2389ba3f-81d5-4931-9222-c23ec721deb7").unwrap());
 
-    let result = did_web_method.create(Some(id), &None, None).await;
+    let result = did_web_method.create(id, &None, DidKeys::default()).await;
 
     assert!(matches!(
         result,
@@ -313,204 +312,4 @@ async fn test_did_web_fetch() {
                 .to_string(),
         }),
     );
-}
-
-#[test]
-fn test_validate_default_keys() {
-    let did_method = WebDidMethod::new(
-        "web".into(),
-        &None,
-        Arc::new(MockHttpClient::new()),
-        json!({}),
-    )
-    .unwrap();
-    let keys = AmountOfKeys {
-        global: 1,
-        authentication: 1,
-        assertion_method: 1,
-        key_agreement: 1,
-        capability_invocation: 1,
-        capability_delegation: 1,
-    };
-    assert!(did_method.validate_keys(keys));
-}
-
-#[test]
-fn test_validate_default_keys_no_keys() {
-    let did_method = WebDidMethod::new(
-        "web".into(),
-        &None,
-        Arc::new(MockHttpClient::new()),
-        json!({}),
-    )
-    .unwrap();
-    let keys = AmountOfKeys {
-        global: 0,
-        authentication: 0,
-        assertion_method: 0,
-        key_agreement: 0,
-        capability_invocation: 0,
-        capability_delegation: 0,
-    };
-    assert!(!did_method.validate_keys(keys));
-}
-
-#[test]
-fn test_validate_default_keys_too_much_keys() {
-    let did_method = WebDidMethod::new(
-        "web".into(),
-        &None,
-        Arc::new(MockHttpClient::new()),
-        json!({}),
-    )
-    .unwrap();
-    let keys = AmountOfKeys {
-        global: 2,
-        authentication: 1,
-        assertion_method: 1,
-        key_agreement: 1,
-        capability_invocation: 1,
-        capability_delegation: 1,
-    };
-    assert!(!did_method.validate_keys(keys));
-}
-
-#[test]
-fn test_validate_default_keys_missing_key() {
-    let did_method = WebDidMethod::new(
-        "web".into(),
-        &None,
-        Arc::new(MockHttpClient::new()),
-        json!({}),
-    )
-    .unwrap();
-    let keys = AmountOfKeys {
-        global: 1,
-        authentication: 1,
-        assertion_method: 0,
-        key_agreement: 1,
-        capability_invocation: 1,
-        capability_delegation: 1,
-    };
-    assert!(!did_method.validate_keys(keys));
-}
-
-#[test]
-fn test_validate_keys() {
-    let did_method = WebDidMethod::new(
-        "web".into(),
-        &None,
-        Arc::new(MockHttpClient::new()),
-        json!({
-            "keys": {
-                "min": 2,
-                "max": 3,
-                "authentication": { "min": 2, "max": 3 },
-                "assertionMethod": { "min": 2, "max": 3 },
-                "keyAgreement": { "min": 2, "max": 3 },
-                "capabilityInvocation": { "min": 2, "max": 3 },
-                "capabilityDelegation": { "min": 2, "max": 3 }
-            }
-        }),
-    )
-    .unwrap();
-    let keys = AmountOfKeys {
-        global: 2,
-        authentication: 3,
-        assertion_method: 3,
-        key_agreement: 2,
-        capability_invocation: 2,
-        capability_delegation: 2,
-    };
-    assert!(did_method.validate_keys(keys));
-}
-
-#[test]
-fn test_validate_keys_no_keys() {
-    let did_method = WebDidMethod::new(
-        "web".into(),
-        &None,
-        Arc::new(MockHttpClient::new()),
-        json!({
-            "keys": {
-                "min": 2,
-                "max": 3,
-                "authentication": { "min": 2, "max": 3 },
-                "assertionMethod": { "min": 2, "max": 3 },
-                "keyAgreement": { "min": 2, "max": 3 },
-                "capabilityInvocation": { "min": 2, "max": 3 },
-                "capabilityDelegation": { "min": 2, "max": 3 }
-            }
-        }),
-    )
-    .unwrap();
-    let keys = AmountOfKeys {
-        global: 0,
-        authentication: 0,
-        assertion_method: 0,
-        key_agreement: 0,
-        capability_invocation: 0,
-        capability_delegation: 0,
-    };
-    assert!(!did_method.validate_keys(keys));
-}
-
-#[test]
-fn test_validate_keys_too_many_keys() {
-    let did_method = WebDidMethod::new(
-        "web".into(),
-        &None,
-        Arc::new(MockHttpClient::new()),
-        json!({
-            "keys": {
-                "min": 2,
-                "max": 3,
-                "authentication": { "min": 2, "max": 3 },
-                "assertionMethod": { "min": 2, "max": 3 },
-                "keyAgreement": { "min": 2, "max": 3 },
-                "capabilityInvocation": { "min": 2, "max": 3 },
-                "capabilityDelegation": { "min": 2, "max": 3 }
-            }
-        }),
-    )
-    .unwrap();
-    let keys = AmountOfKeys {
-        global: 5,
-        authentication: 2,
-        assertion_method: 2,
-        key_agreement: 2,
-        capability_invocation: 2,
-        capability_delegation: 2,
-    };
-    assert!(!did_method.validate_keys(keys));
-}
-
-#[test]
-fn test_validate_keys_missing_key() {
-    let did_method = WebDidMethod::new(
-        "web".into(),
-        &None,
-        Arc::new(MockHttpClient::new()),
-        json!({
-            "keys": {
-                "min": 2,
-                "max": 3,
-                "authentication": { "min": 2, "max": 3 },
-                "assertionMethod": { "min": 2, "max": 3 },
-                "keyAgreement": { "min": 2, "max": 3 },
-                "capabilityInvocation": { "min": 2, "max": 3 },
-                "capabilityDelegation": { "min": 2, "max": 3 }
-            }
-        }),
-    )
-    .unwrap();
-    let keys = AmountOfKeys {
-        global: 2,
-        authentication: 2,
-        assertion_method: 0,
-        key_agreement: 2,
-        capability_invocation: 2,
-        capability_delegation: 2,
-    };
-    assert!(!did_method.validate_keys(keys));
 }

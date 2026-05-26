@@ -3,7 +3,6 @@ use std::sync::Arc;
 use mockall::predicate::{self, eq};
 use secrecy::SecretSlice;
 use serde_json::json;
-use shared_types::DidId;
 use similar_asserts::assert_eq;
 use standardized_types::jwk::{PublicJwk, PublicJwkEc};
 use uuid::Uuid;
@@ -11,7 +10,7 @@ use uuid::Uuid;
 use super::KeyDidMethod;
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::Key;
-use crate::provider::did_method::model::{AmountOfKeys, DidDocument, DidVerificationMethod};
+use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
 use crate::provider::did_method::{DidKeys, DidMethod};
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::key::{
@@ -362,77 +361,17 @@ async fn test_create_did_success() {
     let keys = vec![key];
     let result = did_method
         .create(
-            Some(DidId::from(Uuid::new_v4())),
+            Uuid::new_v4().into(),
             &None,
-            Some(DidKeys {
+            DidKeys {
                 authentication: keys.clone(),
                 assertion_method: keys.clone(),
                 key_agreement: keys.clone(),
                 capability_invocation: keys.clone(),
                 capability_delegation: keys.clone(),
                 update_keys: None,
-            }),
+            },
         )
         .await;
     result.unwrap();
-}
-
-#[test]
-fn test_validate_keys() {
-    let did_method = setup_key_did_method(MockKeyAlgorithm::default(), KeyAlgorithmType::Eddsa);
-
-    let keys = AmountOfKeys {
-        global: 1,
-        authentication: 1,
-        assertion_method: 1,
-        key_agreement: 1,
-        capability_invocation: 1,
-        capability_delegation: 1,
-    };
-    assert!(did_method.validate_keys(keys));
-}
-
-#[test]
-fn test_validate_keys_no_keys() {
-    let did_method = setup_key_did_method(MockKeyAlgorithm::default(), KeyAlgorithmType::Eddsa);
-
-    let keys = AmountOfKeys {
-        global: 0,
-        authentication: 0,
-        assertion_method: 0,
-        key_agreement: 0,
-        capability_invocation: 0,
-        capability_delegation: 0,
-    };
-    assert!(!did_method.validate_keys(keys));
-}
-
-#[test]
-fn test_validate_keys_too_much_keys() {
-    let did_method = setup_key_did_method(MockKeyAlgorithm::default(), KeyAlgorithmType::Eddsa);
-
-    let keys = AmountOfKeys {
-        global: 2,
-        authentication: 1,
-        assertion_method: 1,
-        key_agreement: 1,
-        capability_invocation: 1,
-        capability_delegation: 1,
-    };
-    assert!(!did_method.validate_keys(keys));
-}
-
-#[test]
-fn test_validate_keys_missing_key() {
-    let did_method = setup_key_did_method(MockKeyAlgorithm::default(), KeyAlgorithmType::Eddsa);
-
-    let keys = AmountOfKeys {
-        global: 1,
-        authentication: 1,
-        assertion_method: 0,
-        key_agreement: 1,
-        capability_invocation: 1,
-        capability_delegation: 1,
-    };
-    assert!(!did_method.validate_keys(keys));
 }

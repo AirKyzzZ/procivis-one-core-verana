@@ -17,7 +17,7 @@ use crate::provider::did_method::DidMethod;
 use crate::provider::did_method::dto::DidDocumentDTO;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::keys::Keys;
-use crate::provider::did_method::model::{AmountOfKeys, DidCapabilities, DidDocument, Operation};
+use crate::provider::did_method::model::{DidCapabilities, DidDocument, Operation};
 
 #[derive(Debug, Clone, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
@@ -78,9 +78,9 @@ impl WebDidMethod {
 impl DidMethod for WebDidMethod {
     async fn create(
         &self,
-        id: Option<DidId>,
+        id: DidId,
         _params: &Option<serde_json::Value>,
-        _keys: Option<DidKeys>,
+        _keys: DidKeys,
     ) -> Result<DidCreated, DidMethodError> {
         let did_base_string =
             self.did_base_string
@@ -88,8 +88,6 @@ impl DidMethod for WebDidMethod {
                 .ok_or(DidMethodError::InitializationError(
                     "Missing base_url".to_string(),
                 ))?;
-
-        let id = id.ok_or(DidMethodError::CreationError("Missing did id".to_string()))?;
 
         let did_value = format!("{did_base_string}:{id}");
 
@@ -127,10 +125,6 @@ impl DidMethod for WebDidMethod {
             features: vec![],
             supported_update_key_types: vec![],
         }
-    }
-
-    fn validate_keys(&self, keys: AmountOfKeys) -> bool {
-        self.params.keys.validate_keys(keys)
     }
 
     fn get_keys(&self) -> Option<Keys> {

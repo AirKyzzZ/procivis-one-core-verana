@@ -70,13 +70,3 @@ pub struct DidVerificationMethod {
     pub controller: String,
     pub public_key_jwk: PublicJwk,
 }
-
-#[derive(Debug, Clone)]
-pub struct AmountOfKeys {
-    pub global: usize,
-    pub authentication: usize,
-    pub assertion_method: usize,
-    pub key_agreement: usize,
-    pub capability_invocation: usize,
-    pub capability_delegation: usize,
-}

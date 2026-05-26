@@ -13,7 +13,7 @@ use time::Duration;
 use url::Url;
 
 use super::keys::Keys;
-use super::model::{AmountOfKeys, DidCapabilities, DidDocument, Feature, Operation};
+use super::model::{DidCapabilities, DidDocument, Feature, Operation};
 use super::{DidCreated, DidKeys, DidMethod, DidUpdate};
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::Key;
@@ -123,16 +123,10 @@ impl DidWebVh {
 impl DidMethod for DidWebVh {
     async fn create(
         &self,
-        id: Option<DidId>,
+        id: DidId,
         params: &Option<serde_json::Value>,
-        keys: Option<DidKeys>,
+        keys: DidKeys,
     ) -> Result<DidCreated, DidMethodError> {
-        let Some(keys) = keys else {
-            return Err(DidMethodError::CreationError(
-                "Missing keys for did:webvh".to_string(),
-            ));
-        };
-
         let update_keys = match keys.update_keys.as_deref() {
             None | Some([]) => {
                 return Err(DidMethodError::CreationError(
@@ -140,12 +134,6 @@ impl DidMethod for DidWebVh {
                 ));
             }
             Some([active, next @ ..]) => UpdateKeys { active, next },
-        };
-
-        let Some(did_id) = id else {
-            return Err(DidMethodError::CreationError(
-                "Missing did id for did:webvh".to_string(),
-            ));
         };
 
         let did_doc_keys = DidDocKeys {
@@ -166,7 +154,7 @@ impl DidMethod for DidWebVh {
             })
             .transpose()?;
 
-        let domain = self.domain(did_id, external_hosting_url)?;
+        let domain = self.domain(id, external_hosting_url)?;
         let (did, log) = create::create(
             &domain,
             did_doc_keys,
@@ -251,10 +239,6 @@ impl DidMethod for DidWebVh {
             features: vec![Feature::SupportsExternalHosting],
             supported_update_key_types: vec![KeyAlgorithmType::Eddsa],
         }
-    }
-
-    fn validate_keys(&self, keys: AmountOfKeys) -> bool {
-        self.params.keys.validate_keys(keys)
     }
 
     fn get_keys(&self) -> Option<Keys> {

@@ -1,5 +1,4 @@
 use std::collections::{HashMap, HashSet};
-use std::ops::Deref;
 
 use one_dto_mapper::convert_inner;
 use shared_types::{DidId, IdentifierId, KeyId};
@@ -27,7 +26,6 @@ use crate::service::certificate::dto::CreateCertificateRequestDTO;
 use crate::service::did::dto::CreateDidRequestDTO;
 use crate::service::did::mapper::did_from_did_request;
 use crate::service::did::service::{build_keys_request, generate_update_key};
-use crate::service::did::validator::validate_request_amount_of_keys;
 use crate::service::identifier::dto::CreateCertificateAuthorityRequestDTO;
 use crate::service::key::dto::KeyGenerateCSRRequestProfile;
 
@@ -219,11 +217,7 @@ impl IdentifierCreatorProto {
             .did_method_provider
             .get_did_method(&request.did_method)?;
 
-        validate_request_amount_of_keys(did_method.deref(), request.keys.to_owned())
-            .error_while("validating did request")?;
-
         let keys = request.keys.to_owned();
-
         let key_ids = HashSet::<KeyId>::from_iter(
             [
                 keys.authentication,
@@ -284,7 +278,7 @@ impl IdentifierCreatorProto {
         }
 
         let did_value = did_method
-            .create(Some(new_did_id), &request.params, Some(keys.clone()))
+            .create(new_did_id, &request.params, keys.clone())
             .await
             .error_while("creating DID")?;
 

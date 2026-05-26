@@ -21,6 +21,7 @@ use crate::proto::certificate_validator::{MockCertificateValidator, ParsedCertif
 use crate::proto::csr_creator::MockCsrCreator;
 use crate::proto::transaction_manager::NoTransactionManager;
 use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
+use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::model::{DidCapabilities, Operation};
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::did_method::{DidCreated, MockDidMethod};
@@ -426,7 +427,6 @@ async fn test_create_local_identifier_did() {
         .once()
         .return_once({
             let mut did_method = MockDidMethod::new();
-            did_method.expect_validate_keys().once().returning(|_| true);
             did_method
                 .expect_get_capabilities()
                 .once()
@@ -521,7 +521,6 @@ async fn test_create_local_identifier_did_did_value_already_exists() {
         .once()
         .return_once({
             let mut did_method = MockDidMethod::new();
-            did_method.expect_validate_keys().once().returning(|_| true);
             did_method
                 .expect_get_capabilities()
                 .once()
@@ -585,12 +584,30 @@ async fn test_create_local_identifier_did_did_value_already_exists() {
 }
 
 #[tokio::test]
-async fn test_create_local_identifier_did_invalid_num_keys() {
+async fn test_create_local_identifier_did_create_failure() {
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_key_algorithm_from_key()
+        .once()
+        .return_once(|_| {
+            let mut key_algorithm = MockKeyAlgorithm::new();
+            key_algorithm
+                .expect_algorithm_type()
+                .once()
+                .returning(|| KeyAlgorithmType::Eddsa);
+            Ok(Arc::new(key_algorithm))
+        });
+
     let key = Key {
         key_reference: Some(vec![]),
         ..dummy_key()
     };
     let key_id = key.id;
+    let mut key_repository = MockKeyRepository::new();
+    key_repository
+        .expect_get_keys()
+        .once()
+        .return_once(move |_| Ok(vec![key]));
 
     let mut did_method_provider = MockDidMethodProvider::new();
     did_method_provider
@@ -599,14 +616,26 @@ async fn test_create_local_identifier_did_invalid_num_keys() {
         .return_once({
             let mut did_method = MockDidMethod::new();
             did_method
-                .expect_validate_keys()
+                .expect_get_capabilities()
                 .once()
-                .returning(|_| false);
+                .returning(|| DidCapabilities {
+                    operations: vec![Operation::CREATE],
+                    key_algorithms: vec![KeyAlgorithmType::Eddsa],
+                    method_names: vec![],
+                    features: vec![],
+                    supported_update_key_types: vec![],
+                });
+            did_method
+                .expect_create()
+                .once()
+                .returning(|_, _, _| Err(DidMethodError::CreationError("test".to_string())));
             move |_| Ok(Arc::new(did_method))
         });
 
     let creator = setup_creator(Mocks {
+        key_algorithm_provider,
         did_method_provider,
+        key_repository,
         config: generic_config().core,
         ..Default::default()
     });
@@ -632,5 +661,5 @@ async fn test_create_local_identifier_did_invalid_num_keys() {
         )
         .await;
 
-    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0030);
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0064);
 }

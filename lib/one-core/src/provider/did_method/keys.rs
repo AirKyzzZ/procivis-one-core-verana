@@ -1,8 +1,11 @@
 //! Implementation of keys validation of DIDs.
 
+use std::collections::HashSet;
+
 use serde::{Deserialize, Serialize};
 
-use crate::provider::did_method::model::AmountOfKeys;
+use crate::model::key::Key;
+use crate::provider::did_method::DidKeys;
 
 #[derive(Debug, Serialize, Clone)]
 pub struct MinMax<const N: usize> {
@@ -12,7 +15,7 @@ pub struct MinMax<const N: usize> {
 
 impl<const N: usize> MinMax<N> {
     fn contains(&self, number: usize) -> bool {
-        (&self.min..=&self.max).contains(&&number)
+        self.min <= number && self.max >= number
     }
 }
 
@@ -72,16 +75,80 @@ pub struct Keys {
 }
 
 impl Keys {
-    pub fn validate_keys(&self, keys: AmountOfKeys) -> bool {
-        self.global.contains(keys.global)
-            && self.authentication.contains(keys.authentication)
-            && self.assertion_method.contains(keys.assertion_method)
-            && self.key_agreement.contains(keys.key_agreement)
-            && self
-                .capability_invocation
-                .contains(keys.capability_invocation)
-            && self
-                .capability_delegation
-                .contains(keys.capability_delegation)
+    pub fn validate_keys(&self, keys: &DidKeys) -> bool {
+        let global = count_uniq(
+            keys.authentication
+                .iter()
+                .chain(&keys.assertion_method)
+                .chain(&keys.key_agreement)
+                .chain(&keys.capability_invocation)
+                .chain(&keys.capability_delegation),
+        );
+        let authentication = count_uniq(&keys.authentication);
+        let assertion_method = count_uniq(&keys.assertion_method);
+        let key_agreement = count_uniq(&keys.key_agreement);
+        let capability_invocation = count_uniq(&keys.capability_invocation);
+        let capability_delegation = count_uniq(&keys.capability_delegation);
+
+        self.global.contains(global)
+            && self.authentication.contains(authentication)
+            && self.assertion_method.contains(assertion_method)
+            && self.key_agreement.contains(key_agreement)
+            && self.capability_invocation.contains(capability_invocation)
+            && self.capability_delegation.contains(capability_delegation)
+    }
+}
+
+fn count_uniq<'a>(vec: impl IntoIterator<Item = &'a Key>) -> usize {
+    vec.into_iter()
+        .map(|key| key.id)
+        .collect::<HashSet<_>>()
+        .len()
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::service::test_utilities::dummy_key;
+
+    #[test]
+    fn test_validate_keys_default() {
+        let key = dummy_key();
+        let keys = DidKeys {
+            authentication: vec![key.clone()],
+            assertion_method: vec![key.clone()],
+            key_agreement: vec![key.clone()],
+            capability_invocation: vec![key.clone()],
+            capability_delegation: vec![key],
+            update_keys: None,
+        };
+        assert!(Keys::default().validate_keys(&keys));
+    }
+
+    #[test]
+    fn test_validate_keys_no_keys() {
+        let keys = DidKeys {
+            authentication: vec![],
+            assertion_method: vec![],
+            key_agreement: vec![],
+            capability_invocation: vec![],
+            capability_delegation: vec![],
+            update_keys: None,
+        };
+        assert!(!Keys::default().validate_keys(&keys));
+    }
+
+    #[test]
+    fn test_validate_keys_too_many_keys() {
+        let key = dummy_key();
+        let keys = DidKeys {
+            authentication: vec![dummy_key(), key.clone()],
+            assertion_method: vec![key.clone()],
+            key_agreement: vec![key.clone()],
+            capability_invocation: vec![key.clone()],
+            capability_delegation: vec![key],
+            update_keys: None,
+        };
+        assert!(!Keys::default().validate_keys(&keys));
     }
 }

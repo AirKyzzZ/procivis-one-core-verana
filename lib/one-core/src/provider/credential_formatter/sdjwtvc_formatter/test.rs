@@ -1163,16 +1163,16 @@ async fn test_format_extract_round_trip_non_sd_array_elements() {
     let keys = vec![key];
     let issuer_did = JWKDidMethod::new("JWK".into(), key_algorithm_provider.clone())
         .create(
-            None,
+            Uuid::new_v4().into(),
             &None,
-            Some(DidKeys {
+            DidKeys {
                 authentication: keys.clone(),
                 assertion_method: keys.clone(),
                 key_agreement: keys.clone(),
                 capability_invocation: keys.clone(),
                 capability_delegation: keys.clone(),
                 update_keys: None,
-            }),
+            },
         )
         .await
         .unwrap()
@@ -1377,16 +1377,16 @@ async fn test_format_extract_round_trip_sd_array_elements() {
     let keys = vec![key];
     let issuer_did = JWKDidMethod::new("JWK".into(), key_algorithm_provider.clone())
         .create(
-            None,
+            Uuid::new_v4().into(),
             &None,
-            Some(DidKeys {
+            DidKeys {
                 authentication: keys.clone(),
                 assertion_method: keys.clone(),
                 key_agreement: keys.clone(),
                 capability_invocation: keys.clone(),
                 capability_delegation: keys.clone(),
                 update_keys: None,
-            }),
+            },
         )
         .await
         .unwrap()
