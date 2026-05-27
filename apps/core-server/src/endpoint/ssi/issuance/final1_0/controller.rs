@@ -209,19 +209,22 @@ pub(crate) async fn oid4vci_final1_0_get_credential_offer(
         )
             .into_response(),
         Err(OID4VCIFinal1_0ServiceError::OpenID4VCIError(error)) => {
-            tracing::error!("OpenID4VCI credential offer error: {:?}", error);
+            tracing::warn!("OpenID4VCI credential offer error: {:?}", error);
             (
                 StatusCode::BAD_REQUEST,
                 Json(OpenID4VCIErrorResponseRestDTO::from(error)),
             )
                 .into_response()
         }
-        Err(OID4VCIFinal1_0ServiceError::MissingCredential(_)) => {
-            tracing::error!("Missing credential");
+        Err(
+            err @ OID4VCIFinal1_0ServiceError::MissingCredential(_)
+            | err @ OID4VCIFinal1_0ServiceError::UnsupportedCredentialType { .. },
+        ) => {
+            tracing::warn!("Unsupported credential: {err}");
             StatusCode::NOT_FOUND.into_response()
         }
         Err(e) => {
-            tracing::error!("Error: {:?}", e);
+            tracing::warn!("Error: {:?}", e);
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }
     }

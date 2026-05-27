@@ -41,7 +41,7 @@ use crate::model::blob::{Blob, BlobType};
 use crate::model::claim::ClaimRelations;
 use crate::model::common::LockType;
 use crate::model::credential::{
-    Credential, CredentialRelations, CredentialStateEnum, UpdateCredentialRequest,
+    Credential, CredentialRelations, CredentialStateEnum, CredentialType, UpdateCredentialRequest,
 };
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::KeyRole;
@@ -253,6 +253,13 @@ impl OID4VCIFinal1_0Service {
                 credential_id,
             ));
         };
+
+        if credential.r#type == CredentialType::BatchItem {
+            return Err(OID4VCIFinal1_0ServiceError::UnsupportedCredentialType {
+                id: credential.id,
+                r#type: credential.r#type,
+            });
+        }
 
         validate_issuance_protocol_type(self.protocol_type, &self.config, &credential.protocol)
             .error_while("validating protocol type")?;

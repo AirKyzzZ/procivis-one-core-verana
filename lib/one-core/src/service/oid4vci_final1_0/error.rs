@@ -3,7 +3,7 @@ use std::string::FromUtf8Error;
 use shared_types::{CredentialId, CredentialSchemaId, IdentifierId, InteractionId};
 
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
-use crate::model::credential::CredentialStateEnum;
+use crate::model::credential::{CredentialStateEnum, CredentialType};
 use crate::provider::issuance_protocol::error::{OpenID4VCIError, OpenIDIssuanceError};
 
 #[derive(thiserror::Error, Debug)]
@@ -16,6 +16,11 @@ pub enum OID4VCIFinal1_0ServiceError {
     MissingCredentialSchema(CredentialSchemaId),
     #[error("Credential `{0}` not found")]
     MissingCredential(CredentialId),
+    #[error("Credential {id} has type `{type}`, which is not supported by this operation")]
+    UnsupportedCredentialType {
+        id: CredentialId,
+        r#type: CredentialType,
+    },
     #[error("Invalid credential state: `{0}`")]
     InvalidCredentialState(CredentialStateEnum),
     #[error("From UTF-8 error: `{0}`")]
@@ -53,6 +58,7 @@ impl ErrorCodeMixin for OID4VCIFinal1_0ServiceError {
             Self::Nested(nested) => nested.error_code(),
             Self::IdentifierNotFound(_) => ErrorCode::BR_0207,
             Self::MissingAuthenticationCapableCertificate(_) => ErrorCode::BR_0418,
+            Self::UnsupportedCredentialType { .. } => ErrorCode::BR_0442,
         }
     }
 }

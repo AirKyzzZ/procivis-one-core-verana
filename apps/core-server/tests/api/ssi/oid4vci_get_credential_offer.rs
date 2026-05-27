@@ -1,4 +1,4 @@
-use one_core::model::credential::CredentialStateEnum;
+use one_core::model::credential::{CredentialStateEnum, CredentialType};
 use one_core::model::credential_schema::{TransactionCode, TransactionCodeType};
 use one_core::model::interaction::InteractionType;
 use similar_asserts::assert_eq;
@@ -316,6 +316,57 @@ async fn test_get_credential_offer_not_found() {
         .api
         .ssi
         .get_credential_offer(Uuid::new_v4(), Uuid::new_v4())
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 404);
+}
+
+#[tokio::test]
+async fn test_get_credential_offer_not_found_batch_item() {
+    // GIVEN
+    let (context, organisation, identifier, ..) =
+        TestContext::new_with_certificate_identifier(None).await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, None, Default::default())
+        .await;
+
+    let interaction = context
+        .db
+        .interactions
+        .create(
+            None,
+            "NONE".as_bytes(),
+            &organisation,
+            InteractionType::Issuance,
+            None,
+        )
+        .await;
+
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Pending,
+            &identifier,
+            "OPENID4VCI_FINAL1",
+            TestingCredentialParams {
+                interaction: Some(interaction.to_owned()),
+                r#type: Some(CredentialType::BatchItem),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .ssi
+        .get_credential_offer(credential_schema.id, credential.id)
         .await;
 
     // THEN
