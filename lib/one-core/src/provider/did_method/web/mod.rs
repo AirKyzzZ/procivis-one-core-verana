@@ -113,8 +113,13 @@ impl DidMethod for WebDidMethod {
     }
 
     fn get_capabilities(&self) -> DidCapabilities {
+        let mut operations = vec![Operation::RESOLVE, Operation::DEACTIVATE];
+        if self.did_base_string.is_some() {
+            operations.push(Operation::CREATE);
+        }
+
         DidCapabilities {
-            operations: vec![Operation::RESOLVE, Operation::CREATE, Operation::DEACTIVATE],
+            operations,
             key_algorithms: vec![
                 KeyAlgorithmType::Ecdsa,
                 KeyAlgorithmType::Eddsa,

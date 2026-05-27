@@ -1,4 +1,4 @@
-use shared_types::{DidValue, IdentifierId, KeyId};
+use shared_types::{DidMethodId, DidValue, IdentifierId, KeyId};
 use strum::Display;
 
 use crate::config::core_config::SignerType;
@@ -78,8 +78,11 @@ pub(crate) enum Error {
     ConflictingCertificates,
     #[error("Identifier already exists")]
     IdentifierAlreadyExists,
-    #[error("Incapable DID method: {key_algorithm}")]
-    DidMethodIncapableKeyAlgorithm { key_algorithm: String },
+    #[error("Incapable DID method ({did_method}) key algorithm: {key_algorithm}")]
+    DidMethodIncapableKeyAlgorithm {
+        did_method: DidMethodId,
+        key_algorithm: String,
+    },
     #[error("Did value already exists: {0}")]
     DidValueAlreadyExists(DidValue),
     #[error("Key must not be remote: `{0}`")]

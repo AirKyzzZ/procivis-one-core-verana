@@ -253,6 +253,7 @@ impl IdentifierCreatorProto {
                 .contains(&key_algorithm.algorithm_type())
             {
                 return Err(Error::DidMethodIncapableKeyAlgorithm {
+                    did_method: request.did_method,
                     key_algorithm: key.key_type.to_owned(),
                 });
             }
