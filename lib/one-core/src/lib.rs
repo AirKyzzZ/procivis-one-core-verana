@@ -493,6 +493,7 @@ impl OneCore {
             credential_formatter_provider.clone(),
             blob_storage_provider.clone(),
             session_provider.clone(),
+            data_provider.get_tx_manager(),
             config.clone(),
         ));
 

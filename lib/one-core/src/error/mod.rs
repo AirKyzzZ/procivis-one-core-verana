@@ -402,7 +402,7 @@ pub enum ErrorCode {
     #[strum(message = "Exchange protocol operation disabled")]
     BR_0196,
 
-    #[strum(message = "Credential role must be Holder for revocation check")]
+    #[strum(message = "Invalid credential role")]
     BR_0197,
 
     #[strum(message = "Invalid proof role")]

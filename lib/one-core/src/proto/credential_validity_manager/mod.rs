@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use futures::FutureExt;
 use one_crypto::encryption::EncryptionError;
 use shared_types::{CredentialId, CredentialSchemaId, RevocationMethodId};
 
@@ -8,18 +9,23 @@ use crate::error::{
     ContextWithErrorCode, ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt, NestedError,
 };
 use crate::model::credential::{
-    Clearable, CredentialRelations, CredentialRole, CredentialStateEnum, UpdateCredentialRequest,
+    Clearable, CredentialFilterValue, CredentialRelations, CredentialRole, CredentialStateEnum,
+    CredentialType, UpdateCredentialRequest,
 };
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierType};
 use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
+use crate::model::list_filter::ListFilterValue;
+use crate::model::list_query::ListQuery;
 use crate::model::organisation::OrganisationRelations;
 use crate::proto::session_provider::SessionProvider;
+use crate::proto::transaction_manager::TransactionManager;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::issuance_protocol::provider::IssuanceProtocolProvider;
+use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::model::{CredentialDataByRole, RevocationState};
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
@@ -76,11 +82,13 @@ pub enum Error {
     },
     #[error("Incompatible issuer identifier")]
     IncompatibleIssuerIdentifier,
-    #[error("Credential role must be Holder, received {role}, credential id: {credential_id}")]
-    RevocationCheckNotAllowedForRole {
+    #[error("Invalid credential role `{role}`, credential id: {credential_id}")]
+    InvalidCredentialRole {
         role: CredentialRole,
         credential_id: CredentialId,
     },
+    #[error("Invalid credential type: {0}")]
+    InvalidCredentialType(CredentialType),
     #[error("Encryption error: {0}")]
     EncryptionError(#[from] EncryptionError),
     #[error(transparent)]
@@ -97,7 +105,8 @@ impl ErrorCodeMixin for Error {
             Self::SuspensionNotSupported { .. } => ErrorCode::BR_0162,
             Self::InvalidCredentialStateTransition { .. } => ErrorCode::BR_0366,
             Self::IncompatibleIssuerIdentifier => ErrorCode::BR_0218,
-            Self::RevocationCheckNotAllowedForRole { .. } => ErrorCode::BR_0197,
+            Self::InvalidCredentialRole { .. } => ErrorCode::BR_0197,
+            Self::InvalidCredentialType(_) => ErrorCode::BR_0442,
             Self::EncryptionError(_) => ErrorCode::BR_0368,
             Self::Nested(nested_error) => nested_error.error_code(),
         }
@@ -111,10 +120,12 @@ pub struct CredentialValidityManagerImpl {
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
     session_provider: Arc<dyn SessionProvider>,
+    tx_manager: Arc<dyn TransactionManager>,
     config: Arc<CoreConfig>,
 }
 
 impl CredentialValidityManagerImpl {
+    #[expect(clippy::too_many_arguments)]
     pub fn new(
         credential_repository: Arc<dyn CredentialRepository>,
         issuance_protocol_provider: Arc<dyn IssuanceProtocolProvider>,
@@ -122,6 +133,7 @@ impl CredentialValidityManagerImpl {
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
         session_provider: Arc<dyn SessionProvider>,
+        tx_manager: Arc<dyn TransactionManager>,
         config: Arc<CoreConfig>,
     ) -> Self {
         Self {
@@ -131,22 +143,21 @@ impl CredentialValidityManagerImpl {
             formatter_provider,
             blob_storage_provider,
             session_provider,
+            tx_manager,
             config,
         }
     }
-}
 
-#[async_trait::async_trait]
-impl CredentialValidityManager for CredentialValidityManagerImpl {
-    async fn change_credential_validity_state(
+    async fn change_revocation_state(
         &self,
-        credential_id: &CredentialId,
+        credential_id: CredentialId,
         revocation_state: RevocationState,
+        revocation_method: &dyn RevocationMethod,
     ) -> Result<(), Error> {
         let credential = self
             .credential_repository
             .get_credential(
-                credential_id,
+                &credential_id,
                 &CredentialRelations {
                     issuer_identifier: Some(IdentifierRelations {
                         did: Some(Default::default()),
@@ -166,6 +177,64 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
             )
             .await
             .error_while("getting credential")?
+            .ok_or(EntityNotFoundError::Credential(credential_id))
+            .error_while("getting credential")?;
+
+        revocation_method
+            .mark_credential_as(&credential, revocation_state.to_owned())
+            .await
+            .error_while("marking credential status")?;
+
+        self.change_credential_state(credential_id, revocation_state)
+            .await?;
+
+        Ok(())
+    }
+
+    async fn change_credential_state(
+        &self,
+        credential_id: CredentialId,
+        revocation_state: RevocationState,
+    ) -> Result<(), Error> {
+        let suspend_end_date =
+            if let RevocationState::Suspended { suspend_end_date } = &revocation_state {
+                suspend_end_date.to_owned()
+            } else {
+                None
+            };
+        self.credential_repository
+            .update_credential(
+                credential_id,
+                UpdateCredentialRequest {
+                    state: Some(revocation_state.into()),
+                    suspend_end_date: Clearable::ForceSet(suspend_end_date),
+                    ..Default::default()
+                },
+            )
+            .await
+            .error_while("updating credential")?;
+        Ok(())
+    }
+}
+
+#[async_trait::async_trait]
+impl CredentialValidityManager for CredentialValidityManagerImpl {
+    async fn change_credential_validity_state(
+        &self,
+        credential_id: &CredentialId,
+        revocation_state: RevocationState,
+    ) -> Result<(), Error> {
+        let credential = self
+            .credential_repository
+            .get_credential(
+                credential_id,
+                &CredentialRelations {
+                    schema: Some(Default::default()),
+                    ..Default::default()
+                },
+            )
+            .await
+            .error_while("getting credential")?
             .ok_or(EntityNotFoundError::Credential(*credential_id))
             .error_while("getting credential")?;
 
@@ -173,6 +242,12 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
             return Err(EntityNotFoundError::Credential(*credential_id)
                 .error_while("validating credential")
                 .into());
+        }
+        if credential.role != CredentialRole::Issuer {
+            return Err(Error::InvalidCredentialRole {
+                role: credential.role,
+                credential_id: *credential_id,
+            });
         }
 
         let credential_schema = credential
@@ -197,28 +272,85 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
             .revocation_method_provider
             .get_revocation_method(revocation_method_id)?;
 
-        revocation_method
-            .mark_credential_as(&credential, revocation_state.to_owned())
-            .await
-            .error_while("marking credential status")?;
+        let credential_ids = match credential.r#type {
+            CredentialType::Single => {
+                vec![credential.id]
+            }
+            CredentialType::BatchItem => {
+                // only batch members can be individually updated, not MDOC MSO's
+                let parent = credential
+                    .parent
+                    .as_ref()
+                    .ok_or(Error::MappingError(
+                        "Missing parent of batch item".to_string(),
+                    ))?
+                    .get()
+                    .await
+                    .error_while("getting parent credential")?;
+                if parent.r#type != CredentialType::BatchParent {
+                    return Err(Error::InvalidCredentialType(credential.r#type));
+                }
 
-        let suspend_end_date =
-            if let RevocationState::Suspended { suspend_end_date } = &revocation_state {
-                suspend_end_date.to_owned()
-            } else {
-                None
-            };
-        self.credential_repository
-            .update_credential(
-                *credential_id,
-                UpdateCredentialRequest {
-                    state: Some(revocation_state.to_owned().into()),
-                    suspend_end_date: Clearable::ForceSet(suspend_end_date),
-                    ..Default::default()
-                },
-            )
+                vec![credential.id]
+            }
+            CredentialType::BatchParent => {
+                // all underlying batch items must be updated
+                let credentials = self
+                    .credential_repository
+                    .get_credential_list(ListQuery {
+                        filtering: Some(
+                            CredentialFilterValue::ParentCredential(credential.id).condition(),
+                        ),
+                        ..Default::default()
+                    })
+                    .await
+                    .error_while("getting batch items")?
+                    .values;
+
+                let mut credential_ids = vec![];
+                for credential in credentials {
+                    // skipping items with the target state
+                    // except Suspension, since there might be change in `suspend_end_date`
+                    if credential.state != CredentialStateEnum::Suspended
+                        && credential.state == revocation_state.into()
+                    {
+                        continue;
+                    }
+
+                    validate_state_transition(credential.state, &revocation_state).error_while(
+                        format!("checking state of batch credential `{}`", credential.id),
+                    )?;
+
+                    credential_ids.push(credential.id);
+                }
+
+                credential_ids
+            }
+        };
+
+        self.tx_manager
+            .tx(async {
+                if !credential_ids.contains(&credential.id) {
+                    // batch parent not linked directly with any technical credential, only update state
+                    self.change_credential_state(credential.id, revocation_state)
+                        .await?;
+                }
+
+                for credential_id in credential_ids {
+                    self.change_revocation_state(
+                        credential_id,
+                        revocation_state,
+                        revocation_method.as_ref(),
+                    )
+                    .await?;
+                }
+
+                Ok::<_, Error>(())
+            }
+            .boxed())
             .await
-            .error_while("updating credential")?;
+            .error_while("changing credential state")??;
+
         Ok(())
     }
 
@@ -264,7 +396,7 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
                 .into());
         }
         if credential.role != CredentialRole::Holder {
-            return Err(Error::RevocationCheckNotAllowedForRole {
+            return Err(Error::InvalidCredentialRole {
                 role: credential.role,
                 credential_id,
             });

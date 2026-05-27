@@ -21,6 +21,7 @@ use crate::proto::credential_validity_manager::{
     CredentialValidityManager, CredentialValidityManagerImpl,
 };
 use crate::proto::session_provider::NoSessionProvider;
+use crate::proto::transaction_manager::NoTransactionManager;
 use crate::provider::blob_storage::MockBlobStorage;
 use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
@@ -188,6 +189,7 @@ fn setup_validity_manager(repositories: Repositories) -> Arc<dyn CredentialValid
         repositories.formatter_provider,
         repositories.blob_storage_provider,
         Arc::new(NoSessionProvider),
+        Arc::new(NoTransactionManager),
         repositories.config,
     ))
 }

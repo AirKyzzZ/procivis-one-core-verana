@@ -13,7 +13,8 @@ use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
-    Credential, CredentialRole, CredentialStateEnum, CredentialType, UpdateCredentialRequest,
+    Credential, CredentialFilterValue, CredentialRole, CredentialStateEnum, CredentialType,
+    GetCredentialList, UpdateCredentialRequest,
 };
 use crate::model::credential_schema::{CredentialSchema, LayoutType};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
@@ -25,6 +26,7 @@ use crate::proto::credential_validity_manager::{
 };
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::proto::session_provider::{NoSessionProvider, SessionProvider};
+use crate::proto::transaction_manager::NoTransactionManager;
 use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{
@@ -59,6 +61,7 @@ fn setup_validity_manager(repositories: Repositories) -> CredentialValidityManag
         repositories
             .session_provider
             .unwrap_or(Arc::new(NoSessionProvider)),
+        Arc::new(NoTransactionManager),
         Arc::new(repositories.config),
     )
 }
@@ -307,13 +310,13 @@ async fn test_check_revocation_invalid_role() {
     assert!(issuer_revocation_check_resp.is_err());
     assert!(matches!(
         issuer_revocation_check_resp.unwrap_err(),
-        Error::RevocationCheckNotAllowedForRole { .. }
+        Error::InvalidCredentialRole { .. }
     ));
 
     assert!(verifier_revocation_check_resp.is_err());
     assert!(matches!(
         verifier_revocation_check_resp.unwrap_err(),
-        Error::RevocationCheckNotAllowedForRole { .. }
+        Error::InvalidCredentialRole { .. }
     ));
 }
 
@@ -348,6 +351,7 @@ async fn test_check_revocation_invalid_state() {
 #[tokio::test]
 async fn test_revoke_credential_success_with_accepted_credential() {
     let mut credential = generic_credential();
+    credential.role = CredentialRole::Issuer;
     credential.state = CredentialStateEnum::Accepted;
     credential.schema.as_mut().unwrap().revocation_method = Some("mock".into());
 
@@ -355,7 +359,7 @@ async fn test_revoke_credential_success_with_accepted_credential() {
     let clone = credential.clone();
     credential_repository
         .expect_get_credential()
-        .times(1)
+        .times(2)
         .with(eq(clone.id), always())
         .returning(move |_, _| Ok(Some(clone.clone())));
 
@@ -401,7 +405,7 @@ async fn test_revoke_credential_success_with_accepted_credential() {
 #[tokio::test]
 async fn test_revoke_credential_success_with_suspended_credential() {
     let mut credential = generic_credential();
-
+    credential.role = CredentialRole::Issuer;
     credential.state = CredentialStateEnum::Suspended;
     credential.schema.as_mut().unwrap().revocation_method = Some("mock".into());
 
@@ -428,7 +432,7 @@ async fn test_revoke_credential_success_with_suspended_credential() {
     let clone = credential.clone();
     credential_repository
         .expect_get_credential()
-        .times(1)
+        .times(2)
         .with(eq(clone.id), always())
         .returning(move |_, _| Ok(Some(clone.clone())));
 
@@ -456,7 +460,7 @@ async fn test_revoke_credential_success_with_suspended_credential() {
 #[tokio::test]
 async fn test_suspend_credential_failed_cannot_suspend_revoked_credential() {
     let mut credential = generic_credential();
-
+    credential.role = CredentialRole::Issuer;
     credential.state = CredentialStateEnum::Revoked;
 
     let mut credential_repository = MockCredentialRepository::default();
@@ -495,7 +499,7 @@ async fn test_suspend_credential_success() {
     let now = crate::clock::now_utc();
 
     let mut credential = generic_credential();
-
+    credential.role = CredentialRole::Issuer;
     credential.state = CredentialStateEnum::Accepted;
     credential.schema.as_mut().unwrap().revocation_method = Some("mock".into());
 
@@ -506,7 +510,7 @@ async fn test_suspend_credential_success() {
         let clone = credential.clone();
         credential_repository
             .expect_get_credential()
-            .times(1)
+            .times(2)
             .with(eq(clone.id), always())
             .returning(move |_, _| Ok(Some(clone.clone())));
     }
@@ -563,7 +567,7 @@ async fn test_suspend_credential_success() {
 #[tokio::test]
 async fn test_reactivate_credential_success() {
     let mut credential = generic_credential();
-
+    credential.role = CredentialRole::Issuer;
     credential.state = CredentialStateEnum::Suspended;
     credential.schema.as_mut().unwrap().revocation_method = Some("mock".into());
 
@@ -571,7 +575,7 @@ async fn test_reactivate_credential_success() {
     let cred_clone = credential.clone();
     credential_repository
         .expect_get_credential()
-        .times(1)
+        .times(2)
         .returning(move |_, _| Ok(Some(cred_clone.clone())));
 
     let mut revocation_method = MockRevocationMethod::default();
@@ -587,10 +591,11 @@ async fn test_reactivate_credential_success() {
     credential_repository
         .expect_update_credential()
         .once()
-        .returning(move |_, request| {
+        .withf(|_, request| {
             assert_eq!(CredentialStateEnum::Accepted, request.state.unwrap());
-            Ok(())
-        });
+            true
+        })
+        .returning(|_, _| Ok(()));
 
     let mut revocation_method_provider = MockRevocationMethodProvider::default();
     let revocation_method = Arc::new(revocation_method);
@@ -616,7 +621,7 @@ async fn test_reactivate_credential_success() {
 #[tokio::test]
 async fn test_reactivate_credential_failed_cannot_reactivate_revoked_credential() {
     let mut credential = generic_credential();
-
+    credential.role = CredentialRole::Issuer;
     credential.state = CredentialStateEnum::Revoked;
 
     let mut credential_repository = MockCredentialRepository::default();
@@ -645,11 +650,199 @@ async fn test_reactivate_credential_failed_cannot_reactivate_revoked_credential(
 }
 
 #[tokio::test]
+async fn test_revoke_credential_invalid_role() {
+    let mut credential = generic_credential();
+    credential.role = CredentialRole::Holder;
+    credential.state = CredentialStateEnum::Accepted;
+
+    let mut credential_repository = MockCredentialRepository::default();
+    let clone = credential.clone();
+    credential_repository
+        .expect_get_credential()
+        .times(1)
+        .with(eq(clone.id), always())
+        .returning(move |_, _| Ok(Some(clone.clone())));
+
+    let validity_manager = setup_validity_manager(Repositories {
+        credential_repository,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = validity_manager
+        .change_credential_validity_state(&credential.id, RevocationState::Revoked)
+        .await
+        .unwrap_err();
+
+    assert!(matches!(result, Error::InvalidCredentialRole { .. }));
+}
+
+#[tokio::test]
+async fn test_suspend_credential_failed_mdoc_batch_item() {
+    let mut credential = generic_credential();
+    credential.schema.as_mut().unwrap().revocation_method = Some("mock".into());
+    credential.role = CredentialRole::Issuer;
+    credential.state = CredentialStateEnum::Accepted;
+    credential.r#type = CredentialType::BatchItem;
+    credential.parent = Some(
+        {
+            let mut parent = generic_credential();
+            parent.r#type = CredentialType::Single;
+            parent
+        }
+        .into(),
+    );
+
+    let mut credential_repository = MockCredentialRepository::default();
+    let clone = credential.clone();
+    credential_repository
+        .expect_get_credential()
+        .times(1)
+        .with(eq(clone.id), always())
+        .returning(move |_, _| Ok(Some(clone.clone())));
+
+    let mut revocation_method = MockRevocationMethod::default();
+    revocation_method
+        .expect_get_status_type()
+        .return_once(|| "mock".to_string());
+    let mut revocation_method_provider = MockRevocationMethodProvider::default();
+    let revocation_method = Arc::new(revocation_method);
+    revocation_method_provider
+        .expect_get_revocation_method()
+        .with(eq::<RevocationMethodId>("mock".into()))
+        .times(1)
+        .returning(move |_| Ok(revocation_method.clone()));
+
+    let validity_manager = setup_validity_manager(Repositories {
+        credential_repository,
+        revocation_method_provider,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = validity_manager
+        .change_credential_validity_state(
+            &credential.id,
+            RevocationState::Suspended {
+                suspend_end_date: None,
+            },
+        )
+        .await
+        .unwrap_err();
+
+    assert!(matches!(result, Error::InvalidCredentialType(_)));
+}
+
+#[tokio::test]
+async fn test_revoke_credential_batch_parent() {
+    let mut parent_credential = generic_credential();
+    parent_credential.role = CredentialRole::Issuer;
+    parent_credential.state = CredentialStateEnum::Accepted;
+    parent_credential.r#type = CredentialType::BatchParent;
+    parent_credential.schema.as_mut().unwrap().revocation_method = Some("mock".into());
+
+    let mut child_credential = generic_credential();
+    child_credential.role = CredentialRole::Issuer;
+    child_credential.state = CredentialStateEnum::Accepted;
+    child_credential.r#type = CredentialType::BatchItem;
+    child_credential.parent = Some(parent_credential.clone().into());
+
+    let mut credential_repository = MockCredentialRepository::default();
+    {
+        let clone = parent_credential.clone();
+        credential_repository
+            .expect_get_credential()
+            .once()
+            .with(eq(parent_credential.id), always())
+            .returning(move |_, _| Ok(Some(clone.clone())));
+
+        let clone = child_credential.clone();
+        credential_repository
+            .expect_get_credential()
+            .once()
+            .with(eq(child_credential.id), always())
+            .returning(move |_, _| Ok(Some(clone.clone())));
+
+        let clone = child_credential.clone();
+        let _parent_credential_id = parent_credential.id;
+        credential_repository
+            .expect_get_credential_list()
+            .once()
+            .returning(move |query| {
+                assert!(query.filtering.unwrap().contains(&|fv| matches!(
+                    fv,
+                    CredentialFilterValue::ParentCredential(_parent_credential_id)
+                )));
+                Ok(GetCredentialList {
+                    total_items: 1,
+                    total_pages: 1,
+                    values: vec![clone.clone()],
+                })
+            });
+
+        credential_repository
+            .expect_update_credential()
+            .once()
+            .with(eq(parent_credential.id), always())
+            .returning(move |_, request| {
+                assert_eq!(CredentialStateEnum::Revoked, request.state.unwrap());
+                Ok(())
+            });
+        credential_repository
+            .expect_update_credential()
+            .once()
+            .with(eq(child_credential.id), always())
+            .returning(move |_, request| {
+                assert_eq!(CredentialStateEnum::Revoked, request.state.unwrap());
+                Ok(())
+            });
+    }
+
+    let mut revocation_method = MockRevocationMethod::default();
+    revocation_method
+        .expect_mark_credential_as()
+        .once()
+        .with(always(), eq(RevocationState::Revoked))
+        .return_once({
+            let child_credential_id = child_credential.id;
+            move |credential, _| {
+                assert_eq!(credential.id, child_credential_id);
+                Ok(())
+            }
+        });
+
+    let mut revocation_method_provider = MockRevocationMethodProvider::default();
+    let revocation_method = Arc::new(revocation_method);
+    revocation_method_provider
+        .expect_get_revocation_method()
+        .with(eq::<RevocationMethodId>("mock".into()))
+        .once()
+        .returning(move |_| Ok(revocation_method.clone()));
+
+    let validity_manager = setup_validity_manager(Repositories {
+        credential_repository,
+        revocation_method_provider,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    validity_manager
+        .change_credential_validity_state(&parent_credential.id, RevocationState::Revoked)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
 async fn test_credential_ops_session_org_mismatch() {
     let mut credential_repository = MockCredentialRepository::default();
     credential_repository
         .expect_get_credential()
-        .returning(|_, _| Ok(Some(generic_credential())));
+        .returning(|_, _| {
+            Ok(Some(Credential {
+                role: CredentialRole::Issuer,
+                ..generic_credential()
+            }))
+        });
     let validity_manager = setup_validity_manager(Repositories {
         credential_repository,
         config: generic_config().core,
