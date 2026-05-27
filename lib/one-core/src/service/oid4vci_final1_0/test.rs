@@ -61,7 +61,6 @@ use crate::repository::holder_wallet_instance_repository::MockHolderWalletInstan
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::key_repository::MockKeyRepository;
-use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::oid4vci_final1_0::dto::{
     OID4VCIFinal1_0IssuerMetadataResponseEnum, OID4VCIFinal1_0IssuerMetadataResponseTypeEnum,
 };
@@ -115,7 +114,6 @@ pub struct ProtocolMocks {
     pub key_repository: MockKeyRepository,
     pub identifier_creator: MockIdentifierCreator,
     pub credential_schema_importer: MockCredentialSchemaImporter,
-    pub validity_credential_repository: MockValidityCredentialRepository,
     pub credential_schema_repository: MockCredentialSchemaRepository,
     pub formatter_provider: MockCredentialFormatterProvider,
     pub revocation_provider: MockRevocationMethodProvider,
@@ -141,7 +139,6 @@ fn setup_protocol(protocol_mocks: ProtocolMocks) -> OpenID4VCIFinal1_0 {
         Arc::new(protocol_mocks.key_repository),
         Arc::new(protocol_mocks.identifier_creator),
         Arc::new(protocol_mocks.credential_schema_importer),
-        Arc::new(protocol_mocks.validity_credential_repository),
         Arc::new(protocol_mocks.credential_schema_repository),
         Arc::new(protocol_mocks.formatter_provider),
         Arc::new(protocol_mocks.revocation_provider),

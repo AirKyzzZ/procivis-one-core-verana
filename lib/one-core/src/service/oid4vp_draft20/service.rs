@@ -350,7 +350,6 @@ impl OID4VPDraft20Service {
                     proof_blob_id,
                     &*self.proof_repository,
                     &*self.credential_repository,
-                    &*self.validity_credential_repository,
                     &*self.transaction_manager,
                     &*self.identifier_creator,
                 )

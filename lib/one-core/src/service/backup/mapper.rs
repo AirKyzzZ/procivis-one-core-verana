@@ -19,7 +19,6 @@ pub(super) async fn unexportable_entities_to_response_dto(
             credential_detail_response_from_model(
                 credential,
                 config,
-                None,
                 CredentialAttestationBlobs::default(),
                 None,
                 None,

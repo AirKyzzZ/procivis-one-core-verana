@@ -36,7 +36,6 @@ use one_core::repository::trust_collection_repository::TrustCollectionRepository
 use one_core::repository::trust_entry_repository::TrustEntryRepository;
 use one_core::repository::trust_list_publication_repository::TrustListPublicationRepository;
 use one_core::repository::trust_list_subscription_repository::TrustListSubscriptionRepository;
-use one_core::repository::validity_credential_repository::ValidityCredentialRepository;
 use one_core::repository::verifier_instance_repository::VerifierInstanceRepository;
 use one_core::repository::wallet_instance_attestation_repository::WalletInstanceAttestationRepository;
 use one_core::repository::wallet_instance_attested_key_repository::WalletInstanceAttestedKeyRepository;
@@ -49,7 +48,6 @@ use trust_collection::TrustCollectionProvider;
 use trust_entry::TrustEntryProvider;
 use trust_list_publication::TrustListPublicationProvider;
 use trust_list_subscription::TrustListSubscriptionProvider;
-use validity_credential::ValidityCredentialProvider;
 use wallet_instance::WalletInstanceProvider;
 
 use crate::blob::BlobProvider;
@@ -98,7 +96,6 @@ pub mod trust_collection;
 pub mod trust_entry;
 pub mod trust_list_publication;
 pub mod trust_list_subscription;
-pub mod validity_credential;
 pub mod verifier_instance;
 pub mod wallet_instance;
 
@@ -128,7 +125,6 @@ pub struct DataLayer {
     proof_repository: Arc<dyn ProofRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
     revocation_list_repository: Arc<dyn RevocationListRepository>,
-    validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
     backup_repository: Arc<dyn BackupRepository>,
     trust_collection_repository: Arc<dyn TrustCollectionRepository>,
     trust_entry_repository: Arc<dyn TrustEntryRepository>,
@@ -277,9 +273,6 @@ impl DataLayer {
             key_repository: key_repository.clone(),
         });
 
-        let validity_credential_repository = Arc::new(ValidityCredentialProvider {
-            db: transaction_manager.clone(),
-        });
         let backup_repository = Arc::new(BackupProvider::new(
             transaction_manager.clone(),
             credential_repository.clone(),
@@ -342,7 +335,6 @@ impl DataLayer {
             db,
             interaction_repository,
             revocation_list_repository,
-            validity_credential_repository,
             backup_repository,
             trust_collection_repository,
             trust_entry_repository,
@@ -417,9 +409,6 @@ impl DataRepository for DataLayer {
     }
     fn get_revocation_list_repository(&self) -> Arc<dyn RevocationListRepository> {
         self.revocation_list_repository.clone()
-    }
-    fn get_validity_credential_repository(&self) -> Arc<dyn ValidityCredentialRepository> {
-        self.validity_credential_repository.clone()
     }
     fn get_backup_repository(&self) -> Arc<dyn BackupRepository> {
         self.backup_repository.clone()

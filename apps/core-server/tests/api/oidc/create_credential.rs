@@ -10,7 +10,6 @@ use one_core::model::interaction::InteractionType;
 use one_core::model::key::Key;
 use one_core::model::organisation::Organisation;
 use one_core::model::revocation_list::{RevocationListPurpose, RevocationListRelations};
-use one_core::model::validity_credential::ValidityCredentialType;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::eddsa::Eddsa;
 use one_crypto::Hasher;
@@ -835,7 +834,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         )
         .await;
 
-    let credential = context
+    context
         .db
         .credentials
         .create(
@@ -897,11 +896,4 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         .await;
 
     assert_eq!(200, resp.status());
-
-    let credentials = context
-        .db
-        .validity_credentials
-        .get_all_by_credential_id(credential.id, ValidityCredentialType::Mdoc)
-        .await;
-    assert_eq!(credential.id, credentials[0].linked_credential_id);
 }

@@ -23,7 +23,6 @@ use crate::utils::db_clients::holder_wallet_instance::HolderWalletInstancesDB;
 use crate::utils::db_clients::localized_text::LocalizedTextDB;
 use crate::utils::db_clients::remote_entity_cache::RemoteEntityCacheDB;
 use crate::utils::db_clients::trust_collections::TrustCollectionDB;
-use crate::utils::db_clients::validity_credentials::ValidityCredentialsDB;
 use crate::utils::db_clients::verifier_instances::VerifierInstancesDB;
 use crate::utils::db_clients::wallet_instance_attestations::WalletInstanceAttestationsDB;
 use crate::utils::db_clients::wallet_instances::WalletInstancesDB;
@@ -50,7 +49,6 @@ pub mod trust_collections;
 pub mod trust_entry;
 pub mod trust_list_publication;
 pub mod trust_list_subscription;
-pub mod validity_credentials;
 pub mod verifier_instances;
 pub mod wallet_instance_attestations;
 pub mod wallet_instances;
@@ -67,7 +65,6 @@ pub struct DbClient {
     pub remote_entities: RemoteEntityCacheDB,
     pub keys: KeysDB,
     pub notifications: NotificationsDB,
-    pub validity_credentials: ValidityCredentialsDB,
     pub revocation_lists: RevocationListsDB,
     pub proof_schemas: ProofSchemasDB,
     pub proofs: ProofsDB,
@@ -104,9 +101,6 @@ impl DbClient {
             remote_entities: RemoteEntityCacheDB::new(layer.get_remote_entity_cache_repository()),
             keys: KeysDB::new(layer.get_key_repository()),
             notifications: NotificationsDB::new(layer.get_notification_repository()),
-            validity_credentials: ValidityCredentialsDB::new(
-                layer.get_validity_credential_repository(),
-            ),
             revocation_lists: RevocationListsDB::new(layer.get_revocation_list_repository()),
             proof_schemas: ProofSchemasDB::new(layer.get_proof_schema_repository()),
             proofs: ProofsDB::new(layer.get_proof_repository()),

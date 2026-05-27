@@ -74,7 +74,6 @@ use crate::model::identifier_trust_information::{IdentifierTrustInformation, Sch
 use crate::model::interaction::{Interaction, UpdateInteractionRequest};
 use crate::model::key::{Key, KeyRelations};
 use crate::model::organisation::Organisation;
-use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::credential_schema::importer::CredentialSchemaImporter;
 use crate::proto::http_client::HttpClient;
@@ -102,7 +101,6 @@ use crate::repository::history_repository::HistoryRepository;
 use crate::repository::holder_wallet_instance_repository::HolderWalletInstanceRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::key_repository::KeyRepository;
-use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::service::credential::dto::CredentialAttestationBlobs;
 use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::error::MissingProviderError;
@@ -136,7 +134,6 @@ pub(crate) struct OpenID4VCIFinal1_0 {
     key_repository: Arc<dyn KeyRepository>,
     identifier_creator: Arc<dyn IdentifierCreator>,
     credential_schema_importer: Arc<dyn CredentialSchemaImporter>,
-    validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     revocation_provider: Arc<dyn RevocationMethodProvider>,
@@ -168,7 +165,6 @@ impl OpenID4VCIFinal1_0 {
         key_repository: Arc<dyn KeyRepository>,
         identifier_creator: Arc<dyn IdentifierCreator>,
         credential_schema_importer: Arc<dyn CredentialSchemaImporter>,
-        validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
         credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         revocation_provider: Arc<dyn RevocationMethodProvider>,
@@ -197,7 +193,6 @@ impl OpenID4VCIFinal1_0 {
             key_repository,
             identifier_creator,
             credential_schema_importer,
-            validity_credential_repository,
             credential_schema_repository,
             formatter_provider,
             revocation_provider,
@@ -230,7 +225,6 @@ impl OpenID4VCIFinal1_0 {
         key_repository: Arc<dyn KeyRepository>,
         identifier_creator: Arc<dyn IdentifierCreator>,
         credential_schema_importer: Arc<dyn CredentialSchemaImporter>,
-        validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
         credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         revocation_provider: Arc<dyn RevocationMethodProvider>,
@@ -258,7 +252,6 @@ impl OpenID4VCIFinal1_0 {
             key_repository,
             identifier_creator,
             credential_schema_importer,
-            validity_credential_repository,
             credential_schema_repository,
             formatter_provider,
             revocation_provider,
@@ -292,21 +285,21 @@ impl OpenID4VCIFinal1_0 {
     ) -> Result<(), IssuanceProtocolError> {
         match (latest_state, format_type) {
             (CredentialStateEnum::Accepted, FormatType::Mdoc) => {
-                let mdoc_validity_credential = self
-                    .validity_credential_repository
-                    .get_latest_by_credential_id(*credential_id, ValidityCredentialType::Mdoc)
+                let credential = self
+                    .credential_repository
+                    .get_credential(credential_id, &Default::default())
                     .await
-                    .error_while("getting validity credential")?
+                    .error_while("getting credential")?
                     .ok_or_else(|| {
                         IssuanceProtocolError::Failed(format!(
                             "Missing verifiable credential for MDOC: {credential_id}"
                         ))
                     })?;
 
-                let can_be_updated_at = mdoc_validity_credential.created_date
-                    + self.mso_minimum_refresh_time(format)?;
+                let can_be_updated_at =
+                    credential.last_modified + self.mso_minimum_refresh_time(format)?;
 
-                if can_be_updated_at > crate::clock::now_utc() {
+                if can_be_updated_at > now_utc() {
                     return Err(IssuanceProtocolError::RefreshTooSoon);
                 }
             }
@@ -1841,7 +1834,6 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         let credential_detail = credential_detail_response_from_model(
             credential.clone(),
             &self.config,
-            None,
             CredentialAttestationBlobs::default(),
             None,
             None,
@@ -1889,57 +1881,14 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             .await
             .error_while("formatting credential")?;
 
-        match (credential_format_type, credential_state) {
-            (FormatType::Mdoc, CredentialStateEnum::Accepted) => {
-                self.validity_credential_repository
-                    .insert(
-                        Mdoc {
-                            id: Uuid::new_v4(),
-                            created_date: crate::clock::now_utc(),
-                            credential: token.as_ref().into(),
-                            linked_credential_id: *credential_id,
-                        }
-                        .into(),
-                    )
-                    .await
-                    .error_while("inserting validity credential")?;
-            }
-            (FormatType::Mdoc, CredentialStateEnum::Offered) => {
-                let credential_blob_id = self.upsert_credential_blob(&credential, &token).await?;
-
-                self.credential_repository
-                    .update_credential(
-                        *credential_id,
-                        get_issued_credential_update(credential_blob_id, holder_identifier_id),
-                    )
-                    .await
-                    .error_while("updating credential")?;
-
-                self.validity_credential_repository
-                    .insert(
-                        Mdoc {
-                            id: Uuid::new_v4(),
-                            created_date: crate::clock::now_utc(),
-                            credential: token.as_ref().into(),
-                            linked_credential_id: *credential_id,
-                        }
-                        .into(),
-                    )
-                    .await
-                    .error_while("inserting validity credential")?;
-            }
-            _ => {
-                let credential_blob_id = self.upsert_credential_blob(&credential, &token).await?;
-
-                self.credential_repository
-                    .update_credential(
-                        *credential_id,
-                        get_issued_credential_update(credential_blob_id, holder_identifier_id),
-                    )
-                    .await
-                    .error_while("updating credential")?;
-            }
-        }
+        let credential_blob_id = self.upsert_credential_blob(&credential, &token).await?;
+        self.credential_repository
+            .update_credential(
+                *credential_id,
+                get_issued_credential_update(credential_blob_id, holder_identifier_id),
+            )
+            .await
+            .error_while("updating credential")?;
 
         Ok(token)
     }

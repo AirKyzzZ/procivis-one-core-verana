@@ -1,21 +1,17 @@
 use futures::FutureExt;
 use one_dto_mapper::convert_inner;
 use shared_types::BlobId;
-use uuid::Uuid;
 
 use crate::error::ContextWithErrorCode;
-use crate::mapper::encode_cbor_base64;
 use crate::mapper::openid4vp::credential_from_proved;
 use crate::model::common::LockType;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofRelations, ProofStateEnum, UpdateProofRequest};
-use crate::model::validity_credential::Mdoc;
 use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::openid4vp_proof_validator::ValidatedProofResult;
 use crate::proto::transaction_manager::{IsolationLevel, TransactionManager};
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::proof_repository::ProofRepository;
-use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::service::error::{EntityNotFoundError, ServiceError};
 use crate::validator::throw_if_proof_state_not_in;
 
@@ -27,7 +23,6 @@ pub(crate) async fn persist_accepted_proof(
     proof_blob_id: BlobId,
     proof_repository: &dyn ProofRepository,
     credential_repository: &dyn CredentialRepository,
-    validity_credential_repository: &dyn ValidityCredentialRepository,
     transaction_manager: &dyn TransactionManager,
     identifier_creator: &dyn IdentifierCreator,
 ) -> Result<(), ServiceError> {
@@ -52,9 +47,6 @@ pub(crate) async fn persist_accepted_proof(
 
                 let (credentials, claims) = validated_proof_result.into_credentials_and_claims();
                 for proved_credential in credentials {
-                    let credential_id = proved_credential.credential.id;
-                    let mdoc_mso = proved_credential.mdoc_mso.to_owned();
-
                     let credential =
                         credential_from_proved(identifier_creator, proved_credential, organisation)
                             .await?;
@@ -63,23 +55,6 @@ pub(crate) async fn persist_accepted_proof(
                         .create_credential(credential)
                         .await
                         .error_while("crating credential")?;
-
-                    if let Some(mso) = mdoc_mso {
-                        let mso_cbor = encode_cbor_base64(mso).error_while("encoding MSO")?;
-
-                        validity_credential_repository
-                            .insert(
-                                Mdoc {
-                                    id: Uuid::new_v4(),
-                                    created_date: crate::clock::now_utc(),
-                                    credential: mso_cbor.into_bytes(),
-                                    linked_credential_id: credential_id,
-                                }
-                                .into(),
-                            )
-                            .await
-                            .error_while("inserting validity credential")?;
-                    }
                 }
 
                 proof_repository

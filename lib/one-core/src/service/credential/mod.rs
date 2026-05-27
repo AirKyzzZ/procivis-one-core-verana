@@ -13,7 +13,6 @@ use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::interaction_repository::InteractionRepository;
-use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 
 pub mod dto;
 pub mod error;
@@ -31,7 +30,6 @@ pub struct CredentialService {
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     protocol_provider: Arc<dyn IssuanceProtocolProvider>,
     config: Arc<core_config::CoreConfig>,
-    validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
     session_provider: Arc<dyn SessionProvider>,
     credential_validity_manager: Arc<dyn CredentialValidityManager>,
@@ -50,7 +48,6 @@ impl CredentialService {
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         protocol_provider: Arc<dyn IssuanceProtocolProvider>,
         config: Arc<core_config::CoreConfig>,
-        validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
         session_provider: Arc<dyn SessionProvider>,
         credential_validity_manager: Arc<dyn CredentialValidityManager>,
@@ -66,7 +63,6 @@ impl CredentialService {
             formatter_provider,
             protocol_provider,
             config,
-            validity_credential_repository,
             blob_storage_provider,
             session_provider,
             credential_validity_manager,

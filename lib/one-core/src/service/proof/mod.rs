@@ -24,7 +24,6 @@ use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::repository::proof_schema_repository::ProofSchemaRepository;
-use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 
 pub mod dto;
 pub mod error;
@@ -50,7 +49,6 @@ pub struct ProofService {
     ble: Option<BleWaiter>,
     config: Arc<core_config::CoreConfig>,
     organisation_repository: Arc<dyn OrganisationRepository>,
-    validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
     certificate_validator: Arc<dyn CertificateValidator>,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
     nfc_hce_provider: Option<Arc<dyn NfcHce>>,
@@ -80,7 +78,6 @@ impl ProofService {
         ble: Option<BleWaiter>,
         config: Arc<core_config::CoreConfig>,
         organisation_repository: Arc<dyn OrganisationRepository>,
-        validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
         certificate_validator: Arc<dyn CertificateValidator>,
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
         nfc_hce_provider: Option<Arc<dyn NfcHce>>,
@@ -107,7 +104,6 @@ impl ProofService {
             ble,
             config,
             organisation_repository,
-            validity_credential_repository,
             certificate_validator,
             blob_storage_provider,
             nfc_hce_provider,

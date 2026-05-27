@@ -164,23 +164,9 @@ impl ProofService {
             .error_while("getting trust information")?;
 
         if proof.schema.is_some() {
-            get_verifier_proof_detail(
-                proof,
-                &self.config,
-                history_event,
-                trust_information,
-                &*self.validity_credential_repository,
-            )
-            .await
+            get_verifier_proof_detail(proof, &self.config, history_event, trust_information).await
         } else {
-            get_holder_proof_detail(
-                proof,
-                &self.config,
-                history_event,
-                trust_information,
-                &*self.validity_credential_repository,
-            )
-            .await
+            get_holder_proof_detail(proof, &self.config, history_event, trust_information).await
         }
     }
 

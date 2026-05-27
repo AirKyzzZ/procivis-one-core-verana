@@ -362,7 +362,7 @@ async fn test_get_presentation_definition_ok() {
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 credential_schema_id,
-                format: "ISO_MDL".into(),
+                format: "MDOC".into(),
                 schema_id,
                 claim_mappings: Default::default(),
             }]

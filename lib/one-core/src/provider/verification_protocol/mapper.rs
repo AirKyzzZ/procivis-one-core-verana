@@ -105,7 +105,6 @@ pub(crate) async fn credential_model_to_credential_dto(
             credential_detail_response_from_model(
                 credential,
                 config,
-                None,
                 CredentialAttestationBlobs::default(),
                 None,
                 remaining_batch_item_count,

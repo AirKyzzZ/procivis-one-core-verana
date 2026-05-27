@@ -324,7 +324,6 @@ pub(crate) async fn get_presentation_definition_v2(
             let credential_detail_dto = credential_detail_response_from_model(
                 candidate,
                 config,
-                None,
                 CredentialAttestationBlobs::default(),
                 None,
                 remaining_batch_item_count,

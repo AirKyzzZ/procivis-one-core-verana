@@ -97,7 +97,6 @@ use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::holder_wallet_instance_repository::MockHolderWalletInstanceRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::key_repository::MockKeyRepository;
-use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
 use crate::service::test_utilities::{
     dummy_did, dummy_identifier, dummy_key, dummy_organisation, get_dummy_date,
@@ -110,7 +109,6 @@ struct TestInputs {
     pub key_repository: MockKeyRepository,
     pub identifier_creator: MockIdentifierCreator,
     pub metadata_cache: MockOpenIDMetadataFetcher,
-    pub validity_credential_repository: MockValidityCredentialRepository,
     pub credential_schema_repository: MockCredentialSchemaRepository,
     pub credential_schema_importer: Option<MockCredentialSchemaImporter>,
     pub formatter_provider: MockCredentialFormatterProvider,
@@ -145,7 +143,6 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCIFinal1_0 {
             .credential_schema_importer
             .map(|m| Arc::new(m) as _)
             .unwrap_or_else(|| Arc::new(MockCredentialSchemaImporter::new())),
-        Arc::new(inputs.validity_credential_repository),
         Arc::new(inputs.credential_schema_repository),
         Arc::new(inputs.formatter_provider),
         Arc::new(inputs.revocation_provider),

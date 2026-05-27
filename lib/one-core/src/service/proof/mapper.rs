@@ -30,9 +30,7 @@ use crate::model::list_filter::{
 };
 use crate::model::proof::{Proof, ProofClaim, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
-use crate::model::validity_credential::ValidityCredentialType;
 use crate::proto::trust_information::dto::TrustInformation;
-use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::service::certificate::mapper::certificate_to_response_dto;
 use crate::service::credential::dto::{
     CredentialAttestationBlobs, CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO,
@@ -180,7 +178,6 @@ pub(super) async fn get_verifier_proof_detail(
     config: &CoreConfig,
     claims_removed_event: Option<History>,
     trust_information: Vec<TrustInformation>,
-    validity_credential_repository: &dyn ValidityCredentialRepository,
 ) -> Result<ProofDetailResponseDTO, ProofServiceError> {
     let schema = proof
         .schema
@@ -231,16 +228,6 @@ pub(super) async fn get_verifier_proof_detail(
             }
         };
 
-        let mdoc_validity_credentials = match &credential.schema {
-            Some(schema) if schema.format().await?.as_ref() == "MDOC" => {
-                validity_credential_repository
-                    .get_latest_by_credential_id(credential.id, ValidityCredentialType::Mdoc)
-                    .await
-                    .error_while("getting validity credential")?
-            }
-            _ => None,
-        };
-
         let credential_trust_information = trust_information
             .iter()
             .find(|info| info.credential_id == Some(credential.id))
@@ -248,7 +235,6 @@ pub(super) async fn get_verifier_proof_detail(
         let credential_detail = credential_detail_response_from_model(
             credential,
             config,
-            mdoc_validity_credentials,
             CredentialAttestationBlobs::default(),
             credential_trust_information,
             None,
@@ -592,7 +578,6 @@ pub(super) async fn get_holder_proof_detail(
     config: &CoreConfig,
     claims_removed_event: Option<History>,
     trust_information: Vec<TrustInformation>,
-    validity_credential_repository: &dyn ValidityCredentialRepository,
 ) -> Result<ProofDetailResponseDTO, ProofServiceError> {
     let organisation_id = [
         proof
@@ -646,24 +631,11 @@ pub(super) async fn get_holder_proof_detail(
                 entry.get_mut().0.push(proof_claim.clone());
             }
             Entry::Vacant(entry) => {
-                let mdoc_validity_credentials = match &credential.schema {
-                    Some(schema) if schema.format().await?.as_ref() == "MDOC" => {
-                        validity_credential_repository
-                            .get_latest_by_credential_id(
-                                credential.id,
-                                ValidityCredentialType::Mdoc,
-                            )
-                            .await
-                            .error_while("getting validity credential")?
-                    }
-                    _ => None,
-                };
                 entry.insert((
                     vec![proof_claim.clone()],
                     credential_detail_response_from_model(
                         credential.clone(),
                         config,
-                        mdoc_validity_credentials,
                         CredentialAttestationBlobs::default(),
                         None,
                         None,

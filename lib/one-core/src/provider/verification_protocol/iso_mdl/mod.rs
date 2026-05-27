@@ -378,7 +378,6 @@ impl VerificationProtocol for IsoMdl {
                     let credential = credential_detail_response_from_model(
                         credential,
                         &self.config,
-                        None,
                         CredentialAttestationBlobs::default(),
                         None,
                         remaining_batch_item_count,

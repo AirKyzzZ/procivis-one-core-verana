@@ -89,7 +89,6 @@ use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::repository::proof_repository::MockProofRepository;
 use crate::repository::proof_schema_repository::MockProofSchemaRepository;
-use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::common_dto::ListQueryDTO;
 use crate::service::test_utilities::{
     dummy_identifier, dummy_organisation, generic_config, get_dummy_date,
@@ -112,7 +111,6 @@ struct Repositories {
     pub ble_peripheral: Option<MockBlePeripheral>,
     pub config: CoreConfig,
     pub organisation_repository: MockOrganisationRepository,
-    pub validity_credential_repository: MockValidityCredentialRepository,
     pub certificate_validator: MockCertificateValidator,
     pub blob_storage_provider: MockBlobStorageProvider,
     pub nfc_hce_provider: Option<MockNfcHce>,
@@ -142,7 +140,6 @@ fn setup_service(repositories: Repositories) -> ProofService {
             .map(|p| BleWaiter::new(Arc::new(MockBleCentral::new()), Arc::new(p))),
         Arc::new(repositories.config),
         Arc::new(repositories.organisation_repository),
-        Arc::new(repositories.validity_credential_repository),
         Arc::new(repositories.certificate_validator),
         Arc::new(repositories.blob_storage_provider),
         repositories.nfc_hce_provider.map(|m| {

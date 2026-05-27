@@ -30,7 +30,6 @@ use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::key::Key;
-use crate::model::validity_credential::{ValidityCredential, ValidityCredentialType};
 use crate::proto::credential_validity_manager::MockCredentialValidityManager;
 use crate::proto::notification_scheduler::MockNotificationScheduler;
 use crate::proto::session_provider::test::StaticSessionProvider;
@@ -49,7 +48,6 @@ use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
-use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::common_dto::ListQueryDTO;
 use crate::service::test_utilities::{
     dummy_did, dummy_identifier, dummy_key, dummy_organisation, generic_config,
@@ -65,7 +63,6 @@ struct Repositories {
     pub formatter_provider: MockCredentialFormatterProvider,
     pub protocol_provider: MockIssuanceProtocolProvider,
     pub config: CoreConfig,
-    pub validity_credential_repository: MockValidityCredentialRepository,
     pub blob_storage_provider: MockBlobStorageProvider,
     pub credential_validity_manager: MockCredentialValidityManager,
     pub notification_scheduler: MockNotificationScheduler,
@@ -82,7 +79,6 @@ fn setup_service(repositories: Repositories) -> CredentialService {
         Arc::new(repositories.formatter_provider),
         Arc::new(repositories.protocol_provider),
         Arc::new(repositories.config),
-        Arc::new(repositories.validity_credential_repository),
         Arc::new(repositories.blob_storage_provider),
         repositories
             .session_provider
@@ -4518,7 +4514,6 @@ async fn test_get_credential_success_array_index_sorting() {
 #[tokio::test]
 async fn test_get_credential_success_array_complex_nested_first_case() {
     let mut credential_repository = MockCredentialRepository::default();
-    let mut validity_credential_repository = MockValidityCredentialRepository::default();
 
     let now = get_dummy_date();
 
@@ -4547,7 +4542,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
         redirect_uri: None,
         role: CredentialRole::Issuer,
         r#type: CredentialType::Single,
-        state: CredentialStateEnum::Created,
+        state: CredentialStateEnum::Accepted,
         suspend_end_date: None,
         claims: Some(claims.to_owned()),
         issuer_identifier: Some(Identifier {
@@ -4648,26 +4643,11 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
             .times(1)
             .with(eq(clone.id), always())
             .returning(move |_, _| Ok(Some(clone.clone())));
-
-        validity_credential_repository
-            .expect_get_latest_by_credential_id()
-            .once()
-            .with(eq(credential.id), eq(ValidityCredentialType::Mdoc))
-            .return_once(move |_, _| {
-                Ok(Some(ValidityCredential {
-                    id: Uuid::new_v4(),
-                    created_date: now,
-                    credential: vec![1, 2, 3],
-                    linked_credential_id: credential.id,
-                    r#type: ValidityCredentialType::Mdoc,
-                }))
-            });
     }
 
     let service = setup_service(Repositories {
         credential_repository,
         config: generic_config().core,
-        validity_credential_repository,
         trust_information_provider: mock_trust_information_provider(&credential, vec![]),
         ..Default::default()
     });

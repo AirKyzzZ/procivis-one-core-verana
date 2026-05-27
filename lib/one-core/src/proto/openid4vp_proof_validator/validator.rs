@@ -20,8 +20,6 @@ use crate::proto::key_verification::KeyVerification;
 use crate::proto::openid4vp_proof_validator::validated_proof_result::ValidatedProofClaimDTO;
 use crate::proto::openid4vp_proof_validator::{OpenId4VpProofValidator, ValidatedProofResult};
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::mdoc_formatter::try_extracting_mso_from_token;
-use crate::provider::credential_formatter::mdoc_formatter::util::MobileSecurityObject;
 use crate::provider::credential_formatter::model::{
     CredentialClaim, DetailCredential, IdentifierDetails,
 };
@@ -304,7 +302,7 @@ impl OpenId4VpProofValidatorProto {
         };
 
         for credential_token in credentials {
-            let (credential, mso) = self
+            let credential = self
                 .validate_credential(
                     holder_details.as_ref(),
                     &credential_token,
@@ -314,7 +312,7 @@ impl OpenId4VpProofValidatorProto {
                 .await?;
 
             let proved_claims: Vec<ValidatedProofClaimDTO> =
-                validate_claims(credential, proof_input_schema, mso)?;
+                validate_claims(credential, proof_input_schema)?;
 
             if let Some(claim_sets) = credential_query.claim_sets.as_ref()
                 && claim_sets.iter().any(|claim_set| {
@@ -341,7 +339,7 @@ impl OpenId4VpProofValidatorProto {
         credential_token: &SerializedCredential,
         proof_schema_input: &ProofInputSchema,
         trusted_authorities: Option<&[TrustedAuthority]>,
-    ) -> Result<(DetailCredential, Option<MobileSecurityObject>), OpenID4VCError> {
+    ) -> Result<DetailCredential, OpenID4VCError> {
         let credential_schema =
             proof_schema_input
                 .credential_schema
@@ -426,16 +424,7 @@ impl OpenId4VpProofValidatorProto {
             check_issuer_is_trusted_authority(&credential.issuer, authorities)?;
         }
 
-        let mut mso = None;
-        if format.as_ref() == "MDOC" {
-            mso = Some(
-                try_extracting_mso_from_token(credential_token)
-                    .await
-                    .map_err(|e| OpenID4VCError::ValidationError(e.to_string()))?,
-            );
-        }
-
-        Ok((credential, mso))
+        Ok(credential)
     }
 
     async fn process_proof_submission_presentation_exchange(
@@ -654,7 +643,7 @@ impl OpenId4VpProofValidatorProto {
                 )),
             )?;
 
-            let (credential, mso) = self
+            let credential = self
                 .validate_credential(
                     Some(holder_details),
                     credential_token,
@@ -663,7 +652,7 @@ impl OpenId4VpProofValidatorProto {
                 )
                 .await?;
 
-            let proved_claims = validate_claims(credential, proof_schema_input, mso)?;
+            let proved_claims = validate_claims(credential, proof_schema_input)?;
 
             total_proved_claims.extend(proved_claims);
         }
@@ -895,7 +884,6 @@ pub(crate) fn get_trusted_akis(authorities: &[TrustedAuthority]) -> Vec<KeyIdent
 fn validate_claims(
     received_credential: DetailCredential,
     proof_input_schema: &ProofInputSchema,
-    mso: Option<MobileSecurityObject>,
 ) -> Result<Vec<ValidatedProofClaimDTO>, OpenID4VCError> {
     let expected_credential_claims =
         proof_input_schema
@@ -926,7 +914,6 @@ fn validate_claims(
                 credential: received_credential.to_owned(),
                 value: value.to_owned(),
                 credential_schema: credential_schema.to_owned(),
-                mdoc_mso: mso.clone(),
             })
         } else if expected_credential_claim.required {
             // Fail as required claim was not sent

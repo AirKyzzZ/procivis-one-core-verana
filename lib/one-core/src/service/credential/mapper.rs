@@ -13,7 +13,7 @@ use super::dto::{
     MdocMsoValidityResponseDTO, WalletInstanceAttestationDTO, WalletUnitAttestationDTO,
 };
 use super::error::CredentialServiceError;
-use crate::config::core_config::{CoreConfig, DatatypeType};
+use crate::config::core_config::{CoreConfig, DatatypeType, FormatType};
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt, NestedError};
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::mapper::credential_schema_claim::{claim_schema_to_dto, translations_to_i18n};
@@ -34,7 +34,6 @@ use crate::model::list_filter::{
 };
 use crate::model::list_query::ListQuery;
 use crate::model::localized_text::LocalizedTextField;
-use crate::model::validity_credential::ValidityCredential;
 use crate::proto::trust_information::dto::TrustInformation;
 use crate::provider::credential_formatter::mdoc_formatter;
 use crate::repository::credential_repository::CredentialRepository;
@@ -47,7 +46,6 @@ use crate::service::credential_schema::mapper::to_credential_schema_list_respons
 pub(crate) async fn credential_detail_response_from_model(
     value: Credential,
     config: &CoreConfig,
-    validity_credential: Option<ValidityCredential>,
     attestation: CredentialAttestationBlobs,
     trust_information: Option<TrustInformation>,
     remaining_batch_item_count: Option<u32>,
@@ -74,15 +72,28 @@ pub(crate) async fn credential_detail_response_from_model(
         .collect();
     let state = value.state;
 
-    let mdoc_mso_validity = if let Some(validity_credential) = validity_credential {
+    let credential_format = schema_model.format().await?;
+    let format_type = config
+        .format
+        .get_type(&credential_format)
+        .error_while("getting format config")?;
+    let mdoc_mso_validity = if format_type == FormatType::Mdoc
+        && [
+            CredentialStateEnum::Accepted,
+            CredentialStateEnum::Suspended,
+            CredentialStateEnum::Revoked,
+        ]
+        .contains(&value.state)
+    {
         let params = config
             .format
-            .get::<mdoc_formatter::Params, _>(&schema_model.format().await?)
-            .error_while("getting MDOC params")?;
+            .get::<mdoc_formatter::Params, _>(&credential_format)
+            .error_while("parsing formatter params")?;
+        // TODO ONE-9818: use issuance date of latest `BATCH_ITEM` instead
         Some(MdocMsoValidityResponseDTO {
-            expiration: validity_credential.created_date + params.mso_expires_in,
-            next_update: validity_credential.created_date + params.mso_expected_update_in,
-            last_update: validity_credential.created_date,
+            expiration: value.last_modified + params.mso_expires_in,
+            next_update: value.last_modified + params.mso_expected_update_in,
+            last_update: value.last_modified,
         })
     } else {
         None

@@ -21,7 +21,6 @@ use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::Identifier;
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::Key;
-use crate::model::validity_credential::{ValidityCredential, ValidityCredentialType};
 use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::credential_schema::importer::MockCredentialSchemaImporter;
 use crate::proto::http_client::MockHttpClient;
@@ -52,7 +51,6 @@ use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::holder_wallet_instance_repository::MockHolderWalletInstanceRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::key_repository::MockKeyRepository;
-use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::test_utilities::{dummy_identifier, dummy_organisation, generic_config};
 
 #[tokio::test]
@@ -181,7 +179,6 @@ async fn test_issuer_submit_succeeds() {
         Arc::new(MockKeyRepository::new()),
         Arc::new(MockIdentifierCreator::new()),
         Arc::new(MockCredentialSchemaImporter::new()),
-        Arc::new(MockValidityCredentialRepository::new()),
         Arc::new(MockCredentialSchemaRepository::new()),
         Arc::new(formatter_provider),
         Arc::new(revocation_method_provider),
@@ -288,7 +285,7 @@ async fn generic_mdoc_credential(state: CredentialStateEnum) -> Credential {
 }
 
 #[tokio::test]
-async fn test_issue_credential_for_mdoc_creates_validity_credential() {
+async fn test_issue_credential_for_mdoc_succeeds() {
     let credential_id: CredentialId = Uuid::new_v4().into();
 
     let mut credential_repository = MockCredentialRepository::new();
@@ -335,18 +332,6 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         .once()
         .returning(|_, _, _| Ok(Box::<MockSignatureProvider>::default()));
 
-    let mut validity_credential_repository = MockValidityCredentialRepository::new();
-    validity_credential_repository
-        .expect_insert()
-        .once()
-        .withf(move |validity_credential| {
-            assert_eq!(ValidityCredentialType::Mdoc, validity_credential.r#type);
-            assert_eq!(credential_id, validity_credential.linked_credential_id);
-            assert_eq!(b"token", &validity_credential.credential.as_ref());
-            true
-        })
-        .return_once(|_| Ok(()));
-
     let mut blob_storage = MockBlobStorage::new();
     blob_storage.expect_create().once().return_once(|_| Ok(()));
 
@@ -364,7 +349,6 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         Arc::new(MockKeyRepository::new()),
         Arc::new(MockIdentifierCreator::new()),
         Arc::new(MockCredentialSchemaImporter::new()),
-        Arc::new(validity_credential_repository),
         Arc::new(MockCredentialSchemaRepository::new()),
         Arc::new(formatter_provider),
         Arc::new(MockRevocationMethodProvider::default()),
@@ -425,11 +409,15 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
 }
 
 #[tokio::test]
-async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential() {
+async fn test_issue_credential_for_existing_mdoc_succeeds() {
     let credential_id: CredentialId = Uuid::new_v4().into();
     let format = CredentialFormat::from("MDOC");
 
-    let credential = generic_mdoc_credential(CredentialStateEnum::Accepted).await;
+    let old_last_modified = crate::clock::now_utc() - Duration::days(5);
+    let credential = Credential {
+        last_modified: old_last_modified,
+        ..generic_mdoc_credential(CredentialStateEnum::Accepted).await
+    };
     let credential_copy = credential.clone();
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository
@@ -438,15 +426,20 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
             assert_eq!(_credential_id, &credential_id);
             true
         })
-        .once()
-        .return_once(move |_, _| {
-            let mut credential = credential_copy;
+        .times(2)
+        .returning(move |_, _| {
+            let mut credential = credential_copy.clone();
             credential.schema = Some(CredentialSchema {
                 organisation: dummy_organisation(None).into(),
                 ..credential.schema.unwrap()
             });
             Ok(Some(credential))
         });
+
+    credential_repository
+        .expect_update_credential()
+        .once()
+        .return_once(|_, _| Ok(()));
 
     let mut formatter = MockCredentialFormatter::new();
     formatter
@@ -466,32 +459,6 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         .expect_get_signature_provider()
         .once()
         .returning(|_, _, _| Ok(Box::<MockSignatureProvider>::default()));
-
-    let mut validity_credential_repository = MockValidityCredentialRepository::new();
-
-    validity_credential_repository
-        .expect_get_latest_by_credential_id()
-        .once()
-        .with(eq(credential_id), eq(ValidityCredentialType::Mdoc))
-        .return_once(move |_, _| {
-            Ok(Some(ValidityCredential {
-                id: Uuid::new_v4(),
-                created_date: crate::clock::now_utc() - Duration::days(5),
-                credential: vec![1, 2, 3],
-                linked_credential_id: credential_id,
-                r#type: ValidityCredentialType::Mdoc,
-            }))
-        });
-    validity_credential_repository
-        .expect_insert()
-        .once()
-        .withf(move |validity_credential| {
-            assert_eq!(ValidityCredentialType::Mdoc, validity_credential.r#type);
-            assert_eq!(credential_id, validity_credential.linked_credential_id);
-            assert_eq!(b"token", &validity_credential.credential.as_ref());
-            true
-        })
-        .return_once(|_| Ok(()));
 
     let mut config = dummy_config();
 
@@ -516,6 +483,16 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         },
     );
 
+    let mut blob_storage = MockBlobStorage::new();
+    blob_storage.expect_create().once().return_once(|_| Ok(()));
+
+    let blob_storage = Arc::new(blob_storage);
+    let mut blob_storage_provider = MockBlobStorageProvider::new();
+    blob_storage_provider
+        .expect_get_blob_storage()
+        .once()
+        .returning(move |_| Ok(blob_storage.clone()));
+
     let service = OpenID4VCIFinal1_0::new(
         Arc::new(MockHttpClient::new()),
         Arc::new(MockOpenIDMetadataFetcher::new()),
@@ -523,7 +500,6 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         Arc::new(MockKeyRepository::new()),
         Arc::new(MockIdentifierCreator::new()),
         Arc::new(MockCredentialSchemaImporter::new()),
-        Arc::new(validity_credential_repository),
         Arc::new(MockCredentialSchemaRepository::new()),
         Arc::new(formatter_provider),
         Arc::new(MockRevocationMethodProvider::new()),
@@ -531,7 +507,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(key_provider),
         Arc::new(MockKeySecurityLevelProvider::new()),
-        Arc::new(MockBlobStorageProvider::new()),
+        Arc::new(blob_storage_provider),
         Some("https://example.com/test/".to_string()),
         Arc::new(config),
         OpenID4VCIFinal1Params {
@@ -597,23 +573,8 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
             assert_eq!(_credential_id, &credential_id);
             true
         })
-        .once()
-        .return_once(move |_, _| Ok(Some(credential_copy)));
-
-    let mut validity_credential_repository = MockValidityCredentialRepository::new();
-    validity_credential_repository
-        .expect_get_latest_by_credential_id()
-        .once()
-        .with(eq(credential_id), eq(ValidityCredentialType::Mdoc))
-        .return_once(move |_, _| {
-            Ok(Some(ValidityCredential {
-                id: Uuid::new_v4(),
-                created_date: crate::clock::now_utc() - Duration::days(1),
-                credential: vec![1, 2, 3],
-                linked_credential_id: credential_id,
-                r#type: ValidityCredentialType::Mdoc,
-            }))
-        });
+        .times(2)
+        .returning(move |_, _| Ok(Some(credential_copy.clone())));
 
     let mut config = dummy_config();
     config.format.insert(
@@ -644,7 +605,6 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
         Arc::new(MockKeyRepository::new()),
         Arc::new(MockIdentifierCreator::new()),
         Arc::new(MockCredentialSchemaImporter::new()),
-        Arc::new(validity_credential_repository),
         Arc::new(MockCredentialSchemaRepository::new()),
         Arc::new(MockCredentialFormatterProvider::new()),
         Arc::new(MockRevocationMethodProvider::new()),

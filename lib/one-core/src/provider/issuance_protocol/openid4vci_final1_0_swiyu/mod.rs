@@ -54,7 +54,6 @@ use crate::repository::history_repository::HistoryRepository;
 use crate::repository::holder_wallet_instance_repository::HolderWalletInstanceRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::key_repository::KeyRepository;
-use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 
 pub(crate) const OID4VCI_FINAL1_0_SWIYU_VERSION: &str = "final-1.0-swiyu";
 
@@ -120,7 +119,6 @@ impl OpenID4VCISwiyu {
         key_repository: Arc<dyn KeyRepository>,
         identifier_creator: Arc<dyn IdentifierCreator>,
         credential_schema_importer: Arc<dyn CredentialSchemaImporter>,
-        validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
         credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         revocation_provider: Arc<dyn RevocationMethodProvider>,
@@ -154,7 +152,6 @@ impl OpenID4VCISwiyu {
                 key_repository,
                 identifier_creator,
                 credential_schema_importer,
-                validity_credential_repository,
                 credential_schema_repository,
                 formatter_provider,
                 revocation_provider,

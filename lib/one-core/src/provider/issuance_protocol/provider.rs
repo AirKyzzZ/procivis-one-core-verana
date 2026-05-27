@@ -31,7 +31,6 @@ use crate::repository::history_repository::HistoryRepository;
 use crate::repository::holder_wallet_instance_repository::HolderWalletInstanceRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::key_repository::KeyRepository;
-use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 
 #[cfg_attr(test, mockall::automock)]
 #[async_trait::async_trait]
@@ -80,7 +79,6 @@ pub(crate) fn issuance_protocol_provider_from_config(
     core_base_url: Option<String>,
     credential_repository: Arc<dyn CredentialRepository>,
     key_repository: Arc<dyn KeyRepository>,
-    validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -122,7 +120,6 @@ pub(crate) fn issuance_protocol_provider_from_config(
                     key_repository.clone(),
                     identifier_creator.clone(),
                     credential_schema_importer.clone(),
-                    validity_credential_repository.clone(),
                     credential_schema_repository.clone(),
                     formatter_provider.clone(),
                     revocation_provider.clone(),
@@ -158,7 +155,6 @@ pub(crate) fn issuance_protocol_provider_from_config(
                     key_repository.clone(),
                     identifier_creator.clone(),
                     credential_schema_importer.clone(),
-                    validity_credential_repository.clone(),
                     credential_schema_repository.clone(),
                     formatter_provider.clone(),
                     revocation_provider.clone(),

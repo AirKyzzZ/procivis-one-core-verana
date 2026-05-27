@@ -51,7 +51,6 @@ use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::proof_repository::MockProofRepository;
-use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::test_utilities::*;
 
 #[derive(Default)]
@@ -62,7 +61,6 @@ struct Mocks {
     pub key_provider: MockKeyProvider,
     pub config: CoreConfig,
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
-    pub validity_credential_repository: MockValidityCredentialRepository,
     pub blob_storage_provider: MockBlobStorageProvider,
     pub identifier_creator: MockIdentifierCreator,
     pub proof_validator: MockOpenId4VpProofValidator,
@@ -78,7 +76,6 @@ fn setup_service(mocks: Mocks) -> OID4VPFinal1_0Service {
         Arc::new(mocks.key_provider),
         Arc::new(mocks.config),
         Arc::new(mocks.key_algorithm_provider),
-        Arc::new(mocks.validity_credential_repository),
         Arc::new(mocks.blob_storage_provider),
         Arc::new(mocks.identifier_creator),
         Arc::new(NoTransactionManager),
@@ -610,7 +607,6 @@ async fn test_submit_proof_failed_on_trust_failure() {
                             subject_common_name: None,
                         }),
                         holder_details: IdentifierDetails::Did("did:holder:123".parse().unwrap()),
-                        mdoc_mso: None,
                     }],
                     proved_claims: vec![],
                 },

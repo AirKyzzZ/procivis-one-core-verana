@@ -8,7 +8,6 @@ use crate::model::credential_schema::CredentialSchema;
 use crate::model::proof::Proof;
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
 use crate::proto::openid4vp_proof_validator::ValidatedProofResult;
-use crate::provider::credential_formatter::mdoc_formatter::util::MobileSecurityObject;
 use crate::provider::credential_formatter::model::{CredentialClaim, DetailCredential};
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::mapper::extracted_credential_to_model;
@@ -20,7 +19,6 @@ pub(super) struct ValidatedProofClaimDTO {
     pub credential: DetailCredential,
     pub credential_schema: CredentialSchema,
     pub value: CredentialClaim,
-    pub mdoc_mso: Option<MobileSecurityObject>,
 }
 
 impl ValidatedProofResult {
@@ -78,7 +76,6 @@ async fn validate_proof(
         value: CredentialClaim,
         credential: DetailCredential,
         credential_schema: CredentialSchema,
-        mdoc_mso: Option<MobileSecurityObject>,
     }
     let proved_claims = proved_claims
         .into_iter()
@@ -88,7 +85,6 @@ async fn validate_proof(
                 credential: proved_claim.credential,
                 credential_schema: proved_claim.credential_schema,
                 claim_schema: proved_claim.proof_input_claim.schema,
-                mdoc_mso: proved_claim.mdoc_mso,
             })
         })
         .collect::<Result<Vec<ProvedClaim>, OpenID4VCError>>()?;
@@ -136,7 +132,6 @@ async fn validate_proof(
             claims,
             credential.issuer.to_owned(),
             holder_details.to_owned(),
-            first_claim.mdoc_mso.to_owned(),
             &proof.protocol,
             &proof.profile,
             credential.issuance_date,

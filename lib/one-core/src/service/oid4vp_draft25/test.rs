@@ -41,7 +41,6 @@ use crate::provider::verification_protocol::openid4vp::model::*;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::proof_repository::MockProofRepository;
-use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::test_utilities::*;
 
 #[derive(Default)]
@@ -52,7 +51,6 @@ struct Mocks {
     pub key_provider: MockKeyProvider,
     pub config: CoreConfig,
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
-    pub validity_credential_repository: MockValidityCredentialRepository,
     pub blob_storage_provider: MockBlobStorageProvider,
     pub identifier_creator: MockIdentifierCreator,
     pub proof_validator: MockOpenId4VpProofValidator,
@@ -66,7 +64,6 @@ fn setup_service(mocks: Mocks) -> OID4VPDraft25Service {
         Arc::new(mocks.key_provider),
         Arc::new(mocks.config),
         Arc::new(mocks.key_algorithm_provider),
-        Arc::new(mocks.validity_credential_repository),
         Arc::new(mocks.blob_storage_provider),
         Arc::new(mocks.identifier_creator),
         Arc::new(NoTransactionManager),

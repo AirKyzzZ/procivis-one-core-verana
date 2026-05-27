@@ -99,7 +99,7 @@ async fn dummy_unexportable_entities() -> UnexportableEntities {
                             created_date: crate::clock::now_utc(),
                             last_modified: crate::clock::now_utc(),
                             credential_schema_id,
-                            format: "format".into(),
+                            format: "JWT".into(),
                             schema_id: "CredentialSchemaId".to_owned(),
                             claim_mappings: Default::default(),
                         }]

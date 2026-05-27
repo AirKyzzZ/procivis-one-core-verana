@@ -19,7 +19,7 @@ use super::validator::{
     throw_if_credential_state_eq, validate_format_and_did_method_compatibility,
     validate_redirect_uri, validate_webhook_url,
 };
-use crate::config::core_config::{BlobStorageType, FormatType};
+use crate::config::core_config::BlobStorageType;
 use crate::config::validator::protocol::validate_protocol_did_compatibility;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::certificate::{CertificateRelations, CertificateRole};
@@ -35,7 +35,6 @@ use crate::model::identifier::{IdentifierRelations, IdentifierState, IdentifierT
 use crate::model::interaction::{InteractionRelations, InteractionType};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListQuery;
-use crate::model::validity_credential::ValidityCredentialType;
 use crate::provider::issuance_protocol::model::ShareResponse;
 use crate::provider::revocation::model::RevocationState;
 use crate::service::common_dto::{ListQueryDTO, TrustInformationDetailResponseDTO};
@@ -342,29 +341,6 @@ impl CredentialService {
             return Err(CredentialServiceError::NotFound(*credential_id));
         }
 
-        let schema_format = credential
-            .schema
-            .as_ref()
-            .ok_or(CredentialServiceError::MappingError(
-                "missing schema".to_string(),
-            ))?
-            .format()
-            .await?;
-        let format_type = self
-            .config
-            .format
-            .get_fields(&schema_format)
-            .error_while("getting format config")?
-            .r#type;
-        let mdoc_validity_credentials = match format_type {
-            FormatType::Mdoc => self
-                .validity_credential_repository
-                .get_latest_by_credential_id(*credential_id, ValidityCredentialType::Mdoc)
-                .await
-                .error_while("getting validity credential")?,
-            _ => None,
-        };
-
         let trust_information = self
             .trust_information_provider
             .get_trust_information((*credential_id).into())
@@ -382,7 +358,6 @@ impl CredentialService {
         let response = credential_detail_response_from_model(
             credential,
             &self.config,
-            mdoc_validity_credentials,
             attestation_blobs,
             trust_information,
             remaining_batch_item_count,

@@ -16,7 +16,6 @@ use url::Url;
 
 use super::mapper::{deserialize_with_serde_json, unix_timestamp_option};
 use crate::model::credential::Credential;
-use crate::provider::credential_formatter::mdoc_formatter::util::MobileSecurityObject;
 use crate::provider::credential_formatter::model::IdentifierDetails;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -245,7 +244,6 @@ pub(crate) struct ProvedCredential {
     pub credential: Credential,
     pub issuer_details: IdentifierDetails,
     pub holder_details: IdentifierDetails,
-    pub mdoc_mso: Option<MobileSecurityObject>,
 }
 
 /// Interaction data used for OpenID4VP (HTTP) on holder side

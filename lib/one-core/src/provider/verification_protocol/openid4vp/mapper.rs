@@ -39,7 +39,6 @@ use crate::model::proof::Proof;
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::{JWTHeader, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey};
-use crate::provider::credential_formatter::mdoc_formatter::util::MobileSecurityObject;
 use crate::provider::credential_formatter::model::{CredentialClaim, IdentifierDetails};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -488,7 +487,6 @@ pub(crate) fn extracted_credential_to_model(
     claims: Vec<(CredentialClaim, ClaimSchema)>,
     issuer_details: IdentifierDetails,
     holder_details: IdentifierDetails,
-    mdoc_mso: Option<MobileSecurityObject>,
     verification_protocol: &str,
     profile: &Option<String>,
     issuance_date: Option<OffsetDateTime>,
@@ -547,7 +545,6 @@ pub(crate) fn extracted_credential_to_model(
         },
         issuer_details,
         holder_details,
-        mdoc_mso,
     })
 }
 
