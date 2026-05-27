@@ -35,6 +35,7 @@ use crate::proto::credential_validity_manager::MockCredentialValidityManager;
 use crate::proto::notification_scheduler::MockNotificationScheduler;
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::proto::session_provider::{NoSessionProvider, SessionProvider};
+use crate::proto::transaction_manager::NoTransactionManager;
 use crate::proto::trust_information::MockTrustInformationProvider;
 use crate::proto::trust_information::dto::TrustInformation;
 use crate::provider::blob_storage::provider::MockBlobStorageProvider;
@@ -89,6 +90,7 @@ fn setup_service(repositories: Repositories) -> CredentialService {
         Arc::new(repositories.credential_validity_manager),
         Arc::new(repositories.notification_scheduler),
         Arc::new(repositories.trust_information_provider),
+        Arc::new(NoTransactionManager),
     )
 }
 
@@ -329,11 +331,28 @@ async fn test_delete_credential_success() {
     let credential_schema_repository = MockCredentialSchemaRepository::default();
 
     let credential = generic_credential().await;
+    let credential_id = credential.id;
     credential_repository
         .expect_get_credential()
+        .once()
         .returning(move |_, _| Ok(Some(credential.clone())));
     credential_repository
-        .expect_delete_credential()
+        .expect_get_credential_list()
+        .once()
+        .returning(|_| {
+            Ok(GetCredentialList {
+                values: vec![],
+                total_pages: 0,
+                total_items: 0,
+            })
+        });
+    credential_repository
+        .expect_delete_credentials()
+        .once()
+        .withf(|credentials| {
+            assert_eq!(credentials.len(), 1);
+            true
+        })
         .returning(|_| Ok(()));
 
     let service = setup_service(Repositories {
@@ -343,10 +362,7 @@ async fn test_delete_credential_success() {
         ..Default::default()
     });
 
-    service
-        .delete_credential(&generic_credential().await.id)
-        .await
-        .unwrap();
+    service.delete_credential(&credential_id).await.unwrap();
 }
 
 #[tokio::test]
@@ -393,6 +409,32 @@ async fn test_delete_credential_incorrect_state() {
     assert!(matches!(
         result,
         Err(CredentialServiceError::InvalidState(_))
+    ));
+}
+
+#[tokio::test]
+async fn test_delete_credential_invalid_type() {
+    let mut credential_repository = MockCredentialRepository::default();
+
+    let mut credential = generic_credential().await;
+    credential.r#type = CredentialType::BatchItem;
+    credential.role = CredentialRole::Issuer;
+
+    let copy = credential.clone();
+    credential_repository
+        .expect_get_credential()
+        .returning(move |_, _| Ok(Some(copy.clone())));
+
+    let service = setup_service(Repositories {
+        credential_repository,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service.delete_credential(&credential.id).await;
+    assert!(matches!(
+        result,
+        Err(CredentialServiceError::InvalidType(_))
     ));
 }
 
@@ -711,6 +753,31 @@ async fn test_share_credential_failed_invalid_state() {
 
     let result = service.share_credential(&credential.id).await;
     assert!(result.is_err_and(|e| matches!(e, CredentialServiceError::InvalidState(_))));
+}
+
+#[tokio::test]
+async fn test_share_credential_failed_invalid_type() {
+    let mut credential_repository = MockCredentialRepository::default();
+
+    let mut credential = generic_credential().await;
+    credential.r#type = CredentialType::BatchItem;
+    {
+        let clone = credential.clone();
+        credential_repository
+            .expect_get_credential()
+            .times(1)
+            .with(eq(clone.id), always())
+            .returning(move |_, _| Ok(Some(clone.clone())));
+    }
+
+    let service = setup_service(Repositories {
+        credential_repository,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service.share_credential(&credential.id).await;
+    assert!(result.is_err_and(|e| matches!(e, CredentialServiceError::InvalidType(_))));
 }
 
 #[tokio::test]

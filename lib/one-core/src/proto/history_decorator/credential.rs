@@ -184,10 +184,12 @@ impl CredentialRepository for CredentialHistoryDecorator {
         Ok(())
     }
 
-    async fn delete_credential(&self, credential: &Credential) -> Result<(), DataLayerError> {
-        self.inner.delete_credential(credential).await?;
-        self.create_history_entry_for_credential(credential, HistoryAction::Deleted)
-            .await;
+    async fn delete_credentials(&self, credentials: &[Credential]) -> Result<(), DataLayerError> {
+        self.inner.delete_credentials(credentials).await?;
+        for credential in credentials {
+            self.create_history_entry_for_credential(credential, HistoryAction::Deleted)
+                .await;
+        }
 
         Ok(())
     }

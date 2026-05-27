@@ -15,7 +15,7 @@ use crate::model::relation::AsyncModelLoader;
 pub trait CredentialRepository: Send + Sync {
     async fn create_credential(&self, request: Credential) -> Result<CredentialId, DataLayerError>;
 
-    async fn delete_credential(&self, credential: &Credential) -> Result<(), DataLayerError>;
+    async fn delete_credentials(&self, credentials: &[Credential]) -> Result<(), DataLayerError>;
 
     async fn delete_credential_blobs(
         &self,

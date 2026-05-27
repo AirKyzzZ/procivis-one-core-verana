@@ -111,8 +111,8 @@ impl CredentialRepository for CredentialNotificationDecorator {
         self.inner.create_credential(request).await
     }
 
-    async fn delete_credential(&self, credential: &Credential) -> Result<(), DataLayerError> {
-        self.inner.delete_credential(credential).await
+    async fn delete_credentials(&self, credentials: &[Credential]) -> Result<(), DataLayerError> {
+        self.inner.delete_credentials(credentials).await
     }
 
     async fn delete_credential_blobs(

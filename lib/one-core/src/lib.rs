@@ -511,6 +511,7 @@ impl OneCore {
             credential_validity_manager.clone(),
             notification_scheduler.clone(),
             trust_information_provider.clone(),
+            data_provider.get_tx_manager(),
         );
 
         let remote_trust_collection_cache = Arc::new(remote_trust_collection_cache_from_config(

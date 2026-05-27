@@ -1,3 +1,4 @@
+use futures::FutureExt;
 use one_dto_mapper::convert_inner;
 use shared_types::CredentialId;
 use uuid::Uuid;
@@ -25,16 +26,18 @@ use crate::model::certificate::{CertificateRelations, CertificateRole};
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{
-    Credential, CredentialListIncludeEntityTypeEnum, CredentialRelations, CredentialRole,
-    CredentialStateEnum, SortableCredentialColumn, UpdateCredentialRequest,
+    Credential, CredentialFilterValue, CredentialListIncludeEntityTypeEnum, CredentialRelations,
+    CredentialRole, CredentialStateEnum, CredentialType, SortableCredentialColumn,
+    UpdateCredentialRequest,
 };
 use crate::model::did::KeyRole;
 use crate::model::identifier::{IdentifierRelations, IdentifierState, IdentifierType};
 use crate::model::interaction::{InteractionRelations, InteractionType};
+use crate::model::list_filter::ListFilterValue;
+use crate::model::list_query::ListQuery;
 use crate::model::validity_credential::ValidityCredentialType;
 use crate::provider::issuance_protocol::model::ShareResponse;
 use crate::provider::revocation::model::RevocationState;
-use crate::repository::error::DataLayerError;
 use crate::service::common_dto::{ListQueryDTO, TrustInformationDetailResponseDTO};
 use crate::service::credential_schema::validator::validate_key_storage_security_supported;
 use crate::service::error::{BusinessLogicError, MissingProviderError};
@@ -252,6 +255,10 @@ impl CredentialService {
         throw_if_org_id_not_matching_session(schema.organisation.id_ref(), &*self.session_provider)
             .error_while("checking session")?;
 
+        if credential.r#type == CredentialType::BatchItem {
+            return Err(CredentialServiceError::InvalidType(credential.r#type));
+        }
+
         let is_issuer = credential.role == CredentialRole::Issuer;
         if is_issuer && let Some(method_id) = &schema.revocation_method {
             let _revocation_fields = self
@@ -262,18 +269,39 @@ impl CredentialService {
             throw_if_credential_state_eq(&credential, CredentialStateEnum::Accepted)?;
         }
 
-        self.credential_repository
-            .delete_credential(&credential)
-            .await
-            .map_err(|error| match error {
-                // credential not found or already deleted
-                DataLayerError::RecordNotUpdated => {
-                    CredentialServiceError::NotFound(*credential_id)
-                }
-                error => error.error_while("deleting credential").into(),
-            })?;
+        self.tx_manager
+            .tx(async {
+                let batch_items = self
+                    .credential_repository
+                    .get_credential_list(ListQuery {
+                        filtering: Some(
+                            CredentialFilterValue::ParentCredential(*credential_id).condition(),
+                        ),
+                        ..Default::default()
+                    })
+                    .await
+                    .error_while("getting batch items")?
+                    .values;
+                tracing::debug!("Batch items found: {}", batch_items.len());
 
-        tracing::info!("Deleted credential {}", credential.id);
+                let items_to_delete = {
+                    let mut items = batch_items;
+                    items.push(credential);
+                    items
+                };
+
+                self.credential_repository
+                    .delete_credentials(&items_to_delete)
+                    .await
+                    .error_while("deleting credentials")?;
+
+                Ok::<_, CredentialServiceError>(())
+            }
+            .boxed())
+            .await
+            .error_while("deleting credential")??;
+
+        tracing::info!("Deleted credential {credential_id}");
         Ok(())
     }
 
@@ -553,6 +581,10 @@ impl CredentialService {
         )
         .error_while("checking session")?;
 
+        if credential.r#type == CredentialType::BatchItem {
+            return Err(CredentialServiceError::InvalidType(credential.r#type));
+        }
+
         if !matches!(
             credential.state,
             CredentialStateEnum::Created
@@ -651,6 +683,10 @@ impl CredentialService {
         let credential = credential.ok_or(CredentialServiceError::NotFound(id))?;
         throw_if_credential_schema_not_in_session_org(&credential, &*self.session_provider)
             .error_while("checking session")?;
+        if credential.r#type == CredentialType::BatchItem {
+            return Err(CredentialServiceError::InvalidType(credential.r#type));
+        }
+
         let Some(trust_details) = self
             .trust_information_provider
             .get_trust_detail(&id.into())

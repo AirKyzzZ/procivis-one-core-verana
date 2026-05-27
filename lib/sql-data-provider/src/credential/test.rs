@@ -526,7 +526,10 @@ async fn test_delete_credential_success() {
 
     let provider = credential_repository(db, None);
 
-    provider.delete_credential(&credential).await.unwrap();
+    provider
+        .delete_credentials(std::slice::from_ref(&credential))
+        .await
+        .unwrap();
 
     let credential = provider
         .get_credential(&credential.id, &CredentialRelations::default())
@@ -534,44 +537,6 @@ async fn test_delete_credential_success() {
         .unwrap()
         .unwrap();
     assert!(credential.deleted_at.is_some());
-}
-
-#[tokio::test]
-async fn test_delete_credential_failed_not_found() {
-    let TestSetup { db, .. } = setup_empty().await;
-
-    let provider = credential_repository(db, None);
-
-    let result = provider
-        .delete_credential(&Credential {
-            id: Uuid::new_v4().into(),
-            created_date: one_core::clock::now_utc(),
-            issuance_date: None,
-            last_modified: one_core::clock::now_utc(),
-            deleted_at: None,
-            consumed_at: None,
-            protocol: "OPENID4VCI_DRAFT13".to_string(),
-            redirect_uri: None,
-            role: CredentialRole::Issuer,
-            r#type: CredentialType::Single,
-            state: CredentialStateEnum::Created,
-            suspend_end_date: None,
-            claims: None,
-            issuer_identifier: None,
-            issuer_certificate: None,
-            holder_identifier: None,
-            schema: None,
-            interaction: None,
-            key: None,
-            profile: None,
-            credential_blob_id: None,
-            wallet_unit_attestation_blob_id: None,
-            wallet_instance_attestation_blob_id: None,
-            webhook_url: None,
-            parent: None,
-        })
-        .await;
-    assert!(matches!(result, Err(DataLayerError::RecordNotUpdated)));
 }
 
 #[tokio::test]

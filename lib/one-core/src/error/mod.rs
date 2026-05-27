@@ -906,7 +906,7 @@ pub enum ErrorCode {
     #[strum(message = "Credential schema duplicate mapping formats")]
     BR_0440,
 
-    #[strum(message = "Unsupported credential type")]
+    #[strum(message = "Invalid credential type")]
     BR_0442,
 }
 

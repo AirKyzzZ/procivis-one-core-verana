@@ -33,7 +33,7 @@ use super::mapper::{
 use crate::common::calculate_pages_count;
 use crate::entity::{claim, claim_schema, credential, credential_schema, identifier};
 use crate::list_query_generic::{SelectWithFilterJoin, SelectWithListQuery};
-use crate::mapper::to_update_data_layer_error;
+use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 use crate::transaction_context::TransactionManagerImpl;
 
 async fn get_credential_schema(
@@ -433,21 +433,18 @@ impl CredentialRepository for CredentialProvider {
         Ok(request.id)
     }
 
-    async fn delete_credential(&self, credential: &Credential) -> Result<(), DataLayerError> {
-        let now = one_core::clock::now_utc();
-
-        let credential = credential::ActiveModel {
-            id: Unchanged(credential.id),
-            deleted_at: Set(Some(now)),
-            ..Default::default()
-        };
-
-        credential::Entity::update(credential)
-            .filter(credential::Column::DeletedAt.is_null())
+    async fn delete_credentials(&self, credentials: &[Credential]) -> Result<(), DataLayerError> {
+        let ids: Vec<_> = credentials.iter().map(|c| c.id).collect();
+        credential::Entity::update_many()
+            .filter(credential::Column::Id.is_in(ids))
+            .set(credential::ActiveModel {
+                deleted_at: Set(Some(one_core::clock::now_utc())),
+                ..Default::default()
+            })
             .exec(&self.db)
             .await
-            .map(|_| ())
-            .map_err(to_update_data_layer_error)
+            .map_err(to_data_layer_error)?;
+        Ok(())
     }
 
     async fn get_credential(
