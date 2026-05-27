@@ -3,8 +3,8 @@ use one_core::model::credential::{
 };
 use one_core::proto::trust_information::dto::TrustInformation;
 use one_core::service::credential::dto::{
-    CredentialRole, CredentialSearchTypeDTO, CredentialStateEnum, DetailCredentialClaimResponseDTO,
-    GetCredentialListResponseDTO,
+    CredentialRole, CredentialSearchTypeDTO, CredentialStateEnum, CredentialTypeEnum,
+    DetailCredentialClaimResponseDTO, GetCredentialListResponseDTO,
 };
 use one_core::service::credential_schema::dto::CredentialClaimSchemaDTO;
 use one_dto_mapper::{From, Into, convert_inner};
@@ -128,6 +128,11 @@ pub struct CredentialDetailBindingDTO {
     /// Country profile associated with the credential.
     pub profile: Option<String>,
     pub trust_information: Option<TrustInformationBindingDTO>,
+
+    pub consumed_at: Option<String>,
+    pub r#type: CredentialTypeBindingEnum,
+    pub remaining_batch_item_count: Option<u32>,
+    pub parent_id: Option<String>,
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]
@@ -195,8 +200,12 @@ pub struct CredentialListQueryBindingDTO {
     pub roles: Option<Vec<CredentialRoleBindingDTO>>,
     /// Filter by one or more UUIDs.
     pub ids: Option<Vec<String>>,
+    /// Filter by batch parent UUID.
+    pub parent_id: Option<String>,
     /// Filter by one or more credential states.
     pub states: Option<Vec<CredentialStateBindingEnum>>,
+    /// Filter by one or more credential types.
+    pub types: Option<Vec<CredentialTypeBindingEnum>>,
     /// Additional fields to include in response objects. Omitting
     /// this keeps responses shorter.
     pub include: Option<Vec<CredentialListIncludeEntityTypeBindingEnum>>,
@@ -269,6 +278,16 @@ pub enum CredentialStateBindingEnum {
     Suspended,
     Error,
     InteractionExpired,
+}
+
+#[derive(Clone, Debug, From, Into, Eq, PartialEq, uniffi::Enum)]
+#[from(CredentialTypeEnum)]
+#[into(CredentialTypeEnum)]
+#[uniffi(name = "CredentialType")]
+pub enum CredentialTypeBindingEnum {
+    Single,
+    BatchParent,
+    BatchItem,
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]
@@ -344,4 +363,8 @@ pub struct CredentialListItemBindingDTO {
     pub protocol: String,
     /// Country profile associated with the credential.
     pub profile: Option<String>,
+
+    pub consumed_at: Option<String>,
+    pub r#type: CredentialTypeBindingEnum,
+    pub parent_id: Option<String>,
 }

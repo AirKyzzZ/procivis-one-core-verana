@@ -30,7 +30,9 @@ use crate::repository::error::DataLayerError;
 use crate::service::credential::dto::{
     CredentialAttestationBlobs, CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO,
 };
-use crate::service::credential::mapper::credential_detail_response_from_model;
+use crate::service::credential::mapper::{
+    credential_detail_response_from_model, get_remaining_batch_item_count,
+};
 
 pub(crate) fn interaction_from_handle_invitation(
     data: Option<Vec<u8>>,
@@ -87,12 +89,18 @@ pub(crate) fn proof_from_handle_invitation(
 pub(crate) async fn credential_model_to_credential_dto(
     credentials: Vec<Credential>,
     config: &CoreConfig,
+    credential_repository: &dyn CredentialRepository,
 ) -> Result<
     Vec<CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>>,
     VerificationProtocolError,
 > {
     let mut result = vec![];
     for credential in credentials {
+        let remaining_batch_item_count =
+            get_remaining_batch_item_count(&credential, credential_repository)
+                .await
+                .error_while("getting remaining batch items")?;
+
         result.push(
             credential_detail_response_from_model(
                 credential,
@@ -100,6 +108,7 @@ pub(crate) async fn credential_model_to_credential_dto(
                 None,
                 CredentialAttestationBlobs::default(),
                 None,
+                remaining_batch_item_count,
             )
             .await
             .error_while("converting credential")?,

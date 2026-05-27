@@ -100,9 +100,11 @@ impl<IN: Into<ClaimBindingDTO>> From<CredentialDetailResponseDTO<IN>>
             issuance_date: value.issuance_date.map(|inner| inner.format_timestamp()),
             last_modified: value.last_modified.format_timestamp(),
             revocation_date: value.revocation_date.map(|inner| inner.format_timestamp()),
+            consumed_at: value.consumed_at.map(|inner| inner.format_timestamp()),
             issuer: value.issuer.map(Into::into),
             holder: value.holder.map(Into::into),
             state: value.state.into(),
+            r#type: value.r#type.into(),
             schema: value.schema.into(),
             claims: convert_inner(value.claims),
             redirect_uri: value.redirect_uri,
@@ -117,6 +119,8 @@ impl<IN: Into<ClaimBindingDTO>> From<CredentialDetailResponseDTO<IN>>
             protocol: value.protocol,
             profile: value.profile,
             trust_information: convert_inner(value.trust_information),
+            remaining_batch_item_count: value.remaining_batch_item_count,
+            parent_id: value.parent_id.map(|parent_id| parent_id.to_string()),
         }
     }
 }
@@ -139,15 +143,18 @@ impl From<CredentialListItemResponseDTO> for CredentialListItemBindingDTO {
             issuance_date: value.issuance_date.map(|inner| inner.format_timestamp()),
             last_modified: value.last_modified.format_timestamp(),
             revocation_date: value.revocation_date.map(|inner| inner.format_timestamp()),
+            consumed_at: value.consumed_at.map(|inner| inner.format_timestamp()),
             issuer: optional_identifier_id_string(value.issuer),
             state: value.state.into(),
             schema: value.schema.into(),
             role: value.role.into(),
+            r#type: value.r#type.into(),
             suspend_end_date: value
                 .suspend_end_date
                 .map(|suspend_end_date| suspend_end_date.format_timestamp()),
             protocol: value.protocol,
             profile: value.profile,
+            parent_id: value.parent_id.map(|parent_id| parent_id.to_string()),
         }
     }
 }
@@ -865,9 +872,11 @@ impl TryFrom<CredentialListQueryBindingDTO>
                 exact: convert_inner_of_inner(value.exact),
                 roles: convert_inner_of_inner(value.roles),
                 ids: into_id_opt_vec(&value.ids)?,
+                parent_id: into_id_opt(value.parent_id)?,
                 credential_schema_ids: into_id_opt_vec(&value.credential_schema_ids)?,
                 issuers: None,
                 states: convert_inner_of_inner(value.states),
+                types: convert_inner_of_inner(value.types),
                 profiles: value.profiles,
                 created_date_after: into_timestamp_opt(value.created_date_after)?,
                 created_date_before: into_timestamp_opt(value.created_date_before)?,

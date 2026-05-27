@@ -17,7 +17,10 @@ impl<IN, OUT: From<IN>> TryFrom<CredentialDetailResponseDTO<IN>>
             created_date: value.created_date,
             issuance_date: value.issuance_date,
             revocation_date: value.revocation_date,
+            consumed_at: value.consumed_at,
             state: value.state.into(),
+            r#type: value.r#type.into(),
+            remaining_batch_item_count: value.remaining_batch_item_count,
             last_modified: value.last_modified,
             schema: value.schema.into(),
             issuer: convert_inner(value.issuer),
@@ -35,6 +38,7 @@ impl<IN, OUT: From<IN>> TryFrom<CredentialDetailResponseDTO<IN>>
             wallet_unit_attestation: convert_inner(value.wallet_unit_attestation),
             webhook_destination_url: value.webhook_destination_url,
             trust_information: value.trust_information.map(Into::into),
+            parent_id: value.parent_id,
         })
     }
 }

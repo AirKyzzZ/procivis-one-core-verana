@@ -7,6 +7,7 @@ use one_core::model::credential::{
 };
 use one_core::model::credential_schema::CredentialSchema;
 use one_core::model::identifier::{Identifier, IdentifierRelations};
+use one_core::model::relation::Related;
 use one_core::repository::credential_repository::CredentialRepository;
 use shared_types::CredentialId;
 use sql_data_provider::test_utilities::get_dummy_date;
@@ -55,7 +56,7 @@ impl CredentialsDB {
         protocol: &str,
         params: TestingCredentialParams,
     ) -> Credential {
-        let credential_id = Uuid::new_v4().into();
+        let credential_id = params.id.unwrap_or(Uuid::new_v4().into());
         let claim_schemas = credential_schema.claim_schemas.get().await.unwrap();
 
         let claims = if let Some(claims_data) = params.claims_data {
@@ -139,11 +140,11 @@ impl CredentialsDB {
             last_modified: get_dummy_date(),
             issuance_date,
             deleted_at: params.deleted_at,
-            consumed_at: None,
+            consumed_at: params.consumed_at,
             protocol: protocol.to_owned(),
             redirect_uri: None,
             role: params.role.unwrap_or(CredentialRole::Issuer),
-            r#type: CredentialType::Single,
+            r#type: params.r#type.unwrap_or(CredentialType::Single),
             state,
             suspend_end_date: params.suspend_end_date,
             claims: Some(claims),
@@ -161,7 +162,9 @@ impl CredentialsDB {
             wallet_unit_attestation_blob_id: params.wallet_unit_attestation_blob_id,
             wallet_instance_attestation_blob_id: params.wallet_instance_attestation_blob_id,
             webhook_url: params.webhook_url,
-            parent: None,
+            parent: params
+                .parent_id
+                .map(|id| Related::new(id, self.repository.clone())),
         };
 
         let id = self

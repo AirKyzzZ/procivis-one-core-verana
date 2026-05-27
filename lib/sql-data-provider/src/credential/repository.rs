@@ -560,6 +560,7 @@ impl CredentialRepository for CredentialProvider {
         };
 
         let suspend_end_date = from_clearable(request.suspend_end_date);
+        let consumed_at = from_clearable(request.consumed_at);
 
         let state = match request.state {
             None => NotSet,
@@ -593,6 +594,7 @@ impl CredentialRepository for CredentialProvider {
             key_id,
             redirect_uri,
             suspend_end_date,
+            consumed_at,
             state,
             credential_blob_id,
             wallet_unit_attestation_blob_id,

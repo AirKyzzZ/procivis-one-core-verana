@@ -48,6 +48,8 @@ async fn test_unpack_real_backup_1_62_1() {
             issuance_date_before: None,
             revocation_date_after: None,
             revocation_date_before: None,
+            parent_id: None,
+            types: None,
         })
         .await
         .unwrap();

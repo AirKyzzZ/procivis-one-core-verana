@@ -77,6 +77,9 @@ impl IntoFilterCondition for CredentialFilterValue {
                 )
                 .into_condition(),
             Self::CredentialIds(ids) => credential::Column::Id.is_in(ids.iter()).into_condition(),
+            Self::ParentCredential(parent_id) => {
+                get_equals_condition(credential::Column::ParentId, parent_id.to_string())
+            }
             Self::CredentialSchemaIds(ids) => credential::Column::CredentialSchemaId
                 .is_in(ids.iter())
                 .into_condition(),
@@ -111,6 +114,20 @@ impl IntoFilterCondition for CredentialFilterValue {
                         .collect::<Vec<_>>(),
                 )
                 .into_condition(),
+            Self::Types(types) => credential::Column::Type
+                .is_in(
+                    types
+                        .into_iter()
+                        .map(credential::CredentialType::from)
+                        .collect::<Vec<_>>(),
+                )
+                .into_condition(),
+            Self::Consumed(consumed) => (if consumed {
+                credential::Column::ConsumedAt.is_not_null()
+            } else {
+                credential::Column::ConsumedAt.is_null()
+            })
+            .into_condition(),
             Self::SuspendEndDate(comparison) => {
                 get_comparison_condition(credential::Column::SuspendEndDate, comparison)
             }

@@ -16,7 +16,7 @@ use crate::model::identifier::Identifier;
 use crate::provider::credential_formatter::mapper::credential_data_from_credential_detail_response;
 use crate::provider::credential_formatter::model::{PublishedClaim, PublishedClaimValue};
 use crate::service::credential::dto::{
-    CredentialDetailResponseDTO, CredentialRole, CredentialStateEnum,
+    CredentialDetailResponseDTO, CredentialRole, CredentialStateEnum, CredentialTypeEnum,
     DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO,
     DetailCredentialSchemaResponseDTO,
 };
@@ -35,6 +35,7 @@ fn generate_credential_detail_response(
         created_date: now,
         issuance_date: None,
         revocation_date: None,
+        consumed_at: None,
         state: CredentialStateEnum::Created,
         last_modified: now,
         schema: DetailCredentialSchemaResponseDTO {
@@ -64,6 +65,7 @@ fn generate_credential_detail_response(
         claims,
         redirect_uri: None,
         role: CredentialRole::Holder,
+        r#type: CredentialTypeEnum::Single,
         interaction_id: None,
         suspend_end_date: None,
         mdoc_mso_validity: None,
@@ -74,6 +76,8 @@ fn generate_credential_detail_response(
         wallet_unit_attestation: None,
         webhook_destination_url: None,
         trust_information: None,
+        remaining_batch_item_count: None,
+        parent_id: None,
     }
 }
 

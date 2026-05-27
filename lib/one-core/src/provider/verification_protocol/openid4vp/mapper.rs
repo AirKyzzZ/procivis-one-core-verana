@@ -62,6 +62,7 @@ use crate::provider::verification_protocol::openid4vp::service::create_open_id_f
 use crate::provider::verification_protocol::openid4vp::{
     FormatMapper, TypeToDescriptorMapper, VerificationProtocolError,
 };
+use crate::repository::credential_repository::CredentialRepository;
 use crate::service::error::{BusinessLogicError, ServiceError};
 
 pub(super) async fn presentation_definition_from_interaction_data(
@@ -69,6 +70,7 @@ pub(super) async fn presentation_definition_from_interaction_data(
     credentials: Vec<Credential>,
     credential_groups: Vec<CredentialGroup>,
     config: &CoreConfig,
+    credential_repository: &dyn CredentialRepository,
 ) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError> {
     Ok(PresentationDefinitionResponseDTO {
         request_groups: vec![PresentationDefinitionRequestGroupResponseDTO {
@@ -122,7 +124,12 @@ pub(super) async fn presentation_definition_from_interaction_data(
                 })
                 .collect::<Result<Vec<_>, VerificationProtocolError>>()?,
         }],
-        credentials: credential_model_to_credential_dto(convert_inner(credentials), config).await?,
+        credentials: credential_model_to_credential_dto(
+            convert_inner(credentials),
+            config,
+            credential_repository,
+        )
+        .await?,
     })
 }
 

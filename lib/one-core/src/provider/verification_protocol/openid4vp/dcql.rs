@@ -46,7 +46,9 @@ use crate::service::credential::dto::{
     CredentialAttestationBlobs, CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO,
     DetailCredentialClaimValueResponseDTO,
 };
-use crate::service::credential::mapper::credential_detail_response_from_model;
+use crate::service::credential::mapper::{
+    credential_detail_response_from_model, get_remaining_batch_item_count,
+};
 use crate::service::credential_schema::dto::{
     CredentialSchemaDetailResponseDTO, CredentialSchemaFilterValue,
     CredentialSchemaListIncludeEntityTypeEnum,
@@ -154,7 +156,12 @@ pub(crate) async fn get_presentation_definition_for_dcql_query(
             },
             requested_credentials,
         }],
-        credentials: credential_model_to_credential_dto(relevant_credentials, config).await?,
+        credentials: credential_model_to_credential_dto(
+            relevant_credentials,
+            config,
+            credential_repository,
+        )
+        .await?,
     })
 }
 
@@ -310,12 +317,17 @@ pub(crate) async fn get_presentation_definition_v2(
             let Some(claims) = claims else {
                 continue;
             };
+            let remaining_batch_item_count =
+                get_remaining_batch_item_count(&candidate, credential_repository)
+                    .await
+                    .error_while("getting remaining batch items")?;
             let credential_detail_dto = credential_detail_response_from_model(
                 candidate,
                 config,
                 None,
                 CredentialAttestationBlobs::default(),
                 None,
+                remaining_batch_item_count,
             )
             .await
             .error_while("creating credential detail")?;
@@ -424,6 +436,7 @@ fn map_to_filtered_dto(
         created_date: full_dto.created_date,
         issuance_date: full_dto.issuance_date,
         revocation_date: full_dto.revocation_date,
+        consumed_at: full_dto.consumed_at,
         state: full_dto.state,
         last_modified: full_dto.last_modified,
         schema: full_dto.schema,
@@ -436,6 +449,7 @@ fn map_to_filtered_dto(
             .collect(),
         redirect_uri: full_dto.redirect_uri,
         role: full_dto.role,
+        r#type: full_dto.r#type,
         interaction_id: full_dto.interaction_id,
         suspend_end_date: full_dto.suspend_end_date,
         mdoc_mso_validity: full_dto.mdoc_mso_validity,
@@ -446,6 +460,8 @@ fn map_to_filtered_dto(
         wallet_unit_attestation: None,
         webhook_destination_url: full_dto.webhook_destination_url,
         trust_information: full_dto.trust_information,
+        remaining_batch_item_count: full_dto.remaining_batch_item_count,
+        parent_id: full_dto.parent_id,
     }
 }
 

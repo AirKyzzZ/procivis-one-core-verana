@@ -28,7 +28,9 @@ pub struct CredentialListItemResponseDTO {
     pub created_date: OffsetDateTime,
     pub issuance_date: Option<OffsetDateTime>,
     pub revocation_date: Option<OffsetDateTime>,
+    pub consumed_at: Option<OffsetDateTime>,
     pub state: CredentialStateEnum,
+    pub r#type: CredentialTypeEnum,
     pub last_modified: OffsetDateTime,
     pub schema: CredentialSchemaListItemResponseDTO,
     pub issuer: Option<GetIdentifierListItemResponseDTO>,
@@ -37,6 +39,7 @@ pub struct CredentialListItemResponseDTO {
     pub protocol: String,
     pub profile: Option<String>,
     pub webhook_destination_url: Option<String>,
+    pub parent_id: Option<CredentialId>,
 }
 
 #[skip_serializing_none]
@@ -50,7 +53,10 @@ pub struct CredentialDetailResponseDTO<T> {
     pub issuance_date: Option<OffsetDateTime>,
     #[serde(with = "time::serde::rfc3339::option")]
     pub revocation_date: Option<OffsetDateTime>,
+    pub consumed_at: Option<OffsetDateTime>,
     pub state: CredentialStateEnum,
+    pub r#type: CredentialTypeEnum,
+    pub remaining_batch_item_count: Option<u32>,
     #[serde(with = "time::serde::rfc3339")]
     pub last_modified: OffsetDateTime,
     pub schema: DetailCredentialSchemaResponseDTO,
@@ -71,6 +77,7 @@ pub struct CredentialDetailResponseDTO<T> {
     pub wallet_unit_attestation: Option<WalletUnitAttestationDTO>,
     pub webhook_destination_url: Option<String>,
     pub trust_information: Option<TrustInformation>,
+    pub parent_id: Option<CredentialId>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -180,6 +187,16 @@ pub enum CredentialStateEnum {
     InteractionExpired,
 }
 
+#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize, Into, From)]
+#[from("crate::model::credential::CredentialType")]
+#[into("crate::model::credential::CredentialType")]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum CredentialTypeEnum {
+    Single,
+    BatchParent,
+    BatchItem,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CredentialSearchTypeDTO {
     ClaimName,
@@ -196,10 +213,12 @@ pub struct CredentialFilterParamsDTO {
     pub exact: Option<Vec<ExactCredentialFilterColumn>>,
     pub roles: Option<Vec<CredentialRole>>,
     pub ids: Option<Vec<CredentialId>>,
+    pub parent_id: Option<CredentialId>,
     pub credential_schema_ids: Option<Vec<CredentialSchemaId>>,
     pub issuers: Option<Vec<IdentifierId>>,
     pub states: Option<Vec<CredentialStateEnum>>,
     pub profiles: Option<Vec<String>>,
+    pub types: Option<Vec<CredentialTypeEnum>>,
     pub created_date_after: Option<OffsetDateTime>,
     pub created_date_before: Option<OffsetDateTime>,
     pub last_modified_after: Option<OffsetDateTime>,

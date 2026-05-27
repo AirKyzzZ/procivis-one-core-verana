@@ -5,13 +5,14 @@ use uuid::Uuid;
 use super::CredentialService;
 use super::dto::{
     CreateCredentialRequestDTO, CredentialAttestationBlobs, CredentialDetailResponseDTO,
-    CredentialRevocationCheckResponseDTO, DetailCredentialClaimResponseDTO,
-    GetCredentialListResponseDTO, ShareCredentialResponseDTO, SuspendCredentialRequestDTO,
+    CredentialFilterParamsDTO, CredentialRevocationCheckResponseDTO,
+    DetailCredentialClaimResponseDTO, GetCredentialListResponseDTO, ShareCredentialResponseDTO,
+    SuspendCredentialRequestDTO,
 };
 use super::error::CredentialServiceError;
 use super::mapper::{
     claims_from_create_request, credential_detail_response_from_model, from_create_request,
-    to_credential_list_response,
+    get_remaining_batch_item_count, to_credential_list_response,
 };
 use super::validator::{
     throw_if_credential_state_eq, validate_format_and_did_method_compatibility,
@@ -35,7 +36,6 @@ use crate::provider::issuance_protocol::model::ShareResponse;
 use crate::provider::revocation::model::RevocationState;
 use crate::repository::error::DataLayerError;
 use crate::service::common_dto::{ListQueryDTO, TrustInformationDetailResponseDTO};
-use crate::service::credential::dto::CredentialFilterParamsDTO;
 use crate::service::credential_schema::validator::validate_key_storage_security_supported;
 use crate::service::error::{BusinessLogicError, MissingProviderError};
 use crate::util::interactions::{add_new_interaction, clear_previous_interaction};
@@ -347,12 +347,17 @@ impl CredentialService {
 
         let attestation_blobs = self.get_wallet_attestation_blobs(&credential).await?;
 
+        let remaining_batch_item_count =
+            get_remaining_batch_item_count(&credential, self.credential_repository.as_ref())
+                .await?;
+
         let response = credential_detail_response_from_model(
             credential,
             &self.config,
             mdoc_validity_credentials,
             attestation_blobs,
             trust_information,
+            remaining_batch_item_count,
         )
         .await?;
 

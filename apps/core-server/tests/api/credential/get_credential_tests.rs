@@ -1,6 +1,6 @@
 use one_core::model::blob::BlobType;
 use one_core::model::claim_schema::ClaimSchema;
-use one_core::model::credential::{CredentialRole, CredentialStateEnum};
+use one_core::model::credential::{CredentialRole, CredentialStateEnum, CredentialType};
 use one_core::model::history::{
     HistoryAction, HistoryMetadata, TrustResolutionMetadata, TrustResolutionResult,
     WalletRelyingPartyMetadata,
@@ -293,4 +293,92 @@ async fn test_get_credential_success_metadata() {
     resp["id"].assert_eq(&credential.id);
     assert_eq!(resp["claims"].as_array().unwrap().len(), 1);
     assert_eq!(resp["claims"][0]["path"], "string_claim".to_string());
+}
+
+#[tokio::test]
+async fn test_get_credential_success_batch() {
+    // GIVEN
+    let (context, org, _, identifier, _) = TestContext::new_with_did(None).await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "Simple batch schema",
+            &org,
+            None,
+            TestingCreateSchemaParams {
+                batch_size: Some(2),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let parent_credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                r#type: Some(CredentialType::BatchParent),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let item_credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                r#type: Some(CredentialType::BatchItem),
+                parent_id: Some(parent_credential.id),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context.api.credentials.get(&parent_credential.id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    resp["id"].assert_eq(&parent_credential.id);
+    assert_eq!(resp["type"].as_str().unwrap(), "BATCH_PARENT");
+    assert!(!resp.as_object().unwrap().contains_key("parentId"));
+    assert_eq!(
+        resp["remainingBatchItemCount"]
+            .as_number()
+            .unwrap()
+            .as_u64()
+            .unwrap(),
+        1
+    );
+
+    // WHEN
+    let resp = context.api.credentials.get(&item_credential.id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    resp["id"].assert_eq(&item_credential.id);
+    assert_eq!(resp["type"].as_str().unwrap(), "BATCH_ITEM");
+    assert!(
+        !resp
+            .as_object()
+            .unwrap()
+            .contains_key("remainingBatchItemCount")
+    );
+    assert_eq!(
+        resp["parentId"].as_str().unwrap(),
+        parent_credential.id.to_string()
+    );
 }

@@ -32,10 +32,12 @@ use crate::model::list_filter::{
     ComparisonType, ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
     ValueComparison,
 };
+use crate::model::list_query::ListQuery;
 use crate::model::localized_text::LocalizedTextField;
 use crate::model::validity_credential::ValidityCredential;
 use crate::proto::trust_information::dto::TrustInformation;
 use crate::provider::credential_formatter::mdoc_formatter;
+use crate::repository::credential_repository::CredentialRepository;
 use crate::service::certificate::mapper::certificate_to_response_dto;
 use crate::service::credential_schema::dto::{
     CredentialClaimSchemaDTO, CredentialSchemaTranslationsDTO,
@@ -48,6 +50,7 @@ pub(crate) async fn credential_detail_response_from_model(
     validity_credential: Option<ValidityCredential>,
     attestation: CredentialAttestationBlobs,
     trust_information: Option<TrustInformation>,
+    remaining_batch_item_count: Option<u32>,
 ) -> Result<CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>, CredentialServiceError> {
     let schema_model = value
         .schema
@@ -99,6 +102,7 @@ pub(crate) async fn credential_detail_response_from_model(
         created_date: value.created_date,
         issuance_date: value.issuance_date,
         revocation_date: get_revocation_date(&state, &value.last_modified),
+        consumed_at: value.consumed_at,
         state: state.into(),
         last_modified: value.last_modified,
         claims: from_vec_claim(claims, schema_model, config).await?,
@@ -106,6 +110,7 @@ pub(crate) async fn credential_detail_response_from_model(
         issuer: convert_inner(value.issuer_identifier),
         redirect_uri: value.redirect_uri,
         role: value.role.into(),
+        r#type: value.r#type.into(),
         interaction_id: value.interaction.map(|i| i.id),
         suspend_end_date: value.suspend_end_date,
         mdoc_mso_validity,
@@ -123,6 +128,8 @@ pub(crate) async fn credential_detail_response_from_model(
             .transpose()?,
         webhook_destination_url: value.webhook_url,
         trust_information,
+        remaining_batch_item_count,
+        parent_id: value.parent.map(|parent| parent.id()),
     })
 }
 
@@ -375,15 +382,18 @@ pub(super) async fn to_credential_list_response(
         created_date: credential.created_date,
         issuance_date: credential.issuance_date,
         revocation_date: get_revocation_date(&credential.state, &credential.last_modified),
+        consumed_at: credential.consumed_at,
         state: credential.state.into(),
         last_modified: credential.last_modified,
         schema: to_credential_schema_list_response(schema, include_translations).await?,
         issuer: convert_inner(credential.issuer_identifier),
         role: credential.role.into(),
+        r#type: credential.r#type.into(),
         suspend_end_date: credential.suspend_end_date,
         protocol: credential.protocol,
         profile: credential.profile,
         webhook_destination_url: credential.webhook_url,
+        parent_id: credential.parent.map(|parent| parent.id()),
     })
 }
 
@@ -694,6 +704,8 @@ impl From<CredentialFilterParamsDTO> for ListFilterCondition<CredentialFilterVal
 
         let credential_ids = value.ids.map(CredentialFilterValue::CredentialIds);
 
+        let parent_credential = value.parent_id.map(CredentialFilterValue::ParentCredential);
+
         let credential_schema_ids = value
             .credential_schema_ids
             .map(CredentialFilterValue::CredentialSchemaIds);
@@ -705,6 +717,15 @@ impl From<CredentialFilterParamsDTO> for ListFilterCondition<CredentialFilterVal
                 values
                     .into_iter()
                     .map(crate::model::credential::CredentialStateEnum::from)
+                    .collect(),
+            )
+        });
+
+        let types = value.types.map(|values| {
+            CredentialFilterValue::Types(
+                values
+                    .into_iter()
+                    .map(crate::model::credential::CredentialType::from)
                     .collect(),
             )
         });
@@ -765,9 +786,11 @@ impl From<CredentialFilterParamsDTO> for ListFilterCondition<CredentialFilterVal
             & name
             & roles
             & credential_ids
+            & parent_credential
             & credential_schema_ids
             & issuers
             & states
+            & types
             & profiles
             & created_date_after
             & created_date_before
@@ -778,4 +801,29 @@ impl From<CredentialFilterParamsDTO> for ListFilterCondition<CredentialFilterVal
             & revocation_date_after
             & revocation_date_before
     }
+}
+
+pub(crate) async fn get_remaining_batch_item_count(
+    credential: &Credential,
+    credential_repository: &dyn CredentialRepository,
+) -> Result<Option<u32>, CredentialServiceError> {
+    Ok(if credential.r#type == CredentialType::BatchParent {
+        Some(
+            credential_repository
+                .get_credential_list(ListQuery {
+                    filtering: Some(
+                        CredentialFilterValue::ParentCredential(credential.id).condition()
+                            & CredentialFilterValue::Consumed(false)
+                            & CredentialFilterValue::Types(vec![CredentialType::BatchItem])
+                            & CredentialFilterValue::States(vec![CredentialStateEnum::Accepted]),
+                    ),
+                    ..Default::default()
+                })
+                .await
+                .error_while("listing batch items")?
+                .total_items as _,
+        )
+    } else {
+        None
+    })
 }

@@ -49,7 +49,9 @@ use crate::provider::verification_protocol::deserialize_interaction_data;
 use crate::provider::verification_protocol::openid4vp::mapper::format_to_type;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::service::credential::dto::CredentialAttestationBlobs;
-use crate::service::credential::mapper::credential_detail_response_from_model;
+use crate::service::credential::mapper::{
+    credential_detail_response_from_model, get_remaining_batch_item_count,
+};
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 
 mod ble;
@@ -366,12 +368,20 @@ impl VerificationProtocol for IsoMdl {
                 if credential_claim_requested {
                     applicable_credentials.push(credential.id);
 
+                    let remaining_batch_item_count = get_remaining_batch_item_count(
+                        &credential,
+                        self.credential_repository.as_ref(),
+                    )
+                    .await
+                    .error_while("getting remaining batch items")?;
+
                     let credential = credential_detail_response_from_model(
                         credential,
                         &self.config,
                         None,
                         CredentialAttestationBlobs::default(),
                         None,
+                        remaining_batch_item_count,
                     )
                     .await
                     .error_while("creating credential detail")?;

@@ -448,6 +448,8 @@ async fn test_get_credential_list_success() {
                 issuance_date_before: None,
                 revocation_date_after: None,
                 revocation_date_before: None,
+                parent_id: None,
+                types: None,
             },
             include: None,
         })
@@ -5493,6 +5495,8 @@ async fn test_list_credential_session_org_mismatch() {
                 issuance_date_before: None,
                 revocation_date_after: None,
                 revocation_date_before: None,
+                parent_id: None,
+                types: None,
             },
             include: None,
         })

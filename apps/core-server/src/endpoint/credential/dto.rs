@@ -5,9 +5,10 @@ use one_core::proto::trust_information::dto::TrustInformation;
 use one_core::service::credential::dto::{
     CreateCredentialRequestDTO, CredentialFilterParamsDTO, CredentialListItemResponseDTO,
     CredentialRequestClaimDTO, CredentialRevocationCheckResponseDTO, CredentialRole,
-    CredentialSearchTypeDTO, CredentialStateEnum, DetailCredentialClaimResponseDTO,
-    DetailCredentialSchemaResponseDTO, MdocMsoValidityResponseDTO, ShareCredentialResponseDTO,
-    SuspendCredentialRequestDTO, WalletInstanceAttestationDTO, WalletUnitAttestationDTO,
+    CredentialSearchTypeDTO, CredentialStateEnum, CredentialTypeEnum,
+    DetailCredentialClaimResponseDTO, DetailCredentialSchemaResponseDTO,
+    MdocMsoValidityResponseDTO, ShareCredentialResponseDTO, SuspendCredentialRequestDTO,
+    WalletInstanceAttestationDTO, WalletUnitAttestationDTO,
 };
 use one_core::service::error::ServiceError;
 use one_dto_mapper::{From, Into, TryInto, convert_inner, convert_inner_of_inner};
@@ -48,7 +49,12 @@ pub(crate) struct CredentialListItemResponseRestDTO {
     #[serde(serialize_with = "front_time_option")]
     #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
     pub revocation_date: Option<OffsetDateTime>,
+    #[serde(serialize_with = "front_time_option")]
+    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
+    pub consumed_at: Option<OffsetDateTime>,
     pub state: CredentialStateRestEnum,
+    pub r#type: CredentialTypeRestEnum,
+    pub parent_id: Option<CredentialId>,
     #[serde(serialize_with = "front_time")]
     #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
@@ -125,6 +131,17 @@ pub(crate) struct GetCredentialResponseRestDTO<TClaim> {
     /// `HOLDER`.
     pub role: CredentialRoleRestEnum,
     pub interaction_id: Option<InteractionId>,
+
+    #[serde(serialize_with = "front_time_option")]
+    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
+    pub consumed_at: Option<OffsetDateTime>,
+    pub r#type: CredentialTypeRestEnum,
+
+    /// number of non-consumed batch items (if batch parent)
+    pub remaining_batch_item_count: Option<u32>,
+
+    /// batch parent (if batch item)
+    pub parent_id: Option<CredentialId>,
 
     /// Scheduled date for credential reactivation.
     #[serde(serialize_with = "front_time_option")]
@@ -267,6 +284,17 @@ pub(crate) enum CredentialStateRestEnum {
     InteractionExpired,
 }
 
+/// The type representation of the credential in the system.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, From, Into)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[from(CredentialTypeEnum)]
+#[into(CredentialTypeEnum)]
+pub(crate) enum CredentialTypeRestEnum {
+    Single,
+    BatchParent,
+    BatchItem,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
 #[into(CredentialSearchTypeDTO)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -307,10 +335,18 @@ pub(crate) struct CredentialsFilterQueryParamsRest {
     #[param(rename = "ids[]", inline, nullable = false)]
     #[try_into(infallible)]
     pub ids: Option<Vec<CredentialId>>,
+    /// Return only batch credentials under this batch parent.
+    #[param(nullable = false)]
+    #[try_into(infallible)]
+    pub parent_id: Option<CredentialId>,
     /// Filter by one or more credential states.
     #[try_into(infallible, with_fn = convert_inner_of_inner)]
     #[param(rename = "states[]", inline, nullable = false)]
     pub states: Option<Vec<CredentialStateRestEnum>>,
+    /// Filter credentials by one or more types: part of a batch or standalone credential
+    #[try_into(infallible, with_fn = convert_inner_of_inner)]
+    #[param(rename = "types[]", inline, nullable = false)]
+    pub types: Option<Vec<CredentialTypeRestEnum>>,
     /// Filter by one or more identifier IDs.
     #[param(rename = "issuers[]", inline, nullable = false)]
     #[try_into(infallible)]

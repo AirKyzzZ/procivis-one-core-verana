@@ -208,6 +208,7 @@ pub(crate) async fn get_presentation_definition_with_local_credentials(
         convert_inner(credentials),
         convert_inner(credential_groups),
         config,
+        credential_repository,
     )
     .await
 }

@@ -22,6 +22,7 @@ pub(super) async fn unexportable_entities_to_response_dto(
                 None,
                 CredentialAttestationBlobs::default(),
                 None,
+                None,
             )
             .await
             .error_while("converting credential")?,

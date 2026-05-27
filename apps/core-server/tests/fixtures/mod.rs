@@ -41,6 +41,7 @@ use one_core::model::proof_schema::{
     ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations, ProofSchema,
     ProofSchemaClaimRelations, ProofSchemaRelations,
 };
+use one_core::model::relation::Related;
 use one_core::repository::DataRepository;
 use one_crypto::encryption::encrypt_string;
 use one_crypto::utilities::generate_alphanumeric;
@@ -49,8 +50,8 @@ use sea_orm::sqlx::{Executor, raw_sql};
 use sea_orm::{ConnectionTrait, DatabaseConnection, DbBackend, Statement};
 use secrecy::{SecretSlice, SecretString};
 use shared_types::{
-    BlobId, ClaimSchemaId, CredentialFormat, CredentialSchemaId, DidId, DidMethodId, DidValue,
-    EntityId, IdentifierId, InteractionId, KeyId, ProofId, RevocationMethodId,
+    BlobId, ClaimSchemaId, CredentialFormat, CredentialId, CredentialSchemaId, DidId, DidMethodId,
+    DidValue, EntityId, IdentifierId, InteractionId, KeyId, ProofId, RevocationMethodId,
 };
 use similar_asserts::assert_eq;
 use sql_data_provider::test_utilities::*;
@@ -877,10 +878,14 @@ pub struct ClaimData {
 
 #[derive(Debug, Default)]
 pub struct TestingCredentialParams {
+    pub id: Option<CredentialId>,
     pub holder_identifier: Option<Identifier>,
     pub interaction: Option<Interaction>,
     pub deleted_at: Option<OffsetDateTime>,
+    pub consumed_at: Option<OffsetDateTime>,
     pub role: Option<CredentialRole>,
+    pub r#type: Option<CredentialType>,
+    pub parent_id: Option<CredentialId>,
     pub key: Option<Key>,
     pub issuer_certificate: Option<Certificate>,
     pub suspend_end_date: Option<OffsetDateTime>,
@@ -903,7 +908,7 @@ pub async fn create_credential(
 ) -> Credential {
     let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
-    let credential_id = Uuid::new_v4().into();
+    let credential_id = params.id.unwrap_or(Uuid::new_v4().into());
     assert!(params.claims_data.is_none());
     let claims: Vec<Claim> = credential_schema
         .claim_schemas
@@ -929,11 +934,11 @@ pub async fn create_credential(
         last_modified: get_dummy_date(),
         issuance_date: None,
         deleted_at: params.deleted_at,
-        consumed_at: None,
+        consumed_at: params.consumed_at,
         protocol: exchange.to_owned(),
         redirect_uri: None,
         role: params.role.unwrap_or(CredentialRole::Issuer),
-        r#type: CredentialType::Single,
+        r#type: params.r#type.unwrap_or(CredentialType::Single),
         state,
         suspend_end_date: params.suspend_end_date,
         claims: Some(claims),
@@ -948,7 +953,9 @@ pub async fn create_credential(
         wallet_unit_attestation_blob_id: params.wallet_unit_attestation_blob_id,
         wallet_instance_attestation_blob_id: params.wallet_instance_attestation_blob_id,
         webhook_url: params.webhook_url,
-        parent: None,
+        parent: params
+            .parent_id
+            .map(|id| Related::new(id, data_layer.get_credential_repository())),
     };
 
     data_layer
