@@ -17,7 +17,7 @@ use crate::model::blob::{Blob, BlobType};
 use crate::model::certificate::{Certificate, CertificateRole, CertificateState};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
+use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
 use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, LayoutType};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::{Did, DidType};
@@ -295,9 +295,11 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
         issuance_date: None,
         last_modified: crate::clock::now_utc(),
         deleted_at: None,
+        consumed_at: None,
         protocol: exchange.to_owned(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
+        r#type: CredentialType::Single,
         state: CredentialStateEnum::Pending,
         suspend_end_date: None,
         profile: None,
@@ -385,6 +387,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
+        parent: None,
     }
 }
 

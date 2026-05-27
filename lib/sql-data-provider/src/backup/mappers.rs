@@ -7,6 +7,7 @@ use one_core::model::credential_schema::{CredentialSchema, LayoutType, Transacti
 use one_core::model::credential_schema_format::CredentialSchemaFormat;
 use one_core::model::organisation::Organisation;
 use one_core::model::relation::{Related, RelatedVec};
+use one_core::repository::credential_repository::CredentialRepository;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::organisation_repository::OrganisationRepository;
 use one_dto_mapper::convert_inner;
@@ -25,6 +26,7 @@ fn claim_with_schema_to_claim(value: ClaimWithSchema, db: TransactionManagerImpl
 
 pub(super) fn credential_from_unexportable_model(
     value: UnexportableCredentialModel,
+    credential_repository: &Arc<dyn CredentialRepository>,
     organisation_repository: &Arc<dyn OrganisationRepository>,
     db: &TransactionManagerImpl,
 ) -> Result<Credential, DataLayerError> {
@@ -78,9 +80,11 @@ pub(super) fn credential_from_unexportable_model(
         issuance_date: value.issuance_date,
         last_modified: value.last_modified,
         deleted_at: value.deleted_at,
+        consumed_at: value.consumed_at,
         protocol: value.protocol,
         redirect_uri: value.redirect_uri,
         role: value.role.into(),
+        r#type: value.r#type.into(),
         state: value.state.into(),
         suspend_end_date: value.suspend_end_date,
         profile: value.profile,
@@ -128,5 +132,8 @@ pub(super) fn credential_from_unexportable_model(
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
         webhook_url: value.webhook_url,
+        parent: value
+            .parent_id
+            .map(|id| Related::new(id, credential_repository.clone())),
     })
 }

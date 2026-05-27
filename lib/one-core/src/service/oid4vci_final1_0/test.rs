@@ -16,7 +16,7 @@ use super::error::OID4VCIFinal1_0ServiceError;
 use crate::config::core_config::{CoreConfig, KeyAlgorithmType};
 use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
+use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
 use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, LayoutType};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::Did;
@@ -304,9 +304,11 @@ fn dummy_credential(
         issuance_date: None,
         last_modified: crate::clock::now_utc(),
         deleted_at: None,
+        consumed_at: None,
         protocol: protocol.to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
+        r#type: CredentialType::Single,
         state,
         suspend_end_date: None,
         claims: None,
@@ -327,6 +329,7 @@ fn dummy_credential(
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
+        parent: None,
     }
 }
 

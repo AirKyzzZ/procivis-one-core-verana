@@ -8,7 +8,7 @@ use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use crate::config::core_config::{self, DatatypeConfig, DatatypeType};
-use crate::model::credential::Credential;
+use crate::model::credential::{Credential, CredentialType};
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::{Did, DidType};
@@ -87,9 +87,11 @@ fn generate_credential_matching_detail(
         issuance_date: detail.issuance_date,
         last_modified: detail.last_modified,
         deleted_at: None,
+        consumed_at: None,
         protocol: detail.protocol,
         redirect_uri: detail.redirect_uri,
         role: crate::model::credential::CredentialRole::Holder,
+        r#type: CredentialType::Single,
         state: crate::model::credential::CredentialStateEnum::Created,
         suspend_end_date: detail.suspend_end_date,
         claims: None,
@@ -185,6 +187,7 @@ fn generate_credential_matching_detail(
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
+        parent: None,
     }
 }
 

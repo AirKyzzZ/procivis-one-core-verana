@@ -13,7 +13,7 @@ use crate::mapper::credential_schema_claim::backfill_default_translations;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
-    Credential, CredentialRole, CredentialStateEnum, GetCredentialList,
+    Credential, CredentialRole, CredentialStateEnum, CredentialType, GetCredentialList,
 };
 use crate::model::credential_schema::{CredentialSchema, LayoutType};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
@@ -460,6 +460,9 @@ async fn test_get_presentation_definition_ok() {
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
+        consumed_at: None,
+        r#type: CredentialType::Single,
+        parent: None,
     };
 
     let mut credential_repository = MockCredentialRepository::new();

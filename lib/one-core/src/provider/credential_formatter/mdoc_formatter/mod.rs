@@ -42,7 +42,7 @@ use crate::mapper::x509::pem_chain_into_x5c;
 use crate::mapper::{NESTED_CLAIM_MARKER, decode_cbor_base64, encode_cbor_base64};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
+use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::organisation::Organisation;
 use crate::proto::certificate_validator::CertificateValidator;
@@ -533,9 +533,11 @@ impl CredentialFormatter for MdocFormatter {
             last_modified: crate::clock::now_utc(),
             issuance_date: Some(mso.validity_info.signed.into()),
             deleted_at: None,
+            consumed_at: None,
             protocol: "".to_string(),
             redirect_uri: None,
             role: CredentialRole::Holder,
+            r#type: CredentialType::Single,
             state: CredentialStateEnum::Accepted,
             suspend_end_date: None,
             profile: None,
@@ -553,6 +555,7 @@ impl CredentialFormatter for MdocFormatter {
             key: None,
             claims: Some(claims),
             webhook_url: None,
+            parent: None,
         })
     }
 }

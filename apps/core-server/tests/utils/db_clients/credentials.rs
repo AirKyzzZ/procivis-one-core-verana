@@ -3,7 +3,7 @@ use std::sync::Arc;
 use one_core::model::claim::{Claim, ClaimRelations};
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential::{
-    Credential, CredentialRelations, CredentialRole, CredentialStateEnum,
+    Credential, CredentialRelations, CredentialRole, CredentialStateEnum, CredentialType,
 };
 use one_core::model::credential_schema::CredentialSchema;
 use one_core::model::identifier::{Identifier, IdentifierRelations};
@@ -139,9 +139,11 @@ impl CredentialsDB {
             last_modified: get_dummy_date(),
             issuance_date,
             deleted_at: params.deleted_at,
+            consumed_at: None,
             protocol: protocol.to_owned(),
             redirect_uri: None,
             role: params.role.unwrap_or(CredentialRole::Issuer),
+            r#type: CredentialType::Single,
             state,
             suspend_end_date: params.suspend_end_date,
             claims: Some(claims),
@@ -159,6 +161,7 @@ impl CredentialsDB {
             wallet_unit_attestation_blob_id: params.wallet_unit_attestation_blob_id,
             wallet_instance_attestation_blob_id: params.wallet_instance_attestation_blob_id,
             webhook_url: params.webhook_url,
+            parent: None,
         };
 
         let id = self

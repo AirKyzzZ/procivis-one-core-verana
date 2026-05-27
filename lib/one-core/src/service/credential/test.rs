@@ -23,7 +23,7 @@ use crate::model::certificate::{Certificate, CertificateState};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
-    Credential, CredentialRole, CredentialStateEnum, GetCredentialList,
+    Credential, CredentialRole, CredentialStateEnum, CredentialType, GetCredentialList,
 };
 use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, LayoutType};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
@@ -146,9 +146,11 @@ async fn generic_credential() -> Credential {
         issuance_date: None,
         last_modified: now,
         deleted_at: None,
+        consumed_at: None,
         protocol: "OPENID4VCI_FINAL1".to_string(),
         redirect_uri: None,
         role: CredentialRole::Holder,
+        r#type: CredentialType::Single,
         state: CredentialStateEnum::Created,
         suspend_end_date: None,
         claims: Some(vec![Claim {
@@ -222,6 +224,7 @@ async fn generic_credential() -> Credential {
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
+        parent: None,
     }
 }
 
@@ -235,9 +238,11 @@ async fn generic_credential_list_entity() -> Credential {
         issuance_date: None,
         last_modified: now,
         deleted_at: None,
+        consumed_at: None,
         protocol: "OPENID4VCI_FINAL1".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
+        r#type: CredentialType::Single,
         state: CredentialStateEnum::Created,
         suspend_end_date: None,
         claims: None,
@@ -314,6 +319,7 @@ async fn generic_credential_list_entity() -> Credential {
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
+        parent: None,
     }
 }
 
@@ -3295,9 +3301,11 @@ async fn test_get_credential_success_array_complex_nested_all() {
         issuance_date: None,
         last_modified: now,
         deleted_at: None,
+        consumed_at: None,
         protocol: "OPENID4VCI_FINAL1".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
+        r#type: CredentialType::Single,
         state: CredentialStateEnum::Created,
         suspend_end_date: None,
         claims: Some(claims.to_owned()),
@@ -3389,6 +3397,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
+        parent: None,
     };
 
     {
@@ -4059,9 +4068,11 @@ async fn test_get_credential_success_array_index_sorting() {
         issuance_date: None,
         last_modified: now,
         deleted_at: None,
+        consumed_at: None,
         protocol: "OPENID4VCI_FINAL1".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
+        r#type: CredentialType::Single,
         state: CredentialStateEnum::Created,
         suspend_end_date: None,
         claims: Some(claims.to_owned()),
@@ -4153,6 +4164,7 @@ async fn test_get_credential_success_array_index_sorting() {
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
+        parent: None,
     };
 
     {
@@ -4461,9 +4473,11 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
         issuance_date: None,
         last_modified: now,
         deleted_at: None,
+        consumed_at: None,
         protocol: "OPENID4VCI_FINAL1".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
+        r#type: CredentialType::Single,
         state: CredentialStateEnum::Created,
         suspend_end_date: None,
         claims: Some(claims.to_owned()),
@@ -4555,6 +4569,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
+        parent: None,
     };
 
     {
@@ -4721,9 +4736,11 @@ async fn test_get_credential_success_array_single_element() {
         issuance_date: None,
         last_modified: now,
         deleted_at: None,
+        consumed_at: None,
         protocol: "OPENID4VCI_FINAL1".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
+        r#type: CredentialType::Single,
         state: CredentialStateEnum::Created,
         suspend_end_date: None,
         claims: Some(claims.to_owned()),
@@ -4815,6 +4832,7 @@ async fn test_get_credential_success_array_single_element() {
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
+        parent: None,
     };
 
     {

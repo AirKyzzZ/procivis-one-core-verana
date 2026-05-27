@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::sync::Arc;
 
 use shared_types::{ClaimId, CredentialId, InteractionId};
 
@@ -7,6 +8,7 @@ use crate::model::credential::{
     Credential, CredentialListQuery, CredentialRelations, GetCredentialList,
     UpdateCredentialRequest,
 };
+use crate::model::relation::AsyncModelLoader;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
@@ -54,4 +56,16 @@ pub trait CredentialRepository: Send + Sync {
         claim_id: &ClaimId,
         relations: &CredentialRelations,
     ) -> Result<Option<Credential>, DataLayerError>;
+}
+
+#[async_trait::async_trait]
+impl AsyncModelLoader<Credential> for Arc<dyn CredentialRepository> {
+    async fn load(&self, id: &CredentialId) -> Result<Credential, DataLayerError> {
+        self.get_credential(id, &CredentialRelations::default())
+            .await?
+            .ok_or_else(|| DataLayerError::MissingRequiredRelation {
+                relation: "credential",
+                id: id.to_string(),
+            })
+    }
 }

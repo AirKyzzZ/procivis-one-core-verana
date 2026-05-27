@@ -14,7 +14,7 @@ use crate::error::ContextWithErrorCode;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::common::GetListResponse;
-use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
+use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
 use crate::model::credential_schema::{
     Arrayed, CredentialSchema, CredentialSchemaClaimsNestedObjectView,
     CredentialSchemaClaimsNestedTypeView, CredentialSchemaClaimsNestedView,
@@ -189,6 +189,7 @@ pub(crate) fn extracted_credential_to_model(
         issuance_date,
         last_modified: now,
         deleted_at: None,
+        consumed_at: None,
         protocol: exchange,
         state: CredentialStateEnum::Accepted,
         suspend_end_date: None,
@@ -206,6 +207,8 @@ pub(crate) fn extracted_credential_to_model(
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
+        r#type: CredentialType::Single,
+        parent: None,
     })
 }
 

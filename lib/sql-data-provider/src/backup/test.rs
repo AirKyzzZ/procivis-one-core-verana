@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use futures::StreamExt;
 use one_core::repository::backup_repository::BackupRepository;
+use one_core::repository::credential_repository::MockCredentialRepository;
 use one_core::repository::key_repository::MockKeyRepository;
 use one_core::repository::organisation_repository::MockOrganisationRepository;
 use sea_orm::ActiveValue::NotSet;
@@ -16,7 +17,7 @@ use uuid::Uuid;
 use super::BackupProvider;
 use crate::db_conn;
 use crate::entity::certificate::{self, CertificateState};
-use crate::entity::credential::{self, CredentialRole, CredentialState};
+use crate::entity::credential::{self, CredentialRole, CredentialState, CredentialType};
 use crate::entity::credential_schema::KeyStorageSecurity;
 use crate::entity::did::{self, DidType};
 use crate::entity::identifier::{self, IdentifierState, IdentifierType};
@@ -77,15 +78,18 @@ async fn insert_credential_to_database(
         } else {
             NotSet
         },
+        consumed_at: Set(None),
         protocol: Set("protocol".to_owned()),
         redirect_uri: Set(None),
         role: Set(CredentialRole::Holder),
+        r#type: Set(CredentialType::Single),
         issuer_identifier_id: Set(None),
         issuer_certificate_id: Set(None),
         holder_identifier_id: Set(None),
         interaction_id: Set(None),
         key_id: Set(Some(key_id)),
         profile: Set(None),
+        parent_id: Set(None),
         credential_blob_id: Set(None),
         wallet_unit_attestation_blob_id: Set(None),
         wallet_instance_attestation_blob_id: Set(None),
@@ -258,6 +262,7 @@ async fn setup_empty() -> TestSetup {
         provider: BackupProvider {
             db: TransactionManagerImpl::new(db.clone()),
             exportable_storages: vec!["INTERNAL".into()],
+            credential_repository: Arc::new(MockCredentialRepository::new()),
             organisation_repository: Arc::new(MockOrganisationRepository::new()),
             key_repository: Arc::new(MockKeyRepository::new()),
         },

@@ -20,7 +20,7 @@ use one_core::model::certificate::{Certificate, CertificateRole, CertificateStat
 use one_core::model::claim::{Claim, ClaimRelations};
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::model::credential::{
-    Credential, CredentialRelations, CredentialRole, CredentialStateEnum,
+    Credential, CredentialRelations, CredentialRole, CredentialStateEnum, CredentialType,
 };
 use one_core::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, KeyStorageSecurity, LayoutProperties, LayoutType,
@@ -929,9 +929,11 @@ pub async fn create_credential(
         last_modified: get_dummy_date(),
         issuance_date: None,
         deleted_at: params.deleted_at,
+        consumed_at: None,
         protocol: exchange.to_owned(),
         redirect_uri: None,
         role: params.role.unwrap_or(CredentialRole::Issuer),
+        r#type: CredentialType::Single,
         state,
         suspend_end_date: params.suspend_end_date,
         claims: Some(claims),
@@ -946,6 +948,7 @@ pub async fn create_credential(
         wallet_unit_attestation_blob_id: params.wallet_unit_attestation_blob_id,
         wallet_instance_attestation_blob_id: params.wallet_instance_attestation_blob_id,
         webhook_url: params.webhook_url,
+        parent: None,
     };
 
     data_layer

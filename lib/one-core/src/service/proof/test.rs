@@ -26,7 +26,7 @@ use crate::model::certificate::CertificateRelations;
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
-    Credential, CredentialRelations, CredentialRole, CredentialStateEnum,
+    Credential, CredentialRelations, CredentialRole, CredentialStateEnum, CredentialType,
 };
 use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, LayoutType};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
@@ -663,9 +663,11 @@ async fn test_get_proof_with_array_holder() {
         issuance_date: None,
         last_modified: crate::clock::now_utc(),
         deleted_at: None,
+        consumed_at: None,
         protocol: "".into(),
         redirect_uri: None,
         role: CredentialRole::Holder,
+        r#type: CredentialType::Single,
         state: CredentialStateEnum::Accepted,
         suspend_end_date: None,
         claims: Some(vec![
@@ -711,6 +713,7 @@ async fn test_get_proof_with_array_holder() {
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
+        parent: None,
     };
 
     let proof = Proof {
@@ -934,9 +937,11 @@ async fn test_get_proof_with_array_in_object_holder() {
         issuance_date: None,
         last_modified: crate::clock::now_utc(),
         deleted_at: None,
+        consumed_at: None,
         protocol: "".into(),
         redirect_uri: None,
         role: CredentialRole::Holder,
+        r#type: CredentialType::Single,
         state: CredentialStateEnum::Accepted,
         suspend_end_date: None,
         claims: Some(vec![
@@ -992,6 +997,7 @@ async fn test_get_proof_with_array_in_object_holder() {
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
+        parent: None,
     };
 
     let proof = Proof {
@@ -1220,9 +1226,11 @@ async fn test_get_proof_with_object_array_holder() {
         issuance_date: None,
         last_modified: crate::clock::now_utc(),
         deleted_at: None,
+        consumed_at: None,
         protocol: "".into(),
         redirect_uri: None,
         role: CredentialRole::Holder,
+        r#type: CredentialType::Single,
         state: CredentialStateEnum::Accepted,
         suspend_end_date: None,
         claims: Some(vec![
@@ -1288,6 +1296,7 @@ async fn test_get_proof_with_object_array_holder() {
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
+        parent: None,
     };
 
     let proof = Proof {
@@ -1510,9 +1519,11 @@ async fn test_get_proof_with_array() {
         issuance_date: None,
         last_modified: crate::clock::now_utc(),
         deleted_at: None,
+        consumed_at: None,
         protocol: "".into(),
         redirect_uri: None,
         role: CredentialRole::Holder,
+        r#type: CredentialType::Single,
         state: CredentialStateEnum::Accepted,
         suspend_end_date: None,
         claims: Some(vec![
@@ -1558,6 +1569,7 @@ async fn test_get_proof_with_array() {
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
+        parent: None,
     };
 
     let proof = Proof {
@@ -1788,9 +1800,11 @@ async fn test_get_proof_with_array_in_object() {
         issuance_date: None,
         last_modified: crate::clock::now_utc(),
         deleted_at: None,
+        consumed_at: None,
         protocol: "".into(),
         redirect_uri: None,
         role: CredentialRole::Holder,
+        r#type: CredentialType::Single,
         state: CredentialStateEnum::Accepted,
         suspend_end_date: None,
         claims: Some(vec![
@@ -1846,6 +1860,7 @@ async fn test_get_proof_with_array_in_object() {
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
+        parent: None,
     };
 
     let proof = Proof {
@@ -2082,9 +2097,11 @@ async fn test_get_proof_with_object_array() {
         issuance_date: None,
         last_modified: crate::clock::now_utc(),
         deleted_at: None,
+        consumed_at: None,
         protocol: "".into(),
         redirect_uri: None,
         role: CredentialRole::Holder,
+        r#type: CredentialType::Single,
         state: CredentialStateEnum::Accepted,
         suspend_end_date: None,
         claims: Some(vec![
@@ -2150,6 +2167,7 @@ async fn test_get_proof_with_object_array() {
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
+        parent: None,
     };
 
     let proof = Proof {

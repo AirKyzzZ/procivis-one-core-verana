@@ -32,7 +32,7 @@ use crate::mapper::{
     NESTED_CLAIM_MARKER, get_encryption_key_jwk_from_proof, value_to_model_claims,
 };
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
+use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::IdentifierType;
 use crate::model::proof::Proof;
@@ -517,6 +517,7 @@ pub(crate) fn extracted_credential_to_model(
             issuance_date,
             last_modified: now,
             deleted_at: None,
+            consumed_at: None,
             protocol: verification_protocol.to_string(),
             state: CredentialStateEnum::Accepted,
             suspend_end_date: None,
@@ -534,6 +535,8 @@ pub(crate) fn extracted_credential_to_model(
             wallet_unit_attestation_blob_id: None,
             wallet_instance_attestation_blob_id: None,
             webhook_url: None,
+            r#type: CredentialType::Single,
+            parent: None,
         },
         issuer_details,
         holder_details,

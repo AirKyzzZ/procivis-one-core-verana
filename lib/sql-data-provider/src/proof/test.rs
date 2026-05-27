@@ -3,7 +3,7 @@ use std::sync::Arc;
 use mockall::predicate::eq;
 use one_core::model::claim::{Claim, ClaimRelations};
 use one_core::model::credential::{
-    Credential, CredentialRelations, CredentialRole, CredentialStateEnum,
+    Credential, CredentialRelations, CredentialRole, CredentialStateEnum, CredentialType,
 };
 use one_core::model::did::{Did, DidRelations, DidType};
 use one_core::model::identifier::{
@@ -580,9 +580,11 @@ async fn test_get_proof_with_relations() {
                 issuance_date: None,
                 last_modified: get_dummy_date(),
                 deleted_at: None,
+                consumed_at: None,
                 protocol: "protocol".to_string(),
                 redirect_uri: None,
                 role: CredentialRole::Verifier,
+                r#type: CredentialType::Single,
                 state: CredentialStateEnum::Accepted,
                 suspend_end_date: None,
                 claims: None,
@@ -597,6 +599,7 @@ async fn test_get_proof_with_relations() {
                 wallet_unit_attestation_blob_id: None,
                 wallet_instance_attestation_blob_id: None,
                 webhook_url: None,
+                parent: None,
             }))
         });
 
@@ -677,6 +680,7 @@ async fn test_get_proof_with_relations() {
         key_id: Set(None),
         state: Set(credential::CredentialState::Accepted),
         credential_blob_id: Set(Some(blob_id)),
+        r#type: Set(credential::CredentialType::Single),
         ..Default::default()
     }
     .insert(&db)

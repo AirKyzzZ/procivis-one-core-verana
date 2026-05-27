@@ -25,7 +25,7 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::entity::blob::BlobType;
-use crate::entity::credential::CredentialRole;
+use crate::entity::credential::{CredentialRole, CredentialType};
 use crate::entity::credential_schema::{KeyStorageSecurity, LayoutType};
 use crate::entity::did::DidType;
 use crate::entity::history::{self, HistoryAction, HistoryEntityType};
@@ -78,8 +78,10 @@ pub async fn insert_credential(
         issuance_date: Set(None),
         redirect_uri: Set(None),
         deleted_at: Set(deleted_at),
+        consumed_at: Set(None),
         protocol: Set(protocol.to_owned()),
         role: Set(role),
+        r#type: Set(CredentialType::Single),
         issuer_identifier_id: Set(Some(issuer_identifier_id)),
         issuer_certificate_id: Set(None),
         holder_identifier_id: Set(None),
@@ -88,6 +90,7 @@ pub async fn insert_credential(
         state: Set(state.into()),
         suspend_end_date: Set(suspend_end_date),
         profile: Set(None),
+        parent_id: Set(None),
         credential_blob_id: Set(Some(credential_blob_id)),
         wallet_unit_attestation_blob_id: Set(None),
         wallet_instance_attestation_blob_id: Set(None),
@@ -96,7 +99,33 @@ pub async fn insert_credential(
     .insert(db)
     .await?;
 
-    Ok(credential.into())
+    Ok(Credential {
+        id: credential.id,
+        created_date: credential.created_date,
+        issuance_date: credential.issuance_date,
+        last_modified: credential.last_modified,
+        deleted_at: credential.deleted_at,
+        consumed_at: credential.consumed_at,
+        protocol: credential.protocol,
+        redirect_uri: credential.redirect_uri,
+        role: credential.role.into(),
+        r#type: credential.r#type.into(),
+        state: credential.state.into(),
+        suspend_end_date: credential.suspend_end_date,
+        profile: credential.profile,
+        claims: None,
+        issuer_identifier: None,
+        issuer_certificate: None,
+        holder_identifier: None,
+        schema: None,
+        interaction: None,
+        key: None,
+        credential_blob_id: credential.credential_blob_id,
+        wallet_unit_attestation_blob_id: credential.wallet_unit_attestation_blob_id,
+        wallet_instance_attestation_blob_id: credential.wallet_instance_attestation_blob_id,
+        webhook_url: credential.webhook_url,
+        parent: None,
+    })
 }
 
 pub async fn update_credential_state(

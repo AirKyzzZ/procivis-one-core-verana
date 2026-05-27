@@ -27,7 +27,9 @@ use uuid::Uuid;
 
 use super::CredentialProvider;
 use super::entity_model::CredentialListEntityModel;
-use super::mapper::{credentials_to_repository, from_clearable, request_to_active_model};
+use super::mapper::{
+    credentials_to_repository, from_clearable, model_to_credential, request_to_active_model,
+};
 use crate::common::calculate_pages_count;
 use crate::entity::{claim, claim_schema, credential, credential_schema, identifier};
 use crate::list_query_generic::{SelectWithFilterJoin, SelectWithListQuery};
@@ -189,7 +191,7 @@ impl CredentialProvider {
             interaction,
             key,
             issuer_certificate,
-            ..credential.into()
+            ..model_to_credential(credential, &self.cloned())
         })
     }
 
@@ -244,12 +246,15 @@ fn get_credential_list_query(query_params: CredentialListQuery) -> Select<creden
             credential::Column::LastModified,
             credential::Column::IssuanceDate,
             credential::Column::DeletedAt,
+            credential::Column::ConsumedAt,
             credential::Column::RedirectUri,
             credential::Column::Role,
             credential::Column::State,
+            credential::Column::Type,
             credential::Column::SuspendEndDate,
             credential::Column::Protocol,
             credential::Column::Profile,
+            credential::Column::ParentId,
             credential::Column::CredentialBlobId,
             credential::Column::WalletUnitAttestationBlobId,
             credential::Column::WalletInstanceAttestationBlobId,
@@ -505,6 +510,7 @@ impl CredentialRepository for CredentialProvider {
         Ok(GetCredentialList {
             values: credentials_to_repository(
                 credentials,
+                &self.cloned(),
                 &self.organisation_repository,
                 &self.db,
             )?,

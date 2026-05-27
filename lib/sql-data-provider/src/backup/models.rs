@@ -7,7 +7,7 @@ use shared_types::{
 };
 use time::OffsetDateTime;
 
-use crate::entity::credential::{CredentialRole, CredentialState};
+use crate::entity::credential::{CredentialRole, CredentialState, CredentialType};
 use crate::entity::credential_schema::{KeyStorageSecurity, TransactionCodeType};
 use crate::entity::{claim, claim_schema};
 
@@ -18,9 +18,11 @@ pub struct UnexportableCredentialModel {
     pub issuance_date: Option<OffsetDateTime>,
     pub last_modified: OffsetDateTime,
     pub deleted_at: Option<OffsetDateTime>,
+    pub consumed_at: Option<OffsetDateTime>,
     pub protocol: String,
     pub redirect_uri: Option<String>,
     pub role: CredentialRole,
+    pub r#type: CredentialType,
     pub state: CredentialState,
     pub suspend_end_date: Option<OffsetDateTime>,
     pub profile: Option<String>,
@@ -52,6 +54,7 @@ pub struct UnexportableCredentialModel {
     pub organisation_wallet_provider_issuer: Option<IdentifierId>,
     pub organisation_parent_organisation: Option<OrganisationId>,
 
+    pub parent_id: Option<CredentialId>,
     pub credential_blob_id: Option<BlobId>,
 
     pub claims: String,

@@ -8,6 +8,7 @@ use one_core::model::credential_schema_format::CredentialSchemaFormat;
 use one_core::model::identifier::Identifier;
 use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::relation::{Related, RelatedVec};
+use one_core::repository::credential_repository::CredentialRepository;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::organisation_repository::OrganisationRepository;
 use one_dto_mapper::convert_inner;
@@ -150,32 +151,38 @@ impl IntoJoinRelations for CredentialFilterValue {
     }
 }
 
-impl From<credential::Model> for Credential {
-    fn from(credential: credential::Model) -> Self {
-        Self {
-            id: credential.id,
-            created_date: credential.created_date,
-            issuance_date: credential.issuance_date,
-            last_modified: credential.last_modified,
-            deleted_at: credential.deleted_at,
-            protocol: credential.protocol,
-            redirect_uri: credential.redirect_uri,
-            role: credential.role.into(),
-            state: credential.state.into(),
-            suspend_end_date: credential.suspend_end_date,
-            profile: credential.profile,
-            claims: None,
-            issuer_identifier: None,
-            issuer_certificate: None,
-            holder_identifier: None,
-            schema: None,
-            interaction: None,
-            key: None,
-            credential_blob_id: credential.credential_blob_id,
-            wallet_unit_attestation_blob_id: credential.wallet_unit_attestation_blob_id,
-            wallet_instance_attestation_blob_id: credential.wallet_instance_attestation_blob_id,
-            webhook_url: credential.webhook_url,
-        }
+pub(crate) fn model_to_credential(
+    credential: credential::Model,
+    credential_repository: &Arc<dyn CredentialRepository>,
+) -> Credential {
+    Credential {
+        id: credential.id,
+        created_date: credential.created_date,
+        issuance_date: credential.issuance_date,
+        last_modified: credential.last_modified,
+        deleted_at: credential.deleted_at,
+        consumed_at: credential.consumed_at,
+        protocol: credential.protocol,
+        redirect_uri: credential.redirect_uri,
+        role: credential.role.into(),
+        r#type: credential.r#type.into(),
+        state: credential.state.into(),
+        suspend_end_date: credential.suspend_end_date,
+        profile: credential.profile,
+        claims: None,
+        issuer_identifier: None,
+        issuer_certificate: None,
+        holder_identifier: None,
+        schema: None,
+        interaction: None,
+        key: None,
+        credential_blob_id: credential.credential_blob_id,
+        wallet_unit_attestation_blob_id: credential.wallet_unit_attestation_blob_id,
+        wallet_instance_attestation_blob_id: credential.wallet_instance_attestation_blob_id,
+        webhook_url: credential.webhook_url,
+        parent: credential
+            .parent_id
+            .map(|id| Related::new(id, credential_repository.clone())),
     }
 }
 
@@ -199,6 +206,7 @@ pub(super) fn request_to_active_model(
         last_modified: Set(request.last_modified),
         issuance_date: Set(request.issuance_date),
         deleted_at: Set(request.deleted_at),
+        consumed_at: Set(request.consumed_at),
         protocol: Set(request.protocol.to_owned()),
         redirect_uri: Set(request.redirect_uri.to_owned()),
         issuer_identifier_id: Set(issuer_identifier_id),
@@ -210,15 +218,18 @@ pub(super) fn request_to_active_model(
         state: Set(request.state.into()),
         suspend_end_date: Set(request.suspend_end_date),
         profile: Set(request.profile.clone()),
+        parent_id: Set(request.parent.as_ref().map(|m| m.id())),
         credential_blob_id: Set(credential_blob_id),
         wallet_unit_attestation_blob_id: Set(wallet_unit_attestation_blob_id),
         wallet_instance_attestation_blob_id: Set(wallet_instance_attestation_blob_id),
         webhook_url: Set(request.webhook_url.to_owned()),
+        r#type: Set(request.r#type.into()),
     }
 }
 
 pub(super) fn credential_list_model_to_repository_model(
     credential: CredentialListEntityModel,
+    credential_repository: &Arc<dyn CredentialRepository>,
     organisation_repository: &Arc<dyn OrganisationRepository>,
     db: &TransactionManagerImpl,
 ) -> Result<Credential, DataLayerError> {
@@ -327,9 +338,11 @@ pub(super) fn credential_list_model_to_repository_model(
         issuance_date: credential.issuance_date,
         last_modified: credential.last_modified,
         deleted_at: credential.deleted_at,
+        consumed_at: credential.consumed_at,
         protocol: credential.protocol,
         redirect_uri: credential.redirect_uri,
         role: credential.role.into(),
+        r#type: credential.r#type.into(),
         state: credential.state.into(),
         suspend_end_date: credential.suspend_end_date,
         profile: credential.profile,
@@ -344,11 +357,15 @@ pub(super) fn credential_list_model_to_repository_model(
         wallet_unit_attestation_blob_id: credential.wallet_unit_attestation_blob_id,
         wallet_instance_attestation_blob_id: credential.wallet_instance_attestation_blob_id,
         webhook_url: credential.webhook_url,
+        parent: credential
+            .parent_id
+            .map(|id| Related::new(id, credential_repository.clone())),
     })
 }
 
 pub(super) fn credentials_to_repository(
     credentials: Vec<CredentialListEntityModel>,
+    credential_repository: &Arc<dyn CredentialRepository>,
     organisation_repository: &Arc<dyn OrganisationRepository>,
     db: &TransactionManagerImpl,
 ) -> Result<Vec<Credential>, DataLayerError> {
@@ -356,6 +373,7 @@ pub(super) fn credentials_to_repository(
     for credential in credentials.into_iter() {
         result.push(credential_list_model_to_repository_model(
             credential,
+            credential_repository,
             organisation_repository,
             db,
         )?);

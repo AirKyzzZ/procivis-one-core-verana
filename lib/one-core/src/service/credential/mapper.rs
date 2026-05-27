@@ -22,7 +22,7 @@ use crate::model::certificate::Certificate;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
-    Credential, CredentialFilterValue, CredentialRole, CredentialStateEnum,
+    Credential, CredentialFilterValue, CredentialRole, CredentialStateEnum, CredentialType,
     ExactCredentialFilterColumn,
 };
 use crate::model::credential_schema::CredentialSchema;
@@ -408,6 +408,11 @@ pub(super) fn from_create_request(
     key: Key,
 ) -> Credential {
     let now = crate::clock::now_utc();
+    let r#type = if schema.batch_size.is_some_and(|s| s >= 2) {
+        CredentialType::BatchParent
+    } else {
+        CredentialType::Single
+    };
 
     Credential {
         id: credential_id,
@@ -417,6 +422,7 @@ pub(super) fn from_create_request(
         suspend_end_date: None,
         last_modified: now,
         deleted_at: None,
+        consumed_at: None,
         protocol: request.protocol,
         claims: Some(claims),
         issuer_identifier: Some(issuer_identifier),
@@ -432,6 +438,8 @@ pub(super) fn from_create_request(
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
         webhook_url: request.webhook_destination_url,
+        r#type,
+        parent: None,
     }
 }
 

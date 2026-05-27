@@ -127,24 +127,24 @@ const INDEX_UNIQUE_INTERACTION_NONCE_ID: &str = "index-Interaction-NonceId-Uniqu
 const INDEX_INTERACTION_EXPIRES_AT: &str = "index-Interaction-ExpiresAt";
 
 // Credential Table
-const FK_CREDENTIAL_CREDENTIAL_SCHEMA: &str = "fk-Credential-CredentialSchemaId";
-const FK_CREDENTIAL_INTERACTION: &str = "fk-Credential-InteractionId";
-const FK_CREDENTIAL_HOLDER_IDENTIFIER: &str = "fk_credential_holder_identifier";
-const FK_CREDENTIAL_KEY: &str = "fk-Credential-KeyId";
-const FK_CREDENTIAL_ISSUER_IDENTIFIER: &str = "fk_credential_issuer_identifier";
-const FK_CREDENTIAL_ISSUER_CERTIFICATE: &str = "fk-credential-issuer_certificate";
-const FK_CREDENTIAL_CREDENTIAL_BLOB: &str = "fk_credential_credential_blob_id";
-const FK_CREDENTIAL_WALLET_UNIT_ATTESTATION_BLOB: &str =
+pub(crate) const FK_CREDENTIAL_CREDENTIAL_SCHEMA: &str = "fk-Credential-CredentialSchemaId";
+pub(crate) const FK_CREDENTIAL_INTERACTION: &str = "fk-Credential-InteractionId";
+pub(crate) const FK_CREDENTIAL_HOLDER_IDENTIFIER: &str = "fk_credential_holder_identifier";
+pub(crate) const FK_CREDENTIAL_KEY: &str = "fk-Credential-KeyId";
+pub(crate) const FK_CREDENTIAL_ISSUER_IDENTIFIER: &str = "fk_credential_issuer_identifier";
+pub(crate) const FK_CREDENTIAL_ISSUER_CERTIFICATE: &str = "fk-credential-issuer_certificate";
+pub(crate) const FK_CREDENTIAL_CREDENTIAL_BLOB: &str = "fk_credential_credential_blob_id";
+pub(crate) const FK_CREDENTIAL_WALLET_UNIT_ATTESTATION_BLOB: &str =
     "fk_credential_wallet_unit_attestation_blob_id";
-const FK_CREDENTIAL_WALLET_INSTANCE_ATTESTATION_BLOB: &str =
+pub(crate) const FK_CREDENTIAL_WALLET_INSTANCE_ATTESTATION_BLOB: &str =
     "fk_credential_wallet_instance_attestation_blob_id";
 
-const INDEX_CREDENTIAL_LIST: &str = "idx_credential_list";
-const INDEX_CREDENTIAL_CREATED_DATE: &str = "index-Credential-CreatedDate";
-const INDEX_CREDENTIAL_DELETED_AT: &str = "index-Credential-DeletedAt";
-const INDEX_CREDENTIAL_ROLE: &str = "index-Credential-Role";
-const INDEX_CREDENTIAL_STATE: &str = "index-Credential-State";
-const INDEX_CREDENTIAL_SUSPEND_END_DATE: &str = "index-Credential-SuspendEndDate";
+pub(crate) const INDEX_CREDENTIAL_LIST: &str = "idx_credential_list";
+pub(crate) const INDEX_CREDENTIAL_CREATED_DATE: &str = "index-Credential-CreatedDate";
+pub(crate) const INDEX_CREDENTIAL_DELETED_AT: &str = "index-Credential-DeletedAt";
+pub(crate) const INDEX_CREDENTIAL_ROLE: &str = "index-Credential-Role";
+pub(crate) const INDEX_CREDENTIAL_STATE: &str = "index-Credential-State";
+pub(crate) const INDEX_CREDENTIAL_SUSPEND_END_DATE: &str = "index-Credential-SuspendEndDate";
 
 // Claim Table
 const FK_CLAIM_CLAIM_SCHEMA: &str = "fk-Claim-ClaimSchemaId";

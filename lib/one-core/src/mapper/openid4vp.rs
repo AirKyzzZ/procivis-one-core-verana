@@ -2,7 +2,7 @@ use one_dto_mapper::{convert_inner, convert_inner_of_inner};
 
 use crate::error::ContextWithErrorCode;
 use crate::mapper::RemoteIdentifierRelation;
-use crate::model::credential::Credential;
+use crate::model::credential::{Credential, CredentialType};
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::organisation::Organisation;
 use crate::proto::identifier_creator::{IdentifierCreator, IdentifierRole};
@@ -45,9 +45,11 @@ pub(crate) async fn credential_from_proved(
         issuance_date: proved_credential.credential.issuance_date,
         last_modified: proved_credential.credential.last_modified,
         deleted_at: proved_credential.credential.deleted_at,
+        consumed_at: None,
         protocol: proved_credential.credential.protocol,
         redirect_uri: proved_credential.credential.redirect_uri,
         role: proved_credential.credential.role,
+        r#type: CredentialType::Single,
         state: proved_credential.credential.state,
         claims: convert_inner_of_inner(proved_credential.credential.claims),
         issuer_identifier: Some(issuer_identifier),
@@ -69,6 +71,7 @@ pub(crate) async fn credential_from_proved(
             .credential
             .wallet_instance_attestation_blob_id,
         webhook_url: None,
+        parent: None,
     })
 }
 

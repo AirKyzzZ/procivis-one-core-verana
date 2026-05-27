@@ -7,7 +7,7 @@ use one_core::model::claim::{Claim, ClaimRelations};
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::model::credential::{
     Clearable, Credential, CredentialFilterValue, CredentialListQuery, CredentialRelations,
-    CredentialRole, CredentialStateEnum, UpdateCredentialRequest,
+    CredentialRole, CredentialStateEnum, CredentialType, UpdateCredentialRequest,
 };
 use one_core::model::credential_schema::{CredentialSchema, LayoutType};
 use one_core::model::credential_schema_format::CredentialSchemaFormat;
@@ -348,9 +348,11 @@ async fn test_create_credential_success() {
             issuance_date: None,
             last_modified: get_dummy_date(),
             deleted_at: None,
+            consumed_at: None,
             protocol: "exchange".to_string(),
             redirect_uri: None,
             role: CredentialRole::Issuer,
+            r#type: CredentialType::Single,
             state: CredentialStateEnum::Created,
             suspend_end_date: None,
             claims: Some(claims),
@@ -365,6 +367,7 @@ async fn test_create_credential_success() {
             wallet_unit_attestation_blob_id: None,
             wallet_instance_attestation_blob_id: None,
             webhook_url: None,
+            parent: None,
         })
         .await;
 
@@ -400,9 +403,11 @@ async fn test_create_credential_empty_claims() {
             issuance_date: None,
             last_modified: get_dummy_date(),
             deleted_at: None,
+            consumed_at: None,
             protocol: "exchange".to_string(),
             redirect_uri: None,
             role: CredentialRole::Issuer,
+            r#type: CredentialType::Single,
             state: CredentialStateEnum::Created,
             suspend_end_date: None,
             claims: Some(vec![]),
@@ -417,6 +422,7 @@ async fn test_create_credential_empty_claims() {
             wallet_unit_attestation_blob_id: None,
             wallet_instance_attestation_blob_id: None,
             webhook_url: None,
+            parent: None,
         })
         .await;
 
@@ -464,9 +470,11 @@ async fn test_create_credential_already_exists() {
             issuance_date: None,
             last_modified: get_dummy_date(),
             deleted_at: None,
+            consumed_at: None,
             protocol: "exchange".to_string(),
             redirect_uri: None,
             role: CredentialRole::Issuer,
+            r#type: CredentialType::Single,
             state: CredentialStateEnum::Created,
             suspend_end_date: None,
             claims: Some(claims),
@@ -481,6 +489,7 @@ async fn test_create_credential_already_exists() {
             wallet_unit_attestation_blob_id: None,
             wallet_instance_attestation_blob_id: None,
             webhook_url: None,
+            parent: None,
         })
         .await;
 
@@ -540,9 +549,11 @@ async fn test_delete_credential_failed_not_found() {
             issuance_date: None,
             last_modified: one_core::clock::now_utc(),
             deleted_at: None,
+            consumed_at: None,
             protocol: "OPENID4VCI_DRAFT13".to_string(),
             redirect_uri: None,
             role: CredentialRole::Issuer,
+            r#type: CredentialType::Single,
             state: CredentialStateEnum::Created,
             suspend_end_date: None,
             claims: None,
@@ -557,6 +568,7 @@ async fn test_delete_credential_failed_not_found() {
             wallet_unit_attestation_blob_id: None,
             wallet_instance_attestation_blob_id: None,
             webhook_url: None,
+            parent: None,
         })
         .await;
     assert!(matches!(result, Err(DataLayerError::RecordNotUpdated)));

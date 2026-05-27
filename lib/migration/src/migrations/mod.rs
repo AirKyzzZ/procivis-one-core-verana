@@ -10,3 +10,4 @@ pub mod m20260511_120000_reset_trusted_requirements_to_false;
 pub mod m20260512_062412_localized_text;
 pub mod m20260512_090000_remove_legacy_trust;
 pub mod m20260522_120000_credential_schema_layout_properties_to_jsonb;
+pub mod m20260526_095002_credential_grouping;

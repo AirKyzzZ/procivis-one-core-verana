@@ -12,11 +12,13 @@ async fn test_db_schema_credential() {
             "last_modified",
             "issuance_date",
             "deleted_at",
+            "consumed_at",
             "protocol",
             "credential_schema_id",
             "interaction_id",
             "key_id",
             "role",
+            "type",
             "redirect_uri",
             "state",
             "suspend_end_date",
@@ -24,6 +26,7 @@ async fn test_db_schema_credential() {
             "issuer_identifier_id",
             "issuer_certificate_id",
             "profile",
+            "parent_id",
             "credential_blob_id",
             "wallet_unit_attestation_blob_id",
             "wallet_instance_attestation_blob_id",
@@ -31,7 +34,9 @@ async fn test_db_schema_credential() {
         ])
         .index("index-Credential-CreatedDate", false, &["created_date"])
         .index("index-Credential-Role", false, &["role"])
+        .index("index-Credential-Type", false, &["type"])
         .index("index-Credential-DeletedAt", false, &["deleted_at"])
+        .index("index-Credential-ConsumedAt", false, &["consumed_at"])
         .index("index-Credential-State", false, &["state"])
         .index(
             "index-Credential-SuspendEndDate",
@@ -63,6 +68,10 @@ async fn test_db_schema_credential() {
         .r#type(ColumnType::TimestampMilliseconds)
         .nullable(true);
     credential
+        .column("consumed_at")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(true);
+    credential
         .column("protocol")
         .r#type(ColumnType::String(None))
         .nullable(false)
@@ -89,6 +98,11 @@ async fn test_db_schema_credential() {
         .foreign_key("fk-Credential-KeyId", "key", "id");
     credential
         .column("role")
+        .r#type(ColumnType::String(None))
+        .nullable(false)
+        .default(None);
+    credential
+        .column("type")
         .r#type(ColumnType::String(None))
         .nullable(false)
         .default(None);
@@ -124,6 +138,11 @@ async fn test_db_schema_credential() {
         .column("profile")
         .r#type(ColumnType::String(None))
         .nullable(true);
+    credential
+        .column("parent_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(true)
+        .foreign_key("fk-Credential-Credential", "credential", "id");
     credential
         .column("credential_blob_id")
         .r#type(ColumnType::Uuid)

@@ -9,7 +9,8 @@ use crate::model::blob::{Blob, BlobType};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
-    Credential, CredentialRole, CredentialStateEnum, GetCredentialList, UpdateCredentialRequest,
+    Credential, CredentialRole, CredentialStateEnum, CredentialType, GetCredentialList,
+    UpdateCredentialRequest,
 };
 use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, LayoutType};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
@@ -245,9 +246,11 @@ fn generic_credential() -> Credential {
         issuance_date: None,
         last_modified: now,
         deleted_at: None,
+        consumed_at: None,
         protocol: "OPENID4VCI_DRAFT13".to_string(),
         redirect_uri: None,
         role: CredentialRole::Holder,
+        r#type: CredentialType::Single,
         state: CredentialStateEnum::Created,
         suspend_end_date: None,
         claims: Some(vec![Claim {
@@ -314,5 +317,6 @@ fn generic_credential() -> Credential {
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
+        parent: None,
     }
 }

@@ -6,6 +6,7 @@ use autometrics::autometrics;
 use one_core::model::backup::{Metadata, UnexportableEntities};
 use one_core::model::history::History;
 use one_core::repository::backup_repository::BackupRepository;
+use one_core::repository::credential_repository::CredentialRepository;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::key_repository::KeyRepository;
 use one_core::repository::organisation_repository::OrganisationRepository;
@@ -37,12 +38,14 @@ use crate::transaction_context::TransactionManagerImpl;
 impl BackupProvider {
     pub fn new(
         db: TransactionManagerImpl,
+        credential_repository: Arc<dyn CredentialRepository>,
         exportable_storages: Vec<String>,
         organisation_repository: Arc<dyn OrganisationRepository>,
         key_repository: Arc<dyn KeyRepository>,
     ) -> Self {
         Self {
             db,
+            credential_repository,
             exportable_storages,
             organisation_repository,
             key_repository,
@@ -206,8 +209,10 @@ impl BackupRepository for BackupProvider {
                 credential::Column::RedirectUri,
                 credential::Column::Role,
                 credential::Column::State,
+                credential::Column::Type,
                 credential::Column::SuspendEndDate,
-                credential::Column::CreatedDate,
+                credential::Column::ConsumedAt,
+                credential::Column::ParentId,
                 credential::Column::CredentialBlobId,
                 credential::Column::Protocol,
                 credential::Column::WebhookUrl,
@@ -423,7 +428,12 @@ impl BackupRepository for BackupProvider {
         let credentials = credentials
             .into_iter()
             .map(|credential| {
-                credential_from_unexportable_model(credential, &self.organisation_repository, &db)
+                credential_from_unexportable_model(
+                    credential,
+                    &self.credential_repository,
+                    &self.organisation_repository,
+                    &db,
+                )
             })
             .collect::<Result<_, DataLayerError>>()?;
 

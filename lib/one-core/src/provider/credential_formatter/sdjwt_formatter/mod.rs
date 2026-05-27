@@ -33,7 +33,7 @@ use crate::config::core_config::{
     RevocationType, VerificationProtocolType,
 };
 use crate::error::ContextWithErrorCode;
-use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
+use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
 use crate::model::credential_schema::{CredentialSchema, LayoutType};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::organisation::Organisation;
@@ -396,9 +396,11 @@ impl CredentialFormatter for SDJWTFormatter {
             issuance_date: parsed_credential.payload.issued_at,
             last_modified: now,
             deleted_at: None,
+            consumed_at: None,
             protocol: "".to_string(),
             redirect_uri: None,
             role: CredentialRole::Holder,
+            r#type: CredentialType::Single,
             state: CredentialStateEnum::Accepted,
             suspend_end_date: None,
             profile: None,
@@ -416,6 +418,7 @@ impl CredentialFormatter for SDJWTFormatter {
             interaction: None,
             key: None,
             webhook_url: None,
+            parent: None,
         })
     }
 }

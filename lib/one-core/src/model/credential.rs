@@ -1,3 +1,4 @@
+use proc_macros::Model;
 use shared_types::{
     BlobId, CertificateId, CredentialId, CredentialSchemaId, IdentifierId, InteractionId, KeyId,
     OrganisationId,
@@ -15,18 +16,22 @@ use super::list_query::ListQuery;
 use crate::model::certificate::{Certificate, CertificateRelations};
 use crate::model::key::KeyRelations;
 use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
+use crate::model::relation::Related;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Model)]
 #[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct Credential {
+    #[model(id)]
     pub id: CredentialId,
     pub created_date: OffsetDateTime,
     pub issuance_date: Option<OffsetDateTime>,
     pub last_modified: OffsetDateTime,
     pub deleted_at: Option<OffsetDateTime>,
+    pub consumed_at: Option<OffsetDateTime>,
     pub protocol: String,
     pub redirect_uri: Option<String>,
     pub role: CredentialRole,
+    pub r#type: CredentialType,
     pub state: CredentialStateEnum,
     pub suspend_end_date: Option<OffsetDateTime>,
     pub profile: Option<String>,
@@ -43,6 +48,7 @@ pub struct Credential {
     pub schema: Option<CredentialSchema>,
     pub interaction: Option<Interaction>,
     pub key: Option<Key>,
+    pub parent: Option<Related<Credential>>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
@@ -105,6 +111,13 @@ pub enum CredentialRole {
     Holder,
     Issuer,
     Verifier,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Display)]
+pub enum CredentialType {
+    Single,
+    BatchParent,
+    BatchItem,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]

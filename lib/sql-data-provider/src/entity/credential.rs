@@ -1,5 +1,6 @@
 use one_core::model::credential::{
     CredentialRole as ModelCredentialRole, CredentialStateEnum as ModelCredentialStateEnum,
+    CredentialType as ModelCredentialType,
 };
 use one_dto_mapper::{From, Into};
 use sea_orm::entity::prelude::*;
@@ -23,11 +24,13 @@ pub struct Model {
 
     pub issuance_date: Option<OffsetDateTime>,
     pub deleted_at: Option<OffsetDateTime>,
+    pub consumed_at: Option<OffsetDateTime>,
 
     pub protocol: String,
     pub redirect_uri: Option<String>,
 
     pub role: CredentialRole,
+    pub r#type: CredentialType,
 
     pub issuer_identifier_id: Option<IdentifierId>,
     pub issuer_certificate_id: Option<CertificateId>,
@@ -43,6 +46,7 @@ pub struct Model {
 
     pub profile: Option<String>,
 
+    pub parent_id: Option<CredentialId>,
     pub credential_blob_id: Option<BlobId>,
     pub wallet_unit_attestation_blob_id: Option<BlobId>,
     pub wallet_instance_attestation_blob_id: Option<BlobId>,
@@ -141,6 +145,19 @@ pub enum CredentialRole {
     Issuer,
     #[sea_orm(string_value = "VERIFIER")]
     Verifier,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From)]
+#[from(ModelCredentialType)]
+#[into(ModelCredentialType)]
+#[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
+pub enum CredentialType {
+    #[sea_orm(string_value = "SINGLE")]
+    Single,
+    #[sea_orm(string_value = "BATCH_PARENT")]
+    BatchParent,
+    #[sea_orm(string_value = "BATCH_ITEM")]
+    BatchItem,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From)]
