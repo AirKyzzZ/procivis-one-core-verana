@@ -13,7 +13,7 @@ use one_core::repository::error::DataLayerError;
 use one_core::repository::organisation_repository::OrganisationRepository;
 use one_dto_mapper::convert_inner;
 use sea_orm::sea_query::query::IntoCondition;
-use sea_orm::sea_query::{ExprTrait, Query, SimpleExpr};
+use sea_orm::sea_query::{ExprTrait, Query, SelectStatement, SimpleExpr};
 use sea_orm::{
     ActiveValue, ColumnTrait, Condition, IntoSimpleExpr, JoinType, RelationTrait, Set, Value,
 };
@@ -148,8 +148,27 @@ impl IntoFilterCondition for CredentialFilterValue {
                     .and(credential::Column::State.eq(credential::CredentialState::Revoked))
                     .into_condition()
             }
+            Self::HasUnconsumedBatchItems(true) => credential::Column::Id
+                .in_subquery(unconsumed_item_select())
+                .into_condition(),
+            Self::HasUnconsumedBatchItems(false) => credential::Column::Id
+                .not_in_subquery(unconsumed_item_select())
+                .into_condition(),
         }
     }
+}
+
+fn unconsumed_item_select() -> SelectStatement {
+    Query::select()
+        .distinct()
+        .column(credential::Column::ParentId)
+        .from(credential::Entity)
+        .cond_where(
+            credential::Column::ConsumedAt
+                .is_null()
+                .and(credential::Column::State.eq(credential::CredentialState::Accepted)),
+        )
+        .to_owned()
 }
 
 impl IntoJoinRelations for CredentialFilterValue {

@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+use futures_util::FutureExt;
 use itertools::Itertools;
 use shared_types::{ClaimId, CredentialId, InteractionId, ProofId, SerializedCredential};
 use url::Url;
@@ -12,6 +13,7 @@ use super::dto::{
 };
 use super::error::HolderServiceError;
 use super::mapper::holder_did_key_jwk_from_credential;
+use crate::clock::now_utc;
 use crate::config::core_config::BlobStorageType;
 use crate::config::validator::transport::{
     SelectedTransportType, validate_and_select_transport_type,
@@ -21,12 +23,18 @@ use crate::mapper::oidc::detect_format_with_crypto_suite;
 use crate::mapper::{NESTED_CLAIM_MARKER, paths_to_leafs};
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchemaRelations;
-use crate::model::credential::{Credential, CredentialRelations};
+use crate::model::common::SortDirection;
+use crate::model::credential::{
+    Clearable, Credential, CredentialFilterValue, CredentialListQuery, CredentialRelations,
+    CredentialStateEnum, CredentialType, SortableCredentialColumn, UpdateCredentialRequest,
+};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::identifier::IdentifierRelations;
 use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
+use crate::model::list_filter::ListFilterValue;
+use crate::model::list_query::{ListPagination, ListSorting};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::proof::{Proof, ProofRelations, ProofStateEnum, UpdateProofRequest};
 use crate::proto::identifier_creator::{IdentifierRole, RemoteIdentifierRelation};
@@ -495,13 +503,18 @@ impl SSIHolderService {
 
         let mut submitted_claims = vec![];
         let mut credential_presentations = vec![];
+        let mut consumed_items = vec![];
         for (query_id, credential_selection) in creds_paths_to_present {
             for CredentialPathsToPresent {
                 credential_id,
                 presented_paths,
             } in credential_selection
             {
-                let (presented_credential, claims) = self
+                let SubmissionItem {
+                    presentation,
+                    claims,
+                    consumed_item,
+                } = self
                     .get_credential_presentation(
                         query_id.to_owned(),
                         credential_id,
@@ -509,11 +522,17 @@ impl SSIHolderService {
                     )
                     .await?;
 
-                credential_presentations.push(presented_credential);
+                credential_presentations.push(presentation);
                 submitted_claims.extend(claims);
+                if let Some(item) = consumed_item {
+                    consumed_items.push(item);
+                }
             }
         }
 
+        // Do this before submitting the proof because the credentials are potentially sent to the verifier
+        // even if the operation fails.
+        self.mark_batch_items_as_consumed(consumed_items).await?;
         self.submit_and_update_proof(
             &proof,
             &*verification_protocol,
@@ -522,6 +541,35 @@ impl SSIHolderService {
         )
         .await?;
         tracing::info!("Submitted presentation V2 for proof request {}", proof.id);
+        Ok(())
+    }
+
+    async fn mark_batch_items_as_consumed(
+        &self,
+        consumed_items: Vec<CredentialId>,
+    ) -> Result<(), HolderServiceError> {
+        if !consumed_items.is_empty() {
+            let now = now_utc();
+            self.transaction_manager
+                .tx(async {
+                    for item in consumed_items {
+                        self.credential_repository
+                            .update_credential(
+                                item,
+                                UpdateCredentialRequest {
+                                    consumed_at: Clearable::ForceSet(Some(now)),
+                                    ..Default::default()
+                                },
+                            )
+                            .await
+                            .error_while(format!("marking credential {item} as consumed"))?;
+                    }
+                    Ok::<_, HolderServiceError>(())
+                }
+                .boxed())
+                .await
+                .error_while("marking batch items as consumed")??;
+        }
         Ok(())
     }
 
@@ -624,7 +672,7 @@ impl SSIHolderService {
         credential_query_id: String,
         credential_id: CredentialId,
         presented_paths: &[String],
-    ) -> Result<(FormattedCredentialPresentation, Vec<Claim>), HolderServiceError> {
+    ) -> Result<SubmissionItem, HolderServiceError> {
         let blob_storage = self
             .blob_storage_provider
             .get_blob_storage(BlobStorageType::Db)?;
@@ -648,11 +696,74 @@ impl SSIHolderService {
             .await
             .error_while("getting credential")?
             .ok_or(HolderServiceError::MissingCredential(credential_id))?;
-        let blob_id = credential
-            .credential_blob_id
-            .ok_or(HolderServiceError::MappingError(format!(
-                "Missing blob id on credential `{credential_id}`"
-            )))?;
+        let (blob_id, consumed_item) = match credential.r#type {
+            CredentialType::Single => {
+                let blob_id =
+                    credential
+                        .credential_blob_id
+                        .ok_or(HolderServiceError::MappingError(format!(
+                            "Missing blob id on credential `{credential_id}`"
+                        )))?;
+                (blob_id, None)
+            }
+            CredentialType::BatchParent => {
+                let list = self
+                    .credential_repository
+                    .get_credential_list(CredentialListQuery {
+                        pagination: Some(ListPagination {
+                            page: 0,
+                            page_size: 1,
+                        }),
+                        sorting: Some(ListSorting {
+                            column: SortableCredentialColumn::CreatedDate,
+                            direction: Some(SortDirection::Ascending),
+                        }),
+                        filtering: Some(
+                            CredentialFilterValue::Consumed(false).condition()
+                                & CredentialFilterValue::ParentCredential(credential_id)
+                                & CredentialFilterValue::States(vec![
+                                    CredentialStateEnum::Accepted,
+                                ]),
+                        ),
+                        include: None,
+                    })
+                    .await
+                    .error_while("loading batch item")?;
+                let Some(item) = list.values.first() else {
+                    return Err(HolderServiceError::BatchExhausted(credential_id));
+                };
+                // reload with relations
+                let item = self
+                    .credential_repository
+                    .get_credential(
+                        &item.id,
+                        &CredentialRelations {
+                            holder_identifier: Some(IdentifierRelations {
+                                did: Some(Default::default()),
+                                key: Some(Default::default()),
+                                ..Default::default()
+                            }),
+                            key: Some(KeyRelations::default()),
+                            ..Default::default()
+                        },
+                    )
+                    .await
+                    .error_while("loading batch item")?
+                    .ok_or(HolderServiceError::MissingCredential(item.id))?;
+                let blob_id = item
+                    .credential_blob_id
+                    .ok_or(HolderServiceError::MappingError(format!(
+                        "Missing blob id on credential `{}`",
+                        item.id
+                    )))?;
+                (blob_id, Some(item))
+            }
+            CredentialType::BatchItem => {
+                return Err(HolderServiceError::InvalidCredentialType(
+                    CredentialType::BatchItem,
+                ));
+            }
+        };
         let credential_blob = blob_storage
             .get(&blob_id)
             .await
@@ -685,8 +796,10 @@ impl SSIHolderService {
             .prepare_credential_presentation(credential_presentation, &*formatter)
             .await?;
 
-        let (holder_did, key, jwk_key_id) = holder_did_key_jwk_from_credential(&credential).await?;
-        let presented_credential = FormattedCredentialPresentation {
+        let (holder_did, key, jwk_key_id) =
+            holder_did_key_jwk_from_credential(consumed_item.as_ref().unwrap_or(&credential))
+                .await?;
+        let presentation = FormattedCredentialPresentation {
             presentation,
             credential_schema: credential_schema.clone(),
             reference: PresentationReference::Dcql {
@@ -706,8 +819,18 @@ impl SSIHolderService {
             .filter(|c| presented_paths.contains(&c.path))
             .collect();
 
-        Ok((presented_credential, claims))
+        Ok(SubmissionItem {
+            presentation,
+            claims,
+            consumed_item: consumed_item.map(|c| c.id),
+        })
     }
+}
+
+struct SubmissionItem {
+    presentation: FormattedCredentialPresentation,
+    claims: Vec<Claim>,
+    consumed_item: Option<CredentialId>,
 }
 
 struct CredentialPathsToPresent {
@@ -871,7 +994,7 @@ fn disclosed_claims_for_credential(
             // explicitly submitted
             if claim_path == submitted_path ||
             // parent claims of submitted (all levels transitively)
-            submitted_path.starts_with(&format!("{claim_path}{NESTED_CLAIM_MARKER}")) || 
+            submitted_path.starts_with(&format!("{claim_path}{NESTED_CLAIM_MARKER}")) ||
             // child claims of submitted (all levels transitively)
             claim_path.starts_with(&format!("{submitted_path}{NESTED_CLAIM_MARKER}"))
             {

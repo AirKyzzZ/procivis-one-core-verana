@@ -899,7 +899,7 @@ pub async fn create_credential(
     credential_schema: &CredentialSchema,
     state: CredentialStateEnum,
     issuer_identifier: &Identifier,
-    exchange: &str,
+    protocol: &str,
     params: TestingCredentialParams,
 ) -> Credential {
     let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
@@ -931,7 +931,7 @@ pub async fn create_credential(
         issuance_date: None,
         deleted_at: params.deleted_at,
         consumed_at: params.consumed_at,
-        protocol: exchange.to_owned(),
+        protocol: protocol.to_owned(),
         redirect_uri: None,
         role: params.role.unwrap_or(CredentialRole::Issuer),
         r#type: params.r#type.unwrap_or(CredentialType::Single),

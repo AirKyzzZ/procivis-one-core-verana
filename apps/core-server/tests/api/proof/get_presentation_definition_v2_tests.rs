@@ -1,7 +1,12 @@
 use dcql::{ClaimQuery, CredentialQuery, DcqlQuery, PathSegment};
-use one_core::model::credential::{Credential, CredentialRole, CredentialStateEnum};
+use one_core::clock::now_utc;
+use one_core::model::credential::{
+    Clearable, Credential, CredentialFilterValue, CredentialRole, CredentialStateEnum,
+    UpdateCredentialRequest,
+};
 use one_core::model::credential_schema::CredentialSchema;
 use one_core::model::identifier::Identifier;
+use one_core::model::list_filter::ListFilterValue;
 use one_core::model::organisation::Organisation;
 use serde_json::json;
 use similar_asserts::assert_eq;
@@ -36,17 +41,7 @@ async fn test_get_presentation_definition_2_simple_credential_success() {
     )
     .await;
 
-    let credential_query = CredentialQuery::sd_jwt_vc(vec![schema.schema_id().await.unwrap()])
-        .id("test_query_id")
-        .claims(vec![
-            ClaimQuery::builder()
-                .path(vec!["required_claim".to_string()])
-                .build(),
-        ])
-        .build();
-    let dcql_query = DcqlQuery::builder()
-        .credentials(vec![credential_query])
-        .build();
+    let dcql_query = simple_dcql_query(&schema).await;
     let proof = proof_for_dcql_query(
         &context,
         &org,
@@ -107,17 +102,7 @@ async fn test_get_presentation_definition_2_trust_purpose_success() {
     )
     .await;
 
-    let credential_query = CredentialQuery::sd_jwt_vc(vec![schema.schema_id().await.unwrap()])
-        .id(query_id.clone())
-        .claims(vec![
-            ClaimQuery::builder()
-                .path(vec!["required_claim".to_string()])
-                .build(),
-        ])
-        .build();
-    let dcql_query = DcqlQuery::builder()
-        .credentials(vec![credential_query])
-        .build();
+    let dcql_query = simple_dcql_query(&schema).await;
     let proof = proof_for_dcql_query(
         &context,
         &org,
@@ -207,17 +192,7 @@ async fn test_get_presentation_definition_2_claim_filtering_success() {
     )
     .await;
 
-    let credential_query = CredentialQuery::sd_jwt_vc(vec![schema.schema_id().await.unwrap()])
-        .id("test_query_id")
-        .claims(vec![
-            ClaimQuery::builder()
-                .path(vec!["required_claim".to_string()])
-                .build(),
-        ])
-        .build();
-    let dcql_query = DcqlQuery::builder()
-        .credentials(vec![credential_query])
-        .build();
+    let dcql_query = simple_dcql_query(&schema).await;
     let proof = proof_for_dcql_query(
         &context,
         &org,
@@ -292,17 +267,7 @@ async fn test_get_presentation_definition_2_claim_non_sd_extra_claim() {
     )
     .await;
 
-    let credential_query = CredentialQuery::sd_jwt_vc(vec![schema.schema_id().await.unwrap()])
-        .id("test_query_id")
-        .claims(vec![
-            ClaimQuery::builder()
-                .path(vec!["required_claim".to_string()])
-                .build(),
-        ])
-        .build();
-    let dcql_query = DcqlQuery::builder()
-        .credentials(vec![credential_query])
-        .build();
+    let dcql_query = simple_dcql_query(&schema).await;
     let proof = proof_for_dcql_query(
         &context,
         &org,
@@ -797,17 +762,7 @@ async fn test_get_presentation_definition_2_no_credential_with_schema() {
     // GIVEN
     let (context, org, _, identifier, key) = TestContext::new_with_did(None).await;
     let schema = complex_sd_jwt_vc_credential_schema(&context, &org).await;
-    let credential_query = CredentialQuery::sd_jwt_vc(vec![schema.schema_id().await.unwrap()])
-        .id("test_query_id")
-        .claims(vec![
-            ClaimQuery::builder()
-                .path(vec!["required_claim".to_string()])
-                .build(),
-        ])
-        .build();
-    let dcql_query = DcqlQuery::builder()
-        .credentials(vec![credential_query])
-        .build();
+    let dcql_query = simple_dcql_query(&schema).await;
     let proof = proof_for_dcql_query(
         &context,
         &org,
@@ -941,17 +896,7 @@ async fn test_get_presentation_definition_2_inapplicable_credential_validity() {
     )
     .await;
 
-    let credential_query = CredentialQuery::sd_jwt_vc(vec![schema.schema_id().await.unwrap()])
-        .id("test_query_id")
-        .claims(vec![
-            ClaimQuery::builder()
-                .path(vec!["required_claim".to_string()])
-                .build(),
-        ])
-        .build();
-    let dcql_query = DcqlQuery::builder()
-        .credentials(vec![credential_query])
-        .build();
+    let dcql_query = simple_dcql_query(&schema).await;
     let proof = proof_for_dcql_query(
         &context,
         &org,
@@ -987,6 +932,299 @@ async fn test_get_presentation_definition_2_inapplicable_credential_validity() {
       }
     ]);
     body["credentialSets"].assert_eq(&credential_sets);
+}
+
+#[tokio::test]
+async fn test_get_presentation_definition_2_batch_credential_success() {
+    // GIVEN
+    let (context, org, _, identifier, key) = TestContext::new_with_did(None).await;
+    let mut schema = complex_sd_jwt_vc_credential_schema(&context, &org).await;
+    schema.batch_size = Some(2);
+    let claims = vec![
+        claim_data(
+            "required_claim",
+            "required_claim",
+            Some("value"),
+            true,
+            &schema,
+        )
+        .await,
+    ];
+    let credential = context
+        .db
+        .credentials
+        .create_batch(
+            &schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_FINAL1",
+            TestingCredentialParams {
+                role: Some(CredentialRole::Holder),
+                claims_data: Some(claims),
+                ..Default::default()
+            },
+            2,
+            None,
+        )
+        .await;
+
+    let dcql_query = simple_dcql_query(&schema).await;
+    let proof = proof_for_dcql_query(
+        &context,
+        &org,
+        &identifier,
+        key,
+        &dcql_query,
+        "OPENID4VP_FINAL1",
+    )
+    .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .proofs
+        .presentation_definition_v2(proof.id)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let body = resp.json_value().await;
+    let applicable_creds = body["credentialQueries"]["test_query_id"]["applicableCredentials"]
+        .as_array()
+        .unwrap();
+    assert_eq!(applicable_creds.len(), 1);
+    applicable_creds[0]["id"].assert_eq(&credential.id);
+}
+
+#[tokio::test]
+async fn test_get_presentation_definition_2_empty_batch() {
+    // GIVEN
+    let (context, org, _, identifier, key) = TestContext::new_with_did(None).await;
+    let mut schema = complex_sd_jwt_vc_credential_schema(&context, &org).await;
+    schema.batch_size = Some(2);
+    let claims = vec![
+        claim_data(
+            "required_claim",
+            "required_claim",
+            Some("value"),
+            true,
+            &schema,
+        )
+        .await,
+    ];
+    context
+        .db
+        .credentials
+        .create_batch(
+            &schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_FINAL1",
+            TestingCredentialParams {
+                role: Some(CredentialRole::Holder),
+                claims_data: Some(claims),
+                ..Default::default()
+            },
+            0,
+            None,
+        )
+        .await;
+
+    let dcql_query = simple_dcql_query(&schema).await;
+    let proof = proof_for_dcql_query(
+        &context,
+        &org,
+        &identifier,
+        key,
+        &dcql_query,
+        "OPENID4VP_FINAL1",
+    )
+    .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .proofs
+        .presentation_definition_v2(proof.id)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let body = resp.json_value().await;
+    body["credentialQueries"]["test_query_id"]["failureHint"]["credentialSchema"]["id"]
+        .assert_eq(&schema.id);
+    body["credentialQueries"]["test_query_id"]["failureHint"]["reason"]
+        .assert_eq(&"NO_CREDENTIAL".to_string());
+}
+
+#[tokio::test]
+async fn test_get_presentation_definition_2_consumed_batch() {
+    // GIVEN
+    let (context, org, _, identifier, key) = TestContext::new_with_did(None).await;
+    let mut schema = complex_sd_jwt_vc_credential_schema(&context, &org).await;
+    schema.batch_size = Some(2);
+    let claims = vec![
+        claim_data(
+            "required_claim",
+            "required_claim",
+            Some("value"),
+            true,
+            &schema,
+        )
+        .await,
+    ];
+    let credential = context
+        .db
+        .credentials
+        .create_batch(
+            &schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_FINAL1",
+            TestingCredentialParams {
+                role: Some(CredentialRole::Holder),
+                claims_data: Some(claims),
+                ..Default::default()
+            },
+            1,
+            None,
+        )
+        .await;
+    let items = context
+        .db
+        .credentials
+        .list(CredentialFilterValue::ParentCredential(credential.id).condition())
+        .await;
+    context
+        .db
+        .credentials
+        .update(
+            items[0].id,
+            UpdateCredentialRequest {
+                consumed_at: Clearable::ForceSet(Some(now_utc())),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let dcql_query = simple_dcql_query(&schema).await;
+    let proof = proof_for_dcql_query(
+        &context,
+        &org,
+        &identifier,
+        key,
+        &dcql_query,
+        "OPENID4VP_FINAL1",
+    )
+    .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .proofs
+        .presentation_definition_v2(proof.id)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let body = resp.json_value().await;
+    body["credentialQueries"]["test_query_id"]["failureHint"]["credentialSchema"]["id"]
+        .assert_eq(&schema.id);
+    body["credentialQueries"]["test_query_id"]["failureHint"]["reason"]
+        .assert_eq(&"NO_CREDENTIAL".to_string());
+}
+
+#[tokio::test]
+async fn test_get_presentation_definition_2_mixed_batch() {
+    // GIVEN
+    let (context, org, _, identifier, key) = TestContext::new_with_did(None).await;
+    let mut schema = complex_sd_jwt_vc_credential_schema(&context, &org).await;
+    schema.batch_size = Some(2);
+    let claims = vec![
+        claim_data(
+            "required_claim",
+            "required_claim",
+            Some("value"),
+            true,
+            &schema,
+        )
+        .await,
+    ];
+    let credential = context
+        .db
+        .credentials
+        .create_batch(
+            &schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_FINAL1",
+            TestingCredentialParams {
+                role: Some(CredentialRole::Holder),
+                claims_data: Some(claims),
+                ..Default::default()
+            },
+            2,
+            None,
+        )
+        .await;
+    let items = context
+        .db
+        .credentials
+        .list(CredentialFilterValue::ParentCredential(credential.id).condition())
+        .await;
+    context
+        .db
+        .credentials
+        .update(
+            items[0].id,
+            UpdateCredentialRequest {
+                consumed_at: Clearable::ForceSet(Some(now_utc())),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let dcql_query = simple_dcql_query(&schema).await;
+    let proof = proof_for_dcql_query(
+        &context,
+        &org,
+        &identifier,
+        key,
+        &dcql_query,
+        "OPENID4VP_FINAL1",
+    )
+    .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .proofs
+        .presentation_definition_v2(proof.id)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let body = resp.json_value().await;
+    let applicable_creds = body["credentialQueries"]["test_query_id"]["applicableCredentials"]
+        .as_array()
+        .unwrap();
+    assert_eq!(applicable_creds.len(), 1);
+    applicable_creds[0]["id"].assert_eq(&credential.id);
+}
+
+async fn simple_dcql_query(schema: &CredentialSchema) -> DcqlQuery {
+    let credential_query = CredentialQuery::sd_jwt_vc(vec![schema.schema_id().await.unwrap()])
+        .id("test_query_id")
+        .claims(vec![
+            ClaimQuery::builder()
+                .path(vec!["required_claim".to_string()])
+                .build(),
+        ])
+        .build();
+
+    DcqlQuery::builder()
+        .credentials(vec![credential_query])
+        .build()
 }
 
 async fn create_credential(

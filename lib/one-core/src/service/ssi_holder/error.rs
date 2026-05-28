@@ -2,6 +2,7 @@ use shared_types::{CredentialId, DidId, IdentifierId, InteractionId, Organisatio
 use thiserror::Error;
 
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
+use crate::model::credential::CredentialType;
 
 #[derive(Debug, Error)]
 pub enum HolderServiceError {
@@ -45,6 +46,10 @@ pub enum HolderServiceError {
     RejectionNotSupported,
     #[error("Organisation {0} is deactivated")]
     OrganisationIsDeactivated(OrganisationId),
+    #[error("Invalid credential type: {0}")]
+    InvalidCredentialType(CredentialType),
+    #[error("No unused, active credentials left in batch credential {0}")]
+    BatchExhausted(CredentialId),
 
     #[error("Mapping error: {0}")]
     MappingError(String),
@@ -76,6 +81,8 @@ impl ErrorCodeMixin for HolderServiceError {
             Self::RejectionNotSupported => ErrorCode::BR_0237,
             Self::OrganisationIsDeactivated(_) => ErrorCode::BR_0241,
             Self::MappingError(_) => ErrorCode::BR_0047,
+            Self::InvalidCredentialType(_) => ErrorCode::BR_0442,
+            Self::BatchExhausted(_) => ErrorCode::BR_0443,
             Self::Nested(nested) => nested.error_code(),
         }
     }

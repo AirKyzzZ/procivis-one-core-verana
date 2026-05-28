@@ -1,7 +1,13 @@
-use one_core::model::credential::{Credential, CredentialRole, CredentialStateEnum};
+use one_core::clock::now_utc;
+use one_core::model::credential::{
+    Clearable, Credential, CredentialFilterValue, CredentialRole, CredentialStateEnum,
+    UpdateCredentialRequest,
+};
 use one_core::model::did::{Did, DidType, KeyRole, RelatedKey};
 use one_core::model::identifier::{Identifier, IdentifierType};
 use one_core::model::interaction::{Interaction, InteractionType};
+use one_core::model::key::Key;
+use one_core::model::list_filter::ListFilterValue;
 use one_core::model::organisation::Organisation;
 use one_core::model::proof::{Proof, ProofStateEnum};
 use serde_json::json;
@@ -22,8 +28,8 @@ use crate::{fixtures, utils};
 #[tokio::test]
 async fn test_presentation_submit_endpoint_for_openid4vp_dcql() {
     let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
-    let (_, _, verifier_did, verifier_identifier, credential, interaction, proof) =
-        setup_submittable_presentation_dcql(&context, &organisation, &identifier).await;
+    let (verifier_did, verifier_identifier, credential, interaction, proof) =
+        setup_submittable_presentation_dcql(&context, &organisation, &identifier, None).await;
 
     context
         .server_mock
@@ -38,25 +44,11 @@ async fn test_presentation_submit_endpoint_for_openid4vp_dcql() {
         .await;
 
     // WHEN
-    let url = format!(
-        "{}/api/interaction/v2/presentation-submit",
-        context.config.app.core_base_url
-    );
-
-    let resp = utils::client()
-        .post(url)
-        .bearer_auth("test")
-        .json(&json!({
-          "interactionId": interaction.id,
-          "submission": {
-            "input_0": {
-              "credentialId": credential.id
-            }
-          }
-        }))
-        .send()
-        .await
-        .unwrap();
+    let resp = context
+        .api
+        .interactions
+        .presentation_submit_v2(interaction.id, credential.id, &[])
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 204);
@@ -98,76 +90,46 @@ async fn test_presentation_submit_endpoint_for_openid4vp_dcql() {
 async fn test_presentation_submit_endpoint_user_selection_unknown_claim() {
     let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
 
-    let (_, _, _, _, credential, interaction, _) =
-        setup_submittable_presentation_dcql(&context, &organisation, &identifier).await;
+    let (_, _, credential, interaction, _) =
+        setup_submittable_presentation_dcql(&context, &organisation, &identifier, None).await;
 
     // WHEN
-    let url = format!(
-        "{}/api/interaction/v2/presentation-submit",
-        context.config.app.core_base_url
-    );
-
-    let resp = utils::client()
-        .post(url)
-        .bearer_auth("test")
-        .json(&json!({
-          "interactionId": interaction.id,
-          "submission": {
-            "input_0": {
-              "credentialId": credential.id,
-              "userSelections": ["unknown_claim"]
-            }
-          }
-        }))
-        .send()
-        .await
-        .unwrap();
+    let resp = context
+        .api
+        .interactions
+        .presentation_submit_v2(interaction.id, credential.id, &["unknown_claim"])
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 400);
-    assert_eq!(Response::from(resp).error_code().await, "BR_0291")
+    assert_eq!(resp.error_code().await, "BR_0291")
 }
 
 #[tokio::test]
 async fn test_presentation_submit_endpoint_user_selection_duplicate_claim() {
     let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
 
-    let (_, _, _, _, credential, interaction, _) =
-        setup_submittable_presentation_dcql(&context, &organisation, &identifier).await;
+    let (_, _, credential, interaction, _) =
+        setup_submittable_presentation_dcql(&context, &organisation, &identifier, None).await;
 
     // WHEN
-    let url = format!(
-        "{}/api/interaction/v2/presentation-submit",
-        context.config.app.core_base_url
-    );
-
-    let resp = utils::client()
-        .post(url)
-        .bearer_auth("test")
-        .json(&json!({
-          "interactionId": interaction.id,
-          "submission": {
-            "input_0": {
-              "credentialId": credential.id,
-              "userSelections": ["duplicate", "duplicate"]
-            }
-          }
-        }))
-        .send()
-        .await
-        .unwrap();
+    let resp = context
+        .api
+        .interactions
+        .presentation_submit_v2(interaction.id, credential.id, &["duplicate", "duplicate"])
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 400);
-    assert_eq!(Response::from(resp).error_code().await, "BR_0291")
+    assert_eq!(resp.error_code().await, "BR_0291")
 }
 
 #[tokio::test]
 async fn test_presentation_submit_incompatible_version() {
     let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
 
-    let (_, _, _, _, credential, interaction, _) =
-        setup_submittable_presentation_dcql(&context, &organisation, &identifier).await;
+    let (_, _, credential, interaction, _) =
+        setup_submittable_presentation_dcql(&context, &organisation, &identifier, None).await;
 
     // WHEN
     let url = format!(
@@ -198,19 +160,182 @@ async fn test_presentation_submit_incompatible_version() {
     assert_eq!(Response::from(resp).error_code().await, "BR_0292")
 }
 
+#[tokio::test]
+async fn test_presentation_submit_endpoint_for_openid4vp_dcql_batch_credential() {
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+    let credential = setup_batch_credential(&context, &organisation, &identifier, 2).await;
+    let (verifier_did, verifier_identifier, credential, interaction, proof) =
+        setup_submittable_presentation_dcql(&context, &organisation, &identifier, Some(credential))
+            .await;
+
+    context
+        .server_mock
+        .ssi_request_uri_endpoint(Some(|mock_builder: MockBuilder| {
+            // Just sample query params as they are too dynamic and contain random ids
+            mock_builder
+                .and(body_string_contains("state"))
+                .and(body_string_contains("53c44733-4f9d-4db2-aa83-afb8e17b500f")) // this is the state
+                .and(body_string_contains("vp_token"))
+                .and(body_string_contains("input_0"))
+        }))
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .interactions
+        .presentation_submit_v2(interaction.id, credential.id, &[])
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 204);
+
+    let proof = fixtures::get_proof(&context.db.db_conn, &proof.id).await;
+    assert_eq!(proof.state, ProofStateEnum::Accepted);
+    assert!(
+        proof
+            .claims
+            .as_ref()
+            .unwrap()
+            .iter()
+            .any(|c| c.claim.value == Some("test".to_string()))
+    );
+    assert_eq!(
+        proof.verifier_identifier.unwrap().did.unwrap().did,
+        verifier_did.did
+    );
+    let proof_history = context
+        .db
+        .histories
+        .get_by_entity_id(&proof.id.into())
+        .await;
+    assert_eq!(
+        proof_history
+            .values
+            .first()
+            .as_ref()
+            .unwrap()
+            .target
+            .as_ref()
+            .unwrap(),
+        &verifier_identifier.id.to_string()
+    );
+
+    let items = context
+        .db
+        .credentials
+        .list(CredentialFilterValue::ParentCredential(credential.id).condition())
+        .await;
+    // Only one item consumed
+    assert!(items.iter().any(|c| c.consumed_at.is_some()));
+    assert!(items.iter().any(|c| c.consumed_at.is_none()));
+}
+
+#[tokio::test]
+async fn test_presentation_submit_endpoint_for_openid4vp_dcql_batch_item() {
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+    let credential = setup_batch_credential(&context, &organisation, &identifier, 1).await;
+    let (_, _, credential, interaction, _) =
+        setup_submittable_presentation_dcql(&context, &organisation, &identifier, Some(credential))
+            .await;
+    let items = context
+        .db
+        .credentials
+        .list(CredentialFilterValue::ParentCredential(credential.id).condition())
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .interactions
+        .presentation_submit_v2(interaction.id, items[0].id, &[])
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.error_code().await, "BR_0291")
+}
+
+#[tokio::test]
+async fn test_presentation_submit_endpoint_for_openid4vp_dcql_batch_consumed() {
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+    let credential = setup_batch_credential(&context, &organisation, &identifier, 1).await;
+    let (_, _, credential, interaction, _) =
+        setup_submittable_presentation_dcql(&context, &organisation, &identifier, Some(credential))
+            .await;
+    let items = context
+        .db
+        .credentials
+        .list(CredentialFilterValue::ParentCredential(credential.id).condition())
+        .await;
+    context
+        .db
+        .credentials
+        .update(
+            items[0].id,
+            UpdateCredentialRequest {
+                consumed_at: Clearable::ForceSet(Some(now_utc())),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .interactions
+        .presentation_submit_v2(interaction.id, credential.id, &[])
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.error_code().await, "BR_0291")
+}
+
+async fn setup_batch_credential(
+    context: &TestContext,
+    organisation: &Organisation,
+    identifier: &Identifier,
+    num_items: usize,
+) -> Credential {
+    let mut schema = fixtures::create_credential_schema(
+        &context.db.db_conn,
+        organisation,
+        Some(TestingCredentialSchemaParams {
+            name: Some("Schema1".to_string()),
+            ..Default::default()
+        }),
+    )
+    .await;
+    let (key, holder_identifier) = create_holder_identifier(context, organisation).await;
+    schema.batch_size = Some(2);
+
+    context
+        .db
+        .credentials
+        .create_batch(
+            &schema,
+            CredentialStateEnum::Accepted,
+            identifier,
+            "OPENID4VCI_FINAL1",
+            TestingCredentialParams {
+                role: Some(CredentialRole::Holder),
+                holder_identifier: Some(holder_identifier),
+                key: Some(key),
+                ..Default::default()
+            },
+            num_items,
+            Some(&context.db.blobs),
+        )
+        .await
+}
+
 async fn setup_submittable_presentation_dcql(
     context: &TestContext,
     organisation: &Organisation,
     issuer_identifier: &Identifier,
-) -> (
-    Did,
-    Identifier,
-    Did,
-    Identifier,
-    Credential,
-    Interaction,
-    Proof,
-) {
+    credential: Option<Credential>,
+) -> (Did, Identifier, Credential, Interaction, Proof) {
     let client_metadata = json!(
     {
         "jwks": {
@@ -286,6 +411,116 @@ async fn setup_submittable_presentation_dcql(
         )
         .await;
 
+    let credential = if let Some(credential) = credential {
+        credential
+    } else {
+        let (holder_key, holder_identifier) = create_holder_identifier(context, organisation).await;
+        let credential_schema = fixtures::create_credential_schema(
+            &context.db.db_conn,
+            organisation,
+            Some(TestingCredentialSchemaParams {
+                name: Some("Schema1".to_string()),
+                ..Default::default()
+            }),
+        )
+        .await;
+
+        let blob = context
+            .db
+            .blobs
+            .create(TestingBlobParams {
+                value: Some("TOKEN".as_bytes().to_vec()),
+                ..Default::default()
+            })
+            .await;
+
+        fixtures::create_credential(
+            &context.db.db_conn,
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            issuer_identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                holder_identifier: Some(holder_identifier),
+                key: Some(holder_key),
+                role: Some(CredentialRole::Holder),
+                credential_blob_id: Some(blob.id),
+                ..Default::default()
+            },
+        )
+        .await
+    };
+
+    let verifier_url = context.server_mock.uri();
+    let interaction = fixtures::create_interaction(
+        &context.db.db_conn,
+        json!(
+            {
+                "response_type":"vp_token",
+                "state": "53c44733-4f9d-4db2-aa83-afb8e17b500f",
+                "nonce":"QnoICmZxqAUZdOlPJRVtbJrrHJRTDwCM",
+                "client_id_scheme":"redirect_uri",
+                "client_id": format!("{verifier_url}/ssi/openid4vp/draft-20/response"),
+                "client_metadata": client_metadata,
+                "response_mode":"direct_post",
+                "response_uri": format!("{verifier_url}/ssi/openid4vp/draft-20/response"),
+                "dcql_query":
+                {
+                    "credentials" : [
+                        {
+                            "id": "input_0",
+                            "format": "jwt_vc_json",
+                            "meta": {
+                                "type_values": [[
+                                    "https://www.w3.org/2018/credentials#VerifiableCredential",
+                                    format!("{}#Schema1", credential.schema.as_ref().unwrap().schema_id().await.unwrap())
+                                ]]
+                            },
+                            "claims": [
+                                {
+                                    "path": ["firstName"]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
+        )
+        .to_string()
+        .as_bytes(),
+        organisation,
+        InteractionType::Verification,
+    )
+    .await;
+
+    let proof = context
+        .db
+        .proofs
+        .create(
+            None,
+            &verifier_identifier,
+            None,
+            ProofStateEnum::Requested,
+            "OPENID4VP_FINAL1",
+            Some(&interaction),
+            verifier_key,
+            None,
+            None,
+        )
+        .await;
+    (
+        verifier_did,
+        verifier_identifier,
+        credential,
+        interaction,
+        proof,
+    )
+}
+
+async fn create_holder_identifier(
+    context: &TestContext,
+    organisation: &Organisation,
+) -> (Key, Identifier) {
     let holder_key = fixtures::create_key(
         &context.db.db_conn,
         organisation,
@@ -338,108 +573,7 @@ async fn setup_submittable_presentation_dcql(
             },
         )
         .await;
-
-    let credential_schema = fixtures::create_credential_schema(
-        &context.db.db_conn,
-        organisation,
-        Some(TestingCredentialSchemaParams {
-            name: Some("Schema1".to_string()),
-            ..Default::default()
-        }),
-    )
-    .await;
-
-    let blob = context
-        .db
-        .blobs
-        .create(TestingBlobParams {
-            value: Some("TOKEN".as_bytes().to_vec()),
-            ..Default::default()
-        })
-        .await;
-
-    let credential = fixtures::create_credential(
-        &context.db.db_conn,
-        &credential_schema,
-        CredentialStateEnum::Accepted,
-        issuer_identifier,
-        "OPENID4VCI_DRAFT13",
-        TestingCredentialParams {
-            holder_identifier: Some(holder_identifier.clone()),
-            key: Some(holder_key),
-            role: Some(CredentialRole::Holder),
-            credential_blob_id: Some(blob.id),
-            ..Default::default()
-        },
-    )
-    .await;
-
-    let verifier_url = context.server_mock.uri();
-    let interaction = fixtures::create_interaction(
-        &context.db.db_conn,
-        json!(
-            {
-                "response_type":"vp_token",
-                "state": "53c44733-4f9d-4db2-aa83-afb8e17b500f",
-                "nonce":"QnoICmZxqAUZdOlPJRVtbJrrHJRTDwCM",
-                "client_id_scheme":"redirect_uri",
-                "client_id": format!("{verifier_url}/ssi/openid4vp/draft-20/response"),
-                "client_metadata": client_metadata,
-                "response_mode":"direct_post",
-                "response_uri": format!("{verifier_url}/ssi/openid4vp/draft-20/response"),
-                "dcql_query":
-                {
-                    "credentials" : [
-                        {
-                            "id": "input_0",
-                            "format": "jwt_vc_json",
-                            "meta": {
-                                "type_values": [[
-                                    "https://www.w3.org/2018/credentials#VerifiableCredential",
-                                    format!("{}#Schema1", credential_schema.schema_id().await.unwrap())
-                                ]]
-                            },
-                            "claims": [
-                                {
-                                    "path": ["firstName"]
-                                }
-                            ]
-                        }
-                    ]
-                }
-            }
-        )
-        .to_string()
-        .as_bytes(),
-        organisation,
-        InteractionType::Verification,
-    )
-    .await;
-
-    let proof = context
-        .db
-        .proofs
-        .create(
-            None,
-            &verifier_identifier,
-            None,
-            ProofStateEnum::Requested,
-            "OPENID4VP_FINAL1",
-            Some(&interaction),
-            verifier_key,
-            None,
-            None,
-        )
-        .await;
-    (
-        holder_did,
-        holder_identifier,
-        verifier_did,
-        verifier_identifier,
-        credential,
-        interaction,
-        proof,
-    )
+    (holder_key, holder_identifier)
 }
 
 #[tokio::test]

@@ -3,10 +3,12 @@ use std::sync::Arc;
 use one_core::model::claim::{Claim, ClaimRelations};
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential::{
-    Credential, CredentialRelations, CredentialRole, CredentialStateEnum, CredentialType,
+    Credential, CredentialFilterValue, CredentialListQuery, CredentialRelations, CredentialRole,
+    CredentialStateEnum, CredentialType, UpdateCredentialRequest,
 };
 use one_core::model::credential_schema::CredentialSchema;
 use one_core::model::identifier::{Identifier, IdentifierRelations};
+use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::relation::Related;
 use one_core::repository::credential_repository::CredentialRepository;
 use shared_types::CredentialId;
@@ -14,6 +16,7 @@ use sql_data_provider::test_utilities::get_dummy_date;
 use uuid::Uuid;
 
 use crate::fixtures::TestingCredentialParams;
+use crate::utils::db_clients::blobs::{BlobsDB, TestingBlobParams};
 
 pub struct CredentialsDB {
     repository: Arc<dyn CredentialRepository>,
@@ -48,7 +51,58 @@ impl CredentialsDB {
             .unwrap()
     }
 
+    pub async fn list(
+        &self,
+        filter: ListFilterCondition<CredentialFilterValue>,
+    ) -> Vec<Credential> {
+        let creds = self
+            .repository
+            .get_credential_list(CredentialListQuery {
+                filtering: Some(filter),
+                ..Default::default()
+            })
+            .await
+            .unwrap()
+            .values;
+        let mut result = vec![];
+        for cred in creds {
+            result.push(self.get(&cred.id).await);
+        }
+        result
+    }
+
+    pub async fn update(&self, id: CredentialId, update: UpdateCredentialRequest) {
+        self.repository.update_credential(id, update).await.unwrap();
+    }
+
     pub async fn create(
+        &self,
+        credential_schema: &CredentialSchema,
+        state: CredentialStateEnum,
+        issuer_identifier: &Identifier,
+        protocol: &str,
+        params: TestingCredentialParams,
+    ) -> Credential {
+        let credential = self
+            .prepare_credential(
+                credential_schema,
+                state,
+                issuer_identifier,
+                protocol,
+                params,
+            )
+            .await;
+
+        let id = self
+            .repository
+            .create_credential(credential.to_owned())
+            .await
+            .unwrap();
+
+        self.get(&id).await
+    }
+
+    async fn prepare_credential(
         &self,
         credential_schema: &CredentialSchema,
         state: CredentialStateEnum,
@@ -134,7 +188,7 @@ impl CredentialsDB {
             None
         };
 
-        let credential = Credential {
+        Credential {
             id: credential_id,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
@@ -165,13 +219,75 @@ impl CredentialsDB {
             parent: params
                 .parent_id
                 .map(|id| Related::new(id, self.repository.clone())),
-        };
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn create_batch(
+        &self,
+        credential_schema: &CredentialSchema,
+        state: CredentialStateEnum,
+        issuer_identifier: &Identifier,
+        protocol: &str,
+        mut params: TestingCredentialParams,
+        num_items: usize,
+        blob_storage: Option<&BlobsDB>,
+    ) -> Credential {
+        credential_schema
+            .batch_size
+            .expect("schema batch size is required to create credential batch");
+        let key = params.key.take();
+        let holder_identifier = params.holder_identifier.take();
+        let mut credential = self
+            .prepare_credential(
+                credential_schema,
+                state,
+                issuer_identifier,
+                protocol,
+                params,
+            )
+            .await;
+        credential.r#type = CredentialType::BatchParent;
 
         let id = self
             .repository
             .create_credential(credential.to_owned())
             .await
             .unwrap();
+        let batch_item_template = Credential {
+            claims: Some(vec![]),
+            r#type: CredentialType::BatchItem,
+            webhook_url: None,
+            parent: Some(Related::new(id, self.repository.clone())),
+            interaction: None,
+            key,
+            holder_identifier,
+            ..credential.clone()
+        };
+        for _ in 0..num_items {
+            let credential_blob_id = if let Some(blob_storage) = blob_storage {
+                Some(
+                    blob_storage
+                        .create(TestingBlobParams {
+                            value: Some("TOKEN".as_bytes().to_vec()),
+                            ..Default::default()
+                        })
+                        .await
+                        .id,
+                )
+            } else {
+                None
+            };
+            let batch_item_credential = Credential {
+                id: Uuid::new_v4().into(),
+                credential_blob_id,
+                ..batch_item_template.clone()
+            };
+            self.repository
+                .create_credential(batch_item_credential.to_owned())
+                .await
+                .unwrap();
+        }
 
         self.get(&id).await
     }

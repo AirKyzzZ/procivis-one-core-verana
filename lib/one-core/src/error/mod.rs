@@ -908,6 +908,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Invalid credential type")]
     BR_0442,
+
+    #[strum(message = "No unused, active credentials left in credential batch")]
+    BR_0443,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

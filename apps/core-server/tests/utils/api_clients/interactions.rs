@@ -98,4 +98,26 @@ impl InteractionsApi {
             .post("/api/interaction/v1/continue-issuance", body)
             .await
     }
+
+    pub async fn presentation_submit_v2(
+        &self,
+        interaction_id: impl Into<Uuid>,
+        credential_id: impl Into<Uuid>,
+        user_selections: &[&str],
+    ) -> Response {
+        let mut body = json!({
+          "interactionId": interaction_id.into(),
+          "submission": {
+            "input_0": {
+              "credentialId": credential_id.into(),
+            }
+          }
+        });
+        if !user_selections.is_empty() {
+            body["submission"]["input_0"]["userSelections"] = json!(user_selections);
+        }
+        self.client
+            .post("/api/interaction/v2/presentation-submit", body)
+            .await
+    }
 }

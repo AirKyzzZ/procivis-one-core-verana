@@ -18,7 +18,7 @@ use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
     Credential, CredentialFilterValue, CredentialListQuery, CredentialRelations, CredentialRole,
-    CredentialStateEnum,
+    CredentialStateEnum, CredentialType,
 };
 use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::interaction::{Interaction, InteractionType};
@@ -345,8 +345,6 @@ impl From<CredentialSet> for CredentialSetResponseDTO {
     }
 }
 
-// TODO: Moved out of StorageProxyImpl, look at callers and determine
-//       if this wrapper is actually needed or could just be inlined
 pub(crate) async fn get_presentation_credentials_by_schema_id(
     credential_repository: &dyn CredentialRepository,
     schema_id: String,
@@ -362,7 +360,11 @@ pub(crate) async fn get_presentation_credentials_by_schema_id(
                         CredentialStateEnum::Suspended,
                         CredentialStateEnum::Revoked,
                     ])
-                    & CredentialFilterValue::Roles(vec![CredentialRole::Holder]),
+                    & CredentialFilterValue::Roles(vec![CredentialRole::Holder])
+                    & (CredentialFilterValue::Types(vec![CredentialType::Single]).condition()
+                        | (CredentialFilterValue::Types(vec![CredentialType::BatchParent])
+                            .condition()
+                            & CredentialFilterValue::HasUnconsumedBatchItems(true))),
             ),
             ..Default::default()
         })

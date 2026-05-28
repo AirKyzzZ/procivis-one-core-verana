@@ -149,6 +149,7 @@ pub enum CredentialFilterValue {
     LastModified(ValueComparison<OffsetDateTime>),
     IssuanceDate(ValueComparison<OffsetDateTime>),
     RevocationDate(ValueComparison<OffsetDateTime>),
+    HasUnconsumedBatchItems(bool),
 }
 
 impl ListFilterValue for CredentialFilterValue {}
