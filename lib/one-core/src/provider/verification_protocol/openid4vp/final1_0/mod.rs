@@ -49,9 +49,7 @@ use crate::provider::verification_protocol::dto::{
 use crate::provider::verification_protocol::mapper::{
     interaction_from_handle_invitation, proof_from_handle_invitation,
 };
-use crate::provider::verification_protocol::openid4vp::dcql::{
-    get_presentation_definition_for_dcql_query, get_presentation_definition_v2,
-};
+use crate::provider::verification_protocol::openid4vp::dcql::get_presentation_definition_v2;
 use crate::provider::verification_protocol::openid4vp::final1_0::mappers::create_open_id_for_vp_client_metadata_final1_0;
 use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, DcqlSubmission, JwePayload, OpenID4VPClientMetadata,
@@ -391,25 +389,10 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
 
     async fn holder_get_presentation_definition(
         &self,
-        proof: &Proof,
-        context: Value,
+        _proof: &Proof,
+        _context: Value,
     ) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError> {
-        let interaction_data: OpenID4VPHolderInteractionData = serde_json::from_value(context)?;
-
-        let dcql_query = interaction_data
-            .dcql_query
-            .ok_or(VerificationProtocolError::Failed(
-                "missing dcql_query".to_string(),
-            ))?;
-
-        get_presentation_definition_for_dcql_query(
-            dcql_query,
-            proof,
-            &*self.credential_repository,
-            &*self.credential_formatter_provider,
-            &self.config,
-        )
-        .await
+        Err(VerificationProtocolError::OperationNotSupported)
     }
 
     fn get_capabilities(&self) -> VerificationProtocolCapabilities {

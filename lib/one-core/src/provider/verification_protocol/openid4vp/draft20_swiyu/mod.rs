@@ -77,7 +77,6 @@ impl From<OpenID4Vp20SwiyuParams> for OpenID4Vp20Params {
             url_scheme: "swiyu-verify".to_string(),
             holder: OpenID4VCPresentationHolderParams {
                 supported_client_id_schemes: vec![ClientIdScheme::Did],
-                dcql_vp_token_single_presentation: false,
             },
             verifier: OpenID4VC20PresentationVerifierParams {
                 supported_client_id_schemes: vec![ClientIdScheme::Did],

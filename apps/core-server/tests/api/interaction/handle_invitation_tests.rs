@@ -1,12 +1,13 @@
 use std::collections::HashMap;
 use std::str::FromStr;
 
+use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use one_core::provider::verification_protocol::openid4vp::model::{
     OpenID4VPDraftClientMetadata, OpenID4VPPresentationDefinition,
 };
 use serde_json::{Value, json};
 use similar_asserts::assert_eq;
-use standardized_types::openid4vp::{GenericAlgs, PresentationFormat};
+use standardized_types::openid4vp::{ClientMetadata, GenericAlgs, PresentationFormat, SdJwtVcAlgs};
 use url::Url;
 use uuid::Uuid;
 use wiremock::http::Method;
@@ -898,12 +899,13 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_value_dcql() {
     let (context, organisation) =
         TestContext::new_with_organisation(openid4vci_final1_json_metadata_config()).await;
 
-    let client_metadata = &OpenID4VPDraftClientMetadata {
+    let client_metadata = ClientMetadata {
         jwks: Default::default(),
-        vp_formats: HashMap::from([(
-            "jwt_vp_json".to_string(),
-            PresentationFormat::GenericAlgList(GenericAlgs {
-                alg: vec!["EdDSA".to_string()],
+        vp_formats_supported: HashMap::from([(
+            "dc+sd-jwt".to_string(),
+            PresentationFormat::SdJwtVcAlgs(SdJwtVcAlgs {
+                sd_jwt_alg_values: vec!["EdDSA".to_string()],
+                kb_jwt_alg_values: vec!["EdDSA".to_string()],
             }),
         )]),
         ..Default::default()
@@ -943,20 +945,27 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_value_dcql() {
     let nonce = Uuid::new_v4().to_string();
     let callback_url = "http://127.0.0.1/callback";
     let client_id = format!("redirect_uri:{callback_url}");
-    let request = json!({
-        "client_id":client_id,
-        "response_type":"vp_token",
-        "response_mode":"direct_post",
-        "client_metadata":client_metadata,
-        "nonce":nonce,
-        "dcql_query":dcql_query,
-        "response_uri":callback_url
+    let auth_request = json!({
+        "client_id": client_id,
+        "response_type": "vp_token",
+        "response_mode": "direct_post",
+        "client_metadata": client_metadata,
+        "nonce": nonce,
+        "dcql_query": dcql_query,
+        "response_uri": callback_url,
     });
 
-    let mut query = Url::parse(&format!("openid4vp-draft25://?client_id={client_id}")).unwrap();
-    query
-        .query_pairs_mut()
-        .append_pair("request", &serde_json::to_string(&request).unwrap());
+    // unsigned JWT — redirect_uri client_id_scheme skips signature verification
+    let header = json!({ "alg": "none", "typ": "oauth-authz-req+jwt" });
+    let header_b64 =
+        Base64UrlSafeNoPadding::encode_to_string(serde_json::to_vec(&header).unwrap()).unwrap();
+    let payload_b64 =
+        Base64UrlSafeNoPadding::encode_to_string(serde_json::to_vec(&auth_request).unwrap())
+            .unwrap();
+    let request_jwt = format!("{header_b64}.{payload_b64}.");
+
+    let mut query = Url::parse(&format!("openid4vp://?client_id={client_id}")).unwrap();
+    query.query_pairs_mut().append_pair("request", &request_jwt);
 
     // WHEN
     let resp = context

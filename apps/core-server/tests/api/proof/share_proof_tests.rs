@@ -117,7 +117,7 @@ async fn test_share_proof_key_storage_disabled_success() {
     )
     .await;
 
-    for exchange in ["OPENID4VP_DRAFT20", "OPENID4VP_DRAFT25", "OPENID4VP_FINAL1"] {
+    for exchange in ["OPENID4VP_DRAFT20", "OPENID4VP_FINAL1"] {
         let proof = fixtures::create_proof(
             &context.db.db_conn,
             &identifier,

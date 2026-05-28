@@ -102,7 +102,6 @@ fn generic_params() -> OpenID4Vp20Params {
                 ClientIdScheme::VerifierAttestation,
                 ClientIdScheme::Did,
             ],
-            dcql_vp_token_single_presentation: false,
         },
         verifier: OpenID4VC20PresentationVerifierParams {
             interaction_expires_in: Some(Duration::seconds(1000)),
@@ -1049,7 +1048,6 @@ fn test_params(presentation_url_scheme: &str) -> OpenID4Vp20Params {
                 ClientIdScheme::RedirectUri,
                 ClientIdScheme::VerifierAttestation,
             ],
-            dcql_vp_token_single_presentation: false,
         },
         verifier: OpenID4VC20PresentationVerifierParams {
             interaction_expires_in: Some(Duration::seconds(1000)),

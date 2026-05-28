@@ -174,7 +174,7 @@ pub(crate) struct OpenID4VPVerifierInteractionContent {
     #[serde(default)]
     #[serde(deserialize_with = "deserialize_with_serde_json")]
     pub dcql_query: Option<DcqlQuery>,
-    /// with client_id_scheme prefix (for Draft 25 and later)
+    /// with client_id_scheme prefix (for Final 1.0)
     pub client_id: String,
     pub client_id_scheme: Option<ClientIdScheme>,
     pub response_uri: Option<String>,
@@ -255,7 +255,7 @@ pub(crate) struct OpenID4VPHolderInteractionData {
     pub nonce: Option<String>,
     pub client_id_scheme: ClientIdScheme,
 
-    /// without client_id_scheme prefix (in case of Draft 25 and later)
+    /// without client_id_scheme prefix (in case of Final 1.0)
     pub client_id: String,
     #[serde(default)]
     #[serde(deserialize_with = "deserialize_with_serde_json")]
@@ -287,9 +287,6 @@ pub(crate) fn default_presentation_url_scheme() -> String {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct OpenID4VCPresentationHolderParams {
     pub supported_client_id_schemes: Vec<ClientIdScheme>,
-    /// EUDI compatibility flag for non-standard compliant vp_token formatting
-    #[serde(default)]
-    pub dcql_vp_token_single_presentation: bool,
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize, Serialize, Display, EnumString)]

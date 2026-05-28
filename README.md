@@ -395,7 +395,6 @@ and regulations mature and harden.
   - [v1.0][vci1]
 - OpenID4VP (Verification)
   - [v1.0][vp1.0]
-  - [Draft 25][vp25]
   - [Draft 20][vp20]
   - [OID4VP over BLE][ble]; optimized version of Draft 00
   - OID4VP over MQTT; proprietary adaptation of "OID4VP over BLE" via MQTT channel
@@ -493,5 +492,4 @@ Version 2.0](./LICENSE).
 [vci1]: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html
 [vp1.0]: https://openid.net/specs/openid-4-verifiable-presentations-1_0-final.html
 [vp20]: https://openid.net/specs/openid-4-verifiable-presentations-1_0-20.html
-[vp25]: https://openid.net/specs/openid-4-verifiable-presentations-1_0-25.html
 [webvh]: https://identity.foundation/didwebvh/v0.3/

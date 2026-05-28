@@ -1,6 +1,3 @@
-use std::collections::HashMap;
-
-use core_server::endpoint::proof::dto::PresentationDefinitionFieldRestDTO;
 use dcql::{
     ClaimQuery, ClaimQueryId, ClaimValue, CredentialQuery, DcqlQuery, PathSegment, TrustedAuthority,
 };
@@ -88,28 +85,35 @@ async fn test_get_presentation_definition_dcql_simple() {
         &identifier,
         key,
         &dcql_query,
-        "OPENID4VP_DRAFT25",
+        "OPENID4VP_FINAL1",
     )
     .await;
 
     // WHEN
-    let resp = context.api.proofs.presentation_definition(proof.id).await;
+    let resp = context
+        .api
+        .proofs
+        .presentation_definition_v2(proof.id)
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
-    assert_eq!(body["credentials"][0]["id"], credential.id.to_string());
-    body["requestGroups"][0]["requestedCredentials"][0]["applicableCredentials"]
-        .assert_eq(&vec![credential.id.to_string()]);
-    let field = json!({
-        "id": "test_id:firstName",
-        "keyMap": {
-            credential.id.to_string(): "firstName"
-        },
-        "name": "firstName",
+    body["credentialQueries"]["test_id"]["applicableCredentials"][0]["id"]
+        .assert_eq(&credential.id);
+    let claims = body["credentialQueries"]["test_id"]["applicableCredentials"][0]["claims"]
+        .as_array()
+        .unwrap();
+    assert!(
+        claims
+            .iter()
+            .any(|c| c["path"] == "firstName" && c["required"] == true)
+    );
+    let credential_sets = json!([{
+        "options": [["test_id"]],
         "required": true
-    });
-    body["requestGroups"][0]["requestedCredentials"][0]["fields"].assert_eq(&vec![field]);
+    }]);
+    body["credentialSets"].assert_eq(&credential_sets);
 }
 
 #[tokio::test]
@@ -203,28 +207,33 @@ async fn test_get_presentation_definition_dcql_nesting() {
         &identifier,
         key,
         &dcql_query,
-        "OPENID4VP_DRAFT25",
+        "OPENID4VP_FINAL1",
     )
     .await;
 
     // WHEN
-    let resp = context.api.proofs.presentation_definition(proof.id).await;
+    let resp = context
+        .api
+        .proofs
+        .presentation_definition_v2(proof.id)
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
-    assert_eq!(body["credentials"][0]["id"], credential.id.to_string());
-    body["requestGroups"][0]["requestedCredentials"][0]["applicableCredentials"]
-        .assert_eq(&vec![credential.id.to_string()]);
-    let field1 = json!({
-        "id": "test_id:first",
-        "keyMap": {
-            credential.id.to_string(): "first"
-        },
-        "name": "first",
+    body["credentialQueries"]["test_id"]["applicableCredentials"][0]["id"]
+        .assert_eq(&credential.id);
+    let claims = &body["credentialQueries"]["test_id"]["applicableCredentials"][0]["claims"];
+    let flat = flatten_claims(claims);
+    assert!(
+        flat.iter()
+            .any(|(p, c)| p == "first" && c["required"] == true)
+    );
+    let credential_sets = json!([{
+        "options": [["test_id"]],
         "required": true
-    });
-    body["requestGroups"][0]["requestedCredentials"][0]["fields"].assert_eq(&[field1]);
+    }]);
+    body["credentialSets"].assert_eq(&credential_sets);
 }
 
 #[tokio::test]
@@ -315,33 +324,39 @@ async fn test_get_presentation_definition_dcql_nested_with_mandatory_disclosure_
         &identifier,
         key,
         &dcql_query,
-        "OPENID4VP_DRAFT25",
+        "OPENID4VP_FINAL1",
     )
     .await;
 
     // WHEN
-    let resp = context.api.proofs.presentation_definition(proof.id).await;
+    let resp = context
+        .api
+        .proofs
+        .presentation_definition_v2(proof.id)
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
-    assert_eq!(body["credentials"][0]["id"], credential.id.to_string());
+    body["credentialQueries"]["test_id"]["applicableCredentials"][0]["id"]
+        .assert_eq(&credential.id);
 
-    let group = body["requestGroups"][0]["requestedCredentials"][0]
-        .as_object()
-        .unwrap();
-    group["applicableCredentials"].assert_eq(&vec![credential.id.to_string()]);
-
-    let fields: Vec<PresentationDefinitionFieldRestDTO> =
-        serde_json::from_value(group["fields"].to_owned()).unwrap();
-    assert_eq!(fields.len(), 3);
+    let claims = &body["credentialQueries"]["test_id"]["applicableCredentials"][0]["claims"];
+    let flat = flatten_claims(claims);
+    assert_eq!(flat.len(), 4);
 
     // false because it is optional in the request and selectively disclosable
-    assert_field_required_flag("first", false, &fields);
-    assert_field_required_flag("first/second", false, &fields);
+    assert_v2_required_flag("first", false, &flat);
+    assert_v2_required_flag("first/second", false, &flat);
 
     // true because it is not selectively disclosable
-    assert_field_required_flag("first/sibling", true, &fields);
+    assert_v2_required_flag("first/sibling", true, &flat);
+
+    let credential_sets = json!([{
+        "options": [["test_id"]],
+        "required": true
+    }]);
+    body["credentialSets"].assert_eq(&credential_sets);
 }
 
 #[tokio::test]
@@ -435,33 +450,39 @@ async fn test_get_presentation_definition_dcql_nested_required_with_mandatory_di
         &identifier,
         key,
         &dcql_query,
-        "OPENID4VP_DRAFT25",
+        "OPENID4VP_FINAL1",
     )
     .await;
 
     // WHEN
-    let resp = context.api.proofs.presentation_definition(proof.id).await;
+    let resp = context
+        .api
+        .proofs
+        .presentation_definition_v2(proof.id)
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
-    assert_eq!(body["credentials"][0]["id"], credential.id.to_string());
+    body["credentialQueries"]["test_id"]["applicableCredentials"][0]["id"]
+        .assert_eq(&credential.id);
 
-    let group = body["requestGroups"][0]["requestedCredentials"][0]
-        .as_object()
-        .unwrap();
-    group["applicableCredentials"].assert_eq(&vec![credential.id.to_string()]);
-
-    let fields: Vec<PresentationDefinitionFieldRestDTO> =
-        serde_json::from_value(group["fields"].to_owned()).unwrap();
-    assert_eq!(fields.len(), 3);
+    let claims = &body["credentialQueries"]["test_id"]["applicableCredentials"][0]["claims"];
+    let flat = flatten_claims(claims);
+    assert_eq!(flat.len(), 3);
 
     // true because it is mandatory in the request
-    assert_field_required_flag("first", true, &fields);
-    assert_field_required_flag("first/second", true, &fields);
+    assert_v2_required_flag("first", true, &flat);
+    assert_v2_required_flag("first/second", true, &flat);
 
     // true because it is not selectively disclosable
-    assert_field_required_flag("first/sibling", true, &fields);
+    assert_v2_required_flag("first/sibling", true, &flat);
+
+    let credential_sets = json!([{
+        "options": [["test_id"]],
+        "required": true
+    }]);
+    body["credentialSets"].assert_eq(&credential_sets);
 }
 
 #[tokio::test]
@@ -569,36 +590,42 @@ async fn test_get_presentation_definition_dcql_nested_with_array_query() {
         &identifier,
         key,
         &dcql_query,
-        "OPENID4VP_DRAFT25",
+        "OPENID4VP_FINAL1",
     )
     .await;
 
     // WHEN
-    let resp = context.api.proofs.presentation_definition(proof.id).await;
+    let resp = context
+        .api
+        .proofs
+        .presentation_definition_v2(proof.id)
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
-    assert_eq!(body["credentials"][0]["id"], credential.id.to_string());
+    body["credentialQueries"]["test_id"]["applicableCredentials"][0]["id"]
+        .assert_eq(&credential.id);
 
-    let group = body["requestGroups"][0]["requestedCredentials"][0]
-        .as_object()
-        .unwrap();
-    group["applicableCredentials"].assert_eq(&vec![credential.id.to_string()]);
-
-    let fields: Vec<PresentationDefinitionFieldRestDTO> =
-        serde_json::from_value(group["fields"].to_owned()).unwrap();
-    assert_eq!(fields.len(), 6);
+    let claims = &body["credentialQueries"]["test_id"]["applicableCredentials"][0]["claims"];
+    let flat = flatten_claims(claims);
+    assert_eq!(flat.len(), 6);
 
     // false because it is optional in the request and selectively disclosable
-    assert_field_required_flag("first", false, &fields);
-    assert_field_required_flag("first/second", false, &fields);
-    assert_field_required_flag("first/second/third", false, &fields);
-    assert_field_required_flag("first/second/third/0", false, &fields);
+    assert_v2_required_flag("first", false, &flat);
+    assert_v2_required_flag("first/second", false, &flat);
+    assert_v2_required_flag("first/second/third", false, &flat);
+    assert_v2_required_flag("first/second/third/0", false, &flat);
 
     // true because it is not selectively disclosable
-    assert_field_required_flag("first/second/third/1", true, &fields);
-    assert_field_required_flag("first/sibling", true, &fields);
+    assert_v2_required_flag("first/second/third/1", true, &flat);
+    assert_v2_required_flag("first/sibling", true, &flat);
+
+    let credential_sets = json!([{
+        "options": [["test_id"]],
+        "required": true
+    }]);
+    body["credentialSets"].assert_eq(&credential_sets);
 }
 
 #[tokio::test]
@@ -703,36 +730,38 @@ async fn test_get_presentation_definition_dcql_array_all_query() {
         &identifier,
         key,
         &dcql_query,
-        "OPENID4VP_DRAFT25",
+        "OPENID4VP_FINAL1",
     )
     .await;
 
     // WHEN
-    let resp = context.api.proofs.presentation_definition(proof.id).await;
+    let resp = context
+        .api
+        .proofs
+        .presentation_definition_v2(proof.id)
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
-    assert_eq!(body["credentials"][0]["id"], credential.id.to_string());
+    body["credentialQueries"]["test_id"]["applicableCredentials"][0]["id"]
+        .assert_eq(&credential.id);
 
-    let group = body["requestGroups"][0]["requestedCredentials"][0]
-        .as_object()
-        .unwrap();
-    group["applicableCredentials"].assert_eq(&vec![credential.id.to_string()]);
+    let claims = &body["credentialQueries"]["test_id"]["applicableCredentials"][0]["claims"];
+    let flat = flatten_claims(claims);
 
-    let fields: Vec<PresentationDefinitionFieldRestDTO> =
-        serde_json::from_value(group["fields"].to_owned()).unwrap();
-    assert_eq!(fields.len(), 6);
+    // V2 only emits the chain needed for the mandatory non-SD `first/0/sibling` leaf;
+    // optional SD elements (`first/1`, `first/N/second`) are not materialised
+    assert_eq!(flat.len(), 3);
+    assert_v2_required_flag("first", false, &flat);
+    assert_v2_required_flag("first/0", false, &flat);
+    assert_v2_required_flag("first/0/sibling", true, &flat);
 
-    // false because it is optional in the request and selectively disclosable
-    assert_field_required_flag("first", false, &fields);
-    assert_field_required_flag("first/0", false, &fields);
-    assert_field_required_flag("first/1", false, &fields);
-    assert_field_required_flag("first/0/second", false, &fields);
-    assert_field_required_flag("first/1/second", false, &fields);
-
-    // true because it is not selectively disclosable
-    assert_field_required_flag("first/0/sibling", true, &fields);
+    let credential_sets = json!([{
+        "options": [["test_id"]],
+        "required": true
+    }]);
+    body["credentialSets"].assert_eq(&credential_sets);
 }
 
 #[tokio::test]
@@ -836,50 +865,73 @@ async fn test_get_presentation_definition_dcql_array_all_mandatory_query() {
         &identifier,
         key,
         &dcql_query,
-        "OPENID4VP_DRAFT25",
+        "OPENID4VP_FINAL1",
     )
     .await;
 
     // WHEN
-    let resp = context.api.proofs.presentation_definition(proof.id).await;
+    let resp = context
+        .api
+        .proofs
+        .presentation_definition_v2(proof.id)
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
-    assert_eq!(body["credentials"][0]["id"], credential.id.to_string());
+    body["credentialQueries"]["test_id"]["applicableCredentials"][0]["id"]
+        .assert_eq(&credential.id);
 
-    let group = body["requestGroups"][0]["requestedCredentials"][0]
-        .as_object()
-        .unwrap();
-    group["applicableCredentials"].assert_eq(&vec![credential.id.to_string()]);
+    let claims = &body["credentialQueries"]["test_id"]["applicableCredentials"][0]["claims"];
+    let flat = flatten_claims(claims);
 
-    let fields: Vec<PresentationDefinitionFieldRestDTO> =
-        serde_json::from_value(group["fields"].to_owned()).unwrap();
-    assert_eq!(fields.len(), 6);
-
-    // true because it is required by verifier
-    assert_field_required_flag("first/0/second", true, &fields);
-    assert_field_required_flag("first/1/second", true, &fields);
-
-    // true because it is a transitive parent of a claim required by verifier
-    assert_field_required_flag("first", true, &fields);
-    assert_field_required_flag("first/0", true, &fields);
-    assert_field_required_flag("first/1", true, &fields);
+    assert_eq!(flat.len(), 3);
+    // true because it is a transitive parent of a claim required by verifier (sibling)
+    assert_v2_required_flag("first", true, &flat);
+    assert_v2_required_flag("first/0", true, &flat);
 
     // true because it is not selectively disclosable
-    assert_field_required_flag("first/0/sibling", true, &fields);
+    assert_v2_required_flag("first/0/sibling", true, &flat);
+
+    let credential_sets = json!([{
+        "options": [["test_id"]],
+        "required": true
+    }]);
+    body["credentialSets"].assert_eq(&credential_sets);
 }
 
-fn assert_field_required_flag(
-    field_name: &str,
-    required: bool,
-    fields: &[PresentationDefinitionFieldRestDTO],
-) {
-    let requested_field = fields
+/// Flatten the nested V2 `claims` tree into a flat list of (path, claim_json) pairs.
+fn flatten_claims(claims: &serde_json::Value) -> Vec<(String, serde_json::Value)> {
+    let mut out = Vec::new();
+    fn recurse(node: &serde_json::Value, out: &mut Vec<(String, serde_json::Value)>) {
+        if let Some(arr) = node.as_array() {
+            for c in arr {
+                if let Some(path) = c.get("path").and_then(|p| p.as_str()) {
+                    out.push((path.to_string(), c.clone()));
+                    if let Some(value) = c.get("value")
+                        && value.is_array()
+                    {
+                        recurse(value, out);
+                    }
+                }
+            }
+        }
+    }
+    recurse(claims, &mut out);
+    out
+}
+
+fn assert_v2_required_flag(path: &str, required: bool, flat: &[(String, serde_json::Value)]) {
+    let claim = &flat
         .iter()
-        .find(|field| field.name.as_ref().unwrap() == field_name)
-        .unwrap();
-    assert_eq!(requested_field.required.unwrap(), required);
+        .find(|(p, _)| p == path)
+        .expect("claim path not found")
+        .1;
+    assert_eq!(
+        claim["required"].as_bool().unwrap(),
+        required,
+        "expected required={required} for path '{path}', got claim: {claim}"
+    );
 }
 
 #[tokio::test]
@@ -938,38 +990,40 @@ async fn test_get_presentation_definition_dcql_simple_w3c() {
         &identifier,
         key,
         &dcql_query,
-        "OPENID4VP_DRAFT25",
+        "OPENID4VP_FINAL1",
     )
     .await;
 
     // WHEN
-    let resp = context.api.proofs.presentation_definition(proof.id).await;
+    let resp = context
+        .api
+        .proofs
+        .presentation_definition_v2(proof.id)
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
-    assert_eq!(body["credentials"][0]["id"], credential.id.to_string());
-    body["requestGroups"][0]["requestedCredentials"][0]["applicableCredentials"]
-        .assert_eq(&vec![credential.id.to_string()]);
-    let field1 = json!({
-        "id": "test_id:firstName",
-        "keyMap": {
-            credential.id.to_string(): "firstName"
-        },
-        "name": "firstName",
+    body["credentialQueries"]["test_id"]["applicableCredentials"][0]["id"]
+        .assert_eq(&credential.id);
+
+    let claims = &body["credentialQueries"]["test_id"]["applicableCredentials"][0]["claims"];
+    let flat = flatten_claims(claims);
+    // both claims are required because JWT does not support selective disclosure
+    assert!(
+        flat.iter()
+            .any(|(p, c)| p == "firstName" && c["required"] == true)
+    );
+    assert!(
+        flat.iter()
+            .any(|(p, c)| p == "isOver18" && c["required"] == true)
+    );
+
+    let credential_sets = json!([{
+        "options": [["test_id"]],
         "required": true
-    });
-    // also shown because JWT does not support selective disclosure
-    let field2 = json!({
-        "id": "test_id:isOver18",
-        "keyMap": {
-            credential.id.to_string(): "isOver18"
-        },
-        "name": "isOver18",
-        "required": true
-    });
-    body["requestGroups"][0]["requestedCredentials"][0]["fields"]
-        .assert_eq_unordered(&[field1, field2]);
+    }]);
+    body["credentialSets"].assert_eq(&credential_sets);
 }
 
 #[tokio::test]
@@ -1028,50 +1082,31 @@ async fn test_get_presentation_definition_dcql_no_selective_disclosure_inapplica
         &identifier,
         key,
         &dcql_query,
-        "OPENID4VP_DRAFT25",
+        "OPENID4VP_FINAL1",
     )
     .await;
 
     // WHEN
-    let resp = context.api.proofs.presentation_definition(proof.id).await;
+    let resp = context
+        .api
+        .proofs
+        .presentation_definition_v2(proof.id)
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
-    assert_eq!(body["credentials"][0]["id"], credential.id.to_string());
-    let credential_request = &body["requestGroups"][0]["requestedCredentials"][0];
-    credential_request["inapplicableCredentials"].assert_eq(&vec![credential.id.to_string()]);
-    assert_eq!(
-        credential_request["applicableCredentials"]
-            .as_array()
-            .unwrap()
-            .len(),
-        0
-    );
+    let _ = &credential;
+    body["credentialQueries"]["test_id"]["failureHint"]["reason"]
+        .assert_eq(&"CONSTRAINT".to_string());
+    body["credentialQueries"]["test_id"]["failureHint"]["credentialSchema"]["id"]
+        .assert_eq(&credential_schema.id);
 
-    let field_non_existing = json!({
-        "id": "test_id:non-existing-claim",
-        "keyMap": {},
-        "name": "non-existing-claim",
-        "required": true,
-    });
-    let field_1 = json!({
-        "id": "test_id:firstName",
-        "keyMap": {
-            credential.id.to_string(): "firstName"
-        },
-        "name": "firstName",
+    let credential_sets = json!([{
+        "options": [["test_id"]],
         "required": true
-    });
-    let field_2 = json!({
-        "id": "test_id:isOver18",
-        "keyMap": {
-            credential.id.to_string(): "isOver18"
-        },
-        "name": "isOver18",
-        "required": true
-    });
-    credential_request["fields"].assert_eq_unordered(&[field_1, field_2, field_non_existing]);
+    }]);
+    body["credentialSets"].assert_eq(&credential_sets);
 }
 
 #[tokio::test]
@@ -1142,36 +1177,31 @@ async fn test_get_presentation_definition_dcql_inapplicable_credential() {
         &identifier,
         key,
         &dcql_query,
-        "OPENID4VP_DRAFT25",
+        "OPENID4VP_FINAL1",
     )
     .await;
 
     // WHEN
-    let resp = context.api.proofs.presentation_definition(proof.id).await;
+    let resp = context
+        .api
+        .proofs
+        .presentation_definition_v2(proof.id)
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
-    assert_eq!(body["credentials"][0]["id"], credential.id.to_string());
-    body["requestGroups"][0]["requestedCredentials"][0]["inapplicableCredentials"]
-        .assert_eq(&vec![credential.id.to_string()]);
+    let _ = &credential;
+    body["credentialQueries"]["test_id"]["failureHint"]["reason"]
+        .assert_eq(&"CONSTRAINT".to_string());
+    body["credentialQueries"]["test_id"]["failureHint"]["credentialSchema"]["id"]
+        .assert_eq(&credential_schema.id);
 
-    let field_found = json!({
-        "id": "test_id:firstName",
-        "keyMap": {
-            credential.id.to_string(): "firstName"
-        },
-        "name": "firstName",
+    let credential_sets = json!([{
+        "options": [["test_id"]],
         "required": true
-    });
-    let field_not_found = json!({
-        "id": "test_id:isOver18",
-        "keyMap": {},
-        "name": "isOver18",
-        "required": true
-    });
-    body["requestGroups"][0]["requestedCredentials"][0]["fields"]
-        .assert_eq_unordered(&[field_found, field_not_found]);
+    }]);
+    body["credentialSets"].assert_eq(&credential_sets);
 }
 
 #[tokio::test]
@@ -1249,28 +1279,34 @@ async fn test_get_presentation_definition_dcql_claim_sets() {
         &identifier,
         key,
         &dcql_query,
-        "OPENID4VP_DRAFT25",
+        "OPENID4VP_FINAL1",
     )
     .await;
 
     // WHEN
-    let resp = context.api.proofs.presentation_definition(proof.id).await;
+    let resp = context
+        .api
+        .proofs
+        .presentation_definition_v2(proof.id)
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
-    assert_eq!(body["credentials"][0]["id"], credential.id.to_string());
-    body["requestGroups"][0]["requestedCredentials"][0]["applicableCredentials"]
-        .assert_eq(&vec![credential.id.to_string()]);
-    let field = json!({
-        "id": "test_id:firstName",
-        "keyMap": {
-            credential.id.to_string(): "firstName"
-        },
-        "name": "firstName",
+    body["credentialQueries"]["test_id"]["applicableCredentials"][0]["id"]
+        .assert_eq(&credential.id);
+    let claims = &body["credentialQueries"]["test_id"]["applicableCredentials"][0]["claims"];
+    let flat = flatten_claims(claims);
+    assert!(
+        flat.iter()
+            .any(|(p, c)| p == "firstName" && c["required"] == true)
+    );
+
+    let credential_sets = json!([{
+        "options": [["test_id"]],
         "required": true
-    });
-    body["requestGroups"][0]["requestedCredentials"][0]["fields"].assert_eq(&vec![field]);
+    }]);
+    body["credentialSets"].assert_eq(&credential_sets);
 }
 
 #[tokio::test]
@@ -1367,36 +1403,50 @@ async fn test_get_presentation_definition_dcql_claim_sets_disjoint_credentials()
         &identifier,
         key,
         &dcql_query,
-        "OPENID4VP_DRAFT25",
+        "OPENID4VP_FINAL1",
     )
     .await;
 
     // WHEN
-    let resp = context.api.proofs.presentation_definition(proof.id).await;
+    let resp = context
+        .api
+        .proofs
+        .presentation_definition_v2(proof.id)
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
-    body["requestGroups"][0]["requestedCredentials"][0]["applicableCredentials"]
-        .assert_eq_unordered(&[credential1.id.to_string(), credential2.id.to_string()]);
-    let field1 = json!({
-        "id": "test_id:first",
-        "keyMap": {
-            credential1.id.to_string(): "first"
-        },
-        "name": "first",
+    let applicable = body["credentialQueries"]["test_id"]["applicableCredentials"]
+        .as_array()
+        .unwrap();
+    let ids: Vec<String> = applicable
+        .iter()
+        .map(|c| c["id"].as_str().unwrap().to_string())
+        .collect();
+    assert!(ids.contains(&credential1.id.to_string()));
+    assert!(ids.contains(&credential2.id.to_string()));
+    assert_eq!(ids.len(), 2);
+
+    let cred1 = applicable
+        .iter()
+        .find(|c| c["id"].as_str() == Some(&credential1.id.to_string()))
+        .unwrap();
+    let flat1 = flatten_claims(&cred1["claims"]);
+    assert!(flat1.iter().any(|(p, _)| p == "first"));
+
+    let cred2 = applicable
+        .iter()
+        .find(|c| c["id"].as_str() == Some(&credential2.id.to_string()))
+        .unwrap();
+    let flat2 = flatten_claims(&cred2["claims"]);
+    assert!(flat2.iter().any(|(p, _)| p == "second"));
+
+    let credential_sets = json!([{
+        "options": [["test_id"]],
         "required": true
-    });
-    let field2 = json!({
-        "id": "test_id:second",
-        "keyMap": {
-            credential2.id.to_string(): "second"
-        },
-        "name": "second",
-        "required": true
-    });
-    body["requestGroups"][0]["requestedCredentials"][0]["fields"]
-        .assert_eq_unordered(&[field1, field2]);
+    }]);
+    body["credentialSets"].assert_eq(&credential_sets);
 }
 
 #[tokio::test]
@@ -1530,32 +1580,46 @@ async fn test_get_presentation_definition_dcql_metadata_value_matching() {
         &identifier,
         key,
         &dcql_query,
-        "OPENID4VP_DRAFT25",
+        "OPENID4VP_FINAL1",
     )
     .await;
 
     // WHEN
-    let resp = context.api.proofs.presentation_definition(proof.id).await;
+    let resp = context
+        .api
+        .proofs
+        .presentation_definition_v2(proof.id)
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
-    body["requestGroups"][0]["requestedCredentials"][0]["applicableCredentials"]
-        .assert_eq(&[credential1.id.to_string()]);
-    // credential 2 is inapplicable because the iss claim has the wrong value
-    body["requestGroups"][0]["requestedCredentials"][0]["inapplicableCredentials"]
-        .assert_eq(&[credential2.id.to_string()]);
-    let field1 = json!({
-        "id": "test_id:string_claim",
-        "keyMap": {
-            credential1.id.to_string(): "string_claim",
-            credential2.id.to_string(): "string_claim"
-        },
-        "name": "string_claim",
+    let _ = &credential2;
+    // credential1 matches the iss metadata claim value, credential2 does not.
+    let applicable = body["credentialQueries"]["test_id"]["applicableCredentials"]
+        .as_array()
+        .unwrap();
+    let ids: Vec<String> = applicable
+        .iter()
+        .map(|c| c["id"].as_str().unwrap().to_string())
+        .collect();
+    assert!(ids.contains(&credential1.id.to_string()));
+    assert!(!ids.contains(&credential2.id.to_string()));
+
+    let cred1 = applicable
+        .iter()
+        .find(|c| c["id"].as_str() == Some(&credential1.id.to_string()))
+        .unwrap();
+    let flat = flatten_claims(&cred1["claims"]);
+    // metadata claims used for matching are not surfaced in `claims`
+    assert!(flat.iter().any(|(p, _)| p == "string_claim"));
+    assert!(!flat.iter().any(|(p, _)| p == "iss"));
+
+    let credential_sets = json!([{
+        "options": [["test_id"]],
         "required": true
-    });
-    // Metadata claims (such as iss) are used for matching, but are _not_ added to the fields array.
-    body["requestGroups"][0]["requestedCredentials"][0]["fields"].assert_eq(&[field1]);
+    }]);
+    body["credentialSets"].assert_eq(&credential_sets);
 }
 
 #[tokio::test]
@@ -1593,24 +1657,28 @@ async fn test_get_presentation_definition_dcql_no_credentials() {
         &identifier,
         key,
         &dcql_query,
-        "OPENID4VP_DRAFT25",
+        "OPENID4VP_FINAL1",
     )
     .await;
 
     // WHEN
-    let resp = context.api.proofs.presentation_definition(proof.id).await;
+    let resp = context
+        .api
+        .proofs
+        .presentation_definition_v2(proof.id)
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
-    let field1 = json!({
-        "id": "test_id:string_claim",
-        "keyMap": {},
-        "name": "string_claim",
+    body["credentialQueries"]["test_id"]["failureHint"]["reason"]
+        .assert_eq(&"NO_CREDENTIAL".to_string());
+
+    let credential_sets = json!([{
+        "options": [["test_id"]],
         "required": true
-    });
-    // Metadata claims (such as iss) are used for matching, but are _not_ added to the fields array.
-    body["requestGroups"][0]["requestedCredentials"][0]["fields"].assert_eq(&[field1]);
+    }]);
+    body["credentialSets"].assert_eq(&credential_sets);
 }
 
 #[tokio::test]
@@ -1724,24 +1792,41 @@ async fn test_get_presentation_definition_dcql_multiple_applicable_credentials()
         &identifier,
         key,
         &dcql_query,
-        "OPENID4VP_DRAFT25",
+        "OPENID4VP_FINAL1",
     )
     .await;
 
     // WHEN
-    let resp = context.api.proofs.presentation_definition(proof.id).await;
+    let resp = context
+        .api
+        .proofs
+        .presentation_definition_v2(proof.id)
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
-    assert_eq!(body["credentials"].as_array().unwrap().len(), 2);
-    body["requestGroups"][0]["requestedCredentials"][0]["applicableCredentials"]
-        .assert_eq_unordered(&[credential1.id.to_string(), credential2.id.to_string()]);
-    let key_map = HashMap::from([
-        (credential1.id.to_string(), "isOver18".to_string()),
-        (credential2.id.to_string(), "isOver18".to_string()),
-    ]);
-    body["requestGroups"][0]["requestedCredentials"][0]["fields"][0]["keyMap"].assert_eq(&key_map);
+    let applicable = body["credentialQueries"]["test_id"]["applicableCredentials"]
+        .as_array()
+        .unwrap();
+    let ids: Vec<String> = applicable
+        .iter()
+        .map(|c| c["id"].as_str().unwrap().to_string())
+        .collect();
+    assert_eq!(ids.len(), 2);
+    assert!(ids.contains(&credential1.id.to_string()));
+    assert!(ids.contains(&credential2.id.to_string()));
+
+    for cred in applicable {
+        let flat = flatten_claims(&cred["claims"]);
+        assert!(flat.iter().any(|(p, _)| p == "isOver18"));
+    }
+
+    let credential_sets = json!([{
+        "options": [["test_id"]],
+        "required": true
+    }]);
+    body["credentialSets"].assert_eq(&credential_sets);
 }
 
 #[tokio::test]
@@ -1857,31 +1942,42 @@ async fn test_get_presentation_definition_dcql_multiple() {
         &identifier,
         key,
         &dcql_query,
-        "OPENID4VP_DRAFT25",
+        "OPENID4VP_FINAL1",
     )
     .await;
 
     // WHEN
-    let resp = context.api.proofs.presentation_definition(proof.id).await;
+    let resp = context
+        .api
+        .proofs
+        .presentation_definition_v2(proof.id)
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
-    assert_eq!(body["credentials"].as_array().unwrap().len(), 2);
     assert_eq!(
-        body["requestGroups"][0]["requestedCredentials"][0]["applicableCredentials"]
+        body["credentialQueries"]["test_id"]["applicableCredentials"]
             .as_array()
             .unwrap()
             .len(),
         1
     );
     assert_eq!(
-        body["requestGroups"][0]["requestedCredentials"][1]["applicableCredentials"]
+        body["credentialQueries"]["test_id2"]["applicableCredentials"]
             .as_array()
             .unwrap()
             .len(),
         1
     );
+
+    // The two queries are independent (no explicit DCQL credentialSets), so each maps to its
+    // own implicit credential set entry.
+    let credential_sets = json!([
+        {"options": [["test_id"]], "required": true},
+        {"options": [["test_id2"]], "required": true}
+    ]);
+    body["credentialSets"].assert_eq(&credential_sets);
 }
 
 #[tokio::test]
@@ -1938,20 +2034,28 @@ async fn test_get_presentation_definition_dcql_no_claims() {
         &identifier,
         key,
         &dcql_query,
-        "OPENID4VP_DRAFT25",
+        "OPENID4VP_FINAL1",
     )
     .await;
 
     // WHEN
-    let resp = context.api.proofs.presentation_definition(proof.id).await;
+    let resp = context
+        .api
+        .proofs
+        .presentation_definition_v2(proof.id)
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
-    assert_eq!(body["credentials"][0]["id"], credential.id.to_string());
-    body["requestGroups"][0]["requestedCredentials"][0]["applicableCredentials"]
-        .assert_eq(&vec![credential.id.to_string()]);
-    body["requestGroups"][0]["requestedCredentials"][0]["fields"].assert_eq::<Vec<()>>(&vec![]);
+    body["credentialQueries"]["test_id"]["applicableCredentials"][0]["id"]
+        .assert_eq(&credential.id);
+
+    let credential_sets = json!([{
+        "options": [["test_id"]],
+        "required": true
+    }]);
+    body["credentialSets"].assert_eq(&credential_sets);
 }
 
 #[tokio::test]
@@ -2066,38 +2170,65 @@ async fn test_get_presentation_definition_dcql_w3c_mixed_selective_disclosure() 
         &identifier,
         key,
         &dcql_query,
-        "OPENID4VP_DRAFT25",
+        "OPENID4VP_FINAL1",
     )
     .await;
 
     // WHEN
-    let resp = context.api.proofs.presentation_definition(proof.id).await;
+    let resp = context
+        .api
+        .proofs
+        .presentation_definition_v2(proof.id)
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
 
     // both credentials are applicable
-    body["requestGroups"][0]["requestedCredentials"][0]["applicableCredentials"]
-        .assert_eq_unordered(&[credential1.id.to_string(), credential2.id.to_string()]);
-
-    // because credential1 does not support selective disclosure, all it's claims are present in fields
-    // (despite only one being requested) and all of them are required true (despite the requested claim
-    // being required false).
-    body["requestGroups"][0]["requestedCredentials"][0]["fields"][0]["required"].assert_eq(&true);
-    body["requestGroups"][0]["requestedCredentials"][0]["fields"][1]["required"].assert_eq(&true);
-
-    let fields = body["requestGroups"][0]["requestedCredentials"][0]["fields"]
+    let applicable = body["credentialQueries"]["test_id"]["applicableCredentials"]
         .as_array()
         .unwrap();
-    // This claim was asked for by the verifier, both credentials are applicable
-    assert!(fields.iter().any(|field| field["id"] == "test_id:firstName"
-        && field["keyMap"].as_object().unwrap().len() == 2));
+    let ids: Vec<String> = applicable
+        .iter()
+        .map(|c| c["id"].as_str().unwrap().to_string())
+        .collect();
+    assert_eq!(ids.len(), 2);
+    assert!(ids.contains(&credential1.id.to_string()));
+    assert!(ids.contains(&credential2.id.to_string()));
 
-    // This claim was not asked for by the verifier but since it is included in credential1, and it is not selectively disclosable, it is listed.
-    // For credential2 this claim is not even selectable, as it was never asked for.
-    assert!(fields.iter().any(|field| field["id"] == "test_id:isOver18"
-        && field["keyMap"] == json!({credential1.id.to_string(): "isOver18"})));
+    // credential1 (no SD): all schema claims are present and all are required, even though only
+    // "firstName" was requested.
+    let cred1 = applicable
+        .iter()
+        .find(|c| c["id"].as_str() == Some(&credential1.id.to_string()))
+        .unwrap();
+    let flat1 = flatten_claims(&cred1["claims"]);
+    assert!(
+        flat1
+            .iter()
+            .any(|(p, c)| p == "firstName" && c["required"] == true)
+    );
+    assert!(
+        flat1
+            .iter()
+            .any(|(p, c)| p == "isOver18" && c["required"] == true)
+    );
+
+    // credential2 (BBS+ SD): only the requested "firstName" claim is selected.
+    let cred2 = applicable
+        .iter()
+        .find(|c| c["id"].as_str() == Some(&credential2.id.to_string()))
+        .unwrap();
+    let flat2 = flatten_claims(&cred2["claims"]);
+    assert!(flat2.iter().any(|(p, _)| p == "firstName"));
+    assert!(!flat2.iter().any(|(p, _)| p == "isOver18"));
+
+    let credential_sets = json!([{
+        "options": [["test_id"]],
+        "required": true
+    }]);
+    body["credentialSets"].assert_eq(&credential_sets);
 }
 
 #[tokio::test]
@@ -2203,31 +2334,38 @@ async fn test_get_presentation_definition_dcql_value_match() {
         &identifier,
         key,
         &dcql_query,
-        "OPENID4VP_DRAFT25",
+        "OPENID4VP_FINAL1",
     )
     .await;
 
     // WHEN
-    let resp = context.api.proofs.presentation_definition(proof.id).await;
+    let resp = context
+        .api
+        .proofs
+        .presentation_definition_v2(proof.id)
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
-    assert_eq!(body["credentials"].as_array().unwrap().len(), 2);
-    let expected_requested_credentials = json!({
-        "applicableCredentials": [credential1.id.to_string()],
-        "fields": [{
-            "id": "test_id:isOver18",
-            "keyMap": {
-                credential1.id.to_string(): "isOver18",
-            },
-            "name": "isOver18",
-            "required": true,
-        }],
-        "id": "test_id",
-        "inapplicableCredentials": [credential2.id.to_string()]
-    });
-    body["requestGroups"][0]["requestedCredentials"][0].assert_eq(&expected_requested_credentials);
+    let _ = &credential2;
+    let applicable = body["credentialQueries"]["test_id"]["applicableCredentials"]
+        .as_array()
+        .unwrap();
+    assert_eq!(applicable.len(), 1);
+    applicable[0]["id"].assert_eq(&credential1.id);
+
+    let flat = flatten_claims(&applicable[0]["claims"]);
+    assert!(
+        flat.iter()
+            .any(|(p, c)| p == "isOver18" && c["required"] == true)
+    );
+
+    let credential_sets = json!([{
+        "options": [["test_id"]],
+        "required": true
+    }]);
+    body["credentialSets"].assert_eq(&credential_sets);
 }
 
 #[tokio::test]
@@ -2305,31 +2443,36 @@ async fn test_get_presentation_definition_dcql_using_multiple_flag() {
         &identifier,
         key,
         &dcql_query,
-        "OPENID4VP_DRAFT25",
+        "OPENID4VP_FINAL1",
     )
     .await;
 
     // WHEN
-    let resp = context.api.proofs.presentation_definition(proof.id).await;
+    let resp = context
+        .api
+        .proofs
+        .presentation_definition_v2(proof.id)
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
-    assert_eq!(body["credentials"].as_array().unwrap().len(), 1);
-    let expected_requested_credentials = json!({
-        "applicableCredentials": [credential1.id.to_string()],
-        "multiple": true,
-        "fields": [{
-            "id": "test_id:isOver18",
-            "keyMap": {
-                credential1.id.to_string(): "isOver18",
-            },
-            "name": "isOver18",
-            "required": true,
-        }],
-        "id": "test_id"
-    });
-    body["requestGroups"][0]["requestedCredentials"][0].assert_eq(&expected_requested_credentials);
+    body["credentialQueries"]["test_id"]["multiple"].assert_eq(&true);
+    body["credentialQueries"]["test_id"]["applicableCredentials"][0]["id"]
+        .assert_eq(&credential1.id);
+
+    let flat =
+        flatten_claims(&body["credentialQueries"]["test_id"]["applicableCredentials"][0]["claims"]);
+    assert!(
+        flat.iter()
+            .any(|(p, c)| p == "isOver18" && c["required"] == true)
+    );
+
+    let credential_sets = json!([{
+        "options": [["test_id"]],
+        "required": true
+    }]);
+    body["credentialSets"].assert_eq(&credential_sets);
 }
 
 mod trusted_authorities {
@@ -2505,28 +2648,36 @@ mod trusted_authorities {
             &identifier,
             key,
             &dcql_query,
-            "OPENID4VP_DRAFT25",
+            "OPENID4VP_FINAL1",
         )
         .await;
 
         // WHEN
-        let resp = context.api.proofs.presentation_definition(proof.id).await;
+        let resp = context
+            .api
+            .proofs
+            .presentation_definition_v2(proof.id)
+            .await;
 
         // THEN
         assert_eq!(resp.status(), 200);
         let body = resp.json_value().await;
-        assert_eq!(body["credentials"][0]["id"], credential.id.to_string());
-        body["requestGroups"][0]["requestedCredentials"][0]["applicableCredentials"]
-            .assert_eq(&vec![credential.id.to_string()]);
-        let field = json!({
-            "id": "test_id:firstName",
-            "keyMap": {
-                credential.id.to_string(): "firstName"
-            },
-            "name": "firstName",
+        body["credentialQueries"]["test_id"]["applicableCredentials"][0]["id"]
+            .assert_eq(&credential.id);
+
+        let flat = flatten_claims(
+            &body["credentialQueries"]["test_id"]["applicableCredentials"][0]["claims"],
+        );
+        assert!(
+            flat.iter()
+                .any(|(p, c)| p == "firstName" && c["required"] == true)
+        );
+
+        let credential_sets = json!([{
+            "options": [["test_id"]],
             "required": true
-        });
-        body["requestGroups"][0]["requestedCredentials"][0]["fields"].assert_eq(&vec![field]);
+        }]);
+        body["credentialSets"].assert_eq(&credential_sets);
     }
 
     #[tokio::test]
@@ -2609,28 +2760,36 @@ mod trusted_authorities {
             &identifier,
             key,
             &dcql_query,
-            "OPENID4VP_DRAFT25",
+            "OPENID4VP_FINAL1",
         )
         .await;
 
         // WHEN
-        let resp = context.api.proofs.presentation_definition(proof.id).await;
+        let resp = context
+            .api
+            .proofs
+            .presentation_definition_v2(proof.id)
+            .await;
 
         // THEN
         assert_eq!(resp.status(), 200);
         let body = resp.json_value().await;
-        assert_eq!(body["credentials"][0]["id"], credential.id.to_string());
-        body["requestGroups"][0]["requestedCredentials"][0]["applicableCredentials"]
-            .assert_eq(&vec![credential.id.to_string()]);
-        let field = json!({
-            "id": "test_id:firstName",
-            "keyMap": {
-                credential.id.to_string(): "firstName"
-            },
-            "name": "firstName",
+        body["credentialQueries"]["test_id"]["applicableCredentials"][0]["id"]
+            .assert_eq(&credential.id);
+
+        let flat = flatten_claims(
+            &body["credentialQueries"]["test_id"]["applicableCredentials"][0]["claims"],
+        );
+        assert!(
+            flat.iter()
+                .any(|(p, c)| p == "firstName" && c["required"] == true)
+        );
+
+        let credential_sets = json!([{
+            "options": [["test_id"]],
             "required": true
-        });
-        body["requestGroups"][0]["requestedCredentials"][0]["fields"].assert_eq(&vec![field]);
+        }]);
+        body["credentialSets"].assert_eq(&credential_sets);
     }
 
     #[tokio::test]
@@ -2706,18 +2865,22 @@ mod trusted_authorities {
             &identifier,
             key,
             &dcql_query,
-            "OPENID4VP_DRAFT25",
+            "OPENID4VP_FINAL1",
         )
         .await;
 
         // WHEN
-        let resp = context.api.proofs.presentation_definition(proof.id).await;
+        let resp = context
+            .api
+            .proofs
+            .presentation_definition_v2(proof.id)
+            .await;
 
         // THEN
         assert_eq!(resp.status(), 200);
-        let resp_body = resp.json_value().await;
-        let resp_credentials = resp_body["credentials"].as_array().unwrap();
-        assert!(resp_credentials.is_empty());
+        let body = resp.json_value().await;
+        body["credentialQueries"]["test_id"]["failureHint"]["reason"]
+            .assert_eq(&"NO_CREDENTIAL".to_string());
     }
 
     #[tokio::test]
@@ -2791,17 +2954,27 @@ mod trusted_authorities {
             &identifier,
             key,
             &dcql_query,
-            "OPENID4VP_DRAFT25",
+            "OPENID4VP_FINAL1",
         )
         .await;
 
         // WHEN
-        let resp = context.api.proofs.presentation_definition(proof.id).await;
+        let resp = context
+            .api
+            .proofs
+            .presentation_definition_v2(proof.id)
+            .await;
 
         // THEN
         assert_eq!(resp.status(), 200);
-        let resp_body = resp.json_value().await;
-        let resp_credentials = resp_body["credentials"].as_array().unwrap();
-        assert!(resp_credentials.is_empty());
+        let body = resp.json_value().await;
+        body["credentialQueries"]["test_id"]["failureHint"]["reason"]
+            .assert_eq(&"NO_CREDENTIAL".to_string());
+
+        let credential_sets = json!([{
+            "options": [["test_id"]],
+            "required": true
+        }]);
+        body["credentialSets"].assert_eq(&credential_sets);
     }
 }

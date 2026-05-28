@@ -679,23 +679,6 @@ fn get_external_endpoints(
                     .layer(DefaultBodyLimit::max(oid4vp_response_body_limit)),
             )
             .route(
-                "/ssi/openid4vp/draft-25/response",
-                post(ssi::verification::draft25::controller::oid4vp_draft25_direct_post)
-                    .layer(DefaultBodyLimit::max(oid4vp_response_body_limit)),
-            )
-            .route(
-                "/ssi/openid4vp/draft-25/{id}/presentation-definition",
-                get(ssi::verification::draft25::controller::oid4vp_draft25_presentation_definition),
-            )
-            .route(
-                "/ssi/openid4vp/draft-25/{id}/client-metadata",
-                get(ssi::verification::draft25::controller::oid4vp_draft25_client_metadata),
-            )
-            .route(
-                "/ssi/openid4vp/draft-25/{id}/client-request",
-                get(ssi::verification::draft25::controller::oid4vp_draft25_client_request),
-            )
-            .route(
                 "/ssi/openid4vp/final-1.0/response",
                 post(ssi::verification::final1_0::controller::oid4vp_final1_0_direct_post)
                     .layer(DefaultBodyLimit::max(oid4vp_response_body_limit)),

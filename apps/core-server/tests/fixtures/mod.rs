@@ -102,10 +102,6 @@ pub fn create_config(
                 params:
                     public:
                         allowInsecureHttpTransport: true
-            OPENID4VP_DRAFT25:
-                params:
-                    public:
-                        allowInsecureHttpTransport: true
     "}
         .to_string(),
     );

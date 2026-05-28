@@ -20,12 +20,10 @@ async fn create_dcql_test_context() -> (
     TestContext::new_with_did(Some(
         indoc::indoc! {"
         verificationProtocol:
-          OPENID4VP_DRAFT25:
+          OPENID4VP_FINAL1:
             params:
               public:
                 useRequestUri: false
-                verifier:
-                  useDcql: true
           "}
         .to_string(),
     ))
@@ -80,7 +78,7 @@ async fn create_proof_with_claims(
         Some(&proof_schema),
         ProofStateEnum::Created,
         ProofRole::Verifier,
-        "OPENID4VP_DRAFT25",
+        "OPENID4VP_FINAL1",
         None,
         Some(key),
         None,

@@ -54,11 +54,6 @@ transport:
       private:
         brokerUrl: "mqtts://mqtt.dev.procivis-one.com:8883"
 verificationProtocol:
-  OPENID4VP_DRAFT25:
-    params:
-      public:
-        verifier:
-          useDcql: true
   OPENID4VP_PROXIMITY_DRAFT00:
     display:
       en: "OpenID4VP Proximity"

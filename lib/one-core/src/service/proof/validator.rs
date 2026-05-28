@@ -22,7 +22,6 @@ use crate::provider::verification_protocol::VerificationProtocol;
 use crate::provider::verification_protocol::dto::PresentationDefinitionVersion;
 use crate::provider::verification_protocol::model::CommonParams;
 use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4Vp20Params;
-use crate::provider::verification_protocol::openid4vp::draft25::model::OpenID4Vp25Params;
 use crate::service::error::MissingProviderError;
 use crate::util::key_selection::KeyFilter;
 use crate::validator::{
@@ -181,12 +180,6 @@ pub(super) fn validate_redirect_uri(
     let redirect_uri_config = match fields.r#type {
         VerificationProtocolType::OpenId4VpDraft20 => {
             let exchange_params: OpenID4Vp20Params = config
-                .get(exchange)
-                .error_while("getting protocol params")?;
-            Some(exchange_params.redirect_uri)
-        }
-        VerificationProtocolType::OpenId4VpDraft25 => {
-            let exchange_params: OpenID4Vp25Params = config
                 .get(exchange)
                 .error_while("getting protocol params")?;
             Some(exchange_params.redirect_uri)

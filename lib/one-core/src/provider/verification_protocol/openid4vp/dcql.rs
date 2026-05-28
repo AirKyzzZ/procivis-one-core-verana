@@ -1,5 +1,4 @@
 use std::collections::{HashMap, VecDeque};
-use std::sync::Arc;
 
 use dcql::matching::{ClaimFilter, CredentialFilter};
 use dcql::{
@@ -8,16 +7,15 @@ use dcql::{
 };
 use itertools::Itertools;
 use one_dto_mapper::convert_inner;
-use shared_types::{ClaimId, CredentialId, OrganisationId};
+use shared_types::{ClaimId, OrganisationId};
 use standardized_types::x509::KeyIdentifier;
 
 use crate::config::core_config::{CoreConfig, FormatType};
 use crate::error::ContextWithErrorCode;
-use crate::mapper::credential_schema_claim::claim_schema_from_metadata_claim_schema;
 use crate::mapper::x509::pem_chain_to_authority_key_identifiers;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
+use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaListQuery};
 use crate::model::list_filter::{ListFilterCondition, ListFilterValue, StringMatch};
 use crate::model::list_query::ListPagination;
@@ -29,16 +27,10 @@ use crate::provider::credential_formatter::provider::CredentialFormatterProvider
 use crate::provider::verification_protocol::dto::{
     ApplicableCredentialOrFailureHintEnum, CredentialDetailClaimExtResponseDTO,
     CredentialQueryFailureHintResponseDTO, CredentialQueryFailureReasonEnum,
-    CredentialQueryResponseDTO, CredentialSetResponseDTO, PresentationDefinitionFieldDTO,
-    PresentationDefinitionRequestGroupResponseDTO,
-    PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
-    PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
-    PresentationDefinitionV2ResponseDTO,
+    CredentialQueryResponseDTO, CredentialSetResponseDTO, PresentationDefinitionV2ResponseDTO,
 };
 use crate::provider::verification_protocol::error::VerificationProtocolError;
-use crate::provider::verification_protocol::mapper::{
-    credential_model_to_credential_dto, get_presentation_credentials_by_schema_id,
-};
+use crate::provider::verification_protocol::mapper::get_presentation_credentials_by_schema_id;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::error::DataLayerError;
@@ -54,116 +46,6 @@ use crate::service::credential_schema::dto::{
     CredentialSchemaListIncludeEntityTypeEnum,
 };
 use crate::service::credential_schema::mapper::schema_to_detail_response_dto;
-
-/// Retrieve the "presentation definition" for the given DCQL query.
-///
-/// Limitations:
-///   - No DCQL support for:
-///     - credential_sets
-///   - Some metadata claims such as `@context` or `_sd` cannot be queried
-///   - No support for `vct` inheritance
-///   - W3C VCs have proprietary lookup logic based on the JSON-LD context
-///   - Misleading requested credential `fields` `required` flag when credentials with different schemas are queried
-///     simultaneously and where only some claims support selective disclosure:
-///     Since there is only one required flag per field, the required flag will be set to `true` if the field is present in
-///     at least one credential where the field is not selectively disclosable even if it would be optional given the DCQL
-///     query, and it would be selectively disclosable for other credentials.
-pub(crate) async fn get_presentation_definition_for_dcql_query(
-    dcql_query: DcqlQuery,
-    proof: &Proof,
-    credential_repository: &dyn CredentialRepository,
-    credential_formatter_provider: &dyn CredentialFormatterProvider,
-    config: &CoreConfig,
-) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError> {
-    let organisation = proof
-        .interaction
-        .as_ref()
-        .and_then(|interaction| interaction.organisation.as_ref())
-        .ok_or(VerificationProtocolError::Failed(
-            "proof organisation missing".to_string(),
-        ))?;
-
-    let query_to_filters = dcql_query.credential_filters()?;
-
-    let mut relevant_credentials = vec![];
-    let mut requested_credentials = vec![];
-    for query in dcql_query.credentials {
-        let credential_filters =
-            query_to_filters
-                .get(&query.id)
-                .ok_or(VerificationProtocolError::Failed(format!(
-                    "missing credential filters for credential query with id {}",
-                    query.id
-                )))?;
-
-        // This is very inefficient. We would have the information here to also filter by the claims
-        // required, etc. but so far this was not a problem so it is not optimized.
-        let credential_candidates = fetch_credentials_for_schema_ids(
-            organisation.id,
-            credential_filters,
-            credential_repository,
-        )
-        .await?;
-
-        let mut filtered_credential_candidates = vec![];
-        for credential_candidate in credential_candidates.into_iter() {
-            let Some(schema) = &credential_candidate.schema else {
-                continue;
-            };
-            let format = schema.format().await?;
-            if format_matches(&query.format, &format, config) {
-                filtered_credential_candidates.push(credential_candidate);
-            }
-        }
-
-        filtered_credential_candidates.retain(|credential| {
-            matches!(
-                credential.state,
-                CredentialStateEnum::Accepted
-                    | CredentialStateEnum::Revoked
-                    | CredentialStateEnum::Suspended
-            ) && credential.role == CredentialRole::Holder
-        });
-
-        if let Some(authorities) = &query.trusted_authorities {
-            filter_credentials_by_trusted_authorities(
-                &mut filtered_credential_candidates,
-                authorities.as_slice(),
-            )
-            .await;
-        }
-
-        let match_result = first_applicable_claim_set(
-            &filtered_credential_candidates,
-            credential_filters,
-            credential_formatter_provider,
-            config,
-        )
-        .await?;
-        relevant_credentials.append(&mut filtered_credential_candidates);
-        requested_credentials.push(to_requested_credential(query, match_result)?)
-    }
-    Ok(PresentationDefinitionResponseDTO {
-        request_groups: vec![PresentationDefinitionRequestGroupResponseDTO {
-            id: proof.id.to_string(),
-            name: None,
-            purpose: None,
-            rule: PresentationDefinitionRuleDTO {
-                r#type: PresentationDefinitionRuleTypeEnum::All,
-                min: None,
-                max: None,
-                count: None,
-            },
-            requested_credentials,
-        }],
-        credentials: credential_model_to_credential_dto(
-            relevant_credentials,
-            config,
-            credential_repository,
-        )
-        .await?,
-    })
-}
 
 pub(crate) async fn get_presentation_definition_v2(
     dcql_query: DcqlQuery,
@@ -225,6 +107,14 @@ pub(crate) async fn get_presentation_definition_v2(
             if format_matches(&query.format, &format, config) {
                 filtered_credential_candidates.push(credential_candidate);
             }
+        }
+
+        if let Some(authorities) = &query.trusted_authorities {
+            filter_credentials_by_trusted_authorities(
+                &mut filtered_credential_candidates,
+                authorities.as_slice(),
+            )
+            .await;
         }
 
         if filtered_credential_candidates.is_empty() {
@@ -372,11 +262,10 @@ pub(crate) async fn get_presentation_definition_v2(
     })
 }
 
-pub(super) async fn filter_credentials_by_trusted_authorities(
+async fn filter_credentials_by_trusted_authorities(
     credentials: &mut Vec<Credential>,
     authorities: &[TrustedAuthority],
 ) {
-    // Bail out early if credential set is empty
     if credentials.is_empty() {
         return;
     }
@@ -544,253 +433,6 @@ fn format_matches(
         CredentialFormat::SdJwt => credential_format == FormatType::SdJwtVc,
         CredentialFormat::W3cSdJwt => credential_format == FormatType::SdJwt,
     }
-}
-
-fn to_requested_credential(
-    query: CredentialQuery,
-    match_result: ClaimSetMatchResult,
-) -> Result<PresentationDefinitionRequestedCredentialResponseDTO, VerificationProtocolError> {
-    let mut fields = vec![];
-    for (claim_path, claim_to_credentials) in match_result.claims_to_credentials {
-        let selective_disclosure_supported = claim_to_credentials.selective_disclosure_supported;
-        let key_map = claim_to_credentials
-            .credentials
-            .into_iter()
-            .map(|id| (id, claim_path.clone()))
-            .collect();
-        let required = if selective_disclosure_supported {
-            claim_to_credentials.required_by_verifier
-        } else {
-            // Everything is "required" (i.e. will be revealed) if selective disclosure is not
-            // supported.
-            true
-        };
-        let field = PresentationDefinitionFieldDTO {
-            id: format!("{}:{}", query.id, claim_path),
-            name: Some(claim_path.clone()),
-            purpose: None,
-            required: Some(required),
-            key_map,
-        };
-        fields.push(field);
-    }
-    Ok(PresentationDefinitionRequestedCredentialResponseDTO {
-        id: query.id.to_string(),
-        name: None,
-        purpose: None,
-        multiple: query.multiple.then_some(true),
-        fields,
-        applicable_credentials: match_result.applicable_credentials,
-        inapplicable_credentials: match_result.inapplicable_credentials,
-    })
-}
-
-struct ClaimSetMatchResult {
-    claims_to_credentials: HashMap<String, ClaimToCredentials>,
-    applicable_credentials: Vec<CredentialId>,
-    inapplicable_credentials: Vec<CredentialId>,
-}
-
-struct ClaimToCredentials {
-    // all credentials that have this claim
-    credentials: Vec<CredentialId>,
-    // Whether selectively disclosing this claim is supported by _all_ applicable credentials
-    selective_disclosure_supported: bool,
-    required_by_verifier: bool,
-}
-
-async fn first_applicable_claim_set(
-    credentials: &[Credential],
-    filters: &[CredentialFilter],
-    formatter_provider: &dyn CredentialFormatterProvider,
-    config: &CoreConfig,
-) -> Result<ClaimSetMatchResult, VerificationProtocolError> {
-    if credentials.is_empty() {
-        // no local candidates available
-        // build the match result so that it explains which fields we were looking for that didn't match any credentials.
-        return Ok(ClaimSetMatchResult {
-            claims_to_credentials: filters
-                // Presumably the last option has the lowest requirements (as it is the least preferred by verifiers).
-                // Let's use that as the minimum requirement the credentials in the wallet failed to match.
-                .last()
-                .iter()
-                .flat_map(|filter| filter.claims.iter().map(|claim| (claim, &filter.format)))
-                .filter(|(claim, _)| claim.required)
-                .filter_map(|(claim, format)| {
-                    let result = formatter_for_dcql_format(format, config, formatter_provider);
-                    let formatter = match result {
-                        Ok(formatter) => formatter,
-                        Err(err) => return Some(Err(err)),
-                    };
-                    let user_claim_path = formatter.user_claims_path();
-                    if dcql_path_matches_metadata(
-                        &claim.path,
-                        &formatter
-                            .get_metadata_claims()
-                            .into_iter()
-                            .map(|metadata| {
-                                claim_schema_from_metadata_claim_schema(
-                                    metadata,
-                                    crate::clock::now_utc(),
-                                )
-                            })
-                            .collect::<Vec<_>>(),
-                        &user_claim_path,
-                    ) {
-                        // filter out absent metadata claims
-                        return None;
-                    }
-                    let result = dcql_path_to_absent_claim_key(&claim.path, &user_claim_path);
-                    let claim_key = match result {
-                        Ok(claim_key) => claim_key,
-                        Err(err) => return Some(Err(err)),
-                    };
-                    Some(Ok((
-                        claim_key,
-                        ClaimToCredentials {
-                            credentials: vec![],
-                            // the empty set of credentials is always selectively disclosable
-                            selective_disclosure_supported: true,
-                            required_by_verifier: true,
-                        },
-                    )))
-                })
-                .collect::<Result<Vec<_>, _>>()?
-                .into_iter()
-                .collect(),
-            // empty
-            applicable_credentials: vec![],
-            inapplicable_credentials: vec![],
-        });
-    }
-
-    let mut claims_to_credentials = HashMap::new();
-    let mut applicable_credentials = vec![];
-    let mut inapplicable_credentials = vec![];
-
-    // match each credential against the particular filter / claim set
-    for credential in credentials {
-        let mut applicable = false;
-        let mut matched_claims = vec![];
-
-        let format = credential
-            .schema
-            .as_ref()
-            .ok_or(VerificationProtocolError::Failed(format!(
-                "missing schema for credential {}",
-                credential.id
-            )))?
-            .format()
-            .await
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-        let formatter = formatter_provider.get_credential_formatter(&format).ok_or(
-            VerificationProtocolError::Failed(format!(
-                "missing formatter for credential format {format}",
-            )),
-        )?;
-
-        // Go through the filters and find the first that matches some claims, if any.
-        for filter in filters {
-            let claims = select_claims(credential, filter, &*formatter, false).await?;
-
-            let credential_applicable = !claims
-                .iter()
-                .any(|c| matches!(c, MatchedClaim::Missing { .. }));
-            if credential_applicable {
-                matched_claims = claims;
-                applicable = true;
-                break;
-            }
-
-            // for inapplicable credentials remember the first filter result
-            if matched_claims.is_empty() {
-                matched_claims = claims;
-            }
-        }
-
-        if !matches!(credential.state, CredentialStateEnum::Accepted) {
-            applicable = false;
-        }
-
-        if applicable {
-            applicable_credentials.push(credential.id);
-        } else {
-            inapplicable_credentials.push(credential.id);
-        }
-
-        // filter out metadata to not expose it in the keyMaps
-        for matched_claim in matched_claims.into_iter().filter(|claim| !match claim {
-            MatchedClaim::Selected(c) => c.metadata,
-            MatchedClaim::Missing { metadata, .. } => *metadata,
-        }) {
-            match matched_claim {
-                MatchedClaim::Selected(selected_claim) => {
-                    let sd_supported = selected_claim.selective_disclosure_supported;
-                    claims_to_credentials
-                        .entry(selected_claim.path)
-                        .and_modify(|claim_to_creds: &mut ClaimToCredentials| {
-                            claim_to_creds.credentials.push(credential.id);
-                            claim_to_creds.selective_disclosure_supported =
-                                claim_to_creds.selective_disclosure_supported && sd_supported;
-                        })
-                        .or_insert(ClaimToCredentials {
-                            selective_disclosure_supported: sd_supported,
-                            credentials: vec![credential.id],
-                            required_by_verifier: selected_claim.required_by_verifier,
-                        });
-                }
-                MatchedClaim::Missing { path, .. } => {
-                    let user_claim_path = formatter.user_claims_path();
-                    claims_to_credentials
-                        .entry(dcql_path_to_absent_claim_key(&path, &user_claim_path)?)
-                        .or_insert(ClaimToCredentials {
-                            credentials: vec![],
-                            // the empty set of credentials is always selectively disclosable
-                            selective_disclosure_supported: true,
-                            required_by_verifier: true,
-                        });
-                }
-            };
-        }
-    }
-
-    Ok(ClaimSetMatchResult {
-        claims_to_credentials,
-        applicable_credentials,
-        inapplicable_credentials,
-    })
-}
-
-fn formatter_for_dcql_format(
-    format: &CredentialFormat,
-    config: &CoreConfig,
-    formatter_provider: &dyn CredentialFormatterProvider,
-) -> Result<Arc<dyn CredentialFormatter>, VerificationProtocolError> {
-    let format_types = match format {
-        CredentialFormat::JwtVc => vec![FormatType::Jwt],
-        CredentialFormat::LdpVc => vec![FormatType::JsonLdClassic, FormatType::JsonLdBbsPlus],
-        CredentialFormat::MsoMdoc => vec![FormatType::Mdoc],
-        CredentialFormat::SdJwt => vec![FormatType::SdJwtVc],
-        CredentialFormat::W3cSdJwt => vec![FormatType::SdJwt],
-    };
-    let formatter_name = format_types
-        .iter()
-        .flat_map(|format_type| {
-            config
-                .format
-                .iter()
-                .find(|(_, cfg)| cfg.r#type == *format_type)
-        })
-        .map(|(key, _)| key)
-        .next()
-        .ok_or(VerificationProtocolError::Failed(format!(
-            "No formatter found for DCQL format {format}"
-        )))?;
-    formatter_provider
-        .get_credential_formatter(formatter_name)
-        .ok_or(VerificationProtocolError::Failed(format!(
-            "No formatter found for format {formatter_name}"
-        )))
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -1287,26 +929,6 @@ fn dcql_path_matches_metadata(
         .iter()
         .filter(|cs| cs.metadata)
         .any(|cs| cs.key == dcql_key || cs.key.starts_with(&format!("{dcql_key}/")))
-}
-
-fn dcql_path_to_absent_claim_key(
-    path: &ClaimPath,
-    user_claim_path: &[String],
-) -> Result<String, VerificationProtocolError> {
-    let segments_iter = adjust_dcql_path_for_user_claims(path, user_claim_path)?;
-    Ok(segments_iter
-        .into_iter()
-        .map(|segment| {
-            match segment {
-                PathSegment::PropertyName(name) => name.to_owned(),
-                PathSegment::ArrayIndex(index) => index.to_string(),
-                // We need to show the claim path of claims that are missing,
-                // -> substituting array index 0 to convey the "at least one element" semantics.
-                PathSegment::ArrayAll => "0".to_owned(),
-            }
-        })
-        .collect::<Vec<_>>()
-        .join("/"))
 }
 
 fn adjust_dcql_path_for_user_claims<'a>(

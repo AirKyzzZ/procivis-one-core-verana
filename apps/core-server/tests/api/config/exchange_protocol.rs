@@ -20,11 +20,6 @@ async fn test_verification_protocol_capabilities() {
     assert_eq!(draft20["supportedTransports"], json!(["HTTP"]));
     assert_eq!(draft20["didMethods"], json!(["KEY", "JWK", "WEB", "WEBVH"]));
 
-    let draft25 = &resp["verificationProtocol"]["OPENID4VP_DRAFT25"]["capabilities"];
-    assert_eq!(draft25["features"], json!(["SUPPORTS_WEBHOOKS"]));
-    assert_eq!(draft25["supportedTransports"], json!(["HTTP"]));
-    assert_eq!(draft25["didMethods"], json!(["KEY", "JWK", "WEB", "WEBVH"]));
-
     let mdoc = &resp["verificationProtocol"]["MDOC_OPENID4VP"]["capabilities"];
     assert_eq!(mdoc["features"], json!(["SUPPORTS_WEBHOOKS"]));
     assert_eq!(mdoc["supportedTransports"], json!(["HTTP"]));

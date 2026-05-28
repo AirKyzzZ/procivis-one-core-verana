@@ -30,7 +30,6 @@ use crate::service::proof::dto::ShareProofRequestParamsDTO;
 pub(crate) mod dcql;
 pub mod draft20;
 pub mod draft20_swiyu;
-pub mod draft25;
 pub mod error;
 pub mod final1_0;
 pub(crate) mod jwe_presentation;

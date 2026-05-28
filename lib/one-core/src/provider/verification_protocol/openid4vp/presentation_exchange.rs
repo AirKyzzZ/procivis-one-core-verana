@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use uuid::Uuid;
 
-use crate::config::core_config::{CoreConfig, FormatType, VerificationProtocolType};
+use crate::config::core_config::{CoreConfig, FormatType};
 use crate::error::ContextWithErrorCode;
 use crate::mapper::oidc::map_to_openid4vp_format;
 use crate::proto::http_client::HttpClient;
@@ -17,7 +17,6 @@ use crate::provider::verification_protocol::dto::{
     PresentationReference,
 };
 use crate::provider::verification_protocol::error::VerificationProtocolError;
-use crate::provider::verification_protocol::openid4vp::draft25::mappers::encode_client_id_with_scheme_draft25;
 use crate::provider::verification_protocol::openid4vp::mapper::{
     cred_to_presentation_format_type, format_to_type,
 };
@@ -41,7 +40,6 @@ pub(crate) async fn pex_submission_data(
     presentation_formatter_provider: &dyn PresentationFormatterProvider,
     key_provider: &dyn KeyProvider,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-    protocol: VerificationProtocolType,
 ) -> Result<(VpSubmissionData, Option<EncryptionInfo>), VerificationProtocolError> {
     let response_uri =
         interaction_data
@@ -91,18 +89,9 @@ pub(crate) async fn pex_submission_data(
             key_algorithm_provider.clone(),
         )?;
 
-        let client_id = if protocol == VerificationProtocolType::OpenId4VpDraft25 {
-            &encode_client_id_with_scheme_draft25(
-                interaction_data.client_id.clone(),
-                interaction_data.client_id_scheme,
-            )
-        } else {
-            &interaction_data.client_id
-        };
-
         let ctx = if presentation_format_type == FormatType::Mdoc {
             mdoc_presentation_context(mdoc_draft_handover(
-                client_id,
+                &interaction_data.client_id,
                 response_uri,
                 &verifier_nonce,
                 holder_nonce,
@@ -110,7 +99,7 @@ pub(crate) async fn pex_submission_data(
         } else {
             FormatPresentationCtx {
                 nonce: Some(verifier_nonce.to_owned()),
-                audience: Some(client_id.to_owned()),
+                audience: Some(interaction_data.client_id.clone()),
                 ..Default::default()
             }
         };

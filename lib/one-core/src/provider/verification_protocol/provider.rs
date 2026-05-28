@@ -10,8 +10,6 @@ use super::iso_mdl::IsoMdl;
 use super::openid4vp::draft20::OpenID4VP20HTTP;
 use super::openid4vp::draft20::model::OpenID4Vp20Params;
 use super::openid4vp::draft20_swiyu::{OpenID4VP20Swiyu, OpenID4Vp20SwiyuParams};
-use super::openid4vp::draft25::OpenID4VP25HTTP;
-use super::openid4vp::draft25::model::OpenID4Vp25Params;
 use super::openid4vp::final1_0::OpenID4VPFinal1_0;
 use super::openid4vp::proximity_draft00::{
     OpenID4VPProximityDraft00, OpenID4VPProximityDraft00Params,
@@ -139,29 +137,6 @@ pub(crate) fn verification_protocol_provider_from_config(
                     wrp_validator.clone(),
                     blob_storage_provider.clone(),
                     trust_information_provider.clone(),
-                    client.clone(),
-                    params.clone(),
-                    core_config.clone(),
-                ))
-            }
-            VerificationProtocolType::OpenId4VpDraft25 => {
-                let params = fields
-                    .deserialize::<OpenID4Vp25Params>()
-                    .map_err(|source| ConfigValidationError::FieldsDeserialization {
-                        key: name.to_owned(),
-                        source,
-                    })?;
-
-                Arc::new(OpenID4VP25HTTP::new(
-                    core_base_url.clone(),
-                    credential_formatter_provider.clone(),
-                    presentation_formatter_provider.clone(),
-                    did_method_provider.clone(),
-                    key_algorithm_provider.clone(),
-                    key_provider.clone(),
-                    certificate_validator.clone(),
-                    credential_repository.clone(),
-                    interaction_repository.clone(),
                     client.clone(),
                     params.clone(),
                     core_config.clone(),

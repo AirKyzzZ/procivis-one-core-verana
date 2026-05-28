@@ -18,7 +18,7 @@ use crate::utils::context::TestContext;
 use crate::utils::db_clients::proof_schemas::CreateProofInputSchema;
 
 #[tokio::test]
-async fn test_direct_post_draft25_with_dcql_query() {
+async fn test_direct_post_dcql_with_claim_sets() {
     // GIVEN
     let (context, organisation, _, verifier_identifier, verifier_key) =
         TestContext::new_with_did(None).await;
@@ -107,7 +107,7 @@ async fn test_direct_post_draft25_with_dcql_query() {
         Some(&proof_schema),
         ProofStateEnum::Pending,
         ProofRole::Verifier,
-        "OPENID4VP_DRAFT25",
+        "OPENID4VP_FINAL1",
         Some(&interaction),
         Some(&verifier_key),
         None,
@@ -128,7 +128,7 @@ async fn test_direct_post_draft25_with_dcql_query() {
 
     // WHEN
     let url = format!(
-        "{}/ssi/openid4vp/draft-25/response",
+        "{}/ssi/openid4vp/final-1.0/response",
         context.config.app.core_base_url
     );
     let resp = utils::client()
@@ -139,8 +139,6 @@ async fn test_direct_post_draft25_with_dcql_query() {
         .unwrap();
 
     // THEN
-    // Note: This test may fail until DCQL processing is fully implemented
-    // (the service method currently has a todo!())
     assert_eq!(resp.status(), 200);
 
     let proof = get_proof(&context.db.db_conn, &proof.id).await;
@@ -256,7 +254,7 @@ async fn test_direct_post_dcql_one_credential_missing_required_claim() {
         Some(&proof_schema),
         ProofStateEnum::Pending,
         ProofRole::Verifier,
-        "OPENID4VP_DRAFT25",
+        "OPENID4VP_FINAL1",
         Some(&interaction),
         Some(&verifier_key),
         None,
@@ -277,7 +275,7 @@ async fn test_direct_post_dcql_one_credential_missing_required_claim() {
 
     // WHEN
     let url = format!(
-        "{}/ssi/openid4vp/draft-25/response",
+        "{}/ssi/openid4vp/final-1.0/response",
         context.config.app.core_base_url
     );
     let resp = utils::client()

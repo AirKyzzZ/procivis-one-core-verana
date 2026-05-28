@@ -1296,157 +1296,6 @@ async fn test_direct_post_wrong_claim_format() {
 }
 
 #[tokio::test]
-async fn test_direct_post_draft25() {
-    // GIVEN
-    let (context, organisation, _, verifier_identifier, verifier_key) =
-        TestContext::new_with_did(None).await;
-    let nonce = "nonce123";
-
-    let new_claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![
-        (Uuid::new_v4(), "cat1", true, "STRING", false), // Presentation 2 token 1
-        (Uuid::new_v4(), "cat2", false, "STRING", false), // Optional - not provided
-    ];
-
-    let credential_schema = create_credential_schema_with_claims(
-        &context.db.db_conn,
-        "NewCredentialSchema",
-        &organisation,
-        None,
-        &new_claim_schemas,
-    )
-    .await;
-
-    let proof_schema = create_proof_schema(
-        &context.db.db_conn,
-        "Schema1",
-        &organisation,
-        &[CreateProofInputSchema::from((
-            &new_claim_schemas[..],
-            &credential_schema,
-        ))],
-    )
-    .await;
-
-    let interaction_data = json!({
-        "nonce": nonce,
-        "presentation_definition": {
-            "id": "75fcc8e1-a14c-4509-9831-993c5fb37e26",
-            "input_descriptors": [{
-                "format": {
-                    "jwt_vc_json": {
-                        "alg": ["EdDSA", "ES256"]
-                    }
-                },
-                "id": "input_0",
-                "constraints": {
-                    "fields": [
-                        {
-                            "path": ["$.credentialSchema.id"],
-                            "filter": {
-                                "type": "string",
-                                "const": credential_schema.schema_id().await.unwrap()
-                            }
-                        },
-                        {
-                            "id": new_claim_schemas[0].0,
-                            "path": ["$.vc.credentialSubject.cat1"],
-                            "optional": false
-                        },
-                        {
-                            "id": new_claim_schemas[1].0,
-                            "path": ["$.vc.credentialSubject.cat2"],
-                            "optional": true
-                        }
-                    ]
-                }
-            }]
-        },
-        "client_id": "client_id",
-        "client_id_scheme": "redirect_uri",
-        "response_uri": "response_uri"
-    });
-
-    let interaction = fixtures::create_interaction(
-        &context.db.db_conn,
-        interaction_data.to_string().as_bytes(),
-        &organisation,
-        InteractionType::Verification,
-    )
-    .await;
-
-    let proof = create_proof(
-        &context.db.db_conn,
-        &verifier_identifier,
-        Some(&proof_schema),
-        ProofStateEnum::Pending,
-        ProofRole::Verifier,
-        "OPENID4VP_DRAFT25",
-        Some(&interaction),
-        Some(&verifier_key),
-        None,
-        None,
-    )
-    .await;
-
-    let presentation_submission = json!({
-        "definition_id": interaction.id,
-        "descriptor_map": [
-            {
-                "format": "jwt_vp_json",
-                "id": "input_0",
-                "path": "$",
-                "path_nested": {
-                        "format": "jwt_vc_json",
-                        "path": "$.verifiableCredential[0]"
-                    }
-            },
-        ],
-        "id": "318ea550-dbb6-4d6a-9cf2-575bad15c6da"
-    });
-
-    let (_, token2) = dummy_presentations().await;
-    let params = [
-        (
-            "presentation_submission",
-            presentation_submission.to_string(),
-        ),
-        ("vp_token", token2),
-        ("state", interaction.id.to_string()),
-    ];
-
-    // WHEN
-    let url = format!(
-        "{}/ssi/openid4vp/draft-25/response",
-        context.config.app.core_base_url
-    );
-    let resp = utils::client()
-        .post(url)
-        .form(&params)
-        .send()
-        .await
-        .unwrap();
-
-    // THEN
-    assert_eq!(resp.status(), 200);
-
-    let proof = get_proof(&context.db.db_conn, &proof.id).await;
-    assert_eq!(proof.state, ProofStateEnum::Accepted);
-
-    let claims = proof.claims.unwrap();
-    assert!(
-        new_claim_schemas
-            .iter()
-            .filter(|required_claim| required_claim.2) //required
-            .all(|required_claim| claims
-                .iter()
-                // Values are just keys uppercase
-                .any(
-                    |db_claim| db_claim.claim.value == Some(required_claim.1.to_ascii_uppercase())
-                ))
-    );
-}
-
-#[tokio::test]
 async fn test_direct_post_with_profile_verification() {
     // GIVEN
     let (context, organisation, _, verifier_identifier, verifier_key) =
@@ -1534,7 +1383,7 @@ async fn test_direct_post_with_profile_verification() {
         Some(&proof_schema),
         ProofStateEnum::Pending,
         ProofRole::Verifier,
-        "OPENID4VP_DRAFT25",
+        "OPENID4VP_FINAL1",
         Some(&interaction),
         Some(&verifier_key),
         Some(test_profile.to_string()),
@@ -1622,7 +1471,6 @@ async fn test_direct_post_oversized_body_returns_413() {
 
     for path in [
         "/ssi/openid4vp/draft-20/response",
-        "/ssi/openid4vp/draft-25/response",
         "/ssi/openid4vp/final-1.0/response",
     ] {
         let url = format!("{}{path}", context.config.app.core_base_url);

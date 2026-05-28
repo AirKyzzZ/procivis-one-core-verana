@@ -241,7 +241,6 @@ impl CredentialFormatter for JWTFormatter {
             issuance_exchange_protocols: vec![IssuanceProtocolType::OpenId4VciFinal1_0],
             proof_exchange_protocols: vec![
                 VerificationProtocolType::OpenId4VpDraft20,
-                VerificationProtocolType::OpenId4VpDraft25,
                 VerificationProtocolType::OpenId4VpFinal1_0,
                 VerificationProtocolType::OpenId4VpProximityDraft00,
             ],
