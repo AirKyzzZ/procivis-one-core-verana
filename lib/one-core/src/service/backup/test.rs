@@ -17,6 +17,7 @@ use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::organisation::{GetOrganisationList, OrganisationListQuery};
 use crate::repository::backup_repository::MockBackupRepository;
+use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::service::test_utilities::{
@@ -28,6 +29,7 @@ struct Repositories {
     pub backup_repository: MockBackupRepository,
     pub history_repository: MockHistoryRepository,
     pub organisation_repository: MockOrganisationRepository,
+    pub credential_repository: MockCredentialRepository,
 }
 
 fn setup_service(repositories: Repositories) -> BackupService {
@@ -35,6 +37,7 @@ fn setup_service(repositories: Repositories) -> BackupService {
         Arc::new(repositories.backup_repository),
         Arc::new(repositories.history_repository),
         Arc::new(repositories.organisation_repository),
+        Arc::new(repositories.credential_repository),
         Arc::new(generic_config().core),
     )
 }

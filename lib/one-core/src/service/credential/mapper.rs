@@ -19,11 +19,12 @@ use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::mapper::credential_schema_claim::{claim_schema_to_dto, translations_to_i18n};
 use crate::model::blob::{Blob, BlobType};
 use crate::model::certificate::Certificate;
-use crate::model::claim::Claim;
+use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchema;
+use crate::model::common::SortDirection;
 use crate::model::credential::{
-    Credential, CredentialFilterValue, CredentialRole, CredentialStateEnum, CredentialType,
-    ExactCredentialFilterColumn,
+    Credential, CredentialFilterValue, CredentialRelations, CredentialRole, CredentialStateEnum,
+    CredentialType, ExactCredentialFilterColumn, SortableCredentialColumn,
 };
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::Identifier;
@@ -32,7 +33,7 @@ use crate::model::list_filter::{
     ComparisonType, ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
     ValueComparison,
 };
-use crate::model::list_query::ListQuery;
+use crate::model::list_query::{ListPagination, ListQuery, ListSorting};
 use crate::model::localized_text::LocalizedTextField;
 use crate::proto::trust_information::dto::TrustInformation;
 use crate::provider::credential_formatter::mdoc_formatter;
@@ -49,6 +50,7 @@ pub(crate) async fn credential_detail_response_from_model(
     attestation: CredentialAttestationBlobs,
     trust_information: Option<TrustInformation>,
     remaining_batch_item_count: Option<u32>,
+    credential_repository: &dyn CredentialRepository,
 ) -> Result<CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>, CredentialServiceError> {
     let schema_model = value
         .schema
@@ -62,11 +64,42 @@ pub(crate) async fn credential_detail_response_from_model(
             .await
             .map_err(|e: NestedError| CredentialServiceError::MappingError(e.to_string()))?;
 
-    let claims = value
-        .claims
-        .ok_or(CredentialServiceError::MappingError(
-            "claims is None".to_string(),
-        ))?
+    let claims = match value.r#type {
+        CredentialType::Single | CredentialType::BatchParent => value.claims.ok_or(
+            CredentialServiceError::MappingError("claims is None".to_string()),
+        )?,
+        CredentialType::BatchItem => {
+            let parent_id = value
+                .parent
+                .as_ref()
+                .ok_or(CredentialServiceError::MappingError(
+                    "batch item parent is None".to_string(),
+                ))?
+                .id();
+
+            credential_repository
+                .get_credential(
+                    &parent_id,
+                    &CredentialRelations {
+                        claims: Some(ClaimRelations {
+                            schema: Some(Default::default()),
+                        }),
+                        ..Default::default()
+                    },
+                )
+                .await
+                .error_while("getting parent credential")?
+                .ok_or(CredentialServiceError::MappingError(
+                    "batch item parent missing".to_string(),
+                ))?
+                .claims
+                .ok_or(CredentialServiceError::MappingError(
+                    "claims is None".to_string(),
+                ))?
+        }
+    };
+
+    let claims = claims
         .into_iter()
         .filter(|claim| !claim.schema.as_ref().is_some_and(|s| s.metadata))
         .collect();
@@ -89,11 +122,41 @@ pub(crate) async fn credential_detail_response_from_model(
             .format
             .get::<mdoc_formatter::Params, _>(&credential_format)
             .error_while("parsing formatter params")?;
-        // TODO ONE-9818: use issuance date of latest `BATCH_ITEM` instead
-        Some(MdocMsoValidityResponseDTO {
-            expiration: value.last_modified + params.mso_expires_in,
-            next_update: value.last_modified + params.mso_expected_update_in,
-            last_update: value.last_modified,
+
+        let issuance_date = match value.r#type {
+            CredentialType::BatchItem => value.issuance_date,
+            CredentialType::BatchParent => None,
+            CredentialType::Single => {
+                // use the latest item
+                credential_repository
+                    .get_credential_list(ListQuery {
+                        pagination: Some(ListPagination {
+                            page: 0,
+                            page_size: 1,
+                        }),
+                        sorting: Some(ListSorting {
+                            column: SortableCredentialColumn::CreatedDate,
+                            direction: Some(SortDirection::Descending),
+                        }),
+                        filtering: Some(
+                            CredentialFilterValue::ParentCredential(value.id).condition(),
+                        ),
+                        ..Default::default()
+                    })
+                    .await
+                    .error_while("getting batch items")?
+                    .values
+                    .first()
+                    .and_then(|c| c.issuance_date)
+                    // fallback for legacy credentials
+                    .or(Some(value.last_modified))
+            }
+        };
+
+        issuance_date.map(|issuance_date| MdocMsoValidityResponseDTO {
+            expiration: issuance_date + params.mso_expires_in,
+            next_update: issuance_date + params.mso_expected_update_in,
+            last_update: issuance_date,
         })
     } else {
         None

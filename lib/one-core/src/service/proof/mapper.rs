@@ -31,6 +31,7 @@ use crate::model::list_filter::{
 use crate::model::proof::{Proof, ProofClaim, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
 use crate::proto::trust_information::dto::TrustInformation;
+use crate::repository::credential_repository::CredentialRepository;
 use crate::service::certificate::mapper::certificate_to_response_dto;
 use crate::service::credential::dto::{
     CredentialAttestationBlobs, CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO,
@@ -178,6 +179,7 @@ pub(super) async fn get_verifier_proof_detail(
     config: &CoreConfig,
     claims_removed_event: Option<History>,
     trust_information: Vec<TrustInformation>,
+    credential_repository: &dyn CredentialRepository,
 ) -> Result<ProofDetailResponseDTO, ProofServiceError> {
     let schema = proof
         .schema
@@ -238,6 +240,7 @@ pub(super) async fn get_verifier_proof_detail(
             CredentialAttestationBlobs::default(),
             credential_trust_information,
             None,
+            credential_repository,
         )
         .await
         .error_while("creating credential detail")?;
@@ -578,6 +581,7 @@ pub(super) async fn get_holder_proof_detail(
     config: &CoreConfig,
     claims_removed_event: Option<History>,
     trust_information: Vec<TrustInformation>,
+    credential_repository: &dyn CredentialRepository,
 ) -> Result<ProofDetailResponseDTO, ProofServiceError> {
     let organisation_id = [
         proof
@@ -639,6 +643,7 @@ pub(super) async fn get_holder_proof_detail(
                         CredentialAttestationBlobs::default(),
                         None,
                         None,
+                        credential_repository,
                     )
                     .await
                     .error_while("creating credential detail")?,

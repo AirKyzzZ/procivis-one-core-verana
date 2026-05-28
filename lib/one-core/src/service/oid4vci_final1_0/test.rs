@@ -1690,7 +1690,7 @@ async fn test_create_credential_success_sd_jwt_vc() {
 
 #[tokio::test]
 async fn test_create_credential_success_mdoc() {
-    let mut repository = MockCredentialSchemaRepository::default();
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut credential_repository = MockCredentialRepository::default();
     let mut interaction_repository = MockInteractionRepository::default();
     let mut exchange_provider = MockIssuanceProtocolProvider::default();
@@ -1715,20 +1715,30 @@ async fn test_create_credential_success_mdoc() {
         true,
         Some(schema.clone()),
     );
+    let holder_identifier_id = Uuid::new_v4().into();
     let holder_did_id: DidId = Uuid::new_v4().into();
     {
         let clone = schema.clone();
-        repository
+        credential_schema_repository
             .expect_get_credential_schema()
             .times(1)
             .with(eq(schema.id.to_owned()))
             .returning(move |_| Ok(Some(clone.clone())));
 
-        let clone = credential.clone();
         credential_repository
             .expect_get_credentials_by_interaction_id()
             .once()
-            .return_once(move |_, _| Ok(vec![clone]));
+            .return_once({
+                let clone = credential.clone();
+                move |_, _| Ok(vec![clone])
+            });
+        credential_repository
+            .expect_get_credential()
+            .once()
+            .return_once({
+                let clone = credential.clone();
+                move |_, _| Ok(Some(clone))
+            });
 
         interaction_repository
             .expect_get_interaction()
@@ -1766,11 +1776,22 @@ async fn test_create_credential_success_mdoc() {
         credential_repository
             .expect_update_credential()
             .once()
-            .withf(move |id, request| {
-                *id == credential.id
-                    && request.holder_identifier_id == Some(Uuid::from(holder_did_id).into())
-            })
-            .returning(move |_, _| Ok(()));
+            .with(eq(credential.id), always())
+            .withf(|_, request| request.state == Some(CredentialStateEnum::Accepted))
+            .returning(|_, _| Ok(()));
+
+        let batch_item_credential_id = Uuid::new_v4().into();
+        credential_repository
+            .expect_create_credential()
+            .once()
+            .withf(|request| request.r#type == CredentialType::BatchItem)
+            .returning(move |_| Ok(batch_item_credential_id));
+        credential_repository
+            .expect_update_credential()
+            .once()
+            .with(eq(batch_item_credential_id), always())
+            .withf(move |_, request| request.holder_identifier_id == Some(holder_identifier_id))
+            .returning(|_, _| Ok(()));
     }
 
     let key_algorithm = mock_key_algorithm();
@@ -1830,7 +1851,7 @@ async fn test_create_credential_success_mdoc() {
         .returning(move |_, _, _| {
             Ok((
                 Identifier {
-                    id: Uuid::from(holder_did_id).into(),
+                    id: holder_identifier_id,
                     r#type: IdentifierType::Did,
                     ..dummy_identifier()
                 },
@@ -1842,7 +1863,7 @@ async fn test_create_credential_success_mdoc() {
         });
 
     let service = setup_service(Mocks {
-        credential_schema_repository: repository,
+        credential_schema_repository,
         credential_repository,
         interaction_repository,
         config: generic_config().core,

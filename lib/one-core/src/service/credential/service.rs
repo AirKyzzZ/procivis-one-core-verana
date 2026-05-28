@@ -361,6 +361,7 @@ impl CredentialService {
             attestation_blobs,
             trust_information,
             remaining_batch_item_count,
+            self.credential_repository.as_ref(),
         )
         .await?;
 

@@ -108,6 +108,7 @@ pub(crate) async fn credential_model_to_credential_dto(
                 CredentialAttestationBlobs::default(),
                 None,
                 remaining_batch_item_count,
+                credential_repository,
             )
             .await
             .error_while("converting credential")?,

@@ -14,7 +14,9 @@ use crate::config::core_config::{CoreConfig, DatatypeType, Fields, FormatType, P
 use crate::mapper::credential_schema_claim::backfill_default_translations;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
+use crate::model::credential::{
+    Credential, CredentialRole, CredentialStateEnum, CredentialType, GetCredentialList,
+};
 use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, LayoutType};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
@@ -434,6 +436,16 @@ async fn test_issue_credential_for_existing_mdoc_succeeds() {
                 ..credential.schema.unwrap()
             });
             Ok(Some(credential))
+        });
+    credential_repository
+        .expect_get_credential_list()
+        .once()
+        .return_once(|_| {
+            Ok(GetCredentialList {
+                values: vec![],
+                total_pages: 0,
+                total_items: 0,
+            })
         });
 
     credential_repository

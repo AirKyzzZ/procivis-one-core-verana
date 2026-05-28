@@ -38,15 +38,16 @@ use crate::mapper::exchange::{
     get_issuance_param_token_expires_in,
 };
 use crate::model::blob::{Blob, BlobType};
-use crate::model::claim::ClaimRelations;
 use crate::model::common::LockType;
 use crate::model::credential::{
     Credential, CredentialRelations, CredentialStateEnum, CredentialType, UpdateCredentialRequest,
 };
 use crate::model::credential_schema::CredentialSchema;
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::KeyRole;
 use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::interaction::{InteractionRelations, UpdateInteractionRequest};
+use crate::model::relation::Related;
 use crate::proto::identifier_creator::{IdentifierRole, RemoteIdentifierRelation};
 use crate::proto::jwt::Jwt;
 use crate::proto::key_verification::KeyVerification;
@@ -376,10 +377,11 @@ impl OID4VCIFinal1_0Service {
             .error_while("getting credentials")?;
 
         let Some(credential) = credentials.iter().find(|credential| {
-            credential
-                .schema
-                .as_ref()
-                .is_some_and(|schema| schema.id == *credential_schema_id)
+            credential.r#type != CredentialType::BatchItem
+                && credential
+                    .schema
+                    .as_ref()
+                    .is_some_and(|schema| schema.id == *credential_schema_id)
         }) else {
             return Err(
                 OID4VCIFinal1_0ServiceError::MissingCredentialsForInteraction { interaction_id },
@@ -466,7 +468,7 @@ impl OID4VCIFinal1_0Service {
         let result = self
             .transaction_manager
             .tx_with_config(
-                self.issue_tx(interaction_id, holder_identifiers, credential, format.id)
+                self.issue_tx(interaction_id, holder_identifiers, credential, format)
                     .boxed(),
                 Some(IsolationLevel::ReadCommitted),
                 None,
@@ -681,12 +683,13 @@ impl OID4VCIFinal1_0Service {
         ))
     }
 
+    #[tracing::instrument(level = "debug", skip_all, err(level = "info"))]
     async fn issue_tx(
         &self,
         interaction_id: InteractionId,
         mut holder_identifiers: Vec<PreparedIdentifier>,
         credential: &Credential,
-        format_id: CredentialSchemaFormatId,
+        format: CredentialSchemaFormat,
     ) -> Result<OpenID4VCICredentialResponseDTO, OID4VCIFinal1_0ServiceError> {
         // Lock interaction, so that the issuance process is done only by one thread
         let Some(interaction) = self
@@ -709,86 +712,109 @@ impl OID4VCIFinal1_0Service {
             ))
             .error_while("issuing credential")?;
 
-        let schema =
-            credential
-                .schema
-                .as_ref()
-                .ok_or(OID4VCIFinal1_0ServiceError::MappingError(
-                    "missing schema".to_string(),
-                ))?;
-        let format = schema
-            .formats
-            .get()
-            .await
-            .error_while("getting formats")?
-            .into_iter()
-            .find(|f| f.id == format_id)
-            .ok_or(OID4VCIFinal1_0ServiceError::MappingError(
-                "missing format".to_string(),
-            ))?;
-        let format_type = self
-            .config
-            .format
-            .get_fields(&format.format)
-            .error_while("getting format config")?
-            .r#type;
-
-        // In case of initial issuance or MDOC single reissuance (MSO refresh), do not create new credential(s), but update the current credential instead
-        let update_current_credential = credential.state == CredentialStateEnum::Offered
-            || schema.batch_size.is_none()
-            || holder_identifiers.len() == 1 && format_type == FormatType::Mdoc;
-
-        let identifier_for_modified_credential = if update_current_credential {
-            Some(
-                holder_identifiers
+        let credentials = match credential.r#type {
+            CredentialType::Single => {
+                let holder_identifier = holder_identifiers
                     .pop()
-                    .ok_or(OpenID4VCIError::InvalidOrMissingProof)?,
-            )
-        } else {
-            None
-        };
+                    .ok_or(OpenID4VCIError::InvalidOrMissingProof)?;
 
-        let mut credentials = vec![];
-        let mut credential_for_copy = None;
-        for holder_identifier in holder_identifiers {
-            if credential_for_copy.is_none() {
-                credential_for_copy = Some(
-                    self.fetch_credential_for_batch_issuance_copy(credential.id)
+                let format_type = self
+                    .config
+                    .format
+                    .get_fields(&format.format)
+                    .error_while("getting format config")?
+                    .r#type;
+
+                if format_type == FormatType::Mdoc {
+                    // store the issued credential as a batch_item under the main credential
+                    let batch_item = self.prepare_batch_item(credential.id).await?;
+                    let batch_item_id = self
+                        .credential_repository
+                        .create_credential(batch_item)
+                        .await
+                        .error_while("creating MDOC batch item")?;
+
+                    if credential.state == CredentialStateEnum::Offered {
+                        self.credential_repository
+                            .update_credential(
+                                credential.id,
+                                UpdateCredentialRequest {
+                                    state: Some(CredentialStateEnum::Accepted),
+                                    issuance_date: Some(crate::clock::now_utc()),
+                                    ..Default::default()
+                                },
+                            )
+                            .await
+                            .error_while("updating parent credential")?;
+                    }
+
+                    vec![
+                        self.issue_single_credential(
+                            holder_identifier,
+                            batch_item_id,
+                            format.id,
+                            issuance_protocol.as_ref(),
+                        )
                         .await?,
-                );
+                    ]
+                } else {
+                    // directly issue and modify this credential
+                    vec![
+                        self.issue_single_credential(
+                            holder_identifier,
+                            credential.id,
+                            format.id,
+                            issuance_protocol.as_ref(),
+                        )
+                        .await?,
+                    ]
+                }
             }
-            let credential_for_copy =
-                credential_for_copy
-                    .as_ref()
-                    .ok_or(OID4VCIFinal1_0ServiceError::MappingError(
-                        "credential copy missing".to_string(),
-                    ))?;
+            CredentialType::BatchParent => {
+                let batch_item_template = self.prepare_batch_item(credential.id).await?;
+                let mut credentials = vec![];
+                for holder_identifier in holder_identifiers {
+                    let batch_item_id = self
+                        .credential_repository
+                        .create_credential(Credential {
+                            id: Uuid::new_v4().into(),
+                            ..batch_item_template.clone()
+                        })
+                        .await
+                        .error_while("creating batch item copy")?;
+                    credentials.push(
+                        self.issue_single_credential(
+                            holder_identifier,
+                            batch_item_id,
+                            format.id,
+                            issuance_protocol.as_ref(),
+                        )
+                        .await?,
+                    );
+                }
 
-            let copy_id = self
-                .create_credential_copy_for_batch_issuance(credential_for_copy)
-                .await?;
-            credentials.push(
-                self.issue_single_credential(
-                    holder_identifier,
-                    copy_id,
-                    format_id,
-                    issuance_protocol.as_ref(),
-                )
-                .await?,
-            );
-        }
+                if credential.state == CredentialStateEnum::Offered {
+                    self.credential_repository
+                        .update_credential(
+                            credential.id,
+                            UpdateCredentialRequest {
+                                state: Some(CredentialStateEnum::Accepted),
+                                issuance_date: Some(crate::clock::now_utc()),
+                                ..Default::default()
+                            },
+                        )
+                        .await
+                        .error_while("updating parent credential")?;
+                }
 
-        if let Some(identifier_for_modified_credential) = identifier_for_modified_credential {
-            credentials.push(
-                self.issue_single_credential(
-                    identifier_for_modified_credential,
-                    credential.id,
-                    format_id,
-                    issuance_protocol.as_ref(),
-                )
-                .await?,
-            );
-        }
+                credentials
+            }
+            CredentialType::BatchItem => {
+                return Err(OID4VCIFinal1_0ServiceError::MappingError(
+                    "Invalid credential type".to_string(),
+                ));
+            }
+        };
 
         let notification_id = match &interaction_data.notification_id {
             Some(notification_id) => notification_id.to_owned(),
@@ -1289,59 +1315,17 @@ impl OID4VCIFinal1_0Service {
         Ok(OpenID4VCINonceResponseDTO { c_nonce })
     }
 
-    async fn create_credential_copy_for_batch_issuance(
+    async fn prepare_batch_item(
         &self,
-        credential: &Credential,
-    ) -> Result<CredentialId, OID4VCIFinal1_0ServiceError> {
-        let mut claims = credential
-            .claims
-            .as_ref()
-            .ok_or(OID4VCIFinal1_0ServiceError::MappingError(
-                "Missing claims".to_string(),
-            ))?
-            .to_owned();
-
-        let now = crate::clock::now_utc();
-        let id = Uuid::new_v4().into();
-
-        for claim in claims.iter_mut() {
-            claim.id = Uuid::new_v4().into();
-            claim.credential_id = id;
-            claim.created_date = now;
-            claim.last_modified = now;
-        }
-
-        let copy = Credential {
-            id,
-            created_date: now,
-            last_modified: now,
-            credential_blob_id: None,
-            wallet_unit_attestation_blob_id: None,
-            claims: Some(claims),
-            ..credential.to_owned()
-        };
-
-        self.credential_repository
-            .create_credential(copy)
-            .await
-            .error_while("creating credential copy")?;
-        Ok(id)
-    }
-
-    async fn fetch_credential_for_batch_issuance_copy(
-        &self,
-        credential_id: CredentialId,
+        parent_credential_id: CredentialId,
     ) -> Result<Credential, OID4VCIFinal1_0ServiceError> {
-        let credential = self
+        let now = crate::clock::now_utc();
+        let parent_credential = self
             .credential_repository
             .get_credential(
-                &credential_id,
+                &parent_credential_id,
                 &CredentialRelations {
-                    interaction: Some(Default::default()),
                     schema: Some(Default::default()),
-                    claims: Some(ClaimRelations {
-                        schema: Some(Default::default()),
-                    }),
                     issuer_identifier: Some(Default::default()),
                     issuer_certificate: Some(Default::default()),
                     key: Some(Default::default()),
@@ -1354,7 +1338,24 @@ impl OID4VCIFinal1_0Service {
                 "Missing credential".to_string(),
             ))?;
 
-        Ok(credential)
+        Ok(Credential {
+            id: Uuid::new_v4().into(),
+            created_date: now,
+            issuance_date: Some(now),
+            r#type: CredentialType::BatchItem,
+            parent: Some(Related::new(
+                parent_credential_id,
+                self.credential_repository.clone(),
+            )),
+            webhook_url: None,
+            interaction: None,
+            claims: Some(vec![]),
+
+            // state and last_modified are reused from the parent credential,
+            // so that they can be checked in the issuance protocol (e.g. MSO refresh rate limiting)
+            // they will be updated inside the issuance protocol logic
+            ..parent_credential
+        })
     }
 
     async fn process_notification_for_credential(

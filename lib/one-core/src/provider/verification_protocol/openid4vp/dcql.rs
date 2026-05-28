@@ -217,6 +217,7 @@ pub(crate) async fn get_presentation_definition_v2(
                 CredentialAttestationBlobs::default(),
                 None,
                 remaining_batch_item_count,
+                credential_repository,
             )
             .await
             .error_while("creating credential detail")?;

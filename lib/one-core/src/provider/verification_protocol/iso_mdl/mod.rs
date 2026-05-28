@@ -381,6 +381,7 @@ impl VerificationProtocol for IsoMdl {
                         CredentialAttestationBlobs::default(),
                         None,
                         remaining_batch_item_count,
+                        self.credential_repository.as_ref(),
                     )
                     .await
                     .error_while("creating credential detail")?;

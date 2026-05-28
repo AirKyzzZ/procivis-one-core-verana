@@ -468,11 +468,11 @@ async fn test_get_presentation_definition_ok() {
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository
         .expect_get_credential_list()
-        .return_once({
+        .returning({
             let credential = credential.clone();
             move |_| {
                 Ok(GetCredentialList {
-                    values: vec![credential],
+                    values: vec![credential.clone()],
                     total_items: 1,
                     total_pages: 1,
                 })

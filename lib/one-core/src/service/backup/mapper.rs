@@ -4,6 +4,7 @@ use super::error::BackupServiceError;
 use crate::config::core_config::CoreConfig;
 use crate::error::ContextWithErrorCode;
 use crate::model::backup::UnexportableEntities;
+use crate::repository::credential_repository::CredentialRepository;
 use crate::service::backup::dto::UnexportableEntitiesResponseDTO;
 use crate::service::credential::dto::CredentialAttestationBlobs;
 use crate::service::credential::mapper::credential_detail_response_from_model;
@@ -11,6 +12,7 @@ use crate::service::credential::mapper::credential_detail_response_from_model;
 pub(super) async fn unexportable_entities_to_response_dto(
     entities: UnexportableEntities,
     config: &CoreConfig,
+    credential_repository: &dyn CredentialRepository,
 ) -> Result<UnexportableEntitiesResponseDTO, BackupServiceError> {
     let mut credentials = vec![];
 
@@ -22,6 +24,7 @@ pub(super) async fn unexportable_entities_to_response_dto(
                 CredentialAttestationBlobs::default(),
                 None,
                 None,
+                credential_repository,
             )
             .await
             .error_while("converting credential")?,
