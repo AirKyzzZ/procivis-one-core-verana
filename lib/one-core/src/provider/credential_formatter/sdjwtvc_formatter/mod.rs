@@ -8,7 +8,6 @@ pub(crate) mod model;
 mod test;
 
 use std::collections::HashMap;
-use std::str::FromStr;
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -18,7 +17,7 @@ use sdjwt::format_credential;
 use serde::Deserialize;
 use serde_json::Value;
 use serde_with::{DurationSeconds, serde_as};
-use shared_types::{CredentialSchemaId, DidValue, OrganisationId, SerializedCredential};
+use shared_types::{CredentialSchemaId, OrganisationId, SerializedCredential};
 use time::Duration;
 use uuid::Uuid;
 
@@ -32,7 +31,7 @@ use super::model::{
 };
 use super::sdjwt::disclosures::parse_token;
 use super::sdjwt::model::{DecomposedToken, SdJwtFormattingInputs};
-use super::sdjwt::prepare_sd_presentation;
+use super::sdjwt::{parse_holder_identifier, prepare_sd_presentation};
 use super::vcdm::VcdmCredential;
 use super::{CredentialFormatter, MetadataClaimSchema, sdjwt};
 use crate::config::core_config::{
@@ -52,7 +51,6 @@ use crate::proto::jwt::model::jwt_metadata_claims;
 use crate::provider::caching_loader::vct::VctTypeMetadataFetcher;
 use crate::provider::credential_formatter::mapper::default_2_years;
 use crate::provider::data_type::provider::DataTypeProvider;
-use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
@@ -118,6 +116,13 @@ impl CredentialFormatter for SDJWTVCFormatter {
                 &*self.http_client,
             )
             .await?;
+
+        let holder_identifier = parse_holder_identifier(
+            &organisation,
+            &parsed_credential,
+            self.key_algorithm_provider.as_ref(),
+            self.did_method_provider.as_ref(),
+        )?;
 
         let revocation_method = parsed_credential
             .payload
@@ -189,35 +194,6 @@ impl CredentialFormatter for SDJWTVCFormatter {
             self.did_method_provider.as_ref(),
             organisation.to_owned(),
         )?;
-
-        let holder_identifier = if let Some(proof_of_possession_key) =
-            parsed_credential.payload.proof_of_possession_key
-        {
-            Some(prepare_identifier(
-                &IdentifierDetails::Key(proof_of_possession_key.jwk.jwk().to_owned()),
-                self.key_algorithm_provider.as_ref(),
-                self.did_method_provider.as_ref(),
-                organisation,
-            )?)
-        } else {
-            parsed_credential
-                .payload
-                .subject
-                .map(|did| DidValue::from_str(&did))
-                .transpose()
-                .map_err(DidMethodError::DidValueError)
-                .error_while("parsing subject DID")?
-                .map(IdentifierDetails::Did)
-                .map(|details| {
-                    prepare_identifier(
-                        &details,
-                        self.key_algorithm_provider.as_ref(),
-                        self.did_method_provider.as_ref(),
-                        organisation,
-                    )
-                })
-                .transpose()?
-        };
 
         Ok(Credential {
             id: credential_id,

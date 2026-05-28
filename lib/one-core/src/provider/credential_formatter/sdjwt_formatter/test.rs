@@ -39,7 +39,10 @@ use crate::provider::data_type::provider::MockDataTypeProvider;
 use crate::provider::did_method::MockDidMethod;
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
-use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::provider::key_algorithm::key::{
+    KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
+};
+use crate::provider::key_algorithm::provider::{MockKeyAlgorithmProvider, ParsedKey};
 use crate::service::test_utilities::{
     dummy_did, dummy_did_document, dummy_identifier, dummy_jwk, dummy_organisation,
 };
@@ -1074,7 +1077,7 @@ fn base64_urlsafe(s: &str) -> String {
 
 #[tokio::test]
 async fn test_parse_credential() {
-    const CREDENTIAL: &str = "eyJhbGciOiJFUzI1NiIsImtpZCI6ImRpZDprZXk6ekRuYWVidnlWcHdHM1I3UWoxem5yVnk5cnRzaTZOOFRnaldQS1poeUJkYTJxdjU4dyN6RG5hZWJ2eVZwd0czUjdRajF6bnJWeTlydHNpNk44VGdqV1BLWmh5QmRhMnF2NTh3IiwidHlwIjoiU0RfSldUIn0.eyJpYXQiOjE3NjA1NDEyNzcsImV4cCI6MTgyMzYxMzI3NywibmJmIjoxNzYwNTQxMjc3LCJpc3MiOiJkaWQ6a2V5OnpEbmFlYnZ5VnB3RzNSN1FqMXpuclZ5OXJ0c2k2TjhUZ2pXUEtaaHlCZGEycXY1OHciLCJzdWIiOiJkaWQ6a2V5OnpEbmFla29NQzJzRmtnY0ZMcDNLNG5uR1VGVXFZbzhnb1dzanQzc0FmaE5BVjlFUzkiLCJjbmYiOnsiandrIjp7Imt0eSI6IkVDIiwiY3J2IjoiUC0yNTYiLCJ4IjoiTHFQNWlyNGFYRW5na3N3SnZIeEpoLVFDUmNLYjBDZzBiUkxCMXZydUVXWSIsInkiOiJXLVNfZUlPbHp1d1BGcVpaYzBkZFlSbDNOVzZNdlRTQUtXMkpKS3lkNjJVIn19LCJ2YyI6eyJpc3N1ZXIiOiJkaWQ6a2V5OnpEbmFlYnZ5VnB3RzNSN1FqMXpuclZ5OXJ0c2k2TjhUZ2pXUEtaaHlCZGEycXY1OHciLCJ2YWxpZEZyb20iOiIyMDI1LTEwLTE1VDE1OjE0OjM3LjgyMTU4NzAxOFoiLCJ2YWxpZFVudGlsIjoiMjAyNy0xMC0xNVQxNToxNDozNy44MjE1ODcwMThaIiwiQGNvbnRleHQiOlsiaHR0cHM6Ly93d3cudzMub3JnL25zL2NyZWRlbnRpYWxzL3YyIiwiaHR0cHM6Ly9jb3JlLmRldi5wcm9jaXZpcy1vbmUuY29tL3NzaS9jb250ZXh0L3YxLzMwOTk0ODg5LTJkYzYtNGE4Mi1hYzQxLTc0ZWM1Y2MxODdiYSJdLCJ0eXBlIjpbIlZlcmlmaWFibGVDcmVkZW50aWFsIiwiQXJyYXlzQW5kT2JqZWN0cyJdLCJjcmVkZW50aWFsU3ViamVjdCI6eyJfc2QiOlsiUFdxMVZFRVRuTDBsWWU0OG84QllrWnRzdzZFSGltZ1c5MmNHcXZ1REtmQSIsInA4b0t2YzEzeHJxYUdpeFVZbjdfU00wM2RjM2hkSG5uTmhVdjRyVy1yY0EiLCJ3WWRoOGZibW1kbThHREVCQ0xvaVZ5ZGEzRFZlUEFMX01vZW52NWRDRjdZIl19LCJjcmVkZW50aWFsU3RhdHVzIjp7ImlkIjoidXJuOnV1aWQ6ZjZkOWVmNDUtNWNlYy00ZTA2LWFlZjMtODExN2JjMmRlZTdhIiwidHlwZSI6IkJpdHN0cmluZ1N0YXR1c0xpc3RFbnRyeSIsInN0YXR1c1B1cnBvc2UiOiJyZXZvY2F0aW9uIiwic3RhdHVzTGlzdENyZWRlbnRpYWwiOiJodHRwczovL2NvcmUuZGV2LnByb2NpdmlzLW9uZS5jb20vc3NpL3Jldm9jYXRpb24vdjEvbGlzdC82NWZhOTUwNS0wNTVkLTRkNDAtODI2MC1jZGY2ODBmOWQ5YzciLCJzdGF0dXNMaXN0SW5kZXgiOiI3In0sImNyZWRlbnRpYWxTY2hlbWEiOnsiaWQiOiJodHRwczovL2NvcmUuZGV2LnByb2NpdmlzLW9uZS5jb20vc3NpL3NjaGVtYS92MS8zMDk5NDg4OS0yZGM2LTRhODItYWM0MS03NGVjNWNjMTg3YmEiLCJ0eXBlIjoiUHJvY2l2aXNPbmVTY2hlbWEyMDI0In19LCJfc2RfYWxnIjoic2hhLTI1NiJ9.aq6OyVAF39Zx6KZsUq6dBbfTR5uVofnf2mAkBZVglfc6Hdvf-PIlI161XXCn7hp4vw_Zi8e0bCDkW-93YgUpKg~WyJ5ZjJKSGktSzI2UFFDU0lnYllCamdRIiwiaG91c2UiLCJ0ZXN0IGhvdXNlIl0~WyI0Vm1KVHY1U2R3emNvV2gzRnhsYjBBIiwic3RyZWV0IiwidGVzdCBzdHJlZXQiXQ~WyJLNnNUaEJfcm02a1h4c0ZudXBSTGhnIiwiQWRkcmVzcyIseyJfc2QiOlsiS19pT1EybVFXSl9Zekt1VEhWSEdVZDVoUUVBTVVjakVmUFZFUlBDTk5LNCIsImVTTjVxemVuZXFaT2JpQXluQ1NrMWlZR3VDeUhNVm5MNXhXWWJpY2hYUzgiXX1d~WyJJZC13bDZPVjRwQVdrbUt1bkFWemRRIiwiTmFtZSIsIlRlc3QgTmFtZSJd~WyJ4MGp6dGhHNGplRFlBNnZHQjk5b09RIiwiQ0giXQ~WyJ2cFNBbnZ3R0hkUldoVXctNDZuVE5BIiwiVVQiXQ~WyJwUjdpa3RRaVVUeTRxMTFySGg4eURRIiwiTmF0aW9uYWxpdGllcyIsW3siLi4uIjoidDNGek1kTlFXbU5OLUNlSk1tdGx0T3lrd1MxeTdyLW5SeU5vd2tLU0hPOCJ9LHsiLi4uIjoiaWxDdWpaQWxZWlFuWWpsZTJfNmlELWFIdWc1NG1kWWFsMXdYOWkteXUtayJ9XV0~";
+    const CREDENTIAL: &str = "eyJhbGciOiJFUzI1NiIsImtpZCI6ImRpZDprZXk6ekRuYWVidnlWcHdHM1I3UWoxem5yVnk5cnRzaTZOOFRnaldQS1poeUJkYTJxdjU4dyN6RG5hZWJ2eVZwd0czUjdRajF6bnJWeTlydHNpNk44VGdqV1BLWmh5QmRhMnF2NTh3IiwidHlwIjoiU0RfSldUIn0.eyJpYXQiOjE3NjA1NDEyNzcsImV4cCI6MTgyMzYxMzI3NywibmJmIjoxNzYwNTQxMjc3LCJpc3MiOiJkaWQ6a2V5OnpEbmFlYnZ5VnB3RzNSN1FqMXpuclZ5OXJ0c2k2TjhUZ2pXUEtaaHlCZGEycXY1OHciLCJzdWIiOiJkaWQ6a2V5OnpEbmFla29NQzJzRmtnY0ZMcDNLNG5uR1VGVXFZbzhnb1dzanQzc0FmaE5BVjlFUzkiLCJ2YyI6eyJpc3N1ZXIiOiJkaWQ6a2V5OnpEbmFlYnZ5VnB3RzNSN1FqMXpuclZ5OXJ0c2k2TjhUZ2pXUEtaaHlCZGEycXY1OHciLCJ2YWxpZEZyb20iOiIyMDI1LTEwLTE1VDE1OjE0OjM3LjgyMTU4NzAxOFoiLCJ2YWxpZFVudGlsIjoiMjAyNy0xMC0xNVQxNToxNDozNy44MjE1ODcwMThaIiwiQGNvbnRleHQiOlsiaHR0cHM6Ly93d3cudzMub3JnL25zL2NyZWRlbnRpYWxzL3YyIiwiaHR0cHM6Ly9jb3JlLmRldi5wcm9jaXZpcy1vbmUuY29tL3NzaS9jb250ZXh0L3YxLzMwOTk0ODg5LTJkYzYtNGE4Mi1hYzQxLTc0ZWM1Y2MxODdiYSJdLCJ0eXBlIjpbIlZlcmlmaWFibGVDcmVkZW50aWFsIiwiQXJyYXlzQW5kT2JqZWN0cyJdLCJjcmVkZW50aWFsU3ViamVjdCI6eyJfc2QiOlsiUFdxMVZFRVRuTDBsWWU0OG84QllrWnRzdzZFSGltZ1c5MmNHcXZ1REtmQSIsInA4b0t2YzEzeHJxYUdpeFVZbjdfU00wM2RjM2hkSG5uTmhVdjRyVy1yY0EiLCJ3WWRoOGZibW1kbThHREVCQ0xvaVZ5ZGEzRFZlUEFMX01vZW52NWRDRjdZIl19LCJjcmVkZW50aWFsU3RhdHVzIjp7ImlkIjoidXJuOnV1aWQ6ZjZkOWVmNDUtNWNlYy00ZTA2LWFlZjMtODExN2JjMmRlZTdhIiwidHlwZSI6IkJpdHN0cmluZ1N0YXR1c0xpc3RFbnRyeSIsInN0YXR1c1B1cnBvc2UiOiJyZXZvY2F0aW9uIiwic3RhdHVzTGlzdENyZWRlbnRpYWwiOiJodHRwczovL2NvcmUuZGV2LnByb2NpdmlzLW9uZS5jb20vc3NpL3Jldm9jYXRpb24vdjEvbGlzdC82NWZhOTUwNS0wNTVkLTRkNDAtODI2MC1jZGY2ODBmOWQ5YzciLCJzdGF0dXNMaXN0SW5kZXgiOiI3In0sImNyZWRlbnRpYWxTY2hlbWEiOnsiaWQiOiJodHRwczovL2NvcmUuZGV2LnByb2NpdmlzLW9uZS5jb20vc3NpL3NjaGVtYS92MS8zMDk5NDg4OS0yZGM2LTRhODItYWM0MS03NGVjNWNjMTg3YmEiLCJ0eXBlIjoiUHJvY2l2aXNPbmVTY2hlbWEyMDI0In19LCJfc2RfYWxnIjoic2hhLTI1NiJ9.aq6OyVAF39Zx6KZsUq6dBbfTR5uVofnf2mAkBZVglfc6Hdvf-PIlI161XXCn7hp4vw_Zi8e0bCDkW-93YgUpKg~WyJ5ZjJKSGktSzI2UFFDU0lnYllCamdRIiwiaG91c2UiLCJ0ZXN0IGhvdXNlIl0~WyI0Vm1KVHY1U2R3emNvV2gzRnhsYjBBIiwic3RyZWV0IiwidGVzdCBzdHJlZXQiXQ~WyJLNnNUaEJfcm02a1h4c0ZudXBSTGhnIiwiQWRkcmVzcyIseyJfc2QiOlsiS19pT1EybVFXSl9Zekt1VEhWSEdVZDVoUUVBTVVjakVmUFZFUlBDTk5LNCIsImVTTjVxemVuZXFaT2JpQXluQ1NrMWlZR3VDeUhNVm5MNXhXWWJpY2hYUzgiXX1d~WyJJZC13bDZPVjRwQVdrbUt1bkFWemRRIiwiTmFtZSIsIlRlc3QgTmFtZSJd~WyJ4MGp6dGhHNGplRFlBNnZHQjk5b09RIiwiQ0giXQ~WyJ2cFNBbnZ3R0hkUldoVXctNDZuVE5BIiwiVVQiXQ~WyJwUjdpa3RRaVVUeTRxMTFySGg4eURRIiwiTmF0aW9uYWxpdGllcyIsW3siLi4uIjoidDNGek1kTlFXbU5OLUNlSk1tdGx0T3lrd1MxeTdyLW5SeU5vd2tLU0hPOCJ9LHsiLi4uIjoiaWxDdWpaQWxZWlFuWWpsZTJfNmlELWFIdWc1NG1kWWFsMXdYOWkteXUtayJ9XV0~";
 
     let params = Params {
         leeway: Duration::seconds(60),
@@ -1128,6 +1131,7 @@ async fn test_parse_credential() {
         Arc::new(datatype_provider),
         Arc::new(MockHttpClient::new()),
     );
+
     let mut verify_mock = MockTokenVerifier::new();
     verify_mock.expect_verify().return_once(|_, _, _, _| Ok(()));
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
@@ -1272,4 +1276,103 @@ async fn test_parse_credential() {
 
     // Verify revocation method
     assert_eq!(schema.revocation_method, Some("BITSTRINGSTATUSLIST".into()));
+}
+
+#[tokio::test]
+async fn test_parse_credential_cnf() {
+    const CREDENTIAL: &str = "eyJhbGciOiJFUzI1NiIsImtpZCI6ImRpZDprZXk6ekRuYWVidnlWcHdHM1I3UWoxem5yVnk5cnRzaTZOOFRnaldQS1poeUJkYTJxdjU4dyN6RG5hZWJ2eVZwd0czUjdRajF6bnJWeTlydHNpNk44VGdqV1BLWmh5QmRhMnF2NTh3IiwidHlwIjoiU0RfSldUIn0.eyJpYXQiOjE3NjA1NDEyNzcsImV4cCI6MTgyMzYxMzI3NywibmJmIjoxNzYwNTQxMjc3LCJpc3MiOiJkaWQ6a2V5OnpEbmFlYnZ5VnB3RzNSN1FqMXpuclZ5OXJ0c2k2TjhUZ2pXUEtaaHlCZGEycXY1OHciLCJjbmYiOnsiandrIjp7Imt0eSI6IkVDIiwiY3J2IjoiUC0yNTYiLCJ4IjoiTHFQNWlyNGFYRW5na3N3SnZIeEpoLVFDUmNLYjBDZzBiUkxCMXZydUVXWSIsInkiOiJXLVNfZUlPbHp1d1BGcVpaYzBkZFlSbDNOVzZNdlRTQUtXMkpKS3lkNjJVIn19LCJ2YyI6eyJpc3N1ZXIiOiJkaWQ6a2V5OnpEbmFlYnZ5VnB3RzNSN1FqMXpuclZ5OXJ0c2k2TjhUZ2pXUEtaaHlCZGEycXY1OHciLCJ2YWxpZEZyb20iOiIyMDI1LTEwLTE1VDE1OjE0OjM3LjgyMTU4NzAxOFoiLCJ2YWxpZFVudGlsIjoiMjAyNy0xMC0xNVQxNToxNDozNy44MjE1ODcwMThaIiwiQGNvbnRleHQiOlsiaHR0cHM6Ly93d3cudzMub3JnL25zL2NyZWRlbnRpYWxzL3YyIiwiaHR0cHM6Ly9jb3JlLmRldi5wcm9jaXZpcy1vbmUuY29tL3NzaS9jb250ZXh0L3YxLzMwOTk0ODg5LTJkYzYtNGE4Mi1hYzQxLTc0ZWM1Y2MxODdiYSJdLCJ0eXBlIjpbIlZlcmlmaWFibGVDcmVkZW50aWFsIiwiQXJyYXlzQW5kT2JqZWN0cyJdLCJjcmVkZW50aWFsU3ViamVjdCI6eyJfc2QiOlsiUFdxMVZFRVRuTDBsWWU0OG84QllrWnRzdzZFSGltZ1c5MmNHcXZ1REtmQSIsInA4b0t2YzEzeHJxYUdpeFVZbjdfU00wM2RjM2hkSG5uTmhVdjRyVy1yY0EiLCJ3WWRoOGZibW1kbThHREVCQ0xvaVZ5ZGEzRFZlUEFMX01vZW52NWRDRjdZIl19LCJjcmVkZW50aWFsU3RhdHVzIjp7ImlkIjoidXJuOnV1aWQ6ZjZkOWVmNDUtNWNlYy00ZTA2LWFlZjMtODExN2JjMmRlZTdhIiwidHlwZSI6IkJpdHN0cmluZ1N0YXR1c0xpc3RFbnRyeSIsInN0YXR1c1B1cnBvc2UiOiJyZXZvY2F0aW9uIiwic3RhdHVzTGlzdENyZWRlbnRpYWwiOiJodHRwczovL2NvcmUuZGV2LnByb2NpdmlzLW9uZS5jb20vc3NpL3Jldm9jYXRpb24vdjEvbGlzdC82NWZhOTUwNS0wNTVkLTRkNDAtODI2MC1jZGY2ODBmOWQ5YzciLCJzdGF0dXNMaXN0SW5kZXgiOiI3In0sImNyZWRlbnRpYWxTY2hlbWEiOnsiaWQiOiJodHRwczovL2NvcmUuZGV2LnByb2NpdmlzLW9uZS5jb20vc3NpL3NjaGVtYS92MS8zMDk5NDg4OS0yZGM2LTRhODItYWM0MS03NGVjNWNjMTg3YmEiLCJ0eXBlIjoiUHJvY2l2aXNPbmVTY2hlbWEyMDI0In19LCJfc2RfYWxnIjoic2hhLTI1NiJ9.aq6OyVAF39Zx6KZsUq6dBbfTR5uVofnf2mAkBZVglfc6Hdvf-PIlI161XXCn7hp4vw_Zi8e0bCDkW-93YgUpKg~WyJ5ZjJKSGktSzI2UFFDU0lnYllCamdRIiwiaG91c2UiLCJ0ZXN0IGhvdXNlIl0~WyI0Vm1KVHY1U2R3emNvV2gzRnhsYjBBIiwic3RyZWV0IiwidGVzdCBzdHJlZXQiXQ~WyJLNnNUaEJfcm02a1h4c0ZudXBSTGhnIiwiQWRkcmVzcyIseyJfc2QiOlsiS19pT1EybVFXSl9Zekt1VEhWSEdVZDVoUUVBTVVjakVmUFZFUlBDTk5LNCIsImVTTjVxemVuZXFaT2JpQXluQ1NrMWlZR3VDeUhNVm5MNXhXWWJpY2hYUzgiXX1d~WyJJZC13bDZPVjRwQVdrbUt1bkFWemRRIiwiTmFtZSIsIlRlc3QgTmFtZSJd~WyJ4MGp6dGhHNGplRFlBNnZHQjk5b09RIiwiQ0giXQ~WyJ2cFNBbnZ3R0hkUldoVXctNDZuVE5BIiwiVVQiXQ~WyJwUjdpa3RRaVVUeTRxMTFySGg4eURRIiwiTmF0aW9uYWxpdGllcyIsW3siLi4uIjoidDNGek1kTlFXbU5OLUNlSk1tdGx0T3lrd1MxeTdyLW5SeU5vd2tLU0hPOCJ9LHsiLi4uIjoiaWxDdWpaQWxZWlFuWWpsZTJfNmlELWFIdWc1NG1kWWFsMXdYOWkteXUtayJ9XV0~";
+    let params = Params {
+        leeway: Duration::seconds(60),
+        embed_layout_properties: false,
+        sd_array_elements: true,
+        expiration_time: Duration::days(1),
+    };
+
+    let hashers = hashmap! {
+        "sha-256".to_string() => Arc::new(SHA256) as Arc<dyn one_crypto::Hasher>
+    };
+    let crypto = Arc::new(one_crypto::CryptoProviderImpl::new(hashers));
+
+    let mut datatype_provider = crate::provider::data_type::provider::MockDataTypeProvider::new();
+    datatype_provider
+        .expect_extract_json_claim()
+        .returning(|value| {
+            use crate::provider::data_type::model::ExtractedClaim;
+            match value {
+                serde_json::Value::Bool(b) => Ok(ExtractedClaim {
+                    data_type: "BOOLEAN".to_string(),
+                    value: b.to_string(),
+                }),
+                serde_json::Value::String(s) => Ok(ExtractedClaim {
+                    data_type: "STRING".to_string(),
+                    value: s.clone(),
+                }),
+                serde_json::Value::Number(n) => Ok(ExtractedClaim {
+                    data_type: "NUMBER".to_string(),
+                    value: n.to_string(),
+                }),
+                _ => Err(
+                    crate::provider::data_type::error::DataTypeProviderError::UnableToExtract(
+                        crate::provider::data_type::model::JsonOrCbor::Json(value.clone()),
+                    ),
+                ),
+            }
+        });
+
+    let mut did_method_provider = MockDidMethodProvider::new();
+    did_method_provider
+        .expect_get_did_method_by_method_name()
+        .times(1)
+        .returning(|name| Ok((name.into(), Arc::new(MockDidMethod::new()))));
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider.expect_parse_jwk().returning(|_| {
+        let mut public_key = MockSignaturePublicKeyHandle::new();
+        public_key.expect_as_raw().returning(|| vec![0x0, 0x1]);
+
+        Ok(ParsedKey {
+            algorithm_type: KeyAlgorithmType::Eddsa,
+            key: KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(Arc::new(public_key))),
+        })
+    });
+
+    let formatter = SDJWTFormatter::new(
+        params,
+        crypto,
+        Arc::new(did_method_provider),
+        Arc::new(key_algorithm_provider),
+        Arc::new(datatype_provider),
+        Arc::new(MockHttpClient::new()),
+    );
+
+    let mut verify_mock = MockTokenVerifier::new();
+    verify_mock.expect_verify().return_once(|_, _, _, _| Ok(()));
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_key_algorithm_from_jose_alg()
+        .once()
+        .returning(|_| {
+            let mut key_algorithm = MockKeyAlgorithm::default();
+            key_algorithm
+                .expect_algorithm_type()
+                .return_once(|| KeyAlgorithmType::Eddsa);
+
+            Some((KeyAlgorithmType::Eddsa, Arc::new(key_algorithm)))
+        });
+    verify_mock
+        .expect_key_algorithm_provider()
+        .return_const(Box::new(key_algorithm_provider));
+    let result = formatter
+        .parse_credential(
+            &CREDENTIAL.into(),
+            dummy_organisation(None),
+            Box::new(verify_mock),
+        )
+        .await
+        .unwrap();
+
+    // Verify holder identifier
+    assert!(result.holder_identifier.is_some());
+    let holder = result.holder_identifier.as_ref().unwrap();
+    assert!(holder.key.is_some());
+    assert_eq!(holder.key.as_ref().unwrap().public_key, vec![0x0, 0x1]);
 }

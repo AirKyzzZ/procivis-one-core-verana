@@ -25,7 +25,7 @@ use super::model::{
 use super::sdjwt::disclosures::parse_token;
 use super::sdjwt::mapper::vc_from_credential;
 use super::sdjwt::model::*;
-use super::sdjwt::{format_credential, model, prepare_sd_presentation};
+use super::sdjwt::{format_credential, model, parse_holder_identifier, prepare_sd_presentation};
 use super::vcdm::{VcdmCredential, vcdm_metadata_claims};
 use super::{CredentialFormatter, MetadataClaimSchema};
 use crate::config::core_config::{
@@ -264,6 +264,13 @@ impl CredentialFormatter for SDJWTFormatter {
             )
             .await?;
 
+        let holder_identifier = parse_holder_identifier(
+            &organisation,
+            &parsed_credential,
+            self.key_algorithm_provider.as_ref(),
+            self.did_method_provider.as_ref(),
+        )?;
+
         let revocation_method = if let Some(status) = parsed_credential
             .payload
             .custom
@@ -371,23 +378,6 @@ impl CredentialFormatter for SDJWTFormatter {
             self.did_method_provider.as_ref(),
             organisation.to_owned(),
         )?;
-        let holder_identifier = parsed_credential
-            .payload
-            .subject
-            .map(|did| DidValue::from_str(&did))
-            .transpose()
-            .map_err(DidMethodError::DidValueError)
-            .error_while("parsing subject DID")?
-            .map(IdentifierDetails::Did)
-            .map(|details| {
-                prepare_identifier(
-                    &details,
-                    self.key_algorithm_provider.as_ref(),
-                    self.did_method_provider.as_ref(),
-                    organisation,
-                )
-            })
-            .transpose()?;
 
         Ok(Credential {
             id: credential_id,

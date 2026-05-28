@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::str::FromStr;
 
 use disclosures::recursively_expand_disclosures;
 use model::{DecomposedToken as DecomposedTokenWithDisclosures, Disclosure};
@@ -16,7 +17,8 @@ use super::model::{
 use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::{pem_chain_into_x5c, x5c_into_pem_chain};
 use crate::model::did::KeyRole;
-use crate::model::identifier::IdentifierType;
+use crate::model::identifier::{Identifier, IdentifierType};
+use crate::model::organisation::Organisation;
 use crate::proto::certificate_validator::{
     CertificateValidationOptions, CertificateValidator, ParsedCertificate,
 };
@@ -26,6 +28,7 @@ use crate::proto::jwt::model::{
 };
 use crate::proto::jwt::{AnyPayload, Jwt, JwtPublicKeyInfo};
 use crate::provider::credential_formatter::error::FormatterError;
+use crate::provider::credential_formatter::json_claims::prepare_identifier;
 use crate::provider::credential_formatter::model::CredentialPresentation;
 use crate::provider::credential_formatter::sdjwt::disclosures::{
     compute_object_disclosures, parse_token, select_disclosures,
@@ -515,4 +518,41 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
         }
         Ok(kb_payload)
     }
+}
+
+pub(crate) fn parse_holder_identifier<T>(
+    organisation: &Organisation,
+    parsed_credential: &Jwt<T>,
+    key_algorithm_provider: &dyn KeyAlgorithmProvider,
+    did_method_provider: &dyn DidMethodProvider,
+) -> Result<Option<Identifier>, FormatterError> {
+    Ok(
+        if let Some(proof_of_possession_key) = &parsed_credential.payload.proof_of_possession_key {
+            Some(prepare_identifier(
+                &IdentifierDetails::Key(proof_of_possession_key.jwk.jwk().to_owned()),
+                key_algorithm_provider,
+                did_method_provider,
+                organisation.clone(),
+            )?)
+        } else {
+            parsed_credential
+                .payload
+                .subject
+                .as_ref()
+                .map(|did| DidValue::from_str(did))
+                .transpose()
+                .map_err(DidMethodError::DidValueError)
+                .error_while("parsing subject DID")?
+                .map(IdentifierDetails::Did)
+                .map(|details| {
+                    prepare_identifier(
+                        &details,
+                        key_algorithm_provider,
+                        did_method_provider,
+                        organisation.clone(),
+                    )
+                })
+                .transpose()?
+        },
+    )
 }
