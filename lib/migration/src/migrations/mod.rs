@@ -13,3 +13,4 @@ pub mod m20260522_120000_credential_schema_layout_properties_to_jsonb;
 
 pub mod m20260526_095002_credential_grouping;
 pub mod m20260526_124033_drop_validity_creds;
+pub mod m20260528_120000_bump_credential_schema_import_url_to_v2;
