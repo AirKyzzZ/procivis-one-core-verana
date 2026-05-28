@@ -4,6 +4,7 @@ use crate::config::core_config;
 use crate::proto::http_client::HttpClient;
 use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::session_provider::SessionProvider;
+use crate::proto::transaction_manager::TransactionManager;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::issuance_protocol::provider::IssuanceProtocolProvider;
@@ -11,7 +12,6 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_security_level::provider::KeySecurityLevelProvider;
 use crate::provider::verification_protocol::provider::VerificationProtocolProvider;
 use crate::repository::credential_repository::CredentialRepository;
-use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
@@ -34,7 +34,6 @@ pub struct SSIHolderService {
     proof_repository: Arc<dyn ProofRepository>,
     organisation_repository: Arc<dyn OrganisationRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
-    credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     identifier_repository: Arc<dyn IdentifierRepository>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     key_security_level_provider: Arc<dyn KeySecurityLevelProvider>,
@@ -46,6 +45,7 @@ pub struct SSIHolderService {
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
     session_provider: Arc<dyn SessionProvider>,
     identifier_creator: Arc<dyn IdentifierCreator>,
+    transaction_manager: Arc<dyn TransactionManager>,
 }
 
 #[expect(clippy::too_many_arguments)]
@@ -55,7 +55,6 @@ impl SSIHolderService {
         proof_repository: Arc<dyn ProofRepository>,
         organisation_repository: Arc<dyn OrganisationRepository>,
         interaction_repository: Arc<dyn InteractionRepository>,
-        credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
         identifier_repository: Arc<dyn IdentifierRepository>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         key_security_level_provider: Arc<dyn KeySecurityLevelProvider>,
@@ -67,13 +66,13 @@ impl SSIHolderService {
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
         session_provider: Arc<dyn SessionProvider>,
         identifier_creator: Arc<dyn IdentifierCreator>,
+        transaction_manager: Arc<dyn TransactionManager>,
     ) -> Self {
         Self {
             credential_repository,
             proof_repository,
             organisation_repository,
             interaction_repository,
-            credential_schema_repository,
             identifier_repository,
             key_algorithm_provider,
             formatter_provider,
@@ -85,6 +84,7 @@ impl SSIHolderService {
             session_provider,
             key_security_level_provider,
             identifier_creator,
+            transaction_manager,
         }
     }
 }

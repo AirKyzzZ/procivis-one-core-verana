@@ -48,8 +48,8 @@ use super::mapper::{
     interaction_from_handle_invitation,
 };
 use super::model::{
-    ContinueIssuanceResponseDTO, InvitationResponseEnum, OpenID4VCIProofTypeSupported,
-    ShareResponse, SubmitIssuerResponse, UpdateResponse,
+    ContinueIssuanceResponseDTO, InvitationResponseEnum, IssuanceAcceptResponse,
+    OpenID4VCIProofTypeSupported, ShareResponse, SubmitIssuerResponse,
 };
 use super::{
     HolderBindingInput, IssuanceProtocol, IssuanceProtocolError, deserialize_interaction_data,
@@ -1466,7 +1466,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         interaction: Interaction,
         holder_binding: Option<HolderBindingInput>,
         tx_code: Option<String>,
-    ) -> Result<UpdateResponse, IssuanceProtocolError> {
+    ) -> Result<IssuanceAcceptResponse, IssuanceProtocolError> {
         let organisation =
             interaction
                 .organisation

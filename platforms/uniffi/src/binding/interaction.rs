@@ -48,9 +48,9 @@ impl OneCore {
     pub async fn holder_accept_credential(
         &self,
         request: HolderAcceptCredentialRequestBindingDTO,
-    ) -> Result<HolderAcceptCredentialResponseBindingDTO, BindingError> {
+    ) -> Result<String, BindingError> {
         let core = self.use_core().await?;
-        let ids = core
+        let id = core
             .ssi_holder_service
             .accept_credential(
                 into_id(request.interaction_id)?,
@@ -60,9 +60,7 @@ impl OneCore {
                 request.tx_code,
             )
             .await?;
-        Ok(HolderAcceptCredentialResponseBindingDTO {
-            credential_ids: ids.iter().map(ToString::to_string).collect(),
-        })
+        Ok(id.to_string())
     }
 
     /// Rejects an offered credential.
@@ -269,12 +267,6 @@ pub struct HolderAcceptCredentialRequestBindingDTO {
     pub key_id: Option<String>,
     /// User-provided transaction code.
     pub tx_code: Option<String>,
-}
-
-#[derive(Clone, Debug, uniffi::Record)]
-#[uniffi(name = "HolderAcceptCredentialResponse")]
-pub struct HolderAcceptCredentialResponseBindingDTO {
-    pub credential_ids: Vec<String>,
 }
 
 #[derive(Clone, Debug, uniffi::Record)]

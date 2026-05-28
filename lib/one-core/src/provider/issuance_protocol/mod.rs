@@ -24,7 +24,7 @@ pub mod model;
 pub mod openid4vci_final1_0;
 pub mod openid4vci_final1_0_swiyu;
 pub(crate) mod provider;
-use model::{ContinueIssuanceResponseDTO, ShareResponse, UpdateResponse};
+use model::{ContinueIssuanceResponseDTO, IssuanceAcceptResponse, ShareResponse};
 
 pub(crate) fn deserialize_interaction_data<DataDTO: for<'a> Deserialize<'a>>(
     data: Option<&Vec<u8>>,
@@ -71,7 +71,7 @@ pub(crate) trait IssuanceProtocol: Send + Sync {
         interaction: Interaction,
         holder_binding: Option<HolderBindingInput>,
         tx_code: Option<String>,
-    ) -> Result<UpdateResponse, IssuanceProtocolError>;
+    ) -> Result<IssuanceAcceptResponse, IssuanceProtocolError>;
 
     /// Rejects a previously-accepted credential offer.
     async fn holder_reject_credential(

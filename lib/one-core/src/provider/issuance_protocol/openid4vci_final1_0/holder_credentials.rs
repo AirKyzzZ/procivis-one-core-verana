@@ -10,29 +10,34 @@ use crate::config::core_config::BlobStorageType;
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin};
 use crate::mapper::credential_schema_claim::add_fallback_translation;
 use crate::mapper::oidc::map_from_oidc_format_to_core_detailed;
-use crate::model::blob::UpdateBlobRequest;
+use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential::{Credential, CredentialRelations, CredentialStateEnum};
+use crate::model::credential::{
+    Credential, CredentialRelations, CredentialStateEnum, CredentialType,
+};
 use crate::model::credential_schema::{
     CredentialSchema, LayoutType, UpdateCredentialSchemaRequest,
 };
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::history::{
-    HistoryAction, HistoryMetadata, TrustResolutionMetadata, TrustResolutionResult,
-    WalletRelyingPartyMetadata,
+    History, HistoryAction, HistoryEntityType, HistoryMetadata, HistorySource,
+    TrustResolutionMetadata, TrustResolutionResult, WalletRelyingPartyMetadata,
 };
 use crate::model::identifier::{Identifier, IdentifierType};
 use crate::model::interaction::Interaction;
 use crate::model::localized_text::{LocalizedText, LocalizedTextEntityType, LocalizedTextField};
 use crate::model::organisation::Organisation;
+use crate::model::relation::Related;
 use crate::proto::credential_schema::importer::CredentialSchemaImporter;
 use crate::proto::identifier_creator::{IdentifierRole, RemoteIdentifierRelation};
+use crate::proto::session_provider::SessionExt;
 use crate::proto::wrp_validator::model::TrustMode;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
-use crate::provider::issuance_protocol::model::KeyStorageSecurityLevel;
+use crate::provider::issuance_protocol::model::{CredentialWithBlob, KeyStorageSecurityLevel};
+use crate::provider::issuance_protocol::openid4vci_final1_0::validator::validate_batch_consistency;
 use crate::provider::issuance_protocol::{
-    HolderBindingInput, IssuanceProtocolError, UpdateResponse,
+    HolderBindingInput, IssuanceAcceptResponse, IssuanceProtocolError,
 };
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::service::error::MissingProviderError;
@@ -46,7 +51,7 @@ impl OpenID4VCIFinal1_0 {
         mut holder_bindings: Vec<HolderBindingInput>,
         organisation: &Organisation,
         interaction: &Interaction,
-    ) -> Result<UpdateResponse, IssuanceProtocolError> {
+    ) -> Result<IssuanceAcceptResponse, IssuanceProtocolError> {
         let format_type = map_from_oidc_format_to_core_detailed(
             &interaction_data.format,
             issuer_response
@@ -66,143 +71,199 @@ impl OpenID4VCIFinal1_0 {
         let mut trust_resolution = interaction_data.trust_resolution;
 
         let mut credentials = vec![];
-        let mut new_claim_schemas: Vec<ClaimSchema> = vec![];
-        let mut credential_schema = None;
-        for issued_credential in &issuer_response.credentials {
-            let mut credential = self
+        for issued_credential in issuer_response.credentials {
+            let credential = self
                 .prepare_issued_credential(
-                    issued_credential,
+                    &issued_credential,
                     &mut holder_bindings,
-                    &issuer_response,
                     organisation,
                     interaction,
                     formatter.as_ref(),
+                    issuer_response.redirect_uri.as_ref(),
                 )
                 .await?;
-
-            if credential_schema.is_none() {
-                credential_schema = Some(
-                    self.prepare_credential_schema(
-                        interaction_data,
-                        &credential,
-                        &format,
-                        organisation,
-                    )
-                    .await?,
-                );
-            }
-            let schema = credential_schema
-                .as_ref()
-                .ok_or(IssuanceProtocolError::Failed("Missing schema".to_string()))?;
-
-            if trust_resolution == TrustResolutionResult::Trusted
-                && let Err(err) = self
-                    .wrp_validator
-                    .validate_credential_issuer(
-                        credential
-                            .issuer_certificate
-                            .as_ref()
-                            .map(|certificate| certificate.chain.as_str()),
-                        schema,
-                        organisation.id,
-                    )
-                    .await
-            {
-                tracing::info!(%err, "Credential issuer trust not verified");
-                trust_resolution = TrustResolutionResult::Untrusted;
-            }
-
-            prepare_credential_schema_updates(
-                schema,
-                &mut credential,
-                &mut new_claim_schemas,
-                &self.config.default_language,
-            )
-            .await?;
-
-            if let Some(access_certificate) = &interaction_data.access_certificate {
-                self.store_trust_history_event(
-                    HistoryAction::WrpAcReceived,
-                    credential.id,
-                    organisation.id,
-                    Some(access_certificate.to_owned()),
-                    None,
-                )
-                .await?;
-            }
-
-            if let (Some(registration_certificate), Some(relying_party_name)) = (
-                &interaction_data.registration_certificate,
-                &interaction_data.relying_party_name,
-            ) {
-                self.store_trust_history_event(
-                    HistoryAction::WrpRcReceived,
-                    credential.id,
-                    organisation.id,
-                    Some(registration_certificate.to_owned()),
-                    Some(HistoryMetadata::WalletRelyingParty(
-                        WalletRelyingPartyMetadata {
-                            name: relying_party_name.to_string(),
-                            ..Default::default()
-                        },
-                    )),
-                )
-                .await?;
-            }
-
-            if let (Some(national_registry_data), Some(relying_party_name)) = (
-                &interaction_data.national_registry_data,
-                &interaction_data.relying_party_name,
-            ) {
-                self.store_trust_history_event(
-                    HistoryAction::WrpNrReceived,
-                    credential.id,
-                    organisation.id,
-                    Some(national_registry_data.to_owned()),
-                    Some(HistoryMetadata::WalletRelyingParty(
-                        WalletRelyingPartyMetadata {
-                            name: relying_party_name.to_string(),
-                            ..Default::default()
-                        },
-                    )),
-                )
-                .await?;
-            }
-
-            self.store_trust_history_event(
-                HistoryAction::TrustResolved,
-                credential.id,
-                organisation.id,
-                None,
-                Some(HistoryMetadata::TrustResolution(TrustResolutionMetadata {
-                    result: trust_resolution,
-                })),
-            )
-            .await?;
-
-            credentials.push(credential);
+            credentials.push(CredentialWithBlob {
+                credential,
+                serialized: Some(issued_credential),
+            });
         }
 
-        let update_credential_schema = if new_claim_schemas.is_empty() {
-            None
-        } else {
-            Some(UpdateCredentialSchemaRequest {
-                id: credential_schema
-                    .ok_or(IssuanceProtocolError::Failed("Missing schema".to_string()))?
-                    .id,
-                revocation_method: None,
-                format: None,
-                claim_schemas: Some(new_claim_schemas),
-                layout_type: None,
-                layout_properties: None,
-            })
-        };
+        validate_batch_consistency(&credentials).await?;
 
-        Ok(UpdateResponse {
-            result: issuer_response,
-            update_credential_schema,
-            credentials: Some(credentials),
+        let (mut main_credential, issuer_cert) = if credentials.len() > 1 {
+            let batch_item = credentials.first().ok_or(IssuanceProtocolError::Failed(
+                "No credentials received".to_string(),
+            ))?;
+            let batch_parent = CredentialWithBlob {
+                credential: Credential {
+                    id: Uuid::new_v4().into(),
+                    r#type: CredentialType::BatchParent,
+                    credential_blob_id: None,
+                    wallet_instance_attestation_blob_id: None,
+                    wallet_unit_attestation_blob_id: None,
+                    issuer_identifier: None,
+                    issuer_certificate: None,
+                    holder_identifier: None,
+                    key: None,
+                    ..batch_item.credential.clone()
+                },
+                serialized: None,
+            };
+            (
+                batch_parent,
+                batch_item.credential.issuer_certificate.clone(),
+            )
+        } else {
+            let result = credentials.pop().ok_or(IssuanceProtocolError::Failed(
+                "No credentials received".to_string(),
+            ))?;
+            let cert = result.credential.issuer_certificate.clone();
+            (result, cert)
+        };
+        let main_credential_id = main_credential.credential.id;
+
+        let schema = self
+            .process_schema(
+                &mut main_credential.credential,
+                organisation,
+                interaction_data,
+                &format,
+            )
+            .await?;
+        if !credentials.is_empty() {
+            // update batch items
+            credentials.iter_mut().for_each(|c| {
+                self.change_to_batch_item(&mut c.credential, main_credential_id, &schema);
+            });
+        }
+
+        if trust_resolution == TrustResolutionResult::Trusted
+            && let Err(err) = self
+                .wrp_validator
+                .validate_credential_issuer(
+                    issuer_cert
+                        .as_ref()
+                        .map(|certificate| certificate.chain.as_str()),
+                    &schema,
+                    organisation.id,
+                )
+                .await
+        {
+            tracing::info!(%err, "Credential issuer trust not verified");
+            trust_resolution = TrustResolutionResult::Untrusted;
+        }
+
+        if let Some(access_certificate) = &interaction_data.access_certificate {
+            self.store_trust_history_event(
+                HistoryAction::WrpAcReceived,
+                main_credential_id,
+                organisation.id,
+                Some(access_certificate.to_owned()),
+                None,
+            )
+            .await?;
+        }
+
+        if let (Some(registration_certificate), Some(relying_party_name)) = (
+            &interaction_data.registration_certificate,
+            &interaction_data.relying_party_name,
+        ) {
+            self.store_trust_history_event(
+                HistoryAction::WrpRcReceived,
+                main_credential_id,
+                organisation.id,
+                Some(registration_certificate.to_owned()),
+                Some(HistoryMetadata::WalletRelyingParty(
+                    WalletRelyingPartyMetadata {
+                        name: relying_party_name.to_string(),
+                        ..Default::default()
+                    },
+                )),
+            )
+            .await?;
+        }
+
+        if let (Some(national_registry_data), Some(relying_party_name)) = (
+            &interaction_data.national_registry_data,
+            &interaction_data.relying_party_name,
+        ) {
+            self.store_trust_history_event(
+                HistoryAction::WrpNrReceived,
+                main_credential_id,
+                organisation.id,
+                Some(national_registry_data.to_owned()),
+                Some(HistoryMetadata::WalletRelyingParty(
+                    WalletRelyingPartyMetadata {
+                        name: relying_party_name.to_string(),
+                        ..Default::default()
+                    },
+                )),
+            )
+            .await?;
+        }
+
+        self.store_trust_history_event(
+            HistoryAction::TrustResolved,
+            main_credential_id,
+            organisation.id,
+            None,
+            Some(HistoryMetadata::TrustResolution(TrustResolutionMetadata {
+                result: trust_resolution,
+            })),
+        )
+        .await?;
+
+        // Add main credential to the front so that the batch_parent already exists when the batch_items are created.
+        Ok(IssuanceAcceptResponse {
+            main_credential,
+            batch_items: credentials,
         })
+    }
+
+    fn change_to_batch_item(
+        &self,
+        credential: &mut Credential,
+        parent_id: CredentialId,
+        schema: &CredentialSchema,
+    ) {
+        credential.schema = Some(schema.clone());
+        credential.r#type = CredentialType::BatchItem;
+        credential.parent = Some(Related::new(parent_id, self.credential_repository.clone()));
+        credential.claims = None;
+        credential.interaction = None;
+    }
+
+    async fn process_schema(
+        &self,
+        main_credential: &mut Credential,
+        organisation: &Organisation,
+        interaction_data: &HolderInteractionData,
+        format: &CredentialFormat,
+    ) -> Result<CredentialSchema, IssuanceProtocolError> {
+        let mut schema = self
+            .prepare_credential_schema(interaction_data, main_credential, format, organisation)
+            .await?;
+        let claim_schema_update = validate_existing_and_find_new_claim_schemas(
+            &mut schema,
+            main_credential,
+            &self.config.default_language,
+            true,
+        )
+        .await?;
+        if let Some(new_claim_schemas) = claim_schema_update {
+            self.credential_schema_repository
+                .update_credential_schema(UpdateCredentialSchemaRequest {
+                    id: schema.id,
+                    claim_schemas: Some(new_claim_schemas),
+                    revocation_method: None,
+                    format: None,
+                    layout_type: None,
+                    layout_properties: None,
+                })
+                .await
+                .error_while("updating credential schema")?;
+        }
+        Ok(schema)
     }
 
     pub(super) async fn holder_process_refresh(
@@ -323,7 +384,7 @@ impl OpenID4VCIFinal1_0 {
         organisation: &Organisation,
         interaction: &Interaction,
     ) -> Result<Vec<CredentialId>, IssuanceProtocolError> {
-        let schema = self
+        let batch_parent = self
             .credential_repository
             .get_credentials_by_interaction_id(
                 &interaction.id,
@@ -338,7 +399,14 @@ impl OpenID4VCIFinal1_0 {
             .next()
             .ok_or(IssuanceProtocolError::Failed(
                 "No credentials found".to_string(),
-            ))?
+            ))?;
+        if batch_parent.r#type != CredentialType::BatchParent {
+            return Err(IssuanceProtocolError::Failed(format!(
+                "Expected credential {} to be of type batch parent, but founnd {:?}",
+                batch_parent.id, batch_parent.r#type
+            )));
+        }
+        let mut schema = batch_parent
             .schema
             .ok_or(IssuanceProtocolError::Failed("Missing schema".to_string()))?;
 
@@ -360,71 +428,119 @@ impl OpenID4VCIFinal1_0 {
 
         let mut trust_resolution = interaction_data.trust_resolution;
 
-        let mut result = vec![];
-        for issued_credential in &issuer_response.credentials {
-            let mut credential = self
+        let mut batch_credentials = Vec::with_capacity(issuer_response.credentials.len());
+        for issued_credential in issuer_response.credentials {
+            let credential = self
                 .prepare_issued_credential(
-                    issued_credential,
+                    &issued_credential,
                     &mut holder_bindings,
-                    &issuer_response,
                     organisation,
                     interaction,
                     formatter.as_ref(),
+                    issuer_response.redirect_uri.as_ref(),
                 )
                 .await?;
+            batch_credentials.push(CredentialWithBlob {
+                credential,
+                serialized: Some(issued_credential),
+            });
+        }
+        validate_batch_consistency(&batch_credentials).await?;
 
-            if trust_resolution == TrustResolutionResult::Trusted
-                && let Err(err) = self
-                    .wrp_validator
-                    .validate_credential_issuer(
-                        credential
-                            .issuer_certificate
-                            .as_ref()
-                            .map(|certificate| certificate.chain.as_str()),
-                        &schema,
-                        organisation.id,
-                    )
+        // as the batch is validated to be consistent, any credential in the batch is suitable for this validation
+        let batch_credential = batch_credentials
+            .iter_mut()
+            .next()
+            .ok_or(IssuanceProtocolError::Failed("empty batch".to_string()))?;
+        validate_existing_and_find_new_claim_schemas(
+            &mut schema,
+            &mut batch_credential.credential,
+            &self.config.default_language,
+            false,
+        )
+        .await?;
+
+        // TODO ONE-9843: The name resolved here must be stored as well for later trust information
+        if trust_resolution == TrustResolutionResult::Trusted
+            && let Err(err) = self
+                .wrp_validator
+                .validate_credential_issuer(
+                    batch_credential
+                        .credential
+                        .issuer_certificate
+                        .as_ref()
+                        .map(|certificate| certificate.chain.as_str()),
+                    &schema,
+                    organisation.id,
+                )
+                .await
+        {
+            tracing::info!(%err, "Credential issuer trust not verified");
+            trust_resolution = TrustResolutionResult::Untrusted;
+        }
+
+        self.store_trust_history_event(
+            HistoryAction::TrustResolved,
+            batch_parent.id,
+            organisation.id,
+            None,
+            Some(HistoryMetadata::TrustResolution(TrustResolutionMetadata {
+                result: trust_resolution,
+            })),
+        )
+        .await?;
+
+        self.history_repository
+            .create_history(History {
+                id: Uuid::new_v4().into(),
+                created_date: now_utc(),
+                action: HistoryAction::Refreshed,
+                name: schema.name.to_owned(),
+                source: HistorySource::Core,
+                entity_id: Some(batch_parent.id.into()),
+                entity_type: HistoryEntityType::Credential,
+                organisation_id: Some(organisation.id),
+                user: self.session_provider.session().user(),
+                target: None,
+                metadata: None,
+                metadata_blob_id: None,
+            })
+            .await
+            .error_while("storing history")?;
+
+        let mut result = vec![];
+        let db_blob_storage = self
+            .blob_storage_provider
+            .get_blob_storage(BlobStorageType::Db)?;
+        for batch_credential in batch_credentials {
+            let CredentialWithBlob {
+                mut credential,
+                serialized,
+            } = batch_credential;
+            self.change_to_batch_item(&mut credential, batch_parent.id, &schema);
+
+            let credential_blob_id = if let Some(token) = serialized {
+                let blob = Blob::new(token.as_ref(), BlobType::Credential);
+                let blob_id = blob.id;
+                db_blob_storage
+                    .create(blob)
                     .await
-            {
-                tracing::info!(%err, "Credential issuer trust not verified");
-                trust_resolution = TrustResolutionResult::Untrusted;
-            }
-
-            let mut new_claim_schemas = vec![];
-            prepare_credential_schema_updates(
-                &schema,
-                &mut credential,
-                &mut new_claim_schemas,
-                &self.config.default_language,
-            )
-            .await?;
-            if !new_claim_schemas.is_empty() {
-                return Err(IssuanceProtocolError::Failed(format!(
-                    "Unknown claims found: {}",
-                    new_claim_schemas
-                        .into_iter()
-                        .map(|claim_schema| claim_schema.key)
-                        .join(", ")
-                )));
-            }
-
-            self.store_trust_history_event(
-                HistoryAction::TrustResolved,
-                credential.id,
-                organisation.id,
-                None,
-                Some(HistoryMetadata::TrustResolution(TrustResolutionMetadata {
-                    result: trust_resolution,
-                })),
-            )
-            .await?;
+                    .error_while("creating credential blob")?;
+                Some(blob_id)
+            } else {
+                None
+            };
 
             let id = self
                 .credential_repository
-                .create_credential(credential)
+                .create_credential(Credential {
+                    state: CredentialStateEnum::Accepted,
+                    credential_blob_id,
+                    ..credential
+                })
                 .await
                 .error_while("creating credential")?;
-            result.push(id);
+            result.push(id)
         }
 
         Ok(result)
@@ -434,10 +550,10 @@ impl OpenID4VCIFinal1_0 {
         &self,
         issued_credential: &SerializedCredential,
         holder_bindings: &mut Vec<HolderBindingInput>,
-        issuer_response: &SubmitIssuerResponse,
         organisation: &Organisation,
         interaction: &Interaction,
         formatter: &dyn CredentialFormatter,
+        redirect_uri: Option<&String>,
     ) -> Result<Credential, IssuanceProtocolError> {
         let mut credential = formatter
             .parse_credential(
@@ -518,22 +634,11 @@ impl OpenID4VCIFinal1_0 {
 
         credential.issuer_identifier = Some(issuer_identifier);
         credential.issuer_certificate = issuer_certificate;
-        credential.redirect_uri = issuer_response.redirect_uri.clone();
+        credential.redirect_uri = redirect_uri.cloned();
         credential.state = CredentialStateEnum::Accepted;
         credential.protocol = self.config_id.to_owned();
         credential.interaction = Some(interaction.to_owned());
-
-        if issuer_response.credentials.len() == 1 && holder_bindings.len() == 1 {
-            // if only single credential issued, the provided holder binding should match
-            let holder_binding = holder_bindings
-                .pop()
-                .ok_or(IssuanceProtocolError::Failed("Missing binding".to_string()))?;
-            credential.holder_identifier = Some(holder_binding.identifier);
-            credential.key = Some(holder_binding.key);
-        } else {
-            attach_matching_holder_binding(&mut credential, holder_bindings)?;
-        }
-
+        attach_matching_holder_binding(&mut credential, holder_bindings)?;
         Ok(credential)
     }
 
@@ -656,18 +761,19 @@ async fn get_or_create_credential_schema(
     }
 }
 
-async fn prepare_credential_schema_updates(
-    stored_schema: &CredentialSchema,
+async fn validate_existing_and_find_new_claim_schemas(
+    stored_schema: &mut CredentialSchema,
     credential: &mut Credential,
-    new_claim_schemas: &mut Vec<ClaimSchema>,
     default_language: &str,
-) -> Result<(), IssuanceProtocolError> {
+    allow_new_claim_schemas: bool,
+) -> Result<Option<Vec<ClaimSchema>>, IssuanceProtocolError> {
+    let mut new_claim_schemas = vec![];
     let claims = credential
         .claims
         .as_mut()
         .ok_or(IssuanceProtocolError::Failed("Missing claims".to_string()))?;
 
-    let stored_claim_schemas = stored_schema
+    let mut stored_claim_schemas = stored_schema
         .claim_schemas
         .get()
         .await
@@ -683,29 +789,33 @@ async fn prepare_credential_schema_updates(
         .error_while("getting claim schemas")?;
 
     for parsed_claim_schema in parsed_claim_schemas {
-        let mut known_claim_schema = stored_claim_schemas
+        let known_claim_schema = stored_claim_schemas
             .iter()
             .find(|schema| schema.key == parsed_claim_schema.key);
 
-        if known_claim_schema.is_none() {
-            known_claim_schema = new_claim_schemas
-                .iter()
-                .find(|schema| schema.key == parsed_claim_schema.key);
-        }
-
         if let Some(known_claim_schema) = known_claim_schema {
             // link all matching credential claims to the stored claim_schema
-            claims
-                .iter_mut()
-                .filter(|claim| {
-                    claim
-                        .schema
-                        .as_ref()
-                        .is_some_and(|schema| schema.id == parsed_claim_schema.id)
-                })
-                .for_each(|claim| {
-                    claim.schema = Some(known_claim_schema.to_owned());
-                });
+            for claim in claims.iter_mut().filter(|claim| {
+                claim
+                    .schema
+                    .as_ref()
+                    .is_some_and(|schema| schema.id == parsed_claim_schema.id)
+            }) {
+                let cs = claim
+                    .schema
+                    .as_ref()
+                    .ok_or(IssuanceProtocolError::Failed("Missing schema".to_string()))?;
+                if cs.data_type != known_claim_schema.data_type {
+                    // This is just a warning because the data type detection is just a heuristic
+                    tracing::warn!(
+                        "detected data type mismatch on claim `{}`: expected `{}` but parsed `{}`",
+                        claim.path,
+                        known_claim_schema.data_type,
+                        cs.data_type
+                    );
+                }
+                claim.schema = Some(known_claim_schema.to_owned());
+            }
         } else {
             new_claim_schemas.push(
                 add_fallback_translation(parsed_claim_schema, default_language)
@@ -714,10 +824,23 @@ async fn prepare_credential_schema_updates(
             );
         }
     }
-
+    if !allow_new_claim_schemas && !new_claim_schemas.is_empty() {
+        return Err(IssuanceProtocolError::Failed(format!(
+            "Unknown claims found: {}",
+            new_claim_schemas
+                .into_iter()
+                .map(|claim_schema| claim_schema.key)
+                .join(", ")
+        )));
+    }
+    stored_claim_schemas.extend(new_claim_schemas.clone());
+    stored_schema.claim_schemas = stored_claim_schemas.into();
     credential.schema = Some(stored_schema.to_owned());
-
-    Ok(())
+    if new_claim_schemas.is_empty() {
+        Ok(None)
+    } else {
+        Ok(Some(new_claim_schemas))
+    }
 }
 
 async fn apply_issuer_metadata_to_schema(

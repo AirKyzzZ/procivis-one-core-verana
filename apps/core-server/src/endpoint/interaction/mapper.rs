@@ -4,8 +4,7 @@ use one_dto_mapper::{convert_inner, convert_inner_of_inner};
 use shared_types::CredentialId;
 
 use super::dto::{
-    HandleInvitationResponseRestDTO, InteractionTypeRestEnum, IssuanceAcceptResponseRestDTO,
-    IssuanceRefreshResponseRestDTO,
+    HandleInvitationResponseRestDTO, InteractionTypeRestEnum, IssuanceRefreshResponseRestDTO,
 };
 use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::endpoint::interaction::dto::InitiateIssuanceRequestRestDTO;
@@ -80,17 +79,6 @@ impl TryFrom<InitiateIssuanceRequestRestDTO> for InitiateIssuanceRequestDTO {
             issuer_state: None,
             authorization_server: None,
         })
-    }
-}
-
-impl From<Vec<CredentialId>> for IssuanceAcceptResponseRestDTO {
-    fn from(value: Vec<CredentialId>) -> Self {
-        let id = if value.len() == 1 {
-            value.first().cloned()
-        } else {
-            None
-        };
-        Self { id, ids: value }
     }
 }
 

@@ -132,6 +132,7 @@ pub enum HistoryAction {
     WrpRcReceived,
     WrpNrReceived,
     TrustResolved,
+    Refreshed,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]

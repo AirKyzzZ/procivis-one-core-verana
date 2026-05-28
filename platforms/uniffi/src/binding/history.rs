@@ -82,6 +82,7 @@ pub enum HistoryActionBindingEnum {
     WrpRcReceived,
     WrpNrReceived,
     TrustResolved,
+    Refreshed,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, From, Into, uniffi::Enum)]

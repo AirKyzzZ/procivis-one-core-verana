@@ -1,6 +1,6 @@
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
-use shared_types::OrganisationId;
+use shared_types::{DidValue, OrganisationId};
 
 use super::mapper::credential_config_to_holder_signing_algs_and_key_storage_security;
 use super::model::{
@@ -10,15 +10,18 @@ use super::model::{
 use crate::config::core_config::KeySecurityLevelType;
 use crate::error::ContextWithErrorCode;
 use crate::model::credential::{Credential, CredentialStateEnum};
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::holder_wallet_instance::{
     HolderWalletInstanceFilterValue, HolderWalletInstanceListQuery,
 };
+use crate::model::identifier::IdentifierType;
 use crate::model::interaction::Interaction;
 use crate::model::list_filter::ListFilterValue;
 use crate::model::wallet_instance::WalletInstanceStatus;
 use crate::provider::issuance_protocol::error::{
     IssuanceProtocolError, OpenID4VCIError, OpenIDIssuanceError,
 };
+use crate::provider::issuance_protocol::model::CredentialWithBlob;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_security_level::provider::KeySecurityLevelProvider;
 use crate::provider::key_storage::provider::KeyProvider;
@@ -228,4 +231,159 @@ pub(super) async fn validate_has_active_wallet_instance(
     }
 
     Ok(())
+}
+
+pub(super) async fn validate_batch_consistency(
+    credentials: &[CredentialWithBlob],
+) -> Result<(), IssuanceProtocolError> {
+    if credentials.len() < 2 {
+        return Ok(());
+    }
+    let Some(reference) = credentials.first() else {
+        return Ok(());
+    };
+
+    let reference_schema_format = single_schema_format(&reference.credential).await?;
+    for credential in credentials.iter().skip(1) {
+        let schema_format = single_schema_format(&credential.credential).await?;
+        if schema_format.format != reference_schema_format.format
+            || schema_format.schema_id != reference_schema_format.schema_id
+        {
+            return Err(IssuanceProtocolError::Failed(
+                "Batch credentials have inconsistent schema formats".to_string(),
+            ));
+        }
+    }
+
+    let reference_claims = sorted_claim_entries(&reference.credential)?;
+    for credential in credentials.iter().skip(1) {
+        if sorted_claim_entries(&credential.credential)? != reference_claims {
+            return Err(IssuanceProtocolError::InvalidRequest(
+                "Batch credentials have inconsistent claims".to_string(),
+            ));
+        }
+    }
+
+    let reference_issuer = comparable_issuer(&reference.credential)?;
+    for credential in credentials.iter().skip(1) {
+        let issuer = comparable_issuer(&credential.credential)?;
+        if issuer != reference_issuer {
+            return Err(IssuanceProtocolError::InvalidRequest(
+                "Batch credentials have inconsistent issuers".to_string(),
+            ));
+        }
+    }
+    Ok(())
+}
+
+async fn single_schema_format(
+    credential: &Credential,
+) -> Result<CredentialSchemaFormat, IssuanceProtocolError> {
+    let schema = credential
+        .schema
+        .as_ref()
+        .ok_or(IssuanceProtocolError::Failed(
+            "missing parsed credential schema".to_string(),
+        ))?;
+    let mut schema_format = schema
+        .formats
+        .get()
+        .await
+        .error_while("loading schema formats")?;
+    if schema_format.len() > 1 {
+        return Err(IssuanceProtocolError::Failed(
+            "Invalid parsed schema: multiple schema formats".to_string(),
+        ));
+    }
+    schema_format.pop().ok_or(IssuanceProtocolError::Failed(
+        "Invalid parsed schema: no schema format".to_string(),
+    ))
+}
+
+#[derive(Eq, PartialEq)]
+struct ClaimWithType<'a> {
+    key: &'a String,
+    value: &'a Option<String>,
+    data_type: &'a String,
+}
+
+fn sorted_claim_entries(
+    credential: &Credential,
+) -> Result<Vec<ClaimWithType<'_>>, IssuanceProtocolError> {
+    let claims = credential
+        .claims
+        .as_ref()
+        .ok_or(IssuanceProtocolError::Failed(
+            "Invalid parsed schema: missing claims".to_string(),
+        ))?;
+    let mut claims_with_types = Vec::with_capacity(claims.len());
+    for claim in claims {
+        claims_with_types.push(ClaimWithType {
+            key: &claim.path,
+            value: &claim.value,
+            data_type: &claim
+                .schema
+                .as_ref()
+                .ok_or(IssuanceProtocolError::Failed(
+                    "Invalid parsed schema: missing claim schema".to_string(),
+                ))?
+                .data_type,
+        })
+    }
+    claims_with_types.sort_by(|a, b| a.key.cmp(b.key));
+    Ok(claims_with_types)
+}
+
+#[derive(Eq, PartialEq)]
+enum ComparableIssuer<'a> {
+    Did { did: &'a DidValue },
+    Certificate { fingerprint: &'a String },
+    Key { public_key: &'a [u8] },
+}
+
+fn comparable_issuer(
+    credential: &Credential,
+) -> Result<ComparableIssuer<'_>, IssuanceProtocolError> {
+    let issuer = credential
+        .issuer_identifier
+        .as_ref()
+        .ok_or(IssuanceProtocolError::Failed(
+            "missing parsed credential issuer".to_string(),
+        ))?;
+    match issuer.r#type {
+        IdentifierType::Key => {
+            let key = issuer.key.as_ref().ok_or(IssuanceProtocolError::Failed(
+                "missing parsed credential issuer key".to_string(),
+            ))?;
+            Ok(ComparableIssuer::Key {
+                public_key: &key.public_key,
+            })
+        }
+        IdentifierType::Did => {
+            let did = issuer.did.as_ref().ok_or(IssuanceProtocolError::Failed(
+                "missing parsed credential issuer did".to_string(),
+            ))?;
+            Ok(ComparableIssuer::Did { did: &did.did })
+        }
+        IdentifierType::Certificate | IdentifierType::CertificateAuthority => {
+            let certificates =
+                issuer
+                    .certificates
+                    .as_ref()
+                    .ok_or(IssuanceProtocolError::Failed(
+                        "missing parsed credential issuer certificates".to_string(),
+                    ))?;
+            if certificates.len() != 1 {
+                return Err(IssuanceProtocolError::Failed(
+                    "Invalid parsed schema: multiple credential issuer certificates".to_string(),
+                ));
+            }
+            let certificate = certificates.first().ok_or(IssuanceProtocolError::Failed(
+                "missing parsed credential issuer certificates".to_string(),
+            ))?;
+            Ok(ComparableIssuer::Certificate {
+                fingerprint: &certificate.fingerprint,
+            })
+        }
+    }
 }

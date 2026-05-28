@@ -30,6 +30,7 @@ use crate::proto::http_client::reqwest_client::ReqwestClient;
 use crate::proto::identifier_creator::MockIdentifierCreator;
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::proto::session_provider::{NoSessionProvider, Session};
+use crate::proto::transaction_manager::NoTransactionManager;
 use crate::proto::wrp_validator::model::TrustMode;
 use crate::provider::blob_storage::MockBlobStorage;
 use crate::provider::blob_storage::provider::MockBlobStorageProvider;
@@ -39,7 +40,7 @@ use crate::provider::issuance_protocol::MockIssuanceProtocol;
 use crate::provider::issuance_protocol::dto::{Features, IssuanceProtocolCapabilities};
 use crate::provider::issuance_protocol::error::TxCodeError;
 use crate::provider::issuance_protocol::model::{
-    ContinueIssuanceResponseDTO, SubmitIssuerResponse, UpdateResponse,
+    ContinueIssuanceResponseDTO, CredentialWithBlob, IssuanceAcceptResponse,
 };
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
     HolderInteractionData, OAuthAuthorizationServerMetadata, OAuthCodeChallengeMethod,
@@ -60,7 +61,6 @@ use crate::provider::verification_protocol::dto::{
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::provider::MockVerificationProtocolProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
-use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
@@ -964,14 +964,12 @@ async fn test_accept_credential() {
         .expect_holder_accept_credential()
         .once()
         .returning(|_, _, _| {
-            Ok(UpdateResponse {
-                result: SubmitIssuerResponse {
-                    credentials: vec!["credential".into()],
-                    redirect_uri: None,
-                    notification_id: None,
+            Ok(IssuanceAcceptResponse {
+                main_credential: CredentialWithBlob {
+                    credential: dummy_credential(None),
+                    serialized: Some("credential".into()),
                 },
-                update_credential_schema: None,
-                credentials: Some(vec![dummy_credential(None)]),
+                batch_items: vec![],
             })
         });
 
@@ -1098,14 +1096,12 @@ async fn test_accept_credential_with_did() {
         .expect_holder_accept_credential()
         .once()
         .returning(|_, _, _| {
-            Ok(UpdateResponse {
-                result: SubmitIssuerResponse {
-                    credentials: vec!["credential".into()],
-                    redirect_uri: None,
-                    notification_id: None,
+            Ok(IssuanceAcceptResponse {
+                main_credential: CredentialWithBlob {
+                    credential: dummy_credential(None),
+                    serialized: Some("credential".into()),
                 },
-                update_credential_schema: None,
-                credentials: Some(vec![dummy_credential(None)]),
+                batch_items: vec![],
             })
         });
 
@@ -1196,23 +1192,32 @@ async fn test_accept_credential_batch() {
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository
         .expect_create_credential()
-        .times(2)
+        .times(3)
         .returning(|_| Ok(Uuid::new_v4().into()));
 
     let mut exchange_protocol_mock = MockIssuanceProtocol::default();
+    let main_credential = dummy_credential(None);
+    let cred_clone = main_credential.clone();
     exchange_protocol_mock
         .expect_holder_accept_credential()
         .once()
         .with(always(), eq(None), always())
-        .returning(|_, _, _| {
-            Ok(UpdateResponse {
-                result: SubmitIssuerResponse {
-                    credentials: vec!["credential1".into(), "credential2".into()],
-                    redirect_uri: None,
-                    notification_id: None,
+        .returning(move |_, _, _| {
+            Ok(IssuanceAcceptResponse {
+                main_credential: CredentialWithBlob {
+                    credential: cred_clone.clone(),
+                    serialized: None,
                 },
-                update_credential_schema: None,
-                credentials: Some(vec![dummy_credential(None), dummy_credential(None)]),
+                batch_items: vec![
+                    CredentialWithBlob {
+                        credential: dummy_credential(None),
+                        serialized: Some("credential1".into()),
+                    },
+                    CredentialWithBlob {
+                        credential: dummy_credential(None),
+                        serialized: Some("credential2".into()),
+                    },
+                ],
             })
         });
 
@@ -1276,12 +1281,12 @@ async fn test_accept_credential_batch() {
         ..mock_ssi_holder_service()
     };
 
-    let credential_ids = service
+    let credential_id = service
         .accept_credential(interaction_id, None, None, None, None)
         .await
         .unwrap();
 
-    assert_eq!(credential_ids.len(), 2);
+    assert_eq!(credential_id, main_credential.id);
 }
 
 #[tokio::test]
@@ -1676,7 +1681,6 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         proof_repository: Arc::new(MockProofRepository::new()),
         organisation_repository: Arc::new(MockOrganisationRepository::new()),
         interaction_repository: Arc::new(MockInteractionRepository::new()),
-        credential_schema_repository: Arc::new(MockCredentialSchemaRepository::new()),
         identifier_repository: Arc::new(MockIdentifierRepository::new()),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
         key_security_level_provider: Arc::new(MockKeySecurityLevelProvider::new()),
@@ -1688,6 +1692,7 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         client,
         session_provider: Arc::new(NoSessionProvider),
         identifier_creator: Arc::new(MockIdentifierCreator::new()),
+        transaction_manager: Arc::new(NoTransactionManager),
     }
 }
 

@@ -753,7 +753,6 @@ impl OneCore {
                 data_provider.get_proof_repository(),
                 data_provider.get_organisation_repository(),
                 data_provider.get_interaction_repository(),
-                data_provider.get_credential_schema_repository(),
                 data_provider.get_identifier_repository(),
                 key_algorithm_provider.clone(),
                 key_security_level_provider,
@@ -765,6 +764,7 @@ impl OneCore {
                 blob_storage_provider.clone(),
                 session_provider.clone(),
                 identifier_creator.clone(),
+                data_provider.get_tx_manager(),
             ),
             wallet_provider_service: WalletProviderService::new(
                 data_provider.get_organisation_repository(),

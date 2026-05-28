@@ -15,8 +15,8 @@ use url::Url;
 use super::dto::{ContinueIssuanceDTO, Features, IssuanceProtocolCapabilities};
 use super::error::{IssuanceProtocolError, OpenIDIssuanceError};
 use super::model::{
-    CommonParams, ContinueIssuanceResponseDTO, InvitationResponseEnum, OpenID4VCRedirectUriParams,
-    ShareResponse, UpdateResponse,
+    CommonParams, ContinueIssuanceResponseDTO, InvitationResponseEnum, IssuanceAcceptResponse,
+    OpenID4VCRedirectUriParams, ShareResponse,
 };
 use super::openid4vci_final1_0::OpenID4VCIFinal1_0;
 use super::openid4vci_final1_0::model::{
@@ -199,7 +199,7 @@ impl IssuanceProtocol for OpenID4VCISwiyu {
         interaction: Interaction,
         holder_binding: Option<HolderBindingInput>,
         tx_code: Option<String>,
-    ) -> Result<UpdateResponse, IssuanceProtocolError> {
+    ) -> Result<IssuanceAcceptResponse, IssuanceProtocolError> {
         self.inner
             .holder_accept_credential(interaction, holder_binding, tx_code)
             .await

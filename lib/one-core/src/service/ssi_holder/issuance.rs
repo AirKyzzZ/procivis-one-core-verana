@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use futures_util::FutureExt;
 use shared_types::{CredentialId, DidId, IdentifierId, InteractionId, KeyId};
 use url::Url;
 use uuid::Uuid;
@@ -25,8 +26,9 @@ use crate::model::identifier::IdentifierRelations;
 use crate::model::interaction::{Interaction, InteractionRelations, InteractionType};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::proto::oauth_client::{OAuthAuthorizationRequest, OAuthClientProvider};
+use crate::provider::blob_storage::BlobStorage;
 use crate::provider::issuance_protocol::dto::{ContinueIssuanceDTO, Features};
-use crate::provider::issuance_protocol::model::InvitationResponseEnum;
+use crate::provider::issuance_protocol::model::{CredentialWithBlob, InvitationResponseEnum};
 use crate::provider::issuance_protocol::openid4vci_final1_0::mapper::interaction_data_to_accepted_key_storage_security;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::CredentialSigningAlgValue;
 use crate::provider::issuance_protocol::{
@@ -51,7 +53,7 @@ impl SSIHolderService {
         identifier_id: Option<IdentifierId>,
         key_id: Option<KeyId>,
         tx_code: Option<String>,
-    ) -> Result<Vec<CredentialId>, HolderServiceError> {
+    ) -> Result<CredentialId, HolderServiceError> {
         let identifier = match (did_id, identifier_id) {
             (Some(did_id), None) => Some(
                 self.identifier_repository
@@ -104,14 +106,14 @@ impl SSIHolderService {
             None
         };
 
-        let credential_ids = self
+        let credential_id = self
             .accept_credential_final1(interaction_id, holder_binding_input, tx_code)
             .await?;
 
         tracing::info!(
-            "Accepted issuance of credentials {credential_ids:?} for interaction {interaction_id}"
+            "Accepted issuance of credential {credential_id} for interaction {interaction_id}"
         );
-        Ok(credential_ids)
+        Ok(credential_id)
     }
 
     /// specific handling for the final-1 protocol, credential gets created after issued
@@ -120,7 +122,7 @@ impl SSIHolderService {
         interaction_id: InteractionId,
         holder_binding: Option<HolderBindingInput>,
         tx_code: Option<String>,
-    ) -> Result<Vec<CredentialId>, HolderServiceError> {
+    ) -> Result<CredentialId, HolderServiceError> {
         let interaction = self
             .interaction_repository
             .get_interaction(
@@ -215,56 +217,58 @@ impl SSIHolderService {
             .holder_accept_credential(interaction, holder_binding, tx_code)
             .await
             .error_while("accepting credential")?;
-
-        let credentials = issuer_response
-            .credentials
-            .ok_or(HolderServiceError::MappingError(
-                "Credentials missing".to_string(),
-            ))?;
-
-        if let Some(update_credential_schema) = issuer_response.update_credential_schema {
-            self.credential_schema_repository
-                .update_credential_schema(update_credential_schema)
-                .await
-                .error_while("updating credential schema")?;
-        }
-
-        let issuer_response = issuer_response.result;
-        if credentials.len() != issuer_response.credentials.len() {
-            return Err(HolderServiceError::MappingError(format!(
-                "Credentials mismatch, models: {}, tokens: {}",
-                credentials.len(),
-                issuer_response.credentials.len()
-            )));
-        }
-
         let db_blob_storage = self
             .blob_storage_provider
             .get_blob_storage(BlobStorageType::Db)?;
 
-        let mut result = vec![];
-        for (credential, token) in credentials.into_iter().zip(issuer_response.credentials) {
+        let main_credential_id = issuer_response.main_credential.credential.id;
+        self.transaction_manager
+            .tx(async {
+                self.create_credential(issuer_response.main_credential, db_blob_storage.as_ref())
+                    .await?;
+                for batch_item in issuer_response.batch_items {
+                    self.create_credential(batch_item, db_blob_storage.as_ref())
+                        .await?;
+                }
+                Ok::<_, HolderServiceError>(())
+            }
+            .boxed())
+            .await
+            .error_while("creating credentials")??;
+        Ok(main_credential_id)
+    }
+
+    async fn create_credential(
+        &self,
+        credential: CredentialWithBlob,
+        db_blob_storage: &dyn BlobStorage,
+    ) -> Result<(), HolderServiceError> {
+        let CredentialWithBlob {
+            credential,
+            serialized,
+        } = credential;
+
+        let credential_blob_id = if let Some(token) = serialized {
             let blob = Blob::new(token.as_ref(), BlobType::Credential);
             let blob_id = blob.id;
             db_blob_storage
                 .create(blob)
                 .await
                 .error_while("creating credential blob")?;
+            Some(blob_id)
+        } else {
+            None
+        };
 
-            let credential_id = self
-                .credential_repository
-                .create_credential(Credential {
-                    state: CredentialStateEnum::Accepted,
-                    credential_blob_id: Some(blob_id),
-                    ..credential
-                })
-                .await
-                .error_while("creating credential")?;
-
-            result.push(credential_id);
-        }
-
-        Ok(result)
+        self.credential_repository
+            .create_credential(Credential {
+                state: CredentialStateEnum::Accepted,
+                credential_blob_id,
+                ..credential
+            })
+            .await
+            .error_while("creating credential")?;
+        Ok(())
     }
 
     pub async fn refresh_credentials(

@@ -205,6 +205,32 @@ fn generic_credential_did() -> Credential {
     generic_credential(issuer_identifier)
 }
 
+fn generic_credential_did_with_holder_identifier() -> Credential {
+    let now = crate::clock::now_utc();
+    let mut credential = generic_credential_did();
+    credential.holder_identifier = Some(Identifier {
+        id: Uuid::from_str("a322aa7f-9803-410d-b891-939b279fb965")
+            .unwrap()
+            .into(),
+        created_date: now,
+        last_modified: now,
+        name: "holder identifier".to_string(),
+        r#type: IdentifierType::Key,
+        is_remote: true,
+        state: IdentifierState::Active,
+        deleted_at: None,
+        organisation: None,
+        did: None,
+        key: Some(Key {
+            key_type: "ECDSA".to_string(),
+            ..dummy_key()
+        }),
+        certificates: None,
+        trust_information: None,
+    });
+    credential
+}
+
 fn generic_credential_key() -> Credential {
     let now = crate::clock::now_utc();
     let issuer_key = Key {
@@ -240,7 +266,26 @@ fn generic_credential_key() -> Credential {
         certificates: None,
         trust_information: None,
     };
-    generic_credential(issuer_identifier)
+    let mut credential = generic_credential(issuer_identifier);
+    let holder_identifier = Identifier {
+        id: Uuid::from_str("a322aa7f-9803-410d-b891-939b279fb965")
+            .unwrap()
+            .into(),
+        created_date: now,
+        last_modified: now,
+        name: "holder identifier".to_string(),
+        r#type: IdentifierType::Key,
+        is_remote: true,
+        state: IdentifierState::Active,
+        deleted_at: None,
+        organisation: None,
+        did: None,
+        key: Some(dummy_key()),
+        certificates: None,
+        trust_information: None,
+    };
+    credential.holder_identifier = Some(holder_identifier);
+    credential
 }
 
 fn generic_credential(issuer_identifier: Identifier) -> Credential {
@@ -439,7 +484,9 @@ async fn test_holder_accept_credential_success() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut interaction_repository = MockInteractionRepository::default();
 
-    let credential = generic_credential_did();
+    let key = dummy_key();
+    let mut credential = generic_credential_did_with_holder_identifier();
+    credential.holder_identifier.as_mut().unwrap().key = Some(key.clone());
 
     let interaction_data = HolderInteractionData {
         issuer_url: mock_server.uri(),
@@ -665,9 +712,7 @@ async fn test_holder_accept_credential_success() {
         config: dummy_config(),
         ..Default::default()
     });
-
-    let key = dummy_key();
-    let result = openid_provider
+    let issuer_response = openid_provider
         .holder_accept_credential(
             interaction,
             Some(HolderBindingInput {
@@ -682,15 +727,17 @@ async fn test_holder_accept_credential_success() {
         )
         .await
         .unwrap();
-
-    let issuer_response = result.result;
-    assert_eq!(issuer_response.credentials, vec!["credential".into()]);
-    assert_eq!(issuer_response.notification_id.unwrap(), "notification_id");
-
-    let create_credential = &result.credentials.unwrap()[0];
-    assert_eq!(create_credential.id, credential.id);
     assert_eq!(
-        create_credential.issuer_identifier.as_ref().unwrap().id,
+        issuer_response.main_credential.serialized,
+        Some("credential".into())
+    );
+
+    assert!(issuer_response.batch_items.is_empty());
+
+    let single_credential = issuer_response.main_credential.credential;
+    assert_eq!(single_credential.id, credential.id);
+    assert_eq!(
+        single_credential.issuer_identifier.as_ref().unwrap().id,
         identifier.id
     );
 }
@@ -937,7 +984,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         id: Uuid::new_v4().into(),
         ..dummy_key()
     };
-    let result = openid_provider
+    let issuer_response = openid_provider
         .holder_accept_credential(
             interaction,
             Some(HolderBindingInput {
@@ -961,12 +1008,14 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         .await
         .unwrap();
 
-    let issuer_response = result.result;
-    assert_eq!(issuer_response.credentials, vec!["credential".into()]);
-    assert_eq!(issuer_response.notification_id.unwrap(), "notification_id");
+    assert_eq!(
+        issuer_response.main_credential.serialized,
+        Some("credential".into())
+    );
+    assert!(issuer_response.batch_items.is_empty());
 
-    let create_credential = &result.credentials.unwrap()[0];
-    assert_eq!(create_credential.id, credential.id);
+    let single_credential = issuer_response.main_credential.credential;
+    assert_eq!(single_credential.id, credential.id);
 }
 
 #[tokio::test]
@@ -978,7 +1027,7 @@ async fn test_holder_accept_credential_autogenerate_holder_binding() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut interaction_repository = MockInteractionRepository::default();
 
-    let credential = generic_credential_did();
+    let credential = generic_credential_did_with_holder_identifier();
 
     let interaction_data = HolderInteractionData {
         issuer_url: mock_server.uri(),
@@ -1258,17 +1307,20 @@ async fn test_holder_accept_credential_autogenerate_holder_binding() {
         ..Default::default()
     });
 
-    let result = openid_provider
+    let issuer_response = openid_provider
         .holder_accept_credential(interaction, None, None)
         .await
         .unwrap();
 
-    let issuer_response = result.result;
-    assert_eq!(issuer_response.credentials, vec!["credential".into()]);
-    assert_eq!(issuer_response.notification_id.unwrap(), "notification_id");
+    assert_eq!(
+        issuer_response.main_credential.serialized,
+        Some("credential".into())
+    );
+    assert!(issuer_response.batch_items.is_empty());
 
-    let create_credential = &result.credentials.unwrap()[0];
+    let create_credential = issuer_response.main_credential.credential;
     assert_eq!(create_credential.id, credential.id);
+    assert_eq!(create_credential.r#type, CredentialType::Single);
     assert_eq!(
         create_credential.issuer_identifier.as_ref().unwrap().id,
         issuer_identifier.id
@@ -1426,7 +1478,7 @@ async fn test_holder_accept_credential_batch_autogenerated_binding() {
             }
         });
 
-    let issuer_identifier = dummy_identifier();
+    let issuer_identifier = credential.issuer_identifier.clone().unwrap();
     identifier_creator
         .expect_get_or_create_remote_identifier()
         .times(2)
@@ -1572,7 +1624,7 @@ async fn test_holder_accept_credential_batch_autogenerated_binding() {
     let mut history_repository = MockHistoryRepository::new();
     history_repository
         .expect_create_history()
-        .times(2)
+        .times(1)
         .withf(|history| {
             assert_eq!(history.action, HistoryAction::TrustResolved);
             true
@@ -1594,26 +1646,39 @@ async fn test_holder_accept_credential_batch_autogenerated_binding() {
         ..Default::default()
     });
 
-    let result = openid_provider
+    let issuer_response = openid_provider
         .holder_accept_credential(interaction, None, None)
         .await
         .unwrap();
-
-    let issuer_response = result.result;
+    let main_credential = &issuer_response.main_credential;
     assert_eq!(
-        issuer_response.credentials,
-        vec!["credential1".into(), "credential2".into()]
+        main_credential.credential.r#type,
+        CredentialType::BatchParent
     );
-    assert_eq!(issuer_response.notification_id.unwrap(), "notification_id");
+    assert_eq!(main_credential.serialized, None);
 
-    let credentials = &result.credentials.unwrap();
+    let credentials = &issuer_response.batch_items;
     assert_eq!(credentials.len(), 2);
+    assert_eq!(credentials[0].serialized, Some("credential1".into()));
+    assert_eq!(credentials[1].serialized, Some("credential2".into()));
+    assert_eq!(credentials[0].credential.r#type, CredentialType::BatchItem);
+    assert_eq!(credentials[1].credential.r#type, CredentialType::BatchItem);
     assert_eq!(
-        credentials[0].issuer_identifier.as_ref().unwrap().id,
+        credentials[0]
+            .credential
+            .issuer_identifier
+            .as_ref()
+            .unwrap()
+            .id,
         issuer_identifier.id
     );
     assert_eq!(
-        credentials[1].issuer_identifier.as_ref().unwrap().id,
+        credentials[1]
+            .credential
+            .issuer_identifier
+            .as_ref()
+            .unwrap()
+            .id,
         issuer_identifier.id
     );
 }
@@ -1627,7 +1692,12 @@ async fn test_holder_accept_credential_batch_manual_binding() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut interaction_repository = MockInteractionRepository::default();
 
-    let credential = generic_credential_did();
+    let key = Key {
+        storage_type: "INTERNAL".to_string(),
+        ..dummy_key()
+    };
+    let mut credential = generic_credential_did_with_holder_identifier();
+    credential.holder_identifier.as_mut().unwrap().key = Some(key.clone());
 
     let credential_configuration_id = credential
         .schema
@@ -1914,11 +1984,7 @@ async fn test_holder_accept_credential_batch_manual_binding() {
         ..Default::default()
     });
 
-    let key = Key {
-        storage_type: "INTERNAL".to_string(),
-        ..dummy_key()
-    };
-    let result = openid_provider
+    let issuer_response = openid_provider
         .holder_accept_credential(
             interaction,
             Some(HolderBindingInput {
@@ -1934,14 +2000,15 @@ async fn test_holder_accept_credential_batch_manual_binding() {
         .await
         .unwrap();
 
-    let issuer_response = result.result;
-    assert_eq!(issuer_response.credentials, vec!["credential1".into()]);
-    assert_eq!(issuer_response.notification_id.unwrap(), "notification_id");
-
-    let credentials = &result.credentials.unwrap();
-    assert_eq!(credentials.len(), 1);
     assert_eq!(
-        credentials[0].issuer_identifier.as_ref().unwrap().id,
+        issuer_response.main_credential.serialized,
+        Some("credential1".into())
+    );
+
+    assert!(issuer_response.batch_items.is_empty());
+    let main_credential = issuer_response.main_credential.credential;
+    assert_eq!(
+        main_credential.issuer_identifier.as_ref().unwrap().id,
         issuer_identifier.id
     );
 }
@@ -2897,7 +2964,12 @@ async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_att
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut interaction_repository = MockInteractionRepository::default();
 
-    let credential = generic_credential_did();
+    let key = Key {
+        storage_type: "INTERNAL".to_string(),
+        ..dummy_key()
+    };
+    let mut credential = generic_credential_did_with_holder_identifier();
+    credential.holder_identifier.as_mut().unwrap().key = Some(key.clone());
 
     let mut proof_types = IndexMap::new();
     proof_types.insert(
@@ -3184,12 +3256,7 @@ async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_att
         ..Default::default()
     });
 
-    let key = Key {
-        storage_type: "INTERNAL".to_string(),
-        ..dummy_key()
-    };
-
-    let result = openid_provider
+    let issuer_response = openid_provider
         .holder_accept_credential(
             interaction,
             Some(HolderBindingInput {
@@ -3205,9 +3272,10 @@ async fn test_holder_accept_credential_succeeds_with_wallet_unit_id_when_key_att
         .await
         .unwrap();
 
-    let issuer_response = result.result;
-    assert_eq!(issuer_response.credentials, vec!["credential".into()]);
-    assert_eq!(issuer_response.notification_id.unwrap(), "notification_id");
+    assert_eq!(
+        issuer_response.main_credential.serialized,
+        Some("credential".into())
+    );
 }
 
 async fn interaction_with_metadata(

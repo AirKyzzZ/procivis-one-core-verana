@@ -9,10 +9,11 @@ use shared_types::{InteractionId, Permission};
 use super::dto::{
     ContinueIssuanceRequestRestDTO, ContinueIssuanceResponseRestDTO,
     HandleInvitationRequestRestDTO, HandleInvitationResponseRestDTO, IssuanceAcceptRequestRestDTO,
-    IssuanceAcceptResponseRestDTO, IssuanceRefreshResponseRestDTO, IssuanceRejectRequestRestDTO,
-    PresentationRejectRequestRestDTO, PresentationSubmitRequestRestDTO,
-    PresentationSubmitV2RequestRestDTO, ProposeProofRequestRestDTO,
+    IssuanceRefreshResponseRestDTO, IssuanceRejectRequestRestDTO, PresentationRejectRequestRestDTO,
+    PresentationSubmitRequestRestDTO, PresentationSubmitV2RequestRestDTO,
+    ProposeProofRequestRestDTO,
 };
+use crate::dto::common::EntityResponseRestDTO;
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
@@ -72,7 +73,7 @@ pub(crate) async fn handle_invitation(
     post,
     path = "/api/interaction/v1/issuance-accept",
     request_body = IssuanceAcceptRequestRestDTO,
-    responses(OkOrErrorResponse<IssuanceAcceptResponseRestDTO>),
+    responses(OkOrErrorResponse<EntityResponseRestDTO>),
     tag = "interaction",
     security(
         ("bearer" = [])
@@ -92,7 +93,7 @@ pub(crate) async fn issuance_accept(
         Json<IssuanceAcceptRequestRestDTO>,
         ErrorResponseRestDTO,
     >,
-) -> OkOrErrorResponse<IssuanceAcceptResponseRestDTO> {
+) -> OkOrErrorResponse<EntityResponseRestDTO> {
     let result = state
         .core
         .ssi_holder_service
