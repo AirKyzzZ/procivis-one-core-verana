@@ -272,9 +272,14 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
             .revocation_method_provider
             .get_revocation_method(revocation_method_id)?;
 
-        let credential_ids = match credential.r#type {
+        match credential.r#type {
             CredentialType::Single => {
-                vec![credential.id]
+                self.change_revocation_state(
+                    credential.id,
+                    revocation_state,
+                    revocation_method.as_ref(),
+                )
+                .await?;
             }
             CredentialType::BatchItem => {
                 // only batch members can be individually updated, not MDOC MSO's
@@ -291,7 +296,12 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
                     return Err(Error::InvalidCredentialType(credential.r#type));
                 }
 
-                vec![credential.id]
+                self.change_revocation_state(
+                    credential.id,
+                    revocation_state,
+                    revocation_method.as_ref(),
+                )
+                .await?;
             }
             CredentialType::BatchParent => {
                 // all underlying batch items must be updated
@@ -307,7 +317,7 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
                     .error_while("getting batch items")?
                     .values;
 
-                let mut credential_ids = vec![];
+                let mut batch_items_to_update = vec![];
                 for credential in credentials {
                     // skipping items with the target state
                     // except Suspension, since there might be change in `suspend_end_date`
@@ -321,35 +331,31 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
                         format!("checking state of batch credential `{}`", credential.id),
                     )?;
 
-                    credential_ids.push(credential.id);
+                    batch_items_to_update.push(credential.id);
                 }
 
-                credential_ids
+                self.tx_manager
+                    .tx(async {
+                        for batch_item_id in batch_items_to_update {
+                            self.change_revocation_state(
+                                batch_item_id,
+                                revocation_state,
+                                revocation_method.as_ref(),
+                            )
+                            .await?;
+                        }
+
+                        // batch parent not linked directly with any technical credential, only update state
+                        self.change_credential_state(credential.id, revocation_state)
+                            .await?;
+
+                        Ok::<_, Error>(())
+                    }
+                    .boxed())
+                    .await
+                    .error_while("changing credential state")??;
             }
         };
-
-        self.tx_manager
-            .tx(async {
-                if !credential_ids.contains(&credential.id) {
-                    // batch parent not linked directly with any technical credential, only update state
-                    self.change_credential_state(credential.id, revocation_state)
-                        .await?;
-                }
-
-                for credential_id in credential_ids {
-                    self.change_revocation_state(
-                        credential_id,
-                        revocation_state,
-                        revocation_method.as_ref(),
-                    )
-                    .await?;
-                }
-
-                Ok::<_, Error>(())
-            }
-            .boxed())
-            .await
-            .error_while("changing credential state")??;
 
         Ok(())
     }
