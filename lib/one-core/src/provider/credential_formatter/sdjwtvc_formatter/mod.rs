@@ -17,7 +17,7 @@ use sdjwt::format_credential;
 use serde::Deserialize;
 use serde_json::Value;
 use serde_with::{DurationSeconds, serde_as};
-use shared_types::{CredentialSchemaId, OrganisationId, SerializedCredential};
+use shared_types::{CredentialFormat, CredentialSchemaId, OrganisationId, SerializedCredential};
 use time::Duration;
 use uuid::Uuid;
 
@@ -33,7 +33,7 @@ use super::sdjwt::disclosures::parse_token;
 use super::sdjwt::model::{DecomposedToken, SdJwtFormattingInputs};
 use super::sdjwt::{parse_holder_identifier, prepare_sd_presentation};
 use super::vcdm::VcdmCredential;
-use super::{CredentialFormatter, MetadataClaimSchema, sdjwt};
+use super::{CredentialFormatter, CredentialSchemaVersion, MetadataClaimSchema, sdjwt};
 use crate::config::core_config::{
     DatatypeConfig, DatatypeType, DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType,
     KeyStorageType, RevocationType, VerificationProtocolType,
@@ -433,10 +433,12 @@ impl CredentialFormatter for SDJWTVCFormatter {
         organisation_id: OrganisationId,
         schema_id: Option<&'a str>,
         core_base_url: &'a str,
+        version: CredentialSchemaVersion,
+        _format: Option<&'a CredentialFormat>,
     ) -> Result<String, FormatterError> {
         Ok(match schema_id {
             Some(schema_id) => schema_id.to_string(),
-            None => format!("{core_base_url}/ssi/vct/v1/{}/{id}", organisation_id),
+            None => format!("{core_base_url}/ssi/vct/{version}/{organisation_id}/{id}"),
         })
     }
 

@@ -9,7 +9,7 @@ use one_crypto::hasher::sha256::SHA256;
 use one_crypto::signer::eddsa::{EDDSASigner, KeyPair};
 use one_crypto::{CryptoProviderImpl, Hasher, MockCryptoProvider, MockHasher, Signer};
 use serde_json::json;
-use shared_types::{DidMethodId, DidValue, OrganisationId};
+use shared_types::{CredentialFormat, DidMethodId, DidValue, OrganisationId};
 use similar_asserts::assert_eq;
 use standardized_types::jwk::{PublicJwk, PublicJwkEc};
 use time::{Duration, OffsetDateTime};
@@ -43,7 +43,9 @@ use crate::provider::credential_formatter::sdjwt::test::get_credential_data;
 use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVc;
 use crate::provider::credential_formatter::sdjwtvc_formatter::{Params, SDJWTVCFormatter};
 use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredentialSubject};
-use crate::provider::credential_formatter::{CredentialFormatter, nest_claims};
+use crate::provider::credential_formatter::{
+    CredentialFormatter, CredentialSchemaVersion, nest_claims,
+};
 use crate::provider::data_type::provider::MockDataTypeProvider;
 use crate::provider::did_method::error::DidMethodProviderError;
 use crate::provider::did_method::jwk::JWKDidMethod;
@@ -1116,11 +1118,14 @@ fn test_schema_id() {
     };
 
     let id = Uuid::new_v4();
+    let format = CredentialFormat::from("SD_JWT_VC");
     let result = formatter.credential_schema_id(
         id.into(),
         request_dto.organisation_id,
         request_dto.schema_id.as_deref(),
         "https://example.com",
+        CredentialSchemaVersion::V1,
+        Some(&format),
     );
     assert!(result.is_ok());
     assert_eq!(

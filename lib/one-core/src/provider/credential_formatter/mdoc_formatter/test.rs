@@ -6,7 +6,7 @@ use ct_codecs::Base64UrlSafeNoPadding;
 use hex_literal::hex;
 use maplit::{hashmap, hashset};
 use serde_json::json;
-use shared_types::OrganisationId;
+use shared_types::{CredentialFormat, OrganisationId};
 use similar_asserts::assert_eq;
 use standardized_types::jwk::PublicJwkEc;
 use time::macros::datetime;
@@ -979,11 +979,14 @@ fn test_credential_schema_id() {
         transaction_code: None,
     };
 
+    let format = CredentialFormat::from("MDOC");
     let result = formatter.credential_schema_id(
         CredentialSchemaId::from(Uuid::new_v4()),
         request_dto.organisation_id,
         request_dto.schema_id.as_deref(),
         "https://example.com",
+        CredentialSchemaVersion::V1,
+        Some(&format),
     );
 
     assert!(result.is_ok());

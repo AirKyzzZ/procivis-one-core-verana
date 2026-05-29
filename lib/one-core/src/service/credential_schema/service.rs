@@ -1,4 +1,4 @@
-use shared_types::{CredentialSchemaId, OrganisationId};
+use shared_types::{CredentialFormat, CredentialSchemaId, OrganisationId};
 use uuid::Uuid;
 
 use super::CredentialSchemaService;
@@ -20,6 +20,7 @@ use crate::mapper::credential_schema_claim::{
 use crate::model::common::GetListResponse;
 use crate::model::credential_schema::SortableCredentialSchemaColumn;
 use crate::model::organisation::Organisation;
+use crate::provider::credential_formatter::CredentialSchemaVersion;
 use crate::repository::error::DataLayerError;
 use crate::service::common_dto::ListQueryDTO;
 use crate::service::credential_schema::dto::{
@@ -90,6 +91,8 @@ impl CredentialSchemaService {
                 organisation.id,
                 request.schema_id.as_deref(),
                 core_base_url,
+                CredentialSchemaVersion::V1,
+                None,
             )
             .error_while("creating schemaId")?;
         let imported_source_url = format!("{core_base_url}/ssi/schema/v1/{id}");
@@ -222,6 +225,8 @@ impl CredentialSchemaService {
                     organisation.id,
                     format_req.schema_id.as_deref(),
                     core_base_url,
+                    CredentialSchemaVersion::V2,
+                    Some(&format_req.format),
                 )
                 .error_while("creating schemaId")?;
 
@@ -395,6 +400,7 @@ impl CredentialSchemaService {
     pub async fn get_credential_schema_v2(
         &self,
         credential_schema_id: &CredentialSchemaId,
+        format: Option<&CredentialFormat>,
     ) -> Result<CredentialSchemaDetailV2ResponseDTO, CredentialSchemaServiceError> {
         let schema = self
             .credential_schema_repository
@@ -416,8 +422,21 @@ impl CredentialSchemaService {
                 *credential_schema_id,
             ));
         }
+        if let Some(format) = format
+            && !schema
+                .formats
+                .get()
+                .await
+                .error_while("getting credential schema formats")?
+                .iter()
+                .any(|f| f.format == *format)
+        {
+            return Err(CredentialSchemaServiceError::NotFound(
+                *credential_schema_id,
+            ));
+        }
 
-        schema_to_detail_v2_response_dto(schema).await
+        schema_to_detail_v2_response_dto(schema, format).await
     }
 
     /// Returns list of credential schemas according to query

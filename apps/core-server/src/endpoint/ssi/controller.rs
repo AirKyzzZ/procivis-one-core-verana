@@ -17,8 +17,8 @@ use one_core::service::trust_list_publication::dto::TrustListContentTypeDTO;
 use one_core::service::trust_list_publication::error::TrustListPublicationServiceError;
 use proc_macros::endpoint;
 use shared_types::{
-    CertificateId, CredentialSchemaId, DidId, OrganisationId, ProofSchemaId, RevocationListId,
-    TrustCollectionId, TrustListPublicationId,
+    CertificateId, CredentialFormat, CredentialSchemaId, DidId, OrganisationId, ProofSchemaId,
+    RevocationListId, TrustCollectionId, TrustListPublicationId,
 };
 
 use super::dto::{
@@ -246,7 +246,66 @@ pub(crate) async fn get_json_ld_context(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<String>, ErrorResponseRestDTO>,
 ) -> Response {
-    let result = state.core.ssi_issuer_service.get_json_ld_context(&id).await;
+    let result = state
+        .core
+        .ssi_issuer_service
+        .get_json_ld_context(&id, None)
+        .await;
+
+    match result {
+        Ok(value) => (
+            StatusCode::OK,
+            [(header::CONTENT_TYPE, "application/ld+json")],
+            Json(JsonLDContextResponseRestDTO::from(value)),
+        )
+            .into_response(),
+        Err(IssuerServiceError::MissingCredentialSchema(_)) => {
+            tracing::error!("Missing credential schema");
+            (StatusCode::NOT_FOUND, "Missing credential schema").into_response()
+        }
+        Err(e @ (IssuerServiceError::InvalidInput | IssuerServiceError::InvalidFormat)) => {
+            tracing::error!("Validation error: {e}");
+            StatusCode::BAD_REQUEST.into_response()
+        }
+        Err(e) => {
+            tracing::error!("Error: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
+}
+
+#[endpoint(
+    permissions = [],
+    get,
+    path = "/ssi/context/v1/{id}/{format}",
+    params(
+        ("id" = String, Path, description = "context id or credentialSchemaId"),
+        ("format" = CredentialFormat, Path, description = "Credential schema format"),
+    ),
+    responses(
+        (status = 200, description = "OK", body = JsonLDContextResponseRestDTO, content_type = "application/ld+json"),
+        (status = 404, description = "Credential schema not found"),
+        (status = 500, description = "Server error"),
+    ),
+    tag = "ssi",
+    summary = "Retrieve @context",
+    description = indoc::formatdoc! {"
+        Retrieve the `@context` of a JSON-LD credential by the UUID of the
+        credential schema.
+    "},
+)]
+pub(crate) async fn get_json_ld_context_by_format(
+    state: State<AppState>,
+    WithRejection(Path((id, format)), _): WithRejection<
+        Path<(String, CredentialFormat)>,
+        ErrorResponseRestDTO,
+    >,
+) -> Response {
+    let result = state
+        .core
+        .ssi_issuer_service
+        .get_json_ld_context(&id, Some(&format))
+        .await;
 
     match result {
         Ok(value) => (
@@ -306,7 +365,7 @@ pub(crate) async fn ssi_get_credential_schema(
     get,
     path = "/ssi/schema/v2/{id}",
     params(
-        ("id" = CredentialSchemaId, Path, description = "Credential schema id")
+        ("id" = CredentialSchemaId, Path, description = "Credential schema id"),
     ),
     responses(
         (status = 200, description = "OK", body = CredentialSchemaV2ResponseRestDTO),
@@ -326,7 +385,42 @@ pub(crate) async fn ssi_get_credential_schema_v2(
     let result = state
         .core
         .credential_schema_service
-        .get_credential_schema_v2(&id)
+        .get_credential_schema_v2(&id, None)
+        .await;
+
+    OkOrErrorResponse::from_result(result, state, "getting credential schema v2")
+}
+
+#[endpoint(
+    permissions = [],
+    get,
+    path = "/ssi/schema/v2/{id}/{format}",
+    params(
+        ("id" = CredentialSchemaId, Path, description = "Credential schema id"),
+        ("format" = CredentialFormat, Path, description = "Credential schema format"),
+    ),
+    responses(
+        (status = 200, description = "OK", body = CredentialSchemaV2ResponseRestDTO),
+        (status = 404, description = "Credential schema not found"),
+        (status = 500, description = "Server error"),
+    ),
+    tag = "ssi",
+    summary = "Retrieve credential schema v2 service",
+    description = indoc::formatdoc! {"
+        Retrieve a credential schema by its UUID in v2 format.
+    "},
+)]
+pub(crate) async fn ssi_get_credential_schema_by_format_v2(
+    state: State<AppState>,
+    WithRejection(Path((id, format)), _): WithRejection<
+        Path<(CredentialSchemaId, CredentialFormat)>,
+        ErrorResponseRestDTO,
+    >,
+) -> OkOrErrorResponse<CredentialSchemaV2ResponseRestDTO> {
+    let result = state
+        .core
+        .credential_schema_service
+        .get_credential_schema_v2(&id, Some(&format))
         .await;
 
     OkOrErrorResponse::from_result(result, state, "getting credential schema v2")

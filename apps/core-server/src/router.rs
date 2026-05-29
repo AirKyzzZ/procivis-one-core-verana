@@ -712,12 +712,20 @@ fn get_external_endpoints(
                 get(ssi::controller::get_json_ld_context),
             )
             .route(
+                "/ssi/context/v1/{id}/{format}",
+                get(ssi::controller::get_json_ld_context_by_format),
+            )
+            .route(
                 "/ssi/schema/v1/{id}",
                 get(ssi::controller::ssi_get_credential_schema),
             )
             .route(
                 "/ssi/schema/v2/{id}",
                 get(ssi::controller::ssi_get_credential_schema_v2),
+            )
+            .route(
+                "/ssi/schema/v2/{id}/{format}",
+                get(ssi::controller::ssi_get_credential_schema_by_format_v2),
             )
             .route(
                 "/ssi/proof-schema/v1/{id}",

@@ -3,7 +3,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use convert_case::{Case, Casing};
-use shared_types::{CredentialSchemaId, IdentifierId, OrganisationId};
+use shared_types::{CredentialFormat, CredentialSchemaId, IdentifierId, OrganisationId};
 use standardized_types::jwk::{JwkUse, PublicJwk};
 use url::Url;
 
@@ -35,6 +35,7 @@ impl SSIIssuerService {
     pub async fn get_json_ld_context(
         &self,
         id: &str,
+        format: Option<&CredentialFormat>,
     ) -> Result<JsonLDContextResponseDTO, IssuerServiceError> {
         if self
             .config
@@ -54,13 +55,14 @@ impl SSIIssuerService {
 
         let credential_schema_id =
             CredentialSchemaId::from_str(id).map_err(|_| IssuerServiceError::InvalidInput)?;
-        self.get_json_ld_context_for_credential_schema(credential_schema_id)
+        self.get_json_ld_context_for_credential_schema(credential_schema_id, format)
             .await
     }
 
     async fn get_json_ld_context_for_credential_schema(
         &self,
         credential_schema_id: CredentialSchemaId,
+        format: Option<&CredentialFormat>,
     ) -> Result<JsonLDContextResponseDTO, IssuerServiceError> {
         let credential_schema = self
             .credential_schema_repository
@@ -74,7 +76,20 @@ impl SSIIssuerService {
             ));
         };
 
-        let schema_format = credential_schema.format().await?;
+        let schema_format = if let Some(format) = format {
+            let formats = credential_schema
+                .formats
+                .get()
+                .await
+                .error_while("getting credential schema formats")?;
+            let Some(format) = formats.iter().find(|f| f.format == *format) else {
+                return Err(IssuerServiceError::InvalidFormat);
+            };
+            format.format.clone()
+        } else {
+            credential_schema.format().await?
+        };
+
         let config = self
             .config
             .format
@@ -91,7 +106,7 @@ impl SSIIssuerService {
             .error_while("getting claim schemas")?;
 
         let base_url = format!(
-            "{}/ssi/context/v1/{credential_schema_id}",
+            "{}/ssi/context/v1/{credential_schema_id}/{schema_format}",
             self.core_base_url
                 .as_ref()
                 .ok_or(IssuerServiceError::MappingError(

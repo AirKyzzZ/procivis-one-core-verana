@@ -308,7 +308,7 @@ pub(crate) async fn get_credential_schema_v2(
     let result = state
         .core
         .credential_schema_service
-        .get_credential_schema_v2(&id)
+        .get_credential_schema_v2(&id, None)
         .await;
     OkOrErrorResponse::from_result(result, state, "getting credential schema v2")
 }

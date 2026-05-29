@@ -16,7 +16,8 @@ use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
 use sha2::{Digest, Sha256, Sha384, Sha512};
 use shared_types::{
-    CredentialId, CredentialSchemaId, DidValue, OrganisationId, SerializedCredential,
+    CredentialFormat, CredentialId, CredentialSchemaId, DidValue, OrganisationId,
+    SerializedCredential,
 };
 use standardized_types::jwk::PublicJwk;
 use time::format_description::FormatItem;
@@ -32,7 +33,7 @@ use self::util::{
     extract_algorithm_from_header, extract_certificate_from_x5chain_header,
     try_build_algorithm_header, try_extract_holder_public_key, try_extract_mobile_security_object,
 };
-use super::nest_claims;
+use super::{CredentialSchemaVersion, nest_claims};
 use crate::config::core_config::{
     DatatypeConfig, DatatypeType, DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType,
     KeyStorageType, RevocationType, VerificationProtocolType,
@@ -402,6 +403,8 @@ impl CredentialFormatter for MdocFormatter {
         _organisation_id: OrganisationId,
         schema_id: Option<&'a str>,
         _core_base_url: &'a str,
+        _version: CredentialSchemaVersion,
+        _format: Option<&'a CredentialFormat>,
     ) -> Result<String, FormatterError> {
         Ok(schema_id
             .map(ToOwned::to_owned)

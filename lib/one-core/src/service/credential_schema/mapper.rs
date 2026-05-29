@@ -1,6 +1,6 @@
 use dcql::CredentialMeta;
 use one_dto_mapper::convert_inner;
-use shared_types::{CredentialSchemaId, OrganisationId};
+use shared_types::{CredentialFormat, CredentialSchemaId, OrganisationId};
 use url::Url;
 use uuid::Uuid;
 
@@ -87,8 +87,17 @@ pub(crate) async fn schema_to_detail_response_dto(
 
 pub(crate) async fn schema_to_detail_v2_response_dto(
     value: CredentialSchema,
+    format: Option<&CredentialFormat>,
 ) -> Result<CredentialSchemaDetailV2ResponseDTO, CredentialSchemaServiceError> {
     let formats = value.formats.get().await.error_while("getting formats")?;
+    let formats = if let Some(format) = format {
+        formats
+            .into_iter()
+            .filter(|csf| csf.format == *format)
+            .collect()
+    } else {
+        formats
+    };
 
     let format_responses: Vec<CredentialSchemaFormatResponseDTO> = formats
         .iter()

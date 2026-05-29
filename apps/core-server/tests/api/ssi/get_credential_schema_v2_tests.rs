@@ -157,3 +157,127 @@ async fn test_ssi_get_credential_schema_v2_deleted_returns_not_found() {
     // THEN
     assert_eq!(resp.status(), 404);
 }
+
+#[tokio::test]
+async fn test_ssi_get_credential_schema_v2_by_format_success() {
+    // given
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "credential-schema",
+            &organisation,
+            Some("BITSTRINGSTATUSLIST".into()),
+            Default::default(),
+        )
+        .await;
+
+    // when
+    let resp = context
+        .api
+        .ssi
+        .get_credential_schema_v2_by_format(credential_schema.id, "JWT")
+        .await;
+
+    // then
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    resp["id"].assert_eq(&credential_schema.id);
+    assert_eq!(resp["organisationId"], organisation.id.to_string());
+
+    let formats = resp["formats"]
+        .as_array()
+        .expect("formats should be an array");
+    assert_eq!(formats.len(), 1);
+    assert_eq!(formats[0]["format"], "JWT");
+
+    assert!(
+        resp["format"].is_null(),
+        "format field should not be present in v2"
+    );
+    assert!(
+        resp["schemaId"].is_null(),
+        "schemaId field should not be present in v2"
+    );
+}
+
+#[tokio::test]
+async fn test_ssi_get_credential_schema_v2_by_format_returns_only_requested_format() {
+    // given
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let create_resp = context
+        .api
+        .credential_schemas
+        .create_v2(CreateSchemaV2Params {
+            name: "multi-format schema".into(),
+            organisation_id: organisation.id.into(),
+            formats: vec![
+                serde_json::json!({ "format": "JWT" }),
+                serde_json::json!({ "format": "MDOC", "schemaId": "org.example.test" }),
+            ],
+            claims: vec![TestClaim {
+                datatype: "OBJECT".to_string(),
+                key: "root".to_string(),
+                required: true,
+                claims: vec![TestClaim {
+                    datatype: "STRING".to_string(),
+                    key: "name".to_string(),
+                    required: true,
+                    claims: vec![],
+                    array: None,
+                    translations: None,
+                }],
+                array: None,
+                translations: None,
+            }],
+            ..Default::default()
+        })
+        .await;
+    assert_eq!(create_resp.status(), 201);
+    let id = create_resp.json_value().await["id"].parse::<Uuid>();
+
+    // when
+    let resp = context
+        .api
+        .ssi
+        .get_credential_schema_v2_by_format(id, "JWT")
+        .await;
+
+    // then
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    resp["id"].assert_eq(&id);
+    let formats = resp["formats"]
+        .as_array()
+        .expect("formats should be an array");
+    assert_eq!(
+        formats.len(),
+        1,
+        "only the requested format should be returned"
+    );
+    assert_eq!(formats[0]["format"], "JWT");
+}
+
+#[tokio::test]
+async fn test_ssi_get_credential_schema_v2_format_mismatch_returns_not_found() {
+    // given
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("credential-schema", &organisation, None, Default::default())
+        .await;
+
+    // when — schema has JWT format, request uses MDOC
+    let resp = context
+        .api
+        .ssi
+        .get_credential_schema_v2_by_format(credential_schema.id, "MDOC")
+        .await;
+
+    // then
+    assert_eq!(resp.status(), 404);
+}

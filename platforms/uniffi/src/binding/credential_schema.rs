@@ -49,7 +49,7 @@ impl OneCore {
         let core = self.use_core().await?;
         Ok(core
             .credential_schema_service
-            .get_credential_schema_v2(&credential_schema_id)
+            .get_credential_schema_v2(&credential_schema_id, None)
             .await?
             .into())
     }

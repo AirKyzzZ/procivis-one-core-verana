@@ -47,6 +47,15 @@ impl SSIApi {
         self.client.get(&url).await
     }
 
+    pub async fn get_json_ld_context_by_format(
+        &self,
+        credential_schema_id: impl Into<Uuid>,
+        format: &str,
+    ) -> Response {
+        let url = format!("/ssi/context/v1/{}/{format}", credential_schema_id.into());
+        self.client.get(&url).await
+    }
+
     pub async fn get_oidc_verifier_presentation_definition(
         &self,
         proof_id: impl Display,
@@ -137,9 +146,31 @@ impl SSIApi {
         self.client.get(&url).await
     }
 
+    pub async fn get_credential_schema_by_format(
+        &self,
+        id: impl Into<Uuid>,
+        format: &str,
+    ) -> Response {
+        let credential_schema_id = id.into();
+        let url = format!("/ssi/schema/v1/{credential_schema_id}/{format}");
+
+        self.client.get(&url).await
+    }
+
     pub async fn get_credential_schema_v2(&self, id: impl Into<Uuid>) -> Response {
         let credential_schema_id = id.into();
         let url = format!("/ssi/schema/v2/{credential_schema_id}");
+
+        self.client.get(&url).await
+    }
+
+    pub async fn get_credential_schema_v2_by_format(
+        &self,
+        id: impl Into<Uuid>,
+        format: &str,
+    ) -> Response {
+        let credential_schema_id = id.into();
+        let url = format!("/ssi/schema/v2/{credential_schema_id}/{format}");
 
         self.client.get(&url).await
     }

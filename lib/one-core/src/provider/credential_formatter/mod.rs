@@ -1,7 +1,8 @@
 use async_trait::async_trait;
 use error::FormatterError;
 use model::{AuthenticationFn, CredentialPresentation, DetailCredential, TokenVerifier};
-use shared_types::{CredentialSchemaId, OrganisationId, SerializedCredential};
+use shared_types::{CredentialFormat, CredentialSchemaId, OrganisationId, SerializedCredential};
+use strum::Display;
 use time::Duration;
 
 use crate::config::core_config::{KeyAlgorithmType, RevocationType};
@@ -39,6 +40,14 @@ pub struct MetadataClaimSchema {
     pub data_type: String,
     pub array: bool,
     pub required: bool,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Display)]
+pub enum CredentialSchemaVersion {
+    #[strum(to_string = "v1")]
+    V1,
+    #[strum(to_string = "v2")]
+    V2,
 }
 
 /// Format credentials for sharing and parse credentials which have been shared.
@@ -111,8 +120,16 @@ pub trait CredentialFormatter: Send + Sync {
         _organisation_id: OrganisationId,
         _schema_id: Option<&'a str>,
         core_base_url: &'a str,
+        version: CredentialSchemaVersion,
+        format: Option<&'a CredentialFormat>,
     ) -> Result<String, FormatterError> {
-        Ok(format!("{core_base_url}/ssi/schema/v1/{id}"))
+        if let Some(format) = format {
+            Ok(format!(
+                "{core_base_url}/ssi/schema/{version}/{id}/{format}"
+            ))
+        } else {
+            Ok(format!("{core_base_url}/ssi/schema/{version}/{id}"))
+        }
     }
 
     /// Returns definitions of metadata claims for the format
