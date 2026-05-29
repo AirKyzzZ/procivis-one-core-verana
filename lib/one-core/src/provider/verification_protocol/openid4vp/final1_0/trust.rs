@@ -187,8 +187,9 @@ impl OpenID4VPFinal1_0 {
             Option<dcql::CredentialQueryId>,
             Vec<RefCertCredentialInfo>,
         > = HashMap::new();
+        let mut last_reg_cert_jwt: Option<registration_certificate::model::Payload> = None;
         for reg_cert in verifier_info {
-            if let Ok(trusted) = self
+            let trusted = match self
                 .wrp_validator
                 .validate_registration_certificate(
                     &reg_cert.data,
@@ -197,36 +198,55 @@ impl OpenID4VPFinal1_0 {
                     self.params.holder.trust_ecosystems_leeway,
                 )
                 .await
-                .inspect_err(|err| {
-                    tracing::warn!(%err, "Provided registration certificate validation failure");
-                })
-                && let (Some(credentials), Some(purpose)) = (
-                    trusted.payload.custom.credentials,
-                    trusted.payload.custom.purpose,
-                )
             {
-                let creds_with_reg_cert: Vec<_> = credentials
-                    .into_iter()
-                    .map(|credential_def| RefCertCredentialInfo {
-                        credential_def,
-                        reg_cert,
-                        purpose: purpose.to_owned(),
-                        relying_party_name: trusted.payload.custom.name.to_owned(),
-                    })
-                    .collect();
+                Ok(trusted) => trusted,
+                Err(err) => {
+                    tracing::warn!(%err, "Provided registration certificate validation failure");
+                    continue;
+                }
+            };
 
-                if reg_cert.credential_ids.is_empty() {
+            if let Some(last_reg_cert) = &last_reg_cert_jwt
+                && let Err(err) = self
+                    .wrp_validator
+                    .validate_registration_certificates_consistency(
+                        last_reg_cert,
+                        &trusted.payload.custom,
+                    )
+            {
+                tracing::warn!(%err, "validating registration certificates similarity");
+                continue;
+            }
+            last_reg_cert_jwt = Some(trusted.payload.custom.clone());
+
+            let (Some(credentials), Some(purpose)) = (
+                trusted.payload.custom.credentials,
+                trusted.payload.custom.purpose,
+            ) else {
+                continue;
+            };
+
+            let creds_with_reg_cert: Vec<_> = credentials
+                .into_iter()
+                .map(|credential_def| RefCertCredentialInfo {
+                    credential_def,
+                    reg_cert,
+                    purpose: purpose.to_owned(),
+                    relying_party_name: trusted.payload.custom.name.to_owned(),
+                })
+                .collect();
+
+            if reg_cert.credential_ids.is_empty() {
+                allowed_credentials
+                    .entry(None)
+                    .or_default()
+                    .extend(creds_with_reg_cert);
+            } else {
+                for credential_id in &reg_cert.credential_ids {
                     allowed_credentials
-                        .entry(None)
+                        .entry(Some(credential_id.to_owned()))
                         .or_default()
-                        .extend(creds_with_reg_cert);
-                } else {
-                    for credential_id in &reg_cert.credential_ids {
-                        allowed_credentials
-                            .entry(Some(credential_id.to_owned()))
-                            .or_default()
-                            .extend(creds_with_reg_cert.to_owned());
-                    }
+                        .extend(creds_with_reg_cert.to_owned());
                 }
             }
         }

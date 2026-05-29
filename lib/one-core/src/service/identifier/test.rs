@@ -20,6 +20,7 @@ use crate::proto::jwt::model::JWTPayload;
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::proto::transaction_manager::NoTransactionManager;
 use crate::proto::wrp_validator::MockWRPValidator;
+use crate::proto::wrp_validator::error::WRPValidatorError;
 use crate::proto::wrp_validator::model::{AccessCertificateResult, RegistrationCertificateResult};
 use crate::provider::blob_storage::MockBlobStorage;
 use crate::provider::blob_storage::provider::MockBlobStorageProvider;
@@ -695,6 +696,118 @@ async fn test_create_identifier_with_trust_information() {
         })
         .await;
     assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_create_identifier_with_inconsistent_reg_certs_fails() {
+    // given
+    let session_provider = StaticSessionProvider::new_random();
+    let mut organisation_repository = MockOrganisationRepository::default();
+    let mut key_repository = MockKeyRepository::default();
+    let dummy_key = dummy_key();
+    let key_id = dummy_key.id;
+    key_repository
+        .expect_get_key()
+        .returning(move |_| Ok(Some(dummy_key.clone())));
+    let mut identifier_creator = MockIdentifierCreator::default();
+    let mut identifier_trust_information_repository =
+        MockIdentifierTrustInformationRepository::default();
+    // Only the first trust_info item is persisted; the second fails consistency check
+    identifier_trust_information_repository
+        .expect_create()
+        .once()
+        .returning(|_| Ok(Uuid::new_v4().into()));
+    let mut blob_storage = MockBlobStorage::default();
+    blob_storage.expect_create().once().returning(|_| Ok(()));
+    let blob_storage = Arc::new(blob_storage);
+    let mut blob_storage_provider = MockBlobStorageProvider::default();
+    blob_storage_provider
+        .expect_get_blob_storage()
+        .once()
+        .returning(move |_| Ok(blob_storage.clone()));
+
+    let organisation_id = session_provider.0.organisation_id.unwrap();
+    organisation_repository
+        .expect_get_organisation()
+        .returning(move |_| Ok(Some(dummy_organisation(Some(organisation_id)))));
+
+    let identifier_id = Uuid::new_v4().into();
+    let mut identifier = dummy_identifier();
+    identifier.certificates = Some(vec![dummy_certificate(identifier_id)]);
+    identifier.id = identifier_id;
+    identifier.organisation = Some(dummy_organisation(Some(organisation_id)));
+
+    identifier_creator
+        .expect_create_local_identifier()
+        .returning(move |_, _, _| Ok(identifier.clone()));
+
+    let mut wrp_validator = MockWRPValidator::new();
+    wrp_validator
+        .expect_validate_access_certificate()
+        .once()
+        .returning(|_, _| {
+            Ok(AccessCertificateResult {
+                trust_entity: None,
+                relying_party_id: "test_wrp".to_string(),
+                registry_url: None,
+            })
+        });
+    wrp_validator
+        .expect_validate_registration_certificate()
+        .times(2)
+        .returning(|_, _, _, _| {
+            Ok(RegistrationCertificateResult {
+                trust_entity: None,
+                payload: dummy_reg_cert(),
+            })
+        });
+    wrp_validator
+        .expect_validate_registration_certificates_consistency()
+        .once()
+        .returning(|_, _| {
+            Err(WRPValidatorError::RegistrationCertificateMissmatch {
+                field_name: "name".to_string(),
+                first_value: "\"RP One\"".to_string(),
+                second_value: "\"RP Two\"".to_string(),
+            })
+        });
+
+    let service = setup_service(Mocks {
+        organisation_repository,
+        key_repository,
+        identifier_creator,
+        identifier_trust_information_repository,
+        blob_storage_provider,
+        session_provider,
+        wrp_validator,
+        ..Default::default()
+    });
+
+    // when
+    let result = service
+        .create_identifier(CreateIdentifierRequestDTO {
+            name: "test identifier".to_string(),
+            did: None,
+            key: Some(CreateIdentifierKeyRequestDTO { key_id }),
+            key_id: None,
+            certificates: None,
+            certificate_authorities: None,
+            organisation_id,
+            trust_information: vec![
+                CreateIdentifierTrustInformationRequestDTO {
+                    data: "first reg cert".to_string(),
+                    r#type: IdentifierTrustInformationType::RegistrationCertificate,
+                },
+                CreateIdentifierTrustInformationRequestDTO {
+                    data: "second reg cert".to_string(),
+                    r#type: IdentifierTrustInformationType::RegistrationCertificate,
+                },
+            ],
+        })
+        .await;
+
+    // then
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0224);
 }
 
 fn dummy_reg_cert() -> JWTPayload<Payload> {

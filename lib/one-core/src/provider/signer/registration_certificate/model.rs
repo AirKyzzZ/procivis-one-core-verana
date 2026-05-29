@@ -37,7 +37,7 @@ pub struct RequestData {
 }
 
 #[serde_with::skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct Payload {
     pub name: String,
@@ -102,7 +102,7 @@ pub enum PolicyType {
     RegistrationPolicy,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Into)]
+#[derive(Clone, Debug, Serialize, Deserialize, Into, Eq, PartialEq)]
 #[into(standardized_types::etsi_119_602::json::MultiLangString)]
 #[serde(deny_unknown_fields)]
 pub struct MultiLangString {
@@ -114,19 +114,19 @@ pub struct MultiLangString {
 // [...]
 // The entitlements may be expressed as OIDs or structured URIs
 // in certificate profiles and registration data formats.
-#[derive(Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Entitlement {
     pub format: EntitlementFormat,
     pub role: EntitlementRole,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum EntitlementFormat {
     Oid,
     Uri,
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum EntitlementRole {
     ServiceProvider,
     QeaaProvider,
@@ -140,7 +140,7 @@ pub enum EntitlementRole {
     ESigESealCreationProvider,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct SupervisoryAuthority {
     pub email: String,
@@ -148,12 +148,12 @@ pub struct SupervisoryAuthority {
     pub uri: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Status {
     pub status_list: HashMap<String, serde_json::Value>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Credential {
     pub format: CredentialFormat,
@@ -162,7 +162,7 @@ pub struct Credential {
     pub claim: Option<Vec<Claim>>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Claim {
     pub path: dcql::ClaimPath,
@@ -170,7 +170,7 @@ pub struct Claim {
     pub values: Option<Vec<dcql::ClaimValue>>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Intermediary {
     #[serde(rename = "sub")]

@@ -8,6 +8,14 @@ pub(crate) enum WRPValidatorError {
     AccessCertificateNotTrusted,
     #[error("Registration certificate not trusted")]
     RegistrationCertificateNotTrusted,
+    #[error(
+        "Registration certificate mismatch field: `{field_name}`: `{first_value}` != `{second_value}`"
+    )]
+    RegistrationCertificateMissmatch {
+        field_name: String,
+        first_value: String,
+        second_value: String,
+    },
     #[error("Credential issuer not trusted")]
     IssuerNotTrusted,
     #[error("Registry not trusted")]
@@ -46,7 +54,8 @@ impl ErrorCodeMixin for WRPValidatorError {
             | Self::MissingRegistryKeysUrl
             | Self::MissingRegistryKey(_)
             | Self::MissingIssuer
-            | Self::InvalidRegistryUrl(_) => ErrorCode::BR_0224,
+            | Self::InvalidRegistryUrl(_)
+            | Self::RegistrationCertificateMissmatch { .. } => ErrorCode::BR_0224,
             Self::URLParsing(_) | Self::FromUtf8Error(_) => ErrorCode::BR_0047,
             Self::Nested(nested) => nested.error_code(),
         }

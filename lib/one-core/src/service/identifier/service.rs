@@ -286,6 +286,9 @@ impl IdentifierService {
         let now = OffsetDateTime::now_utc();
 
         let rp_id = self.etsi_rp_id_for_identifier(identifier).await?;
+        let mut last_reg_cert_jwt: Option<
+            crate::provider::signer::registration_certificate::model::Payload,
+        > = None;
         for trust_info in trust_information {
             let reg_cert_info = self
                 .wrp_validator
@@ -301,6 +304,16 @@ impl IdentifierService {
                 )
                 .await
                 .error_while("validating registration certificate")?;
+            if let Some(last_reg_cert) = &last_reg_cert_jwt {
+                self.wrp_validator
+                    .validate_registration_certificates_consistency(
+                        last_reg_cert,
+                        &reg_cert_info.payload.custom,
+                    )
+                    .error_while("validating registration certificates similarity")?;
+            }
+            last_reg_cert_jwt = Some(reg_cert_info.payload.custom.clone());
+
             let blob_id = Uuid::new_v4().into();
             blob_storage
                 .create(Blob {

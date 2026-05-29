@@ -7,6 +7,7 @@ use time::Duration;
 use url::Url;
 
 use crate::model::credential_schema::CredentialSchema;
+use crate::provider::signer::registration_certificate::model::Payload;
 use crate::provider::trust_list_subscriber::TrustEntityResponse;
 
 pub(crate) mod error;
@@ -30,6 +31,12 @@ pub(crate) trait WRPValidator: Send + Sync {
         validate_trust: Option<OrganisationId>,
         leeway: Duration,
     ) -> Result<RegistrationCertificateResult, WRPValidatorError>;
+
+    fn validate_registration_certificates_consistency(
+        &self,
+        first: &Payload,
+        second: &Payload,
+    ) -> Result<(), WRPValidatorError>;
 
     /// Receive registration from the WRP registry
     async fn fetch_from_registry(

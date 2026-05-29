@@ -153,6 +153,48 @@ impl WRPValidator for WRPValidatorImpl {
         })
     }
 
+    fn validate_registration_certificates_consistency(
+        &self,
+        first: &Payload,
+        second: &Payload,
+    ) -> Result<(), WRPValidatorError> {
+        macro_rules! validate_field {
+            ($field:ident) => {
+                if first.$field != second.$field {
+                    tracing::info!(
+                        "Registration certificate mismatch field: `{}`: `{:?}` != `{:?}`",
+                        stringify!($field),
+                        first.$field,
+                        second.$field,
+                    );
+                    return Err(WRPValidatorError::RegistrationCertificateMissmatch {
+                        field_name: stringify!($field).to_string(),
+                        first_value: format!("{:?}", first.$field),
+                        second_value: format!("{:?}", second.$field),
+                    });
+                }
+            };
+        }
+        validate_field!(name);
+        validate_field!(sub_ln);
+        validate_field!(sub_gn);
+        validate_field!(sub_fn);
+        validate_field!(country);
+        validate_field!(registry_uri);
+        validate_field!(service_descriptions);
+        validate_field!(entitlements);
+        validate_field!(privacy_policy);
+        validate_field!(info_uri);
+        validate_field!(supervisory_authority);
+        validate_field!(policy_id);
+        validate_field!(certificate_policy);
+        validate_field!(status);
+        validate_field!(support_uri);
+        validate_field!(intermediary);
+
+        Ok(())
+    }
+
     async fn fetch_from_registry(
         &self,
         relying_party_id: &str,
@@ -570,4 +612,211 @@ fn validate_jwt_timestamps<T>(
     validate_not_before_time(&token.invalid_before, leeway).error_while("checking validity")?;
     validate_expiration_time(&token.expires_at, leeway).error_while("checking validity")?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+    use std::sync::Arc;
+
+    use url::Url;
+
+    use super::WRPValidatorImpl;
+    use crate::proto::certificate_validator::MockCertificateValidator;
+    use crate::proto::http_client::MockHttpClient;
+    use crate::proto::verifier_provider_client::MockVerifierProviderClient;
+    use crate::proto::wallet_provider_client::MockWalletProviderClient;
+    use crate::proto::wrp_validator::WRPValidator;
+    use crate::proto::wrp_validator::error::WRPValidatorError;
+    use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
+    use crate::provider::did_method::provider::MockDidMethodProvider;
+    use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+    use crate::provider::revocation::provider::MockRevocationMethodProvider;
+    use crate::provider::signer::registration_certificate::model::{
+        Payload, Status, SupervisoryAuthority,
+    };
+    use crate::provider::trust_list_subscriber::provider::MockTrustListSubscriberProvider;
+    use crate::repository::holder_wallet_instance_repository::MockHolderWalletInstanceRepository;
+    use crate::repository::trust_collection_repository::MockTrustCollectionRepository;
+    use crate::repository::trust_list_subscription_repository::MockTrustListSubscriptionRepository;
+    use crate::repository::verifier_instance_repository::MockVerifierInstanceRepository;
+
+    fn make_validator() -> WRPValidatorImpl {
+        WRPValidatorImpl::new(
+            Arc::new(MockTrustCollectionRepository::default()),
+            Arc::new(MockTrustListSubscriptionRepository::default()),
+            Arc::new(MockTrustListSubscriberProvider::default()),
+            Arc::new(MockHolderWalletInstanceRepository::default()),
+            Arc::new(MockWalletProviderClient::default()),
+            Arc::new(MockVerifierInstanceRepository::default()),
+            Arc::new(MockVerifierProviderClient::default()),
+            Arc::new(MockDidMethodProvider::default()),
+            Arc::new(MockKeyAlgorithmProvider::default()),
+            Arc::new(MockCertificateValidator::default()),
+            Arc::new(MockHttpClient::default()),
+            Arc::new(MockRevocationMethodProvider::default()),
+            Arc::new(MockCredentialFormatterProvider::default()),
+        )
+    }
+
+    fn dummy_payload() -> Payload {
+        Payload {
+            name: "Test RP".to_string(),
+            sub_ln: Some("Test Legal Name".to_string()),
+            sub_gn: None,
+            sub_fn: None,
+            country: "AT".to_string(),
+            registry_uri: Url::parse("https://registry.example.com").unwrap(),
+            service_descriptions: vec![],
+            entitlements: vec![],
+            privacy_policy: Url::parse("https://example.com/privacy").unwrap(),
+            info_uri: Url::parse("https://example.com/info").unwrap(),
+            supervisory_authority: SupervisoryAuthority {
+                email: "auth@example.com".to_string(),
+                phone: "+43123456".to_string(),
+                uri: "https://authority.example.com".to_string(),
+            },
+            policy_id: vec![],
+            certificate_policy: Url::parse("https://example.com/policy").unwrap(),
+            status: Status {
+                status_list: HashMap::new(),
+            },
+            provides_attestations: None,
+            credentials: None,
+            purpose: None,
+            intended_use_id: None,
+            public_body: None,
+            support_uri: Url::parse("https://example.com/support").unwrap(),
+            intermediary: None,
+        }
+    }
+
+    #[test]
+    fn test_consistency_identical_payloads_returns_ok() {
+        // given
+        let validator = make_validator();
+        let payload = dummy_payload();
+
+        // when
+        let result = validator.validate_registration_certificates_consistency(&payload, &payload);
+
+        // then
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_consistency_name_mismatch_returns_error() {
+        // given
+        let validator = make_validator();
+        let first = dummy_payload();
+        let mut second = dummy_payload();
+        second.name = "Different RP Name".to_string();
+
+        // when
+        let err = validator
+            .validate_registration_certificates_consistency(&first, &second)
+            .unwrap_err();
+
+        // then
+        assert!(
+            matches!(
+                &err,
+                WRPValidatorError::RegistrationCertificateMissmatch { field_name, .. }
+                    if field_name == "name"
+            ),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn test_consistency_country_mismatch_returns_error() {
+        // given
+        let validator = make_validator();
+        let first = dummy_payload();
+        let mut second = dummy_payload();
+        second.country = "DE".to_string();
+
+        // when
+        let err = validator
+            .validate_registration_certificates_consistency(&first, &second)
+            .unwrap_err();
+
+        // then
+        assert!(
+            matches!(
+                &err,
+                WRPValidatorError::RegistrationCertificateMissmatch { field_name, .. }
+                    if field_name == "country"
+            ),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn test_consistency_registry_uri_mismatch_returns_error() {
+        // given
+        let validator = make_validator();
+        let first = dummy_payload();
+        let mut second = dummy_payload();
+        second.registry_uri = Url::parse("https://other-registry.example.com").unwrap();
+
+        // when
+        let err = validator
+            .validate_registration_certificates_consistency(&first, &second)
+            .unwrap_err();
+
+        // then
+        assert!(
+            matches!(
+                &err,
+                WRPValidatorError::RegistrationCertificateMissmatch { field_name, .. }
+                    if field_name == "registry_uri"
+            ),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn test_consistency_support_uri_mismatch_returns_error() {
+        // given
+        let validator = make_validator();
+        let first = dummy_payload();
+        let mut second = dummy_payload();
+        second.support_uri = Url::parse("https://other-support.example.com").unwrap();
+
+        // when
+        let err = validator
+            .validate_registration_certificates_consistency(&first, &second)
+            .unwrap_err();
+
+        // then
+        assert!(
+            matches!(
+                &err,
+                WRPValidatorError::RegistrationCertificateMissmatch { field_name, .. }
+                    if field_name == "support_uri"
+            ),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn test_consistency_non_validated_fields_are_ignored() {
+        // given
+        let validator = make_validator();
+        let first = dummy_payload();
+        let mut second = dummy_payload();
+        // `credentials`, `purpose`, `provides_attestations`, and `intended_use_id`
+        // are intentionally excluded from the consistency check
+        second.credentials = Some(vec![]);
+        second.purpose = Some(vec![]);
+        second.intended_use_id = Some("different_use_id".to_string());
+        second.public_body = Some(true);
+
+        // when
+        let result = validator.validate_registration_certificates_consistency(&first, &second);
+
+        // then
+        assert!(result.is_ok());
+    }
 }
