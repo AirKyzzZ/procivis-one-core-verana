@@ -143,7 +143,6 @@ pub(crate) fn validate_create_v2_request(
         validate_nested_claim_schemas(&request.claims, config, &*formatter)?;
         validate_claim_names_for_formatter(&request.claims, &*formatter)?;
         validate_credential_design(request.layout_properties.as_ref(), &*formatter)?;
-        validate_mdoc_claim_types(&request.claims, &format_req.format, config)?;
         validate_transaction_code(request.transaction_code.as_ref(), &*formatter)?;
     }
     validate_claim_mappings_for_format(

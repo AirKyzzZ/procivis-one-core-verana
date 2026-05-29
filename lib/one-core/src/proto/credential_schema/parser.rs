@@ -166,7 +166,7 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
         }
 
         let claim_schemas_with_raw_mappings =
-            self.parse_all_claim_schemas(now, dto.schema.claims, formatters.as_ref())?;
+            self.parse_all_claim_schemas_v2(now, dto.schema.claims, formatters.as_ref())?;
 
         let credential_schema_id = Uuid::new_v4().into();
 
@@ -381,6 +381,18 @@ impl CredentialSchemaImportParserImpl {
             return Err(Error::MissingClaims);
         }
         self.validate_top_level_claims_mdoc_types(formatters, &claim_schemas)?;
+        self.parse_level_claim_schemas(now, None, claim_schemas, formatters)
+    }
+
+    pub(super) fn parse_all_claim_schemas_v2(
+        &self,
+        now: OffsetDateTime,
+        claim_schemas: Vec<ImportCredentialSchemaClaimSchemaDTO>,
+        formatters: &[(FormatType, Arc<dyn CredentialFormatter>)],
+    ) -> Result<Vec<(ClaimSchema, Vec<CredentialClaimSchemaMappingDTO>)>, Error> {
+        if claim_schemas.is_empty() {
+            return Err(Error::MissingClaims);
+        }
         self.parse_level_claim_schemas(now, None, claim_schemas, formatters)
     }
 
