@@ -6,7 +6,7 @@ use self::dto::SuspendCheckResultDTO;
 use super::Task;
 use crate::error::ContextWithErrorCode;
 use crate::model::credential::{
-    CredentialFilterValue, CredentialListQuery, CredentialRole, CredentialStateEnum,
+    CredentialFilterValue, CredentialListQuery, CredentialRole, CredentialStateEnum, CredentialType,
 };
 use crate::model::list_filter::{ComparisonType, ListFilterValue, ValueComparison};
 use crate::proto::credential_validity_manager::CredentialValidityManager;
@@ -42,6 +42,10 @@ impl Task for SuspendCheckProvider {
                 filtering: Some(
                     CredentialFilterValue::States(vec![CredentialStateEnum::Suspended]).condition()
                         & CredentialFilterValue::Roles(vec![CredentialRole::Issuer])
+                        & CredentialFilterValue::Types(vec![
+                            CredentialType::Single,
+                            CredentialType::BatchItem,
+                        ])
                         & CredentialFilterValue::SuspendEndDate(ValueComparison {
                             comparison: ComparisonType::LessThan,
                             value: crate::clock::now_utc(),

@@ -493,12 +493,54 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
                     return Err(Error::InvalidCredentialType(credential.r#type));
                 }
 
-                self.change_revocation_state(
-                    credential.id,
-                    revocation_state,
-                    revocation_method.as_ref(),
-                )
-                .await?;
+                let parent_status =
+                    revocation_state_from_credential_state(parent.state, parent.suspend_end_date)
+                        .error_while("parsing status")?;
+
+                self.tx_manager
+                    .tx(async {
+                        self.change_revocation_state(
+                            credential.id,
+                            revocation_state,
+                            revocation_method.as_ref(),
+                        )
+                        .await?;
+
+                        // update parent state if needed
+                        if parent_status != revocation_state {
+                            let batch_items = self
+                                .credential_repository
+                                .get_credential_list(ListQuery {
+                                    filtering: Some(
+                                        CredentialFilterValue::ParentCredential(parent.id)
+                                            .condition(),
+                                    ),
+                                    ..Default::default()
+                                })
+                                .await
+                                .error_while("getting batch items")?
+                                .values;
+
+                            let item_states = batch_items
+                                .into_iter()
+                                .map(|c| {
+                                    revocation_state_from_credential_state(
+                                        c.state,
+                                        c.suspend_end_date,
+                                    )
+                                })
+                                .collect::<Result<Vec<_>, _>>()
+                                .error_while("getting batch items states")?;
+
+                            self.update_batch_parent_state(&parent, &item_states)
+                                .await?;
+                        }
+
+                        Ok::<_, Error>(())
+                    }
+                    .boxed())
+                    .await
+                    .error_while("changing batch item state")??;
             }
             CredentialType::BatchParent => {
                 // all underlying batch items must be updated
@@ -550,7 +592,7 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
                     }
                     .boxed())
                     .await
-                    .error_while("changing credential state")??;
+                    .error_while("changing batch parent state")??;
             }
         };
 
