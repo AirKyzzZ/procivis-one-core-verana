@@ -20,7 +20,7 @@ pub mod bitstring_status_list;
 pub mod crl;
 mod decorators;
 pub mod error;
-mod mapper;
+pub mod mapper;
 pub mod mdoc_mso_update_suspension;
 pub mod model;
 pub mod provider;

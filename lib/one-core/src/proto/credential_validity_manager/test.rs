@@ -2,8 +2,9 @@ use std::collections::HashMap;
 use std::ops::Add;
 use std::sync::Arc;
 
+use mockall::Sequence;
 use mockall::predicate::{always, eq};
-use shared_types::RevocationMethodId;
+use shared_types::{CredentialId, RevocationMethodId};
 use similar_asserts::assert_eq;
 use time::Duration;
 use uuid::Uuid;
@@ -27,6 +28,7 @@ use crate::proto::credential_validity_manager::{
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::proto::session_provider::{NoSessionProvider, SessionProvider};
 use crate::proto::transaction_manager::NoTransactionManager;
+use crate::provider::blob_storage::MockBlobStorage;
 use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{
@@ -38,7 +40,7 @@ use crate::provider::revocation::MockRevocationMethod;
 use crate::provider::revocation::model::RevocationState;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
-use crate::service::test_utilities::{dummy_organisation, generic_config};
+use crate::service::test_utilities::{dummy_blob, dummy_organisation, generic_config};
 
 #[derive(Default)]
 struct Repositories {
@@ -65,6 +67,7 @@ fn setup_validity_manager(repositories: Repositories) -> CredentialValidityManag
         Arc::new(repositories.config),
     )
 }
+
 #[tokio::test]
 async fn test_check_revocation_non_revocable() {
     let mut credential_repository = MockCredentialRepository::default();
@@ -103,31 +106,44 @@ async fn test_check_revocation_non_revocable() {
         .expect_get_revocation_method()
         .returning(|_| Ok(Arc::new(MockRevocationMethod::default())));
 
+    let credential_blob_id = Uuid::new_v4().into();
     let credential = Credential {
         state: CredentialStateEnum::Accepted,
+        credential_blob_id: Some(credential_blob_id),
         ..generic_credential()
     };
+    credential_repository.expect_get_credential().returning({
+        let credential = credential.clone();
+        move |_, _| Ok(Some(credential.clone()))
+    });
 
-    {
-        let credential_clone = credential.clone();
-        credential_repository
-            .expect_get_credential()
-            .returning(move |_, _| Ok(Some(credential_clone.clone())));
-    }
+    let mut blob_storage_provider = MockBlobStorageProvider::new();
+    blob_storage_provider
+        .expect_get_blob_storage()
+        .return_once(move |_| {
+            let mut blob_storage = MockBlobStorage::new();
+            blob_storage
+                .expect_get()
+                .once()
+                .with(eq(credential_blob_id))
+                .return_once(|_| Ok(Some(dummy_blob())));
+            Ok(Arc::new(blob_storage))
+        });
 
     let validity_manager = setup_validity_manager(Repositories {
         credential_repository,
         revocation_method_provider,
         formatter_provider,
+        blob_storage_provider,
         config: generic_config().core,
         ..Default::default()
     });
 
     let result = validity_manager
         .check_holder_credential_validity(credential.id, false)
-        .await;
-    assert!(result.is_ok());
-    let result = result.unwrap();
+        .await
+        .unwrap();
+
     assert_eq!(result.credential_id, credential.id);
     assert!(result.success);
     assert_eq!(result.status, CredentialStateEnum::Accepted);
@@ -167,7 +183,7 @@ async fn test_check_revocation_already_revoked() {
 }
 
 #[tokio::test]
-async fn test_check_revocation_being_revoked() {
+async fn test_check_revocation_becoming_revoked() {
     let mut credential_repository = MockCredentialRepository::default();
     let mut revocation_method_provider: MockRevocationMethodProvider =
         MockRevocationMethodProvider::default();
@@ -218,23 +234,21 @@ async fn test_check_revocation_being_revoked() {
         .with(eq::<RevocationMethodId>("mock".into()))
         .returning(move |_| Ok(revocation_method.clone()));
 
+    let credential_blob_id = Uuid::new_v4().into();
     let credential = {
         let mut cred = Credential {
             state: CredentialStateEnum::Accepted,
             suspend_end_date: None,
+            credential_blob_id: Some(credential_blob_id),
             ..generic_credential()
         };
         cred.schema.as_mut().unwrap().revocation_method = Some("mock".into());
         cred
     };
-
-    {
-        let credential_clone = credential.clone();
-        credential_repository
-            .expect_get_credential()
-            .returning(move |_, _| Ok(Some(credential_clone.clone())));
-    }
-
+    credential_repository.expect_get_credential().returning({
+        let credential = credential.clone();
+        move |_, _| Ok(Some(credential.clone()))
+    });
     credential_repository
         .expect_update_credential()
         .withf(|_, request| {
@@ -248,20 +262,353 @@ async fn test_check_revocation_being_revoked() {
         })
         .returning(|_, _| Ok(()));
 
+    let mut blob_storage_provider = MockBlobStorageProvider::new();
+    blob_storage_provider
+        .expect_get_blob_storage()
+        .return_once(move |_| {
+            let mut blob_storage = MockBlobStorage::new();
+            blob_storage
+                .expect_get()
+                .once()
+                .with(eq(credential_blob_id))
+                .return_once(|_| Ok(Some(dummy_blob())));
+            Ok(Arc::new(blob_storage))
+        });
+
     let validity_manager = setup_validity_manager(Repositories {
         credential_repository,
         revocation_method_provider,
         formatter_provider,
+        blob_storage_provider,
         config: generic_config().core,
         ..Default::default()
     });
 
     let result = validity_manager
         .check_holder_credential_validity(credential.id, false)
-        .await;
-    assert!(result.is_ok());
-    let result = result.unwrap();
+        .await
+        .unwrap();
+
     assert_eq!(result.credential_id, credential.id);
+    assert!(result.success);
+    assert_eq!(result.status, CredentialStateEnum::Revoked);
+}
+
+#[tokio::test]
+async fn test_check_revocation_batch_parent_becoming_revoked() {
+    let mut credential_repository = MockCredentialRepository::default();
+    let mut revocation_method_provider: MockRevocationMethodProvider =
+        MockRevocationMethodProvider::default();
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+
+    let mut formatter = MockCredentialFormatter::default();
+
+    let mut revocation_method = MockRevocationMethod::default();
+
+    formatter
+        .expect_extract_credentials_unverified()
+        .returning(|_, _| {
+            Ok(DetailCredential {
+                id: None,
+                issuance_date: None,
+                valid_from: None,
+                valid_until: None,
+                update_at: None,
+                invalid_before: None,
+                issuer: IdentifierDetails::Did("did:example:123".parse().unwrap()),
+                subject: None,
+                claims: CredentialSubject {
+                    claims: Default::default(),
+                    id: None,
+                },
+                status: vec![CredentialStatus {
+                    id: Some("did:status:test".parse().unwrap()),
+                    r#type: "type".to_string(),
+                    status_purpose: Some("purpose".to_string()),
+                    additional_fields: HashMap::default(),
+                }],
+                credential_schema: None,
+            })
+        });
+
+    revocation_method
+        .expect_check_credential_revocation_status()
+        .returning(|_, _, _, _| Ok(RevocationState::Revoked));
+
+    let formatter = Arc::new(formatter);
+    formatter_provider
+        .expect_get_credential_formatter()
+        .returning(move |_| Some(formatter.clone()));
+
+    let revocation_method = Arc::new(revocation_method);
+    revocation_method_provider
+        .expect_get_revocation_method()
+        .with(eq::<RevocationMethodId>("mock".into()))
+        .returning(move |_| Ok(revocation_method.clone()));
+
+    let credential_blob_id = Uuid::new_v4().into();
+    let parent_credential_id = Uuid::new_v4().into();
+    let item_credential_id: CredentialId = Uuid::new_v4().into();
+    let credential = {
+        let mut cred = Credential {
+            state: CredentialStateEnum::Accepted,
+            suspend_end_date: None,
+            ..generic_credential()
+        };
+        cred.schema.as_mut().unwrap().revocation_method = Some("mock".into());
+        cred
+    };
+    credential_repository
+        .expect_get_credential()
+        .with(eq(parent_credential_id), always())
+        .once()
+        .returning({
+            let mut credential = credential.clone();
+            credential.id = parent_credential_id;
+            credential.r#type = CredentialType::BatchParent;
+            move |_, _| Ok(Some(credential.clone()))
+        });
+    credential_repository
+        .expect_get_credential_list()
+        .once()
+        .return_once({
+            let mut credential = credential.clone();
+            credential.id = item_credential_id;
+            credential.r#type = CredentialType::BatchItem;
+            credential.credential_blob_id = Some(credential_blob_id);
+            move |_| {
+                Ok(GetCredentialList {
+                    values: vec![credential],
+                    total_pages: 1,
+                    total_items: 1,
+                })
+            }
+        });
+    credential_repository
+        .expect_update_credential()
+        .once()
+        .with(eq(parent_credential_id), always())
+        .withf(|_, request| {
+            matches!(
+                request,
+                UpdateCredentialRequest {
+                    state: Some(CredentialStateEnum::Revoked),
+                    ..
+                }
+            )
+        })
+        .returning(|_, _| Ok(()));
+    credential_repository
+        .expect_update_credential()
+        .once()
+        .with(eq(item_credential_id), always())
+        .withf(|_, request| {
+            matches!(
+                request,
+                UpdateCredentialRequest {
+                    state: Some(CredentialStateEnum::Revoked),
+                    ..
+                }
+            )
+        })
+        .returning(|_, _| Ok(()));
+
+    let mut blob_storage_provider = MockBlobStorageProvider::new();
+    blob_storage_provider
+        .expect_get_blob_storage()
+        .return_once(move |_| {
+            let mut blob_storage = MockBlobStorage::new();
+            blob_storage
+                .expect_get()
+                .once()
+                .with(eq(credential_blob_id))
+                .return_once(|_| Ok(Some(dummy_blob())));
+            Ok(Arc::new(blob_storage))
+        });
+
+    let validity_manager = setup_validity_manager(Repositories {
+        credential_repository,
+        revocation_method_provider,
+        formatter_provider,
+        blob_storage_provider,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = validity_manager
+        .check_holder_credential_validity(parent_credential_id, false)
+        .await
+        .unwrap();
+
+    assert_eq!(result.credential_id, parent_credential_id);
+    assert!(result.success);
+    assert_eq!(result.status, CredentialStateEnum::Revoked);
+}
+
+#[tokio::test]
+async fn test_check_revocation_batch_item_becoming_revoked() {
+    let mut credential_repository = MockCredentialRepository::default();
+    let mut revocation_method_provider: MockRevocationMethodProvider =
+        MockRevocationMethodProvider::default();
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+
+    let mut formatter = MockCredentialFormatter::default();
+
+    let mut revocation_method = MockRevocationMethod::default();
+
+    formatter
+        .expect_extract_credentials_unverified()
+        .returning(|_, _| {
+            Ok(DetailCredential {
+                id: None,
+                issuance_date: None,
+                valid_from: None,
+                valid_until: None,
+                update_at: None,
+                invalid_before: None,
+                issuer: IdentifierDetails::Did("did:example:123".parse().unwrap()),
+                subject: None,
+                claims: CredentialSubject {
+                    claims: Default::default(),
+                    id: None,
+                },
+                status: vec![CredentialStatus {
+                    id: Some("did:status:test".parse().unwrap()),
+                    r#type: "type".to_string(),
+                    status_purpose: Some("purpose".to_string()),
+                    additional_fields: HashMap::default(),
+                }],
+                credential_schema: None,
+            })
+        });
+
+    revocation_method
+        .expect_check_credential_revocation_status()
+        .returning(|_, _, _, _| Ok(RevocationState::Revoked));
+
+    let formatter = Arc::new(formatter);
+    formatter_provider
+        .expect_get_credential_formatter()
+        .returning(move |_| Some(formatter.clone()));
+
+    let revocation_method = Arc::new(revocation_method);
+    revocation_method_provider
+        .expect_get_revocation_method()
+        .with(eq::<RevocationMethodId>("mock".into()))
+        .returning(move |_| Ok(revocation_method.clone()));
+
+    let credential_blob_id = Uuid::new_v4().into();
+    let parent_credential_id = Uuid::new_v4().into();
+    let item_credential_id = Uuid::new_v4().into();
+    let credential = {
+        let mut cred = Credential {
+            state: CredentialStateEnum::Accepted,
+            suspend_end_date: None,
+            ..generic_credential()
+        };
+        cred.schema.as_mut().unwrap().revocation_method = Some("mock".into());
+        cred
+    };
+
+    let item_credential = Credential {
+        id: item_credential_id,
+        r#type: CredentialType::BatchItem,
+        credential_blob_id: Some(credential_blob_id),
+        parent: Some(
+            Credential {
+                id: parent_credential_id,
+                r#type: CredentialType::BatchParent,
+                ..credential.clone()
+            }
+            .into(),
+        ),
+        ..credential
+    };
+
+    let mut seq = Sequence::new();
+    credential_repository
+        .expect_get_credential()
+        .with(eq(item_credential_id), always())
+        .once()
+        .returning({
+            let item_credential = item_credential.clone();
+            move |_, _| Ok(Some(item_credential.clone()))
+        })
+        .in_sequence(&mut seq);
+    credential_repository
+        .expect_update_credential()
+        .once()
+        .with(eq(item_credential_id), always())
+        .withf(|_, request| {
+            matches!(
+                request,
+                UpdateCredentialRequest {
+                    state: Some(CredentialStateEnum::Revoked),
+                    ..
+                }
+            )
+        })
+        .returning(|_, _| Ok(()))
+        .in_sequence(&mut seq);
+    credential_repository
+        .expect_get_credential_list()
+        .once()
+        .return_once({
+            let mut item_credential = item_credential.clone();
+            item_credential.state = CredentialStateEnum::Revoked;
+            move |_| {
+                Ok(GetCredentialList {
+                    values: vec![item_credential],
+                    total_pages: 1,
+                    total_items: 1,
+                })
+            }
+        })
+        .in_sequence(&mut seq);
+    credential_repository
+        .expect_update_credential()
+        .once()
+        .with(eq(parent_credential_id), always())
+        .withf(|_, request| {
+            matches!(
+                request,
+                UpdateCredentialRequest {
+                    state: Some(CredentialStateEnum::Revoked),
+                    ..
+                }
+            )
+        })
+        .returning(|_, _| Ok(()))
+        .in_sequence(&mut seq);
+
+    let mut blob_storage_provider = MockBlobStorageProvider::new();
+    blob_storage_provider
+        .expect_get_blob_storage()
+        .return_once(move |_| {
+            let mut blob_storage = MockBlobStorage::new();
+            blob_storage
+                .expect_get()
+                .once()
+                .with(eq(credential_blob_id))
+                .return_once(|_| Ok(Some(dummy_blob())));
+            Ok(Arc::new(blob_storage))
+        });
+
+    let validity_manager = setup_validity_manager(Repositories {
+        credential_repository,
+        revocation_method_provider,
+        formatter_provider,
+        blob_storage_provider,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = validity_manager
+        .check_holder_credential_validity(item_credential_id, false)
+        .await
+        .unwrap();
+
+    assert_eq!(result.credential_id, item_credential_id);
     assert!(result.success);
     assert_eq!(result.status, CredentialStateEnum::Revoked);
 }

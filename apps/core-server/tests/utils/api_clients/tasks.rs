@@ -19,4 +19,13 @@ impl TasksApi {
 
         self.client.post("/api/task/v1/run", body).await
     }
+
+    pub async fn run_with_params(&self, task: &str, params: serde_json::Value) -> Response {
+        let body = json!({
+          "name": task,
+          "params": params
+        });
+
+        self.client.post("/api/task/v1/run", body).await
+    }
 }

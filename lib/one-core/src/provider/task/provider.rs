@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use serde::de::DeserializeOwned;
 use shared_types::TaskId;
 
 use super::Task;
@@ -13,7 +12,7 @@ use super::suspend_check::SuspendCheckProvider;
 use super::trust_list_subscription_update::TrustListSubscriptionUpdateTask;
 use super::webhook_notify::WebhookNotify;
 use crate::config::ConfigValidationError;
-use crate::config::core_config::{CoreConfig, Fields, TaskType};
+use crate::config::core_config::{CoreConfig, TaskType};
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::credential_validity_manager::CredentialValidityManager;
 use crate::proto::notification_sender::NotificationSender;
@@ -104,7 +103,6 @@ pub(crate) fn task_provider_from_config(
                 certificate_validator.clone(),
             )),
             TaskType::HolderCheckCredentialStatus => Arc::new(HolderCheckCredentialStatus::new(
-                parse_params(field)?,
                 credential_repository.clone(),
                 credential_validity_manager.clone(),
             )),
@@ -154,19 +152,4 @@ pub(crate) fn task_provider_from_config(
     }
 
     Ok(Arc::new(TaskProviderImpl { tasks }))
-}
-
-fn parse_params<P: DeserializeOwned>(
-    field: &Fields<TaskType>,
-) -> Result<Option<P>, ConfigValidationError> {
-    field
-        .params
-        .as_ref()
-        .and_then(|p| p.merge())
-        .map(|v| serde_json::from_value::<P>(v))
-        .transpose()
-        .map_err(|source| ConfigValidationError::FieldsDeserialization {
-            source,
-            key: "task".to_string(),
-        })
 }

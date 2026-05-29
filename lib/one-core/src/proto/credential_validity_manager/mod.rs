@@ -3,14 +3,15 @@ use std::sync::Arc;
 use futures::FutureExt;
 use one_crypto::encryption::EncryptionError;
 use shared_types::{CredentialId, CredentialSchemaId, RevocationMethodId};
+use time::OffsetDateTime;
 
 use crate::config::core_config::{BlobStorageType, CoreConfig, FormatType};
 use crate::error::{
     ContextWithErrorCode, ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt, NestedError,
 };
 use crate::model::credential::{
-    Clearable, CredentialFilterValue, CredentialRelations, CredentialRole, CredentialStateEnum,
-    CredentialType, UpdateCredentialRequest,
+    Clearable, Credential, CredentialFilterValue, CredentialRelations, CredentialRole,
+    CredentialStateEnum, CredentialType, UpdateCredentialRequest,
 };
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierType};
@@ -26,6 +27,7 @@ use crate::provider::credential_formatter::model::{CertificateDetails, Identifie
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::issuance_protocol::provider::IssuanceProtocolProvider;
 use crate::provider::revocation::RevocationMethod;
+use crate::provider::revocation::mapper::revocation_state_from_credential_state;
 use crate::provider::revocation::model::{CredentialDataByRole, RevocationState};
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
@@ -213,6 +215,201 @@ impl CredentialValidityManagerImpl {
             )
             .await
             .error_while("updating credential")?;
+        Ok(())
+    }
+
+    async fn check_status_for_single_credential(
+        &self,
+        credential: &Credential,
+        credential_schema: &CredentialSchema,
+        force_refresh: bool,
+    ) -> Result<(CredentialValidityCheckResult, Option<OffsetDateTime>), Error> {
+        if let Some(result) = check_invalid_or_terminal_state(credential) {
+            return Ok((result, None));
+        }
+
+        let Some(credential_blob_id) = credential.credential_blob_id else {
+            return Err(Error::MappingError("no credential blob_id".to_string()));
+        };
+
+        let blob_storage = self
+            .blob_storage_provider
+            .get_blob_storage(BlobStorageType::Db)?;
+
+        let blob = blob_storage
+            .get(&credential_blob_id)
+            .await
+            .error_while("getting credential blob")?
+            .ok_or(Error::MappingError("credential blob is None".to_string()))?;
+
+        let credential_str = String::from_utf8(blob.value)
+            .map_err(|e| Error::MappingError(e.to_string()))?
+            .into();
+
+        let format = credential_schema
+            .format()
+            .await
+            .error_while("getting format")?;
+
+        let formatter = self
+            .formatter_provider
+            .get_credential_formatter(&format)
+            .ok_or(MissingProviderError::Formatter(format.to_string()))
+            .error_while("getting credential formatter")?;
+
+        let detail_credential = formatter
+            .extract_credentials_unverified(&credential_str, Some(credential_schema))
+            .await
+            .error_while("extracting credential")?;
+
+        let credential_status = if !detail_credential.status.is_empty() {
+            detail_credential.status
+        } else {
+            // no credential status -> credential is irrevocable
+            return Ok((
+                CredentialValidityCheckResult {
+                    credential_id: credential.id,
+                    status: CredentialStateEnum::Accepted,
+                    success: true,
+                    reason: None,
+                },
+                None,
+            ));
+        };
+
+        let current_state = credential.state;
+        let revocation_method = match &credential_schema.revocation_method {
+            Some(method_id) => self
+                .revocation_method_provider
+                .get_revocation_method(method_id)?,
+            None => {
+                return Ok((
+                    CredentialValidityCheckResult {
+                        credential_id: credential.id,
+                        status: current_state,
+                        success: false,
+                        reason: Some("No revocation method specified for credential".to_owned()),
+                    },
+                    None,
+                ));
+            }
+        };
+
+        let issuer_identifier = credential
+            .issuer_identifier
+            .as_ref()
+            .ok_or(Error::MappingError("issuer_identifier is None".to_string()))?;
+
+        let credential_data_by_role = match credential.role {
+            CredentialRole::Holder => {
+                Some(CredentialDataByRole::Holder(Box::new(credential.clone())))
+            }
+            CredentialRole::Issuer | CredentialRole::Verifier => None,
+        };
+
+        let mut worst_revocation_state = RevocationState::Valid;
+        for status in credential_status {
+            match revocation_method
+                .check_credential_revocation_status(
+                    &status,
+                    &issuer_details(issuer_identifier)?,
+                    credential_data_by_role.to_owned(),
+                    force_refresh,
+                )
+                .await
+            {
+                Err(error) => {
+                    return Ok((
+                        CredentialValidityCheckResult {
+                            credential_id: credential.id,
+                            status: current_state,
+                            success: false,
+                            reason: Some(error.to_string()),
+                        },
+                        None,
+                    ));
+                }
+                Ok(state) => match state {
+                    RevocationState::Valid => {}
+                    RevocationState::Revoked => {
+                        worst_revocation_state = state;
+                        break;
+                    }
+                    RevocationState::Suspended { .. } => {
+                        worst_revocation_state = state;
+                    }
+                },
+            };
+        }
+
+        let suspend_end_date = match &worst_revocation_state {
+            RevocationState::Suspended { suspend_end_date } => suspend_end_date.to_owned(),
+            _ => None,
+        };
+        let detected_state = worst_revocation_state.into();
+
+        // update local credential state if change detected
+        if current_state != detected_state {
+            self.credential_repository
+                .update_credential(
+                    credential.id,
+                    UpdateCredentialRequest {
+                        state: Some(detected_state),
+                        suspend_end_date: Clearable::ForceSet(suspend_end_date),
+                        ..Default::default()
+                    },
+                )
+                .await
+                .error_while("updating credential")?;
+        }
+
+        Ok((
+            CredentialValidityCheckResult {
+                credential_id: credential.id,
+                status: detected_state,
+                success: true,
+                reason: None,
+            },
+            suspend_end_date,
+        ))
+    }
+
+    async fn update_batch_parent_state(
+        &self,
+        credential: &Credential,
+        item_states: &[RevocationState],
+    ) -> Result<(), Error> {
+        if item_states.is_empty() {
+            tracing::warn!("Empty batch parent");
+            return Ok(());
+        }
+
+        let best_state = get_best_state(item_states);
+        let overall_best_suspend_end_date =
+            if let RevocationState::Suspended { suspend_end_date } = best_state {
+                suspend_end_date
+            } else {
+                None
+            };
+
+        // update parent credential state if change detected (use the best state among the items)
+        if credential.state != best_state.into()
+            || (credential.state == CredentialStateEnum::Suspended
+                && credential.suspend_end_date != overall_best_suspend_end_date)
+        {
+            self.credential_repository
+                .update_credential(
+                    credential.id,
+                    UpdateCredentialRequest {
+                        state: Some(best_state.into()),
+                        suspend_end_date: Clearable::ForceSet(overall_best_suspend_end_date),
+                        ..Default::default()
+                    },
+                )
+                .await
+                .error_while("updating batch parent credential")?;
+        }
+
         Ok(())
     }
 }
@@ -408,30 +605,9 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
             });
         }
 
-        let current_state = credential.state;
-        match current_state {
-            CredentialStateEnum::Accepted | CredentialStateEnum::Suspended => {
-                // continue flow
-            }
-            CredentialStateEnum::Revoked => {
-                // credential already revoked, no need to check further
-                return Ok(CredentialValidityCheckResult {
-                    credential_id,
-                    status: CredentialStateEnum::Revoked,
-                    success: true,
-                    reason: None,
-                });
-            }
-            _ => {
-                // cannot check pending/offered credentials etc
-                return Ok(CredentialValidityCheckResult {
-                    credential_id,
-                    success: false,
-                    reason: Some(format!("Invalid credential state: {current_state}")),
-                    status: current_state,
-                });
-            }
-        };
+        if let Some(result) = check_invalid_or_terminal_state(&credential) {
+            return Ok(result);
+        }
 
         let credential_schema = credential
             .schema
@@ -456,138 +632,120 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
             return self.update_mdoc(&credential, force_refresh).await;
         }
 
-        let credentials = if let Some(credential_blob_id) = credential.credential_blob_id {
-            let blob_storage = self
-                .blob_storage_provider
-                .get_blob_storage(BlobStorageType::Db)?;
-
-            blob_storage
-                .get(&credential_blob_id)
-                .await
-                .error_while("getting credential blob")?
-                .ok_or(Error::MappingError("credential blob is None".to_string()))?
-                .value
-        } else {
-            vec![]
-        };
-
-        let credential_str = String::from_utf8(credentials)
-            .map_err(|e| Error::MappingError(e.to_string()))?
-            .into();
-
-        let format = credential_schema
-            .format()
-            .await
-            .error_while("getting format")?;
-
-        let formatter = self
-            .formatter_provider
-            .get_credential_formatter(&format)
-            .ok_or(MissingProviderError::Formatter(format.to_string()))
-            .error_while("getting credential formatter")?;
-
-        let detail_credential = formatter
-            .extract_credentials_unverified(&credential_str, Some(&credential_schema))
-            .await
-            .error_while("extracting credential")?;
-
-        let credential_status = if !detail_credential.status.is_empty() {
-            detail_credential.status
-        } else {
-            // no credential status -> credential is irrevocable
-            return Ok(CredentialValidityCheckResult {
-                credential_id,
-                status: CredentialStateEnum::Accepted,
-                success: true,
-                reason: None,
-            });
-        };
-
-        let revocation_method = match &credential_schema.revocation_method {
-            Some(method_id) => self
-                .revocation_method_provider
-                .get_revocation_method(method_id)?,
-            None => {
-                return Ok(CredentialValidityCheckResult {
-                    credential_id,
-                    status: current_state,
-                    success: false,
-                    reason: Some("No revocation method specified for credential".to_owned()),
-                });
+        match credential.r#type {
+            CredentialType::Single => {
+                let (result, _) = self
+                    .check_status_for_single_credential(
+                        &credential,
+                        &credential_schema,
+                        force_refresh,
+                    )
+                    .await?;
+                Ok(result)
             }
-        };
+            CredentialType::BatchParent => {
+                let batch_items = self
+                    .credential_repository
+                    .get_credential_list(ListQuery {
+                        filtering: Some(
+                            CredentialFilterValue::ParentCredential(credential.id).condition(),
+                        ),
+                        ..Default::default()
+                    })
+                    .await
+                    .error_while("getting batch items")?
+                    .values;
 
-        let issuer_identifier = credential
-            .issuer_identifier
-            .as_ref()
-            .ok_or(Error::MappingError("issuer_identifier is None".to_string()))?;
-
-        let credential_data_by_role = match credential.role {
-            CredentialRole::Holder => {
-                Some(CredentialDataByRole::Holder(Box::new(credential.clone())))
-            }
-            CredentialRole::Issuer | CredentialRole::Verifier => None,
-        };
-
-        let mut worst_revocation_state = RevocationState::Valid;
-        for status in credential_status {
-            match revocation_method
-                .check_credential_revocation_status(
-                    &status,
-                    &issuer_details(issuer_identifier)?,
-                    credential_data_by_role.to_owned(),
-                    force_refresh,
-                )
-                .await
-            {
-                Err(error) => {
+                if batch_items.is_empty() {
                     return Ok(CredentialValidityCheckResult {
-                        credential_id,
-                        status: current_state,
+                        credential_id: credential.id,
+                        status: credential.state,
                         success: false,
-                        reason: Some(error.to_string()),
+                        reason: Some("No batch items found".to_owned()),
                     });
                 }
-                Ok(state) => match state {
-                    RevocationState::Valid => {}
-                    RevocationState::Revoked => {
-                        worst_revocation_state = state;
-                        break;
+
+                let mut item_states = vec![];
+                for batch_item in batch_items {
+                    let (result, suspend_end_date) = self
+                        .check_status_for_single_credential(
+                            &batch_item,
+                            &credential_schema,
+                            force_refresh,
+                        )
+                        .await?;
+
+                    if !result.success {
+                        return Ok(CredentialValidityCheckResult {
+                            credential_id: credential.id,
+                            status: credential.state,
+                            ..result
+                        });
                     }
-                    RevocationState::Suspended { .. } => {
-                        worst_revocation_state = state;
+
+                    item_states.push(
+                        revocation_state_from_credential_state(result.status, suspend_end_date)
+                            .error_while("parsing status")?,
+                    );
+                }
+
+                self.update_batch_parent_state(&credential, &item_states)
+                    .await?;
+
+                Ok(CredentialValidityCheckResult {
+                    credential_id: credential.id,
+                    status: get_best_state(&item_states).into(),
+                    success: true,
+                    reason: None,
+                })
+            }
+            CredentialType::BatchItem => {
+                let (result, _) = self
+                    .check_status_for_single_credential(
+                        &credential,
+                        &credential_schema,
+                        force_refresh,
+                    )
+                    .await?;
+
+                if result.success {
+                    let parent = credential
+                        .parent
+                        .as_ref()
+                        .ok_or(Error::MappingError("Missing batch item parent".to_string()))?
+                        .get()
+                        .await
+                        .error_while("getting batch parent")?;
+
+                    if parent.r#type == CredentialType::BatchParent {
+                        let batch_items = self
+                            .credential_repository
+                            .get_credential_list(ListQuery {
+                                filtering: Some(
+                                    CredentialFilterValue::ParentCredential(parent.id).condition(),
+                                ),
+                                ..Default::default()
+                            })
+                            .await
+                            .error_while("getting batch items")?
+                            .values;
+
+                        let item_states = batch_items
+                            .into_iter()
+                            .map(|c| {
+                                revocation_state_from_credential_state(c.state, c.suspend_end_date)
+                            })
+                            .collect::<Result<Vec<_>, _>>()
+                            .error_while("getting batch items states")?;
+
+                        self.update_batch_parent_state(&parent, &item_states)
+                            .await?;
                     }
-                },
-            };
+                }
+
+                Ok(result)
+            }
         }
-
-        let suspend_end_date = match &worst_revocation_state {
-            RevocationState::Suspended { suspend_end_date } => suspend_end_date.to_owned(),
-            _ => None,
-        };
-        let detected_state = worst_revocation_state.into();
-
-        // update local credential state if change detected
-        if current_state != detected_state {
-            self.credential_repository
-                .update_credential(
-                    credential_id,
-                    UpdateCredentialRequest {
-                        state: Some(detected_state),
-                        suspend_end_date: Clearable::ForceSet(suspend_end_date),
-                        ..Default::default()
-                    },
-                )
-                .await
-                .error_while("updating credential")?;
-        }
-
-        Ok(CredentialValidityCheckResult {
-            credential_id,
-            status: detected_state,
-            success: true,
-            reason: None,
-        })
     }
 }
 
@@ -661,4 +819,71 @@ fn validate_state_transition(
         });
     }
     Ok(())
+}
+
+/// Give result if it can be determined based on the current state itself
+fn check_invalid_or_terminal_state(
+    credential: &Credential,
+) -> Option<CredentialValidityCheckResult> {
+    match credential.state {
+        CredentialStateEnum::Accepted | CredentialStateEnum::Suspended => {
+            // continue flow
+            None
+        }
+        CredentialStateEnum::Revoked => {
+            // credential already revoked, no need to check further
+            Some(CredentialValidityCheckResult {
+                credential_id: credential.id,
+                status: CredentialStateEnum::Revoked,
+                success: true,
+                reason: None,
+            })
+        }
+        status => {
+            // cannot check pending/offered credentials etc
+            Some(CredentialValidityCheckResult {
+                credential_id: credential.id,
+                status,
+                success: false,
+                reason: Some(format!("Invalid credential state: {status}")),
+            })
+        }
+    }
+}
+
+fn get_best_state(states: &[RevocationState]) -> RevocationState {
+    let mut best_state = RevocationState::Revoked;
+
+    for state in states {
+        match state {
+            RevocationState::Valid => {
+                return RevocationState::Valid;
+            }
+            RevocationState::Suspended {
+                suspend_end_date: parsed_suspend_end_date,
+            } => {
+                best_state = if let RevocationState::Suspended {
+                    suspend_end_date: Some(current_best_suspend_end_date),
+                } = best_state
+                {
+                    if let Some(parsed_suspend_end_date) = parsed_suspend_end_date {
+                        RevocationState::Suspended {
+                            suspend_end_date: Some(
+                                current_best_suspend_end_date.min(*parsed_suspend_end_date),
+                            ),
+                        }
+                    } else {
+                        best_state
+                    }
+                } else {
+                    *state
+                };
+            }
+            RevocationState::Revoked => {
+                // try next
+            }
+        };
+    }
+
+    best_state
 }

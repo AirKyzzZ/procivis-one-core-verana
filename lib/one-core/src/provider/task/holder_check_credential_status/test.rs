@@ -34,8 +34,8 @@ use crate::provider::revocation::MockRevocationMethod;
 use crate::provider::revocation::model::RevocationState;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::task::Task;
+use crate::provider::task::holder_check_credential_status::HolderCheckCredentialStatus;
 use crate::provider::task::holder_check_credential_status::dto::HolderCheckCredentialStatusResultDTO;
-use crate::provider::task::holder_check_credential_status::{HolderCheckCredentialStatus, Params};
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::service::test_utilities::{dummy_organisation, generic_config, get_dummy_date};
 
@@ -153,13 +153,8 @@ async fn test_task_holder_check_credential_status_being_revoked() {
         ..Default::default()
     });
 
-    let params = Params {
-        organisation_id: None,
-        force_refresh: None,
-    };
-
     let holder_check_credential_status =
-        HolderCheckCredentialStatus::new(Some(params), credential_repository, validity_manager);
+        HolderCheckCredentialStatus::new(credential_repository, validity_manager);
 
     // when
     let result = holder_check_credential_status.run(None).await;

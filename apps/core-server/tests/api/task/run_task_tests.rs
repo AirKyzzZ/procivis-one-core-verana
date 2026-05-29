@@ -553,16 +553,7 @@ async fn test_run_task_holder_check_credential_status_with_params_none_existing_
         &key_pair,
     );
 
-    let non_existing_organisation_id = Uuid::new_v4();
-    let additional_config = indoc::formatdoc! {"
-        task:
-            HOLDER_CHECK_CREDENTIAL_STATUS:
-                params:
-                    public:
-                        organisationId: {non_existing_organisation_id}
-    "};
-
-    let (context, organisation) = TestContext::new_with_organisation(Some(additional_config)).await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
     let holder_key = context
         .db
         .keys
@@ -684,11 +675,14 @@ async fn test_run_task_holder_check_credential_status_with_params_none_existing_
         .get_by_entity_id(&credential.id.into())
         .await;
 
+    let non_existing_organisation_id = Uuid::new_v4();
+    let params = json!({ "organisationId": non_existing_organisation_id });
+
     // WHEN
     let resp = context
         .api
         .tasks
-        .run("HOLDER_CHECK_CREDENTIAL_STATUS")
+        .run_with_params("HOLDER_CHECK_CREDENTIAL_STATUS", params)
         .await;
 
     // THEN
