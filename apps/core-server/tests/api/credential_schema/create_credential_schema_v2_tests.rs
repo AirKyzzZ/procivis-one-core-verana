@@ -109,6 +109,52 @@ async fn test_create_credential_schema_v2_success_multiple_formats() {
 }
 
 #[tokio::test]
+async fn test_create_credential_schema_v2_mdoc_with_jwt_without_root_object_succeeds() {
+    // given
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let flat_claims = vec![TestClaim {
+        datatype: "STRING".to_string(),
+        key: "firstName".to_string(),
+        required: true,
+        claims: vec![],
+        array: None,
+        translations: None,
+    }];
+
+    // when
+    let resp = context
+        .api
+        .credential_schemas
+        .create_v2(CreateSchemaV2Params {
+            name: "mdoc and jwt schema".into(),
+            organisation_id: organisation.id.into(),
+            formats: vec![
+                jwt_format(),
+                serde_json::json!({ "format": "MDOC", "schemaId": "org.example.test" }),
+            ],
+            claims: flat_claims,
+            ..Default::default()
+        })
+        .await;
+
+    // then
+    assert_eq!(resp.status(), 201);
+    let id = resp.json_value().await["id"].parse::<uuid::Uuid>();
+
+    let resp = context.api.credential_schemas.get_v2(&id).await;
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    let formats = resp["formats"]
+        .as_array()
+        .expect("formats should be an array");
+    assert_eq!(formats.len(), 2);
+    assert!(formats.iter().any(|f| f["format"] == "JWT"));
+    assert!(formats.iter().any(|f| f["format"] == "MDOC"));
+}
+
+#[tokio::test]
 async fn test_create_credential_schema_v2_success_with_batch_size() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;

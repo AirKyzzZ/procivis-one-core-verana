@@ -77,7 +77,7 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
         };
         let formatters = vec![(format.to_owned(), formatter.clone())];
         let claim_schemas = self
-            .parse_all_claim_schemas(now, dto.schema.claims, formatters.as_ref())?
+            .parse_all_claim_schemas_v1(now, dto.schema.claims, formatters.as_ref())?
             .into_iter()
             .map(|(cs, _)| cs)
             .collect::<Vec<_>>();
@@ -358,7 +358,7 @@ impl CredentialSchemaImportParserImpl {
         Ok(format)
     }
 
-    pub(super) fn parse_all_claim_schemas(
+    pub(super) fn parse_all_claim_schemas_v1(
         &self,
         now: OffsetDateTime,
         claim_schemas: Vec<ImportCredentialSchemaClaimSchemaDTO>,
@@ -1728,7 +1728,7 @@ mod test {
         let formatters: Vec<(FormatType, Arc<dyn CredentialFormatter>)> =
             vec![(FormatType::Jwt, Arc::new(formatter))];
         // when
-        let result = parser.parse_all_claim_schemas(now, claims, &formatters);
+        let result = parser.parse_all_claim_schemas_v1(now, claims, &formatters);
 
         // then
         let_assert!(Ok(schemas) = result);
@@ -1780,7 +1780,7 @@ mod test {
         let formatters: Vec<(FormatType, Arc<dyn CredentialFormatter>)> =
             vec![(FormatType::Jwt, Arc::new(formatter))];
         // when
-        let result = parser.parse_all_claim_schemas(now, claims, &formatters);
+        let result = parser.parse_all_claim_schemas_v1(now, claims, &formatters);
 
         // then
         let_assert!(Ok(schemas) = result);
@@ -1804,7 +1804,7 @@ mod test {
             vec![(FormatType::Jwt, Arc::new(formatter))];
 
         // when
-        let result = parser.parse_all_claim_schemas(now, vec![], &formatters);
+        let result = parser.parse_all_claim_schemas_v1(now, vec![], &formatters);
 
         // then
         assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0008);
@@ -1843,7 +1843,7 @@ mod test {
             vec![(FormatType::Mdoc, Arc::new(formatter))];
 
         // when
-        let result = parser.parse_all_claim_schemas(now, claims, &formatters);
+        let result = parser.parse_all_claim_schemas_v1(now, claims, &formatters);
 
         // then
         assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0117);
