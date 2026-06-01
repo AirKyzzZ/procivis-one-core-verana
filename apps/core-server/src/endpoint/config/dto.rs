@@ -11,13 +11,14 @@ pub(crate) struct ConfigRestDTO {
     /// Credential formats for issuing, holding and verifying.
     #[schema(example = json!({}))]
     pub format: HashMap<String, Value>,
-    /// Identifier types to associate entities to schemas, credentials, trust lists and proofs.
+    /// Available identifier types. Identifiers represent entities and are used
+    /// across credential operations and certificate workflows
     #[schema(example = json!({}))]
     pub identifier: HashMap<String, Value>,
-    /// Protocols for the issuance of credentials.
+    /// Protocols for credential issuance.
     #[schema(example = json!({}))]
     pub issuance_protocol: HashMap<String, Value>,
-    /// Protocols for the verification of credentials.
+    /// Protocols for credential presentation and verification.
     #[schema(example = json!({}))]
     pub verification_protocol: HashMap<String, Value>,
     /// Transport protocols over which to communicate.
@@ -35,39 +36,61 @@ pub(crate) struct ConfigRestDTO {
     /// Key algorithms used for signatures.
     #[schema(example = json!({}))]
     pub key_algorithm: HashMap<String, Value>,
-    /// Supported key storage security levels.
+    /// Security levels for key storage. When creating a credential
+    /// schema, the required level sets the minimum key storage standard
+    /// a wallet must meet to receive issuance. On the holder side, the
+    /// level also determines the key storage used when keys are
+    /// auto-generated during issuance.
     #[schema(example = json!({}))]
     pub key_security_level: HashMap<String, Value>,
-    /// How keys are stored.
+    /// Implementations for how keys are stored.
     #[schema(example = json!({}))]
     pub key_storage: HashMap<String, Value>,
     /// Entities held in temporary storage.
     #[schema(example = json!({}))]
     pub cache_entities: HashMap<String, Value>,
-    /// Maintenance tasks
+    /// Scheduled maintenance tasks, such as credential status check,
+    /// trust collection syncing, and webhooks
     #[schema(example = json!({}))]
     pub task: HashMap<String, Value>,
-    /// Blob storage
+    /// Storage configuration for large data objects (credentials,
+    /// proofs, wallet unit attestations, registration certificates)
+    /// kept outside the main primary database table for query
+    /// performance.
     #[schema(example = json!({}))]
     pub blob_storage: HashMap<String, Value>,
-    /// Frontend configuration
+    /// Configuration values consumed by the Desk frontend, such as
+    /// feature flags and UI defaults.
     #[schema(example = json!({}))]
     pub frontend: HashMap<String, Value>,
-    /// OpenID4VCI authorization code flow
+    /// Issuer-initiated OpenID4VCI authorization code flow
     #[schema(example = json!({}))]
     pub credential_issuer: HashMap<String, Value>,
+    /// Type of engagement to use when proposing a proof (wallet),
+    /// or when creating a proof request (verifier).
     #[schema(example = json!({}))]
     pub verification_engagement: HashMap<String, Value>,
+    /// Wallet provider implementations that manage wallet app instances,
+    /// including unit attestation issuance and version constraints.
     #[schema(example = json!({}))]
     pub wallet_provider: HashMap<String, Value>,
+    /// Signing implementations referenced when creating different
+    /// certificate types, including X.509 certificates, and EUDI
+    /// Access and Registration Certificates.
     #[schema(example = json!({}))]
     pub signer: HashMap<String, Value>,
+    /// Implementations for publishing trust lists, such as ETSI LoTE.
     #[schema(example = json!({}))]
     pub trust_list_publisher: HashMap<String, Value>,
+    /// Implementations for subscribing to and consuming trust lists.
     #[schema(example = json!({}))]
     pub trust_list_subscriber: HashMap<String, Value>,
+    /// Verifier provider implementations that manage mobile verifier
+    /// deployments and their configuration.
     #[schema(example = json!({}))]
     pub verifier_provider: HashMap<String, Value>,
+    /// Default language tag for the deployment, used where no lanugage
+    /// is otherwise specified, for example, in credential schema creation.
     pub default_language: String,
 }
 

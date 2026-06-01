@@ -19,7 +19,10 @@ use crate::metrics::encode_metrics;
     ),
     tag = "other",
     summary = "Retrieve version",
-    description = "Returns version information for Procivis One.",
+    description = indoc::formatdoc! {"
+    Returns build and version information for Core service. Useful
+    for troubleshooting and when reporting issues to support.
+    "},
 )]
 pub(crate) async fn get_build_info() -> Json<Value> {
     Json::from(json!({
@@ -42,7 +45,10 @@ pub(crate) async fn get_build_info() -> Json<Value> {
     ),
     tag = "other",
     summary = "Health check",
-    description = "Returns a `204` response when the system is healthy.",
+    description = indoc::formatdoc! {"
+    Returns `204` when the system is healthy. Suitable for use as
+    a liveness probe.
+    "},
 )]
 pub(crate) async fn health_check() -> impl IntoResponse {
     StatusCode::NO_CONTENT

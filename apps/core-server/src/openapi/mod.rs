@@ -161,11 +161,14 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
         Tag::builder()
             .name("other")
             .description(Some(indoc::formatdoc! {"
-                Returns the system configuration, along with other system information.
+                System information and configuration. Use these endpoints to inspect
+                your deployment's available components - credential formats, protocols,
+                key algorithms, and many more - and to retrieve other system-level
+                information.
             "}))
             .extensions(Some(
                 Extensions::builder()
-                    .add("x-displayName", "System information")
+                    .add("x-displayName", "System Information")
                     .build(),
             ))
             .build(),
@@ -248,7 +251,7 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
             "}))
                 .extensions(Some(
                     Extensions::builder()
-                        .add("x-displayName", "Credential schemas")
+                        .add("x-displayName", "Credential Schemas")
                         .build(),
                 ))
                 .build(),
@@ -279,7 +282,7 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
             "}))
                 .extensions(Some(
                     Extensions::builder()
-                        .add("x-displayName", "Proof schemas")
+                        .add("x-displayName", "Proof Schemas")
                         .build(),
                 ))
                 .build(),
@@ -299,7 +302,7 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
             "}))
                 .extensions(Some(
                     Extensions::builder()
-                        .add("x-displayName", "Proof requests")
+                        .add("x-displayName", "Proof Requests")
                         .build(),
                 ))
                 .build(),
@@ -318,7 +321,7 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
             "}))
                 .extensions(Some(
                     Extensions::builder()
-                        .add("x-displayName", "Wallet interaction")
+                        .add("x-displayName", "Wallet Interaction")
                         .build(),
                 ))
                 .build(),
@@ -340,7 +343,7 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
             "}))
                 .extensions(Some(
                     Extensions::builder()
-                        .add("x-displayName", "Wallet instances (Provider)")
+                        .add("x-displayName", "Wallet Instances (Provider)")
                         .build(),
                 ))
                 .build(),
@@ -351,7 +354,7 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
             "}))
                 .extensions(Some(
                     Extensions::builder()
-                        .add("x-displayName", "Wallet instances (Holder)")
+                        .add("x-displayName", "Wallet Instances (Holder)")
                         .build(),
                 ))
                 .build(),
@@ -362,7 +365,7 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
             "}))
                 .extensions(Some(
                     Extensions::builder()
-                        .add("x-displayName", "Verifier instance")
+                        .add("x-displayName", "Verifier Instances")
                         .build(),
                 ))
                 .build(),
@@ -394,7 +397,7 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                 Run tasks.
             "}))
                 .extensions(Some(
-                    Extensions::builder().add("x-displayName", "Task").build(),
+                    Extensions::builder().add("x-displayName", "Tasks").build(),
                 ))
                 .build(),
             Tag::builder()
@@ -413,7 +416,7 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
             "}))
                 .extensions(Some(
                     Extensions::builder()
-                        .add("x-displayName", "Trust list publications")
+                        .add("x-displayName", "Trust List Publications")
                         .build(),
                 ))
                 .build(),
@@ -424,7 +427,7 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
             "}))
                 .extensions(Some(
                     Extensions::builder()
-                        .add("x-displayName", "Trust list collections")
+                        .add("x-displayName", "Trust List Collections")
                         .build(),
                 ))
                 .build(),

@@ -18,15 +18,16 @@ use crate::router::AppState;
     ),
     summary = "Retrieve configuration",
     description = indoc::formatdoc! {"
-    Returns the system configuration.
+    Returns the read-only system configuration, which exposes available
+    components and their instance identifiers for your deployment.
 
-    The configuration is read-only via the API but exposes the available
-    components and their instance identifiers. Use this to determine which
-    credential formats, key algorithms, DID methods, protocols, and other
-    components are available in your deployment, and how to reference them
-    in other API calls.
+    Call this during integration setup to confirm which components are
+    enabled before referencing them in subsequent calls.
 
-    Related guide: [Configuration in the API](https://docs.procivis.ch/api/configuration)
+    See [Reading the Configuration](https://docs.procivis.ch/api/configuration)
+    for general help and the
+    [Core Configuration Reference](/reference/configuration/core) for
+    complete details.
 "},
 )]
 pub(crate) async fn get_config(state: State<AppState>) -> OkOrErrorResponse<ConfigRestDTO> {
