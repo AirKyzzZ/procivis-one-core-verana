@@ -7,9 +7,10 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use model::VcClaim;
+use proc_macros::Provider;
 use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
-use shared_types::{DidValue, SerializedCredential};
+use shared_types::{CredentialFormat, DidValue, SerializedCredential};
 use time::Duration;
 use uuid::Uuid;
 
@@ -37,6 +38,7 @@ use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::provider_directory::InitializationError;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::util::key_selection::SelectedKey;
 
@@ -47,7 +49,9 @@ mod mapper;
 pub(crate) mod model;
 mod status_list;
 
+#[derive(Provider)]
 pub struct JWTFormatter {
+    config_id: CredentialFormat,
     params: Params,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
@@ -57,7 +61,7 @@ pub struct JWTFormatter {
 #[serde_as]
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Params {
+struct Params {
     #[serde_as(as = "DurationSeconds<i64>")]
     pub leeway: Duration,
     pub embed_layout_properties: bool,
@@ -68,17 +72,25 @@ pub struct Params {
 
 impl JWTFormatter {
     pub fn new(
-        params: Params,
+        config_id: CredentialFormat,
+        params: serde_json::Value,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         data_type_provider: Arc<dyn DataTypeProvider>,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, InitializationError> {
+        let params =
+            serde_json::from_value(params).map_err(|err| InitializationError::InvalidParams {
+                key: config_id.to_string(),
+                source: err,
+            })?;
+
+        Ok(Self {
+            config_id,
             params,
             key_algorithm_provider,
             did_method_provider,
             data_type_provider,
-        }
+        })
     }
 }
 
@@ -464,5 +476,9 @@ impl CredentialFormatter for JWTFormatter {
             webhook_url: None,
             parent: None,
         })
+    }
+
+    fn config_name(&self) -> &CredentialFormat {
+        &self.config_id
     }
 }

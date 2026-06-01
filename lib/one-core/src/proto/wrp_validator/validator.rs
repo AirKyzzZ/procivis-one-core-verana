@@ -291,11 +291,7 @@ impl WRPValidator for WRPValidatorImpl {
         let credential_schema_format = credential_schema.format().await?;
         let formatter_capabilities = self
             .credential_formatter_provider
-            .get_credential_formatter(&credential_schema_format)
-            .ok_or(MissingProviderError::Formatter(
-                credential_schema_format.to_string(),
-            ))
-            .error_while("getting formatter")?
+            .get_credential_formatter(&credential_schema_format)?
             .get_capabilities();
 
         let credential_schema_schema_id = credential_schema.schema_id().await?;

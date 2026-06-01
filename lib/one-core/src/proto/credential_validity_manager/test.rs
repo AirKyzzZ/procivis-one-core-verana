@@ -100,7 +100,7 @@ async fn test_check_revocation_non_revocable() {
     let formatter = Arc::new(formatter);
     formatter_provider
         .expect_get_credential_formatter()
-        .returning(move |_| Some(formatter.clone()));
+        .returning(move |_| Ok(formatter.clone()));
 
     revocation_method_provider
         .expect_get_revocation_method()
@@ -226,7 +226,7 @@ async fn test_check_revocation_becoming_revoked() {
     let formatter = Arc::new(formatter);
     formatter_provider
         .expect_get_credential_formatter()
-        .returning(move |_| Some(formatter.clone()));
+        .returning(move |_| Ok(formatter.clone()));
 
     let revocation_method = Arc::new(revocation_method);
     revocation_method_provider
@@ -338,7 +338,7 @@ async fn test_check_revocation_batch_parent_becoming_revoked() {
     let formatter = Arc::new(formatter);
     formatter_provider
         .expect_get_credential_formatter()
-        .returning(move |_| Some(formatter.clone()));
+        .returning(move |_| Ok(formatter.clone()));
 
     let revocation_method = Arc::new(revocation_method);
     revocation_method_provider
@@ -489,7 +489,7 @@ async fn test_check_revocation_batch_item_becoming_revoked() {
     let formatter = Arc::new(formatter);
     formatter_provider
         .expect_get_credential_formatter()
-        .returning(move |_| Some(formatter.clone()));
+        .returning(move |_| Ok(formatter.clone()));
 
     let revocation_method = Arc::new(revocation_method);
     revocation_method_provider

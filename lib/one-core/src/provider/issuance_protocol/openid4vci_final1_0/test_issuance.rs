@@ -156,7 +156,7 @@ async fn test_issuer_submit_succeeds() {
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .return_once(move |_| Some(Arc::new(formatter)));
+        .return_once(move |_| Ok(Arc::new(formatter)));
 
     let mut key_provider = MockKeyProvider::new();
     key_provider
@@ -326,7 +326,7 @@ async fn test_issue_credential_for_mdoc_succeeds() {
         .expect_get_credential_formatter()
         .with(eq(CredentialFormat::from("MDOC")))
         .once()
-        .return_once(move |_| Some(Arc::new(formatter)));
+        .return_once(move |_| Ok(Arc::new(formatter)));
 
     let mut key_provider = MockKeyProvider::new();
     key_provider
@@ -464,7 +464,7 @@ async fn test_issue_credential_for_existing_mdoc_succeeds() {
         .expect_get_credential_formatter()
         .with(eq(format))
         .once()
-        .return_once(move |_| Some(Arc::new(formatter)));
+        .return_once(move |_| Ok(Arc::new(formatter)));
 
     let mut key_provider = MockKeyProvider::new();
     key_provider

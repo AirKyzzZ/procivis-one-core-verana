@@ -323,10 +323,7 @@ async fn create_open_id_for_vp_presentation_definition_input_descriptor(
 
     let schema_format = credential_schema.format().await?;
     let selectively_disclosable = !formatter_provider
-        .get_credential_formatter(&schema_format)
-        .ok_or(VerificationProtocolError::Failed(
-            "missing provider".to_string(),
-        ))?
+        .get_credential_formatter(&schema_format)?
         .get_capabilities()
         .selective_disclosure
         .is_empty();

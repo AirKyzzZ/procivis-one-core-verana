@@ -197,11 +197,7 @@ pub(crate) async fn get_presentation_definition_v2(
                 .format()
                 .await
                 .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-            let formatter = formatter_provider.get_credential_formatter(&format).ok_or(
-                VerificationProtocolError::Failed(format!(
-                    "missing formatter for credential format {format}",
-                )),
-            )?;
+            let formatter = formatter_provider.get_credential_formatter(&format)?;
 
             let claims = first_matching_claims(&candidate, credential_filters, &*formatter).await?;
             let Some(claims) = claims else {

@@ -40,7 +40,6 @@ use crate::provider::issuance_protocol::{
     HolderBindingInput, IssuanceAcceptResponse, IssuanceProtocolError,
 };
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
-use crate::service::error::MissingProviderError;
 use crate::validator::validate_issuance_time;
 
 impl OpenID4VCIFinal1_0 {
@@ -326,9 +325,7 @@ impl OpenID4VCIFinal1_0 {
         let credential_schema_format = schema.format().await?;
         let formatter = self
             .formatter_provider
-            .get_credential_formatter(&credential_schema_format)
-            .ok_or_else(|| MissingProviderError::Formatter(credential_schema_format.to_string()))
-            .error_while("getting credential formatter")?;
+            .get_credential_formatter(&credential_schema_format)?;
 
         let extracted = formatter
             .extract_credentials(&updated_credential, Some(schema), self.verification_fn())

@@ -115,6 +115,7 @@ async fn test_format_credential() {
 
     let expiration_time = Duration::days(1);
     let sd_formatter = SDJWTFormatter {
+        config_id: "SD_JWT".into(),
         crypto: Arc::new(crypto),
         did_method_provider: Arc::new(did_method_provider),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
@@ -294,6 +295,7 @@ async fn test_format_credential_with_array() {
         .return_once(move |_| Ok(did_document));
 
     let sd_formatter = SDJWTFormatter {
+        config_id: "SD_JWT".into(),
         crypto: Arc::new(crypto),
         did_method_provider: Arc::new(did_method_provider),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
@@ -423,6 +425,7 @@ async fn test_format_credential_with_array_sd() {
         .return_once(move |_| Ok(did_document));
 
     let sd_formatter = SDJWTFormatter {
+        config_id: "SD_JWT".into(),
         crypto: Arc::new(crypto),
         did_method_provider: Arc::new(did_method_provider),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
@@ -553,6 +556,7 @@ async fn test_extract_credentials() {
     let leeway = Duration::seconds(45);
 
     let sd_formatter = SDJWTFormatter {
+        config_id: "SD_JWT".into(),
         crypto: Arc::new(crypto),
         did_method_provider: Arc::new(MockDidMethodProvider::new()),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
@@ -724,6 +728,7 @@ async fn test_extract_credentials_with_array() {
     let leeway = Duration::seconds(45);
 
     let sd_formatter = SDJWTFormatter {
+        config_id: "SD_JWT".into(),
         crypto: Arc::new(crypto),
         did_method_provider: Arc::new(MockDidMethodProvider::new()),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
@@ -844,6 +849,7 @@ async fn test_extract_credentials_with_array_stripped() {
     let leeway = Duration::seconds(45);
 
     let sd_formatter = SDJWTFormatter {
+        config_id: "SD_JWT".into(),
         crypto: Arc::new(crypto),
         did_method_provider: Arc::new(MockDidMethodProvider::new()),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
@@ -983,6 +989,7 @@ async fn test_extract_credentials_with_array_stripped() {
 #[test]
 fn test_get_capabilities() {
     let sd_formatter = SDJWTFormatter {
+        config_id: "SD_JWT".into(),
         crypto: Arc::new(MockCryptoProvider::default()),
         did_method_provider: Arc::new(MockDidMethodProvider::new()),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
@@ -1079,12 +1086,12 @@ fn base64_urlsafe(s: &str) -> String {
 async fn test_parse_credential() {
     const CREDENTIAL: &str = "eyJhbGciOiJFUzI1NiIsImtpZCI6ImRpZDprZXk6ekRuYWVidnlWcHdHM1I3UWoxem5yVnk5cnRzaTZOOFRnaldQS1poeUJkYTJxdjU4dyN6RG5hZWJ2eVZwd0czUjdRajF6bnJWeTlydHNpNk44VGdqV1BLWmh5QmRhMnF2NTh3IiwidHlwIjoiU0RfSldUIn0.eyJpYXQiOjE3NjA1NDEyNzcsImV4cCI6MTgyMzYxMzI3NywibmJmIjoxNzYwNTQxMjc3LCJpc3MiOiJkaWQ6a2V5OnpEbmFlYnZ5VnB3RzNSN1FqMXpuclZ5OXJ0c2k2TjhUZ2pXUEtaaHlCZGEycXY1OHciLCJzdWIiOiJkaWQ6a2V5OnpEbmFla29NQzJzRmtnY0ZMcDNLNG5uR1VGVXFZbzhnb1dzanQzc0FmaE5BVjlFUzkiLCJ2YyI6eyJpc3N1ZXIiOiJkaWQ6a2V5OnpEbmFlYnZ5VnB3RzNSN1FqMXpuclZ5OXJ0c2k2TjhUZ2pXUEtaaHlCZGEycXY1OHciLCJ2YWxpZEZyb20iOiIyMDI1LTEwLTE1VDE1OjE0OjM3LjgyMTU4NzAxOFoiLCJ2YWxpZFVudGlsIjoiMjAyNy0xMC0xNVQxNToxNDozNy44MjE1ODcwMThaIiwiQGNvbnRleHQiOlsiaHR0cHM6Ly93d3cudzMub3JnL25zL2NyZWRlbnRpYWxzL3YyIiwiaHR0cHM6Ly9jb3JlLmRldi5wcm9jaXZpcy1vbmUuY29tL3NzaS9jb250ZXh0L3YxLzMwOTk0ODg5LTJkYzYtNGE4Mi1hYzQxLTc0ZWM1Y2MxODdiYSJdLCJ0eXBlIjpbIlZlcmlmaWFibGVDcmVkZW50aWFsIiwiQXJyYXlzQW5kT2JqZWN0cyJdLCJjcmVkZW50aWFsU3ViamVjdCI6eyJfc2QiOlsiUFdxMVZFRVRuTDBsWWU0OG84QllrWnRzdzZFSGltZ1c5MmNHcXZ1REtmQSIsInA4b0t2YzEzeHJxYUdpeFVZbjdfU00wM2RjM2hkSG5uTmhVdjRyVy1yY0EiLCJ3WWRoOGZibW1kbThHREVCQ0xvaVZ5ZGEzRFZlUEFMX01vZW52NWRDRjdZIl19LCJjcmVkZW50aWFsU3RhdHVzIjp7ImlkIjoidXJuOnV1aWQ6ZjZkOWVmNDUtNWNlYy00ZTA2LWFlZjMtODExN2JjMmRlZTdhIiwidHlwZSI6IkJpdHN0cmluZ1N0YXR1c0xpc3RFbnRyeSIsInN0YXR1c1B1cnBvc2UiOiJyZXZvY2F0aW9uIiwic3RhdHVzTGlzdENyZWRlbnRpYWwiOiJodHRwczovL2NvcmUuZGV2LnByb2NpdmlzLW9uZS5jb20vc3NpL3Jldm9jYXRpb24vdjEvbGlzdC82NWZhOTUwNS0wNTVkLTRkNDAtODI2MC1jZGY2ODBmOWQ5YzciLCJzdGF0dXNMaXN0SW5kZXgiOiI3In0sImNyZWRlbnRpYWxTY2hlbWEiOnsiaWQiOiJodHRwczovL2NvcmUuZGV2LnByb2NpdmlzLW9uZS5jb20vc3NpL3NjaGVtYS92MS8zMDk5NDg4OS0yZGM2LTRhODItYWM0MS03NGVjNWNjMTg3YmEiLCJ0eXBlIjoiUHJvY2l2aXNPbmVTY2hlbWEyMDI0In19LCJfc2RfYWxnIjoic2hhLTI1NiJ9.aq6OyVAF39Zx6KZsUq6dBbfTR5uVofnf2mAkBZVglfc6Hdvf-PIlI161XXCn7hp4vw_Zi8e0bCDkW-93YgUpKg~WyJ5ZjJKSGktSzI2UFFDU0lnYllCamdRIiwiaG91c2UiLCJ0ZXN0IGhvdXNlIl0~WyI0Vm1KVHY1U2R3emNvV2gzRnhsYjBBIiwic3RyZWV0IiwidGVzdCBzdHJlZXQiXQ~WyJLNnNUaEJfcm02a1h4c0ZudXBSTGhnIiwiQWRkcmVzcyIseyJfc2QiOlsiS19pT1EybVFXSl9Zekt1VEhWSEdVZDVoUUVBTVVjakVmUFZFUlBDTk5LNCIsImVTTjVxemVuZXFaT2JpQXluQ1NrMWlZR3VDeUhNVm5MNXhXWWJpY2hYUzgiXX1d~WyJJZC13bDZPVjRwQVdrbUt1bkFWemRRIiwiTmFtZSIsIlRlc3QgTmFtZSJd~WyJ4MGp6dGhHNGplRFlBNnZHQjk5b09RIiwiQ0giXQ~WyJ2cFNBbnZ3R0hkUldoVXctNDZuVE5BIiwiVVQiXQ~WyJwUjdpa3RRaVVUeTRxMTFySGg4eURRIiwiTmF0aW9uYWxpdGllcyIsW3siLi4uIjoidDNGek1kTlFXbU5OLUNlSk1tdGx0T3lrd1MxeTdyLW5SeU5vd2tLU0hPOCJ9LHsiLi4uIjoiaWxDdWpaQWxZWlFuWWpsZTJfNmlELWFIdWc1NG1kWWFsMXdYOWkteXUtayJ9XV0~";
 
-    let params = Params {
-        leeway: Duration::seconds(60),
-        embed_layout_properties: false,
-        sd_array_elements: true,
-        expiration_time: Duration::days(1),
-    };
+    let params = json!({
+        "leeway": 60,
+        "embedLayoutProperties": false,
+        "sdArrayElements": true,
+        "expirationTime": 86_400
+    });
 
     let hashers = hashmap! {
         "sha-256".to_string() => Arc::new(SHA256) as Arc<dyn one_crypto::Hasher>
@@ -1124,13 +1131,15 @@ async fn test_parse_credential() {
         .returning(|name| Ok((name.into(), Arc::new(MockDidMethod::new()))));
 
     let formatter = SDJWTFormatter::new(
+        "SD_JWT".into(),
         params,
         crypto,
         Arc::new(did_method_provider),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(datatype_provider),
         Arc::new(MockHttpClient::new()),
-    );
+    )
+    .unwrap();
 
     let mut verify_mock = MockTokenVerifier::new();
     verify_mock.expect_verify().return_once(|_, _, _, _| Ok(()));
@@ -1281,12 +1290,12 @@ async fn test_parse_credential() {
 #[tokio::test]
 async fn test_parse_credential_cnf() {
     const CREDENTIAL: &str = "eyJhbGciOiJFUzI1NiIsImtpZCI6ImRpZDprZXk6ekRuYWVidnlWcHdHM1I3UWoxem5yVnk5cnRzaTZOOFRnaldQS1poeUJkYTJxdjU4dyN6RG5hZWJ2eVZwd0czUjdRajF6bnJWeTlydHNpNk44VGdqV1BLWmh5QmRhMnF2NTh3IiwidHlwIjoiU0RfSldUIn0.eyJpYXQiOjE3NjA1NDEyNzcsImV4cCI6MTgyMzYxMzI3NywibmJmIjoxNzYwNTQxMjc3LCJpc3MiOiJkaWQ6a2V5OnpEbmFlYnZ5VnB3RzNSN1FqMXpuclZ5OXJ0c2k2TjhUZ2pXUEtaaHlCZGEycXY1OHciLCJjbmYiOnsiandrIjp7Imt0eSI6IkVDIiwiY3J2IjoiUC0yNTYiLCJ4IjoiTHFQNWlyNGFYRW5na3N3SnZIeEpoLVFDUmNLYjBDZzBiUkxCMXZydUVXWSIsInkiOiJXLVNfZUlPbHp1d1BGcVpaYzBkZFlSbDNOVzZNdlRTQUtXMkpKS3lkNjJVIn19LCJ2YyI6eyJpc3N1ZXIiOiJkaWQ6a2V5OnpEbmFlYnZ5VnB3RzNSN1FqMXpuclZ5OXJ0c2k2TjhUZ2pXUEtaaHlCZGEycXY1OHciLCJ2YWxpZEZyb20iOiIyMDI1LTEwLTE1VDE1OjE0OjM3LjgyMTU4NzAxOFoiLCJ2YWxpZFVudGlsIjoiMjAyNy0xMC0xNVQxNToxNDozNy44MjE1ODcwMThaIiwiQGNvbnRleHQiOlsiaHR0cHM6Ly93d3cudzMub3JnL25zL2NyZWRlbnRpYWxzL3YyIiwiaHR0cHM6Ly9jb3JlLmRldi5wcm9jaXZpcy1vbmUuY29tL3NzaS9jb250ZXh0L3YxLzMwOTk0ODg5LTJkYzYtNGE4Mi1hYzQxLTc0ZWM1Y2MxODdiYSJdLCJ0eXBlIjpbIlZlcmlmaWFibGVDcmVkZW50aWFsIiwiQXJyYXlzQW5kT2JqZWN0cyJdLCJjcmVkZW50aWFsU3ViamVjdCI6eyJfc2QiOlsiUFdxMVZFRVRuTDBsWWU0OG84QllrWnRzdzZFSGltZ1c5MmNHcXZ1REtmQSIsInA4b0t2YzEzeHJxYUdpeFVZbjdfU00wM2RjM2hkSG5uTmhVdjRyVy1yY0EiLCJ3WWRoOGZibW1kbThHREVCQ0xvaVZ5ZGEzRFZlUEFMX01vZW52NWRDRjdZIl19LCJjcmVkZW50aWFsU3RhdHVzIjp7ImlkIjoidXJuOnV1aWQ6ZjZkOWVmNDUtNWNlYy00ZTA2LWFlZjMtODExN2JjMmRlZTdhIiwidHlwZSI6IkJpdHN0cmluZ1N0YXR1c0xpc3RFbnRyeSIsInN0YXR1c1B1cnBvc2UiOiJyZXZvY2F0aW9uIiwic3RhdHVzTGlzdENyZWRlbnRpYWwiOiJodHRwczovL2NvcmUuZGV2LnByb2NpdmlzLW9uZS5jb20vc3NpL3Jldm9jYXRpb24vdjEvbGlzdC82NWZhOTUwNS0wNTVkLTRkNDAtODI2MC1jZGY2ODBmOWQ5YzciLCJzdGF0dXNMaXN0SW5kZXgiOiI3In0sImNyZWRlbnRpYWxTY2hlbWEiOnsiaWQiOiJodHRwczovL2NvcmUuZGV2LnByb2NpdmlzLW9uZS5jb20vc3NpL3NjaGVtYS92MS8zMDk5NDg4OS0yZGM2LTRhODItYWM0MS03NGVjNWNjMTg3YmEiLCJ0eXBlIjoiUHJvY2l2aXNPbmVTY2hlbWEyMDI0In19LCJfc2RfYWxnIjoic2hhLTI1NiJ9.aq6OyVAF39Zx6KZsUq6dBbfTR5uVofnf2mAkBZVglfc6Hdvf-PIlI161XXCn7hp4vw_Zi8e0bCDkW-93YgUpKg~WyJ5ZjJKSGktSzI2UFFDU0lnYllCamdRIiwiaG91c2UiLCJ0ZXN0IGhvdXNlIl0~WyI0Vm1KVHY1U2R3emNvV2gzRnhsYjBBIiwic3RyZWV0IiwidGVzdCBzdHJlZXQiXQ~WyJLNnNUaEJfcm02a1h4c0ZudXBSTGhnIiwiQWRkcmVzcyIseyJfc2QiOlsiS19pT1EybVFXSl9Zekt1VEhWSEdVZDVoUUVBTVVjakVmUFZFUlBDTk5LNCIsImVTTjVxemVuZXFaT2JpQXluQ1NrMWlZR3VDeUhNVm5MNXhXWWJpY2hYUzgiXX1d~WyJJZC13bDZPVjRwQVdrbUt1bkFWemRRIiwiTmFtZSIsIlRlc3QgTmFtZSJd~WyJ4MGp6dGhHNGplRFlBNnZHQjk5b09RIiwiQ0giXQ~WyJ2cFNBbnZ3R0hkUldoVXctNDZuVE5BIiwiVVQiXQ~WyJwUjdpa3RRaVVUeTRxMTFySGg4eURRIiwiTmF0aW9uYWxpdGllcyIsW3siLi4uIjoidDNGek1kTlFXbU5OLUNlSk1tdGx0T3lrd1MxeTdyLW5SeU5vd2tLU0hPOCJ9LHsiLi4uIjoiaWxDdWpaQWxZWlFuWWpsZTJfNmlELWFIdWc1NG1kWWFsMXdYOWkteXUtayJ9XV0~";
-    let params = Params {
-        leeway: Duration::seconds(60),
-        embed_layout_properties: false,
-        sd_array_elements: true,
-        expiration_time: Duration::days(1),
-    };
+    let params = json!({
+        "leeway": 60,
+        "embedLayoutProperties": false,
+        "sdArrayElements": true,
+        "expirationTime": 86_400
+    });
 
     let hashers = hashmap! {
         "sha-256".to_string() => Arc::new(SHA256) as Arc<dyn one_crypto::Hasher>
@@ -1336,13 +1345,15 @@ async fn test_parse_credential_cnf() {
     });
 
     let formatter = SDJWTFormatter::new(
+        "SD_JWT".into(),
         params,
         crypto,
         Arc::new(did_method_provider),
         Arc::new(key_algorithm_provider),
         Arc::new(datatype_provider),
         Arc::new(MockHttpClient::new()),
-    );
+    )
+    .unwrap();
 
     let mut verify_mock = MockTokenVerifier::new();
     verify_mock.expect_verify().return_once(|_, _, _, _| Ok(()));

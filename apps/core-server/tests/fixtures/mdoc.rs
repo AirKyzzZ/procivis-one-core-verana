@@ -1,5 +1,4 @@
 use one_core::model::certificate::{Certificate, CertificateState};
-use one_core::provider::credential_formatter::mdoc_formatter::Params;
 use one_core::provider::credential_formatter::model::CredentialData;
 use one_core::util::test_mdoc::format_mdoc_credential as format_mdoc;
 use rcgen::CertificateParams;
@@ -10,7 +9,7 @@ use crate::fixtures::certificate::{create_ca_cert, create_cert, ecdsa, eddsa};
 
 pub(crate) async fn format_mdoc_credential(
     mut credential_data: CredentialData,
-    params: Params,
+    params: serde_json::Value,
 ) -> SerializedCredential {
     let mut ca_params = CertificateParams::default();
     let (ca_cert, ca_issuer) = create_ca_cert(&mut ca_params, eddsa::Key);

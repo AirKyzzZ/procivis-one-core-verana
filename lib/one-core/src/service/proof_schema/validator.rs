@@ -17,7 +17,6 @@ use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::{Features, SelectiveDisclosure};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::repository::proof_schema_repository::ProofSchemaRepository;
-use crate::service::error::MissingProviderError;
 
 pub async fn proof_schema_name_already_exists(
     repository: &dyn ProofSchemaRepository,
@@ -41,10 +40,7 @@ pub async fn throw_if_invalid_credential_combination(
     if schemas.len() > 1 {
         for schema in schemas {
             let schema_format = schema.format().await?;
-            let formatter = formatter_provider
-                .get_credential_formatter(&schema_format)
-                .ok_or(MissingProviderError::Formatter(schema_format.to_string()))
-                .error_while("getting credential formatter")?;
+            let formatter = formatter_provider.get_credential_formatter(&schema_format)?;
 
             if !formatter
                 .get_capabilities()
@@ -108,10 +104,7 @@ pub(super) async fn extract_claims_from_credential_schema(
             })?;
 
         let schema_format = credential_schema.format().await?;
-        let formatter = formatter_provider
-            .get_credential_formatter(&schema_format)
-            .ok_or(MissingProviderError::Formatter(schema_format.to_string()))
-            .error_while("getting formatter")?;
+        let formatter = formatter_provider.get_credential_formatter(&schema_format)?;
 
         let claims = credential_schema
             .claim_schemas

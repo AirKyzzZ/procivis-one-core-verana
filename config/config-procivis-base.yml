@@ -35,6 +35,7 @@ format:
     type: "MDOC"
     display: "format.mdoc"
     order: 100
+    priority: 100
     params:
       public:
         msoExpiresIn: 259200 # 72h in seconds

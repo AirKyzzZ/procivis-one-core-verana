@@ -447,7 +447,7 @@ impl BitstringStatusList {
 
         self.formatter_provider
             .get_credential_formatter(&format)
-            .ok_or_else(|| RevocationError::FormatterNotFound(self.params.format.to_string()))
+            .map_err(|_| RevocationError::FormatterNotFound(self.params.format.to_string()))
     }
 
     fn get_formatter_for_parsing(
@@ -475,7 +475,7 @@ impl BitstringStatusList {
 
         self.formatter_provider
             .get_credential_formatter(&format)
-            .ok_or_else(|| RevocationError::FormatterNotFound(format.to_string()))
+            .map_err(|_| RevocationError::FormatterNotFound(format.to_string()))
     }
 
     fn create_credential_status(

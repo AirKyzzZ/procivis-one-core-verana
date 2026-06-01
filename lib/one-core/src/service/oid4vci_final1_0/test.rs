@@ -379,7 +379,7 @@ async fn test_get_issuer_metadata_jwt() {
     formatter_provider
         .expect_get_credential_formatter()
         .with(eq(CredentialFormat::from("JWT")))
-        .return_once(move |_| Some(Arc::new(formatter)));
+        .return_once(move |_| Ok(Arc::new(formatter)));
 
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut schema = generic_credential_schema();
@@ -517,7 +517,7 @@ async fn test_get_issuer_metadata_sd_jwt() {
     formatter_provider
         .expect_get_credential_formatter()
         .with(eq(CredentialFormat::from("SD_JWT")))
-        .return_once(move |_| Some(Arc::new(formatter)));
+        .return_once(move |_| Ok(Arc::new(formatter)));
 
     let mut schema = generic_credential_schema();
     schema.organisation = generic_organisation().into();
@@ -653,7 +653,7 @@ async fn test_get_issuer_metadata_mdoc() {
     formatter_provider
         .expect_get_credential_formatter()
         .with(eq(CredentialFormat::from("MDOC")))
-        .return_once(move |_| Some(Arc::new(formatter)));
+        .return_once(move |_| Ok(Arc::new(formatter)));
 
     let mut schema = generic_credential_schema();
     schema.formats = vec![CredentialSchemaFormat {
@@ -813,7 +813,7 @@ async fn test_get_issuer_metadata_includes_schema_translations() {
     formatter_provider
         .expect_get_credential_formatter()
         .with(eq(CredentialFormat::from("JWT")))
-        .return_once(move |_| Some(Arc::new(formatter)));
+        .return_once(move |_| Ok(Arc::new(formatter)));
 
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut schema = generic_credential_schema();
@@ -963,7 +963,7 @@ async fn test_get_issuer_metadata_includes_claim_translations() {
     formatter_provider
         .expect_get_credential_formatter()
         .with(eq(CredentialFormat::from("JWT")))
-        .return_once(move |_| Some(Arc::new(formatter)));
+        .return_once(move |_| Ok(Arc::new(formatter)));
 
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut schema = generic_credential_schema();

@@ -184,6 +184,7 @@ fn get_credential_data_with_array(status: CredentialStatus, core_base_url: &str)
 async fn test_format_credential() {
     let expiration_time = Duration::days(1);
     let formatter = JWTFormatter {
+        config_id: "JWT".into(),
         params: Params {
             leeway: Duration::seconds(45),
             embed_layout_properties: false,
@@ -281,6 +282,7 @@ async fn test_format_credential_with_layout_properties() {
     let leeway = Duration::seconds(45);
 
     let formatter = JWTFormatter {
+        config_id: "JWT".into(),
         params: Params {
             leeway,
             embed_layout_properties: true,
@@ -375,6 +377,7 @@ async fn test_format_credential_nested_array() {
     let leeway = Duration::seconds(45);
 
     let sd_formatter = JWTFormatter {
+        config_id: "JWT".into(),
         params: Params {
             leeway,
             embed_layout_properties: false,
@@ -459,6 +462,7 @@ async fn test_extract_credentials() {
     let leeway = Duration::seconds(45);
 
     let jwt_formatter = JWTFormatter {
+        config_id: "JWT".into(),
         params: Params {
             leeway,
             embed_layout_properties: false,
@@ -568,6 +572,7 @@ async fn test_extract_credentials_nested_array() {
     let leeway = Duration::seconds(45);
 
     let jwt_formatter = JWTFormatter {
+        config_id: "JWT".into(),
         params: Params {
             leeway,
             embed_layout_properties: false,
@@ -672,6 +677,7 @@ async fn test_format_credential_presentation() {
         IlZhbDEifX0sIl9zZF9hbGciOiJzaGEtMjU2In0.QUJD";
 
     let jwt_formatter = JWTFormatter {
+        config_id: "JWT".into(),
         params: Params {
             leeway: Duration::seconds(45),
             embed_layout_properties: false,
@@ -710,6 +716,7 @@ async fn test_format_credential_presentation() {
 #[test]
 fn test_get_capabilities() {
     let jwt_formatter = JWTFormatter {
+        config_id: "JWT".into(),
         params: Params {
             leeway: Duration::seconds(123),
             embed_layout_properties: false,
@@ -733,6 +740,7 @@ fn test_get_capabilities() {
 #[test]
 fn test_schema_id() {
     let formatter = JWTFormatter {
+        config_id: "JWT".into(),
         params: Params {
             leeway: Duration::seconds(123),
             embed_layout_properties: false,
@@ -795,6 +803,7 @@ async fn test_parse_credential() {
         .returning(|name| Ok((name.into(), Arc::new(MockDidMethod::new()))));
 
     let jwt_formatter = JWTFormatter {
+        config_id: "JWT".into(),
         params: Params {
             leeway: Duration::seconds(45),
             embed_layout_properties: false,

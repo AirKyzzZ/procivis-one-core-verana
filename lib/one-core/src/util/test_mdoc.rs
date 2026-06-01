@@ -16,7 +16,7 @@ use crate::provider::caching_loader::android_attestation_crl::{
 };
 use crate::provider::caching_loader::x509_crl::{X509CrlCache, X509CrlResolver};
 use crate::provider::credential_formatter::CredentialFormatter;
-use crate::provider::credential_formatter::mdoc_formatter::{MdocFormatter, Params};
+use crate::provider::credential_formatter::mdoc_formatter::MdocFormatter;
 use crate::provider::credential_formatter::model::{AuthenticationFn, CredentialData};
 use crate::provider::data_type::provider::data_type_provider_from_config;
 use crate::provider::did_method::provider::MockDidMethodProvider;
@@ -30,7 +30,7 @@ use crate::service::test_utilities::{dummy_did_document, generic_config};
 
 pub async fn format_mdoc_credential(
     credential_data: CredentialData,
-    params: Params,
+    params: serde_json::Value,
     auth_fn: AuthenticationFn,
 ) -> SerializedCredential {
     let crl_cache = Arc::new(X509CrlCache::new(
@@ -77,6 +77,7 @@ pub async fn format_mdoc_credential(
     let mut config = generic_config().core;
     let datatype_provider = data_type_provider_from_config(&mut config).unwrap();
     let formatter = MdocFormatter::new(
+        "MDOC".into(),
         params,
         Arc::new(CertificateValidatorImpl::new(
             key_algorithm_provider.clone(),
@@ -89,7 +90,8 @@ pub async fn format_mdoc_credential(
         config.datatype,
         datatype_provider,
         key_algorithm_provider,
-    );
+    )
+    .unwrap();
     formatter
         .format_credential(credential_data, auth_fn)
         .await

@@ -13,6 +13,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use model::{SdJwtVc, SdJwtVcStatus};
 use one_crypto::CryptoProvider;
+use proc_macros::Provider;
 use sdjwt::format_credential;
 use serde::Deserialize;
 use serde_json::Value;
@@ -53,6 +54,7 @@ use crate::provider::credential_formatter::mapper::default_2_years;
 use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::provider_directory::InitializationError;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::provider::revocation::token_status_list::credential_status_from_sdjwt_status;
 use crate::util::key_selection::SelectedKey;
@@ -60,7 +62,9 @@ use crate::util::key_selection::SelectedKey;
 const JPEG_DATA_URI_PREFIX: &str = "data:image/jpeg;base64,";
 const PNG_DATA_URI_PREFIX: &str = "data:image/png;base64,";
 
+#[derive(Provider)]
 pub struct SDJWTVCFormatter {
+    config_id: CredentialFormat,
     crypto: Arc<dyn CryptoProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -75,9 +79,10 @@ pub struct SDJWTVCFormatter {
 #[serde_as]
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Params {
+struct Params {
     #[serde_as(as = "DurationSeconds<i64>")]
     pub leeway: Duration,
+    #[expect(unused)]
     pub embed_layout_properties: bool,
     // Toggles SWIYU quirks, specifically the malformed `cnf` claim
     #[serde(default)]
@@ -472,12 +477,17 @@ impl CredentialFormatter for SDJWTVCFormatter {
     fn user_claims_path(&self) -> Vec<String> {
         vec![]
     }
+
+    fn config_name(&self) -> &CredentialFormat {
+        &self.config_id
+    }
 }
 
 impl SDJWTVCFormatter {
     #[expect(clippy::too_many_arguments)]
     pub(crate) fn new(
-        params: Params,
+        config_id: CredentialFormat,
+        params: serde_json::Value,
         crypto: Arc<dyn CryptoProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -486,8 +496,15 @@ impl SDJWTVCFormatter {
         datatype_config: DatatypeConfig,
         http_client: Arc<dyn HttpClient>,
         data_type_provider: Arc<dyn DataTypeProvider>,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, InitializationError> {
+        let params =
+            serde_json::from_value(params).map_err(|err| InitializationError::InvalidParams {
+                key: config_id.to_string(),
+                source: err,
+            })?;
+
+        Ok(Self {
+            config_id,
             params,
             crypto,
             did_method_provider,
@@ -497,7 +514,7 @@ impl SDJWTVCFormatter {
             datatype_config,
             http_client,
             data_type_provider,
-        }
+        })
     }
 
     async fn extract_credentials_internal(

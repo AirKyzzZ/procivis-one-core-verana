@@ -4,14 +4,14 @@ use std::sync::Arc;
 use maplit::hashset;
 use mockall::predicate::eq;
 use one_crypto::{MockCryptoProvider, MockHasher};
-use serde_json::Value;
+use serde_json::{Value, json};
 use shared_types::DidValue;
 use similar_asserts::assert_eq;
 use time::Duration;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use super::{JsonLdClassic, Params};
+use super::JsonLdClassic;
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
@@ -114,12 +114,11 @@ async fn create_token(include_layout: bool) -> Value {
         issuer_certificate: None,
     };
 
-    let params = Params {
-        leeway: Duration::seconds(60),
-        embed_layout_properties: include_layout,
-        allowed_contexts: None,
-        expiration_time: Duration::days(1),
-    };
+    let params = json!({
+        "leeway": 60,
+        "embedLayoutProperties": include_layout,
+        "expirationTime": 86_400,
+    });
     let key_algorithm = MockKeyAlgorithm::new();
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
@@ -150,6 +149,7 @@ async fn create_token(include_layout: bool) -> Value {
     let client: Arc<dyn HttpClient> = Arc::new(ReqwestClient::default());
 
     let formatter = JsonLdClassic::new(
+        "JSON_LD_CLASSIC".into(),
         params,
         Arc::new(crypto),
         prepare_caching_loader(None),
@@ -157,7 +157,8 @@ async fn create_token(include_layout: bool) -> Value {
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(MockDidMethodProvider::new()),
         client,
-    );
+    )
+    .unwrap();
 
     let mut auth_fn = MockSignatureProvider::new();
     auth_fn.expect_sign().returning(|msg| Ok(msg.to_vec()));
@@ -290,19 +291,20 @@ async fn test_parse_credential() {
         .returning(|name| Ok((name.into(), Arc::new(MockDidMethod::new()))));
 
     let formatter = JsonLdClassic::new(
-        Params {
-            leeway: Duration::seconds(60),
-            embed_layout_properties: false,
-            allowed_contexts: None,
-            expiration_time: Duration::days(1),
-        },
+        "JSON_LD_CLASSIC".into(),
+        json!({
+            "leeway": 60,
+            "embedLayoutProperties": false,
+            "expirationTime": 86_400,
+        }),
         Arc::new(crypto),
         prepare_caching_loader(None),
         Arc::new(datatype_provider),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(did_method_provider),
         Arc::new(ReqwestClient::default()),
-    );
+    )
+    .unwrap();
 
     let mut verify_mock = MockTokenVerifier::new();
     verify_mock.expect_verify().return_once(|_, _, _, _| Ok(()));

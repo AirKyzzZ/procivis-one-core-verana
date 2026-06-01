@@ -61,7 +61,7 @@ async fn test_parse_import_credential_schema_success() {
         .expect_get_credential_formatter()
         .with(eq(CredentialFormat::from("JWT")))
         .once()
-        .return_once(|_| Some(Arc::new(formatter)));
+        .return_once(|_| Ok(Arc::new(formatter)));
 
     let parser = setup_parser(
         generic_config().core,
@@ -136,7 +136,7 @@ async fn test_parse_import_with_nested_claims_success() {
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .return_once(|_| Some(Arc::new(formatter)));
+        .return_once(|_| Ok(Arc::new(formatter)));
 
     let parser = setup_parser(
         generic_config().core,

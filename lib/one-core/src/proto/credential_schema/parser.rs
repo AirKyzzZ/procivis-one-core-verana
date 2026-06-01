@@ -33,7 +33,6 @@ use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::model::Operation;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::service::credential_schema::mapper::schema_translations_from_dto;
-use crate::service::error::MissingProviderError;
 
 pub(crate) struct CredentialSchemaImportParserImpl {
     config: Arc<CoreConfig>,
@@ -62,11 +61,7 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
         let now = crate::clock::now_utc();
         let formatter = self
             .formatter_provider
-            .get_credential_formatter(&dto.schema.format)
-            .ok_or(MissingProviderError::Formatter(
-                dto.schema.format.to_string(),
-            ))
-            .error_while("getting formatter")?;
+            .get_credential_formatter(&dto.schema.format)?;
         let format = self
             .config
             .format
@@ -157,11 +152,7 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
                 .to_owned();
             let formatter = self
                 .formatter_provider
-                .get_credential_formatter(&format_req.format)
-                .ok_or(MissingProviderError::Formatter(
-                    format_req.format.to_string(),
-                ))
-                .error_while("getting formatter")?;
+                .get_credential_formatter(&format_req.format)?;
             formatters.push((format_type, formatter));
         }
 
@@ -178,11 +169,7 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
         for format_req in &dto.schema.formats {
             let formatter = self
                 .formatter_provider
-                .get_credential_formatter(&format_req.format)
-                .ok_or(MissingProviderError::Formatter(
-                    format_req.format.to_string(),
-                ))
-                .error_while("getting formatter")?;
+                .get_credential_formatter(&format_req.format)?;
 
             let schema_id =
                 self.parse_schema_id(format_req.schema_id.clone(), formatter.as_ref())?;

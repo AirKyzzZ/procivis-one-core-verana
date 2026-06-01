@@ -209,7 +209,7 @@ async fn test_share_proof() {
     let arc = Arc::new(credential_formatter);
     credential_formatter_provider
         .expect_get_credential_formatter()
-        .returning(move |_| Some(arc.clone()));
+        .returning(move |_| Ok(arc.clone()));
     let protocol = setup_protocol(TestInputs {
         credential_formatter_provider,
         ..Default::default()
@@ -303,7 +303,7 @@ async fn test_response_mode_direct_post_jwt_for_mdoc() {
     let arc = Arc::new(credential_formatter);
     credential_formatter_provider
         .expect_get_credential_formatter()
-        .returning(move |_| Some(arc.clone()));
+        .returning(move |_| Ok(arc.clone()));
     let protocol = setup_protocol(TestInputs {
         credential_formatter_provider,
         ..Default::default()
@@ -452,7 +452,7 @@ async fn test_share_proof_with_use_request_uri() {
     credential_formatter_provider
         .expect_get_credential_formatter()
         .with(eq(CredentialFormat::from("JWT")))
-        .returning(move |_| Some(arc.clone()));
+        .returning(move |_| Ok(arc.clone()));
 
     let protocol = setup_protocol(TestInputs {
         params: Some(OpenID4Vp20Params {
@@ -507,7 +507,7 @@ async fn test_share_proof_with_use_request_uri_did_client_id_scheme() {
     let arc = Arc::new(credential_formatter);
     credential_formatter_provider
         .expect_get_credential_formatter()
-        .returning(move |_| Some(arc.clone()));
+        .returning(move |_| Ok(arc.clone()));
 
     let protocol = setup_protocol(TestInputs {
         credential_formatter_provider,
@@ -1007,7 +1007,7 @@ async fn test_share_proof_custom_scheme() {
     let arc = Arc::new(credential_formatter);
     credential_formatter_provider
         .expect_get_credential_formatter()
-        .returning(move |_| Some(arc.clone()));
+        .returning(move |_| Ok(arc.clone()));
     let protocol = setup_protocol(TestInputs {
         credential_formatter_provider,
         params: Some(test_params(url_scheme)),

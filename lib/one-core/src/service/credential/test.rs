@@ -850,7 +850,7 @@ async fn test_create_credential_based_on_issuer_did_success() {
             .format()
             .await
             .unwrap()))
-        .return_once(move |_| Some(Arc::new(formatter)));
+        .return_once(move |_| Ok(Arc::new(formatter)));
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
@@ -956,7 +956,7 @@ async fn test_create_credential_based_on_issuer_identifier_success() {
             .format()
             .await
             .unwrap()))
-        .return_once(move |_| Some(Arc::new(formatter)));
+        .return_once(move |_| Ok(Arc::new(formatter)));
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
@@ -1121,7 +1121,7 @@ async fn test_create_credential_failed_formatter_doesnt_support_did_identifiers(
             .format()
             .await
             .unwrap()))
-        .return_once(move |_| Some(Arc::new(formatter)));
+        .return_once(move |_| Ok(Arc::new(formatter)));
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
@@ -1237,7 +1237,7 @@ async fn test_create_credential_failed_issuance_did_method_incompatible() {
             .format()
             .await
             .unwrap()))
-        .return_once(move |_| Some(Arc::new(formatter)));
+        .return_once(move |_| Ok(Arc::new(formatter)));
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
@@ -1353,7 +1353,7 @@ async fn test_create_credential_fails_if_did_is_deactivated() {
             .format()
             .await
             .unwrap()))
-        .return_once(move |_| Some(Arc::new(formatter)));
+        .return_once(move |_| Ok(Arc::new(formatter)));
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
@@ -1471,7 +1471,7 @@ async fn test_create_credential_one_required_claim_missing_success() {
     formatter_provider
         .expect_get_credential_formatter()
         .with(eq(credential_schema.format().await.unwrap()))
-        .return_once(move |_| Some(Arc::new(formatter)));
+        .return_once(move |_| Ok(Arc::new(formatter)));
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
@@ -1604,7 +1604,7 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
     formatter_provider
         .expect_get_credential_formatter()
         .with(eq(credential_schema.format().await.unwrap()))
-        .return_once(move |_| Some(Arc::new(formatter)));
+        .return_once(move |_| Ok(Arc::new(formatter)));
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
@@ -1713,7 +1713,7 @@ async fn test_create_credential_schema_deleted() {
     formatter_provider
         .expect_get_credential_formatter()
         .with(eq(credential_schema.format().await.unwrap()))
-        .return_once(move |_| Some(Arc::new(formatter)));
+        .return_once(move |_| Ok(Arc::new(formatter)));
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
@@ -1829,7 +1829,7 @@ async fn test_create_credential_key_with_issuer_key() {
             .format()
             .await
             .unwrap()))
-        .return_once(move |_| Some(Arc::new(formatter)));
+        .return_once(move |_| Ok(Arc::new(formatter)));
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
@@ -1976,7 +1976,7 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
             .format()
             .await
             .unwrap()))
-        .return_once(move |_| Some(Arc::new(formatter)));
+        .return_once(move |_| Ok(Arc::new(formatter)));
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
@@ -2097,7 +2097,7 @@ async fn test_fail_to_create_credential_no_assertion_key() {
             .format()
             .await
             .unwrap()))
-        .return_once(move |_| Some(Arc::new(formatter)));
+        .return_once(move |_| Ok(Arc::new(formatter)));
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
@@ -2205,7 +2205,7 @@ async fn test_fail_to_create_credential_unknown_key_id() {
             .format()
             .await
             .unwrap()))
-        .return_once(move |_| Some(Arc::new(formatter)));
+        .return_once(move |_| Ok(Arc::new(formatter)));
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
@@ -2325,7 +2325,7 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
             .format()
             .await
             .unwrap()))
-        .return_once(move |_| Some(Arc::new(formatter)));
+        .return_once(move |_| Ok(Arc::new(formatter)));
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
@@ -2445,7 +2445,7 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
             .format()
             .await
             .unwrap()))
-        .return_once(move |_| Some(Arc::new(formatter)));
+        .return_once(move |_| Ok(Arc::new(formatter)));
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
@@ -2550,7 +2550,7 @@ async fn test_create_credential_fail_incompatible_format_and_tranposrt_protocol(
             .format()
             .await
             .unwrap()))
-        .return_once(move |_| Some(Arc::new(formatter)));
+        .return_once(move |_| Ok(Arc::new(formatter)));
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
@@ -2655,7 +2655,7 @@ async fn test_create_credential_fail_invalid_redirect_uri() {
             .format()
             .await
             .unwrap()))
-        .return_once(move |_| Some(Arc::new(formatter)));
+        .return_once(move |_| Ok(Arc::new(formatter)));
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
@@ -2756,7 +2756,7 @@ async fn test_create_credential_fail_webhook_not_allowed() {
             .format()
             .await
             .unwrap()))
-        .return_once(move |_| Some(Arc::new(formatter)));
+        .return_once(move |_| Ok(Arc::new(formatter)));
 
     let mut dummy_protocol = MockIssuanceProtocol::default();
     dummy_protocol
@@ -5055,7 +5055,7 @@ async fn test_create_credential_array(
         formatter_provider
             .expect_get_credential_formatter()
             .once()
-            .return_once(move |_| Some(Arc::new(formatter)));
+            .return_once(move |_| Ok(Arc::new(formatter)));
         credential_repository
             .expect_create_credential()
             .return_once(move |_| Ok(Uuid::new_v4().into()));
@@ -5446,7 +5446,7 @@ async fn test_create_credential_invalid_certificate_role() {
         formatter_provider
             .expect_get_credential_formatter()
             .once()
-            .return_once(move |_| Some(Arc::new(formatter)));
+            .return_once(move |_| Ok(Arc::new(formatter)));
         credential_repository
             .expect_create_credential()
             .return_once(move |_| Ok(Uuid::new_v4().into()));

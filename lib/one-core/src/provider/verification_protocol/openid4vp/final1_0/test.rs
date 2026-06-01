@@ -420,7 +420,7 @@ async fn test_share_proof_direct_post() {
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     formatter_provider
         .expect_get_credential_formatter()
-        .return_once(|_| Some(Arc::new(credential_formatter)));
+        .return_once(|_| Ok(Arc::new(credential_formatter)));
 
     let protocol = setup_protocol(TestInputs {
         credential_formatter_provider: formatter_provider,
@@ -508,7 +508,7 @@ async fn test_share_proof_direct_post_jwt_ecdsa() {
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     formatter_provider
         .expect_get_credential_formatter()
-        .return_once(|_| Some(Arc::new(credential_formatter)));
+        .return_once(|_| Ok(Arc::new(credential_formatter)));
 
     let protocol = setup_protocol(TestInputs {
         key_provider,
@@ -589,7 +589,7 @@ async fn test_share_proof_direct_post_jwt_eddsa() {
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     formatter_provider
         .expect_get_credential_formatter()
-        .return_once(|_| Some(Arc::new(credential_formatter)));
+        .return_once(|_| Ok(Arc::new(credential_formatter)));
 
     let protocol = setup_protocol(TestInputs {
         key_provider,

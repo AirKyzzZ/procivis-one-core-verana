@@ -31,7 +31,7 @@ use crate::provider::revocation::mapper::revocation_state_from_credential_state;
 use crate::provider::revocation::model::{CredentialDataByRole, RevocationState};
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
-use crate::service::error::{EntityNotFoundError, MissingProviderError};
+use crate::service::error::EntityNotFoundError;
 use crate::validator::{
     throw_if_credential_schema_not_in_session_org, throw_if_org_id_not_matching_session,
 };
@@ -251,11 +251,7 @@ impl CredentialValidityManagerImpl {
             .await
             .error_while("getting format")?;
 
-        let formatter = self
-            .formatter_provider
-            .get_credential_formatter(&format)
-            .ok_or(MissingProviderError::Formatter(format.to_string()))
-            .error_while("getting credential formatter")?;
+        let formatter = self.formatter_provider.get_credential_formatter(&format)?;
 
         let detail_credential = formatter
             .extract_credentials_unverified(&credential_str, Some(credential_schema))

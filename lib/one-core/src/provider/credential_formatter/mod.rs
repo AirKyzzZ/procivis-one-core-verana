@@ -1,6 +1,9 @@
+use std::fmt::{Display, Formatter};
+
 use async_trait::async_trait;
 use error::FormatterError;
 use model::{AuthenticationFn, CredentialPresentation, DetailCredential, TokenVerifier};
+use proc_macros::provider_mock;
 use shared_types::{CredentialFormat, CredentialSchemaId, OrganisationId, SerializedCredential};
 use strum::Display;
 use time::Duration;
@@ -9,13 +12,14 @@ use crate::config::core_config::{KeyAlgorithmType, RevocationType};
 use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::organisation::Organisation;
+use crate::provider::Provider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
+use crate::util::key_selection::SelectedKey;
 
 pub(crate) mod common;
 pub use common::nest_claims;
 
-use crate::util::key_selection::SelectedKey;
-
+mod decorators;
 pub mod error;
 mod json_claims;
 pub mod json_ld_bbsplus;
@@ -52,9 +56,9 @@ pub enum CredentialSchemaVersion {
 
 /// Format credentials for sharing and parse credentials which have been shared.
 #[allow(clippy::too_many_arguments)]
-#[cfg_attr(any(test, feature = "mock"), mockall::automock)]
+#[provider_mock]
 #[async_trait]
-pub trait CredentialFormatter: Send + Sync {
+pub trait CredentialFormatter: Provider + Send + Sync {
     /// Formats and signs a credential.
     async fn format_credential(
         &self,
@@ -149,4 +153,12 @@ pub trait CredentialFormatter: Send + Sync {
         organisation: Organisation,
         verification: Box<dyn TokenVerifier>,
     ) -> Result<Credential, FormatterError>;
+
+    fn config_name(&self) -> &CredentialFormat;
+}
+
+impl Display for dyn CredentialFormatter {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Credential format `{}`", self.config_name())
+    }
 }

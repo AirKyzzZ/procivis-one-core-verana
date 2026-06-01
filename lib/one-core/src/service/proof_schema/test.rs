@@ -364,7 +364,7 @@ async fn test_create_proof_schema_success() {
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .return_once(move |_| Some(Arc::new(formatter)));
+        .return_once(move |_| Ok(Arc::new(formatter)));
 
     let organisation_id = Uuid::new_v4().into();
     let mut organisation_repository = MockOrganisationRepository::default();
@@ -621,7 +621,7 @@ async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
         .expect_get_credential_formatter()
-        .returning(move |_| Some(formatter.clone()));
+        .returning(move |_| Ok(formatter.clone()));
 
     let service = setup_service(Repositories {
         proof_schema_repository,
@@ -810,7 +810,7 @@ async fn test_create_proof_schema_array_object_fail() {
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .return_once(move |_| Some(Arc::new(formatter)));
+        .return_once(move |_| Ok(Arc::new(formatter)));
 
     let organisation_id = Uuid::new_v4().into();
     let mut organisation_repository = MockOrganisationRepository::default();
@@ -982,7 +982,7 @@ async fn test_create_proof_schema_array_success() {
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .return_once(move |_| Some(Arc::new(formatter)));
+        .return_once(move |_| Ok(Arc::new(formatter)));
 
     let organisation_id = Uuid::new_v4().into();
     let mut organisation_repository = MockOrganisationRepository::default();
@@ -1152,7 +1152,7 @@ async fn test_create_proof_schema_claims_dont_exist() {
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .return_once(move |_| Some(Arc::new(formatter)));
+        .return_once(move |_| Ok(Arc::new(formatter)));
 
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     credential_schema_repository
@@ -1486,7 +1486,7 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
     formatter_provider
         .expect_get_credential_formatter()
         .with(eq(CredentialFormat::from("JWT")))
-        .returning(move |_| Some(formatter.clone()));
+        .returning(move |_| Ok(formatter.clone()));
 
     let formatter_provider = Arc::new(formatter_provider);
     let credential_schema_repository = Arc::new(credential_schema_repository);
@@ -1680,7 +1680,7 @@ async fn test_import_proof_schema_ok_for_new_credential_schema_v2_url() {
     formatter_provider
         .expect_get_credential_formatter()
         .with(eq(CredentialFormat::from("JWT")))
-        .returning(move |_| Some(formatter.clone()));
+        .returning(move |_| Ok(formatter.clone()));
 
     let formatter_provider = Arc::new(formatter_provider);
     let credential_schema_repository = Arc::new(credential_schema_repository);
@@ -1873,7 +1873,7 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
     formatter_provider
         .expect_get_credential_formatter()
         .with(eq(CredentialFormat::from("JWT")))
-        .returning(move |_| Some(formatter.clone()));
+        .returning(move |_| Ok(formatter.clone()));
 
     let formatter_provider = Arc::new(formatter_provider);
     let credential_schema_repository = Arc::new(credential_schema_repository);
@@ -2046,7 +2046,7 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
     formatter_provider
         .expect_get_credential_formatter()
         .with(eq(CredentialFormat::from("MDOC")))
-        .return_once(move |_| Some(Arc::new(formatter)));
+        .return_once(move |_| Ok(Arc::new(formatter)));
 
     let formatter_provider = Arc::new(formatter_provider);
     let credential_schema_repository = Arc::new(credential_schema_repository);
@@ -2791,7 +2791,7 @@ async fn test_create_proof_schema_verify_nested_generic(
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .return_once(move |_| Some(Arc::new(formatter)));
+        .return_once(move |_| Ok(Arc::new(formatter)));
 
     let organisation_id = Uuid::new_v4().into();
     let mut organisation_repository = MockOrganisationRepository::default();

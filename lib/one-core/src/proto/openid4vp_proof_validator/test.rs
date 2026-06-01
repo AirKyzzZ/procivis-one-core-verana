@@ -326,7 +326,7 @@ fn setup_mocks(
     mocks
         .credential_formatter_provider
         .expect_get_credential_formatter()
-        .returning(move |_| Some(credential_formatter_clone.clone()));
+        .returning(move |_| Ok(credential_formatter_clone.clone()));
     mocks
         .credential_formatter_provider
         .expect_get_formatter_by_type()

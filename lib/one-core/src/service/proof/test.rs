@@ -2528,7 +2528,7 @@ async fn test_create_proof_using_formatter_doesnt_support_did_identifiers() {
     credential_formatter_provider
         .expect_get_credential_formatter()
         .times(1)
-        .returning(move |_| Some(formatter.clone()));
+        .returning(move |_| Ok(formatter.clone()));
 
     let mut protocol_provider = MockVerificationProtocolProvider::default();
     protocol_provider.expect_get_protocol().return_once(|_| {
@@ -2656,7 +2656,7 @@ async fn test_create_proof_using_invalid_did_method() {
     let formatter: Arc<dyn CredentialFormatter> = Arc::new(formatter);
     credential_formatter_provider
         .expect_get_credential_formatter()
-        .returning(move |_| Some(formatter.clone()));
+        .returning(move |_| Ok(formatter.clone()));
 
     let mut protocol_provider = MockVerificationProtocolProvider::default();
     protocol_provider.expect_get_protocol().return_once(|_| {
@@ -2779,7 +2779,7 @@ async fn test_create_proof_using_identifier() {
     credential_formatter_provider
         .expect_get_credential_formatter()
         .times(3)
-        .returning(move |_| Some(formatter.clone()));
+        .returning(move |_| Ok(formatter.clone()));
 
     let proof_id = Uuid::new_v4().into();
     let mut proof_repository = MockProofRepository::default();
@@ -2918,7 +2918,7 @@ async fn test_create_proof_without_related_key() {
     credential_formatter_provider
         .expect_get_credential_formatter()
         .times(3)
-        .returning(move |_| Some(formatter.clone()));
+        .returning(move |_| Ok(formatter.clone()));
 
     let proof_id = Uuid::new_v4().into();
     let mut proof_repository = MockProofRepository::default();
@@ -3053,7 +3053,7 @@ async fn test_create_proof_with_related_key() {
     credential_formatter_provider
         .expect_get_credential_formatter()
         .times(3)
-        .returning(move |_| Some(formatter.clone()));
+        .returning(move |_| Ok(formatter.clone()));
 
     let proof_id = Uuid::new_v4().into();
     let mut proof_repository = MockProofRepository::default();
@@ -3193,7 +3193,7 @@ async fn test_create_proof_fail_unsupported_wallet_storage_type() {
     credential_formatter_provider
         .expect_get_credential_formatter()
         .times(1)
-        .returning(move |_| Some(formatter.clone()));
+        .returning(move |_| Ok(formatter.clone()));
 
     let mut protocol_provider = MockVerificationProtocolProvider::default();
     protocol_provider.expect_get_protocol().return_once(|_| {
@@ -3299,7 +3299,7 @@ async fn test_create_proof_failed_no_key_with_authentication_method_role() {
     let formatter = Arc::new(formatter);
     credential_formatter_provider
         .expect_get_credential_formatter()
-        .returning(move |_| Some(formatter.clone()));
+        .returning(move |_| Ok(formatter.clone()));
 
     let mut protocol_provider = MockVerificationProtocolProvider::default();
     protocol_provider.expect_get_protocol().return_once(|_| {
@@ -3377,7 +3377,7 @@ async fn test_create_proof_failed_incompatible_exchange() {
     credential_formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .return_once(|_| Some(Arc::new(formatter)));
+        .return_once(|_| Ok(Arc::new(formatter)));
 
     let service = setup_service(Repositories {
         proof_schema_repository,
@@ -3467,7 +3467,7 @@ async fn test_create_proof_did_deactivated_error() {
     credential_formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .return_once(|_| Some(Arc::new(formatter)));
+        .return_once(|_| Ok(Arc::new(formatter)));
 
     let mut protocol_provider = MockVerificationProtocolProvider::default();
     protocol_provider.expect_get_protocol().return_once(|_| {
@@ -3639,7 +3639,7 @@ async fn test_create_proof_failed_incompatible_verification_key_storage() {
     let formatter: Arc<dyn CredentialFormatter> = Arc::new(formatter);
     credential_formatter_provider
         .expect_get_credential_formatter()
-        .returning(move |_| Some(formatter.clone()));
+        .returning(move |_| Ok(formatter.clone()));
 
     let mut protocol_provider = MockVerificationProtocolProvider::default();
     protocol_provider.expect_get_protocol().return_once(|_| {

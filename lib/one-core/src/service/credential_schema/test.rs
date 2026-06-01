@@ -359,7 +359,7 @@ async fn test_create_credential_schema_success() {
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .return_once(|_| Some(Arc::new(formatter)));
+        .return_once(|_| Ok(Arc::new(formatter)));
 
     let service = setup_service(
         repository,
@@ -450,7 +450,7 @@ async fn test_create_credential_schema_success_mdoc_with_custom_schema_id() {
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .return_once(|_| Some(Arc::new(formatter)));
+        .return_once(|_| Ok(Arc::new(formatter)));
 
     let service = setup_service(
         repository,
@@ -548,7 +548,7 @@ async fn test_create_credential_schema_success_nested_claims() {
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .return_once(|_| Some(Arc::new(formatter)));
+        .return_once(|_| Ok(Arc::new(formatter)));
 
     let service = setup_service(
         repository,
@@ -611,7 +611,7 @@ async fn test_create_credential_schema_failed_slash_in_claim_name() {
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .return_once(|_| Some(Arc::new(MockCredentialFormatter::default())));
+        .return_once(|_| Ok(Arc::new(MockCredentialFormatter::default())));
     let service = setup_service(
         MockCredentialSchemaRepository::default(),
         MockOrganisationRepository::default(),
@@ -657,7 +657,7 @@ async fn test_create_credential_schema_failed_nested_claims_not_in_object_type()
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .return_once(|_| Some(Arc::new(MockCredentialFormatter::default())));
+        .return_once(|_| Ok(Arc::new(MockCredentialFormatter::default())));
     let service = setup_service(
         MockCredentialSchemaRepository::default(),
         MockOrganisationRepository::default(),
@@ -722,7 +722,7 @@ async fn test_create_credential_schema_failed_nested_claims_object_type_has_empt
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .return_once(|_| Some(Arc::new(MockCredentialFormatter::default())));
+        .return_once(|_| Ok(Arc::new(MockCredentialFormatter::default())));
     let service = setup_service(
         MockCredentialSchemaRepository::default(),
         MockOrganisationRepository::default(),
@@ -777,7 +777,7 @@ async fn test_create_credential_schema_failed_nested_claim_fails_validation() {
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .return_once(|_| Some(Arc::new(formatter)));
+        .return_once(|_| Ok(Arc::new(formatter)));
     let service = setup_service(
         MockCredentialSchemaRepository::default(),
         MockOrganisationRepository::default(),
@@ -858,7 +858,7 @@ async fn test_create_credential_schema_unique_name_error() {
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .return_once(|_| Some(Arc::new(formatter)));
+        .return_once(|_| Ok(Arc::new(formatter)));
 
     let service = setup_service(
         repository,
@@ -907,7 +907,7 @@ async fn test_create_credential_schema_failed_unique_claims_error() {
     formatter_provider
         .expect_get_credential_formatter()
         .times(2)
-        .returning(|_| Some(Arc::new(MockCredentialFormatter::default())));
+        .returning(|_| Ok(Arc::new(MockCredentialFormatter::default())));
     let service = setup_service(
         MockCredentialSchemaRepository::default(),
         MockOrganisationRepository::default(),
@@ -1013,7 +1013,7 @@ async fn test_create_credential_schema_fail_validation() {
     formatter_provider
         .expect_get_credential_formatter()
         .times(4)
-        .returning(|_| Some(Arc::new(MockCredentialFormatter::default())));
+        .returning(|_| Ok(Arc::new(MockCredentialFormatter::default())));
 
     let mut revocation_provider = MockRevocationMethodProvider::default();
     revocation_provider
@@ -1181,7 +1181,7 @@ async fn test_create_credential_schema_fail_unsupported_wallet_storage_type() {
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .return_once(|_| Some(Arc::new(formatter)));
+        .return_once(|_| Ok(Arc::new(formatter)));
 
     let service = setup_service(
         repository,
@@ -1261,7 +1261,7 @@ async fn test_create_credential_schema_fail_missing_organisation() {
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .return_once(|_| Some(Arc::new(formatter)));
+        .return_once(|_| Ok(Arc::new(formatter)));
 
     let service = setup_service(
         repository,
@@ -1319,7 +1319,7 @@ async fn test_create_credential_schema_fail_incompatible_revocation_and_format()
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .return_once(|_| Some(Arc::new(formatter)));
+        .return_once(|_| Ok(Arc::new(formatter)));
 
     let mut revocation_method = MockRevocationMethod::default();
     revocation_method.expect_enabled().once().returning(|| true);
@@ -1385,7 +1385,7 @@ async fn test_create_credential_schema_failed_mdoc_not_all_top_claims_are_object
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .return_once(|_| Some(Arc::new(formatter)));
+        .return_once(|_| Ok(Arc::new(formatter)));
 
     let service = setup_service(
         MockCredentialSchemaRepository::default(),
@@ -1460,7 +1460,7 @@ async fn test_create_credential_schema_failed_schema_id_not_allowed() {
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .return_once(|_| Some(Arc::new(formatter)));
+        .return_once(|_| Ok(Arc::new(formatter)));
 
     let service = setup_service(
         MockCredentialSchemaRepository::default(),
@@ -1510,7 +1510,7 @@ async fn test_create_credential_schema_failed_claim_schema_key_too_long() {
     formatter_provider
         .expect_get_credential_formatter()
         .times(3)
-        .returning(|_| Some(Arc::new(MockCredentialFormatter::default())));
+        .returning(|_| Ok(Arc::new(MockCredentialFormatter::default())));
     let service = setup_service(
         Default::default(),
         Default::default(),
@@ -2746,7 +2746,7 @@ async fn test_import_credential_schema_success() {
     formatter_provider
         .expect_get_credential_formatter()
         .times(1)
-        .returning(move |_| Some(formatter.clone()));
+        .returning(move |_| Ok(formatter.clone()));
 
     repository
         .expect_get_credential_schema_list()
@@ -2835,7 +2835,7 @@ async fn test_create_credential_schema_fail_unsupported_datatype() {
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .return_once(|_| Some(Arc::new(formatter)));
+        .return_once(|_| Ok(Arc::new(formatter)));
 
     let service = setup_service(
         MockCredentialSchemaRepository::default(),
@@ -2950,7 +2950,7 @@ async fn test_create_credential_schema_fail_tx_code_not_supported() {
     let formatter = Arc::new(formatter);
     formatter_provider
         .expect_get_credential_formatter()
-        .returning(move |_| Some(formatter.clone()));
+        .returning(move |_| Ok(formatter.clone()));
 
     let service = setup_service(
         MockCredentialSchemaRepository::default(),
@@ -3011,7 +3011,7 @@ async fn test_create_credential_schema_fail_tx_code_description_too_long() {
     let formatter = Arc::new(formatter);
     formatter_provider
         .expect_get_credential_formatter()
-        .returning(move |_| Some(formatter.clone()));
+        .returning(move |_| Ok(formatter.clone()));
 
     let service = setup_service(
         MockCredentialSchemaRepository::default(),

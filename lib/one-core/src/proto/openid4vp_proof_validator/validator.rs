@@ -353,7 +353,7 @@ impl OpenId4VpProofValidatorProto {
         let formatter = self
             .credential_formatter_provider
             .get_credential_formatter(&format)
-            .ok_or(OpenID4VCError::VCFormatsNotSupported)?;
+            .map_err(|_| OpenID4VCError::VCFormatsNotSupported)?;
 
         let credential = formatter
             .extract_credentials(

@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::macros::{impl_display, impl_from};
 
+/// Identifier of a formatter based in CoreConfig.format
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
 #[serde(transparent)]

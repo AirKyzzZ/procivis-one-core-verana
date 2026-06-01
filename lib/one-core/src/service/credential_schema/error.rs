@@ -71,8 +71,6 @@ pub enum CredentialSchemaServiceError {
     KeyStorageSecurityDisabled(KeyStorageSecurity),
     #[error("Cannot find `{0}` in revocation method provider")]
     MissingRevocationMethod(RevocationMethodId),
-    #[error("Cannot find `{0}` formatter")]
-    MissingFormat(CredentialFormat),
     #[error("Missing formats")]
     MissingFormats,
     #[error("Missing organisation: {0}")]
@@ -124,7 +122,6 @@ impl ErrorCodeMixin for CredentialSchemaServiceError {
             Self::MissingRevocationMethod(_) => ErrorCode::BR_0044,
             Self::MissingOrganisation(_) => ErrorCode::BR_0088,
             Self::OrganisationIsDeactivated(_) => ErrorCode::BR_0241,
-            Self::MissingFormat(_) => ErrorCode::BR_0038,
             Self::MappingError(_) => ErrorCode::BR_0047,
             Self::Nested(nested) => nested.error_code(),
             Self::MissingFormats => ErrorCode::BR_0435,

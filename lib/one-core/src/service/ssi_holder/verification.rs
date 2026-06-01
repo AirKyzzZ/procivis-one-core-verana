@@ -387,11 +387,7 @@ impl SSIHolderService {
             &*self.formatter_provider,
         )
         .error_while("detecting format")?;
-        let formatter = self
-            .formatter_provider
-            .get_credential_formatter(&format)
-            .ok_or(MissingProviderError::Formatter(format.to_string()))
-            .error_while("getting format")?;
+        let formatter = self.formatter_provider.get_credential_formatter(&format)?;
         Ok(formatter)
     }
 

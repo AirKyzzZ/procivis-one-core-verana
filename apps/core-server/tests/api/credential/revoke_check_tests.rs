@@ -4,7 +4,6 @@ use one_core::model::history::HistoryAction;
 use one_core::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use one_core::model::interaction::InteractionType;
 use one_core::proto::jwt::mapper::{bin_to_b64url_string, string_to_b64url_string};
-use one_core::provider::credential_formatter::mdoc_formatter::Params;
 use one_core::provider::credential_formatter::model::{CredentialData, Issuer};
 use one_core::provider::credential_formatter::vcdm::VcdmCredential;
 use one_core::provider::key_algorithm::KeyAlgorithm;
@@ -14,7 +13,6 @@ use one_crypto::signer::eddsa::{EDDSASigner, KeyPair};
 use serde_json::{Value, json};
 use shared_types::SerializedCredential;
 use similar_asserts::assert_eq;
-use time::Duration;
 use uuid::Uuid;
 use wiremock::http::Method;
 use wiremock::matchers::{method, path};
@@ -1844,42 +1842,36 @@ async fn test_revoke_check_failed_deleted_credential() {
 }
 
 async fn valid_mdoc_credential() -> SerializedCredential {
-    let params = Params {
-        mso_expires_in: Duration::days(1),
-        mso_expected_update_in: Duration::seconds(300),
-        mso_minimum_refresh_time: Duration::seconds(300),
-        leeway: Duration::seconds(60),
-        ecosystem_schema_ids: vec![],
-        pid_schema_ids: vec![],
-    };
+    let params = json!({
+        "msoExpiresIn": 86_400,
+        "msoExpectedUpdateIn": 300,
+        "msoMinimumRefreshTime": 300,
+        "leeway": 60
+    });
     minimal_mdoc_credential(params).await
 }
 
 async fn to_be_updated_mdoc_credential() -> SerializedCredential {
-    let params = Params {
-        mso_expires_in: Duration::days(1),              // not expired
-        mso_expected_update_in: Duration::seconds(-10), // ready for update
-        mso_minimum_refresh_time: Duration::seconds(0), // refresh immediately
-        leeway: Duration::seconds(60),
-        ecosystem_schema_ids: vec![],
-        pid_schema_ids: vec![],
-    };
+    let params = json!({
+        "msoExpiresIn": 86_400,     // not expired
+        "msoExpectedUpdateIn": -10, // ready for update
+        "msoMinimumRefreshTime": 0, // refresh immediately
+        "leeway": 60
+    });
     minimal_mdoc_credential(params).await
 }
 
 async fn expired_mdoc_credential() -> SerializedCredential {
-    let params = Params {
-        mso_expires_in: Duration::days(-1), // already expired
-        mso_expected_update_in: Duration::days(-1),
-        mso_minimum_refresh_time: Duration::seconds(0), // refresh immediately
-        leeway: Duration::seconds(60),
-        ecosystem_schema_ids: vec![],
-        pid_schema_ids: vec![],
-    };
+    let params = json!({
+        "msoExpiresIn": -86_400,     // already expired
+        "msoExpectedUpdateIn": -86_400,
+        "msoMinimumRefreshTime": 0, // refresh immediately
+        "leeway": 60
+    });
     minimal_mdoc_credential(params).await
 }
 
-async fn minimal_mdoc_credential(params: Params) -> SerializedCredential {
+async fn minimal_mdoc_credential(params: serde_json::Value) -> SerializedCredential {
     let credential = CredentialData {
         vcdm: VcdmCredential {
             context: Default::default(),

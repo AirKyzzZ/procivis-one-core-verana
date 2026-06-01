@@ -133,11 +133,7 @@ pub(crate) fn validate_create_v2_request(
     for format_req in &request.formats {
         validate_format(&format_req.format, &config.format).error_while("validating format")?;
 
-        let formatter = formatter_provider
-            .get_credential_formatter(&format_req.format)
-            .ok_or(CredentialSchemaServiceError::MissingFormat(
-                format_req.format.to_owned(),
-            ))?;
+        let formatter = formatter_provider.get_credential_formatter(&format_req.format)?;
 
         validate_schema_id_is_allowed(format_req.schema_id.as_deref(), &*formatter)?;
         validate_nested_claim_schemas(&request.claims, config, &*formatter)?;
@@ -342,11 +338,7 @@ fn validate_claim_mappings_for_format(
                         mapping.format.clone(),
                     ));
                 }
-                let formatter = formatter_provider
-                    .get_credential_formatter(&mapping.format)
-                    .ok_or(CredentialSchemaServiceError::MissingFormat(
-                        mapping.format.to_owned(),
-                    ))?;
+                let formatter = formatter_provider.get_credential_formatter(&mapping.format)?;
                 let requires_namespaces = formatter
                     .get_capabilities()
                     .features

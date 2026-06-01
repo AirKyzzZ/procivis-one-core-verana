@@ -115,9 +115,7 @@ impl CredentialService {
         let schema_format = schema.format().await?;
         let formatter_capabilities = self
             .formatter_provider
-            .get_credential_formatter(&schema_format)
-            .ok_or(MissingProviderError::Formatter(schema_format.to_string()))
-            .error_while("getting formatter")?
+            .get_credential_formatter(&schema_format)?
             .get_capabilities();
 
         let exchange_capabilities = self

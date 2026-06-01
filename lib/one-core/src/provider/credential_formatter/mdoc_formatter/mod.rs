@@ -12,6 +12,7 @@ use coset::{Header, HeaderBuilder, SignatureContext};
 use ct_codecs::{Base64, Decoder, Encoder};
 use indexmap::{IndexMap, IndexSet};
 use one_crypto::utilities::generate_random_bytes;
+use proc_macros::Provider;
 use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
 use sha2::{Digest, Sha256, Sha384, Sha512};
@@ -62,6 +63,7 @@ use crate::provider::data_type::model::ExtractedClaim;
 use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::provider_directory::InitializationError;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::util::key_selection::SelectedKey;
 
@@ -72,7 +74,9 @@ mod test;
 
 const FULL_DATE_FORMAT: &[FormatItem<'_>] = format_description!("[year]-[month]-[day]");
 
+#[derive(Provider)]
 pub struct MdocFormatter {
+    config_id: CredentialFormat,
     certificate_validator: Arc<dyn CertificateValidator>,
     params: Params,
     did_method_provider: Arc<dyn DidMethodProvider>,
@@ -84,7 +88,7 @@ pub struct MdocFormatter {
 #[serde_as]
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Params {
+pub(crate) struct Params {
     #[serde_as(as = "DurationSeconds<i64>")]
     pub mso_expires_in: Duration,
     #[serde_as(as = "DurationSeconds<i64>")]
@@ -101,21 +105,29 @@ pub struct Params {
 
 impl MdocFormatter {
     pub(crate) fn new(
-        params: Params,
+        config_id: CredentialFormat,
+        params: serde_json::Value,
         certificate_validator: Arc<dyn CertificateValidator>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         datatype_config: DatatypeConfig,
         datatype_provider: Arc<dyn DataTypeProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, InitializationError> {
+        let params =
+            serde_json::from_value(params).map_err(|err| InitializationError::InvalidParams {
+                key: config_id.to_string(),
+                source: err,
+            })?;
+
+        Ok(Self {
+            config_id,
             certificate_validator,
             params,
             did_method_provider,
             datatype_config,
             datatype_provider,
             key_algorithm_provider,
-        }
+        })
     }
 }
 
@@ -559,6 +571,10 @@ impl CredentialFormatter for MdocFormatter {
             webhook_url: None,
             parent: None,
         })
+    }
+
+    fn config_name(&self) -> &CredentialFormat {
+        &self.config_id
     }
 }
 

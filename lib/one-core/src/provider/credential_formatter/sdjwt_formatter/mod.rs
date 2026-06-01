@@ -8,10 +8,11 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use one_crypto::CryptoProvider;
+use proc_macros::Provider;
 use serde::Deserialize;
 use serde_json::Value;
 use serde_with::{DurationSeconds, serde_as};
-use shared_types::{DidValue, SerializedCredential};
+use shared_types::{CredentialFormat, DidValue, SerializedCredential};
 use time::Duration;
 use uuid::Uuid;
 
@@ -45,13 +46,16 @@ use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::provider_directory::InitializationError;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::util::key_selection::SelectedKey;
 
 #[cfg(test)]
 mod test;
 
+#[derive(Provider)]
 pub struct SDJWTFormatter {
+    config_id: CredentialFormat,
     crypto: Arc<dyn CryptoProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -63,7 +67,7 @@ pub struct SDJWTFormatter {
 #[serde_as]
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Params {
+struct Params {
     #[serde_as(as = "DurationSeconds<i64>")]
     pub leeway: Duration,
     pub embed_layout_properties: bool,
@@ -410,25 +414,36 @@ impl CredentialFormatter for SDJWTFormatter {
             parent: None,
         })
     }
+
+    fn config_name(&self) -> &CredentialFormat {
+        &self.config_id
+    }
 }
 
 impl SDJWTFormatter {
     pub fn new(
-        params: Params,
+        config_id: CredentialFormat,
+        params: serde_json::Value,
         crypto: Arc<dyn CryptoProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         data_type_provider: Arc<dyn DataTypeProvider>,
         client: Arc<dyn HttpClient>,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, InitializationError> {
+        let params =
+            serde_json::from_value(params).map_err(|err| InitializationError::InvalidParams {
+                key: config_id.to_string(),
+                source: err,
+            })?;
+        Ok(Self {
+            config_id,
             params,
             crypto,
             did_method_provider,
             key_algorithm_provider,
             data_type_provider,
             client,
-        }
+        })
     }
 }
 

@@ -22,7 +22,6 @@ use crate::provider::verification_protocol::VerificationProtocol;
 use crate::provider::verification_protocol::dto::PresentationDefinitionVersion;
 use crate::provider::verification_protocol::model::CommonParams;
 use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4Vp20Params;
-use crate::service::error::MissingProviderError;
 use crate::util::key_selection::KeyFilter;
 use crate::validator::{
     throw_if_endpoint_version_incompatible, throw_if_org_not_matching_session,
@@ -80,10 +79,7 @@ pub(super) async fn validate_format_and_exchange_protocol_compatibility(
                 ))?;
 
         let schema_format = credential_schema.format().await?;
-        let formatter = formatter_provider
-            .get_credential_formatter(&schema_format)
-            .ok_or(MissingProviderError::Formatter(schema_format.to_string()))
-            .error_while("getting formatter")?;
+        let formatter = formatter_provider.get_credential_formatter(&schema_format)?;
 
         let capabilities = formatter.get_capabilities();
         if !capabilities
@@ -131,10 +127,7 @@ pub(super) async fn validate_did_and_format_compatibility(
                 ))?;
 
         let schema_format = credential_schema.format().await?;
-        let formatter = formatter_provider
-            .get_credential_formatter(&schema_format)
-            .ok_or(MissingProviderError::Formatter(schema_format.to_string()))
-            .error_while("getting formatter")?;
+        let formatter = formatter_provider.get_credential_formatter(&schema_format)?;
 
         let capabilities = formatter.get_capabilities();
         if capabilities
@@ -266,10 +259,7 @@ pub(super) async fn validate_verification_key_storage_compatibility(
                 ))?;
 
         let schema_format = credential_schema.format().await?;
-        let formatter = formatter_provider
-            .get_credential_formatter(&schema_format)
-            .ok_or(MissingProviderError::Formatter(schema_format.to_string()))
-            .error_while("getting formatter")?;
+        let formatter = formatter_provider.get_credential_formatter(&schema_format)?;
 
         let capabilities = formatter.get_capabilities();
         if !capabilities

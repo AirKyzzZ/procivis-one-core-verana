@@ -169,9 +169,8 @@ pub(crate) async fn validate_proof(
     let mut proved_credentials: HashMap<CredentialSchemaId, Vec<ValidatedProofClaimDTO>> =
         HashMap::new();
 
-    let credential_formatter = credential_formatter_provider
-        .get_credential_formatter(&format.into())
-        .ok_or(MissingProviderError::Formatter(format.to_owned()))?;
+    let credential_formatter =
+        credential_formatter_provider.get_credential_formatter(&format.into())?;
 
     for credential in presentation.credentials {
         let received_credential = credential_formatter

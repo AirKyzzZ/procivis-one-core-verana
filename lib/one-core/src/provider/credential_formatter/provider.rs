@@ -1,8 +1,8 @@
 //! Credential format provider.
 
-use std::collections::HashMap;
 use std::sync::Arc;
 
+use itertools::Itertools;
 use one_crypto::CryptoProvider;
 use serde_json::json;
 use shared_types::CredentialFormat;
@@ -15,7 +15,8 @@ use super::mdoc_formatter::MdocFormatter;
 use super::sdjwt_formatter::SDJWTFormatter;
 use super::sdjwtvc_formatter::SDJWTVCFormatter;
 use crate::config::ConfigValidationError;
-use crate::config::core_config::{CoreConfig, FormatType, Params};
+use crate::config::core_config::{CoreConfig, DatatypeConfig, Fields, FormatType, Params};
+use crate::error::{ContextWithErrorCode, NestedError};
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::http_client::HttpClient;
 use crate::provider::caching_loader::json_ld_context::JsonLdCachingLoader;
@@ -23,13 +24,14 @@ use crate::provider::caching_loader::vct::VctTypeMetadataFetcher;
 use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::provider_directory::{InitializationError, ProviderDirectory};
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 pub trait CredentialFormatterProvider: Send + Sync {
     fn get_credential_formatter(
         &self,
         credential_format: &CredentialFormat,
-    ) -> Option<Arc<dyn CredentialFormatter>>;
+    ) -> Result<Arc<dyn CredentialFormatter>, NestedError>;
 
     /// Retrieves the highest priority formatter by type, if any.
     /// Returns the config name and formatter.
@@ -39,28 +41,106 @@ pub trait CredentialFormatterProvider: Send + Sync {
     ) -> Option<(CredentialFormat, Arc<dyn CredentialFormatter>)>;
 }
 
-struct CredentialFormatterProviderImpl {
-    credential_formatters: HashMap<CredentialFormat, Arc<dyn CredentialFormatter>>,
-    /// Map of format type to name of highest priority formatter.
-    type_to_name: HashMap<FormatType, CredentialFormat>,
-}
-
-impl CredentialFormatterProvider for CredentialFormatterProviderImpl {
+impl CredentialFormatterProvider
+    for ProviderDirectory<CredentialFormat, Fields<FormatType>, dyn CredentialFormatter>
+{
     fn get_credential_formatter(
         &self,
         format: &CredentialFormat,
-    ) -> Option<Arc<dyn CredentialFormatter>> {
-        self.credential_formatters.get(format).cloned()
+    ) -> Result<Arc<dyn CredentialFormatter>, NestedError> {
+        self.provider(format)
     }
 
     fn get_formatter_by_type(
         &self,
         format_type: FormatType,
     ) -> Option<(CredentialFormat, Arc<dyn CredentialFormatter>)> {
-        let name = self.type_to_name.get(&format_type)?;
-        let formatter = self.get_credential_formatter(name)?;
-        Some((name.to_owned(), formatter))
+        let (format_id, _) = self
+            .iter_configs()
+            .filter(|(_, field)| field.enabled && field.r#type == format_type)
+            .sorted_by_key(|(_, field)| field.priority.unwrap_or_default())
+            .last()?;
+
+        self.provider(format_id)
+            .ok()
+            .map(|provider| (format_id.to_owned(), provider))
     }
+}
+
+#[expect(clippy::too_many_arguments)]
+fn initialize_provider(
+    name: &CredentialFormat,
+    fields: &Fields<FormatType>,
+    key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
+    client: &Arc<dyn HttpClient>,
+    data_type_provider: &Arc<dyn DataTypeProvider>,
+    crypto: &Arc<dyn CryptoProvider>,
+    json_ld_cache: &JsonLdCachingLoader,
+    did_method_provider: &Arc<dyn DidMethodProvider>,
+    vct_type_metadata_cache: &Arc<dyn VctTypeMetadataFetcher>,
+    certificate_validator: &Arc<dyn CertificateValidator>,
+    datatype_config: &DatatypeConfig,
+) -> Result<Arc<dyn CredentialFormatter>, InitializationError> {
+    let provider: Arc<dyn CredentialFormatter> = match fields.r#type {
+        FormatType::Jwt => Arc::new(JWTFormatter::new(
+            name.clone(),
+            fields.merge_fields(),
+            key_algorithm_provider.clone(),
+            did_method_provider.clone(),
+            data_type_provider.clone(),
+        )?),
+        FormatType::SdJwt => Arc::new(SDJWTFormatter::new(
+            name.clone(),
+            fields.merge_fields(),
+            crypto.clone(),
+            did_method_provider.clone(),
+            key_algorithm_provider.clone(),
+            data_type_provider.clone(),
+            client.clone(),
+        )?),
+        FormatType::SdJwtVc => Arc::new(SDJWTVCFormatter::new(
+            name.clone(),
+            fields.merge_fields(),
+            crypto.clone(),
+            did_method_provider.clone(),
+            key_algorithm_provider.clone(),
+            vct_type_metadata_cache.clone(),
+            certificate_validator.clone(),
+            datatype_config.clone(),
+            client.clone(),
+            data_type_provider.clone(),
+        )?),
+        FormatType::JsonLdClassic => Arc::new(JsonLdClassic::new(
+            name.clone(),
+            fields.merge_fields(),
+            crypto.clone(),
+            json_ld_cache.clone(),
+            data_type_provider.clone(),
+            key_algorithm_provider.clone(),
+            did_method_provider.clone(),
+            client.clone(),
+        )?),
+        FormatType::JsonLdBbsPlus => Arc::new(JsonLdBbsplus::new(
+            name.clone(),
+            fields.merge_fields(),
+            crypto.clone(),
+            did_method_provider.clone(),
+            data_type_provider.clone(),
+            key_algorithm_provider.clone(),
+            json_ld_cache.clone(),
+            client.clone(),
+        )?),
+        FormatType::Mdoc => Arc::new(MdocFormatter::new(
+            name.clone(),
+            fields.merge_fields(),
+            certificate_validator.clone(),
+            did_method_provider.clone(),
+            datatype_config.clone(),
+            data_type_provider.clone(),
+            key_algorithm_provider.clone(),
+        )?),
+    };
+    Ok(provider)
 }
 
 #[expect(clippy::too_many_arguments)]
@@ -75,135 +155,49 @@ pub(crate) fn credential_formatter_provider_from_config(
     vct_type_metadata_cache: Arc<dyn VctTypeMetadataFetcher>,
     certificate_validator: Arc<dyn CertificateValidator>,
 ) -> Result<Arc<dyn CredentialFormatterProvider>, ConfigValidationError> {
-    let mut credential_formatters: HashMap<CredentialFormat, Arc<dyn CredentialFormatter>> =
-        HashMap::new();
-    let mut type_to_name_prio: HashMap<FormatType, (CredentialFormat, u64)> = HashMap::new();
+    let datatype_config = &config.datatype;
+    let directory = ProviderDirectory::initialize(
+        config.format.iter_mut(),
+        |name: &CredentialFormat, fields: &Fields<FormatType>| {
+            initialize_provider(
+                name,
+                fields,
+                &key_algorithm_provider,
+                &client,
+                &data_type_provider,
+                &crypto,
+                &json_ld_cache,
+                &did_method_provider,
+                &vct_type_metadata_cache,
+                &certificate_validator,
+                datatype_config,
+            )
+        },
+    )
+    .error_while("initializing credential format providers")?;
 
-    for (name, field) in config.format.iter() {
-        let priority = field.priority.unwrap_or_default();
-
-        if absent_or_lower_priority(&type_to_name_prio, &field.r#type, priority) {
-            type_to_name_prio.insert(field.r#type, (name.clone(), priority));
-        }
-
-        let formatter: Arc<dyn CredentialFormatter> = match field.r#type {
-            FormatType::Jwt => {
-                let params = config.format.get(name)?;
-                Arc::new(JWTFormatter::new(
-                    params,
-                    key_algorithm_provider.clone(),
-                    did_method_provider.clone(),
-                    data_type_provider.clone(),
-                ))
-            }
-            FormatType::SdJwt => {
-                let params = config.format.get(name)?;
-                Arc::new(SDJWTFormatter::new(
-                    params,
-                    crypto.clone(),
-                    did_method_provider.clone(),
-                    key_algorithm_provider.clone(),
-                    data_type_provider.clone(),
-                    client.clone(),
-                ))
-            }
-            FormatType::SdJwtVc => {
-                let params = config.format.get(name)?;
-                Arc::new(SDJWTVCFormatter::new(
-                    params,
-                    crypto.clone(),
-                    did_method_provider.clone(),
-                    key_algorithm_provider.clone(),
-                    vct_type_metadata_cache.clone(),
-                    certificate_validator.clone(),
-                    config.datatype.clone(),
-                    client.clone(),
-                    data_type_provider.clone(),
-                ))
-            }
-            FormatType::JsonLdClassic => {
-                let params = config.format.get(name)?;
-                Arc::new(JsonLdClassic::new(
-                    params,
-                    crypto.clone(),
-                    json_ld_cache.clone(),
-                    data_type_provider.clone(),
-                    key_algorithm_provider.clone(),
-                    did_method_provider.clone(),
-                    client.clone(),
-                ))
-            }
-            FormatType::JsonLdBbsPlus => {
-                let params = config.format.get(name)?;
-                Arc::new(JsonLdBbsplus::new(
-                    params,
-                    crypto.clone(),
-                    did_method_provider.clone(),
-                    data_type_provider.clone(),
-                    key_algorithm_provider.clone(),
-                    json_ld_cache.clone(),
-                    client.clone(),
-                ))
-            }
-            FormatType::Mdoc => {
-                let params = config.format.get(name)?;
-                Arc::new(MdocFormatter::new(
-                    params,
-                    certificate_validator.clone(),
-                    did_method_provider.clone(),
-                    config.datatype.clone(),
-                    data_type_provider.clone(),
-                    key_algorithm_provider.clone(),
-                ))
-            }
-        };
-        credential_formatters.insert(name.to_owned(), formatter);
-    }
-
-    for (key, value) in config.format.iter_mut() {
-        if let Some(entity) = credential_formatters.get(key) {
-            value.capabilities = Some(json!(entity.get_capabilities()));
-            if let Some(params) = &mut value.params {
-                if let Some(public) = &mut params.public {
-                    if public["embedLayoutProperties"].is_null() {
-                        public["embedLayoutProperties"] = false.into();
-                    }
-                } else {
-                    params.public = Some(json!({
-                        "embedLayoutProperties": false
-                    }));
+    for (_, fields) in config.format.iter_mut() {
+        if let Some(params) = &mut fields.params {
+            if let Some(public) = &mut params.public {
+                if public["embedLayoutProperties"].is_null() {
+                    public["embedLayoutProperties"] = false.into();
                 }
             } else {
-                value.params = Some(Params {
-                    private: None,
-                    public: Some(json!({
-                        "embedLayoutProperties": false
-                    })),
-                });
-            };
-        }
+                params.public = Some(json!({
+                    "embedLayoutProperties": false
+                }));
+            }
+        } else {
+            fields.params = Some(Params {
+                private: None,
+                public: Some(json!({
+                    "embedLayoutProperties": false
+                })),
+            });
+        };
     }
 
-    let type_to_name = type_to_name_prio
-        .into_iter()
-        .map(|(k, v)| (k, v.0))
-        .collect();
-
-    Ok(Arc::new(CredentialFormatterProviderImpl {
-        credential_formatters,
-        type_to_name,
-    }))
-}
-
-fn absent_or_lower_priority(
-    map: &HashMap<FormatType, (CredentialFormat, u64)>,
-    key: &FormatType,
-    priority: u64,
-) -> bool {
-    match map.get(key) {
-        None => true,
-        Some((_, existing_priority)) => *existing_priority < priority,
-    }
+    Ok(Arc::new(directory))
 }
 
 #[cfg(test)]

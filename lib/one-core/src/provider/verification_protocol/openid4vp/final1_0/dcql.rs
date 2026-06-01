@@ -40,12 +40,7 @@ pub async fn create_dcql_query(
                     "Claim schemas not found".to_string(),
                 ))?;
         let schema_format = credential_schema.format().await?;
-        let formatter = credential_formatter_provider
-            .get_credential_formatter(&schema_format)
-            .ok_or(VerificationProtocolError::Failed(format!(
-                "No formatter for credential format '{}'",
-                schema_format
-            )))?;
+        let formatter = credential_formatter_provider.get_credential_formatter(&schema_format)?;
 
         let credential_format = format_to_type_mapper(&schema_format)?;
         let dcql_format: CredentialFormat = credential_format.into();

@@ -6,7 +6,6 @@ use crate::model::credential::{
 };
 use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
-use crate::service::error::MissingProviderError;
 
 impl CredentialValidityManagerImpl {
     pub(crate) async fn update_mdoc(
@@ -107,11 +106,7 @@ impl CredentialValidityManagerImpl {
         let credential_schema_format = credential_schema.format().await?;
         let formatter = self
             .formatter_provider
-            .get_credential_formatter(&credential_schema_format)
-            .ok_or(MissingProviderError::Formatter(
-                credential_schema_format.to_string(),
-            ))
-            .error_while("getting credential formatter")?;
+            .get_credential_formatter(&credential_schema_format)?;
 
         let detail_credential = formatter
             .extract_credentials_unverified(&credential_str, Some(credential_schema))

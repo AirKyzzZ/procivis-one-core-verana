@@ -360,7 +360,7 @@ async fn test_submit_proof_succeeds() {
     formatter_provider
         .expect_get_credential_formatter()
         .times(1)
-        .returning(move |_| Some(formatter.clone()));
+        .returning(move |_| Ok(formatter.clone()));
 
     let mut verification_protocol = MockVerificationProtocol::default();
     verification_protocol
@@ -562,7 +562,7 @@ async fn test_submit_proof_multiple_credentials_succeeds() {
     formatter_provider
         .expect_get_credential_formatter()
         .times(2)
-        .returning(move |_| Some(formatter.clone()));
+        .returning(move |_| Ok(formatter.clone()));
 
     let mut verification_protocol = MockVerificationProtocol::default();
     verification_protocol
@@ -777,7 +777,7 @@ async fn test_submit_proof_repeating_claims() {
     let formatter = Arc::new(formatter);
     formatter_provider
         .expect_get_credential_formatter()
-        .returning(move |_| Some(formatter.clone()));
+        .returning(move |_| Ok(formatter.clone()));
 
     let mut verification_protocol = MockVerificationProtocol::default();
     verification_protocol

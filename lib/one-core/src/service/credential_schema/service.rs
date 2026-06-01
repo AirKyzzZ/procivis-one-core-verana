@@ -53,10 +53,7 @@ impl CredentialSchemaService {
 
         let formatter = self
             .formatter_provider
-            .get_credential_formatter(&request.format)
-            .ok_or(CredentialSchemaServiceError::MissingFormat(
-                request.format.to_owned(),
-            ))?;
+            .get_credential_formatter(&request.format)?;
         super::validator::validate_create_request(
             &request,
             &self.config,
@@ -214,10 +211,7 @@ impl CredentialSchemaService {
         for format_req in &request.formats {
             let formatter = self
                 .formatter_provider
-                .get_credential_formatter(&format_req.format)
-                .ok_or(CredentialSchemaServiceError::MissingFormat(
-                    format_req.format.to_owned(),
-                ))?;
+                .get_credential_formatter(&format_req.format)?;
 
             let schema_id = formatter
                 .credential_schema_id(

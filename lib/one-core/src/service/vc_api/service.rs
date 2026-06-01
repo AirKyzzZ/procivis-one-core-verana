@@ -124,10 +124,7 @@ impl VCAPIService {
 
         let formatter = self
             .credential_formatter_provider
-            .get_credential_formatter(&credential_format)
-            .ok_or(ServiceError::MissingProvider(
-                MissingProviderError::Formatter(credential_format.to_string()),
-            ))?;
+            .get_credential_formatter(&credential_format)?;
 
         /* TODO: revocation disabled during refactoring
 
@@ -236,10 +233,7 @@ impl VCAPIService {
 
         let formatter = self
             .credential_formatter_provider
-            .get_credential_formatter(&format)
-            .ok_or(ServiceError::Other(format!(
-                "Formatter not found for credential format {format}"
-            )))?;
+            .get_credential_formatter(&format)?;
 
         let string_token = serde_json::to_string(&verify_request.verifiable_credential)
             .map_err(|e| {

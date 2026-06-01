@@ -103,7 +103,6 @@ use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::service::credential::dto::CredentialAttestationBlobs;
 use crate::service::credential::mapper::credential_detail_response_from_model;
-use crate::service::error::MissingProviderError;
 use crate::service::oid4vci_final1_0::dto::{
     OAuthAuthorizationServerMetadataResponseDTO, OpenID4VCICredentialResponseDTO,
 };
@@ -1285,9 +1284,7 @@ impl OpenID4VCIFinal1_0 {
 
             let formatter = self
                 .formatter_provider
-                .get_credential_formatter(&format.format)
-                .ok_or(MissingProviderError::Formatter(format.format.to_string()))
-                .error_while("getting formatter")?;
+                .get_credential_formatter(&format.format)?;
 
             let format_capabilities = formatter.get_capabilities();
             let credential_signing_alg_values_supported = format_capabilities
@@ -1873,11 +1870,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
 
         let token = self
             .formatter_provider
-            .get_credential_formatter(&format.format)
-            .ok_or(IssuanceProtocolError::Failed(format!(
-                "formatter not found: {}",
-                format.format
-            )))?
+            .get_credential_formatter(&format.format)?
             .format_credential(credential_data, auth_fn)
             .await
             .error_while("formatting credential")?;
