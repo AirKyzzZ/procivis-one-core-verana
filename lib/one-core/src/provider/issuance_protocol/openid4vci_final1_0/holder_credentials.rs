@@ -755,12 +755,6 @@ async fn validate_existing_and_find_new_claim_schemas(
         .as_mut()
         .ok_or(IssuanceProtocolError::Failed("Missing claims".to_string()))?;
 
-    let mut stored_claim_schemas = stored_schema
-        .claim_schemas
-        .get()
-        .await
-        .error_while("getting claim schemas")?;
-
     let parsed_claim_schemas = credential
         .schema
         .as_ref()
@@ -770,6 +764,7 @@ async fn validate_existing_and_find_new_claim_schemas(
         .await
         .error_while("getting claim schemas")?;
 
+    let mut stored_claim_schemas = stored_schema.claim_schemas.as_mut().await?;
     for parsed_claim_schema in parsed_claim_schemas {
         let known_claim_schema = stored_claim_schemas
             .iter()
@@ -816,7 +811,7 @@ async fn validate_existing_and_find_new_claim_schemas(
         )));
     }
     stored_claim_schemas.extend(new_claim_schemas.clone());
-    stored_schema.claim_schemas = stored_claim_schemas.into();
+    drop(stored_claim_schemas);
     credential.schema = Some(stored_schema.to_owned());
     if new_claim_schemas.is_empty() {
         Ok(None)

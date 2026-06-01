@@ -1,12 +1,14 @@
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
+use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 
-use tokio::sync::Mutex;
+use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
+use crate::error::{ContextWithErrorCode, NestedError};
 use crate::repository::error::DataLayerError;
 
 pub trait Model {
-    type Id: Clone + Debug;
+    type Id: Clone + Debug + Display;
     fn id(&self) -> &Self::Id;
 }
 
@@ -19,14 +21,14 @@ pub trait AsyncModelLoader<M: Model>: Send + Sync {
 #[derive(Clone, Debug)]
 pub struct Related<M: Model> {
     id: M::Id,
-    data: Arc<Mutex<AsyncModelStore<M>>>,
+    data: Arc<RwLock<AsyncModelStore<M>>>,
 }
 
 impl<M: Model> Related<M> {
     pub fn new(id: M::Id, loader: impl AsyncModelLoader<M> + 'static) -> Self {
         Self {
             id,
-            data: Arc::new(Mutex::new(AsyncModelStore::ToBeLoaded(Box::new(loader)))),
+            data: Arc::new(RwLock::new(AsyncModelStore::ToBeLoaded(Box::new(loader)))),
         }
     }
 
@@ -46,7 +48,7 @@ where
 
 impl<M: Model + Clone> Related<M> {
     pub async fn get(&self) -> Result<M, DataLayerError> {
-        let mut guard = self.data.lock().await;
+        let mut guard = self.data.write().await;
         Ok(match &*guard {
             AsyncModelStore::AlreadyLoaded(data) => data.to_owned(),
             AsyncModelStore::ToBeLoaded(loader) => {
@@ -56,13 +58,114 @@ impl<M: Model + Clone> Related<M> {
             }
         })
     }
+
+    pub async fn as_ref(&self) -> Result<RoLoadedRelated<'_, M>, NestedError> {
+        if let Some(loaded) = self.load_for_read_only().await? {
+            return Ok(loaded);
+        };
+        let guard = self.data.read().await;
+        Ok(RoLoadedRelated { guard })
+    }
+
+    pub async fn as_mut(&mut self) -> Result<RwLoadedRelated<'_, M>, NestedError> {
+        self.load().await
+    }
+
+    async fn load_for_read_only(&self) -> Result<Option<RoLoadedRelated<'_, M>>, NestedError> {
+        // IMPORTANT: Check with a read lock first whether the data is already loaded. If it is,
+        // most likely there are other read locks being held currently, so that trying to acquire
+        // a write lock directly would cause a deadlock.
+        {
+            let guard = self.data.read().await;
+            if let AsyncModelStore::AlreadyLoaded(_) = *guard {
+                return Ok(Some(RoLoadedRelated { guard }));
+            }
+        }
+        self.load().await?;
+        Ok(None)
+    }
+
+    async fn load(&self) -> Result<RwLoadedRelated<'_, M>, NestedError> {
+        let mut guard = self.data.write().await;
+        if let AsyncModelStore::ToBeLoaded(loader) = &*guard {
+            let data = loader
+                .load(&self.id)
+                .await
+                .error_while(format!("loading related entity {}", self.id))?;
+            *guard = AsyncModelStore::AlreadyLoaded(data);
+        }
+        Ok(RwLoadedRelated { guard })
+    }
+}
+
+pub struct RoLoadedRelated<'a, M: Model> {
+    guard: RwLockReadGuard<'a, AsyncModelStore<M>>,
+}
+
+impl<M: Model> AsRef<M> for RoLoadedRelated<'_, M> {
+    fn as_ref(&self) -> &M {
+        match &*self.guard {
+            AsyncModelStore::AlreadyLoaded(data) => data,
+            AsyncModelStore::ToBeLoaded(_) => unreachable!(
+                "Invariant violated: load not called before constructing loaded related ref."
+            ),
+        }
+    }
+}
+
+impl<M: Model> Deref for RoLoadedRelated<'_, M> {
+    type Target = M;
+
+    fn deref(&self) -> &Self::Target {
+        self.as_ref()
+    }
+}
+
+pub struct RwLoadedRelated<'a, M: Model> {
+    guard: RwLockWriteGuard<'a, AsyncModelStore<M>>,
+}
+
+impl<M: Model> AsRef<M> for RwLoadedRelated<'_, M> {
+    fn as_ref(&self) -> &M {
+        match &*self.guard {
+            AsyncModelStore::AlreadyLoaded(data) => data,
+            AsyncModelStore::ToBeLoaded(_) => unreachable!(
+                "Invariant violated: load not called before constructing loaded related ref."
+            ),
+        }
+    }
+}
+
+impl<M: Model> Deref for RwLoadedRelated<'_, M> {
+    type Target = M;
+
+    fn deref(&self) -> &Self::Target {
+        self.as_ref()
+    }
+}
+
+impl<M: Model> DerefMut for RwLoadedRelated<'_, M> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.as_mut()
+    }
+}
+
+impl<M: Model> AsMut<M> for RwLoadedRelated<'_, M> {
+    fn as_mut(&mut self) -> &mut M {
+        match &mut *self.guard {
+            AsyncModelStore::AlreadyLoaded(data) => data,
+            AsyncModelStore::ToBeLoaded(_) => unreachable!(
+                "Invariant violated: load not called before constructing loaded related ref."
+            ),
+        }
+    }
 }
 
 impl<M: Model> From<M> for Related<M> {
     fn from(model: M) -> Self {
         Self {
             id: model.id().to_owned(),
-            data: Arc::new(Mutex::new(AsyncModelStore::AlreadyLoaded(model))),
+            data: Arc::new(RwLock::new(AsyncModelStore::AlreadyLoaded(model))),
         }
     }
 }
@@ -92,20 +195,20 @@ pub trait AsyncVecLoader<T>: Send + Sync {
 
 #[derive(Clone, Debug)]
 pub struct RelatedVec<T> {
-    data: Arc<Mutex<AsyncVecStore<T>>>,
+    data: Arc<RwLock<AsyncVecStore<T>>>,
 }
 
 impl<T> RelatedVec<T> {
     pub fn new(loader: impl AsyncVecLoader<T> + 'static) -> Self {
         Self {
-            data: Arc::new(Mutex::new(AsyncVecStore::ToBeLoaded(Box::new(loader)))),
+            data: Arc::new(RwLock::new(AsyncVecStore::ToBeLoaded(Box::new(loader)))),
         }
     }
 }
 
 impl<T: Clone> RelatedVec<T> {
     pub async fn get(&self) -> Result<Vec<T>, DataLayerError> {
-        let mut guard = self.data.lock().await;
+        let mut guard = self.data.write().await;
         Ok(match &*guard {
             AsyncVecStore::AlreadyLoaded(data) => data.to_owned(),
             AsyncVecStore::ToBeLoaded(loader) => {
@@ -115,12 +218,113 @@ impl<T: Clone> RelatedVec<T> {
             }
         })
     }
+
+    pub async fn as_ref(&self) -> Result<RoLoadedRelatedVec<'_, T>, NestedError> {
+        if let Some(loaded) = self.load_for_read_only().await? {
+            return Ok(loaded);
+        };
+        let guard = self.data.read().await;
+        Ok(RoLoadedRelatedVec { guard })
+    }
+
+    pub async fn as_mut(&mut self) -> Result<RwLoadedRelatedVec<'_, T>, NestedError> {
+        self.load().await
+    }
+
+    async fn load_for_read_only(&self) -> Result<Option<RoLoadedRelatedVec<'_, T>>, NestedError> {
+        // IMPORTANT: Check with a read lock first whether the data is already loaded. If it is,
+        // most likely there are other read locks being held currently, so that trying to acquire
+        // a write lock directly would cause a deadlock.
+        {
+            let guard = self.data.read().await;
+            if let AsyncVecStore::AlreadyLoaded(_) = *guard {
+                return Ok(Some(RoLoadedRelatedVec { guard }));
+            }
+        }
+        self.load().await?;
+        Ok(None)
+    }
+
+    async fn load(&self) -> Result<RwLoadedRelatedVec<'_, T>, NestedError> {
+        let mut guard = self.data.write().await;
+        if let AsyncVecStore::ToBeLoaded(loader) = &*guard {
+            let data = loader
+                .load()
+                .await
+                .error_while("loading related entities".to_string())?;
+            *guard = AsyncVecStore::AlreadyLoaded(data);
+        }
+        Ok(RwLoadedRelatedVec { guard })
+    }
+}
+
+pub struct RoLoadedRelatedVec<'a, M> {
+    guard: RwLockReadGuard<'a, AsyncVecStore<M>>,
+}
+
+impl<M: Model> AsRef<Vec<M>> for RoLoadedRelatedVec<'_, M> {
+    fn as_ref(&self) -> &Vec<M> {
+        match &*self.guard {
+            AsyncVecStore::AlreadyLoaded(data) => data,
+            AsyncVecStore::ToBeLoaded(_) => unreachable!(
+                "Invariant violated: load not called before constructing loaded related vec."
+            ),
+        }
+    }
+}
+
+impl<M: Model> Deref for RoLoadedRelatedVec<'_, M> {
+    type Target = Vec<M>;
+
+    fn deref(&self) -> &Self::Target {
+        self.as_ref()
+    }
+}
+
+pub struct RwLoadedRelatedVec<'a, M> {
+    guard: RwLockWriteGuard<'a, AsyncVecStore<M>>,
+}
+
+impl<M> AsRef<Vec<M>> for RwLoadedRelatedVec<'_, M> {
+    fn as_ref(&self) -> &Vec<M> {
+        match &*self.guard {
+            AsyncVecStore::AlreadyLoaded(data) => data,
+            AsyncVecStore::ToBeLoaded(_) => unreachable!(
+                "Invariant violated: load not called before constructing loaded related vec."
+            ),
+        }
+    }
+}
+
+impl<M> Deref for RwLoadedRelatedVec<'_, M> {
+    type Target = Vec<M>;
+
+    fn deref(&self) -> &Self::Target {
+        self.as_ref()
+    }
+}
+
+impl<M> DerefMut for RwLoadedRelatedVec<'_, M> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.as_mut()
+    }
+}
+
+impl<M> AsMut<Vec<M>> for RwLoadedRelatedVec<'_, M> {
+    fn as_mut(&mut self) -> &mut Vec<M> {
+        match &mut *self.guard {
+            AsyncVecStore::AlreadyLoaded(data) => data,
+            AsyncVecStore::ToBeLoaded(_) => unreachable!(
+                "Invariant violated: load not called before constructing loaded related vec."
+            ),
+        }
+    }
 }
 
 impl<T> From<Vec<T>> for RelatedVec<T> {
     fn from(models: Vec<T>) -> Self {
         Self {
-            data: Arc::new(Mutex::new(AsyncVecStore::AlreadyLoaded(models))),
+            data: Arc::new(RwLock::new(AsyncVecStore::AlreadyLoaded(models))),
         }
     }
 }

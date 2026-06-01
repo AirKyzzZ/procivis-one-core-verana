@@ -352,11 +352,7 @@ impl WalletUnitService {
             .error_while("getting holder wallet unit")?
             .ok_or(HolderWalletInstanceError::HolderWalletUnitNotFound(id))?;
 
-        let organisation = holder_wallet_instance
-            .organisation
-            .get()
-            .await
-            .error_while("getting organisation")?;
+        let organisation = holder_wallet_instance.organisation.as_ref().await?;
 
         throw_if_org_id_not_matching_session(&organisation.id, &*self.session_provider)
             .error_while("checking session")?;
