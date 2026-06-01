@@ -132,7 +132,7 @@ impl IntoJoinRelations for CredentialSchemaFilterValue {
             CredentialSchemaFilterValue::SchemaId(_)
             | CredentialSchemaFilterValue::SchemaIds(_)
             | CredentialSchemaFilterValue::Formats(_) => vec![JoinRelation {
-                join_type: JoinType::InnerJoin,
+                join_type: JoinType::LeftJoin,
                 relation_def: credential_schema::Relation::CredentialSchemaFormat.def(),
                 alias: None,
             }],

@@ -16,7 +16,7 @@ use one_core::repository::organisation_repository::{
     MockOrganisationRepository, OrganisationRepository,
 };
 use one_core::service::credential_schema::dto::CredentialSchemaFilterValue;
-use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set, Unchanged};
+use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, NotSet, Set, Unchanged};
 use shared_types::{CredentialSchemaId, RevocationMethodId};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
@@ -297,6 +297,61 @@ async fn test_get_credential_schema_list_success() {
     assert_eq!(1, result.total_pages);
     assert_eq!(1, result.total_items);
     assert_eq!(1, result.values.len());
+}
+
+#[tokio::test]
+async fn test_get_credential_schema_list_success_v1_and_v2() {
+    let TestSetupWithCredentialSchema {
+        db,
+        organisation,
+        repository,
+        ..
+    } = setup_with_schema(Repositories::default()).await;
+
+    // v1 without schema_format entry
+    credential_schema::ActiveModel {
+        batch_size: Set(None),
+        allow_revocation: Set(None),
+        id: Set(Uuid::new_v4().into()),
+        imported_source_url: Set("CORE_URL".to_string()),
+        created_date: Set(get_dummy_date()),
+        last_modified: Set(get_dummy_date()),
+        format: Set(Some("JWT".into())),
+        name: Set("schema v1".to_owned()),
+        revocation_method: NotSet,
+        organisation_id: Set(organisation.id),
+        key_storage_security: NotSet,
+        deleted_at: NotSet,
+        layout_type: Set(credential_schema::LayoutType::Card),
+        layout_properties: Set(None),
+        schema_id: NotSet,
+        allow_suspension: Set(true),
+        requires_wallet_instance_attestation: Set(false),
+        transaction_code_type: Set(None),
+        transaction_code_length: Set(None),
+        transaction_code_description: Set(None),
+    }
+    .insert(&db)
+    .await
+    .unwrap();
+
+    let result = repository
+        .get_credential_schema_list(CredentialSchemaListQuery {
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 5,
+            }),
+            filtering: Some(
+                CredentialSchemaFilterValue::Formats(vec!["JWT".to_owned()]).condition(),
+            ),
+            ..Default::default()
+        })
+        .await;
+    assert!(result.is_ok());
+    let result = result.unwrap();
+    assert_eq!(1, result.total_pages);
+    assert_eq!(2, result.total_items);
+    assert_eq!(2, result.values.len());
 }
 
 #[tokio::test]
