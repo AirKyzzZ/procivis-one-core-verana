@@ -25,6 +25,7 @@ use model::{
     TokenRequestWalletAttestationRequest, WalletAttestationResult,
 };
 use one_crypto::encryption::{decrypt_string, encrypt_string};
+use proc_macros::Provider;
 use proof_formatter::{OpenID4VCIProofJWTFormatter, PublicKeyInfo};
 use secrecy::{ExposeSecret, SecretString};
 use serde::Deserialize;
@@ -94,6 +95,7 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_security_level::provider::KeySecurityLevelProvider;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::provider_directory::InitializationError;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
@@ -126,6 +128,7 @@ pub mod validator;
 const CREDENTIAL_OFFER_VALUE_QUERY_PARAM_KEY: &str = "credential_offer";
 const CREDENTIAL_OFFER_REFERENCE_QUERY_PARAM_KEY: &str = "credential_offer_uri";
 
+#[derive(Provider)]
 pub(crate) struct OpenID4VCIFinal1_0 {
     client: Arc<dyn HttpClient>,
     metadata_cache: Arc<dyn OpenIDMetadataFetcher>,
@@ -174,7 +177,7 @@ impl OpenID4VCIFinal1_0 {
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
         base_url: Option<String>,
         config: Arc<CoreConfig>,
-        params: OpenID4VCIFinal1Params,
+        params: serde_json::Value,
         config_id: String,
         holder_wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
         holder_wallet_unit_repository: Arc<dyn HolderWalletInstanceRepository>,
@@ -183,9 +186,15 @@ impl OpenID4VCIFinal1_0 {
         history_repository: Arc<dyn HistoryRepository>,
         session_provider: Arc<dyn SessionProvider>,
         interaction_repository: Arc<dyn InteractionRepository>,
-    ) -> Self {
+    ) -> Result<Self, InitializationError> {
+        let params =
+            serde_json::from_value(params).map_err(|err| InitializationError::InvalidParams {
+                key: config_id.to_string(),
+                source: err,
+            })?;
+
         let protocol_base_url = base_url.as_ref().map(|url| get_protocol_base_url(url));
-        Self {
+        Ok(Self {
             client,
             metadata_cache,
             credential_repository,
@@ -212,7 +221,7 @@ impl OpenID4VCIFinal1_0 {
             history_repository,
             session_provider,
             interaction_repository,
-        }
+        })
     }
 
     #[expect(clippy::too_many_arguments)]
@@ -1339,7 +1348,7 @@ impl OpenID4VCIFinal1_0 {
 
 #[async_trait]
 impl IssuanceProtocol for OpenID4VCIFinal1_0 {
-    async fn holder_can_handle(&self, url: &Url) -> bool {
+    fn holder_can_handle(&self, url: &Url) -> bool {
         if self.params.url_scheme != url.scheme() {
             return false;
         }
@@ -2160,6 +2169,10 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         }
 
         result
+    }
+
+    fn config_name(&self) -> &str {
+        &self.config_id
     }
 }
 

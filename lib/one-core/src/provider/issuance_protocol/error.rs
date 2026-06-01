@@ -36,6 +36,8 @@ pub enum IssuanceProtocolError {
     Untrusted,
     #[error("Refresh not possible: refresh token missing or expired")]
     RefreshNotPossible,
+    #[error("Rejection not supported")]
+    RejectionNotSupported,
     #[error("Requirements for key not supported")]
     KeyRequirementsNotSupported,
     #[error("Wallet instance required")]
@@ -71,6 +73,7 @@ impl ErrorCodeMixin for IssuanceProtocolError {
             Self::BindingAutogenerationFailure(_) => ErrorCode::BR_0217,
             Self::KeyRequirementsNotSupported => ErrorCode::BR_0225,
             Self::WalletInstanceRequired => ErrorCode::BR_0081,
+            Self::RejectionNotSupported => ErrorCode::BR_0237,
             Self::DisallowedCredentialConfiguration => ErrorCode::BR_0411,
             Self::Suspended | Self::RefreshTooSoon | Self::RefreshNotPossible => ErrorCode::BR_0238,
             Self::FromUtf8Error(_) | Self::TrustInformationError(_) => ErrorCode::BR_0047,

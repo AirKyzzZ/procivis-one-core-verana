@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use mockall::predicate::eq;
-use secrecy::SecretSlice;
 use serde_json::json;
 use shared_types::{CredentialFormat, CredentialId, RevocationMethodId};
 use similar_asserts::assert_eq;
@@ -39,8 +38,6 @@ use crate::provider::credential_formatter::provider::MockCredentialFormatterProv
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::issuance_protocol::IssuanceProtocol;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
-use crate::provider::issuance_protocol::model::{CommonParams, OpenID4VCRedirectUriParams};
-use crate::provider::issuance_protocol::openid4vci_final1_0::model::OpenID4VCIFinal1Params;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_security_level::provider::MockKeySecurityLevelProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
@@ -191,24 +188,21 @@ async fn test_issuer_submit_succeeds() {
         Arc::new(blob_storage_provider),
         Some("http://example.com/".to_string()),
         Arc::new(generic_config().core),
-        OpenID4VCIFinal1Params {
-            pre_authorized_code_expires_in: Duration::seconds(10),
-            token_expires_in: Duration::seconds(10),
-            credential_offer_by_value: false,
-            refresh_expires_in: Duration::seconds(1000),
-            encryption: SecretSlice::from(vec![0; 32]),
-            url_scheme: "openid-credential-offer".to_string(),
-            redirect_uri: OpenID4VCRedirectUriParams {
-                enabled: true,
-                allowed_schemes: vec!["https".to_string()],
+        json!({
+            "preAuthorizedCodeExpiresIn": 10,
+            "tokenExpiresIn": 10,
+            "refreshExpiresIn": 1000,
+            "encryption": "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e",
+            "redirectUri": {
+                "enabled": true,
+                "allowedSchemes": ["https"]
             },
-            nonce: None,
-            oauth_attestation_leeway: Duration::seconds(60),
-            key_attestation_leeway: Duration::seconds(60),
-            trust_ecosystem_leeway: Duration::seconds(60),
-            request_signed_metadata: false,
-            common: CommonParams { webhook_task: None },
-        },
+            "urlScheme": "openid-credential-offer",
+            "oauthAttestationLeeway": 60,
+            "keyAttestationLeeway": 60,
+            "trustEcosystemLeeway": 60,
+            "requestSignedMetadata": false
+        }),
         "OPENID4VCI_FINAL1".to_string(),
         Arc::new(MockHolderWalletUnitProto::new()),
         Arc::new(MockHolderWalletInstanceRepository::new()),
@@ -217,7 +211,8 @@ async fn test_issuer_submit_succeeds() {
         Arc::new(MockHistoryRepository::new()),
         Arc::new(NoSessionProvider),
         Arc::new(MockInteractionRepository::new()),
-    );
+    )
+    .unwrap();
 
     let format_id = credential
         .schema
@@ -361,24 +356,21 @@ async fn test_issue_credential_for_mdoc_succeeds() {
         Arc::new(blob_storage_provider),
         Some("https://example.com/test/".to_string()),
         Arc::new(dummy_config()),
-        OpenID4VCIFinal1Params {
-            pre_authorized_code_expires_in: Duration::seconds(10),
-            token_expires_in: Duration::seconds(10),
-            credential_offer_by_value: false,
-            refresh_expires_in: Duration::seconds(1000),
-            encryption: SecretSlice::from(vec![0; 32]),
-            url_scheme: "openid-credential-offer".to_string(),
-            redirect_uri: OpenID4VCRedirectUriParams {
-                enabled: true,
-                allowed_schemes: vec!["https".to_string()],
+        json!({
+            "preAuthorizedCodeExpiresIn": 10,
+            "tokenExpiresIn": 10,
+            "refreshExpiresIn": 1000,
+            "encryption": "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e",
+            "redirectUri": {
+                "enabled": true,
+                "allowedSchemes": ["https"]
             },
-            nonce: None,
-            oauth_attestation_leeway: Duration::seconds(60),
-            key_attestation_leeway: Duration::seconds(60),
-            trust_ecosystem_leeway: Duration::seconds(60),
-            request_signed_metadata: false,
-            common: CommonParams { webhook_task: None },
-        },
+            "urlScheme": "openid-credential-offer",
+            "oauthAttestationLeeway": 60,
+            "keyAttestationLeeway": 60,
+            "trustEcosystemLeeway": 60,
+            "requestSignedMetadata": false
+        }),
         "OPENID4VCI_FINAL1".to_string(),
         Arc::new(MockHolderWalletUnitProto::new()),
         Arc::new(MockHolderWalletInstanceRepository::new()),
@@ -387,7 +379,8 @@ async fn test_issue_credential_for_mdoc_succeeds() {
         Arc::new(MockHistoryRepository::new()),
         Arc::new(NoSessionProvider),
         Arc::new(MockInteractionRepository::new()),
-    );
+    )
+    .unwrap();
 
     let format_id = credential
         .schema
@@ -522,24 +515,21 @@ async fn test_issue_credential_for_existing_mdoc_succeeds() {
         Arc::new(blob_storage_provider),
         Some("https://example.com/test/".to_string()),
         Arc::new(config),
-        OpenID4VCIFinal1Params {
-            pre_authorized_code_expires_in: Duration::seconds(10),
-            token_expires_in: Duration::seconds(10),
-            credential_offer_by_value: false,
-            refresh_expires_in: Duration::seconds(1000),
-            encryption: SecretSlice::from(vec![0; 32]),
-            url_scheme: "openid-credential-offer".to_string(),
-            redirect_uri: OpenID4VCRedirectUriParams {
-                enabled: true,
-                allowed_schemes: vec!["https".to_string()],
+        json!({
+            "preAuthorizedCodeExpiresIn": 10,
+            "tokenExpiresIn": 10,
+            "refreshExpiresIn": 1000,
+            "encryption": "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e",
+            "redirectUri": {
+                "enabled": true,
+                "allowedSchemes": ["https"]
             },
-            nonce: None,
-            oauth_attestation_leeway: Duration::seconds(60),
-            key_attestation_leeway: Duration::seconds(60),
-            trust_ecosystem_leeway: Duration::seconds(60),
-            request_signed_metadata: false,
-            common: CommonParams { webhook_task: None },
-        },
+            "urlScheme": "openid-credential-offer",
+            "oauthAttestationLeeway": 60,
+            "keyAttestationLeeway": 60,
+            "trustEcosystemLeeway": 60,
+            "requestSignedMetadata": false
+        }),
         "OPENID4VCI_FINAL1".to_string(),
         Arc::new(MockHolderWalletUnitProto::new()),
         Arc::new(MockHolderWalletInstanceRepository::new()),
@@ -548,7 +538,8 @@ async fn test_issue_credential_for_existing_mdoc_succeeds() {
         Arc::new(MockHistoryRepository::new()),
         Arc::new(NoSessionProvider),
         Arc::new(MockInteractionRepository::new()),
-    );
+    )
+    .unwrap();
 
     let format_id = credential
         .schema
@@ -627,24 +618,21 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
         Arc::new(MockBlobStorageProvider::new()),
         Some("base_url".to_string()),
         Arc::new(config),
-        OpenID4VCIFinal1Params {
-            pre_authorized_code_expires_in: Duration::seconds(10),
-            token_expires_in: Duration::seconds(10),
-            credential_offer_by_value: false,
-            refresh_expires_in: Duration::seconds(1000),
-            encryption: SecretSlice::from(vec![0; 32]),
-            url_scheme: "openid-credential-offer".to_string(),
-            redirect_uri: OpenID4VCRedirectUriParams {
-                enabled: true,
-                allowed_schemes: vec!["https".to_string()],
+        json!({
+            "preAuthorizedCodeExpiresIn": 10,
+            "tokenExpiresIn": 10,
+            "refreshExpiresIn": 1000,
+            "encryption": "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e",
+            "redirectUri": {
+                "enabled": true,
+                "allowedSchemes": ["https"]
             },
-            nonce: None,
-            oauth_attestation_leeway: Duration::seconds(60),
-            key_attestation_leeway: Duration::seconds(60),
-            trust_ecosystem_leeway: Duration::seconds(60),
-            request_signed_metadata: false,
-            common: CommonParams { webhook_task: None },
-        },
+            "urlScheme": "openid-credential-offer",
+            "oauthAttestationLeeway": 60,
+            "keyAttestationLeeway": 60,
+            "trustEcosystemLeeway": 60,
+            "requestSignedMetadata": false
+        }),
         "OPENID4VCI_FINAL1".to_string(),
         Arc::new(MockHolderWalletUnitProto::new()),
         Arc::new(MockHolderWalletInstanceRepository::new()),
@@ -653,7 +641,8 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
         Arc::new(MockHistoryRepository::new()),
         Arc::new(NoSessionProvider),
         Arc::new(MockInteractionRepository::new()),
-    );
+    )
+    .unwrap();
 
     let format_id = credential
         .schema

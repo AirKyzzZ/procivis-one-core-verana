@@ -22,8 +22,7 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 use super::OpenID4VCIFinal1_0;
 use super::model::{
     HolderInteractionData, OpenID4VCICredentialRequestDTO, OpenID4VCICredentialRequestIdentifier,
-    OpenID4VCICredentialRequestProofs, OpenID4VCIFinal1Params, OpenID4VCIGrants,
-    OpenID4VCIPreAuthorizedCodeGrant,
+    OpenID4VCICredentialRequestProofs, OpenID4VCIGrants, OpenID4VCIPreAuthorizedCodeGrant,
 };
 use super::service::create_credential_offer;
 use crate::config::core_config::{
@@ -67,8 +66,8 @@ use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::did_method::{DidCreated, MockDidMethod};
 use crate::provider::issuance_protocol::dto::ContinueIssuanceDTO;
 use crate::provider::issuance_protocol::model::{
-    CommonParams, InvitationResponseEnum, KeyStorageSecurityLevel,
-    OpenID4VCIKeyAttestationsRequired, OpenID4VCIProofTypeSupported, OpenID4VCRedirectUriParams,
+    InvitationResponseEnum, KeyStorageSecurityLevel, OpenID4VCIKeyAttestationsRequired,
+    OpenID4VCIProofTypeSupported,
 };
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
     OpenID4VCICredentialMetadataClaimResponseDTO, OpenID4VCICredentialMetadataResponseDTO,
@@ -125,7 +124,7 @@ struct TestInputs {
     pub history_repository: MockHistoryRepository,
     pub interaction_repository: MockInteractionRepository,
     pub config: CoreConfig,
-    pub params: Option<OpenID4VCIFinal1Params>,
+    pub params: Option<serde_json::Value>,
     pub client: Option<MockHttpClient>,
 }
 
@@ -153,9 +152,10 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCIFinal1_0 {
         Arc::new(inputs.blob_storage_provider),
         Some("http://base_url".to_string()),
         Arc::new(inputs.config),
-        inputs.params.unwrap_or(OpenID4VCIFinal1Params {
-            credential_offer_by_value: false,
-            ..test_params("openid-credential-offer")
+        inputs.params.unwrap_or({
+            let mut params = test_params("openid-credential-offer");
+            params["credentialOfferByValue"] = json!(false);
+            params
         }),
         "OPENID4VCI_FINAL1".to_string(),
         Arc::new(inputs.holder_wallet_unit_proto),
@@ -166,6 +166,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCIFinal1_0 {
         Arc::new(NoSessionProvider),
         Arc::new(inputs.interaction_repository),
     )
+    .unwrap()
 }
 
 fn generic_credential_did() -> Credential {
@@ -2616,9 +2617,10 @@ async fn test_handle_invitation_signed_metadata() {
         wrp_validator,
         interaction_repository,
         client: Some(client),
-        params: Some(OpenID4VCIFinal1Params {
-            request_signed_metadata: true,
-            ..test_params("openid-credential-offer")
+        params: Some({
+            let mut params = test_params("openid-credential-offer");
+            params["requestSignedMetadata"] = json!(true);
+            params
         }),
         ..Default::default()
     });
@@ -2795,7 +2797,7 @@ async fn test_can_handle_issuance_success_with_custom_url_scheme() {
     let test_url = format!(
         "{url_scheme}://?credential_offer_uri=http%3A%2F%2Fissuer.com%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%2Foffer%2Fc322aa7f-9803-410d-b891-939b279fb965",
     );
-    assert!(protocol.holder_can_handle(&test_url.parse().unwrap()).await)
+    assert!(protocol.holder_can_handle(&test_url.parse().unwrap()))
 }
 
 #[tokio::test]
@@ -2811,7 +2813,7 @@ async fn test_can_handle_issuance_fail_with_custom_url_scheme() {
     let test_url = format!(
         "{other_url_scheme}://?credential_offer_uri=http%3A%2F%2Fbase_url%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%2Foffer%2Fc322aa7f-9803-410d-b891-939b279fb965"
     );
-    assert!(!protocol.holder_can_handle(&test_url.parse().unwrap()).await)
+    assert!(!protocol.holder_can_handle(&test_url.parse().unwrap()))
 }
 
 #[tokio::test]
@@ -4013,23 +4015,21 @@ async fn test_holder_accept_credential_stores_claim_schema_translations_from_met
     assert_eq!(de.entity_type, LocalizedTextEntityType::ClaimSchema);
 }
 
-fn test_params(issuance_url_scheme: &str) -> OpenID4VCIFinal1Params {
-    OpenID4VCIFinal1Params {
-        pre_authorized_code_expires_in: Duration::seconds(10),
-        token_expires_in: Duration::seconds(10),
-        credential_offer_by_value: true,
-        refresh_expires_in: Duration::seconds(1000),
-        encryption: SecretSlice::from(vec![0; 32]),
-        url_scheme: issuance_url_scheme.to_string(),
-        redirect_uri: OpenID4VCRedirectUriParams {
-            enabled: true,
-            allowed_schemes: vec!["https".to_string()],
+fn test_params(issuance_url_scheme: &str) -> serde_json::Value {
+    json!({
+        "preAuthorizedCodeExpiresIn": 10,
+        "tokenExpiresIn": 10,
+        "refreshExpiresIn": 1000,
+        "credentialOfferByValue": true,
+        "encryption": "0000000000000000000000000000000000000000000000000000000000000000",
+        "redirectUri": {
+            "enabled": true,
+            "allowedSchemes": ["https"]
         },
-        nonce: None,
-        oauth_attestation_leeway: Duration::seconds(60),
-        key_attestation_leeway: Duration::seconds(60),
-        trust_ecosystem_leeway: Duration::seconds(60),
-        request_signed_metadata: false,
-        common: CommonParams { webhook_task: None },
-    }
+        "urlScheme": issuance_url_scheme,
+        "oauthAttestationLeeway": 60,
+        "keyAttestationLeeway": 60,
+        "trustEcosystemLeeway": 60,
+        "requestSignedMetadata": false
+    })
 }

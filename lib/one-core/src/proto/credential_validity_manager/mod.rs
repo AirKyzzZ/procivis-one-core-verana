@@ -69,8 +69,6 @@ pub struct CredentialValidityCheckResult {
 pub enum Error {
     #[error("Mapping error: `{0}`")]
     MappingError(String),
-    #[error("Missing issuance protocol `{0}`")]
-    MissingIssuanceProtocol(String),
     #[error("Json error: {0}")]
     JsonError(#[from] serde_json::Error),
     #[error("No revocation method configured on credential schema {0}")]
@@ -103,7 +101,6 @@ impl ErrorCodeMixin for Error {
             Self::MappingError(_) => ErrorCode::BR_0047,
             Self::JsonError(_) => ErrorCode::BR_0189,
             Self::NoRevocationMethod(_) => ErrorCode::BR_0098,
-            Self::MissingIssuanceProtocol(_) => ErrorCode::BR_0046,
             Self::SuspensionNotSupported { .. } => ErrorCode::BR_0162,
             Self::InvalidCredentialStateTransition { .. } => ErrorCode::BR_0366,
             Self::IncompatibleIssuerIdentifier => ErrorCode::BR_0218,

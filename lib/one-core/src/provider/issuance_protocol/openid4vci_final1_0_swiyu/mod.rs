@@ -3,6 +3,7 @@ mod proxy_http_client;
 
 use std::sync::Arc;
 
+use proc_macros::Provider;
 use secrecy::SecretSlice;
 use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
@@ -47,6 +48,7 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_security_level::provider::KeySecurityLevelProvider;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::provider_directory::InitializationError;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
@@ -105,6 +107,7 @@ impl From<OpenID4VCISwiyuParams> for OpenID4VCIFinal1Params {
     }
 }
 
+#[derive(Provider)]
 pub(crate) struct OpenID4VCISwiyu {
     inner: OpenID4VCIFinal1_0,
     config: Arc<CoreConfig>,
@@ -129,7 +132,7 @@ impl OpenID4VCISwiyu {
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
         base_url: Option<String>,
         config: Arc<CoreConfig>,
-        params: OpenID4VCISwiyuParams,
+        params: serde_json::Value,
         config_id: String,
         holder_wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
         holder_wallet_unit_repository: Arc<dyn HolderWalletInstanceRepository>,
@@ -138,12 +141,18 @@ impl OpenID4VCISwiyu {
         history_repository: Arc<dyn HistoryRepository>,
         session_provider: Arc<dyn SessionProvider>,
         interaction_repository: Arc<dyn InteractionRepository>,
-    ) -> Self {
+    ) -> Result<Self, InitializationError> {
+        let params: OpenID4VCISwiyuParams =
+            serde_json::from_value(params).map_err(|err| InitializationError::InvalidParams {
+                key: config_id.to_string(),
+                source: err,
+            })?;
+
         let protocol_base_url = base_url
             .as_ref()
             .map(|base_url| format!("{base_url}/ssi/openid4vci/final-1.0-swiyu"));
         let client = Arc::new(proxy_http_client::ProxySwiyuHttpClient { client });
-        Self {
+        Ok(Self {
             inner: OpenID4VCIFinal1_0::new_with_custom_protocol_base_url(
                 protocol_base_url,
                 client,
@@ -173,13 +182,13 @@ impl OpenID4VCISwiyu {
                 interaction_repository,
             ),
             config,
-        }
+        })
     }
 }
 
 #[async_trait::async_trait]
 impl IssuanceProtocol for OpenID4VCISwiyu {
-    async fn holder_can_handle(&self, url: &Url) -> bool {
+    fn holder_can_handle(&self, url: &Url) -> bool {
         url.scheme() == "swiyu"
     }
 
@@ -338,5 +347,9 @@ impl IssuanceProtocol for OpenID4VCISwiyu {
         self.inner
             .holder_refresh_credential(interaction, update_credential)
             .await
+    }
+
+    fn config_name(&self) -> &str {
+        self.inner.config_name()
     }
 }

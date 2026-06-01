@@ -7,6 +7,7 @@ use uuid::Uuid;
 
 use super::SSIIssuerService;
 use crate::config::core_config::CoreConfig;
+use crate::error::ErrorCodeMixinExt;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::{Did, KeyRole, RelatedKey};
 use crate::model::identifier::Identifier;
@@ -19,6 +20,7 @@ use crate::provider::key_algorithm::key::{
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
+use crate::service::error::MissingProviderError;
 use crate::service::ssi_issuer::dto::SdJwtVcIssuerMetadataJwks;
 use crate::service::ssi_issuer::error::IssuerServiceError;
 use crate::service::test_utilities::{
@@ -90,7 +92,7 @@ async fn test_get_sd_jwt_vc_issuer_metadata_success_with_did() {
     protocol_provider
         .expect_get_protocol()
         .once()
-        .return_once(move |_| Some(Arc::new(MockIssuanceProtocol::new())));
+        .return_once(move |_| Ok(Arc::new(MockIssuanceProtocol::new())));
 
     let mut identifier_repository = MockIdentifierRepository::new();
     identifier_repository
@@ -169,7 +171,7 @@ async fn test_get_sd_jwt_vc_issuer_metadata_success() {
     protocol_provider
         .expect_get_protocol()
         .once()
-        .return_once(move |_| Some(Arc::new(MockIssuanceProtocol::new())));
+        .return_once(move |_| Ok(Arc::new(MockIssuanceProtocol::new())));
 
     let mut identifier_repository = MockIdentifierRepository::new();
     let expected_identifier_id = identifier.id;
@@ -272,7 +274,9 @@ async fn test_get_sd_jwt_vc_issuer_metadata_fails_when_protocol_not_found() {
     protocol_provider
         .expect_get_protocol()
         .once()
-        .return_once(|_| None);
+        .return_once(|_| {
+            Err(MissingProviderError::ExchangeProtocol("test".to_string()).error_while("context"))
+        });
 
     let service = setup_service(
         MockCredentialSchemaRepository::new(),
@@ -304,7 +308,7 @@ async fn test_get_sd_jwt_vc_issuer_metadata_fails_when_identifier_not_found() {
     protocol_provider
         .expect_get_protocol()
         .once()
-        .return_once(|_| Some(Arc::new(MockIssuanceProtocol::new())));
+        .return_once(|_| Ok(Arc::new(MockIssuanceProtocol::new())));
 
     let mut identifier_repository = MockIdentifierRepository::new();
     identifier_repository
@@ -346,7 +350,7 @@ async fn test_get_sd_jwt_vc_issuer_metadata_fails_when_credential_schema_not_fou
     protocol_provider
         .expect_get_protocol()
         .once()
-        .return_once(|_| Some(Arc::new(MockIssuanceProtocol::new())));
+        .return_once(|_| Ok(Arc::new(MockIssuanceProtocol::new())));
 
     let mut identifier_repository = MockIdentifierRepository::new();
     identifier_repository

@@ -977,7 +977,7 @@ async fn test_accept_credential() {
     issuance_protocol_provider
         .expect_get_protocol()
         .once()
-        .return_once(move |_| Some(Arc::new(exchange_protocol_mock)));
+        .return_once(move |_| Ok(Arc::new(exchange_protocol_mock)));
 
     let mut formatter = MockCredentialFormatter::new();
     formatter
@@ -1109,7 +1109,7 @@ async fn test_accept_credential_with_did() {
     issuance_protocol_provider
         .expect_get_protocol()
         .once()
-        .return_once(move |_| Some(Arc::new(exchange_protocol_mock)));
+        .return_once(move |_| Ok(Arc::new(exchange_protocol_mock)));
 
     let mut formatter = MockCredentialFormatter::new();
     formatter
@@ -1225,7 +1225,7 @@ async fn test_accept_credential_batch() {
     issuance_protocol_provider
         .expect_get_protocol()
         .once()
-        .return_once(move |_| Some(Arc::new(exchange_protocol_mock)));
+        .return_once(move |_| Ok(Arc::new(exchange_protocol_mock)));
 
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     let formatter = Arc::new(MockCredentialFormatter::new());
@@ -1331,7 +1331,7 @@ async fn test_accept_credential_wrong_tx_code() {
     issuance_protocol_provider
         .expect_get_protocol()
         .once()
-        .return_once(move |_| Some(Arc::new(exchange_protocol_mock)));
+        .return_once(move |_| Ok(Arc::new(exchange_protocol_mock)));
 
     let mut formatter = MockCredentialFormatter::new();
     formatter
@@ -1418,7 +1418,7 @@ async fn test_reject_credential() {
     issuance_protocol_provider
         .expect_get_protocol()
         .once()
-        .return_once(move |_| Some(Arc::new(exchange_protocol_mock)));
+        .return_once(move |_| Ok(Arc::new(exchange_protocol_mock)));
 
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
@@ -1568,7 +1568,7 @@ async fn test_continue_issuance() {
     issuance_protocol_provider
         .expect_get_protocol()
         .once()
-        .returning(move |_| Some(issuance_protocol.clone()));
+        .returning(move |_| Ok(issuance_protocol.clone()));
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider

@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::str::FromStr;
-use std::sync::Arc;
 
 use convert_case::{Case, Casing};
 use shared_types::{CredentialFormat, CredentialSchemaId, IdentifierId, OrganisationId};
@@ -24,7 +23,6 @@ use crate::model::credential_schema::{CredentialSchema, CredentialSchemaListQuer
 use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::key::Key;
 use crate::model::list_filter::{ListFilterValue, StringMatch};
-use crate::provider::issuance_protocol::IssuanceProtocol;
 use crate::service::credential_schema::dto::{
     CredentialSchemaFilterValue, CredentialSchemaListIncludeEntityTypeEnum,
 };
@@ -221,7 +219,10 @@ impl SSIIssuerService {
             .ok_or(IssuerServiceError::MappingError(
                 "Missing core_base_url for jwt vc issuer metadata".to_string(),
             ))?;
-        let _protocol = self.fetch_protocol(protocol_id).await?;
+        let _protocol = self
+            .issuance_protocol_provider
+            .get_protocol(protocol_id)
+            .map_err(|_| IssuerServiceError::MissingProtocol(protocol_id.to_string()))?;
         let identifier = self.fetch_identifier(identifier_id).await?;
         let credential_schema = self.fetch_credential_schema(credential_schema_id).await?;
 
@@ -291,15 +292,6 @@ impl SSIIssuerService {
             .error_while("creating JWK")?;
         jwk.set_kid(key.id.to_string());
         Ok(Some(jwk))
-    }
-
-    async fn fetch_protocol(
-        &self,
-        protocol_id: &str,
-    ) -> Result<Arc<dyn IssuanceProtocol>, IssuerServiceError> {
-        self.issuance_protocol_provider
-            .get_protocol(protocol_id)
-            .ok_or_else(|| IssuerServiceError::MissingProtocol(protocol_id.to_string()))
     }
 
     async fn fetch_credential_schema(

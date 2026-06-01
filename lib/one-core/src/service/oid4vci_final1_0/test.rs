@@ -41,7 +41,6 @@ use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::issuance_protocol::MockIssuanceProtocol;
 use crate::provider::issuance_protocol::error::{IssuanceProtocolError, OpenID4VCIError};
-use crate::provider::issuance_protocol::model::{CommonParams, OpenID4VCRedirectUriParams};
 use crate::provider::issuance_protocol::openid4vci_final1_0::OpenID4VCIFinal1_0;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::*;
 use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProvider;
@@ -149,24 +148,20 @@ fn setup_protocol(protocol_mocks: ProtocolMocks) -> OpenID4VCIFinal1_0 {
         Arc::new(protocol_mocks.blob_storage_provider),
         Some("http://127.0.0.1:3000".to_string()),
         Arc::new(generic_config().core),
-        OpenID4VCIFinal1Params {
-            pre_authorized_code_expires_in: Default::default(),
-            token_expires_in: Default::default(),
-            refresh_expires_in: Default::default(),
-            credential_offer_by_value: false,
-            encryption: Default::default(),
-            url_scheme: "".to_string(),
-            redirect_uri: OpenID4VCRedirectUriParams {
-                enabled: false,
-                allowed_schemes: vec![],
+        json!({
+            "preAuthorizedCodeExpiresIn": 0,
+            "tokenExpiresIn": 0,
+            "refreshExpiresIn": 0,
+            "encryption": "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e",
+            "redirectUri": {
+                "enabled": false,
+                "allowedSchemes": []
             },
-            nonce: None,
-            oauth_attestation_leeway: Default::default(),
-            key_attestation_leeway: Default::default(),
-            trust_ecosystem_leeway: Default::default(),
-            request_signed_metadata: false,
-            common: CommonParams { webhook_task: None },
-        },
+            "oauthAttestationLeeway": 0,
+            "keyAttestationLeeway": 0,
+            "trustEcosystemLeeway": 0,
+            "requestSignedMetadata": false
+        }),
         "configId".to_string(),
         Arc::new(protocol_mocks.holder_wallet_unit_proto),
         Arc::new(protocol_mocks.holder_wallet_unit_repository),
@@ -176,6 +171,7 @@ fn setup_protocol(protocol_mocks: ProtocolMocks) -> OpenID4VCIFinal1_0 {
         Arc::new(protocol_mocks.session_provider),
         Arc::new(protocol_mocks.interaction_repository),
     )
+    .unwrap()
 }
 
 fn generic_organisation() -> Organisation {
@@ -413,7 +409,7 @@ async fn test_get_issuer_metadata_jwt() {
     let mut issuance_protocol_provider = MockIssuanceProtocolProvider::default();
     issuance_protocol_provider
         .expect_get_protocol()
-        .return_once(|_| Some(Arc::new(issuance_protocol)));
+        .return_once(|_| Ok(Arc::new(issuance_protocol)));
 
     let service = setup_service(Mocks {
         exchange_provider: issuance_protocol_provider,
@@ -560,7 +556,7 @@ async fn test_get_issuer_metadata_sd_jwt() {
     let mut issuance_protocol_provider = MockIssuanceProtocolProvider::default();
     issuance_protocol_provider
         .expect_get_protocol()
-        .return_once(|_| Some(Arc::new(issuance_protocol)));
+        .return_once(|_| Ok(Arc::new(issuance_protocol)));
 
     let service = setup_service(Mocks {
         exchange_provider: issuance_protocol_provider,
@@ -733,7 +729,7 @@ async fn test_get_issuer_metadata_mdoc() {
     let mut issuance_protocol_provider = MockIssuanceProtocolProvider::default();
     issuance_protocol_provider
         .expect_get_protocol()
-        .return_once(|_| Some(Arc::new(issuance_protocol)));
+        .return_once(|_| Ok(Arc::new(issuance_protocol)));
 
     let service = setup_service(Mocks {
         exchange_provider: issuance_protocol_provider,
@@ -879,7 +875,7 @@ async fn test_get_issuer_metadata_includes_schema_translations() {
     let mut issuance_protocol_provider = MockIssuanceProtocolProvider::default();
     issuance_protocol_provider
         .expect_get_protocol()
-        .return_once(|_| Some(Arc::new(issuance_protocol)));
+        .return_once(|_| Ok(Arc::new(issuance_protocol)));
 
     let service = setup_service(Mocks {
         exchange_provider: issuance_protocol_provider,
@@ -1041,7 +1037,7 @@ async fn test_get_issuer_metadata_includes_claim_translations() {
     let mut issuance_protocol_provider = MockIssuanceProtocolProvider::default();
     issuance_protocol_provider
         .expect_get_protocol()
-        .return_once(|_| Some(Arc::new(issuance_protocol)));
+        .return_once(|_| Ok(Arc::new(issuance_protocol)));
 
     let service = setup_service(Mocks {
         exchange_provider: issuance_protocol_provider,
@@ -1389,7 +1385,7 @@ async fn test_create_credential_success() {
         exchange_provider
             .expect_get_protocol()
             .once()
-            .return_once(move |_| Some(Arc::new(issuance_protocol)));
+            .return_once(move |_| Ok(Arc::new(issuance_protocol)));
 
         credential_repository
             .expect_update_credential()
@@ -1574,7 +1570,7 @@ async fn test_create_credential_success_sd_jwt_vc() {
         exchange_provider
             .expect_get_protocol()
             .once()
-            .return_once(move |_| Some(Arc::new(issuance_protocol)));
+            .return_once(move |_| Ok(Arc::new(issuance_protocol)));
 
         credential_repository
             .expect_update_credential()
@@ -1771,7 +1767,7 @@ async fn test_create_credential_success_mdoc() {
         exchange_provider
             .expect_get_protocol()
             .once()
-            .return_once(move |_| Some(Arc::new(issuance_protocol)));
+            .return_once(move |_| Ok(Arc::new(issuance_protocol)));
 
         credential_repository
             .expect_update_credential()
@@ -2212,7 +2208,7 @@ async fn test_create_credential_issuer_failed() {
         exchange_provider
             .expect_get_protocol()
             .once()
-            .return_once(move |_| Some(Arc::new(issuance_protocol)));
+            .return_once(move |_| Ok(Arc::new(issuance_protocol)));
 
         credential_repository
             .expect_update_credential()

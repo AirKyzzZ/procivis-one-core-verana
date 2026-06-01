@@ -39,7 +39,7 @@ use crate::provider::issuance_protocol::model::ShareResponse;
 use crate::provider::revocation::model::RevocationState;
 use crate::service::common_dto::{ListQueryDTO, TrustInformationDetailResponseDTO};
 use crate::service::credential_schema::validator::validate_key_storage_security_supported;
-use crate::service::error::{BusinessLogicError, MissingProviderError};
+use crate::service::error::BusinessLogicError;
 use crate::util::interactions::{add_new_interaction, clear_previous_interaction};
 use crate::util::key_selection::{CertificateFilter, KeyFilter, KeySelection, SelectedKey};
 use crate::validator::{
@@ -120,11 +120,7 @@ impl CredentialService {
 
         let exchange_capabilities = self
             .protocol_provider
-            .get_protocol(&request.protocol)
-            .ok_or(MissingProviderError::ExchangeProtocol(
-                request.protocol.to_owned(),
-            ))
-            .error_while("getting protocol")?
+            .get_protocol(&request.protocol)?
             .get_capabilities();
 
         let selection = issuer_identifier
@@ -584,13 +580,7 @@ impl CredentialService {
             .error_while("getting organisation")?;
 
         let credential_exchange = &credential.protocol;
-        let exchange = self
-            .protocol_provider
-            .get_protocol(credential_exchange)
-            .ok_or(MissingProviderError::ExchangeProtocol(
-                credential_exchange.clone(),
-            ))
-            .error_while("getting protocol")?;
+        let exchange = self.protocol_provider.get_protocol(credential_exchange)?;
 
         let ShareResponse {
             url,

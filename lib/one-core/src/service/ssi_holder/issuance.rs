@@ -209,9 +209,7 @@ impl SSIHolderService {
 
         let protocol = self
             .issuance_protocol_provider
-            .get_protocol(&data.protocol)
-            .ok_or(MissingProviderError::ExchangeProtocol(data.protocol))
-            .error_while("getting protocol")?;
+            .get_protocol(&data.protocol)?;
 
         let issuer_response = protocol
             .holder_accept_credential(interaction, holder_binding, tx_code)
@@ -318,9 +316,7 @@ impl SSIHolderService {
 
         let protocol = self
             .issuance_protocol_provider
-            .get_protocol(&data.protocol)
-            .ok_or(MissingProviderError::ExchangeProtocol(data.protocol))
-            .error_while("getting protocol")?;
+            .get_protocol(&data.protocol)?;
 
         let credential_ids = protocol
             .holder_refresh_credential(&interaction, None)
@@ -368,11 +364,7 @@ impl SSIHolderService {
 
                 let protocol = self
                     .issuance_protocol_provider
-                    .get_protocol(&credential.protocol)
-                    .ok_or(MissingProviderError::ExchangeProtocol(
-                        credential.protocol.clone(),
-                    ))
-                    .error_while("getting protocol")?;
+                    .get_protocol(&credential.protocol)?;
 
                 if !protocol
                     .get_capabilities()
@@ -644,11 +636,7 @@ impl SSIHolderService {
             protocol,
         } = self
             .issuance_protocol_provider
-            .get_protocol(&issuance.request.protocol)
-            .ok_or(MissingProviderError::ExchangeProtocol(
-                issuance.request.protocol.clone(),
-            ))
-            .error_while("getting protocol")?
+            .get_protocol(&issuance.request.protocol)?
             .holder_continue_issuance(
                 ContinueIssuanceDTO {
                     credential_issuer: issuance.request.issuer,

@@ -31,8 +31,7 @@ impl CredentialValidityManagerImpl {
 
         let protocol = self
             .issuance_protocol_provider
-            .get_protocol(&credential.protocol)
-            .ok_or(Error::MissingIssuanceProtocol(credential.protocol.clone()))?;
+            .get_protocol(&credential.protocol)?;
 
         let new_state = match protocol
             .holder_refresh_credential(interaction, Some(credential.id))

@@ -1,5 +1,8 @@
+use std::fmt::{Display, Formatter};
+
 use dto::IssuanceProtocolCapabilities;
 use error::IssuanceProtocolError;
+use proc_macros::provider_mock;
 use serde::Serialize;
 use serde::de::Deserialize;
 use shared_types::{
@@ -12,11 +15,13 @@ use crate::model::identifier::Identifier;
 use crate::model::interaction::Interaction;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
+use crate::provider::Provider;
 use crate::provider::issuance_protocol::dto::{
     ContinueIssuanceDTO, OpenID4VCIIssuerMetadataResponseDTO,
 };
 use crate::provider::issuance_protocol::model::InvitationResponseEnum;
 
+mod decorators;
 pub mod dto;
 pub mod error;
 mod mapper;
@@ -49,12 +54,12 @@ pub(crate) struct HolderBindingInput {
 }
 
 /// This trait contains methods for exchanging credentials between issuers and holders
-#[cfg_attr(test, mockall::automock)]
+#[provider_mock]
 #[async_trait::async_trait]
-pub(crate) trait IssuanceProtocol: Send + Sync {
+pub(crate) trait IssuanceProtocol: Provider + Send + Sync {
     // Holder methods:
     /// Check if the holder can handle the invitation URL.
-    async fn holder_can_handle(&self, url: &Url) -> bool;
+    fn holder_can_handle(&self, url: &Url) -> bool;
 
     /// For handling credential issuance, this method
     /// saves the offer information coming in.
@@ -115,4 +120,12 @@ pub(crate) trait IssuanceProtocol: Send + Sync {
     ) -> Result<OpenID4VCIIssuerMetadataResponseDTO, IssuanceProtocolError>;
 
     fn get_capabilities(&self) -> IssuanceProtocolCapabilities;
+
+    fn config_name(&self) -> &str;
+}
+
+impl Display for dyn IssuanceProtocol {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Issuance protocol `{}`", self.config_name())
+    }
 }

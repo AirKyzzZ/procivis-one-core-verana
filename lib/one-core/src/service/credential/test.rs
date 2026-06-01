@@ -681,7 +681,7 @@ async fn test_share_credential_success() {
     protocol_provider
         .expect_get_protocol()
         .times(1)
-        .returning(move |_| Some(protocol.clone()));
+        .returning(move |_| Ok(protocol.clone()));
 
     let credential = generic_credential().await;
     {
@@ -861,7 +861,7 @@ async fn test_create_credential_based_on_issuer_did_success() {
     protocol_provider
         .expect_get_protocol()
         .once()
-        .return_once(move |_| Some(Arc::new(dummy_protocol)));
+        .return_once(move |_| Ok(Arc::new(dummy_protocol)));
 
     let service = setup_service(Repositories {
         credential_repository,
@@ -967,7 +967,7 @@ async fn test_create_credential_based_on_issuer_identifier_success() {
     protocol_provider
         .expect_get_protocol()
         .once()
-        .return_once(move |_| Some(Arc::new(dummy_protocol)));
+        .return_once(move |_| Ok(Arc::new(dummy_protocol)));
 
     let service = setup_service(Repositories {
         credential_repository,
@@ -1132,7 +1132,7 @@ async fn test_create_credential_failed_formatter_doesnt_support_did_identifiers(
     protocol_provider
         .expect_get_protocol()
         .once()
-        .return_once(move |_| Some(Arc::new(dummy_protocol)));
+        .return_once(move |_| Ok(Arc::new(dummy_protocol)));
 
     let service = setup_service(Repositories {
         credential_schema_repository,
@@ -1248,7 +1248,7 @@ async fn test_create_credential_failed_issuance_did_method_incompatible() {
     protocol_provider
         .expect_get_protocol()
         .once()
-        .return_once(move |_| Some(Arc::new(dummy_protocol)));
+        .return_once(move |_| Ok(Arc::new(dummy_protocol)));
 
     let service = setup_service(Repositories {
         credential_schema_repository,
@@ -1364,7 +1364,7 @@ async fn test_create_credential_fails_if_did_is_deactivated() {
     protocol_provider
         .expect_get_protocol()
         .once()
-        .return_once(move |_| Some(Arc::new(dummy_protocol)));
+        .return_once(move |_| Ok(Arc::new(dummy_protocol)));
 
     let service = setup_service(Repositories {
         identifier_repository,
@@ -1482,7 +1482,7 @@ async fn test_create_credential_one_required_claim_missing_success() {
     protocol_provider
         .expect_get_protocol()
         .once()
-        .return_once(move |_| Some(Arc::new(dummy_protocol)));
+        .return_once(move |_| Ok(Arc::new(dummy_protocol)));
 
     let service = setup_service(Repositories {
         credential_repository,
@@ -1615,7 +1615,7 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
     protocol_provider
         .expect_get_protocol()
         .once()
-        .return_once(move |_| Some(Arc::new(dummy_protocol)));
+        .return_once(move |_| Ok(Arc::new(dummy_protocol)));
 
     let service = setup_service(Repositories {
         credential_schema_repository,
@@ -1724,7 +1724,7 @@ async fn test_create_credential_schema_deleted() {
     protocol_provider
         .expect_get_protocol()
         .once()
-        .return_once(move |_| Some(Arc::new(dummy_protocol)));
+        .return_once(move |_| Ok(Arc::new(dummy_protocol)));
 
     let service = setup_service(Repositories {
         credential_schema_repository,
@@ -1840,7 +1840,7 @@ async fn test_create_credential_key_with_issuer_key() {
     protocol_provider
         .expect_get_protocol()
         .once()
-        .return_once(move |_| Some(Arc::new(dummy_protocol)));
+        .return_once(move |_| Ok(Arc::new(dummy_protocol)));
 
     let service = setup_service(Repositories {
         credential_repository,
@@ -1987,7 +1987,7 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
     protocol_provider
         .expect_get_protocol()
         .once()
-        .return_once(move |_| Some(Arc::new(dummy_protocol)));
+        .return_once(move |_| Ok(Arc::new(dummy_protocol)));
 
     let service = setup_service(Repositories {
         credential_repository,
@@ -2108,7 +2108,7 @@ async fn test_fail_to_create_credential_no_assertion_key() {
     protocol_provider
         .expect_get_protocol()
         .once()
-        .return_once(move |_| Some(Arc::new(dummy_protocol)));
+        .return_once(move |_| Ok(Arc::new(dummy_protocol)));
 
     let service = setup_service(Repositories {
         credential_schema_repository,
@@ -2216,7 +2216,7 @@ async fn test_fail_to_create_credential_unknown_key_id() {
     protocol_provider
         .expect_get_protocol()
         .once()
-        .return_once(move |_| Some(Arc::new(dummy_protocol)));
+        .return_once(move |_| Ok(Arc::new(dummy_protocol)));
 
     let service = setup_service(Repositories {
         credential_schema_repository,
@@ -2336,7 +2336,7 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
     protocol_provider
         .expect_get_protocol()
         .once()
-        .return_once(move |_| Some(Arc::new(dummy_protocol)));
+        .return_once(move |_| Ok(Arc::new(dummy_protocol)));
 
     let service = setup_service(Repositories {
         credential_schema_repository,
@@ -2456,7 +2456,7 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
     protocol_provider
         .expect_get_protocol()
         .once()
-        .return_once(move |_| Some(Arc::new(dummy_protocol)));
+        .return_once(move |_| Ok(Arc::new(dummy_protocol)));
 
     let service = setup_service(Repositories {
         credential_schema_repository,
@@ -2561,7 +2561,7 @@ async fn test_create_credential_fail_incompatible_format_and_tranposrt_protocol(
     protocol_provider
         .expect_get_protocol()
         .once()
-        .return_once(move |_| Some(Arc::new(dummy_protocol)));
+        .return_once(move |_| Ok(Arc::new(dummy_protocol)));
 
     let service = setup_service(Repositories {
         credential_schema_repository,
@@ -2666,7 +2666,7 @@ async fn test_create_credential_fail_invalid_redirect_uri() {
     protocol_provider
         .expect_get_protocol()
         .once()
-        .return_once(move |_| Some(Arc::new(dummy_protocol)));
+        .return_once(move |_| Ok(Arc::new(dummy_protocol)));
 
     let service = setup_service(Repositories {
         credential_schema_repository,
@@ -2767,7 +2767,7 @@ async fn test_create_credential_fail_webhook_not_allowed() {
     protocol_provider
         .expect_get_protocol()
         .once()
-        .return_once(move |_| Some(Arc::new(dummy_protocol)));
+        .return_once(move |_| Ok(Arc::new(dummy_protocol)));
 
     let service = setup_service(Repositories {
         credential_schema_repository,
@@ -5090,7 +5090,7 @@ async fn test_create_credential_array(
     protocol_provider
         .expect_get_protocol()
         .once()
-        .return_once(move |_| Some(Arc::new(dummy_protocol)));
+        .return_once(move |_| Ok(Arc::new(dummy_protocol)));
 
     let service = setup_service(Repositories {
         credential_repository,
@@ -5487,7 +5487,7 @@ async fn test_create_credential_invalid_certificate_role() {
     protocol_provider
         .expect_get_protocol()
         .once()
-        .return_once(move |_| Some(Arc::new(dummy_protocol)));
+        .return_once(move |_| Ok(Arc::new(dummy_protocol)));
 
     let service = setup_service(Repositories {
         credential_repository,

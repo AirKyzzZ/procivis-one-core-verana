@@ -72,7 +72,6 @@ use crate::provider::issuance_protocol::openid4vci_final1_0::service::{
 use crate::provider::revocation::model::{Operation, RevocationState};
 use crate::repository::error::DataLayerError;
 use crate::service::credential::dto::{WalletInstanceAttestationDTO, WalletUnitAttestationDTO};
-use crate::service::error::MissingProviderError;
 use crate::service::ssi_validator::validate_issuance_protocol_type;
 use crate::service::wallet_provider::dto::WalletInstanceAttestationClaims;
 use crate::validator::throw_if_credential_state_not_eq;
@@ -88,9 +87,7 @@ impl OID4VCIFinal1_0Service {
         validate_issuance_protocol_type(self.protocol_type, &self.config, protocol_id)
             .error_while("validating protocol type")?;
 
-        let issuance_protocol = self.protocol_provider.get_protocol(protocol_id).ok_or(
-            OID4VCIFinal1_0ServiceError::MappingError("issuance protocol not found".to_string()),
-        )?;
+        let issuance_protocol = self.protocol_provider.get_protocol(protocol_id)?;
 
         let issuer_identifier = self.get_issuer_identifier(identifier_id).await?;
 
@@ -704,13 +701,7 @@ impl OID4VCIFinal1_0Service {
         };
         let mut interaction_data = interaction_data_to_dto(&interaction)?;
 
-        let issuance_protocol = self
-            .protocol_provider
-            .get_protocol(&credential.protocol)
-            .ok_or(MissingProviderError::ExchangeProtocol(
-                credential.protocol.to_string(),
-            ))
-            .error_while("issuing credential")?;
+        let issuance_protocol = self.protocol_provider.get_protocol(&credential.protocol)?;
 
         let credentials = match credential.r#type {
             CredentialType::Single => {

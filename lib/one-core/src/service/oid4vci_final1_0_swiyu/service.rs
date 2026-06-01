@@ -29,9 +29,7 @@ impl OID4VCIFinal1_0SwiyuService {
         identifier_id: &IdentifierId,
         credential_schema_id: &CredentialSchemaId,
     ) -> Result<OpenID4VCIIssuerMetadataResponseDTO, OID4VCIFinal1_0ServiceError> {
-        let issuance_protocol = self.protocol_provider.get_protocol(protocol_id).ok_or(
-            OID4VCIFinal1_0ServiceError::MappingError("issuance protocol not found".to_string()),
-        )?;
+        let issuance_protocol = self.protocol_provider.get_protocol(protocol_id)?;
 
         let issuer_identifier = self.inner.get_issuer_identifier(identifier_id).await?;
 
