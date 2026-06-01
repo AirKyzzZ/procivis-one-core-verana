@@ -35,6 +35,7 @@ use crate::proto::wrp_validator::model::TrustMode;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
 use crate::provider::issuance_protocol::model::{CredentialWithBlob, KeyStorageSecurityLevel};
+use crate::provider::issuance_protocol::openid4vci_final1_0::mapper::remap_claim_credential_ids;
 use crate::provider::issuance_protocol::openid4vci_final1_0::validator::validate_batch_consistency;
 use crate::provider::issuance_protocol::{
     HolderBindingInput, IssuanceAcceptResponse, IssuanceProtocolError,
@@ -93,21 +94,24 @@ impl OpenID4VCIFinal1_0 {
             let batch_item = credentials.first().ok_or(IssuanceProtocolError::Failed(
                 "No credentials received".to_string(),
             ))?;
+            let mut credential = Credential {
+                id: Uuid::new_v4().into(),
+                r#type: CredentialType::BatchParent,
+                credential_blob_id: None,
+                wallet_instance_attestation_blob_id: None,
+                wallet_unit_attestation_blob_id: None,
+                issuer_identifier: None,
+                issuer_certificate: None,
+                holder_identifier: None,
+                key: None,
+                ..batch_item.credential.clone()
+            };
+            remap_claim_credential_ids(&mut credential)?;
             let batch_parent = CredentialWithBlob {
-                credential: Credential {
-                    id: Uuid::new_v4().into(),
-                    r#type: CredentialType::BatchParent,
-                    credential_blob_id: None,
-                    wallet_instance_attestation_blob_id: None,
-                    wallet_unit_attestation_blob_id: None,
-                    issuer_identifier: None,
-                    issuer_certificate: None,
-                    holder_identifier: None,
-                    key: None,
-                    ..batch_item.credential.clone()
-                },
+                credential,
                 serialized: None,
             };
+
             (
                 batch_parent,
                 batch_item.credential.issuer_certificate.clone(),
@@ -228,7 +232,7 @@ impl OpenID4VCIFinal1_0 {
         credential.schema = Some(schema.clone());
         credential.r#type = CredentialType::BatchItem;
         credential.parent = Some(Related::new(parent_id, self.credential_repository.clone()));
-        credential.claims = None;
+        credential.claims = Some(vec![]);
         credential.interaction = None;
     }
 
