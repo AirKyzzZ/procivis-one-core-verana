@@ -2025,6 +2025,8 @@ fn dummy_interaction() -> HolderInteractionData {
         protocol: "".to_string(),
         format: "dc+sd-jwt".to_string(),
         access_certificate: None,
+        relying_party_id: None,
+        national_registry_url: None,
         registration_certificate: None,
         national_registry_data: None,
         relying_party_name: None,

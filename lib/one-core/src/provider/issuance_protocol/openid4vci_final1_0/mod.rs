@@ -1041,7 +1041,9 @@ impl OpenID4VCIFinal1_0 {
             access_certificate,
             registration_certificate,
             national_registry_data,
+            relying_party_id,
             relying_party_name,
+            national_registry_url,
             trust_resolution,
         ) = if trust_mode != TrustMode::Disabled
             && let IssuerMetadataRepresentation::Signed(jwt, Some(access_certificate)) =
@@ -1064,7 +1066,9 @@ impl OpenID4VCIFinal1_0 {
                     Some(access_certificate.1.to_owned()),
                     registration_certificate,
                     national_registry_data,
+                    Some(access_certificate.0.relying_party_id.clone()),
                     Some(relying_party_name),
+                    access_certificate.0.registry_url.clone(),
                     TrustResolutionResult::Trusted,
                 ),
                 Err(err) => {
@@ -1072,7 +1076,15 @@ impl OpenID4VCIFinal1_0 {
                         return Err(err);
                     } else {
                         tracing::info!(%err, "Trust validation failure");
-                        (None, None, None, None, TrustResolutionResult::Untrusted)
+                        (
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            TrustResolutionResult::Untrusted,
+                        )
                     }
                 }
             }
@@ -1084,7 +1096,7 @@ impl OpenID4VCIFinal1_0 {
                 TrustMode::TrustOptional => TrustResolutionResult::Untrusted,
                 TrustMode::Disabled => TrustResolutionResult::Unknown,
             };
-            (None, None, None, None, trust_resolution)
+            (None, None, None, None, None, None, trust_resolution)
         };
 
         // https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#section-12.2.4-2.2
@@ -1150,10 +1162,12 @@ impl OpenID4VCIFinal1_0 {
             format: credential_config.format.to_owned(),
             access_certificate,
             registration_certificate,
+            national_registry_url,
             national_registry_data,
             relying_party_name,
             trust_resolution,
             trust_mode,
+            relying_party_id,
         };
         let data = serialize_interaction_data(&holder_data)?;
 

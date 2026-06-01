@@ -2,7 +2,7 @@ use shared_types::{CredentialId, OrganisationId};
 use url::Url;
 use uuid::Uuid;
 
-use super::model::EtsiIssuerInfoResponseDTO;
+use super::model::{EtsiIssuerInfoResponseDTO, HolderInteractionData};
 use super::{
     AccessCertificateResult, OpenID4VCICredentialConfigurationData, OpenID4VCIFinal1_0,
     OpenID4VCIIssuerMetadataResponseDTO,
@@ -11,9 +11,13 @@ use crate::clock::now_utc;
 use crate::config::core_config::BlobStorageType;
 use crate::error::ContextWithErrorCode;
 use crate::model::blob::{Blob, BlobType};
+use crate::model::credential_schema::CredentialSchema;
 use crate::model::history::{
     History, HistoryAction, HistoryEntityType, HistoryMetadata, HistorySource,
+    TrustResolutionMetadata, TrustResolutionResult, WalletRelyingPartyMetadata,
 };
+use crate::model::interaction::Interaction;
+use crate::model::organisation::Organisation;
 use crate::proto::session_provider::SessionExt;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::signer::registration_certificate;
@@ -205,6 +209,98 @@ impl OpenID4VCIFinal1_0 {
             .await
             .error_while("storing history")?;
 
+        Ok(())
+    }
+
+    pub(super) async fn validate_batch_refresh_trust(
+        &self,
+        interaction_data: &HolderInteractionData,
+        organisation: &Organisation,
+        interaction: &Interaction,
+        schema: &CredentialSchema,
+        batch_parent_id: CredentialId,
+        issuer_certificate_chain: Option<&str>,
+    ) -> Result<(), IssuanceProtocolError> {
+        let mut trust_resolution = TrustResolutionResult::Trusted;
+
+        let relying_party_id =
+            interaction_data
+                .relying_party_id
+                .as_ref()
+                .ok_or(IssuanceProtocolError::Failed(format!(
+                    "Missing relying party id on trusted interaction {}",
+                    interaction.id
+                )))?;
+        if let Some(reg_cert) = interaction_data.registration_certificate.as_ref()
+            && let Err(err) = self
+                .wrp_validator
+                .validate_registration_certificate(
+                    reg_cert,
+                    relying_party_id,
+                    Some(organisation.id),
+                    self.params.trust_ecosystem_leeway,
+                )
+                .await
+        {
+            tracing::debug!(%err, "Registration certificate no longer trusted, rechecking using national registry");
+            let registry_url = interaction_data.national_registry_url.as_ref().ok_or(
+                IssuanceProtocolError::Failed(format!(
+                    "Missing registry URL on trusted interaction {}",
+                    interaction.id
+                )),
+            )?;
+            let result = self
+                .wrp_validator
+                .fetch_from_registry(
+                    relying_party_id,
+                    registry_url,
+                    Some(organisation.id),
+                    self.params.trust_ecosystem_leeway,
+                )
+                .await;
+            match result {
+                Ok(info) => {
+                    self.store_trust_history_event(
+                        HistoryAction::WrpNrReceived,
+                        batch_parent_id,
+                        organisation.id,
+                        Some(info.jwt),
+                        Some(HistoryMetadata::WalletRelyingParty(
+                            WalletRelyingPartyMetadata {
+                                name: info.payload.custom.data.trade_name.unwrap_or_default(),
+                                ..Default::default()
+                            },
+                        )),
+                    )
+                    .await?;
+                }
+                Err(err) => {
+                    tracing::info!(%err, "Failed to fetch trust information from national registry");
+                    trust_resolution = TrustResolutionResult::Untrusted;
+                }
+            }
+        }
+
+        if trust_resolution == TrustResolutionResult::Trusted
+            && let Err(err) = self
+                .wrp_validator
+                .validate_credential_issuer(issuer_certificate_chain, schema, organisation.id)
+                .await
+        {
+            tracing::info!(%err, "Credential issuer trust not verified");
+            trust_resolution = TrustResolutionResult::Untrusted;
+        }
+
+        self.store_trust_history_event(
+            HistoryAction::TrustResolved,
+            batch_parent_id,
+            organisation.id,
+            None,
+            Some(HistoryMetadata::TrustResolution(TrustResolutionMetadata {
+                result: trust_resolution,
+            })),
+        )
+        .await?;
         Ok(())
     }
 }

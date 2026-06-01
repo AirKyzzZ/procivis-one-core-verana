@@ -423,8 +423,6 @@ impl OpenID4VCIFinal1_0 {
                 IssuanceProtocolError::Failed(format!("{format_type} formatter not found"))
             })?;
 
-        let mut trust_resolution = interaction_data.trust_resolution;
-
         let mut batch_credentials = Vec::with_capacity(issuer_response.credentials.len());
         for issued_credential in issuer_response.credentials {
             let credential = self
@@ -457,35 +455,22 @@ impl OpenID4VCIFinal1_0 {
         )
         .await?;
 
-        // TODO ONE-9843: The name resolved here must be stored as well for later trust information
-        if trust_resolution == TrustResolutionResult::Trusted
-            && let Err(err) = self
-                .wrp_validator
-                .validate_credential_issuer(
-                    batch_credential
-                        .credential
-                        .issuer_certificate
-                        .as_ref()
-                        .map(|certificate| certificate.chain.as_str()),
-                    &schema,
-                    organisation.id,
-                )
-                .await
-        {
-            tracing::info!(%err, "Credential issuer trust not verified");
-            trust_resolution = TrustResolutionResult::Untrusted;
+        if interaction_data.trust_resolution == TrustResolutionResult::Trusted {
+            let issuer_cert_chain = batch_credential
+                .credential
+                .issuer_certificate
+                .as_ref()
+                .map(|certificate| certificate.chain.as_str());
+            self.validate_batch_refresh_trust(
+                interaction_data,
+                organisation,
+                interaction,
+                &schema,
+                batch_parent.id,
+                issuer_cert_chain,
+            )
+            .await?;
         }
-
-        self.store_trust_history_event(
-            HistoryAction::TrustResolved,
-            batch_parent.id,
-            organisation.id,
-            None,
-            Some(HistoryMetadata::TrustResolution(TrustResolutionMetadata {
-                result: trust_resolution,
-            })),
-        )
-        .await?;
 
         self.history_repository
             .create_history(History {
