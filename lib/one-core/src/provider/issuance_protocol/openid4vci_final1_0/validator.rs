@@ -316,18 +316,19 @@ fn sorted_claim_entries(
         .ok_or(IssuanceProtocolError::Failed(
             "Invalid parsed schema: missing claims".to_string(),
         ))?;
-    let mut claims_with_types = Vec::with_capacity(claims.len());
+    let mut claims_with_types = vec![];
     for claim in claims {
+        let claim_schema = claim.schema.as_ref().ok_or(IssuanceProtocolError::Failed(
+            "Invalid parsed schema: missing claim schema".to_string(),
+        ))?;
+        if claim_schema.metadata {
+            // Skip metadata claims, issuer is validated separately
+            continue;
+        }
         claims_with_types.push(ClaimWithType {
             key: &claim.path,
             value: &claim.value,
-            data_type: &claim
-                .schema
-                .as_ref()
-                .ok_or(IssuanceProtocolError::Failed(
-                    "Invalid parsed schema: missing claim schema".to_string(),
-                ))?
-                .data_type,
+            data_type: &claim_schema.data_type,
         })
     }
     claims_with_types.sort_by(|a, b| a.key.cmp(b.key));
