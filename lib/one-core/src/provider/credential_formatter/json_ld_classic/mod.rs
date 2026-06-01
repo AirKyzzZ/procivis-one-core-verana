@@ -10,7 +10,7 @@ use proc_macros::Provider;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use serde_with::{DurationSeconds, serde_as};
-use shared_types::{CredentialFormat, DidValue, SerializedCredential};
+use shared_types::{CredentialFormat, DidValue, RevocationMethodId, SerializedCredential};
 use time::Duration;
 use url::Url;
 use uuid::Uuid;
@@ -70,6 +70,7 @@ struct Params {
     #[serde_as(as = "DurationSeconds<i64>")]
     #[serde(default = "default_2_years")]
     expiration_time: Duration,
+    revocation_method: Option<RevocationMethodId>,
 }
 
 #[async_trait]
@@ -409,6 +410,10 @@ impl CredentialFormatter for JsonLdClassic {
             webhook_url: None,
             parent: None,
         })
+    }
+
+    fn revocation_method_id(&self) -> Option<&RevocationMethodId> {
+        self.params.revocation_method.as_ref()
     }
 
     fn config_name(&self) -> &CredentialFormat {

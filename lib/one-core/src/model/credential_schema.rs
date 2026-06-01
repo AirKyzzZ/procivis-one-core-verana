@@ -15,6 +15,7 @@ use super::relation::{Related, RelatedVec};
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, NestedError};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::localized_text::LocalizedText;
+use crate::provider::credential_formatter::CredentialFormatter;
 use crate::service::credential_schema::dto::{
     CredentialSchemaFilterValue, CredentialSchemaListIncludeEntityTypeEnum,
 };
@@ -30,16 +31,19 @@ pub struct CredentialSchema {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub name: CredentialSchemaName,
-    pub revocation_method: Option<RevocationMethodId>,
     pub key_storage_security: Option<KeyStorageSecurity>,
     pub layout_type: LayoutType,
     pub layout_properties: Option<LayoutProperties>,
     pub imported_source_url: String,
-    pub allow_suspension: bool,
     pub requires_wallet_instance_attestation: bool,
     pub transaction_code: Option<TransactionCode>,
-    pub allow_revocation: Option<bool>,
     pub batch_size: Option<i32>,
+
+    /// only specified for the v1 credential schemas
+    pub revocation_method: Option<RevocationMethodId>,
+    /// only specified for the v2 credential schemas
+    pub allow_revocation: Option<bool>,
+    pub allow_suspension: bool,
 
     pub claim_schemas: RelatedVec<ClaimSchema>,
     pub organisation: Related<Organisation>,
@@ -101,6 +105,23 @@ impl CredentialSchema {
 
     async fn get_formats(&self) -> Result<Vec<CredentialSchemaFormat>, NestedError> {
         self.formats.get().await.error_while("getting formats")
+    }
+
+    pub fn revocation_method_id<'a>(
+        &'a self,
+        format: &'a dyn CredentialFormatter,
+    ) -> Option<&'a RevocationMethodId> {
+        if let Some(revocation_method) = &self.revocation_method {
+            return Some(revocation_method);
+        }
+
+        if let Some(allow_revocation) = self.allow_revocation
+            && (allow_revocation || self.allow_suspension)
+        {
+            return format.revocation_method_id();
+        }
+
+        None
     }
 }
 

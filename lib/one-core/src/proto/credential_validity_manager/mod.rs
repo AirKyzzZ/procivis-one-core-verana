@@ -274,7 +274,7 @@ impl CredentialValidityManagerImpl {
         };
 
         let current_state = credential.state;
-        let revocation_method = match &credential_schema.revocation_method {
+        let revocation_method = match credential_schema.revocation_method_id(formatter.as_ref()) {
             Some(method_id) => self
                 .revocation_method_provider
                 .get_revocation_method(method_id)?,
@@ -454,12 +454,15 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
         )
         .error_while("verifying organisation")?;
 
+        validate_state_transition(credential.state, &revocation_state)?;
+
+        let format = credential_schema.format().await?;
+        let formatter = self.formatter_provider.get_credential_formatter(&format)?;
+
         let revocation_method_id = credential_schema
-            .revocation_method
-            .as_ref()
+            .revocation_method_id(formatter.as_ref())
             .ok_or(Error::NoRevocationMethod(credential_schema.id.to_owned()))?;
         verify_suspension_support(credential_schema, revocation_method_id, &revocation_state)?;
-        validate_state_transition(credential.state, &revocation_state)?;
 
         let revocation_method = self
             .revocation_method_provider

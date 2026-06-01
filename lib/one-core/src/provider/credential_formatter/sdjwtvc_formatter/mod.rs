@@ -18,7 +18,9 @@ use sdjwt::format_credential;
 use serde::Deserialize;
 use serde_json::Value;
 use serde_with::{DurationSeconds, serde_as};
-use shared_types::{CredentialFormat, CredentialSchemaId, OrganisationId, SerializedCredential};
+use shared_types::{
+    CredentialFormat, CredentialSchemaId, OrganisationId, RevocationMethodId, SerializedCredential,
+};
 use time::Duration;
 use uuid::Uuid;
 
@@ -81,21 +83,22 @@ pub struct SDJWTVCFormatter {
 #[serde(rename_all = "camelCase")]
 struct Params {
     #[serde_as(as = "DurationSeconds<i64>")]
-    pub leeway: Duration,
+    leeway: Duration,
     #[expect(unused)]
-    pub embed_layout_properties: bool,
+    embed_layout_properties: bool,
     // Toggles SWIYU quirks, specifically the malformed `cnf` claim
     #[serde(default)]
-    pub swiyu_mode: bool,
+    swiyu_mode: bool,
     #[serde(default = "default_sd_array_elements")]
-    pub sd_array_elements: bool,
+    sd_array_elements: bool,
     #[serde(default)]
     ecosystem_schema_ids: Vec<String>,
     #[serde(default)]
     pid_schema_ids: Vec<String>,
     #[serde_as(as = "DurationSeconds<i64>")]
     #[serde(default = "default_2_years")]
-    pub expiration_time: Duration,
+    expiration_time: Duration,
+    revocation_method: Option<RevocationMethodId>,
 }
 
 fn default_sd_array_elements() -> bool {
@@ -476,6 +479,10 @@ impl CredentialFormatter for SDJWTVCFormatter {
 
     fn user_claims_path(&self) -> Vec<String> {
         vec![]
+    }
+
+    fn revocation_method_id(&self) -> Option<&RevocationMethodId> {
+        self.params.revocation_method.as_ref()
     }
 
     fn config_name(&self) -> &CredentialFormat {

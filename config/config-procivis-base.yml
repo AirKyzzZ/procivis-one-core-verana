@@ -7,6 +7,7 @@ format:
       public:
         leeway: 60
         embedLayoutProperties: true
+        revocationMethod: "BITSTRINGSTATUSLIST"
   SD_JWT:
     type: "SD_JWT"
     display: "format.sdjwt"
@@ -15,6 +16,7 @@ format:
       public:
         leeway: 60
         embedLayoutProperties: true
+        revocationMethod: "BITSTRINGSTATUSLIST"
   JSON_LD_CLASSIC:
     type: "JSON_LD_CLASSIC"
     display: "format.jsonldClassic"
@@ -23,6 +25,7 @@ format:
       public:
         leeway: 60
         embedLayoutProperties: true
+        revocationMethod: "BITSTRINGSTATUSLIST"
   JSON_LD_BBSPLUS:
     type: "JSON_LD_BBSPLUS"
     display: "format.jsonldBbsplus"
@@ -31,6 +34,7 @@ format:
       public:
         leeway: 60
         embedLayoutProperties: true
+        revocationMethod: "BITSTRINGSTATUSLIST"
   MDOC:
     type: "MDOC"
     display: "format.mdoc"
@@ -58,6 +62,7 @@ format:
             "eu.europa.ec.eudi.tax.1",
           ]
         pidSchemaIds: ["eu.europa.ec.eudi.pid.1"]
+        revocationMethod: "MDOC_MSO_UPDATE_SUSPENSION"
   SD_JWT_VC:
     type: "SD_JWT_VC"
     display: "format.sdjwtVc"
@@ -80,6 +85,7 @@ format:
             "urn:eu.europa.ec.eudi:hiid:1",
           ]
         pidSchemaIds: ["urn:eudi:pid:1"]
+        revocationMethod: "TOKENSTATUSLIST"
   SD_JWT_VC_SWIYU:
     type: "SD_JWT_VC"
     display:
@@ -92,6 +98,7 @@ format:
         embedLayoutProperties: true
         swiyuMode: true
         ecosystemSchemaIds: ["betaid-sdjwt"]
+        revocationMethod: "TOKENSTATUSLIST"
 identifier:
   DID:
     display: "identifier.did"

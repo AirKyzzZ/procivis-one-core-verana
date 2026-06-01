@@ -12,7 +12,7 @@ use proc_macros::Provider;
 use serde::Deserialize;
 use serde_json::json;
 use serde_with::DurationSeconds;
-use shared_types::{CredentialFormat, DidValue, SerializedCredential};
+use shared_types::{CredentialFormat, DidValue, RevocationMethodId, SerializedCredential};
 use time::Duration;
 use url::Url;
 use uuid::Uuid;
@@ -74,14 +74,15 @@ pub struct JsonLdBbsplus {
 #[serde(rename_all = "camelCase")]
 struct Params {
     #[serde_as(as = "DurationSeconds<i64>")]
-    pub leeway: Duration,
+    leeway: Duration,
     #[serde(default)]
     #[expect(unused)]
-    pub embed_layout_properties: bool,
-    pub allowed_contexts: Option<Vec<Url>>,
+    embed_layout_properties: bool,
+    allowed_contexts: Option<Vec<Url>>,
     #[serde_as(as = "DurationSeconds<i64>")]
     #[serde(default = "default_2_years")]
-    pub expiration_time: Duration,
+    expiration_time: Duration,
+    revocation_method: Option<RevocationMethodId>,
 }
 
 impl JsonLdBbsplus {
@@ -564,6 +565,10 @@ impl CredentialFormatter for JsonLdBbsplus {
             webhook_url: None,
             parent: None,
         })
+    }
+
+    fn revocation_method_id(&self) -> Option<&RevocationMethodId> {
+        self.params.revocation_method.as_ref()
     }
 
     fn config_name(&self) -> &CredentialFormat {

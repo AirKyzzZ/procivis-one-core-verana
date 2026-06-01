@@ -736,9 +736,16 @@ async fn test_revoke_credential_success_with_accepted_credential() {
         .times(1)
         .returning(move |_| Ok(revocation_method.clone()));
 
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .once()
+        .return_once(|_| Ok(Arc::new(MockCredentialFormatter::new())));
+
     let validity_manager = setup_validity_manager(Repositories {
         credential_repository,
         revocation_method_provider,
+        formatter_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -791,9 +798,16 @@ async fn test_revoke_credential_success_with_suspended_credential() {
         .times(1)
         .returning(move |_| Ok(revocation_method.clone()));
 
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .once()
+        .return_once(|_| Ok(Arc::new(MockCredentialFormatter::new())));
+
     let validity_manager = setup_validity_manager(Repositories {
         credential_repository,
         revocation_method_provider,
+        formatter_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -893,9 +907,16 @@ async fn test_suspend_credential_success() {
         .times(1)
         .returning(move |_| Ok(revocation_method.clone()));
 
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .once()
+        .return_once(|_| Ok(Arc::new(MockCredentialFormatter::new())));
+
     let validity_manager = setup_validity_manager(Repositories {
         credential_repository,
         revocation_method_provider,
+        formatter_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -952,9 +973,16 @@ async fn test_reactivate_credential_success() {
         .times(1)
         .returning(move |_| Ok(revocation_method.clone()));
 
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .once()
+        .return_once(|_| Ok(Arc::new(MockCredentialFormatter::new())));
+
     let validity_manager = setup_validity_manager(Repositories {
         credential_repository,
         revocation_method_provider,
+        formatter_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -1060,9 +1088,16 @@ async fn test_suspend_credential_failed_mdoc_batch_item() {
         .times(1)
         .returning(move |_| Ok(revocation_method.clone()));
 
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .once()
+        .return_once(|_| Ok(Arc::new(MockCredentialFormatter::new())));
+
     let validity_manager = setup_validity_manager(Repositories {
         credential_repository,
         revocation_method_provider,
+        formatter_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -1166,9 +1201,16 @@ async fn test_revoke_credential_batch_parent() {
         .once()
         .returning(move |_| Ok(revocation_method.clone()));
 
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .once()
+        .return_once(|_| Ok(Arc::new(MockCredentialFormatter::new())));
+
     let validity_manager = setup_validity_manager(Repositories {
         credential_repository,
         revocation_method_provider,
+        formatter_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -1269,9 +1311,16 @@ async fn test_revoke_credential_batch_item() {
         .once()
         .returning(move |_| Ok(revocation_method.clone()));
 
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .once()
+        .return_once(|_| Ok(Arc::new(MockCredentialFormatter::new())));
+
     let validity_manager = setup_validity_manager(Repositories {
         credential_repository,
         revocation_method_provider,
+        formatter_provider,
         config: generic_config().core,
         ..Default::default()
     });

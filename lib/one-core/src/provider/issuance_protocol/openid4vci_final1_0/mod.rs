@@ -1788,7 +1788,11 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         )
         .await?;
 
-        let revocation_method = match &credential_schema.revocation_method {
+        let formatter = self
+            .formatter_provider
+            .get_credential_formatter(&format.format)?;
+
+        let revocation_method = match credential_schema.revocation_method_id(formatter.as_ref()) {
             Some(method_id) => Some(self.revocation_provider.get_revocation_method(method_id)?),
             None => None,
         };
@@ -1868,9 +1872,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         )
         .error_while("getting credential data")?;
 
-        let token = self
-            .formatter_provider
-            .get_credential_formatter(&format.format)?
+        let token = formatter
             .format_credential(credential_data, auth_fn)
             .await
             .error_while("formatting credential")?;

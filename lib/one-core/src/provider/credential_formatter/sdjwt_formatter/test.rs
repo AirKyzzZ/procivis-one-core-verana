@@ -125,6 +125,7 @@ async fn test_format_credential() {
             embed_layout_properties: false,
             sd_array_elements: true,
             expiration_time,
+            revocation_method: None,
         },
         client: Arc::new(MockHttpClient::new()),
     };
@@ -305,6 +306,7 @@ async fn test_format_credential_with_array() {
             embed_layout_properties: false,
             sd_array_elements: false,
             expiration_time: Duration::days(1),
+            revocation_method: None,
         },
         client: Arc::new(MockHttpClient::new()),
     };
@@ -435,6 +437,7 @@ async fn test_format_credential_with_array_sd() {
             embed_layout_properties: false,
             sd_array_elements: true,
             expiration_time: Duration::days(1),
+            revocation_method: None,
         },
         client: Arc::new(MockHttpClient::new()),
     };
@@ -566,6 +569,7 @@ async fn test_extract_credentials() {
             embed_layout_properties: false,
             sd_array_elements: true,
             expiration_time: Duration::days(1),
+            revocation_method: None,
         },
         client: Arc::new(MockHttpClient::new()),
     };
@@ -738,6 +742,7 @@ async fn test_extract_credentials_with_array() {
             embed_layout_properties: false,
             sd_array_elements: true,
             expiration_time: Duration::days(1),
+            revocation_method: None,
         },
         client: Arc::new(MockHttpClient::new()),
     };
@@ -859,6 +864,7 @@ async fn test_extract_credentials_with_array_stripped() {
             embed_layout_properties: false,
             sd_array_elements: true,
             expiration_time: Duration::days(1),
+            revocation_method: None,
         },
         client: Arc::new(MockHttpClient::new()),
     };
@@ -999,6 +1005,7 @@ fn test_get_capabilities() {
             embed_layout_properties: false,
             sd_array_elements: true,
             expiration_time: Duration::days(1),
+            revocation_method: None,
         },
         client: Arc::new(MockHttpClient::new()),
     };

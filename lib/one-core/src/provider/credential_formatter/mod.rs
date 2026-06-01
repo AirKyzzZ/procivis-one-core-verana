@@ -4,7 +4,9 @@ use async_trait::async_trait;
 use error::FormatterError;
 use model::{AuthenticationFn, CredentialPresentation, DetailCredential, TokenVerifier};
 use proc_macros::provider_mock;
-use shared_types::{CredentialFormat, CredentialSchemaId, OrganisationId, SerializedCredential};
+use shared_types::{
+    CredentialFormat, CredentialSchemaId, OrganisationId, RevocationMethodId, SerializedCredential,
+};
 use strum::Display;
 use time::Duration;
 
@@ -153,6 +155,9 @@ pub trait CredentialFormatter: Provider + Send + Sync {
         organisation: Organisation,
         verification: Box<dyn TokenVerifier>,
     ) -> Result<Credential, FormatterError>;
+
+    #[expect(clippy::needless_lifetimes)]
+    fn revocation_method_id<'a>(&'a self) -> Option<&'a RevocationMethodId>;
 
     fn config_name(&self) -> &CredentialFormat;
 }

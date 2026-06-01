@@ -1,7 +1,9 @@
 use std::fmt::Display;
 use std::sync::Arc;
 
-use shared_types::{CredentialFormat, CredentialSchemaId, OrganisationId, SerializedCredential};
+use shared_types::{
+    CredentialFormat, CredentialSchemaId, OrganisationId, RevocationMethodId, SerializedCredential,
+};
 use time::Duration;
 
 use super::error::FormatterError;
@@ -124,6 +126,10 @@ impl<T: Provider + CredentialFormatter + Display + ?Sized> CredentialFormatter
         self.inner()
             .parse_credential(credential, organisation, verification)
             .await
+    }
+
+    fn revocation_method_id(&self) -> Option<&RevocationMethodId> {
+        self.inner().revocation_method_id()
     }
 
     fn config_name(&self) -> &CredentialFormat {

@@ -78,6 +78,7 @@ format:
         msoExpectedUpdateIn: 60
         msoMinimumRefreshTime: 10
         leeway: 10
+        revocationMethod: "MDOC_MSO_UPDATE_SUSPENSION"
 issuanceProtocol:
   OPENID4VCI_FINAL1_SWIYU:
     params:

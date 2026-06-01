@@ -10,7 +10,7 @@ use model::VcClaim;
 use proc_macros::Provider;
 use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
-use shared_types::{CredentialFormat, DidValue, SerializedCredential};
+use shared_types::{CredentialFormat, DidValue, RevocationMethodId, SerializedCredential};
 use time::Duration;
 use uuid::Uuid;
 
@@ -63,11 +63,12 @@ pub struct JWTFormatter {
 #[serde(rename_all = "camelCase")]
 struct Params {
     #[serde_as(as = "DurationSeconds<i64>")]
-    pub leeway: Duration,
-    pub embed_layout_properties: bool,
+    leeway: Duration,
+    embed_layout_properties: bool,
     #[serde_as(as = "DurationSeconds<i64>")]
     #[serde(default = "default_2_years")]
-    pub expiration_time: Duration,
+    expiration_time: Duration,
+    revocation_method: Option<RevocationMethodId>,
 }
 
 impl JWTFormatter {
@@ -476,6 +477,10 @@ impl CredentialFormatter for JWTFormatter {
             webhook_url: None,
             parent: None,
         })
+    }
+
+    fn revocation_method_id(&self) -> Option<&RevocationMethodId> {
+        self.params.revocation_method.as_ref()
     }
 
     fn config_name(&self) -> &CredentialFormat {

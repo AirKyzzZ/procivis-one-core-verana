@@ -44,6 +44,7 @@ format:
         msoExpectedUpdateIn: 60
         msoMinimumRefreshTime: 10
         leeway: 10
+        revocationMethod: "MDOC_MSO_UPDATE_SUSPENSION"
 transport:
   MQTT:
     type: "MQTT"

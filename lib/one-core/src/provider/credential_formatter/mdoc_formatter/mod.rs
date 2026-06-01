@@ -18,7 +18,7 @@ use serde_with::{DurationSeconds, serde_as};
 use sha2::{Digest, Sha256, Sha384, Sha512};
 use shared_types::{
     CredentialFormat, CredentialId, CredentialSchemaId, DidValue, OrganisationId,
-    SerializedCredential,
+    RevocationMethodId, SerializedCredential,
 };
 use standardized_types::jwk::PublicJwk;
 use time::format_description::FormatItem;
@@ -101,6 +101,7 @@ pub(crate) struct Params {
     pub ecosystem_schema_ids: Vec<String>,
     #[serde(default)]
     pub pid_schema_ids: Vec<String>,
+    pub revocation_method: Option<RevocationMethodId>,
 }
 
 impl MdocFormatter {
@@ -571,6 +572,10 @@ impl CredentialFormatter for MdocFormatter {
             webhook_url: None,
             parent: None,
         })
+    }
+
+    fn revocation_method_id(&self) -> Option<&RevocationMethodId> {
+        self.params.revocation_method.as_ref()
     }
 
     fn config_name(&self) -> &CredentialFormat {

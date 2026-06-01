@@ -257,12 +257,9 @@ impl CredentialService {
         }
 
         let is_issuer = credential.role == CredentialRole::Issuer;
-        if is_issuer && let Some(method_id) = &schema.revocation_method {
-            let _revocation_fields = self
-                .config
-                .revocation
-                .get_fields(method_id)
-                .error_while("getting revocation config")?;
+        if is_issuer
+            && (schema.revocation_method.is_some() || schema.allow_revocation == Some(true))
+        {
             throw_if_credential_state_eq(&credential, CredentialStateEnum::Accepted)?;
         }
 
