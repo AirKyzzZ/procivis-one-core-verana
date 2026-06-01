@@ -249,7 +249,6 @@ impl CredentialRepository for CredentialHistoryDecorator {
 
 fn target_from_credential(credential: &Credential) -> Option<String> {
     match credential.role {
-        // TODO ONE-9754: This does not work for `BATCH_PARENT` credentials.
         CredentialRole::Holder => credential
             .issuer_identifier
             .as_ref()
