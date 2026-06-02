@@ -414,9 +414,9 @@ impl CRLRevocation {
             .ok_or(RevocationError::MappingError(
                 "Missing certificate key".to_string(),
             ))?
-            .get()
-            .await
-            .error_while("loading certificate key")?;
+            .as_ref()
+            .await?
+            .to_owned();
 
         let key_storage = self.key_provider.get_key_storage(&key.storage_type)?;
 

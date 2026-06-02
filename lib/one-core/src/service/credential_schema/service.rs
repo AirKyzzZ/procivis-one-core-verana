@@ -114,15 +114,8 @@ impl CredentialSchemaService {
             .collect::<Vec<_>>();
 
         {
-            let mut claim_schemas = credential_schema
-                .claim_schemas
-                .get()
-                .await
-                .error_while("adding metadata claim schemas")?;
-
+            let mut claim_schemas = credential_schema.claim_schemas.as_mut().await?;
             claim_schemas.extend(metadata_claims);
-
-            credential_schema.claim_schemas = claim_schemas.into();
         }
         let credential_schema =
             backfill_default_translations(credential_schema, &self.config.default_language)
@@ -419,9 +412,8 @@ impl CredentialSchemaService {
         if let Some(format) = format
             && !schema
                 .formats
-                .get()
-                .await
-                .error_while("getting credential schema formats")?
+                .as_ref()
+                .await?
                 .iter()
                 .any(|f| f.format == *format)
         {

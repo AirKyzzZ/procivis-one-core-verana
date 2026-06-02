@@ -58,7 +58,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_empty_missing_requi
 
     {
         let credential_schema = credential.schema.as_mut().unwrap();
-        let mut claim_schemas = credential_schema.claim_schemas.get().await.unwrap();
+        let mut claim_schemas = credential_schema.claim_schemas.as_mut().await.unwrap();
         claim_schemas.push(ClaimSchema {
             business_key: None,
             id: Uuid::new_v4().into(),
@@ -71,7 +71,6 @@ async fn test_get_relevant_credentials_to_credential_schemas_empty_missing_requi
             required: false,
             translations: Default::default(),
         });
-        credential_schema.claim_schemas = claim_schemas.into();
     }
 
     credential.state = CredentialStateEnum::Accepted;

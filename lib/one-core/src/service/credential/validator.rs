@@ -50,11 +50,7 @@ pub(crate) async fn validate_create_request(
         return Err(CredentialServiceError::MissingCredentialSchema(schema.id));
     }
 
-    let claim_schemas = &schema
-        .claim_schemas
-        .get()
-        .await
-        .error_while("getting claim schemas")?;
+    let claim_schemas = &schema.claim_schemas.as_ref().await?;
 
     let mut paths: Vec<&str> = vec![];
 

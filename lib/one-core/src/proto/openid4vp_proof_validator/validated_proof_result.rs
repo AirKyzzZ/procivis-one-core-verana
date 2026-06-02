@@ -60,9 +60,10 @@ async fn validate_proof(
 
         let claim_schemas = credential_schema
             .claim_schemas
-            .get()
+            .as_ref()
             .await
-            .map_err(|e| OpenID4VCError::MappingError(e.to_string()))?;
+            .map_err(|e| OpenID4VCError::MappingError(e.to_string()))?
+            .to_owned();
 
         claim_schemas_for_credential_schema
             .entry(credential_schema.id)

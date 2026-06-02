@@ -46,19 +46,7 @@ where
     }
 }
 
-impl<M: Model + Clone> Related<M> {
-    pub async fn get(&self) -> Result<M, DataLayerError> {
-        let mut guard = self.data.write().await;
-        Ok(match &*guard {
-            AsyncModelStore::AlreadyLoaded(data) => data.to_owned(),
-            AsyncModelStore::ToBeLoaded(loader) => {
-                let data = loader.load(&self.id).await?;
-                *guard = AsyncModelStore::AlreadyLoaded(data.to_owned());
-                data
-            }
-        })
-    }
-
+impl<M: Model> Related<M> {
     pub async fn as_ref(&self) -> Result<RoLoadedRelated<'_, M>, NestedError> {
         if let Some(loaded) = self.load_for_read_only().await? {
             return Ok(loaded);
@@ -262,7 +250,7 @@ pub struct RoLoadedRelatedVec<'a, M> {
     guard: RwLockReadGuard<'a, AsyncVecStore<M>>,
 }
 
-impl<M: Model> AsRef<Vec<M>> for RoLoadedRelatedVec<'_, M> {
+impl<M> AsRef<Vec<M>> for RoLoadedRelatedVec<'_, M> {
     fn as_ref(&self) -> &Vec<M> {
         match &*self.guard {
             AsyncVecStore::AlreadyLoaded(data) => data,
@@ -273,11 +261,20 @@ impl<M: Model> AsRef<Vec<M>> for RoLoadedRelatedVec<'_, M> {
     }
 }
 
-impl<M: Model> Deref for RoLoadedRelatedVec<'_, M> {
+impl<M> Deref for RoLoadedRelatedVec<'_, M> {
     type Target = Vec<M>;
 
     fn deref(&self) -> &Self::Target {
         self.as_ref()
+    }
+}
+
+impl<'a, M> IntoIterator for &'a RoLoadedRelatedVec<'_, M> {
+    type Item = &'a M;
+    type IntoIter = std::slice::Iter<'a, M>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.as_ref().iter()
     }
 }
 
@@ -318,6 +315,15 @@ impl<M> AsMut<Vec<M>> for RwLoadedRelatedVec<'_, M> {
                 "Invariant violated: load not called before constructing loaded related vec."
             ),
         }
+    }
+}
+
+impl<'a, M> IntoIterator for &'a mut RwLoadedRelatedVec<'_, M> {
+    type Item = &'a mut M;
+    type IntoIter = std::slice::IterMut<'a, M>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.as_mut().iter_mut()
     }
 }
 
@@ -422,11 +428,11 @@ mod tests {
     async fn test_from() {
         let id = Uuid::new_v4().into();
         let data = Related::from(dummy_organisation(Some(id)));
-        assert_eq!(data.get().await.unwrap().id, id);
+        assert_eq!(data.as_ref().await.unwrap().id, id);
 
         let claim_schema = dummy_claim_schema();
         let data = RelatedVec::from(vec![claim_schema.clone()]);
-        assert_eq!(data.get().await.unwrap(), vec![claim_schema]);
+        assert_eq!(data.as_ref().await.unwrap().as_ref(), &[claim_schema]);
     }
 
     #[tokio::test]
@@ -442,7 +448,7 @@ mod tests {
         let id = Uuid::new_v4().into();
         let related = Related::new(id, repository);
         assert_eq!(related.id(), id);
-        let organsation = related.get().await.unwrap();
+        let organsation = related.as_ref().await.unwrap();
         assert_eq!(organsation.id, id);
     }
 
@@ -458,7 +464,7 @@ mod tests {
 
         let id = Uuid::new_v4().into();
         let related: RelatedVec<ClaimSchema> = RelatedVec::from_ids(vec![id], repository);
-        let claim_schemas = related.get().await.unwrap();
+        let claim_schemas = related.as_ref().await.unwrap();
         assert_eq!(claim_schemas.len(), 0);
     }
 }

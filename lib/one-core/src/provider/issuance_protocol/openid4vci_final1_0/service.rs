@@ -142,12 +142,12 @@ async fn create_claims_dtos_from_claims(
 ) -> Result<Vec<OpenID4VCICredentialMetadataClaimResponseDTO>, OpenID4VCIError> {
     let claims = credential_schema
         .claim_schemas
-        .get()
+        .as_ref()
         .await
         .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?;
 
     let mut result = vec![];
-    for claim in claims.iter() {
+    for claim in &claims {
         if claim.data_type == "OBJECT" || claim.metadata {
             continue;
         }
@@ -235,7 +235,7 @@ async fn create_display_dtos_from_schema(
 ) -> Result<Vec<OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO>, OpenID4VCIError> {
     let translations = credential_schema
         .translations
-        .get()
+        .as_ref()
         .await
         .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?;
 
@@ -246,7 +246,7 @@ async fn create_display_dtos_from_schema(
     let visual_base = create_display_dto_from_schema(credential_schema);
 
     let mut by_lang: HashMap<String, (Option<String>, Option<String>)> = HashMap::new();
-    for translation in translations.iter() {
+    for translation in &translations {
         let entry = by_lang.entry(translation.lang.clone()).or_default();
         match translation.field {
             LocalizedTextField::Name => entry.0 = Some(translation.value.clone()),
@@ -274,7 +274,7 @@ async fn create_claim_display_dtos(
 ) -> Result<Vec<OpenID4VCIIssuerMetadataClaimDisplay>, OpenID4VCIError> {
     let translations = claim
         .translations
-        .get()
+        .as_ref()
         .await
         .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?;
 

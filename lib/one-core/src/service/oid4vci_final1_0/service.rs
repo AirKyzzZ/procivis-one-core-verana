@@ -631,11 +631,7 @@ impl OID4VCIFinal1_0Service {
             return Err(OpenID4VCIError::InvalidOrMissingProof.into());
         }
 
-        let organisation = schema
-            .organisation
-            .get()
-            .await
-            .error_while("getting organisation")?;
+        let organisation = schema.organisation.as_ref().await?.to_owned();
 
         let (identifier, key_id) = match holder_binding {
             OpenID4VCIProofHolderBinding::Did { did, key_id } => {

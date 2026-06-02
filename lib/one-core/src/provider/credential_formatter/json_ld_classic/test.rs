@@ -370,7 +370,7 @@ async fn test_parse_credential() {
         hashset! { "type", "type/0", "type/1" }
     );
 
-    let claim_schemas = schema.claim_schemas.get().await.unwrap();
+    let claim_schemas = schema.claim_schemas.as_ref().await.unwrap();
     assert_eq!(claim_schemas.len(), 2);
 
     let get_claim_schema_keys = |filter: &dyn Fn(&ClaimSchema) -> bool| {

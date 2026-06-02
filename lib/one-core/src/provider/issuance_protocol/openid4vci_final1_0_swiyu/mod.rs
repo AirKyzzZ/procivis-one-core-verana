@@ -263,13 +263,6 @@ impl IssuanceProtocol for OpenID4VCISwiyu {
 
         let credential_schema_schema_id = prepared_metadata.schema.schema_id().await?;
 
-        let credential_schema_claims = prepared_metadata
-            .schema
-            .claim_schemas
-            .get()
-            .await
-            .error_while("getting claim schemas")?;
-
         // make formats compatible to the swiyu wallet
         for (key, credential_config) in prepared_metadata
             .credential_configurations_supported
@@ -288,6 +281,8 @@ impl IssuanceProtocol for OpenID4VCISwiyu {
             let Some(claims) = meta.claims.as_mut() else {
                 continue;
             };
+
+            let credential_schema_claims = prepared_metadata.schema.claim_schemas.as_ref().await?;
             for claim in claims {
                 let Some(schema) = credential_schema_claims
                     .iter()

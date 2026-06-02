@@ -45,7 +45,7 @@ pub(crate) async fn schema_to_detail_response_dto(
     value: CredentialSchema,
     config: &CoreConfig,
 ) -> Result<CredentialSchemaDetailResponseDTO, CredentialSchemaServiceError> {
-    let formats = value.formats.get().await.error_while("getting formats")?;
+    let formats = value.formats.as_ref().await?;
     let format = formats
         .first()
         .ok_or(CredentialSchemaServiceError::MappingError(
@@ -89,14 +89,15 @@ pub(crate) async fn schema_to_detail_v2_response_dto(
     value: CredentialSchema,
     format: Option<&CredentialFormat>,
 ) -> Result<CredentialSchemaDetailV2ResponseDTO, CredentialSchemaServiceError> {
-    let formats = value.formats.get().await.error_while("getting formats")?;
+    let formats = value.formats.as_ref().await?;
     let formats = if let Some(format) = format {
         formats
             .into_iter()
             .filter(|csf| csf.format == *format)
+            .map(ToOwned::to_owned)
             .collect()
     } else {
-        formats
+        formats.to_vec()
     };
 
     let format_responses: Vec<CredentialSchemaFormatResponseDTO> = formats
@@ -114,12 +115,8 @@ pub(crate) async fn schema_to_detail_v2_response_dto(
     > = std::collections::HashMap::new();
 
     for format in &formats {
-        let mappings = format
-            .claim_mappings
-            .get()
-            .await
-            .error_while("getting claim mappings")?;
-        for mapping in mappings {
+        let mappings = format.claim_mappings.as_ref().await?;
+        for mapping in &mappings {
             claim_mappings_map
                 .entry(mapping.claim_schema_id)
                 .or_default()
@@ -134,11 +131,7 @@ pub(crate) async fn schema_to_detail_v2_response_dto(
     let mut claim_schemas_v2 = vec![];
     for cs in non_metadata_claim_schemas {
         let mappings = claim_mappings_map.remove(&cs.id);
-        let translations = cs
-            .translations
-            .get()
-            .await
-            .error_while(format!("getting translations for claim schema {}", cs.id))?;
+        let translations = cs.translations.as_ref().await?;
         let dto = CredentialClaimSchemaV2DTO {
             id: cs.id,
             created_date: cs.created_date,
@@ -189,11 +182,11 @@ async fn non_metadata_claim_schemas(
 ) -> Result<Vec<ClaimSchema>, CredentialSchemaServiceError> {
     Ok(value
         .claim_schemas
-        .get()
-        .await
-        .error_while("getting claim schemas")?
+        .as_ref()
+        .await?
         .into_iter()
         .filter(|schema| !schema.metadata)
+        .map(ToOwned::to_owned)
         .collect::<Vec<_>>())
 }
 fn renest_claim_schemas_v2(
@@ -563,12 +556,7 @@ pub(crate) async fn to_credential_schema_list_response(
 pub(crate) async fn to_credential_schema_list_v2_response(
     credential_schema: CredentialSchema,
 ) -> Result<CredentialSchemaListItemV2ResponseDTO, NestedError> {
-    let formats = credential_schema
-        .formats
-        .get()
-        .await
-        .error_while("getting formats")?;
-
+    let formats = credential_schema.formats.as_ref().await?;
     let format_responses: Vec<CredentialSchemaFormatResponseDTO> = formats
         .iter()
         .map(|f| CredentialSchemaFormatResponseDTO {
@@ -598,11 +586,7 @@ pub(crate) async fn to_credential_schema_list_v2_response(
 async fn map_translations(
     schema: &CredentialSchema,
 ) -> Result<CredentialSchemaTranslationsDTO, CredentialSchemaServiceError> {
-    let texts = schema
-        .translations
-        .get()
-        .await
-        .error_while("getting schema translations")?;
+    let texts = schema.translations.as_ref().await?;
     Ok(CredentialSchemaTranslationsDTO {
         name: translations_to_i18n(&texts, LocalizedTextField::Name).ok_or(
             CredentialSchemaServiceError::MappingError(format!(

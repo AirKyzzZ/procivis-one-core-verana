@@ -253,14 +253,9 @@ impl WalletUnitService {
             .error_while("getting holder wallet unit")?
             .ok_or(HolderWalletInstanceError::HolderWalletUnitNotFound(id))?;
 
-        let organisation = unit
-            .organisation
-            .to_owned()
-            .get()
-            .await
-            .error_while("getting organisation")?;
+        let organisation_id = unit.organisation.id();
 
-        throw_if_org_id_not_matching_session(&organisation.id, &*self.session_provider)
+        throw_if_org_id_not_matching_session(&organisation_id, &*self.session_provider)
             .error_while("checking session")?;
 
         let metadata = self
@@ -273,7 +268,7 @@ impl WalletUnitService {
             self.trust_collection_repository.as_ref(),
             self.trust_subscription_repository.as_ref(),
             metadata.trust_collections,
-            organisation.id,
+            organisation_id,
         )
         .await?;
 

@@ -10,7 +10,7 @@ pub(crate) async fn certificate_to_response_dto(
     certificate: Certificate,
 ) -> Result<CertificateResponseDTO, CertificateServiceError> {
     let key = match certificate.key {
-        Some(key) => Some(key.get().await.error_while("loading certificate key")?),
+        Some(key) => Some(key.as_ref().await?.to_owned()),
         None => None,
     };
     let x509_attributes = parse_chain_to_x509_attributes(certificate.chain.as_bytes())

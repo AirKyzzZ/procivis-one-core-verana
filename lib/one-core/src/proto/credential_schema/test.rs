@@ -191,7 +191,7 @@ async fn test_parse_import_with_nested_claims_success() {
 
     // then
     let_assert!(Ok(schema) = result);
-    assert_eq!(schema.claim_schemas.get().await.unwrap().len(), 2);
+    assert_eq!(schema.claim_schemas.as_ref().await.unwrap().len(), 2);
 }
 
 #[tokio::test]

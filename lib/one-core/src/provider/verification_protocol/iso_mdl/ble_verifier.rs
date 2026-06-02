@@ -602,11 +602,10 @@ async fn proof_input_schema_to_doc_request(
             // defining a whole namespace
             credential_schema
                 .claim_schemas
-                .get()
-                .await
-                .error_while("getting claim schemas")?
+                .as_ref()
+                .await?
                 .into_iter()
-                .map(|claim_schema| claim_schema.key)
+                .map(|claim_schema| claim_schema.key.to_owned())
                 .filter(|k| k.starts_with(&format!("{key}{NESTED_CLAIM_MARKER}")))
                 .collect()
         };

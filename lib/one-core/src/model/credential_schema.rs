@@ -104,7 +104,7 @@ impl CredentialSchema {
     }
 
     async fn get_formats(&self) -> Result<Vec<CredentialSchemaFormat>, NestedError> {
-        self.formats.get().await.error_while("getting formats")
+        Ok(self.formats.as_ref().await?.to_owned())
     }
 
     pub fn revocation_method_id<'a>(

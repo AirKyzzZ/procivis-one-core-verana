@@ -111,7 +111,7 @@ pub(crate) fn translations_to_i18n(
 pub(crate) async fn claim_schema_to_dto(
     value: ClaimSchema,
 ) -> Result<CredentialClaimSchemaDTO, DataLayerError> {
-    let raw = value.translations.get().await?;
+    let raw = value.translations.as_ref().await?;
     let Some(name) = translations_to_i18n(&raw, LocalizedTextField::Name) else {
         return Err(DataLayerError::MissingRequiredRelation {
             relation: "translations",
@@ -135,25 +135,26 @@ pub(crate) async fn backfill_default_translations(
     mut credential_schema: CredentialSchema,
     default_language: &str,
 ) -> Result<CredentialSchema, DataLayerError> {
-    let mut translations = credential_schema.translations.get().await?;
-    if !translations
-        .iter()
-        .any(|t| t.lang == default_language && t.field == LocalizedTextField::Name)
     {
-        translations.push(LocalizedText {
-            entity_id: credential_schema.id.into(),
-            field: LocalizedTextField::Name,
-            created_date: credential_schema.created_date,
-            last_modified: credential_schema.last_modified,
-            lang: default_language.to_string(),
-            value: credential_schema.name.clone(),
-            entity_type: LocalizedTextEntityType::CredentialSchema,
-        });
-        credential_schema.translations = translations.into()
+        let mut translations = credential_schema.translations.as_mut().await?;
+        if !translations
+            .iter()
+            .any(|t| t.lang == default_language && t.field == LocalizedTextField::Name)
+        {
+            translations.push(LocalizedText {
+                entity_id: credential_schema.id.into(),
+                field: LocalizedTextField::Name,
+                created_date: credential_schema.created_date,
+                last_modified: credential_schema.last_modified,
+                lang: default_language.to_string(),
+                value: credential_schema.name.clone(),
+                entity_type: LocalizedTextEntityType::CredentialSchema,
+            });
+        }
     }
 
     let mut claim_schemas = vec![];
-    for claim_schema in credential_schema.claim_schemas.get().await? {
+    for claim_schema in credential_schema.claim_schemas.as_ref().await?.to_owned() {
         claim_schemas.push(add_fallback_translation(claim_schema, default_language).await?);
     }
     credential_schema.claim_schemas = claim_schemas.into();
@@ -164,26 +165,27 @@ pub(crate) async fn add_fallback_translation(
     mut claim_schema: ClaimSchema,
     default_language: &str,
 ) -> Result<ClaimSchema, DataLayerError> {
-    let mut translations = claim_schema.translations.get().await?;
-    if !claim_schema.metadata
-        && !translations
-            .iter()
-            .any(|t| t.lang == default_language && t.field == LocalizedTextField::Name)
     {
-        translations.push(LocalizedText {
-            entity_id: claim_schema.id.into(),
-            field: LocalizedTextField::Name,
-            created_date: claim_schema.created_date,
-            last_modified: claim_schema.last_modified,
-            lang: default_language.to_string(),
-            value: claim_schema
-                .key
-                .rsplit_once(NESTED_CLAIM_MARKER)
-                .map(|(_, end)| end.to_string())
-                .unwrap_or(claim_schema.key.clone()),
-            entity_type: LocalizedTextEntityType::ClaimSchema,
-        });
-        claim_schema.translations = translations.into();
+        let mut translations = claim_schema.translations.as_mut().await?;
+        if !claim_schema.metadata
+            && !translations
+                .iter()
+                .any(|t| t.lang == default_language && t.field == LocalizedTextField::Name)
+        {
+            translations.push(LocalizedText {
+                entity_id: claim_schema.id.into(),
+                field: LocalizedTextField::Name,
+                created_date: claim_schema.created_date,
+                last_modified: claim_schema.last_modified,
+                lang: default_language.to_string(),
+                value: claim_schema
+                    .key
+                    .rsplit_once(NESTED_CLAIM_MARKER)
+                    .map(|(_, end)| end.to_string())
+                    .unwrap_or(claim_schema.key.clone()),
+                entity_type: LocalizedTextEntityType::ClaimSchema,
+            });
+        }
     }
     Ok(claim_schema)
 }

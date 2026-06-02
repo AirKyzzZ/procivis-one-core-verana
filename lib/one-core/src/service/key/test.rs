@@ -84,7 +84,7 @@ async fn test_create_key_success() {
     let org_id = Uuid::new_v4();
 
     let key = generic_key("NAME", org_id);
-    let organisation = key.organisation.get().await.unwrap();
+    let organisation = key.organisation.as_ref().await.unwrap();
     {
         let organisation = organisation.clone();
 

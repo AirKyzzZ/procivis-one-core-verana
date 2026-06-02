@@ -31,11 +31,11 @@ impl TestingCertificateParams {
     pub(crate) async fn from(certificate: Certificate) -> Self {
         let key = match certificate.key {
             None => None,
-            Some(key) => Some(key.get().await.unwrap()),
+            Some(key) => Some(key.as_ref().await.unwrap().to_owned()),
         };
         let organisation = match certificate.organisation {
             None => None,
-            Some(organisation) => Some(organisation.get().await.unwrap()),
+            Some(organisation) => Some(organisation.as_ref().await.unwrap().to_owned()),
         };
         Self {
             id: Some(certificate.id),

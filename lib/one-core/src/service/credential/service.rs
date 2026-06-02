@@ -106,12 +106,6 @@ impl CredentialService {
         validate_key_storage_security_supported(schema.key_storage_security, &self.config)
             .error_while("validating key storage security")?;
 
-        let claim_schemas = schema
-            .claim_schemas
-            .get()
-            .await
-            .error_while("getting claim schemas")?;
-
         let schema_format = schema.format().await?;
         let formatter_capabilities = self
             .formatter_provider
@@ -182,7 +176,7 @@ impl CredentialService {
         let claims = claims_from_create_request(
             credential_id,
             request.claim_values.clone(),
-            &claim_schemas,
+            &schema.claim_schemas.as_ref().await?,
         )?;
 
         let success_log = format!(
@@ -573,11 +567,7 @@ impl CredentialService {
             ));
         }
 
-        let organisation = credential_schema
-            .organisation
-            .get()
-            .await
-            .error_while("getting organisation")?;
+        let organisation = credential_schema.organisation.as_ref().await?.to_owned();
 
         let credential_exchange = &credential.protocol;
         let exchange = self.protocol_provider.get_protocol(credential_exchange)?;

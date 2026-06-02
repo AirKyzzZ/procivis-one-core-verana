@@ -218,7 +218,7 @@ async fn test_issuer_submit_succeeds() {
         .schema
         .unwrap()
         .formats
-        .get()
+        .as_ref()
         .await
         .unwrap()
         .first()
@@ -386,7 +386,7 @@ async fn test_issue_credential_for_mdoc_succeeds() {
         .schema
         .unwrap()
         .formats
-        .get()
+        .as_ref()
         .await
         .unwrap()
         .first()
@@ -545,7 +545,7 @@ async fn test_issue_credential_for_existing_mdoc_succeeds() {
         .schema
         .unwrap()
         .formats
-        .get()
+        .as_ref()
         .await
         .unwrap()
         .first()
@@ -648,7 +648,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
         .schema
         .unwrap()
         .formats
-        .get()
+        .as_ref()
         .await
         .unwrap()
         .first()

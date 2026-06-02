@@ -704,13 +704,10 @@ async fn get_or_create_credential_schema(
         .error_while("getting credential schema")?;
 
     if let Some(stored_schema) = stored_schema {
-        if let Some(conflicting_schema) = stored_schema
-            .formats
-            .get()
-            .await
-            .error_while("getting credential schema formats")?
-            .iter()
-            .find(|format| format.schema_id == parsed_schema_id && format.format != parsed_format)
+        if let Some(conflicting_schema) =
+            stored_schema.formats.as_ref().await?.iter().find(|format| {
+                format.schema_id == parsed_schema_id && format.format != parsed_format
+            })
         {
             return Err(IssuanceProtocolError::Failed(format!(
                 "Credential schema conflict: credential schema with id {} has matching schema_id {} but different format {}",
@@ -764,9 +761,9 @@ async fn validate_existing_and_find_new_claim_schemas(
         .as_ref()
         .ok_or(IssuanceProtocolError::Failed("Missing schema".to_string()))?
         .claim_schemas
-        .get()
-        .await
-        .error_while("getting claim schemas")?;
+        .as_ref()
+        .await?
+        .to_owned();
 
     let mut stored_claim_schemas = stored_schema.claim_schemas.as_mut().await?;
     for parsed_claim_schema in parsed_claim_schemas {
@@ -879,58 +876,48 @@ async fn apply_issuer_metadata_to_schema(
         schema.translations = schema_translations.into();
     }
 
-    let metadata_claims = metadata.and_then(|m| m.claims.as_deref()).unwrap_or(&[]);
+    let issuer_metadata_claims = metadata.and_then(|m| m.claims.as_deref()).unwrap_or(&[]);
+    if !issuer_metadata_claims.is_empty() {
+        let mut claim_schemas = schema.claim_schemas.as_mut().await?;
+        for claim_schema in &mut claim_schemas {
+            if claim_schema.metadata {
+                continue;
+            }
 
-    if !metadata_claims.is_empty() {
-        let claim_schemas = schema
-            .claim_schemas
-            .get()
-            .await
-            .error_while("getting claim schemas")?;
+            let Some(issuer_metadata_claim) = issuer_metadata_claims
+                .iter()
+                .find(|mc| mc.path.join("/") == claim_schema.key)
+            else {
+                continue;
+            };
 
-        let updated_claim_schemas = claim_schemas
-            .into_iter()
-            .map(|mut claim_schema| {
-                if claim_schema.metadata {
-                    return claim_schema;
-                }
-                let metadata_claim = metadata_claims
-                    .iter()
-                    .find(|mc| mc.path.join("/") == claim_schema.key);
-
-                if let Some(mc) = metadata_claim {
-                    let claim_translations: Vec<LocalizedText> = mc
-                        .display
+            let claim_translations: Vec<LocalizedText> = issuer_metadata_claim
+                .display
+                .as_deref()
+                .unwrap_or(&[])
+                .iter()
+                .filter_map(|display| {
+                    let name = display.name.as_ref()?;
+                    let lang = display
+                        .locale
                         .as_deref()
-                        .unwrap_or(&[])
-                        .iter()
-                        .filter_map(|display| {
-                            let name = display.name.as_ref()?;
-                            let lang = display
-                                .locale
-                                .as_deref()
-                                .unwrap_or(default_language)
-                                .to_owned();
-                            Some(LocalizedText {
-                                entity_id: claim_schema.id.into(),
-                                field: LocalizedTextField::Name,
-                                created_date: now,
-                                last_modified: now,
-                                lang,
-                                value: name.clone(),
-                                entity_type: LocalizedTextEntityType::ClaimSchema,
-                            })
-                        })
-                        .collect();
-                    if !claim_translations.is_empty() {
-                        claim_schema.translations = claim_translations.into();
-                    }
-                }
-                claim_schema
-            })
-            .collect::<Vec<_>>();
-
-        schema.claim_schemas = updated_claim_schemas.into();
+                        .unwrap_or(default_language)
+                        .to_owned();
+                    Some(LocalizedText {
+                        entity_id: claim_schema.id.into(),
+                        field: LocalizedTextField::Name,
+                        created_date: now,
+                        last_modified: now,
+                        lang,
+                        value: name.clone(),
+                        entity_type: LocalizedTextEntityType::ClaimSchema,
+                    })
+                })
+                .collect();
+            if !claim_translations.is_empty() {
+                claim_schema.translations = claim_translations.into();
+            }
+        }
     }
 
     schema.layout_properties = metadata_display.and_then(|display| display.to_owned().into());

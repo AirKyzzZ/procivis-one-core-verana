@@ -482,9 +482,8 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
                     .ok_or(Error::MappingError(
                         "Missing parent of batch item".to_string(),
                     ))?
-                    .get()
-                    .await
-                    .error_while("getting parent credential")?;
+                    .as_ref()
+                    .await?;
                 if parent.r#type != CredentialType::BatchParent {
                     return Err(Error::InvalidCredentialType(credential.r#type));
                 }
@@ -751,9 +750,8 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
                         .parent
                         .as_ref()
                         .ok_or(Error::MappingError("Missing batch item parent".to_string()))?
-                        .get()
-                        .await
-                        .error_while("getting batch parent")?;
+                        .as_ref()
+                        .await?;
 
                     if parent.r#type == CredentialType::BatchParent {
                         let batch_items = self

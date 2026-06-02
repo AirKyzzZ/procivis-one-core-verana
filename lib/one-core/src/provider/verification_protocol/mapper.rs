@@ -177,11 +177,7 @@ pub(crate) async fn get_relevant_credentials_to_credential_schemas(
                 continue;
             }
 
-            let claim_schemas = schema
-                .claim_schemas
-                .get()
-                .await
-                .error_while("getting claim schemas")?;
+            let claim_schemas = schema.claim_schemas.as_ref().await?;
 
             if group.claims.iter().all(|requested_claim| {
                 !requested_claim.required

@@ -538,9 +538,8 @@ async fn select_claims(
             credential.id
         )))?
         .claim_schemas
-        .get()
-        .await
-        .error_while("getting claim schemas")?;
+        .as_ref()
+        .await?;
 
     let user_claim_path = formatter.user_claims_path();
     // add claims requested by the verifier

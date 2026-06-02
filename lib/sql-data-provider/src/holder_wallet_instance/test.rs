@@ -160,7 +160,7 @@ async fn instance_to_create_request(
         wallet_provider_url: instance.wallet_provider_url,
         provider_wallet_unit_id: instance.provider_wallet_unit_id,
         status: instance.status,
-        organisation: instance.organisation.get().await.unwrap(),
+        organisation: instance.organisation.as_ref().await.unwrap().to_owned(),
         authentication_key: instance.authentication_key,
         trusted_rp_required: instance.trusted_rp_required,
     }

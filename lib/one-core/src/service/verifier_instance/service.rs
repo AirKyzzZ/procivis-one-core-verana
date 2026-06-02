@@ -165,11 +165,7 @@ impl VerifierInstanceService {
             .error_while("getting verifier instance")?
             .ok_or(VerifierInstanceServiceError::VerifierInstanceNotFound(id))?;
 
-        let organisation = instance
-            .organisation
-            .get()
-            .await
-            .error_while("getting organisation")?;
+        let organisation = instance.organisation.as_ref().await?;
 
         throw_if_org_id_not_matching_session(&organisation.id, &*self.session_provider)
             .error_while("checking session")?;
@@ -208,13 +204,7 @@ impl VerifierInstanceService {
             .error_while("getting verifier instance")?
             .ok_or(VerifierInstanceServiceError::VerifierInstanceNotFound(id))?;
 
-        let organisation = instance
-            .organisation
-            .get()
-            .await
-            .error_while("getting organisation")?;
-
-        throw_if_org_id_not_matching_session(&organisation.id, &*self.session_provider)
+        throw_if_org_id_not_matching_session(&instance.organisation.id(), &*self.session_provider)
             .error_while("checking session")?;
 
         self.tx_manager
@@ -235,7 +225,7 @@ impl VerifierInstanceService {
                 if let Some(trust_collections) = request.trust_collections {
                     set_active_trust_collections(
                         trust_collections,
-                        organisation.id,
+                        instance.organisation.id(),
                         self.trust_collection_repository.as_ref(),
                         self.trust_subscription_repository.as_ref(),
                         self.trust_list_subscription_sync.as_ref(),

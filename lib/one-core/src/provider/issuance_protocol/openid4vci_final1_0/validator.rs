@@ -285,19 +285,18 @@ async fn single_schema_format(
         .ok_or(IssuanceProtocolError::Failed(
             "missing parsed credential schema".to_string(),
         ))?;
-    let mut schema_format = schema
-        .formats
-        .get()
-        .await
-        .error_while("loading schema formats")?;
+    let schema_format = schema.formats.as_ref().await?;
     if schema_format.len() > 1 {
         return Err(IssuanceProtocolError::Failed(
             "Invalid parsed schema: multiple schema formats".to_string(),
         ));
     }
-    schema_format.pop().ok_or(IssuanceProtocolError::Failed(
-        "Invalid parsed schema: no schema format".to_string(),
-    ))
+    schema_format
+        .first()
+        .cloned()
+        .ok_or(IssuanceProtocolError::Failed(
+            "Invalid parsed schema: no schema format".to_string(),
+        ))
 }
 
 #[derive(Eq, PartialEq)]

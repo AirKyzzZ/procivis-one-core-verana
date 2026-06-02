@@ -1210,14 +1210,10 @@ impl OpenID4VCIFinal1_0 {
             .blob_storage_provider
             .get_blob_storage(BlobStorageType::Db)?;
 
-        let formats = credential_schema
-            .formats
-            .get()
-            .await
-            .error_while("getting formats")?;
+        let formats = credential_schema.formats.as_ref().await?;
 
         let mut result = Vec::new();
-        for format in formats {
+        for format in &formats {
             let format_type = self
                 .config
                 .format
@@ -1284,58 +1280,60 @@ impl OpenID4VCIFinal1_0 {
             ));
         };
 
-        let formats = schema.formats.get().await.error_while("getting formats")?;
         let mut credential_configurations_supported: IndexMap<
             String,
             OpenID4VCICredentialConfigurationData,
         > = Default::default();
-
-        let proof_types_supported: IndexMap<String, OpenID4VCIProofTypeSupported> =
-            map_proof_types_supported(
-                self.key_algorithm_provider
-                    .supported_verification_jose_alg_ids(),
-                schema.key_storage_security.map(Into::into),
-            );
-
-        for format in formats {
-            let format_type = self
-                .config
-                .format
-                .get_fields(&format.format)
-                .error_while("getting format config")?
-                .r#type;
-
-            let formatter = self
-                .formatter_provider
-                .get_credential_formatter(&format.format)?;
-
-            let format_capabilities = formatter.get_capabilities();
-            let credential_signing_alg_values_supported = format_capabilities
-                .signing_key_algorithms
-                .into_iter()
-                .filter_map(|alg_type| {
+        {
+            let proof_types_supported: IndexMap<String, OpenID4VCIProofTypeSupported> =
+                map_proof_types_supported(
                     self.key_algorithm_provider
-                        .key_algorithm_from_type(alg_type)
-                        .ok()
-                        .map(|alg| alg.issuance_jose_alg_id())
-                })
-                .collect();
+                        .supported_verification_jose_alg_ids(),
+                    schema.key_storage_security.map(Into::into),
+                );
 
-            let configuration = credential_configuration_supported(
-                &format_type,
-                &format.schema_id,
-                &schema,
-                map_cryptographic_binding_methods_supported(
-                    &self.did_method_provider.supported_method_names(),
-                    &format_capabilities.holder_identifier_types,
-                ),
-                proof_types_supported.to_owned(),
-                credential_signing_alg_values_supported,
-            )
-            .await
-            .map_err(OpenIDIssuanceError::OpenID4VCI)?;
+            let formats = schema.formats.as_ref().await?;
+            for format in &formats {
+                let format_type = self
+                    .config
+                    .format
+                    .get_fields(&format.format)
+                    .error_while("getting format config")?
+                    .r#type;
 
-            credential_configurations_supported.insert(format.schema_id, configuration);
+                let formatter = self
+                    .formatter_provider
+                    .get_credential_formatter(&format.format)?;
+
+                let format_capabilities = formatter.get_capabilities();
+                let credential_signing_alg_values_supported = format_capabilities
+                    .signing_key_algorithms
+                    .into_iter()
+                    .filter_map(|alg_type| {
+                        self.key_algorithm_provider
+                            .key_algorithm_from_type(alg_type)
+                            .ok()
+                            .map(|alg| alg.issuance_jose_alg_id())
+                    })
+                    .collect();
+
+                let configuration = credential_configuration_supported(
+                    &format_type,
+                    &format.schema_id,
+                    &schema,
+                    map_cryptographic_binding_methods_supported(
+                        &self.did_method_provider.supported_method_names(),
+                        &format_capabilities.holder_identifier_types,
+                    ),
+                    proof_types_supported.to_owned(),
+                    credential_signing_alg_values_supported,
+                )
+                .await
+                .map_err(OpenIDIssuanceError::OpenID4VCI)?;
+
+                credential_configurations_supported
+                    .insert(format.schema_id.to_owned(), configuration);
+            }
         }
 
         Ok(PreparedMetadata {
@@ -1784,11 +1782,8 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             .clone();
         let credential_state = credential.state;
 
-        let format = credential_schema
-            .formats
-            .get()
-            .await
-            .error_while("getting formats")?
+        let formats = credential_schema.formats.as_ref().await?;
+        let format = formats
             .into_iter()
             .find(|format| format.id == format_id)
             .ok_or(IssuanceProtocolError::Failed(

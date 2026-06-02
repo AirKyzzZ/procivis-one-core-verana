@@ -212,13 +212,11 @@ async fn from_vec_claim(
     credential_schema: &CredentialSchema,
     config: &CoreConfig,
 ) -> Result<Vec<DetailCredentialClaimResponseDTO>, CredentialServiceError> {
-    let claim_schemas_raw = credential_schema
-        .claim_schemas
-        .get()
-        .await
-        .error_while("getting claim schemas")?
-        .into_iter()
+    let claim_schemas = credential_schema.claim_schemas.as_ref().await?;
+    let claim_schemas_raw = claim_schemas
+        .iter()
         .filter(|cs| !cs.metadata)
+        .map(ToOwned::to_owned)
         .collect::<Vec<_>>();
 
     let mut claim_schema_dtos = Vec::with_capacity(claim_schemas_raw.len());
@@ -634,11 +632,7 @@ pub(crate) async fn to_credential_schema_detail_response(
 ) -> Result<DetailCredentialSchemaResponseDTO, NestedError> {
     let format = credential_schema.format().await?.to_owned();
     let schema_id = credential_schema.schema_id().await?;
-    let raw_translations = credential_schema
-        .translations
-        .get()
-        .await
-        .error_while("getting credential schema translations")?;
+    let raw_translations = credential_schema.translations.as_ref().await?;
     let translations = CredentialSchemaTranslationsDTO {
         name: translations_to_i18n(&raw_translations, LocalizedTextField::Name).ok_or(
             CredentialServiceError::MappingError(format!(

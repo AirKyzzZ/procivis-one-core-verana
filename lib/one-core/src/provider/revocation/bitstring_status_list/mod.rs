@@ -424,9 +424,8 @@ impl BitstringStatusList {
 
         let is_bbs = !issuer_did
             .keys
-            .get()
-            .await
-            .error_while("getting issuer did keys")?
+            .as_ref()
+            .await?
             .into_iter()
             .any(|key| key.key.key_type == KeyAlgorithmType::BbsPlus.to_string());
 

@@ -412,11 +412,7 @@ pub(crate) async fn accept_proof(
             .error_while("creating remote issuer identifier")?;
 
         let credential_schema = &first_claim.credential_schema;
-        let claim_schemas = credential_schema
-            .claim_schemas
-            .get()
-            .await
-            .error_while("getting claim schemas")?;
+        let claim_schemas = credential_schema.claim_schemas.as_ref().await?;
 
         let credential = extracted_credential_to_model(
             &claim_schemas,

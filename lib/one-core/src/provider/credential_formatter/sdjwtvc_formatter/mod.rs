@@ -544,13 +544,8 @@ impl SDJWTVCFormatter {
         if self.params.swiyu_mode
             && let Some(credential_schema) = credential_schema
         {
-            let claim_schemas = credential_schema
-                .claim_schemas
-                .get()
-                .await
-                .error_while("getting claim schemas")?;
-
-            for claim_schema in claim_schemas {
+            let claim_schemas = credential_schema.claim_schemas.as_ref().await?;
+            for claim_schema in &claim_schemas {
                 let Some(fields) = self
                     .datatype_config
                     .get_fields(&claim_schema.data_type)

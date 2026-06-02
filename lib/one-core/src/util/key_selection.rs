@@ -4,7 +4,7 @@ use x509_parser::pem::Pem;
 use x509_parser::prelude::KeyUsage;
 
 use crate::config::core_config::KeyAlgorithmType;
-use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, NestedError};
+use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 use crate::model::certificate::{Certificate, CertificateRole, CertificateState};
 use crate::model::did::{Did, KeyRole, RelatedKey};
 use crate::model::identifier::{Identifier, IdentifierType};
@@ -285,12 +285,10 @@ impl Did {
         key_id: &KeyId,
         filter: &KeyFilter,
     ) -> Result<RelatedKey, KeySelectionError> {
-        let mut same_id_keys = self
-            .keys
-            .get()
-            .await
-            .error_while("getting did keys")?
-            .into_iter()
+        let keys = self.keys.as_ref().await?;
+        let mut same_id_keys = keys
+            .as_ref()
+            .iter()
             .filter(|entry| &entry.key.id == key_id)
             .peekable();
 
@@ -303,6 +301,7 @@ impl Did {
 
         same_id_keys
             .find(|entry| filter.matches_related_key(entry))
+            .map(ToOwned::to_owned)
             .ok_or_else(|| KeySelectionError::KeyNotMatchingFilter {
                 key_id: *key_id,
                 key_filter: filter.clone(),
@@ -315,11 +314,12 @@ impl Did {
     ) -> Result<Option<RelatedKey>, KeySelectionError> {
         Ok(self
             .keys
-            .get()
-            .await
-            .error_while("getting did keys")?
-            .into_iter()
-            .find(|entry| filter.matches_related_key(entry)))
+            .as_ref()
+            .await?
+            .as_ref()
+            .iter()
+            .find(|entry| filter.matches_related_key(entry))
+            .cloned())
     }
 
     pub async fn find_matching_keys(
@@ -328,11 +328,12 @@ impl Did {
     ) -> Result<Vec<RelatedKey>, KeySelectionError> {
         Ok(self
             .keys
-            .get()
-            .await
-            .error_while("getting did keys")?
-            .into_iter()
+            .as_ref()
+            .await?
+            .as_ref()
+            .iter()
             .filter(|entry| filter.matches_related_key(entry))
+            .map(ToOwned::to_owned)
             .collect())
     }
 }
@@ -340,7 +341,7 @@ impl Did {
 impl Certificate {
     pub async fn has_matching_key(&self, filter: &KeyFilter) -> Result<bool, KeySelectionError> {
         Ok(if let Some(key) = self.key.as_ref() {
-            let key = key.get().await.error_while("getting key")?;
+            let key = key.as_ref().await?;
             filter.matches_key(&key)
         } else {
             false
@@ -363,15 +364,15 @@ impl Certificate {
     }
 
     async fn key(&self) -> Result<Key, KeySelectionError> {
-        self.key
+        Ok(self
+            .key
             .as_ref()
             .ok_or(KeySelectionError::MappingError(
                 "Missing certificate key".to_owned(),
             ))?
-            .get()
-            .await
-            .error_while("getting key")
-            .map_err(Into::into)
+            .as_ref()
+            .await?
+            .to_owned())
     }
 }
 
