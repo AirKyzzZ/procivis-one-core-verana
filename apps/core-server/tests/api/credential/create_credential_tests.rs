@@ -23,8 +23,8 @@ async fn test_create_credential_success() {
         .credential_schemas
         .create("test", &organisation, None, Default::default())
         .await;
-    let claim_id = credential_schema.claim_schemas.get().await.unwrap()[0].id;
-    let claim_id1 = credential_schema.claim_schemas.get().await.unwrap()[1].id;
+    let claim_id = credential_schema.claim_schemas.as_ref().await.unwrap()[0].id;
+    let claim_id1 = credential_schema.claim_schemas.as_ref().await.unwrap()[1].id;
 
     // WHEN
     let resp = context
@@ -76,7 +76,7 @@ async fn test_create_credential_with_array_success() {
 
     let claim_id_root_field = credential_schema
         .claim_schemas
-        .get()
+        .as_ref()
         .await
         .unwrap()
         .into_iter()
@@ -86,7 +86,7 @@ async fn test_create_credential_with_array_success() {
 
     let claim_id = credential_schema
         .claim_schemas
-        .get()
+        .as_ref()
         .await
         .unwrap()
         .into_iter()
@@ -220,7 +220,7 @@ async fn test_create_credential_success_with_nested_claims() {
         .create_with_nested_claims("test schema", &organisation, None, Default::default())
         .await;
 
-    let claim_schemas = credential_schema.claim_schemas.get().await.unwrap();
+    let claim_schemas = credential_schema.claim_schemas.as_ref().await.unwrap();
 
     let street_claim_id = claim_schemas[1].id.to_owned();
     let coordinate_x_claim_id = claim_schemas[3].id.to_owned();
@@ -337,7 +337,7 @@ async fn test_create_credential_with_issuer_key() {
         )
         .await;
 
-    let claim_id = credential_schema.claim_schemas.get().await.unwrap()[0].id;
+    let claim_id = credential_schema.claim_schemas.as_ref().await.unwrap()[0].id;
 
     // WHEN
     let resp = context
@@ -415,7 +415,7 @@ async fn test_fail_to_create_credential_invalid_key_role() {
         )
         .await;
 
-    let claim_id = credential_schema.claim_schemas.get().await.unwrap()[0].id;
+    let claim_id = credential_schema.claim_schemas.as_ref().await.unwrap()[0].id;
 
     // WHEN
     let resp = context
@@ -453,7 +453,7 @@ async fn test_fail_to_create_credential_unknown_key_id() {
         .credential_schemas
         .create("test", &organisation, None, Default::default())
         .await;
-    let claim_id = credential_schema.claim_schemas.get().await.unwrap()[0].id;
+    let claim_id = credential_schema.claim_schemas.as_ref().await.unwrap()[0].id;
 
     // WHEN
     let resp = context
@@ -523,7 +523,7 @@ async fn test_create_credential_with_certificate_identifier() {
         .create("test", &organisation, None, Default::default())
         .await;
 
-    let claim_id = credential_schema.claim_schemas.get().await.unwrap()[0].id;
+    let claim_id = credential_schema.claim_schemas.as_ref().await.unwrap()[0].id;
 
     // WHEN
     let resp = context
@@ -614,7 +614,7 @@ async fn test_create_credential_with_certificate_selection() {
         .create("test", &organisation, None, Default::default())
         .await;
 
-    let claim_id = credential_schema.claim_schemas.get().await.unwrap()[0].id;
+    let claim_id = credential_schema.claim_schemas.as_ref().await.unwrap()[0].id;
 
     // WHEN
     let resp = context
@@ -687,7 +687,7 @@ async fn test_create_credential_with_invalid_certificate_id() {
         .create("test", &organisation, None, Default::default())
         .await;
 
-    let claim_id = credential_schema.claim_schemas.get().await.unwrap()[0].id;
+    let claim_id = credential_schema.claim_schemas.as_ref().await.unwrap()[0].id;
 
     // WHEN
     let resp = context
@@ -756,7 +756,7 @@ async fn test_create_credential_fail_with_only_certificate_id() {
         .create("test", &organisation, None, Default::default())
         .await;
 
-    let claim_id = credential_schema.claim_schemas.get().await.unwrap()[0].id;
+    let claim_id = credential_schema.claim_schemas.as_ref().await.unwrap()[0].id;
 
     // WHEN
     let resp = context
@@ -794,7 +794,7 @@ async fn test_create_credential_with_big_picture_success() {
         .create_with_picture_claim("test", &organisation)
         .await;
 
-    let claim_id = credential_schema.claim_schemas.get().await.unwrap()[0].id;
+    let claim_id = credential_schema.claim_schemas.as_ref().await.unwrap()[0].id;
 
     let data = Base64UrlSafeNoPadding::encode_to_string(vec![0; 4 * 1024 * 1024]).unwrap();
 
@@ -839,7 +839,7 @@ async fn test_create_credential_failed_specified_object_claim() {
         .create_with_nested_claims("test schema", &organisation, None, Default::default())
         .await;
 
-    let claim_schemas = credential_schema.claim_schemas.get().await.unwrap();
+    let claim_schemas = credential_schema.claim_schemas.as_ref().await.unwrap();
 
     let object_claim_id = claim_schemas[0].id.to_owned();
 
@@ -878,8 +878,8 @@ async fn test_create_credential_boolean_value_wrong() {
         .credential_schemas
         .create("test", &organisation, None, Default::default())
         .await;
-    let claim_id = credential_schema.claim_schemas.get().await.unwrap()[0].id;
-    let claim_id1 = credential_schema.claim_schemas.get().await.unwrap()[1].id;
+    let claim_id = credential_schema.claim_schemas.as_ref().await.unwrap()[0].id;
+    let claim_id1 = credential_schema.claim_schemas.as_ref().await.unwrap()[1].id;
 
     // WHEN
     let resp = context
@@ -1205,8 +1205,8 @@ async fn test_create_credential_success_with_profile() {
         .credential_schemas
         .create("test", &organisation, None, Default::default())
         .await;
-    let claim_id = credential_schema.claim_schemas.get().await.unwrap()[0].id;
-    let claim_id1 = credential_schema.claim_schemas.get().await.unwrap()[1].id;
+    let claim_id = credential_schema.claim_schemas.as_ref().await.unwrap()[0].id;
+    let claim_id1 = credential_schema.claim_schemas.as_ref().await.unwrap()[1].id;
 
     let test_profile = "test-credential-profile-789";
 
@@ -1259,8 +1259,8 @@ async fn test_create_credential_success_with_webhook_url() {
         .credential_schemas
         .create("test", &organisation, None, Default::default())
         .await;
-    let claim_id = credential_schema.claim_schemas.get().await.unwrap()[0].id;
-    let claim_id1 = credential_schema.claim_schemas.get().await.unwrap()[1].id;
+    let claim_id = credential_schema.claim_schemas.as_ref().await.unwrap()[0].id;
+    let claim_id1 = credential_schema.claim_schemas.as_ref().await.unwrap()[1].id;
 
     let webhook_url = "https://webhook.url";
 

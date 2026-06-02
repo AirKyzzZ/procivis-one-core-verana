@@ -51,13 +51,13 @@ async fn test_get_presentation_definition_dcql_simple() {
                 role: Some(CredentialRole::Holder),
                 claims_data: Some(vec![
                     ClaimData {
-                        schema_id: credential_schema.claim_schemas.get().await.unwrap()[0].id,
+                        schema_id: credential_schema.claim_schemas.as_ref().await.unwrap()[0].id,
                         path: "firstName".to_string(),
                         value: Some("name".to_string()),
                         selectively_disclosable: true,
                     },
                     ClaimData {
-                        schema_id: credential_schema.claim_schemas.get().await.unwrap()[1].id,
+                        schema_id: credential_schema.claim_schemas.as_ref().await.unwrap()[1].id,
                         path: "isOver18".to_string(),
                         value: Some("true".to_string()),
                         selectively_disclosable: true,
@@ -1714,13 +1714,13 @@ async fn test_get_presentation_definition_dcql_multiple_applicable_credentials()
                 role: Some(CredentialRole::Holder),
                 claims_data: Some(vec![
                     ClaimData {
-                        schema_id: credential_schema.claim_schemas.get().await.unwrap()[0].id,
+                        schema_id: credential_schema.claim_schemas.as_ref().await.unwrap()[0].id,
                         path: "firstName".to_string(),
                         value: Some("name1".to_string()),
                         selectively_disclosable: true,
                     },
                     ClaimData {
-                        schema_id: credential_schema.claim_schemas.get().await.unwrap()[1].id,
+                        schema_id: credential_schema.claim_schemas.as_ref().await.unwrap()[1].id,
                         path: "isOver18".to_string(),
                         value: Some("true".to_string()),
                         selectively_disclosable: true,
@@ -1742,13 +1742,13 @@ async fn test_get_presentation_definition_dcql_multiple_applicable_credentials()
                 role: Some(CredentialRole::Holder),
                 claims_data: Some(vec![
                     ClaimData {
-                        schema_id: credential_schema.claim_schemas.get().await.unwrap()[0].id,
+                        schema_id: credential_schema.claim_schemas.as_ref().await.unwrap()[0].id,
                         path: "firstName".to_string(),
                         value: Some("name2".to_string()),
                         selectively_disclosable: true,
                     },
                     ClaimData {
-                        schema_id: credential_schema.claim_schemas.get().await.unwrap()[1].id,
+                        schema_id: credential_schema.claim_schemas.as_ref().await.unwrap()[1].id,
                         path: "isOver18".to_string(),
                         value: Some("false".to_string()),
                         selectively_disclosable: true,
@@ -2012,7 +2012,7 @@ async fn test_get_presentation_definition_dcql_no_claims() {
             TestingCredentialParams {
                 role: Some(CredentialRole::Holder),
                 claims_data: Some(vec![ClaimData {
-                    schema_id: credential_schema.claim_schemas.get().await.unwrap()[0].id,
+                    schema_id: credential_schema.claim_schemas.as_ref().await.unwrap()[0].id,
                     path: "firstName".to_string(),
                     value: Some("name".to_string()),
                     selectively_disclosable: true,
@@ -2122,14 +2122,22 @@ async fn test_get_presentation_definition_dcql_w3c_mixed_selective_disclosure() 
                 role: Some(CredentialRole::Holder),
                 claims_data: Some(vec![
                     ClaimData {
-                        schema_id: credential_schema_with_sd.claim_schemas.get().await.unwrap()[0]
+                        schema_id: credential_schema_with_sd
+                            .claim_schemas
+                            .as_ref()
+                            .await
+                            .unwrap()[0]
                             .id,
                         path: "firstName".to_string(),
                         value: Some("name".to_string()),
                         selectively_disclosable: true,
                     },
                     ClaimData {
-                        schema_id: credential_schema_with_sd.claim_schemas.get().await.unwrap()[1]
+                        schema_id: credential_schema_with_sd
+                            .claim_schemas
+                            .as_ref()
+                            .await
+                            .unwrap()[1]
                             .id,
                         path: "isOver18".to_string(),
                         value: Some("false".to_string()),
@@ -2607,13 +2615,15 @@ mod trusted_authorities {
                     role: Some(CredentialRole::Holder),
                     claims_data: Some(vec![
                         ClaimData {
-                            schema_id: credential_schema.claim_schemas.get().await.unwrap()[0].id,
+                            schema_id: credential_schema.claim_schemas.as_ref().await.unwrap()[0]
+                                .id,
                             path: "firstName".to_string(),
                             value: Some("name".to_string()),
                             selectively_disclosable: true,
                         },
                         ClaimData {
-                            schema_id: credential_schema.claim_schemas.get().await.unwrap()[1].id,
+                            schema_id: credential_schema.claim_schemas.as_ref().await.unwrap()[1]
+                                .id,
                             path: "isOver18".to_string(),
                             value: Some("true".to_string()),
                             selectively_disclosable: true,
@@ -2719,13 +2729,15 @@ mod trusted_authorities {
                     role: Some(CredentialRole::Holder),
                     claims_data: Some(vec![
                         ClaimData {
-                            schema_id: credential_schema.claim_schemas.get().await.unwrap()[0].id,
+                            schema_id: credential_schema.claim_schemas.as_ref().await.unwrap()[0]
+                                .id,
                             path: "firstName".to_string(),
                             value: Some("name".to_string()),
                             selectively_disclosable: true,
                         },
                         ClaimData {
-                            schema_id: credential_schema.claim_schemas.get().await.unwrap()[1].id,
+                            schema_id: credential_schema.claim_schemas.as_ref().await.unwrap()[1]
+                                .id,
                             path: "isOver18".to_string(),
                             value: Some("true".to_string()),
                             selectively_disclosable: true,
@@ -2828,13 +2840,15 @@ mod trusted_authorities {
                     role: Some(CredentialRole::Holder),
                     claims_data: Some(vec![
                         ClaimData {
-                            schema_id: credential_schema.claim_schemas.get().await.unwrap()[0].id,
+                            schema_id: credential_schema.claim_schemas.as_ref().await.unwrap()[0]
+                                .id,
                             path: "firstName".to_string(),
                             value: Some("name".to_string()),
                             selectively_disclosable: true,
                         },
                         ClaimData {
-                            schema_id: credential_schema.claim_schemas.get().await.unwrap()[1].id,
+                            schema_id: credential_schema.claim_schemas.as_ref().await.unwrap()[1]
+                                .id,
                             path: "isOver18".to_string(),
                             value: Some("true".to_string()),
                             selectively_disclosable: true,
@@ -2919,13 +2933,15 @@ mod trusted_authorities {
                     role: Some(CredentialRole::Holder),
                     claims_data: Some(vec![
                         ClaimData {
-                            schema_id: credential_schema.claim_schemas.get().await.unwrap()[0].id,
+                            schema_id: credential_schema.claim_schemas.as_ref().await.unwrap()[0]
+                                .id,
                             path: "firstName".to_string(),
                             value: Some("name".to_string()),
                             selectively_disclosable: true,
                         },
                         ClaimData {
-                            schema_id: credential_schema.claim_schemas.get().await.unwrap()[1].id,
+                            schema_id: credential_schema.claim_schemas.as_ref().await.unwrap()[1]
+                                .id,
                             path: "isOver18".to_string(),
                             value: Some("true".to_string()),
                             selectively_disclosable: true,

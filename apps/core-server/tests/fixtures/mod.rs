@@ -908,7 +908,7 @@ pub async fn create_credential(
     assert!(params.claims_data.is_none());
     let claims: Vec<Claim> = credential_schema
         .claim_schemas
-        .get()
+        .as_ref()
         .await
         .unwrap()
         .iter()
@@ -1106,7 +1106,7 @@ pub async fn key_to_claim_schema_id(
 ) -> ClaimSchemaId {
     credential_schema
         .claim_schemas
-        .get()
+        .as_ref()
         .await
         .unwrap()
         .into_iter()

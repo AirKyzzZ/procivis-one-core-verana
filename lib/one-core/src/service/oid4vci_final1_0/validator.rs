@@ -37,12 +37,14 @@ pub(crate) async fn validate_credential_request_format(
         return Err(OpenID4VCIError::InvalidRequest.into());
     };
 
-    let formats = schema.formats.get().await.error_while("getting formats")?;
+    let formats = schema.formats.as_ref().await?;
     let format = formats
         .into_iter()
         .find(|format| &format.schema_id == credential_configuration_id);
 
-    Ok(format.ok_or(OpenID4VCIError::UnsupportedCredentialType)?)
+    Ok(format
+        .cloned()
+        .ok_or(OpenID4VCIError::UnsupportedCredentialType)?)
 }
 
 fn is_access_token_valid(

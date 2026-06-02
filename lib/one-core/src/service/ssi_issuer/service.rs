@@ -75,11 +75,7 @@ impl SSIIssuerService {
         };
 
         let schema_format = if let Some(format) = format {
-            let formats = credential_schema
-                .formats
-                .get()
-                .await
-                .error_while("getting credential schema formats")?;
+            let formats = credential_schema.formats.as_ref().await?;
             let Some(format) = formats.iter().find(|f| f.format == *format) else {
                 return Err(IssuerServiceError::InvalidFormat);
             };
@@ -96,12 +92,6 @@ impl SSIIssuerService {
         if ![FormatType::JsonLdBbsPlus, FormatType::JsonLdClassic].contains(&config.r#type) {
             return Err(IssuerServiceError::InvalidFormat);
         }
-
-        let claim_schemas = credential_schema
-            .claim_schemas
-            .get()
-            .await
-            .error_while("getting claim schemas")?;
 
         let base_url = format!(
             "{}/ssi/context/v1/{credential_schema_id}/{schema_format}",
@@ -145,6 +135,8 @@ impl SSIIssuerService {
                 }),
             ),
         ]);
+
+        let claim_schemas = credential_schema.claim_schemas.as_ref().await?;
         entities.extend(generate_jsonld_context_response(&claim_schemas, &base_url)?);
 
         Ok(JsonLDContextResponseDTO {

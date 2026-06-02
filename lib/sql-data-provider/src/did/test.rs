@@ -314,7 +314,7 @@ async fn test_get_did_existing() {
     assert_eq!(content.name, did_name);
 
     assert_eq!(content.organisation.unwrap().id(), organisation.id);
-    let keys = content.keys.get().await.unwrap();
+    let keys = content.keys.as_ref().await.unwrap();
     assert_eq!(keys.len(), 1);
     assert_eq!(keys[0].key.id, key.id);
 }

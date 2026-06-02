@@ -41,7 +41,7 @@ async fn test_get_proof_trust_detail_success() {
         .await;
 
     // Select a root claim.
-    let claim_schema = &credential_schema.claim_schemas.get().await.unwrap()[0];
+    let claim_schema = &credential_schema.claim_schemas.as_ref().await.unwrap()[0];
 
     let proof_schema = context
         .db

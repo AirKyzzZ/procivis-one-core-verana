@@ -59,7 +59,7 @@ impl DidService {
         }
 
         let mut grouped_key: HashMap<KeyId, RelatedKey> = HashMap::new();
-        let keys = did.keys.get().await.error_while("getting did keys")?;
+        let keys = did.keys.as_ref().await?;
         for key in &keys {
             grouped_key.insert(key.key.id, key.to_owned());
         }

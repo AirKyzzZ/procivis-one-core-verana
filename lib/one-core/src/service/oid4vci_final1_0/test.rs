@@ -968,7 +968,7 @@ async fn test_get_issuer_metadata_includes_claim_translations() {
     let now = crate::clock::now_utc();
     let claim_schema_id = schema
         .claim_schemas
-        .get()
+        .as_ref()
         .await
         .unwrap()
         .first()

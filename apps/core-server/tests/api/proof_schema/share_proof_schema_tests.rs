@@ -16,7 +16,7 @@ async fn test_share_proof_schema() {
 
     let claim_schema = credential_schema
         .claim_schemas
-        .get()
+        .as_ref()
         .await
         .unwrap()
         .first()

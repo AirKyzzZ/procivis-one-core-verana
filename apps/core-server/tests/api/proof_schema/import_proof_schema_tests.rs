@@ -37,9 +37,9 @@ async fn test_import_proof_schema_ok() {
         )
         .await;
 
-    let mut claim_schemas = original_credential_schema
+    let claim_schemas = original_credential_schema
         .claim_schemas
-        .get()
+        .as_ref()
         .await
         .unwrap();
 
@@ -72,7 +72,7 @@ async fn test_import_proof_schema_ok() {
         )
         .await;
 
-    let requested_claim_schema = claim_schemas.swap_remove(0);
+    let requested_claim_schema = claim_schemas.first().unwrap();
 
     let target_organisation = context.db.organisations.create().await;
 
@@ -160,8 +160,8 @@ async fn test_import_proof_schema_fails_deactivated_organisation() {
         )
         .await;
 
-    let mut claim_schemas = credential_schema.claim_schemas.get().await.unwrap();
-    let requested_claim_schema = claim_schemas.swap_remove(0);
+    let claim_schemas = credential_schema.claim_schemas.as_ref().await.unwrap();
+    let requested_claim_schema = claim_schemas.first().unwrap();
 
     let now = one_core::clock::now_utc().format(&Rfc3339).unwrap();
     let proof_schema = json!({
@@ -228,14 +228,14 @@ async fn test_import_proof_schema_for_existing_credential_schema() {
         )
         .await;
 
-    let mut claim_schemas = original_credential_schema
+    let claim_schemas = original_credential_schema
         .claim_schemas
-        .get()
+        .as_ref()
         .await
         .unwrap();
     assert_eq!(2, claim_schemas.len());
 
-    let requested_claim_schema = claim_schemas.swap_remove(0);
+    let requested_claim_schema = claim_schemas.first().unwrap();
 
     let proof_schema = json!({
         "id": old_proof_schema_id,
@@ -297,12 +297,12 @@ async fn test_import_proof_schema_for_existing_credential_schema() {
     let credential_schema = proof_input_schemas[0].credential_schema.as_ref().unwrap();
     assert_eq!("test-credential-schema", credential_schema.name);
 
-    let claim_schemas = credential_schema.claim_schemas.get().await.unwrap();
+    let claim_schemas = credential_schema.claim_schemas.as_ref().await.unwrap();
     let claim_schemas: HashSet<_> = claim_schemas.iter().map(|c| c.key.as_str()).collect();
     assert_eq!(
         original_credential_schema
             .claim_schemas
-            .get()
+            .as_ref()
             .await
             .unwrap()
             .len(),
@@ -431,12 +431,12 @@ async fn test_import_proof_schema_nested_array() {
     let credential_schema = proof_input_schemas[0].credential_schema.as_ref().unwrap();
     assert_eq!("test-credential-schema", credential_schema.name);
 
-    let claim_schemas = credential_schema.claim_schemas.get().await.unwrap();
+    let claim_schemas = credential_schema.claim_schemas.as_ref().await.unwrap();
     let claim_schemas: HashSet<_> = claim_schemas.iter().map(|c| c.key.as_str()).collect();
     assert_eq!(
         original_credential_schema
             .claim_schemas
-            .get()
+            .as_ref()
             .await
             .unwrap()
             .len(),

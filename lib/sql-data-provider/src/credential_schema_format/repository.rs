@@ -20,7 +20,7 @@ impl CredentialSchemaFormatRepository for CredentialSchemaFormatProvider {
         &self,
         request: CredentialSchemaFormat,
     ) -> Result<CredentialSchemaFormatId, DataLayerError> {
-        let claim_mappings = request.claim_mappings.get().await?;
+        let claim_mappings = request.claim_mappings.as_ref().await?.to_owned();
         let format_active: credential_schema_format::ActiveModel = request.into();
 
         let inserted_id = self

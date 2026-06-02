@@ -192,20 +192,6 @@ impl<T> RelatedVec<T> {
             data: Arc::new(RwLock::new(AsyncVecStore::ToBeLoaded(Box::new(loader)))),
         }
     }
-}
-
-impl<T: Clone> RelatedVec<T> {
-    pub async fn get(&self) -> Result<Vec<T>, DataLayerError> {
-        let mut guard = self.data.write().await;
-        Ok(match &*guard {
-            AsyncVecStore::AlreadyLoaded(data) => data.to_owned(),
-            AsyncVecStore::ToBeLoaded(loader) => {
-                let data = loader.load().await?;
-                *guard = AsyncVecStore::AlreadyLoaded(data.to_owned());
-                data
-            }
-        })
-    }
 
     pub async fn as_ref(&self) -> Result<RoLoadedRelatedVec<'_, T>, NestedError> {
         if let Some(loaded) = self.load_for_read_only().await? {

@@ -33,15 +33,15 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
         &self,
         schema: CredentialSchema,
     ) -> Result<CredentialSchemaId, DataLayerError> {
-        let claim_schemas = schema.claim_schemas.get().await?;
-        let formats = schema.formats.get().await?;
+        let claim_schemas = schema.claim_schemas.as_ref().await?.to_owned();
+        let formats = schema.formats.as_ref().await?.to_owned();
         let mut claim_mappings = vec![];
         for format in &formats {
-            claim_mappings.extend(format.claim_mappings.get().await?)
+            claim_mappings.extend(format.claim_mappings.as_ref().await?.to_owned())
         }
 
         let mut localized_texts = vec![];
-        localized_texts.extend(schema.translations.get().await?);
+        localized_texts.extend(schema.translations.as_ref().await?.to_owned());
         let credential_schema: credential_schema::ActiveModel = schema.into();
 
         let credential_schema = self
@@ -55,7 +55,8 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
 
                     if !claim_schemas.is_empty() {
                         for claim_schema in &claim_schemas {
-                            localized_texts.extend(claim_schema.translations.get().await?);
+                            localized_texts
+                                .extend(claim_schema.translations.as_ref().await?.to_owned());
                         }
                         let claim_schema_models =
                             claim_schemas_to_model_vec(claim_schemas, &credential_schema.id);

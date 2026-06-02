@@ -64,14 +64,10 @@ pub(super) async fn proof_input_from_import_request(
     input_schema: ImportProofSchemaInputSchemaDTO,
     credential_schema: CredentialSchema,
 ) -> Result<ProofInputSchema, ProofSchemaServiceError> {
-    let credential_schema_claims = credential_schema
-        .claim_schemas
-        .get()
-        .await
-        .error_while("getting claim schemas")?;
-
-    let proof_input_claim_schemas =
-        extract_proof_input_claim_schemas(input_schema.claim_schemas, &credential_schema_claims)?;
+    let proof_input_claim_schemas = {
+        let credential_schema_claims = credential_schema.claim_schemas.as_ref().await?;
+        extract_proof_input_claim_schemas(input_schema.claim_schemas, &credential_schema_claims)?
+    };
 
     Ok(ProofInputSchema {
         claim_schemas: Some(proof_input_claim_schemas),
@@ -149,11 +145,6 @@ async fn convert_input_schema_to_response(
     value: ProofInputSchema,
     datatype_config: &DatatypeConfig,
 ) -> Result<ProofInputSchemaResponseDTO, ProofSchemaServiceError> {
-    let claim_schemas = value
-        .claim_schemas
-        .ok_or(ProofSchemaServiceError::MappingError(
-            "claim_schemas is None".to_string(),
-        ))?;
     let credential_schema =
         value
             .credential_schema
@@ -161,21 +152,26 @@ async fn convert_input_schema_to_response(
                 "credential_schema is None".to_string(),
             ))?;
 
-    let credential_schema_claims = credential_schema
-        .claim_schemas
-        .get()
-        .await
-        .error_while("getting claim schemas")?;
+    let claim_schemas = {
+        let claim_schemas = value
+            .claim_schemas
+            .ok_or(ProofSchemaServiceError::MappingError(
+                "claim_schemas is None".to_string(),
+            ))?;
 
-    Ok(ProofInputSchemaResponseDTO {
-        claim_schemas: nest_claim_schemas(
+        let credential_schema_claims = credential_schema.claim_schemas.as_ref().await?;
+        nest_claim_schemas(
             append_object_claim_schemas(
                 convert_inner(claim_schemas),
                 &credential_schema_claims,
                 datatype_config,
             )?,
             datatype_config,
-        )?,
+        )?
+    };
+
+    Ok(ProofInputSchemaResponseDTO {
+        claim_schemas,
         credential_schema: to_credential_schema_list_response(credential_schema, false)
             .await
             .map_err(|e: NestedError| ProofSchemaServiceError::MappingError(e.to_string()))?,

@@ -101,7 +101,7 @@ impl DidRepository for DidProvider {
                         .await
                         .map_err(to_data_layer_error)?;
 
-                    let keys = keys.get().await?;
+                    let keys = keys.as_ref().await?;
                     if !keys.is_empty() {
                         key_did::Entity::insert_many(
                             keys.into_iter()
@@ -109,7 +109,7 @@ impl DidRepository for DidProvider {
                                     did_id: Set(did.id),
                                     key_id: Set(key.key.id),
                                     role: Set(key.role.into()),
-                                    reference: Set(key.reference),
+                                    reference: Set(key.reference.to_owned()),
                                 })
                                 .collect::<Vec<_>>(),
                         )

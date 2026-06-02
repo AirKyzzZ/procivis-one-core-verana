@@ -41,7 +41,7 @@ async fn test_create_credential_schema_success() {
     assert_eq!(credential_schema.revocation_method, None);
     assert_eq!(credential_schema.organisation.id(), organisation.id);
     assert_eq!(credential_schema.format().await.unwrap().as_ref(), "JWT");
-    let claim_schemas = credential_schema.claim_schemas.get().await.unwrap();
+    let claim_schemas = credential_schema.claim_schemas.as_ref().await.unwrap();
     assert_eq!(claim_schemas.iter().filter(|cs| !cs.metadata).count(), 2);
     assert_eq!(claim_schemas.iter().filter(|cs| cs.metadata).count(), 10);
     assert_eq!(
@@ -82,7 +82,7 @@ async fn test_create_credential_schema_remote_secure_element_success() {
     assert_eq!(
         credential_schema
             .claim_schemas
-            .get()
+            .as_ref()
             .await
             .unwrap()
             .iter()
@@ -580,12 +580,12 @@ async fn test_create_credential_schema_modc_without_schema_id() {
     assert_eq!(schema_translations.len(), 1);
     assert_eq!(schema_translations[0].lang, "en");
     assert_eq!(schema_translations[0].value, "schema");
-    let claim_schemas = credential_schema.claim_schemas.get().await.unwrap();
+    let claim_schemas = credential_schema.claim_schemas.as_ref().await.unwrap();
     for claim_schema in claim_schemas
         .iter()
         .filter(|claim_schema| !claim_schema.metadata)
     {
-        let claim_translations = claim_schema.translations.get().await.unwrap();
+        let claim_translations = claim_schema.translations.as_ref().await.unwrap();
         assert_eq!(claim_translations.len(), 1);
         assert_eq!(claim_translations[0].lang, "en");
         assert!(claim_schema.key.ends_with(&claim_translations[0].value));

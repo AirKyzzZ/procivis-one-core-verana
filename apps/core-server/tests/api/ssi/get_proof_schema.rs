@@ -17,7 +17,7 @@ async fn test_get_proof_schema_success() {
 
     let claim_schema = credential_schema
         .claim_schemas
-        .get()
+        .as_ref()
         .await
         .unwrap()
         .first()

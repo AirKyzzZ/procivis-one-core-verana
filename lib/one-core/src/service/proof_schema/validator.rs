@@ -106,12 +106,7 @@ pub(super) async fn extract_claims_from_credential_schema(
         let schema_format = credential_schema.format().await?;
         let formatter = formatter_provider.get_credential_formatter(&schema_format)?;
 
-        let claims = credential_schema
-            .claim_schemas
-            .get()
-            .await
-            .error_while("getting claim schemas")?;
-
+        let claims = credential_schema.claim_schemas.as_ref().await?;
         let arrays = collect_lists(&claims);
 
         for proof_claim in &proof_input.claim_schemas {

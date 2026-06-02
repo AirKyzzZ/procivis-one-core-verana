@@ -26,7 +26,7 @@ async fn test_share_proof_success() {
         fixtures::create_credential_schema(&context.db.db_conn, &organisation, None).await;
     let claim_schema = credential_schema
         .claim_schemas
-        .get()
+        .as_ref()
         .await
         .unwrap()
         .first()
@@ -93,7 +93,7 @@ async fn test_share_proof_key_storage_disabled_success() {
         fixtures::create_credential_schema(&context.db.db_conn, &organisation, None).await;
     let claim_schema = credential_schema
         .claim_schemas
-        .get()
+        .as_ref()
         .await
         .unwrap()
         .first()
@@ -152,7 +152,7 @@ async fn test_share_proof_twice() {
         fixtures::create_credential_schema(&context.db.db_conn, &organisation, None).await;
     let claim_schema = credential_schema
         .claim_schemas
-        .get()
+        .as_ref()
         .await
         .unwrap()
         .first()
@@ -582,7 +582,7 @@ async fn prepare_created_openid4vp_proof(exchange: Option<&str>) -> (TestContext
         fixtures::create_credential_schema(&context.db.db_conn, &organisation, None).await;
     let claim_schema = credential_schema
         .claim_schemas
-        .get()
+        .as_ref()
         .await
         .unwrap()
         .first()
@@ -754,7 +754,7 @@ async fn test_share_proof_client_id_scheme_x509_hash_openid4vp_final1_0() {
         fixtures::create_credential_schema(&context.db.db_conn, &organisation, None).await;
     let claim_schema = credential_schema
         .claim_schemas
-        .get()
+        .as_ref()
         .await
         .unwrap()
         .first()
@@ -816,7 +816,7 @@ async fn test_share_proof_fails_when_nfc_engagement_is_set_on_proof() {
         fixtures::create_credential_schema(&context.db.db_conn, &organisation, None).await;
     let claim_schema = credential_schema
         .claim_schemas
-        .get()
+        .as_ref()
         .await
         .unwrap()
         .first()

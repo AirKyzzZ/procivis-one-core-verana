@@ -408,7 +408,7 @@ async fn test_get_credential_schema_success() {
     assert!(result.is_ok());
     let result = result.unwrap().unwrap();
     assert_eq!(credential_schema.id, result.id);
-    let claim_schemas = result.claim_schemas.get().await.unwrap();
+    let claim_schemas = result.claim_schemas.as_ref().await.unwrap();
     assert_eq!(claim_schemas.len(), 2);
     assert_eq!(organisation.id, result.organisation.id());
 
@@ -503,9 +503,10 @@ async fn test_legacy_credential_schema_format_id_is_stable_across_loads() {
             .unwrap()
             .expect("schema should exist")
             .formats
-            .get()
+            .as_ref()
             .await
             .unwrap()
+            .to_owned()
     };
 
     let first = load().await;

@@ -317,7 +317,7 @@ async fn test_create_credential_success() {
     );
 
     let credential_id = Uuid::new_v4().into();
-    let claim_schema = credential_schema.claim_schemas.get().await.unwrap()[0].to_owned();
+    let claim_schema = credential_schema.claim_schemas.as_ref().await.unwrap()[0].to_owned();
     let claims = vec![
         Claim {
             id: Uuid::new_v4().into(),
@@ -451,7 +451,7 @@ async fn test_create_credential_already_exists() {
 
     let provider = credential_repository(db.clone(), None);
 
-    let claim_schema = credential_schema.claim_schemas.get().await.unwrap()[0].to_owned();
+    let claim_schema = credential_schema.claim_schemas.as_ref().await.unwrap()[0].to_owned();
     let claims = vec![Claim {
         id: Uuid::new_v4().into(),
         credential_id,
@@ -779,7 +779,7 @@ async fn test_get_credential_list_success_filter_claim_name_value() {
         ..
     } = setup_with_credential().await;
 
-    let claim_schema = credential_schema.claim_schemas.get().await.unwrap()[0].to_owned();
+    let claim_schema = credential_schema.claim_schemas.as_ref().await.unwrap()[0].to_owned();
     let claims = [Claim {
         id: Uuid::new_v4().into(),
         credential_id,
@@ -879,8 +879,8 @@ async fn test_get_credential_success() {
     .unwrap()
     .id;
 
-    let claim_schema1 = credential_schema.claim_schemas.get().await.unwrap()[1].to_owned();
-    let claim_schema2 = credential_schema.claim_schemas.get().await.unwrap()[0].to_owned();
+    let claim_schema1 = credential_schema.claim_schemas.as_ref().await.unwrap()[1].to_owned();
+    let claim_schema2 = credential_schema.claim_schemas.as_ref().await.unwrap()[0].to_owned();
     let claims = vec![
         Claim {
             id: Uuid::new_v4().into(),
@@ -1272,7 +1272,7 @@ async fn test_get_credential_by_claim_id_success() {
     .await
     .unwrap();
 
-    let claim_schema = credential_schema.claim_schemas.get().await.unwrap()[0].to_owned();
+    let claim_schema = credential_schema.claim_schemas.as_ref().await.unwrap()[0].to_owned();
     let claim = Claim {
         id: Uuid::new_v4().into(),
         credential_id: credential.id,

@@ -52,7 +52,7 @@ impl Related<super::key::Entity> for Entity {
 
 impl ActiveModelBehavior for ActiveModel {}
 
-#[derive(Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From)]
 #[from(ModelKeyRole)]
 #[into(ModelKeyRole)]
 #[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]

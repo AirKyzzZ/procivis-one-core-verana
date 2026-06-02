@@ -80,7 +80,7 @@ async fn test_create_and_get_credential_schema_format() {
     assert_eq!(fetched.id, format_id);
     assert_eq!(fetched.schema_id, "https://example.com/schemas/example");
 
-    let mappings = fetched.claim_mappings.get().await.unwrap();
+    let mappings = fetched.claim_mappings.as_ref().await.unwrap();
     assert_eq!(mappings.len(), 1);
     assert_eq!(mappings[0].technical_key, "given_name");
     assert_eq!(mappings[0].namespace, None);

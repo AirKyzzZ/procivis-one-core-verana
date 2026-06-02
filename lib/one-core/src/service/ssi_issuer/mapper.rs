@@ -129,14 +129,9 @@ pub(crate) async fn credential_schema_to_sd_jwt_vc_metadata(
         rendering: Some(rendering),
     };
 
-    let nested_claims = CredentialSchemaClaimsNestedView::try_from(
-        schema
-            .claim_schemas
-            .get()
-            .await
-            .error_while("getting claim schemas")?,
-    )
-    .error_while("converting nested claims")?;
+    let nested_claims =
+        CredentialSchemaClaimsNestedView::try_from(schema.claim_schemas.as_ref().await?.to_owned())
+            .error_while("converting nested claims")?;
     let claims = vct_claims_from_nested_view(nested_claims);
     Ok(SdJwtVcTypeMetadataResponseDTO {
         vct,

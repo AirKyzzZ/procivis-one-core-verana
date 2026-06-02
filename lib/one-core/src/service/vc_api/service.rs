@@ -87,12 +87,7 @@ impl VCAPIService {
                 "Issuer DID identifier not found".to_string(),
             ))?;
 
-        let keys = issuer_did
-            .keys
-            .get()
-            .await
-            .error_while("getting did keys")?;
-
+        let keys = issuer_did.keys.as_ref().await?;
         let key = keys
             .first()
             .ok_or(ServiceError::Other("Issuer DID has empty keys".to_string()))?;

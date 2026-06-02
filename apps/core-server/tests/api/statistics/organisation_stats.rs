@@ -141,7 +141,7 @@ async fn dummy_history_data(
         fixtures::create_credential_schema(&context.db.db_conn, org, None).await;
     let claim_schema = credential_schema
         .claim_schemas
-        .get()
+        .as_ref()
         .await
         .unwrap()
         .first()

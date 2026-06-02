@@ -23,7 +23,7 @@ impl DidType {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Display, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Display, Hash)]
 #[strum(serialize_all = "camelCase")]
 pub enum KeyRole {
     Authentication,

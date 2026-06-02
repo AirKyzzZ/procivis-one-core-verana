@@ -9,7 +9,6 @@ use super::dto::{
     DidResponseKeysDTO, GetDidListResponseDTO,
 };
 use super::error::DidServiceError;
-use crate::error::ContextWithErrorCode;
 use crate::model::did::{
     Did, DidFilterValue, DidType, ExactDidFilterColumn, GetDidList, KeyRole, RelatedKey,
     UpdateDidRequest,
@@ -26,7 +25,7 @@ use crate::service::key::dto::KeyListItemResponseDTO;
 pub(crate) async fn response_from_did(value: Did) -> Result<DidResponseDTO, DidServiceError> {
     let organisation_id = value.organisation.map(|value| value.id());
 
-    let keys = value.keys.get().await.error_while("getting did keys")?;
+    let keys = value.keys.as_ref().await?;
     let filter_keys = |role: KeyRole| -> Vec<KeyListItemResponseDTO> {
         keys.iter()
             .filter(|key| key.role == role)
@@ -99,12 +98,7 @@ pub(crate) fn did_from_did_request(
         ),
     ]
     .into_iter()
-    .flat_map(|(role, keys)| {
-        keys.into_iter().map(move |key| KeyEntry {
-            role: role.clone(),
-            key,
-        })
-    })
+    .flat_map(|(role, keys)| keys.into_iter().map(move |key| KeyEntry { role, key }))
     .chain(update_keys)
     .collect();
 
@@ -195,10 +189,10 @@ impl From<DidListItemResponseDTO> for DidValue {
 }
 
 pub(super) async fn map_did_to_did_keys(did: &Did) -> Result<DidKeys, DidServiceError> {
-    let related_keys = did.keys.get().await.error_while("getting did keys")?;
+    let related_keys = did.keys.as_ref().await?;
     let mut did_keys = DidKeys::default();
-    for related_key in related_keys {
-        let key = related_key.key;
+    for related_key in &related_keys {
+        let key = related_key.key.to_owned();
         match related_key.role {
             KeyRole::Authentication => did_keys.authentication.push(key),
             KeyRole::AssertionMethod => did_keys.assertion_method.push(key),

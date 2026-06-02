@@ -276,11 +276,7 @@ pub(super) async fn get_verifier_proof_detail(
                     "Missing credential schema in input_schema".to_string(),
                 ))?;
 
-        let credential_claim_schemas = credential_schema
-            .claim_schemas
-            .get()
-            .await
-            .error_while("getting claim schemas")?;
+        let credential_claim_schemas = credential_schema.claim_schemas.as_ref().await?;
 
         // construct generated proof input claim schemas that are nested children of explicit input_claim_schemas
         // in order to have all inputs available later to map to particular shared claims
@@ -655,11 +651,7 @@ pub(super) async fn get_holder_proof_detail(
 
     let mut proof_inputs = vec![];
     for (claims, credential, credential_schema) in submitted_credentials.into_values() {
-        let credential_claim_schemas = credential_schema
-            .claim_schemas
-            .get()
-            .await
-            .error_while("getting claim schemas")?;
+        let credential_claim_schemas = credential_schema.claim_schemas.as_ref().await?;
         let credential_schema_dto: CredentialSchemaListItemResponseDTO =
             to_credential_schema_list_response(credential_schema.clone(), false)
                 .await

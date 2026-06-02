@@ -1260,7 +1260,7 @@ async fn claim_data(
 ) -> ClaimData {
     let schema_id = schema
         .claim_schemas
-        .get()
+        .as_ref()
         .await
         .expect("missing claim schemas")
         .iter()

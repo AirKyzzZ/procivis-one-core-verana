@@ -911,8 +911,8 @@ async fn test_get_presentation_definition_open_id_vp_matched_only_complete_crede
         .create("test", &organisation, None, Default::default())
         .await;
 
-    let first_claim_schema = &credential_schema.claim_schemas.get().await.unwrap()[0];
-    let second_claim_schema = &credential_schema.claim_schemas.get().await.unwrap()[1];
+    let first_claim_schema = &credential_schema.claim_schemas.as_ref().await.unwrap()[0];
+    let second_claim_schema = &credential_schema.claim_schemas.as_ref().await.unwrap()[1];
 
     let incomplete_credential = context
         .db

@@ -57,9 +57,9 @@ async fn test_create_credential_schema_v2_success_single_format() {
     assert_eq!(credential_schema.name, "v2 schema");
     assert_eq!(credential_schema.organisation.id(), organisation.id);
 
-    let formats = credential_schema.formats.get().await.unwrap();
+    let formats = credential_schema.formats.as_ref().await.unwrap();
     assert_eq!(formats.len(), 1);
-    let claim_mappings = formats[0].claim_mappings.get().await.unwrap();
+    let claim_mappings = formats[0].claim_mappings.as_ref().await.unwrap();
     assert!(claim_mappings.iter().any(|m| m.technical_key == "root"));
     assert!(
         claim_mappings
@@ -95,10 +95,10 @@ async fn test_create_credential_schema_v2_success_multiple_formats() {
     let id = resp["id"].parse();
     let credential_schema = context.db.credential_schemas.get(&id).await;
 
-    let formats = credential_schema.formats.get().await.unwrap();
+    let formats = credential_schema.formats.as_ref().await.unwrap();
     assert_eq!(formats.len(), 2);
     for format in &formats {
-        let claim_mappings = format.claim_mappings.get().await.unwrap();
+        let claim_mappings = format.claim_mappings.as_ref().await.unwrap();
         assert!(claim_mappings.iter().any(|m| m.technical_key == "root"));
         assert!(
             claim_mappings
@@ -603,7 +603,7 @@ async fn test_create_credential_schema_v2_with_claim_translations() {
     assert_eq!(first_name_claim["translations"]["name"]["en"], "First Name");
     assert_eq!(first_name_claim["translations"]["name"]["de"], "Vorname");
 
-    let claim_schemas = credential_schema.claim_schemas.get().await.unwrap();
+    let claim_schemas = credential_schema.claim_schemas.as_ref().await.unwrap();
     let root_cs = claim_schemas.iter().find(|cs| cs.key == "root").unwrap();
     let root_translations = context.db.localized_text.get(root_cs.id).await;
     assert_eq!(root_translations.len(), 2);

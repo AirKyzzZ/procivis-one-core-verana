@@ -1494,7 +1494,7 @@ async fn test_create_credential_one_required_claim_missing_success() {
         ..Default::default()
     });
 
-    let required_claim_schema_id = credential_schema.claim_schemas.get().await.unwrap()[0].id;
+    let required_claim_schema_id = credential_schema.claim_schemas.as_ref().await.unwrap()[0].id;
     let create_request_template = CreateCredentialRequestDTO {
         credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
         issuer: None,
@@ -1523,7 +1523,7 @@ async fn test_create_credential_one_required_claim_missing_success() {
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: required_claim_schema_id,
                 value: "value".to_string(),
-                path: credential_schema.claim_schemas.get().await.unwrap()[0]
+                path: credential_schema.claim_schemas.as_ref().await.unwrap()[0]
                     .key
                     .to_owned(),
             }],
@@ -1626,7 +1626,7 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
         ..Default::default()
     });
 
-    let optional_claim_schema_id = credential_schema.claim_schemas.get().await.unwrap()[1].id;
+    let optional_claim_schema_id = credential_schema.claim_schemas.as_ref().await.unwrap()[1].id;
     let create_request_template = CreateCredentialRequestDTO {
         credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
         issuer: None,
@@ -1655,7 +1655,7 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: optional_claim_schema_id,
                 value: "value".to_string(),
-                path: credential_schema.claim_schemas.get().await.unwrap()[1]
+                path: credential_schema.claim_schemas.as_ref().await.unwrap()[1]
                     .key
                     .to_owned(),
             }],
@@ -1735,7 +1735,7 @@ async fn test_create_credential_schema_deleted() {
         ..Default::default()
     });
 
-    let claim_schema_id = credential_schema.claim_schemas.get().await.unwrap()[0].id;
+    let claim_schema_id = credential_schema.claim_schemas.as_ref().await.unwrap()[0].id;
 
     let result = service
         .create_credential(CreateCredentialRequestDTO {
@@ -1757,7 +1757,7 @@ async fn test_create_credential_schema_deleted() {
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id,
                 value: "value".to_string(),
-                path: credential_schema.claim_schemas.get().await.unwrap()[0]
+                path: credential_schema.claim_schemas.as_ref().await.unwrap()[0]
                     .key
                     .to_owned(),
             }],
@@ -1866,7 +1866,7 @@ async fn test_create_credential_key_with_issuer_key() {
                     .unwrap()
                     .id,
             ),
-            issuer_key: Some(issuer_did.keys.get().await.unwrap()[0].key.id),
+            issuer_key: Some(issuer_did.keys.as_ref().await.unwrap()[0].key.id),
             issuer_certificate: None,
             protocol: "OPENID4VCI_FINAL1".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
@@ -2691,7 +2691,7 @@ async fn test_create_credential_fail_invalid_redirect_uri() {
                     .unwrap()
                     .id,
             ),
-            issuer_key: Some(issuer_did.keys.get().await.unwrap()[0].key.id),
+            issuer_key: Some(issuer_did.keys.as_ref().await.unwrap()[0].key.id),
             issuer_certificate: None,
             protocol: "OPENID4VCI_FINAL1".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {

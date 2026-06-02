@@ -1145,7 +1145,7 @@ pub async fn add_default_translations(schema: &mut CredentialSchema) -> Result<(
     }]
     .into();
 
-    let mut claim_schemas = schema.claim_schemas.get().await?;
+    let mut claim_schemas = schema.claim_schemas.as_mut().await?;
     for cs in claim_schemas.iter_mut() {
         if !cs.metadata {
             let label = cs
@@ -1166,6 +1166,6 @@ pub async fn add_default_translations(schema: &mut CredentialSchema) -> Result<(
             .into();
         }
     }
-    schema.claim_schemas = claim_schemas.into();
+
     Ok(())
 }

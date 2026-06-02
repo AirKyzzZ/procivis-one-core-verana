@@ -22,7 +22,7 @@ async fn test_list_proof_schema_success() {
     let credential_schema = fixtures::create_credential_schema(&db_conn, &organisation, None).await;
     let claim_schema = credential_schema
         .claim_schemas
-        .get()
+        .as_ref()
         .await
         .unwrap()
         .first()
@@ -84,7 +84,7 @@ async fn test_list_proof_schema_filter_by_date() {
     let credential_schema = fixtures::create_credential_schema(&db_conn, &organisation, None).await;
     let claim_schema = credential_schema
         .claim_schemas
-        .get()
+        .as_ref()
         .await
         .unwrap()
         .first()

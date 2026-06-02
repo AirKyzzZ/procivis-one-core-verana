@@ -111,7 +111,7 @@ impl CredentialsDB {
         params: TestingCredentialParams,
     ) -> Credential {
         let credential_id = params.id.unwrap_or(Uuid::new_v4().into());
-        let claim_schemas = credential_schema.claim_schemas.get().await.unwrap();
+        let claim_schemas = credential_schema.claim_schemas.as_ref().await.unwrap();
 
         let claims = if let Some(claims_data) = params.claims_data {
             claims_data

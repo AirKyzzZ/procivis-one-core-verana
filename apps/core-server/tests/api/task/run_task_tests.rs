@@ -144,7 +144,7 @@ async fn test_run_retain_proof_check_with_update() {
         .create("test", &organisation, None, Default::default())
         .await;
 
-    let claim_schema = &credential_schema.claim_schemas.get().await.unwrap()[0];
+    let claim_schema = &credential_schema.claim_schemas.as_ref().await.unwrap()[0];
 
     let proof_schema = context
         .db
@@ -742,7 +742,7 @@ async fn test_run_interaction_expiration_check_with_update() {
         .create("test", &organisation, None, Default::default())
         .await;
 
-    let claim_schema = &credential_schema.claim_schemas.get().await.unwrap()[0];
+    let claim_schema = &credential_schema.claim_schemas.as_ref().await.unwrap()[0];
 
     let proof_schema = context
         .db
