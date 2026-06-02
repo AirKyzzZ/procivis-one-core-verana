@@ -189,6 +189,19 @@ impl SSIApi {
         self.client.get(&url).await
     }
 
+    pub async fn get_sd_jwt_vc_type_metadata_v2(
+        &self,
+        organisation_id: OrganisationId,
+        credential_schema_id: impl Into<String>,
+        format: &str,
+    ) -> Response {
+        let url = format!(
+            "/ssi/vct/v2/{organisation_id}/{}/{format}",
+            credential_schema_id.into()
+        );
+        self.client.get(&url).await
+    }
+
     pub async fn get_sd_jwt_vc_issuer_metadata(
         &self,
         protocol_id: &str,

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 
 use convert_case::{Case, Casing};
@@ -19,15 +19,48 @@ use super::mapper::{
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{FormatType, KeyStorageType, Params};
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
+use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaListQuery};
 use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::key::Key;
 use crate::model::list_filter::{ListFilterValue, StringMatch};
+use crate::model::relation::RelatedVec;
 use crate::service::credential_schema::dto::{
     CredentialSchemaFilterValue, CredentialSchemaListIncludeEntityTypeEnum,
 };
 
 pub const W3C_SCHEMA_TYPE: &str = "ProcivisOneSchema2024";
+
+async fn filter_schema_to_format(
+    mut schema: CredentialSchema,
+    format: &CredentialFormat,
+    not_found_vct: &str,
+) -> Result<CredentialSchema, IssuerServiceError> {
+    let formats = schema.formats.as_ref().await?.to_owned();
+    let matching_format = formats
+        .into_iter()
+        .find(|f| f.format == *format)
+        .ok_or_else(|| IssuerServiceError::MissingSdJwtVcTypeMetadata(not_found_vct.to_owned()))?;
+
+    let mapped_ids: HashSet<_> = matching_format
+        .claim_mappings
+        .as_ref()
+        .await?
+        .iter()
+        .map(|m| m.claim_schema_id)
+        .collect();
+
+    let all_claims = schema.claim_schemas.as_ref().await?.to_owned();
+    let filtered_claims: Vec<ClaimSchema> = all_claims
+        .into_iter()
+        .filter(|cs| mapped_ids.contains(&cs.id))
+        .collect();
+
+    schema.claim_schemas = RelatedVec::from(filtered_claims);
+    schema.formats = RelatedVec::from(vec![matching_format]);
+
+    Ok(schema)
+}
 
 impl SSIIssuerService {
     pub async fn get_json_ld_context(
@@ -196,7 +229,64 @@ impl SSIIssuerService {
         let Some(credential_schema) = schema_list.values.pop() else {
             return Err(IssuerServiceError::MissingSdJwtVcTypeMetadata(vct));
         };
-        credential_schema_to_sd_jwt_vc_metadata(vct_type, credential_schema).await
+        credential_schema_to_sd_jwt_vc_metadata(vct_type, vct, credential_schema).await
+    }
+
+    pub async fn get_vct_metadata_v2(
+        &self,
+        organisation_id: OrganisationId,
+        credential_schema_id: String,
+        format: CredentialFormat,
+    ) -> Result<SdJwtVcTypeMetadataResponseDTO, IssuerServiceError> {
+        let base_url = self
+            .core_base_url
+            .as_ref()
+            .ok_or(IssuerServiceError::MappingError(
+                "Host URL not specified".to_string(),
+            ))?;
+
+        let vct = {
+            let mut vct = Url::parse(base_url).map_err(|error| {
+                IssuerServiceError::MappingError(format!("Invalid base URL: {error}"))
+            })?;
+
+            {
+                let mut segments = vct.path_segments_mut().map_err(|_| {
+                    IssuerServiceError::MappingError("Invalid base URL".to_string())
+                })?;
+                let organisation_id = organisation_id.to_string();
+                // /ssi/vct/v2/:organisation_id/:credential_schema_id/:format
+                segments.extend(["ssi", "vct", "v2", &organisation_id, &credential_schema_id]);
+                segments.push(format.as_ref());
+            }
+
+            vct.to_string()
+        };
+
+        let filter = CredentialSchemaFilterValue::OrganisationId(organisation_id).condition()
+            & CredentialSchemaFilterValue::SchemaId(StringMatch::equals(&vct)).condition()
+            & CredentialSchemaFilterValue::Formats(vec![format.to_string()]).condition();
+
+        let mut schema_list = self
+            .credential_schema_repository
+            .get_credential_schema_list(CredentialSchemaListQuery {
+                pagination: None,
+                sorting: None,
+                filtering: Some(filter),
+                include: Some(vec![
+                    CredentialSchemaListIncludeEntityTypeEnum::LayoutProperties,
+                ]),
+            })
+            .await
+            .error_while("getting credential schemas")?;
+
+        let Some(credential_schema) = schema_list.values.pop() else {
+            return Err(IssuerServiceError::MissingSdJwtVcTypeMetadata(vct));
+        };
+
+        let credential_schema = filter_schema_to_format(credential_schema, &format, &vct).await?;
+
+        credential_schema_to_sd_jwt_vc_metadata(credential_schema_id, vct, credential_schema).await
     }
 
     pub async fn get_sd_jwt_vc_issuer_metadata(

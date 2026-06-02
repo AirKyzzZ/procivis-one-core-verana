@@ -363,7 +363,7 @@ async fn test_create_credential_schema_success() {
         });
     formatter
         .expect_credential_schema_id()
-        .returning(|_, _, _, _, _, _| Ok("schema id".to_string()));
+        .returning(|_, _, _, _, _| Ok("schema id".to_string()));
     formatter.expect_get_metadata_claims().returning(Vec::new);
     formatter_provider
         .expect_get_credential_formatter()
@@ -454,7 +454,7 @@ async fn test_create_credential_schema_success_mdoc_with_custom_schema_id() {
         });
     formatter
         .expect_credential_schema_id()
-        .returning(|_, _, _, _, _, _| Ok(custom_schema_id.to_string()));
+        .returning(|_, _, _, _, _| Ok(custom_schema_id.to_string()));
     formatter.expect_get_metadata_claims().returning(Vec::new);
     formatter_provider
         .expect_get_credential_formatter()
@@ -552,7 +552,7 @@ async fn test_create_credential_schema_success_nested_claims() {
         });
     formatter
         .expect_credential_schema_id()
-        .returning(|_, _, _, _, _, _| Ok("some schema id".to_string()));
+        .returning(|_, _, _, _, _| Ok("some schema id".to_string()));
     formatter.expect_get_metadata_claims().returning(Vec::new);
     formatter_provider
         .expect_get_credential_formatter()
@@ -1186,7 +1186,7 @@ async fn test_create_credential_schema_fail_unsupported_wallet_storage_type() {
         });
     formatter
         .expect_credential_schema_id()
-        .returning(|_, _, _, _, _, _| Ok("schema id".to_string()));
+        .returning(|_, _, _, _, _| Ok("schema id".to_string()));
     formatter_provider
         .expect_get_credential_formatter()
         .once()
@@ -1469,11 +1469,11 @@ async fn test_create_credential_schema_failed_schema_id_not_allowed() {
     formatter
         .expect_credential_schema_id()
         .once()
-        .withf(|_, _, schema_id, _, _, _| {
+        .withf(|_, _, schema_id, _, _| {
             assert_eq!(schema_id, &Some("schema.id"));
             true
         })
-        .return_once(|_, _, _, _, _, _| Err(FormatterError::SchemaIdNotAllowed));
+        .return_once(|_, _, _, _, _| Err(FormatterError::SchemaIdNotAllowed));
     formatter_provider
         .expect_get_credential_formatter()
         .once()
@@ -2860,7 +2860,7 @@ async fn test_create_credential_schema_fail_unsupported_datatype() {
         });
     formatter
         .expect_credential_schema_id()
-        .returning(|_, _, _, _, _, _| Ok("some schema id".to_string()));
+        .returning(|_, _, _, _, _| Ok("some schema id".to_string()));
     formatter_provider
         .expect_get_credential_formatter()
         .once()

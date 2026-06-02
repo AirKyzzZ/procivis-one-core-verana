@@ -417,7 +417,6 @@ impl CredentialFormatter for MdocFormatter {
         schema_id: Option<&'a str>,
         _core_base_url: &'a str,
         _version: CredentialSchemaVersion,
-        _format: Option<&'a CredentialFormat>,
     ) -> Result<String, FormatterError> {
         Ok(schema_id
             .map(ToOwned::to_owned)

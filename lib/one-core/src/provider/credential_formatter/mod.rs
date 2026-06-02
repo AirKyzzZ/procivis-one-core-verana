@@ -53,7 +53,7 @@ pub enum CredentialSchemaVersion {
     #[strum(to_string = "v1")]
     V1,
     #[strum(to_string = "v2")]
-    V2,
+    V2(CredentialFormat),
 }
 
 /// Format credentials for sharing and parse credentials which have been shared.
@@ -127,15 +127,13 @@ pub trait CredentialFormatter: Provider + Send + Sync {
         _schema_id: Option<&'a str>,
         core_base_url: &'a str,
         version: CredentialSchemaVersion,
-        format: Option<&'a CredentialFormat>,
     ) -> Result<String, FormatterError> {
-        if let Some(format) = format {
-            Ok(format!(
-                "{core_base_url}/ssi/schema/{version}/{id}/{format}"
-            ))
-        } else {
-            Ok(format!("{core_base_url}/ssi/schema/{version}/{id}"))
-        }
+        Ok(match version {
+            CredentialSchemaVersion::V1 => format!("{core_base_url}/ssi/schema/v1/{id}"),
+            CredentialSchemaVersion::V2(format) => {
+                format!("{core_base_url}/ssi/schema/v2/{id}/{format}")
+            }
+        })
     }
 
     /// Returns definitions of metadata claims for the format

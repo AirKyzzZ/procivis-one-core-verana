@@ -740,6 +740,10 @@ fn get_external_endpoints(
                 get(ssi::controller::ssi_get_sd_jwt_vc_type_metadata),
             )
             .route(
+                "/ssi/vct/v2/{organisationId}/{credentialSchemaId}/{format}",
+                get(ssi::controller::ssi_get_sd_jwt_vc_type_metadata_v2),
+            )
+            .route(
                 "/ssi/ca/{id}",
                 get(ssi::controller::ssi_get_certificate_authority),
             )

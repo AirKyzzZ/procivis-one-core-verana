@@ -89,7 +89,6 @@ impl CredentialSchemaService {
                 request.schema_id.as_deref(),
                 core_base_url,
                 CredentialSchemaVersion::V1,
-                None,
             )
             .error_while("creating schemaId")?;
         let imported_source_url = format!("{core_base_url}/ssi/schema/v1/{id}");
@@ -212,8 +211,7 @@ impl CredentialSchemaService {
                     organisation.id,
                     format_req.schema_id.as_deref(),
                     core_base_url,
-                    CredentialSchemaVersion::V2,
-                    Some(&format_req.format),
+                    CredentialSchemaVersion::V2(format_req.format.clone()),
                 )
                 .error_while("creating schemaId")?;
 

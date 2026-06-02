@@ -104,7 +104,8 @@ pub(crate) fn get_url_with_fragment(
 }
 
 pub(crate) async fn credential_schema_to_sd_jwt_vc_metadata(
-    vct_type: String,
+    credential_schema_id: String,
+    vct: String,
     schema: CredentialSchema,
 ) -> Result<SdJwtVcTypeMetadataResponseDTO, IssuerServiceError> {
     let background_color: Option<String> = schema.layout_properties.as_ref().map(|props| {
@@ -122,20 +123,26 @@ pub(crate) async fn credential_schema_to_sd_jwt_vc_metadata(
             text_color: Some("#FFFFFF".to_string()),
         }),
     };
-    let vct = schema.schema_id().await?.to_owned();
     let display_en_us = SdJwtVcDisplayMetadataDTO {
         lang: "en-US".to_string(),
         name: schema.name,
         rendering: Some(rendering),
     };
 
-    let nested_claims =
-        CredentialSchemaClaimsNestedView::try_from(schema.claim_schemas.as_ref().await?.to_owned())
-            .error_while("converting nested claims")?;
+    let user_claims: Vec<_> = schema
+        .claim_schemas
+        .as_ref()
+        .await?
+        .iter()
+        .filter(|cs| !cs.metadata)
+        .cloned()
+        .collect();
+    let nested_claims = CredentialSchemaClaimsNestedView::try_from(user_claims)
+        .error_while("converting nested claims")?;
     let claims = vct_claims_from_nested_view(nested_claims);
     Ok(SdJwtVcTypeMetadataResponseDTO {
         vct,
-        name: Some(vct_type),
+        name: Some(credential_schema_id),
         display: vec![display_en_us],
         claims,
         layout_properties: schema

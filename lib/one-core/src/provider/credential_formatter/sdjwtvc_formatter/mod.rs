@@ -442,11 +442,17 @@ impl CredentialFormatter for SDJWTVCFormatter {
         schema_id: Option<&'a str>,
         core_base_url: &'a str,
         version: CredentialSchemaVersion,
-        _format: Option<&'a CredentialFormat>,
     ) -> Result<String, FormatterError> {
         Ok(match schema_id {
             Some(schema_id) => schema_id.to_string(),
-            None => format!("{core_base_url}/ssi/vct/{version}/{organisation_id}/{id}"),
+            None => match version {
+                CredentialSchemaVersion::V1 => {
+                    format!("{core_base_url}/ssi/vct/v1/{organisation_id}/{id}")
+                }
+                CredentialSchemaVersion::V2(format) => {
+                    format!("{core_base_url}/ssi/vct/v2/{organisation_id}/{id}/{format}")
+                }
+            },
         })
     }
 

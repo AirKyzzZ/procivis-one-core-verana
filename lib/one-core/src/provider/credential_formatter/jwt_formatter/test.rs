@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use maplit::hashset;
-use shared_types::{CredentialFormat, CredentialSchemaId, DidValue, OrganisationId};
+use shared_types::{CredentialSchemaId, DidValue, OrganisationId};
 use similar_asserts::assert_eq;
 use time::macros::datetime;
 use time::{Duration, OffsetDateTime};
@@ -774,19 +774,17 @@ fn test_schema_id() {
     };
 
     let id = CredentialSchemaId::from(Uuid::new_v4());
-    let format = CredentialFormat::from("JWT");
     let result = formatter.credential_schema_id(
         id,
         request_dto.organisation_id,
         request_dto.schema_id.as_deref(),
         "https://example.com",
         CredentialSchemaVersion::V1,
-        Some(&format),
     );
     assert!(result.is_ok());
     assert_eq!(
         result.unwrap(),
-        format!("https://example.com/ssi/schema/v1/{id}/JWT")
+        format!("https://example.com/ssi/schema/v1/{id}")
     )
 }
 

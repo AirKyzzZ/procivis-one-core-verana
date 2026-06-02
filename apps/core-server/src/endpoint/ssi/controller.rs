@@ -489,6 +489,41 @@ pub(crate) async fn ssi_get_sd_jwt_vc_type_metadata(
 #[endpoint(
     permissions = [],
     get,
+    path = "/ssi/vct/v2/{organisationId}/{credentialSchemaId}/{format}",
+    params(
+        ("organisationId" = OrganisationId, Path, description = "Organization id"),
+        ("credentialSchemaId" = String, Path, description = "Credential schema id"),
+        ("format" = CredentialFormat, Path, description = "Credential format"),
+    ),
+    responses(
+        (status = 200, description = "OK", body = SdJwtVcTypeMetadataResponseRestDTO),
+        (status = 404, description = "Type metadata not found"),
+        (status = 500, description = "Server error"),
+    ),
+    tag = "ssi",
+    summary = "Retrieve SD-JWT VC type metadata v2 service",
+    description = indoc::formatdoc! {"
+        Retrieve the type metadata of an SD-JWT VC credential for a v2 schema.
+    "},
+)]
+pub(crate) async fn ssi_get_sd_jwt_vc_type_metadata_v2(
+    state: State<AppState>,
+    WithRejection(Path((organisation_id, credential_schema_id, format)), _): WithRejection<
+        Path<(OrganisationId, String, CredentialFormat)>,
+        ErrorResponseRestDTO,
+    >,
+) -> OkOrErrorResponse<SdJwtVcTypeMetadataResponseRestDTO> {
+    let result = state
+        .core
+        .ssi_issuer_service
+        .get_vct_metadata_v2(organisation_id, credential_schema_id, format)
+        .await;
+    OkOrErrorResponse::from_result(result, state, "getting SD-JWT VC type metadata v2")
+}
+
+#[endpoint(
+    permissions = [],
+    get,
     path = "/ssi/ca/{id}",
     params(
         ("id" = CertificateId, Path, description = "Certificate Authority id")

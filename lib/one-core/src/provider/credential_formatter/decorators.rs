@@ -97,16 +97,9 @@ impl<T: Provider + CredentialFormatter + Display + ?Sized> CredentialFormatter
         schema_id: Option<&'a str>,
         core_base_url: &'a str,
         version: CredentialSchemaVersion,
-        format: Option<&'a CredentialFormat>,
     ) -> Result<String, FormatterError> {
-        self.inner().credential_schema_id(
-            id,
-            organisation_id,
-            schema_id,
-            core_base_url,
-            version,
-            format,
-        )
+        self.inner()
+            .credential_schema_id(id, organisation_id, schema_id, core_base_url, version)
     }
 
     fn get_metadata_claims(&self) -> Vec<MetadataClaimSchema> {
@@ -246,7 +239,6 @@ impl CredentialFormatter for CapabilityChecked {
         schema_id: Option<&'a str>,
         core_base_url: &'a str,
         version: CredentialSchemaVersion,
-        format: Option<&'a CredentialFormat>,
     ) -> Result<String, FormatterError> {
         if let Some(schema_id) = schema_id {
             if schema_id.is_empty() {
@@ -259,14 +251,8 @@ impl CredentialFormatter for CapabilityChecked {
             }
         }
 
-        self.0.credential_schema_id(
-            id,
-            organisation_id,
-            schema_id,
-            core_base_url,
-            version,
-            format,
-        )
+        self.0
+            .credential_schema_id(id, organisation_id, schema_id, core_base_url, version)
     }
 
     fn get_metadata_claims(&self) -> Vec<MetadataClaimSchema> {
