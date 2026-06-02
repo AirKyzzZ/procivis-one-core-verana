@@ -74,7 +74,8 @@ impl ProofSchemaService {
             return Err(ProofSchemaServiceError::NotFound(*id));
         }
 
-        convert_proof_schema_to_response(result, &self.config.datatype).await
+        convert_proof_schema_to_response(result, &self.config.datatype, &*self.formatter_provider)
+            .await
     }
 
     /// Returns list of proof schemas according to query

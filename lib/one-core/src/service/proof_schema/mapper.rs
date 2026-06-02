@@ -26,11 +26,13 @@ use crate::model::proof_schema::{
     ExactProofSchemaFilterColumn, ProofInputClaimSchema, ProofInputSchema, ProofSchema,
     ProofSchemaListQuery,
 };
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::service::credential_schema::mapper::to_credential_schema_list_response;
 
 pub(super) async fn convert_proof_schema_to_response(
     value: ProofSchema,
     datatype_config: &DatatypeConfig,
+    formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<GetProofSchemaResponseDTO, ProofSchemaServiceError> {
     let mut proof_input_schemas = vec![];
     for input_schema in value
@@ -39,8 +41,10 @@ pub(super) async fn convert_proof_schema_to_response(
             "proof_input_schemas is None".to_string(),
         ))?
     {
-        proof_input_schemas
-            .push(convert_input_schema_to_response(input_schema, datatype_config).await?);
+        proof_input_schemas.push(
+            convert_input_schema_to_response(input_schema, datatype_config, formatter_provider)
+                .await?,
+        );
     }
 
     Ok(GetProofSchemaResponseDTO {
@@ -144,6 +148,7 @@ fn extract_proof_input_claim_schemas_nested(
 async fn convert_input_schema_to_response(
     value: ProofInputSchema,
     datatype_config: &DatatypeConfig,
+    formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<ProofInputSchemaResponseDTO, ProofSchemaServiceError> {
     let credential_schema =
         value
@@ -172,9 +177,13 @@ async fn convert_input_schema_to_response(
 
     Ok(ProofInputSchemaResponseDTO {
         claim_schemas,
-        credential_schema: to_credential_schema_list_response(credential_schema, false)
-            .await
-            .map_err(|e: NestedError| ProofSchemaServiceError::MappingError(e.to_string()))?,
+        credential_schema: to_credential_schema_list_response(
+            credential_schema,
+            false,
+            formatter_provider,
+        )
+        .await
+        .map_err(|e: NestedError| ProofSchemaServiceError::MappingError(e.to_string()))?,
     })
 }
 

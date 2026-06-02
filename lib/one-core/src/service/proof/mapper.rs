@@ -31,6 +31,7 @@ use crate::model::list_filter::{
 use crate::model::proof::{Proof, ProofClaim, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
 use crate::proto::trust_information::dto::TrustInformation;
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::service::certificate::mapper::certificate_to_response_dto;
 use crate::service::credential::dto::{
@@ -180,6 +181,7 @@ pub(super) async fn get_verifier_proof_detail(
     claims_removed_event: Option<History>,
     trust_information: Vec<TrustInformation>,
     credential_repository: &dyn CredentialRepository,
+    formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<ProofDetailResponseDTO, ProofServiceError> {
     let schema = proof
         .schema
@@ -404,9 +406,13 @@ pub(super) async fn get_verifier_proof_detail(
             })?;
 
         let credential_schema_dto: CredentialSchemaListItemResponseDTO =
-            to_credential_schema_list_response(credential_schema.clone(), false)
-                .await
-                .map_err(|e: NestedError| ProofServiceError::MappingError(e.to_string()))?;
+            to_credential_schema_list_response(
+                credential_schema.clone(),
+                false,
+                formatter_provider,
+            )
+            .await
+            .map_err(|e: NestedError| ProofServiceError::MappingError(e.to_string()))?;
 
         proof_inputs.push(ProofInputDTO {
             claims: proof_input_claims,
@@ -578,6 +584,7 @@ pub(super) async fn get_holder_proof_detail(
     claims_removed_event: Option<History>,
     trust_information: Vec<TrustInformation>,
     credential_repository: &dyn CredentialRepository,
+    formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<ProofDetailResponseDTO, ProofServiceError> {
     let organisation_id = [
         proof
@@ -653,9 +660,13 @@ pub(super) async fn get_holder_proof_detail(
     for (claims, credential, credential_schema) in submitted_credentials.into_values() {
         let credential_claim_schemas = credential_schema.claim_schemas.as_ref().await?;
         let credential_schema_dto: CredentialSchemaListItemResponseDTO =
-            to_credential_schema_list_response(credential_schema.clone(), false)
-                .await
-                .map_err(|e: NestedError| ProofServiceError::MappingError(e.to_string()))?;
+            to_credential_schema_list_response(
+                credential_schema.clone(),
+                false,
+                formatter_provider,
+            )
+            .await
+            .map_err(|e: NestedError| ProofServiceError::MappingError(e.to_string()))?;
 
         proof_inputs.push(ProofInputDTO {
             claims: nest_proof_claims(&claims, &credential_claim_schemas, None)?,

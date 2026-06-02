@@ -40,6 +40,7 @@ use crate::model::relation::RelatedVec;
 use crate::proto::credential_schema::dto::CredentialClaimSchemaMappingDTO;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::{Context, Features};
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 
 pub(crate) async fn schema_to_detail_response_dto(
     value: CredentialSchema,
@@ -521,6 +522,7 @@ pub(super) fn build_format_with_claim_mappings(
 pub(crate) async fn to_credential_schema_list_response(
     credential_schema: CredentialSchema,
     include_translations: bool,
+    formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<CredentialSchemaListItemResponseDTO, NestedError> {
     let format = credential_schema.format().await?.to_owned();
     let schema_id = credential_schema.schema_id().await?;
@@ -533,6 +535,8 @@ pub(crate) async fn to_credential_schema_list_response(
     } else {
         None
     };
+    let formatter = formatter_provider.get_credential_formatter(&format)?;
+    let revocation_method = credential_schema.revocation_method_id(&*formatter).cloned();
     Ok(CredentialSchemaListItemResponseDTO {
         id: credential_schema.id,
         created_date: credential_schema.created_date,
@@ -540,7 +544,7 @@ pub(crate) async fn to_credential_schema_list_response(
         deleted_at: credential_schema.deleted_at,
         name: credential_schema.name,
         format,
-        revocation_method: credential_schema.revocation_method,
+        revocation_method,
         key_storage_security: credential_schema.key_storage_security,
         schema_id,
         imported_source_url: credential_schema.imported_source_url,

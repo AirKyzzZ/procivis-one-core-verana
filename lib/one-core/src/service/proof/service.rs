@@ -169,7 +169,8 @@ impl ProofService {
                 &self.config,
                 history_event,
                 trust_information,
-                self.credential_repository.as_ref(),
+                &*self.credential_repository,
+                &*self.credential_formatter_provider,
             )
             .await
         } else {
@@ -178,7 +179,8 @@ impl ProofService {
                 &self.config,
                 history_event,
                 trust_information,
-                self.credential_repository.as_ref(),
+                &*self.credential_repository,
+                &*self.credential_formatter_provider,
             )
             .await
         }

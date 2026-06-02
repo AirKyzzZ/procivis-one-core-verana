@@ -452,10 +452,19 @@ async fn test_get_credential_list_success() {
             .times(1)
             .returning(move |_| Ok(clone.clone()));
     }
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .returning(|_| {
+            let mut formatter = MockCredentialFormatter::new();
+            formatter.expect_revocation_method_id().returning(|| None);
+            Ok(Arc::new(formatter))
+        });
 
     let service = setup_service(Repositories {
         credential_repository,
         config: generic_config().core,
+        formatter_provider,
         ..Default::default()
     });
 

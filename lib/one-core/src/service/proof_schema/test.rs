@@ -2354,6 +2354,7 @@ async fn test_get_proof_schema_success_nested_claims() {
 
     let service = setup_service(Repositories {
         proof_schema_repository: proof_schema_repo_expecting_get(proof_schema.clone()),
+        formatter_provider: mock_formatter_provider(),
         ..Default::default()
     });
 
@@ -2430,6 +2431,7 @@ async fn test_get_proof_schema_success_nested_claims_not_mandatory() {
 
     let service = setup_service(Repositories {
         proof_schema_repository: proof_schema_repo_expecting_get(proof_schema.clone()),
+        formatter_provider: mock_formatter_provider(),
         ..Default::default()
     });
 
@@ -2508,6 +2510,7 @@ async fn test_get_proof_schema_success_nested_claims_parent_not_mandatory() {
 
     let service = setup_service(Repositories {
         proof_schema_repository: proof_schema_repo_expecting_get(proof_schema.clone()),
+        formatter_provider: mock_formatter_provider(),
         ..Default::default()
     });
 
@@ -2521,6 +2524,18 @@ async fn test_get_proof_schema_success_nested_claims_parent_not_mandatory() {
     );
     // not required because parent object is optional
     assert!(!result.proof_input_schemas[0].claim_schemas[1].claims[0].required);
+}
+
+fn mock_formatter_provider() -> MockCredentialFormatterProvider {
+    let mut credential_formatter_provider = MockCredentialFormatterProvider::new();
+    credential_formatter_provider
+        .expect_get_credential_formatter()
+        .returning(|_| {
+            let mut formatter = MockCredentialFormatter::new();
+            formatter.expect_revocation_method_id().returning(|| None);
+            Ok(Arc::new(formatter))
+        });
+    credential_formatter_provider
 }
 
 fn proof_schema_repo_expecting_get(proof_schema: ProofSchema) -> MockProofSchemaRepository {

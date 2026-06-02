@@ -37,6 +37,7 @@ use crate::model::list_query::{ListPagination, ListQuery, ListSorting};
 use crate::model::localized_text::LocalizedTextField;
 use crate::proto::trust_information::dto::TrustInformation;
 use crate::provider::credential_formatter::mdoc_formatter;
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::service::certificate::mapper::certificate_to_response_dto;
 use crate::service::credential_schema::dto::{
@@ -443,6 +444,7 @@ fn sort_claims(claims: &mut [DetailCredentialClaimResponseDTO]) {
 pub(super) async fn to_credential_list_response(
     credential: Credential,
     include_translations: bool,
+    formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<CredentialListItemResponseDTO, CredentialServiceError> {
     let schema = credential
         .schema
@@ -457,7 +459,12 @@ pub(super) async fn to_credential_list_response(
         consumed_at: credential.consumed_at,
         state: credential.state.into(),
         last_modified: credential.last_modified,
-        schema: to_credential_schema_list_response(schema, include_translations).await?,
+        schema: to_credential_schema_list_response(
+            schema,
+            include_translations,
+            formatter_provider,
+        )
+        .await?,
         issuer: convert_inner(credential.issuer_identifier),
         role: credential.role.into(),
         r#type: credential.r#type.into(),

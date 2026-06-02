@@ -71,6 +71,7 @@ impl CredentialSchemaFormatRepository for CredentialSchemaFormatProvider {
         let rows = credential_schema_format::Entity::find()
             .filter(credential_schema_format::Column::CredentialSchemaId.eq(*credential_schema_id))
             .order_by_asc(credential_schema_format::Column::CreatedDate)
+            .order_by_asc(credential_schema_format::Column::Format)
             .all(&self.db)
             .await
             .map_err(to_data_layer_error)?;

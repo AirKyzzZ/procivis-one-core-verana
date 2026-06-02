@@ -458,9 +458,13 @@ impl CredentialSchemaService {
             Vec::with_capacity(result.values.len());
         for credential_schema in result.values {
             items.push(
-                to_credential_schema_list_response(credential_schema, include_translations)
-                    .await
-                    .error_while("mapping credential schemas")?,
+                to_credential_schema_list_response(
+                    credential_schema,
+                    include_translations,
+                    &*self.formatter_provider,
+                )
+                .await
+                .error_while("mapping credential schemas")?,
             );
         }
 

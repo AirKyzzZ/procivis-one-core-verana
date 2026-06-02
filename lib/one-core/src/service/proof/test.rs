@@ -587,6 +587,7 @@ async fn test_get_proof_exists() {
         history_repository,
         config: generic_config().core,
         trust_information_provider: mock_trust_information_provider(&proof, vec![]),
+        credential_formatter_provider: mock_formatter_provider(),
         ..Default::default()
     });
 
@@ -833,6 +834,7 @@ async fn test_get_proof_with_array_holder() {
         history_repository,
         config: generic_config().core,
         trust_information_provider: mock_trust_information_provider(&proof, vec![]),
+        credential_formatter_provider: mock_formatter_provider(),
         ..Default::default()
     });
 
@@ -1117,6 +1119,7 @@ async fn test_get_proof_with_array_in_object_holder() {
         history_repository,
         config: generic_config().core,
         trust_information_provider: mock_trust_information_provider(&proof, vec![]),
+        credential_formatter_provider: mock_formatter_provider(),
         ..Default::default()
     });
 
@@ -1416,6 +1419,7 @@ async fn test_get_proof_with_object_array_holder() {
         history_repository,
         config: generic_config().core,
         trust_information_provider: mock_trust_information_provider(&proof, vec![]),
+        credential_formatter_provider: mock_formatter_provider(),
         ..Default::default()
     });
 
@@ -1696,6 +1700,7 @@ async fn test_get_proof_with_array() {
         history_repository,
         config: generic_config().core,
         trust_information_provider: mock_trust_information_provider(&proof, vec![]),
+        credential_formatter_provider: mock_formatter_provider(),
         ..Default::default()
     });
 
@@ -1987,6 +1992,7 @@ async fn test_get_proof_with_array_in_object() {
         history_repository,
         config: generic_config().core,
         trust_information_provider: mock_trust_information_provider(&proof, vec![]),
+        credential_formatter_provider: mock_formatter_provider(),
         ..Default::default()
     });
 
@@ -2294,6 +2300,7 @@ async fn test_get_proof_with_object_array() {
         history_repository,
         config: generic_config().core,
         trust_information_provider: mock_trust_information_provider(&proof, vec![]),
+        credential_formatter_provider: mock_formatter_provider(),
         ..Default::default()
     });
 
@@ -4692,6 +4699,18 @@ async fn test_proof_ops_session_org_mismatch() {
         })
         .await;
     assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
+}
+
+fn mock_formatter_provider() -> MockCredentialFormatterProvider {
+    let mut credential_formatter_provider = MockCredentialFormatterProvider::new();
+    credential_formatter_provider
+        .expect_get_credential_formatter()
+        .returning(|_| {
+            let mut formatter = MockCredentialFormatter::new();
+            formatter.expect_revocation_method_id().returning(|| None);
+            Ok(Arc::new(formatter))
+        });
+    credential_formatter_provider
 }
 
 fn mock_trust_information_provider(

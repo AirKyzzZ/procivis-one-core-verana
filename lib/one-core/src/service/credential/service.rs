@@ -439,7 +439,10 @@ impl CredentialService {
 
         let mut response_dtos = Vec::with_capacity(result.values.len());
         for value in result.values {
-            response_dtos.push(to_credential_list_response(value, include_translations).await?);
+            response_dtos.push(
+                to_credential_list_response(value, include_translations, &*self.formatter_provider)
+                    .await?,
+            );
         }
         Ok(GetCredentialListResponseDTO {
             values: response_dtos,

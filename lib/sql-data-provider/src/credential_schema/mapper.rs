@@ -300,6 +300,7 @@ impl AsyncVecLoader<CredentialSchemaFormat> for CredentialSchemaFormatsLoader {
         let credential_schema_formats = credential_schema_format::Entity::find()
             .filter(credential_schema_format::Column::CredentialSchemaId.eq(self.id.to_string()))
             .order_by_asc(credential_schema_format::Column::CreatedDate)
+            .order_by_asc(credential_schema_format::Column::Format)
             .all(&self.db)
             .await
             .map_err(to_data_layer_error)?;
