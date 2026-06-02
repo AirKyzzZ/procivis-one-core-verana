@@ -469,7 +469,7 @@ Version 2.0](./LICENSE).
 [fips]: https://csrc.nist.gov/pubs/fips/204/final
 [iso5]: https://www.iso.org/standard/69084.html
 [iso7]: https://www.iso.org/standard/82772.html
-[issue-first]: https://docs.procivis.ch/get-started/issue
+[issue-first]: https://docs.procivis.ch/issue
 [jld]: https://www.w3.org/TR/json-ld11/
 [jose]: https://w3c.github.io/vc-jose-cose/
 [jw]: https://datatracker.ietf.org/doc/html/rfc7519
@@ -481,7 +481,7 @@ Version 2.0](./LICENSE).
 [rust]: https://rustup.rs/
 [sdjwt]: https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-12.html
 [sdjwtvc]: https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-05.html
-[sdkref]: https://docs.procivis.ch/sdk/overview
+[sdkref]: https://docs.procivis.ch/sdk
 [sl]: https://www.w3.org/TR/vc-bitstring-status-list/
 [supptech]: https://docs.procivis.ch/standards
 [trial]: https://docs.procivis.ch/trial

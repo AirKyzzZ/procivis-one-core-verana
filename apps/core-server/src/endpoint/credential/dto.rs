@@ -132,15 +132,21 @@ pub(crate) struct GetCredentialResponseRestDTO<TClaim> {
     pub role: CredentialRoleRestEnum,
     pub interaction_id: Option<InteractionId>,
 
+    /// When this credential was used in a presentation. Only used for
+    /// batch item credentials.
     #[serde(serialize_with = "front_time_option")]
     #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
     pub consumed_at: Option<OffsetDateTime>,
+
+    /// Differentiates between single credentials issued alone, credentials
+    /// issued as part of a batch, and parent credentials which represent
+    /// a batch of credentials.
     pub r#type: CredentialTypeRestEnum,
 
-    /// number of non-consumed batch items (if batch parent)
+    /// Number of non-consumed batch items (if batch parent).
     pub remaining_batch_item_count: Option<u32>,
 
-    /// batch parent (if batch item)
+    /// Batch parent (if batch item).
     pub parent_id: Option<CredentialId>,
 
     /// Scheduled date for credential reactivation.

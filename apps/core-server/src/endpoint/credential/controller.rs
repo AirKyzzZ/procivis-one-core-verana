@@ -171,7 +171,7 @@ pub(crate) async fn post_credential(
     summary = "Reactivate a credential",
     description = indoc::formatdoc! {"
         Reactivates a suspended credential.
-        Related guide: [Managing Credential Status](https://docs.procivis.ch/issue/manage-status)
+        Related guide: [Suspension and Revocation](https://docs.procivis.ch/issue/suspend-revoke)
     "},
 )]
 pub(crate) async fn reactivate_credential(
@@ -201,7 +201,7 @@ pub(crate) async fn reactivate_credential(
     summary = "Revoke a credential",
     description = indoc::formatdoc! {"
         Revokes an issued credential.
-        Related guide: [Managing Credential Status](https://docs.procivis.ch/issue/manage-status)
+        Related guide: [Suspension and Revocation](https://docs.procivis.ch/issue/suspend-revoke)
     "},
 )]
 pub(crate) async fn revoke_credential(
@@ -228,7 +228,7 @@ pub(crate) async fn revoke_credential(
     summary = "Suspend a credential",
     description = indoc::formatdoc! {"
         Suspends a credential, rendering it invalid until it has been reactivated.
-        Related guide: [Managing Credential Status](https://docs.procivis.ch/issue/manage-status)
+        Related guide: [Suspension and Revocation](https://docs.procivis.ch/issue/suspend-revoke)
     "},
 )]
 pub(crate) async fn suspend_credential(
