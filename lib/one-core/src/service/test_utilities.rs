@@ -102,6 +102,10 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
             display: 'identifier.key'
             enabled: true
             order: 2
+          CA:
+            display: 'identifier.ca'
+            enabled: true
+            order: 3
         issuanceProtocol:
             OPENID4VCI_FINAL1:
                 display: 'display.openid4vciFinal1'

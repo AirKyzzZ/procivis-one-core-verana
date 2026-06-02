@@ -1,15 +1,22 @@
 use std::sync::Arc;
 
 use futures::FutureExt;
+use shared_types::IdentifierId;
+use uuid::Uuid;
 
 use super::{
-    CreateLocalIdentifierRequest, Error, IdentifierCreator, IdentifierRole,
-    RemoteIdentifierRelation,
+    CreateLocalIdentifierRequest, Error, IdentifierCreator, IdentifierName,
+    RemoteIdentifierOutcome, RemoteIdentifierRelation,
 };
 use crate::config::core_config::CoreConfig;
-use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin};
-use crate::model::identifier::Identifier;
+use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
+use crate::model::certificate::{
+    Certificate, CertificateFilterValue, CertificateListQuery, CertificateState,
+};
+use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
+use crate::model::list_filter::ListFilterValue;
 use crate::model::organisation::Organisation;
+use crate::proto::certificate_validator::{CertificateValidationOptions, ParsedCertificate};
 use crate::proto::csr_creator::CsrCreator;
 use crate::proto::transaction_manager::{IsolationLevel, TransactionManager};
 use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
@@ -18,6 +25,7 @@ use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::signer::provider::SignerProvider;
 use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::did_repository::DidRepository;
+use crate::repository::error::DataLayerError;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::{CertificateValidator, KeyAlgorithmProvider};
@@ -77,7 +85,7 @@ impl IdentifierCreator for IdentifierCreatorProto {
         &self,
         organisation: &Option<Organisation>,
         details: &IdentifierDetails,
-        role: IdentifierRole,
+        name: IdentifierName,
     ) -> Result<(Identifier, RemoteIdentifierRelation), Error> {
         let result = self
             .tx_manager
@@ -86,7 +94,7 @@ impl IdentifierCreator for IdentifierCreatorProto {
                     Ok::<_, Error>(match details {
                         IdentifierDetails::Did(did_value) => {
                             let (did, identifier) = self
-                                .get_or_create_did_and_identifier(organisation, did_value, role)
+                                .get_or_create_did_and_identifier(organisation, did_value, name)
                                 .await?;
                             (identifier, RemoteIdentifierRelation::Did(did))
                         }
@@ -100,7 +108,7 @@ impl IdentifierCreator for IdentifierCreatorProto {
                                     organisation,
                                     chain.to_owned(),
                                     fingerprint.to_owned(),
-                                    role,
+                                    name,
                                 )
                                 .await?;
 
@@ -114,7 +122,7 @@ impl IdentifierCreator for IdentifierCreatorProto {
                                 .get_or_create_key_identifier(
                                     organisation.as_ref(),
                                     public_key_jwk,
-                                    role,
+                                    name,
                                 )
                                 .await?;
                             (identifier, RemoteIdentifierRelation::Key(key))
@@ -131,10 +139,138 @@ impl IdentifierCreator for IdentifierCreatorProto {
         match result {
             Err(error) if error.error_code() == ErrorCode::BR_0357 => {
                 tracing::debug!("Identifier already exists, fetching again");
-                self.get_identifier(organisation, details).await
+                self.find_identifier(organisation, details)
+                    .await?
+                    .ok_or(Error::MappingError(
+                        "Identifier disappeared after uniqueness conflict".to_string(),
+                    ))
             }
             result => result,
         }
+    }
+
+    #[tracing::instrument(level = "debug", skip_all, err(level = "warn"))]
+    async fn create_remote_certificate_identifier(
+        &self,
+        organisation: Organisation,
+        name: String,
+        chains: Vec<String>,
+        identifier_type: IdentifierType,
+    ) -> Result<RemoteIdentifierOutcome, Error> {
+        if chains.is_empty() {
+            return Err(Error::InvalidCertificateInput);
+        }
+
+        self.tx_manager
+            .tx_with_config(
+                async move {
+                    let identifier_id = IdentifierId::from(Uuid::new_v4());
+                    let now = crate::clock::now_utc();
+                    let mut prepared: Vec<Certificate> = Vec::with_capacity(chains.len());
+
+                    for chain in chains {
+                        let ParsedCertificate {
+                            attributes,
+                            subject_common_name,
+                            ..
+                        } = self
+                            .certificate_validator
+                            .parse_pem_chain(
+                                &chain,
+                                CertificateValidationOptions::signature_and_revocation(None),
+                            )
+                            .await
+                            .error_while("parsing pem chain")?;
+
+                        let existing = self
+                            .certificate_repository
+                            .list(CertificateListQuery {
+                                filtering: Some(
+                                    CertificateFilterValue::Fingerprint(
+                                        attributes.fingerprint.clone(),
+                                    )
+                                    .condition()
+                                        & CertificateFilterValue::OrganisationId(organisation.id)
+                                            .condition(),
+                                ),
+                                ..Default::default()
+                            })
+                            .await
+                            .error_while("looking up certificate")?;
+
+                        if let Some(certificate) = existing.values.into_iter().next() {
+                            return Ok(RemoteIdentifierOutcome::AlreadyExists(
+                                certificate.identifier_id,
+                            ));
+                        }
+
+                        let cert = Certificate {
+                            id: Uuid::new_v4().into(),
+                            identifier_id,
+                            organisation: Some(organisation.clone().into()),
+                            created_date: now,
+                            last_modified: now,
+                            deleted_at: None,
+                            expiry_date: attributes.not_after,
+                            name: subject_common_name.unwrap_or_else(|| name.clone()),
+                            chain,
+                            fingerprint: attributes.fingerprint,
+                            state: CertificateState::Active,
+                            roles: vec![],
+                            key: None,
+                        };
+
+                        if prepared.iter().any(|c| {
+                            c.fingerprint == cert.fingerprint
+                                || (c.name == cert.name && c.expiry_date == cert.expiry_date)
+                        }) {
+                            return Err(Error::ConflictingCertificates);
+                        }
+
+                        prepared.push(cert);
+                    }
+
+                    let identifier = Identifier {
+                        id: identifier_id,
+                        created_date: now,
+                        last_modified: now,
+                        name,
+                        r#type: identifier_type,
+                        is_remote: true,
+                        state: IdentifierState::Active,
+                        deleted_at: None,
+                        organisation: Some(organisation),
+                        did: None,
+                        key: None,
+                        certificates: None,
+                        trust_information: None,
+                    };
+                    self.identifier_repository
+                        .create(identifier)
+                        .await
+                        .map_err(|err| match err {
+                            DataLayerError::AlreadyExists => Error::IdentifierAlreadyExists,
+                            e => e.error_while("creating identifier").into(),
+                        })?;
+
+                    for certificate in prepared {
+                        self.certificate_repository
+                            .create(certificate)
+                            .await
+                            .map_err(|err| match err {
+                                DataLayerError::AlreadyExists => Error::CertificateAlreadyExists,
+                                e => e.error_while("creating certificate").into(),
+                            })?;
+                    }
+
+                    Ok(RemoteIdentifierOutcome::Created(identifier_id))
+                }
+                .boxed(),
+                Some(IsolationLevel::ReadCommitted),
+                None,
+            )
+            .await
+            .error_while("creating remote certificate identifier")?
     }
 
     #[tracing::instrument(level = "debug", skip_all, err(level = "warn"))]

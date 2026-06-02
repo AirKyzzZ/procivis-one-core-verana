@@ -29,7 +29,7 @@ use crate::model::localized_text::{LocalizedText, LocalizedTextEntityType, Local
 use crate::model::organisation::Organisation;
 use crate::model::relation::Related;
 use crate::proto::credential_schema::importer::CredentialSchemaImporter;
-use crate::proto::identifier_creator::{IdentifierRole, RemoteIdentifierRelation};
+use crate::proto::identifier_creator::{IdentifierName, IdentifierRole, RemoteIdentifierRelation};
 use crate::proto::session_provider::SessionExt;
 use crate::proto::wrp_validator::model::TrustMode;
 use crate::provider::credential_formatter::CredentialFormatter;
@@ -606,7 +606,7 @@ impl OpenID4VCIFinal1_0 {
             .get_or_create_remote_identifier(
                 &Some(organisation.to_owned()),
                 &identifier_details,
-                IdentifierRole::Issuer,
+                IdentifierName::PrefixForId(IdentifierRole::Issuer.to_string()),
             )
             .await
             .error_while("creating issuer identifier")?;

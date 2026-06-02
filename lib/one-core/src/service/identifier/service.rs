@@ -26,11 +26,15 @@ use crate::config::core_config::BlobStorageType;
 use crate::error::ErrorCode::BR_0224;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
 use crate::model::blob::Blob;
-use crate::model::identifier::{Identifier, IdentifierRelations, SortableIdentifierColumn};
+use crate::model::identifier::{
+    Identifier, IdentifierFilterValue, IdentifierListQuery, IdentifierRelations, IdentifierType,
+    SortableIdentifierColumn,
+};
 use crate::model::identifier_trust_information::{
     IdentifierTrustInformation, IdentifierTrustInformationRelations,
 };
-use crate::model::list_filter::{ListFilterCondition, ListFilterValue};
+use crate::model::list_filter::{ListFilterCondition, ListFilterValue, StringMatch};
+use crate::model::organisation::Organisation;
 use crate::model::trust_collection::{
     TrustCollection, TrustCollectionFilterValue, TrustCollectionListQuery,
 };
@@ -38,13 +42,17 @@ use crate::model::trust_list_role::TrustListRoleEnum;
 use crate::model::trust_list_subscription::{
     TrustListSubscription, TrustListSubscriptionFilterValue, TrustListSubscriptionListQuery,
 };
-use crate::proto::identifier_creator::CreateLocalIdentifierRequest;
+use crate::proto::identifier_creator::{
+    CreateLocalIdentifierRequest, IdentifierName, RemoteIdentifierOutcome,
+};
 use crate::proto::transaction_manager::IsolationLevel;
+use crate::provider::credential_formatter::model::IdentifierDetails;
 use crate::provider::trust_list_subscriber::{
     Feature, TrustEntityResponse, TrustListSubscriber, TrustListSubscriberCapabilities,
 };
 use crate::repository::error::DataLayerError;
 use crate::service::common_dto::ListQueryDTO;
+use crate::service::identifier::dto::CreateRemoteIdentifierRequestDTO;
 use crate::validator::{throw_if_org_id_not_matching_session, throw_if_org_not_matching_session};
 
 impl IdentifierService {
@@ -109,6 +117,157 @@ impl IdentifierService {
             .await
             .error_while("getting identifiers")?
             .into())
+    }
+
+    /// Creates a remote identifier from a DID, JWK, or certificate / CA chain(s).
+    pub async fn create_remote_identifier(
+        &self,
+        request: CreateRemoteIdentifierRequestDTO,
+    ) -> Result<IdentifierId, IdentifierServiceError> {
+        throw_if_org_id_not_matching_session(&request.organisation_id, &*self.session_provider)
+            .error_while("checking session")?;
+
+        let organisation = self
+            .organisation_repository
+            .get_organisation(&request.organisation_id)
+            .await
+            .error_while("getting organisation")?
+            .ok_or(IdentifierServiceError::MissingOrganisation(
+                request.organisation_id,
+            ))?;
+
+        if organisation.deactivated_at.is_some() {
+            return Err(IdentifierServiceError::OrganisationDeactivated(
+                request.organisation_id,
+            ));
+        }
+
+        if let Some(existing) = self
+            .find_identifier_by_name(&request.name, organisation.id)
+            .await?
+        {
+            return Err(IdentifierServiceError::RemoteIdentifierAlreadyExists(
+                existing.id,
+            ));
+        }
+
+        let outcome = match (
+            request.did,
+            request.key,
+            request.certificates,
+            request.certificate_authorities,
+        ) {
+            (Some(did), None, None, None) => {
+                validate_identifier_type(
+                    core_config::IdentifierType::Did,
+                    &self.config.identifier,
+                )?;
+                self.create_remote_from_details(
+                    organisation,
+                    IdentifierDetails::Did(did),
+                    request.name,
+                )
+                .await?
+            }
+            (None, Some(key), None, None) => {
+                validate_identifier_type(
+                    core_config::IdentifierType::Key,
+                    &self.config.identifier,
+                )?;
+                self.create_remote_from_details(
+                    organisation,
+                    IdentifierDetails::Key(key),
+                    request.name,
+                )
+                .await?
+            }
+            (None, None, Some(chains), None) if !chains.is_empty() => {
+                validate_identifier_type(
+                    core_config::IdentifierType::Certificate,
+                    &self.config.identifier,
+                )?;
+                self.identifier_creator
+                    .create_remote_certificate_identifier(
+                        organisation,
+                        request.name,
+                        chains,
+                        IdentifierType::Certificate,
+                    )
+                    .await
+                    .error_while("creating remote certificate identifier")?
+            }
+            (None, None, None, Some(chains)) if !chains.is_empty() => {
+                validate_identifier_type(
+                    core_config::IdentifierType::CertificateAuthority,
+                    &self.config.identifier,
+                )?;
+                self.identifier_creator
+                    .create_remote_certificate_identifier(
+                        organisation,
+                        request.name,
+                        chains,
+                        IdentifierType::CertificateAuthority,
+                    )
+                    .await
+                    .error_while("creating remote CA identifier")?
+            }
+            _ => return Err(IdentifierServiceError::InvalidCreationInput),
+        };
+
+        match outcome {
+            RemoteIdentifierOutcome::Created(id) => {
+                tracing::info!("Created remote identifier `{id}`");
+                Ok(id)
+            }
+            RemoteIdentifierOutcome::AlreadyExists(id) => {
+                Err(IdentifierServiceError::RemoteIdentifierAlreadyExists(id))
+            }
+        }
+    }
+
+    async fn find_identifier_by_name(
+        &self,
+        name: &str,
+        organisation_id: shared_types::OrganisationId,
+    ) -> Result<Option<Identifier>, IdentifierServiceError> {
+        let list = self
+            .identifier_repository
+            .get_identifier_list(IdentifierListQuery {
+                filtering: Some(
+                    IdentifierFilterValue::Name(StringMatch::equals(name)).condition()
+                        & IdentifierFilterValue::OrganisationId(organisation_id).condition(),
+                ),
+                ..Default::default()
+            })
+            .await
+            .error_while("looking up identifier by name")?;
+        Ok(list.values.into_iter().next())
+    }
+
+    async fn create_remote_from_details(
+        &self,
+        organisation: Organisation,
+        details: IdentifierDetails,
+        name: String,
+    ) -> Result<RemoteIdentifierOutcome, IdentifierServiceError> {
+        let (identifier, _) = self
+            .identifier_creator
+            .get_or_create_remote_identifier(
+                &Some(organisation),
+                &details,
+                IdentifierName::Name(name.clone()),
+            )
+            .await
+            .error_while("creating remote identifier")?;
+
+        // The upfront name pre-check guarantees no existing identifier in this
+        // org carries the requested name, so a name mismatch on the returned
+        // identifier means we got back an existing one for this material.
+        Ok(if identifier.name == name {
+            RemoteIdentifierOutcome::Created(identifier.id)
+        } else {
+            RemoteIdentifierOutcome::AlreadyExists(identifier.id)
+        })
     }
 
     /// Creates a new identifier with data provided in arguments

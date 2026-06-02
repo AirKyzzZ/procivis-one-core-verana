@@ -1,9 +1,10 @@
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use shared_types::{
-    CredentialSchemaId, DidMethodId, IdentifierId, KeyId, OrganisationId, ProofSchemaId, SignerId,
-    TrustCollectionId, TrustListSubscriberId, TrustListSubscriptionId,
+    CredentialSchemaId, DidMethodId, DidValue, IdentifierId, KeyId, OrganisationId, ProofSchemaId,
+    SignerId, TrustCollectionId, TrustListSubscriberId, TrustListSubscriptionId,
 };
+use standardized_types::jwk::PublicJwk;
 use time::OffsetDateTime;
 
 use crate::model::certificate::CertificateRole;
@@ -105,6 +106,16 @@ pub struct CreateIdentifierRequestDTO {
     pub certificate_authorities: Option<Vec<CreateCertificateAuthorityRequestDTO>>,
     pub organisation_id: OrganisationId,
     pub trust_information: Vec<CreateIdentifierTrustInformationRequestDTO>,
+}
+
+#[derive(Clone, Debug)]
+pub struct CreateRemoteIdentifierRequestDTO {
+    pub name: String,
+    pub did: Option<DidValue>,
+    pub key: Option<PublicJwk>,
+    pub certificates: Option<Vec<String>>,
+    pub certificate_authorities: Option<Vec<String>>,
+    pub organisation_id: OrganisationId,
 }
 
 #[derive(Clone, Debug)]

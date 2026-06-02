@@ -5,7 +5,7 @@ use crate::mapper::RemoteIdentifierRelation;
 use crate::model::credential::{Credential, CredentialType};
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::organisation::Organisation;
-use crate::proto::identifier_creator::{IdentifierCreator, IdentifierRole};
+use crate::proto::identifier_creator::{IdentifierCreator, IdentifierName, IdentifierRole};
 use crate::provider::verification_protocol::openid4vp::model::ProvedCredential;
 use crate::service::error::ServiceError;
 
@@ -18,7 +18,7 @@ pub(crate) async fn credential_from_proved(
         .get_or_create_remote_identifier(
             &Some(organisation.to_owned()),
             &proved_credential.issuer_details,
-            IdentifierRole::Issuer,
+            IdentifierName::PrefixForId(IdentifierRole::Issuer.to_string()),
         )
         .await
         .error_while("creating remote issuer identifier")?;
@@ -34,7 +34,7 @@ pub(crate) async fn credential_from_proved(
         .get_or_create_remote_identifier(
             &Some(organisation.to_owned()),
             &proved_credential.holder_details,
-            IdentifierRole::Holder,
+            IdentifierName::PrefixForId(IdentifierRole::Holder.to_string()),
         )
         .await
         .error_while("creating remote holder identifier")?;

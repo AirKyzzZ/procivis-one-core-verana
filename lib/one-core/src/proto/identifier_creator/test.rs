@@ -10,7 +10,8 @@ use uuid::Uuid;
 
 use super::creator::IdentifierCreatorProto;
 use super::{
-    CreateLocalIdentifierRequest, IdentifierCreator, IdentifierRole, RemoteIdentifierRelation,
+    CreateLocalIdentifierRequest, IdentifierCreator, IdentifierName, IdentifierRole,
+    RemoteIdentifierRelation,
 };
 use crate::config::core_config::{CoreConfig, KeyAlgorithmType};
 use crate::error::{ErrorCode, ErrorCodeMixin};
@@ -137,7 +138,7 @@ async fn test_get_or_create_remote_identifier_certificate_new() {
                 expiry: now,
                 subject_common_name: Some("subject_common_name".to_string()),
             }),
-            IdentifierRole::Issuer,
+            IdentifierName::PrefixForId(IdentifierRole::Issuer.to_string()),
         )
         .await
         .unwrap();
@@ -207,7 +208,7 @@ async fn test_get_or_create_remote_identifier_certificate_existing() {
                 expiry: now,
                 subject_common_name: Some("subject_common_name".to_string()),
             }),
-            IdentifierRole::Issuer,
+            IdentifierName::PrefixForId(IdentifierRole::Issuer.to_string()),
         )
         .await
         .unwrap();
@@ -286,7 +287,7 @@ async fn test_get_or_create_remote_identifier_key_existing() {
                 x: "test".to_string(),
                 y: None,
             })),
-            IdentifierRole::Issuer,
+            IdentifierName::PrefixForId(IdentifierRole::Issuer.to_string()),
         )
         .await
         .unwrap();
@@ -379,7 +380,7 @@ async fn test_get_or_create_remote_identifier_key_created_in_parallel() {
                 x: "test".to_string(),
                 y: None,
             })),
-            IdentifierRole::Issuer,
+            IdentifierName::PrefixForId(IdentifierRole::Issuer.to_string()),
         )
         .await
         .unwrap();

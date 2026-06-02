@@ -16,6 +16,8 @@ pub enum IdentifierServiceError {
         "DID, Key, Certificate or Certificate Authority must be specified when creating identifier"
     )]
     InvalidCreationInput,
+    #[error("Remote identifier `{0}` already exists")]
+    RemoteIdentifierAlreadyExists(IdentifierId),
 
     #[error("Organisation `{0}` not found")]
     MissingOrganisation(OrganisationId),
@@ -47,6 +49,7 @@ impl ErrorCodeMixin for IdentifierServiceError {
             Self::NotFound(_) => ErrorCode::BR_0207,
             Self::IdentifierTypeDisabled(_) => ErrorCode::BR_0227,
             Self::InvalidCreationInput => ErrorCode::BR_0206,
+            Self::RemoteIdentifierAlreadyExists(_) => ErrorCode::BR_0240,
             Self::MissingOrganisation(_) => ErrorCode::BR_0088,
             Self::OrganisationDeactivated(_) => ErrorCode::BR_0241,
             Self::MissingKey(_) => ErrorCode::BR_0037,

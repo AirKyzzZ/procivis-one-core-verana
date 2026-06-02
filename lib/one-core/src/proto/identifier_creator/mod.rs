@@ -30,12 +30,34 @@ pub(crate) enum IdentifierRole {
     Verifier,
 }
 
+#[derive(Debug, Clone)]
+#[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
+pub(crate) enum IdentifierName {
+    Name(String),
+    PrefixForId(String),
+}
+
+impl IdentifierName {
+    pub(crate) fn for_id(&self, id: impl std::fmt::Display) -> String {
+        match self {
+            Self::Name(s) => s.clone(),
+            Self::PrefixForId(prefix) => format!("{prefix} {id}"),
+        }
+    }
+}
+
 #[derive(Debug)]
 #[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub(crate) enum RemoteIdentifierRelation {
     Did(#[allow(unused)] Did),
     Certificate(Certificate),
     Key(Key),
+}
+
+#[derive(Debug, PartialEq)]
+pub(crate) enum RemoteIdentifierOutcome {
+    Created(IdentifierId),
+    AlreadyExists(IdentifierId),
 }
 
 #[derive(Debug)]
@@ -53,8 +75,16 @@ pub(crate) trait IdentifierCreator: Send + Sync {
         &self,
         organisation: &Option<Organisation>,
         details: &IdentifierDetails,
-        role: IdentifierRole,
+        name: IdentifierName,
     ) -> Result<(Identifier, RemoteIdentifierRelation), Error>;
+
+    async fn create_remote_certificate_identifier(
+        &self,
+        organisation: Organisation,
+        name: String,
+        chains: Vec<String>,
+        identifier_type: IdentifierType,
+    ) -> Result<RemoteIdentifierOutcome, Error>;
 
     async fn create_local_identifier(
         &self,

@@ -261,6 +261,10 @@ impl IdentifiersApi {
             .await
     }
 
+    pub async fn create_remote(&self, body: serde_json::Value) -> Response {
+        self.client.post("/api/identifier/v1/remote", body).await
+    }
+
     pub async fn get(&self, id: &IdentifierId) -> Response {
         self.client.get(&format!("/api/identifier/v1/{id}")).await
     }

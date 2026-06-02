@@ -9,7 +9,7 @@ use one_core::service::error::ServiceError;
 use one_core::service::identifier::dto::{
     CertificateRolesMatchMode, CreateCertificateAuthorityRequestDTO, CreateIdentifierDidRequestDTO,
     CreateIdentifierKeyRequestDTO, CreateIdentifierRequestDTO,
-    CreateIdentifierTrustInformationRequestDTO,
+    CreateIdentifierTrustInformationRequestDTO, CreateRemoteIdentifierRequestDTO,
     CreateSelfSignedCertificateAuthorityContentRequestDTO,
     CreateSelfSignedCertificateAuthorityIssuerAlternativeNameRequest,
     CreateSelfSignedCertificateAuthorityIssuerAlternativeNameType,
@@ -26,10 +26,11 @@ use one_dto_mapper::{
 use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
 use shared_types::{
-    CertificateId, CredentialSchemaId, DidMethodId, IdentifierId, KeyId, OrganisationId,
+    CertificateId, CredentialSchemaId, DidMethodId, DidValue, IdentifierId, KeyId, OrganisationId,
     ProofSchemaId, TrustCollectionId, TrustListSubscriberId, TrustListSubscriptionId,
 };
 use standardized_types::etsi_119_602::TrustedEntityInformation;
+use standardized_types::jwk::PublicJwk;
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use validator::Validate;
@@ -87,6 +88,29 @@ pub(crate) struct CreateIdentifierRequestRestDTO {
     #[serde(default)]
     #[try_into(with_fn = convert_inner, infallible)]
     pub trust_information: Vec<CreateIdentifierTrustInformationRequestRestDTO>,
+}
+
+#[options_not_nullable]
+#[derive(Debug, Deserialize, ToSchema, TryInto)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[try_into(T = CreateRemoteIdentifierRequestDTO, Error = ServiceError)]
+pub(crate) struct CreateRemoteIdentifierRequestRestDTO {
+    #[try_into(infallible)]
+    pub name: String,
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub did: Option<DidValue>,
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub key: Option<PublicJwk>,
+    /// PEM-encoded certificate chains, each from the leaf up to the root.
+    #[try_into(infallible)]
+    pub certificates: Option<Vec<String>>,
+    /// PEM-encoded CA certificate chains.
+    #[try_into(infallible)]
+    pub certificate_authorities: Option<Vec<String>>,
+    /// Required when not using STS authentication mode. Specifies
+    /// organizational context for this operation.
+    #[try_into(with_fn = fallback_organisation_id_from_session)]
+    pub organisation_id: Option<OrganisationId>,
 }
 
 #[options_not_nullable]

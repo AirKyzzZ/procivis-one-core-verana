@@ -14,7 +14,7 @@ use crate::model::did::KeyRole;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
 use crate::proto::certificate_validator::CertificateValidator;
-use crate::proto::identifier_creator::{IdentifierCreator, IdentifierRole};
+use crate::proto::identifier_creator::{IdentifierCreator, IdentifierName, IdentifierRole};
 use crate::proto::key_verification::KeyVerification;
 use crate::provider::credential_formatter::model::{
     CredentialClaim, DetailCredential, IdentifierDetails,
@@ -406,7 +406,7 @@ pub(crate) async fn accept_proof(
             .get_or_create_remote_identifier(
                 &proof_schema.organisation,
                 &first_claim.credential.issuer,
-                IdentifierRole::Issuer,
+                IdentifierName::PrefixForId(IdentifierRole::Issuer.to_string()),
             )
             .await
             .error_while("creating remote issuer identifier")?;

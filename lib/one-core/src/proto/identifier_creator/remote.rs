@@ -3,7 +3,7 @@ use standardized_types::jwk::PublicJwk;
 use uuid::Uuid;
 
 use super::creator::IdentifierCreatorProto;
-use super::{Error, IdentifierRole};
+use super::{Error, IdentifierName};
 use crate::error::ContextWithErrorCode;
 use crate::model::certificate::{
     Certificate, CertificateFilterValue, CertificateListQuery, CertificateState,
@@ -25,7 +25,7 @@ impl IdentifierCreatorProto {
         &self,
         organisation: &Option<Organisation>,
         did_value: &DidValue,
-        role: IdentifierRole,
+        name: IdentifierName,
     ) -> Result<(Did, Identifier), Error> {
         let now = crate::clock::now_utc();
 
@@ -46,7 +46,7 @@ impl IdentifierCreatorProto {
                     id: DidId::from(id),
                     created_date: now,
                     last_modified: now,
-                    name: format!("{role} {id}"),
+                    name: name.for_id(id),
                     organisation: organisation.to_owned().map(Into::into),
                     did: did_value.to_owned(),
                     did_method,
@@ -110,7 +110,7 @@ impl IdentifierCreatorProto {
         organisation: &Option<Organisation>,
         chain: String,
         fingerprint: String,
-        role: IdentifierRole,
+        name: IdentifierName,
     ) -> Result<(Certificate, Identifier), Error> {
         let organisation_id = organisation
             .as_ref()
@@ -159,13 +159,13 @@ impl IdentifierCreatorProto {
 
         let now = crate::clock::now_utc();
         let identifier_id = Uuid::new_v4().into();
-        let name = format!("{role} {identifier_id}");
+        let display_name = name.for_id(identifier_id);
 
         let identifier = Identifier {
             id: identifier_id,
             created_date: now,
             last_modified: now,
-            name: name.to_owned(),
+            name: display_name.clone(),
             r#type: IdentifierType::Certificate,
             is_remote: true,
             state: IdentifierState::Active,
@@ -189,7 +189,7 @@ impl IdentifierCreatorProto {
             last_modified: now,
             deleted_at: None,
             expiry_date: attributes.not_after,
-            name: subject_common_name.unwrap_or(name),
+            name: subject_common_name.unwrap_or(display_name),
             chain,
             fingerprint,
             state: CertificateState::Active,
@@ -208,7 +208,7 @@ impl IdentifierCreatorProto {
         &self,
         organisation: Option<&Organisation>,
         public_key: &PublicJwk,
-        role: IdentifierRole,
+        name: IdentifierName,
     ) -> Result<(Key, Identifier), Error> {
         let parsed_key = self
             .key_algorithm_provider
@@ -261,7 +261,7 @@ impl IdentifierCreatorProto {
                 id: key_id,
                 created_date: now,
                 last_modified: now,
-                name: format!("{role} {key_id}"),
+                name: name.for_id(key_id),
                 organisation: organisation
                     .ok_or(Error::MappingError("missing organisation".to_string()))?
                     .to_owned()
@@ -284,7 +284,7 @@ impl IdentifierCreatorProto {
             id: identifier_id,
             created_date: now,
             last_modified: now,
-            name: format!("{role} {identifier_id}"),
+            name: name.for_id(identifier_id),
             r#type: IdentifierType::Key,
             is_remote: true,
             state: IdentifierState::Active,
@@ -304,21 +304,23 @@ impl IdentifierCreatorProto {
     }
 
     #[tracing::instrument(level = "debug", skip_all, err(level = "warn"))]
-    pub(super) async fn get_identifier(
+    pub(super) async fn find_identifier(
         &self,
         organisation: &Option<Organisation>,
         details: &IdentifierDetails,
-    ) -> Result<(Identifier, RemoteIdentifierRelation), Error> {
+    ) -> Result<Option<(Identifier, RemoteIdentifierRelation)>, Error> {
         match details {
             IdentifierDetails::Did(did_value) => {
-                let did = self
+                let Some(did) = self
                     .did_repository
                     .get_did_by_value(did_value, organisation.as_ref().map(|org| Some(org.id)))
                     .await
                     .error_while("getting did")?
-                    .ok_or(Error::MappingError("Did not found".to_string()))?;
+                else {
+                    return Ok(None);
+                };
 
-                let identifier = self
+                let Some(identifier) = self
                     .identifier_repository
                     .get_from_did_id(
                         did.id,
@@ -329,9 +331,11 @@ impl IdentifierCreatorProto {
                     )
                     .await
                     .error_while("getting identifier")?
-                    .ok_or(Error::MappingError("Identifier not found".to_string()))?;
+                else {
+                    return Ok(None);
+                };
 
-                Ok((identifier, RemoteIdentifierRelation::Did(did)))
+                Ok(Some((identifier, RemoteIdentifierRelation::Did(did))))
             }
             IdentifierDetails::Certificate(certificate_details) => {
                 let organisation_id = organisation
@@ -354,22 +358,22 @@ impl IdentifierCreatorProto {
                     .error_while("getting certificates")?;
 
                 let Some(certificate) = list.values.into_iter().next() else {
-                    return Err(Error::MappingError("Certificate not found".to_string()));
+                    return Ok(None);
                 };
 
-                let identifier = self
+                let Some(identifier) = self
                     .identifier_repository
                     .get(certificate.identifier_id, &Default::default())
                     .await
                     .error_while("getting identifier")?
-                    .ok_or(Error::MappingError(
-                        "Certificate identifier not found".to_string(),
-                    ))?;
+                else {
+                    return Ok(None);
+                };
 
-                Ok((
+                Ok(Some((
                     identifier,
                     RemoteIdentifierRelation::Certificate(certificate),
-                ))
+                )))
             }
             IdentifierDetails::Key(public_jwk) => {
                 let parsed_key = self
@@ -395,10 +399,10 @@ impl IdentifierCreatorProto {
                     .error_while("getting keys")?;
 
                 let Some(key) = list.values.into_iter().next() else {
-                    return Err(Error::MappingError("Key not found".to_string()));
+                    return Ok(None);
                 };
 
-                let identifier = self
+                let Some(identifier) = self
                     .identifier_repository
                     .get_identifier_list(IdentifierListQuery {
                         filtering: Some(
@@ -413,9 +417,11 @@ impl IdentifierCreatorProto {
                     .values
                     .into_iter()
                     .next()
-                    .ok_or(Error::MappingError("Identifier not found".to_string()))?;
+                else {
+                    return Ok(None);
+                };
 
-                Ok((identifier, RemoteIdentifierRelation::Key(key)))
+                Ok(Some((identifier, RemoteIdentifierRelation::Key(key))))
             }
         }
     }

@@ -4,18 +4,23 @@ use std::sync::Arc;
 use dcql::{CredentialFormat, CredentialMeta};
 use shared_types::TrustCollectionId;
 use similar_asserts::assert_eq;
+use standardized_types::jwk::{JwkUse, PublicJwk, PublicJwkEc};
 use url::Url;
 use uuid::Uuid;
 
 use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::certificate::Certificate;
-use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierType};
+use crate::model::identifier::{
+    GetIdentifierList, Identifier, IdentifierRelations, IdentifierType,
+};
 use crate::model::trust_collection::{GetTrustCollectionList, TrustCollection};
 use crate::model::trust_list_role::TrustListRoleEnum;
 use crate::model::trust_list_subscription::{
     GetTrustListSubscriptionList, TrustListSubscription, TrustListSubscriptionState,
 };
-use crate::proto::identifier_creator::MockIdentifierCreator;
+use crate::proto::identifier_creator::{
+    IdentifierName, MockIdentifierCreator, RemoteIdentifierOutcome, RemoteIdentifierRelation,
+};
 use crate::proto::jwt::model::JWTPayload;
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::proto::transaction_manager::NoTransactionManager;
@@ -24,6 +29,7 @@ use crate::proto::wrp_validator::error::WRPValidatorError;
 use crate::proto::wrp_validator::model::{AccessCertificateResult, RegistrationCertificateResult};
 use crate::provider::blob_storage::MockBlobStorage;
 use crate::provider::blob_storage::provider::MockBlobStorageProvider;
+use crate::provider::credential_formatter::model::IdentifierDetails;
 use crate::provider::signer::registration_certificate::model::{
     Credential, Payload, Status, SupervisoryAuthority, WRPRegistrationCertificatePayload,
 };
@@ -44,11 +50,12 @@ use crate::service::common_dto::ListQueryDTO;
 use crate::service::identifier::IdentifierService;
 use crate::service::identifier::dto::{
     CertificateRolesMatchMode, CreateIdentifierKeyRequestDTO, CreateIdentifierRequestDTO,
-    CreateIdentifierTrustInformationRequestDTO, IdentifierFilterParamsDTO,
-    IdentifierTrustInformationType, ResolveTrustEntriesRequestDTO,
+    CreateIdentifierTrustInformationRequestDTO, CreateRemoteIdentifierRequestDTO,
+    IdentifierFilterParamsDTO, IdentifierTrustInformationType, ResolveTrustEntriesRequestDTO,
 };
+use crate::service::identifier::error::IdentifierServiceError;
 use crate::service::test_utilities::{
-    dummy_certificate, dummy_identifier, dummy_key, dummy_organisation, generic_config,
+    dummy_certificate, dummy_did, dummy_identifier, dummy_key, dummy_organisation, generic_config,
     get_dummy_date,
 };
 
@@ -903,4 +910,653 @@ async fn test_delete_identifier_cascades_to_certificates() {
     });
 
     service.delete_identifier(&identifier_id).await.unwrap();
+}
+
+fn dummy_public_jwk() -> PublicJwk {
+    PublicJwk::Okp(PublicJwkEc {
+        alg: None,
+        r#use: None,
+        kid: None,
+        crv: "Ed25519".to_string(),
+        x: "test".to_string(),
+        y: None,
+    })
+}
+
+fn remote_dto(
+    organisation_id: shared_types::OrganisationId,
+    name: &str,
+) -> CreateRemoteIdentifierRequestDTO {
+    CreateRemoteIdentifierRequestDTO {
+        name: name.to_string(),
+        did: None,
+        key: None,
+        certificates: None,
+        certificate_authorities: None,
+        organisation_id,
+    }
+}
+
+#[tokio::test]
+async fn test_create_remote_identifier_session_org_mismatch() {
+    let service = setup_service_simple(None);
+
+    let result = service
+        .create_remote_identifier(CreateRemoteIdentifierRequestDTO {
+            did: Some("did:example:123".parse().unwrap()),
+            ..remote_dto(Uuid::new_v4().into(), "remote")
+        })
+        .await;
+
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
+}
+
+#[tokio::test]
+async fn test_create_remote_identifier_missing_organisation() {
+    let session_provider = StaticSessionProvider::new_random();
+    let organisation_id = session_provider.0.organisation_id.unwrap();
+
+    let mut organisation_repository = MockOrganisationRepository::default();
+    organisation_repository
+        .expect_get_organisation()
+        .returning(|_| Ok(None));
+
+    let service = setup_service(Mocks {
+        organisation_repository,
+        session_provider,
+        ..Default::default()
+    });
+
+    let result = service
+        .create_remote_identifier(CreateRemoteIdentifierRequestDTO {
+            did: Some("did:example:123".parse().unwrap()),
+            ..remote_dto(organisation_id, "remote")
+        })
+        .await;
+
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0088);
+}
+
+#[tokio::test]
+async fn test_create_remote_identifier_deactivated_organisation() {
+    let session_provider = StaticSessionProvider::new_random();
+    let organisation_id = session_provider.0.organisation_id.unwrap();
+
+    let mut deactivated_organisation = dummy_organisation(Some(organisation_id));
+    deactivated_organisation.deactivated_at = Some(get_dummy_date());
+
+    let mut organisation_repository = MockOrganisationRepository::default();
+    organisation_repository
+        .expect_get_organisation()
+        .returning(move |_| Ok(Some(deactivated_organisation.clone())));
+
+    let service = setup_service(Mocks {
+        organisation_repository,
+        session_provider,
+        ..Default::default()
+    });
+
+    let result = service
+        .create_remote_identifier(CreateRemoteIdentifierRequestDTO {
+            did: Some("did:example:123".parse().unwrap()),
+            ..remote_dto(organisation_id, "remote")
+        })
+        .await;
+
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0241);
+}
+
+#[tokio::test]
+async fn test_create_remote_identifier_empty_request_returns_error() {
+    let session_provider = StaticSessionProvider::new_random();
+    let organisation_id = session_provider.0.organisation_id.unwrap();
+
+    let mut organisation_repository = MockOrganisationRepository::default();
+    organisation_repository
+        .expect_get_organisation()
+        .returning(move |_| Ok(Some(dummy_organisation(Some(organisation_id)))));
+
+    let service = setup_service(Mocks {
+        organisation_repository,
+        identifier_repository: identifier_repo_with_no_name_match(),
+        session_provider,
+        ..Default::default()
+    });
+
+    let result = service
+        .create_remote_identifier(remote_dto(organisation_id, "remote"))
+        .await;
+
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0206);
+}
+
+#[tokio::test]
+async fn test_create_remote_identifier_multiple_inputs_returns_error() {
+    let session_provider = StaticSessionProvider::new_random();
+    let organisation_id = session_provider.0.organisation_id.unwrap();
+
+    let mut organisation_repository = MockOrganisationRepository::default();
+    organisation_repository
+        .expect_get_organisation()
+        .returning(move |_| Ok(Some(dummy_organisation(Some(organisation_id)))));
+
+    let service = setup_service(Mocks {
+        organisation_repository,
+        identifier_repository: identifier_repo_with_no_name_match(),
+        session_provider,
+        ..Default::default()
+    });
+
+    let result = service
+        .create_remote_identifier(CreateRemoteIdentifierRequestDTO {
+            did: Some("did:example:123".parse().unwrap()),
+            key: Some(dummy_public_jwk()),
+            ..remote_dto(organisation_id, "remote")
+        })
+        .await;
+
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0206);
+}
+
+fn full_field_jwk() -> PublicJwk {
+    PublicJwk::Okp(PublicJwkEc {
+        alg: Some("EdDSA".to_string()),
+        r#use: Some(JwkUse::Signature),
+        kid: Some("test-kid".to_string()),
+        crv: "Ed25519".to_string(),
+        x: "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo".to_string(),
+        y: None,
+    })
+}
+
+fn org_repo_returning_org(
+    organisation_id: shared_types::OrganisationId,
+) -> MockOrganisationRepository {
+    let mut repo = MockOrganisationRepository::default();
+    repo.expect_get_organisation()
+        .returning(move |_| Ok(Some(dummy_organisation(Some(organisation_id)))));
+    repo
+}
+
+fn identifier_repo_with_no_name_match() -> MockIdentifierRepository {
+    let mut repo = MockIdentifierRepository::default();
+    repo.expect_get_identifier_list().returning(|_| {
+        Ok(GetIdentifierList {
+            values: vec![],
+            total_pages: 0,
+            total_items: 0,
+        })
+    });
+    repo
+}
+
+#[tokio::test]
+async fn test_create_remote_did_identifier_success() {
+    let session_provider = StaticSessionProvider::new_random();
+    let organisation_id = session_provider.0.organisation_id.unwrap();
+    let did_value: shared_types::DidValue = "did:example:abc".parse().unwrap();
+    let identifier_id: shared_types::IdentifierId = Uuid::new_v4().into();
+
+    let mut returned = dummy_identifier();
+    returned.id = identifier_id;
+    returned.name = "my-did".to_string();
+    let returned_clone = returned.clone();
+
+    let expected_did = did_value.clone();
+    let mut identifier_creator = MockIdentifierCreator::default();
+    identifier_creator
+        .expect_get_or_create_remote_identifier()
+        .withf(move |org, details, name| {
+            org.as_ref().map(|o| o.id) == Some(organisation_id)
+                && matches!(details, IdentifierDetails::Did(d) if *d == expected_did)
+                && matches!(name, IdentifierName::Name(n) if n == "my-did")
+        })
+        .once()
+        .returning(move |_, _, _| {
+            Ok((
+                returned_clone.clone(),
+                RemoteIdentifierRelation::Did(dummy_did()),
+            ))
+        });
+
+    let service = setup_service(Mocks {
+        organisation_repository: org_repo_returning_org(organisation_id),
+        identifier_repository: identifier_repo_with_no_name_match(),
+        identifier_creator,
+        session_provider,
+        ..Default::default()
+    });
+
+    let result = service
+        .create_remote_identifier(CreateRemoteIdentifierRequestDTO {
+            did: Some(did_value),
+            ..remote_dto(organisation_id, "my-did")
+        })
+        .await
+        .unwrap();
+
+    assert_eq!(result, identifier_id);
+}
+
+#[tokio::test]
+async fn test_create_remote_did_identifier_duplicate_returns_colliding_id() {
+    let session_provider = StaticSessionProvider::new_random();
+    let organisation_id = session_provider.0.organisation_id.unwrap();
+    let existing_id: shared_types::IdentifierId = Uuid::new_v4().into();
+
+    let mut existing = dummy_identifier();
+    existing.id = existing_id;
+    existing.name = "name-set-by-other-request".to_string();
+    let existing_clone = existing.clone();
+
+    let mut identifier_creator = MockIdentifierCreator::default();
+    identifier_creator
+        .expect_get_or_create_remote_identifier()
+        .once()
+        .returning(move |_, _, _| {
+            Ok((
+                existing_clone.clone(),
+                RemoteIdentifierRelation::Did(dummy_did()),
+            ))
+        });
+
+    let service = setup_service(Mocks {
+        organisation_repository: org_repo_returning_org(organisation_id),
+        identifier_repository: identifier_repo_with_no_name_match(),
+        identifier_creator,
+        session_provider,
+        ..Default::default()
+    });
+
+    let err = service
+        .create_remote_identifier(CreateRemoteIdentifierRequestDTO {
+            did: Some("did:example:abc".parse().unwrap()),
+            ..remote_dto(organisation_id, "my-did")
+        })
+        .await
+        .unwrap_err();
+
+    assert_eq!(err.error_code(), ErrorCode::BR_0240);
+    assert!(matches!(
+        err,
+        IdentifierServiceError::RemoteIdentifierAlreadyExists(id) if id == existing_id
+    ));
+}
+
+#[tokio::test]
+async fn test_create_remote_key_identifier_success_forwards_jwk_and_name() {
+    let session_provider = StaticSessionProvider::new_random();
+    let organisation_id = session_provider.0.organisation_id.unwrap();
+    let jwk = full_field_jwk();
+    let identifier_id: shared_types::IdentifierId = Uuid::new_v4().into();
+
+    let mut returned = dummy_identifier();
+    returned.id = identifier_id;
+    returned.name = "my-key".to_string();
+    let returned_clone = returned.clone();
+
+    let expected_jwk = jwk.clone();
+    let mut identifier_creator = MockIdentifierCreator::default();
+    identifier_creator
+        .expect_get_or_create_remote_identifier()
+        .withf(move |org, details, name| {
+            org.as_ref().map(|o| o.id) == Some(organisation_id)
+                && matches!(details, IdentifierDetails::Key(k) if *k == expected_jwk)
+                && matches!(name, IdentifierName::Name(n) if n == "my-key")
+        })
+        .once()
+        .returning(move |_, _, _| {
+            Ok((
+                returned_clone.clone(),
+                RemoteIdentifierRelation::Key(dummy_key()),
+            ))
+        });
+
+    let service = setup_service(Mocks {
+        organisation_repository: org_repo_returning_org(organisation_id),
+        identifier_repository: identifier_repo_with_no_name_match(),
+        identifier_creator,
+        session_provider,
+        ..Default::default()
+    });
+
+    let result = service
+        .create_remote_identifier(CreateRemoteIdentifierRequestDTO {
+            key: Some(jwk),
+            ..remote_dto(organisation_id, "my-key")
+        })
+        .await
+        .unwrap();
+
+    assert_eq!(result, identifier_id);
+}
+
+#[tokio::test]
+async fn test_create_remote_key_identifier_duplicate_returns_colliding_id() {
+    let session_provider = StaticSessionProvider::new_random();
+    let organisation_id = session_provider.0.organisation_id.unwrap();
+    let existing_id: shared_types::IdentifierId = Uuid::new_v4().into();
+    let jwk = full_field_jwk();
+
+    let mut existing = dummy_identifier();
+    existing.id = existing_id;
+    existing.name = "name-set-by-other-request".to_string();
+    let existing_clone = existing.clone();
+
+    let mut identifier_creator = MockIdentifierCreator::default();
+    identifier_creator
+        .expect_get_or_create_remote_identifier()
+        .once()
+        .returning(move |_, _, _| {
+            Ok((
+                existing_clone.clone(),
+                RemoteIdentifierRelation::Key(dummy_key()),
+            ))
+        });
+
+    let service = setup_service(Mocks {
+        organisation_repository: org_repo_returning_org(organisation_id),
+        identifier_repository: identifier_repo_with_no_name_match(),
+        identifier_creator,
+        session_provider,
+        ..Default::default()
+    });
+
+    let err = service
+        .create_remote_identifier(CreateRemoteIdentifierRequestDTO {
+            key: Some(jwk),
+            ..remote_dto(organisation_id, "my-key")
+        })
+        .await
+        .unwrap_err();
+
+    assert_eq!(err.error_code(), ErrorCode::BR_0240);
+    assert!(matches!(
+        err,
+        IdentifierServiceError::RemoteIdentifierAlreadyExists(id) if id == existing_id
+    ));
+}
+
+#[tokio::test]
+async fn test_create_remote_certificate_identifier_single_chain_success() {
+    let session_provider = StaticSessionProvider::new_random();
+    let organisation_id = session_provider.0.organisation_id.unwrap();
+    let identifier_id: shared_types::IdentifierId = Uuid::new_v4().into();
+
+    let chain = "-----BEGIN CERTIFICATE-----\nLEAF\n-----END CERTIFICATE-----\n".to_string();
+    let expected_chain = chain.clone();
+
+    let mut identifier_creator = MockIdentifierCreator::default();
+    identifier_creator
+        .expect_create_remote_certificate_identifier()
+        .withf(move |org, name, chains, identifier_type| {
+            org.id == organisation_id
+                && name == "my-cert"
+                && chains.as_slice() == [expected_chain.clone()]
+                && *identifier_type == IdentifierType::Certificate
+        })
+        .once()
+        .returning(move |_, _, _, _| Ok(RemoteIdentifierOutcome::Created(identifier_id)));
+
+    let service = setup_service(Mocks {
+        organisation_repository: org_repo_returning_org(organisation_id),
+        identifier_repository: identifier_repo_with_no_name_match(),
+        identifier_creator,
+        session_provider,
+        ..Default::default()
+    });
+
+    let result = service
+        .create_remote_identifier(CreateRemoteIdentifierRequestDTO {
+            certificates: Some(vec![chain]),
+            ..remote_dto(organisation_id, "my-cert")
+        })
+        .await
+        .unwrap();
+
+    assert_eq!(result, identifier_id);
+}
+
+#[tokio::test]
+async fn test_create_remote_certificate_identifier_multiple_chains_success() {
+    let session_provider = StaticSessionProvider::new_random();
+    let organisation_id = session_provider.0.organisation_id.unwrap();
+    let identifier_id: shared_types::IdentifierId = Uuid::new_v4().into();
+
+    let chains = vec![
+        "-----BEGIN CERTIFICATE-----\nLEAF-1\n-----END CERTIFICATE-----\n".to_string(),
+        "-----BEGIN CERTIFICATE-----\nLEAF-2\n-----END CERTIFICATE-----\n".to_string(),
+        "-----BEGIN CERTIFICATE-----\nLEAF-3\n-----END CERTIFICATE-----\n".to_string(),
+    ];
+    let expected_chains = chains.clone();
+
+    let mut identifier_creator = MockIdentifierCreator::default();
+    identifier_creator
+        .expect_create_remote_certificate_identifier()
+        .withf(move |org, name, received_chains, identifier_type| {
+            org.id == organisation_id
+                && name == "multi-cert"
+                && *received_chains == expected_chains
+                && *identifier_type == IdentifierType::Certificate
+        })
+        .once()
+        .returning(move |_, _, _, _| Ok(RemoteIdentifierOutcome::Created(identifier_id)));
+
+    let service = setup_service(Mocks {
+        organisation_repository: org_repo_returning_org(organisation_id),
+        identifier_repository: identifier_repo_with_no_name_match(),
+        identifier_creator,
+        session_provider,
+        ..Default::default()
+    });
+
+    let result = service
+        .create_remote_identifier(CreateRemoteIdentifierRequestDTO {
+            certificates: Some(chains),
+            ..remote_dto(organisation_id, "multi-cert")
+        })
+        .await
+        .unwrap();
+
+    assert_eq!(result, identifier_id);
+}
+
+#[tokio::test]
+async fn test_create_remote_certificate_identifier_duplicate_returns_colliding_id() {
+    let session_provider = StaticSessionProvider::new_random();
+    let organisation_id = session_provider.0.organisation_id.unwrap();
+    let colliding_id: shared_types::IdentifierId = Uuid::new_v4().into();
+
+    let mut identifier_creator = MockIdentifierCreator::default();
+    identifier_creator
+        .expect_create_remote_certificate_identifier()
+        .withf(|_, _, _, identifier_type| *identifier_type == IdentifierType::Certificate)
+        .once()
+        .returning(move |_, _, _, _| Ok(RemoteIdentifierOutcome::AlreadyExists(colliding_id)));
+
+    let service = setup_service(Mocks {
+        organisation_repository: org_repo_returning_org(organisation_id),
+        identifier_repository: identifier_repo_with_no_name_match(),
+        identifier_creator,
+        session_provider,
+        ..Default::default()
+    });
+
+    let err = service
+        .create_remote_identifier(CreateRemoteIdentifierRequestDTO {
+            certificates: Some(vec!["chain".to_string()]),
+            ..remote_dto(organisation_id, "my-cert")
+        })
+        .await
+        .unwrap_err();
+
+    assert_eq!(err.error_code(), ErrorCode::BR_0240);
+    assert!(matches!(
+        err,
+        IdentifierServiceError::RemoteIdentifierAlreadyExists(id) if id == colliding_id
+    ));
+}
+
+#[tokio::test]
+async fn test_create_remote_ca_identifier_single_chain_success() {
+    let session_provider = StaticSessionProvider::new_random();
+    let organisation_id = session_provider.0.organisation_id.unwrap();
+    let identifier_id: shared_types::IdentifierId = Uuid::new_v4().into();
+
+    let chain = "-----BEGIN CERTIFICATE-----\nROOT-CA\n-----END CERTIFICATE-----\n".to_string();
+    let expected_chain = chain.clone();
+
+    let mut identifier_creator = MockIdentifierCreator::default();
+    identifier_creator
+        .expect_create_remote_certificate_identifier()
+        .withf(move |org, name, chains, identifier_type| {
+            org.id == organisation_id
+                && name == "my-ca"
+                && chains.as_slice() == [expected_chain.clone()]
+                && *identifier_type == IdentifierType::CertificateAuthority
+        })
+        .once()
+        .returning(move |_, _, _, _| Ok(RemoteIdentifierOutcome::Created(identifier_id)));
+
+    let service = setup_service(Mocks {
+        organisation_repository: org_repo_returning_org(organisation_id),
+        identifier_repository: identifier_repo_with_no_name_match(),
+        identifier_creator,
+        session_provider,
+        ..Default::default()
+    });
+
+    let result = service
+        .create_remote_identifier(CreateRemoteIdentifierRequestDTO {
+            certificate_authorities: Some(vec![chain]),
+            ..remote_dto(organisation_id, "my-ca")
+        })
+        .await
+        .unwrap();
+
+    assert_eq!(result, identifier_id);
+}
+
+#[tokio::test]
+async fn test_create_remote_ca_identifier_multiple_chains_success() {
+    let session_provider = StaticSessionProvider::new_random();
+    let organisation_id = session_provider.0.organisation_id.unwrap();
+    let identifier_id: shared_types::IdentifierId = Uuid::new_v4().into();
+
+    let chains = vec![
+        "-----BEGIN CERTIFICATE-----\nROOT-CA-A\n-----END CERTIFICATE-----\n".to_string(),
+        "-----BEGIN CERTIFICATE-----\nROOT-CA-B\n-----END CERTIFICATE-----\n".to_string(),
+    ];
+    let expected_chains = chains.clone();
+
+    let mut identifier_creator = MockIdentifierCreator::default();
+    identifier_creator
+        .expect_create_remote_certificate_identifier()
+        .withf(move |org, name, received_chains, identifier_type| {
+            org.id == organisation_id
+                && name == "multi-ca"
+                && *received_chains == expected_chains
+                && *identifier_type == IdentifierType::CertificateAuthority
+        })
+        .once()
+        .returning(move |_, _, _, _| Ok(RemoteIdentifierOutcome::Created(identifier_id)));
+
+    let service = setup_service(Mocks {
+        organisation_repository: org_repo_returning_org(organisation_id),
+        identifier_repository: identifier_repo_with_no_name_match(),
+        identifier_creator,
+        session_provider,
+        ..Default::default()
+    });
+
+    let result = service
+        .create_remote_identifier(CreateRemoteIdentifierRequestDTO {
+            certificate_authorities: Some(chains),
+            ..remote_dto(organisation_id, "multi-ca")
+        })
+        .await
+        .unwrap();
+
+    assert_eq!(result, identifier_id);
+}
+
+#[tokio::test]
+async fn test_create_remote_ca_identifier_duplicate_returns_colliding_id() {
+    let session_provider = StaticSessionProvider::new_random();
+    let organisation_id = session_provider.0.organisation_id.unwrap();
+    let colliding_id: shared_types::IdentifierId = Uuid::new_v4().into();
+
+    let mut identifier_creator = MockIdentifierCreator::default();
+    identifier_creator
+        .expect_create_remote_certificate_identifier()
+        .withf(|_, _, _, identifier_type| *identifier_type == IdentifierType::CertificateAuthority)
+        .once()
+        .returning(move |_, _, _, _| Ok(RemoteIdentifierOutcome::AlreadyExists(colliding_id)));
+
+    let service = setup_service(Mocks {
+        organisation_repository: org_repo_returning_org(organisation_id),
+        identifier_repository: identifier_repo_with_no_name_match(),
+        identifier_creator,
+        session_provider,
+        ..Default::default()
+    });
+
+    let err = service
+        .create_remote_identifier(CreateRemoteIdentifierRequestDTO {
+            certificate_authorities: Some(vec!["chain".to_string()]),
+            ..remote_dto(organisation_id, "my-ca")
+        })
+        .await
+        .unwrap_err();
+
+    assert_eq!(err.error_code(), ErrorCode::BR_0240);
+    assert!(matches!(
+        err,
+        IdentifierServiceError::RemoteIdentifierAlreadyExists(id) if id == colliding_id
+    ));
+}
+
+#[tokio::test]
+async fn test_create_remote_identifier_name_already_taken_returns_colliding_id() {
+    let session_provider = StaticSessionProvider::new_random();
+    let organisation_id = session_provider.0.organisation_id.unwrap();
+    let colliding_id: shared_types::IdentifierId = Uuid::new_v4().into();
+
+    let mut existing = dummy_identifier();
+    existing.id = colliding_id;
+    existing.name = "taken".to_string();
+    let existing_clone = existing.clone();
+
+    let mut identifier_repository = MockIdentifierRepository::default();
+    identifier_repository
+        .expect_get_identifier_list()
+        .once()
+        .returning(move |_| {
+            Ok(GetIdentifierList {
+                values: vec![existing_clone.clone()],
+                total_pages: 1,
+                total_items: 1,
+            })
+        });
+
+    let service = setup_service(Mocks {
+        organisation_repository: org_repo_returning_org(organisation_id),
+        identifier_repository,
+        session_provider,
+        ..Default::default()
+    });
+
+    let err = service
+        .create_remote_identifier(CreateRemoteIdentifierRequestDTO {
+            did: Some("did:example:abc".parse().unwrap()),
+            ..remote_dto(organisation_id, "taken")
+        })
+        .await
+        .unwrap_err();
+
+    assert_eq!(err.error_code(), ErrorCode::BR_0240);
+    assert!(matches!(
+        err,
+        IdentifierServiceError::RemoteIdentifierAlreadyExists(id) if id == colliding_id
+    ));
 }

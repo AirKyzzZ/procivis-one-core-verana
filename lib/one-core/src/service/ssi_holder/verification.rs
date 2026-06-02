@@ -37,7 +37,7 @@ use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::{ListPagination, ListSorting};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::proof::{Proof, ProofRelations, ProofStateEnum, UpdateProofRequest};
-use crate::proto::identifier_creator::{IdentifierRole, RemoteIdentifierRelation};
+use crate::proto::identifier_creator::{IdentifierName, IdentifierRole, RemoteIdentifierRelation};
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::CredentialPresentation;
 use crate::provider::issuance_protocol::deserialize_interaction_data;
@@ -632,7 +632,7 @@ impl SSIHolderService {
                     .get_or_create_remote_identifier(
                         &interaction.organisation,
                         &details,
-                        IdentifierRole::Verifier,
+                        IdentifierName::PrefixForId(IdentifierRole::Verifier.to_string()),
                     )
                     .await
                     .error_while("creating remote verifier identifier")?;

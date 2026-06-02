@@ -391,6 +391,10 @@ fn get_management_endpoints(
                     .delete(identifier::controller::delete_identifier),
             )
             .route(
+                "/api/identifier/v1/remote",
+                post(identifier::controller::post_remote_identifier),
+            )
+            .route(
                 "/api/did-resolver/v1/{didvalue}",
                 get(did_resolver::controller::resolve_did),
             )

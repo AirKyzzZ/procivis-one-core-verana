@@ -15,6 +15,7 @@ use super::dto::{
 use crate::dto::common::EntityResponseRestDTO;
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
+use crate::endpoint::identifier::dto::CreateRemoteIdentifierRequestRestDTO;
 use crate::extractor::Qs;
 use crate::router::AppState;
 
@@ -60,6 +61,45 @@ pub(crate) async fn post_identifier(
     }
     .await;
     CreatedOrErrorResponse::from_result(result, state, "creating identifier")
+}
+
+#[endpoint(
+    permissions = [Permission::IdentifierCreate],
+    post,
+    path = "/api/identifier/v1/remote",
+    request_body = CreateRemoteIdentifierRequestRestDTO,
+    responses(CreatedOrErrorResponse<EntityResponseRestDTO>),
+    tag = "identifier_management",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "Create a remote identifier",
+    description = indoc::formatdoc! {"
+    Creates a new remote identifier, usually operated by external parties.
+    This is useful in the context of trust management, allowing remote identifiers to be listed in LoTEs.
+
+    Provide exactly one of: `key`, `certificates`, `certificateAuthorities`, or `did`.
+    "},
+)]
+pub(crate) async fn post_remote_identifier(
+    state: State<AppState>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<CreateRemoteIdentifierRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
+) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
+    let result = async {
+        Ok::<_, ServiceError>(
+            state
+                .core
+                .identifier_service
+                .create_remote_identifier(request.try_into()?)
+                .await
+                .error_while("creating remote identifier")?,
+        )
+    }
+    .await;
+    CreatedOrErrorResponse::from_result(result, state, "creating remote identifier")
 }
 
 #[endpoint(

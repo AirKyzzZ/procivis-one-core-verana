@@ -7,7 +7,7 @@ use crate::config::core_config::{TransportType, VerificationProtocolType};
 use crate::error::ContextWithErrorCode;
 use crate::model::interaction::UpdateInteractionRequest;
 use crate::model::organisation::Organisation;
-use crate::proto::identifier_creator::{IdentifierCreator, IdentifierRole};
+use crate::proto::identifier_creator::{IdentifierCreator, IdentifierName, IdentifierRole};
 use crate::proto::jwt::Jwt;
 use crate::provider::credential_formatter::model::{IdentifierDetails, VerificationFn};
 use crate::provider::verification_protocol::dto::{InvitationResponseDTO, UpdateResponse};
@@ -102,7 +102,7 @@ pub(crate) async fn handle_invitation_with_transport<T: Send + Sync + 'static>(
         .get_or_create_remote_identifier(
             &Some(organisation),
             &IdentifierDetails::Did(did_value),
-            IdentifierRole::Verifier,
+            IdentifierName::PrefixForId(IdentifierRole::Verifier.to_string()),
         )
         .await
         .error_while("creating verifier identifier")?;

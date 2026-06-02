@@ -48,7 +48,7 @@ use crate::model::did::KeyRole;
 use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::interaction::{InteractionRelations, UpdateInteractionRequest};
 use crate::model::relation::Related;
-use crate::proto::identifier_creator::{IdentifierRole, RemoteIdentifierRelation};
+use crate::proto::identifier_creator::{IdentifierName, IdentifierRole, RemoteIdentifierRelation};
 use crate::proto::jwt::Jwt;
 use crate::proto::key_verification::KeyVerification;
 use crate::proto::transaction_manager::IsolationLevel;
@@ -640,7 +640,7 @@ impl OID4VCIFinal1_0Service {
                     .get_or_create_remote_identifier(
                         &Some(organisation),
                         &IdentifierDetails::Did(did),
-                        IdentifierRole::Holder,
+                        IdentifierName::PrefixForId(IdentifierRole::Holder.to_string()),
                     )
                     .await
                     .error_while("creating remote holder identifier")?;
@@ -652,7 +652,7 @@ impl OID4VCIFinal1_0Service {
                     .get_or_create_remote_identifier(
                         &Some(organisation),
                         &IdentifierDetails::Key(jwk),
-                        IdentifierRole::Holder,
+                        IdentifierName::PrefixForId(IdentifierRole::Holder.to_string()),
                     )
                     .await
                     .error_while("creating remote holder identifier")?
