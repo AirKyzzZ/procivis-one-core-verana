@@ -35,8 +35,6 @@ pub enum CredentialSchemaServiceError {
     },
     #[error("Invalid claim type (mdoc top level only objects allowed)")]
     InvalidClaimTypeMdocTopLevelOnlyObjectsAllowed,
-    #[error("Schema ID not allowed")]
-    SchemaIdNotAllowed,
     #[error("Attribute combination not allowed")]
     AttributeCombinationNotAllowed,
     #[error("Layout attribute doesn't exists: `{0}`")]
@@ -100,7 +98,6 @@ impl ErrorCodeMixin for CredentialSchemaServiceError {
             Self::ForbiddenClaimName => ErrorCode::BR_0145,
             Self::ClaimSchemaKeyTooLong => ErrorCode::BR_0126,
             Self::DuplicitClaim => ErrorCode::BR_0133,
-            Self::SchemaIdNotAllowed => ErrorCode::BR_0139,
             Self::AttributeCombinationNotAllowed => ErrorCode::BR_0118,
             Self::KeyStorageSecurityDisabled(_) => ErrorCode::BR_0309,
             Self::TransactionCodeNotSupported => ErrorCode::BR_0337,

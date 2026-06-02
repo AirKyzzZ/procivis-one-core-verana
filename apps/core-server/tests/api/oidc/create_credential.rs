@@ -53,7 +53,12 @@ async fn test_post_issuer_credential_sd_jwt_vc() {
 
 #[tokio::test]
 async fn test_post_issuer_credential_jwk_proof() {
-    test_post_issuer_credential_with(Default::default(), None).await;
+    let params = PostCredentialTestParams {
+        credential_format: Some("SD_JWT_VC".into()),
+        use_kid_in_proof: false,
+        ..Default::default()
+    };
+    test_post_issuer_credential_with(params, None).await;
 }
 
 #[tokio::test]
@@ -272,7 +277,15 @@ async fn test_post_issuer_credential_with_bitstring_in_parallel() {
             .await;
         let nonce = value["c_nonce"].as_str().unwrap();
         let key = Eddsa.generate_key().unwrap();
-        let jwt = proof_jwt_for(&key.key, "EdDSA".to_string(), None, Some(nonce)).await;
+        let multibase = key.key.public_key_as_multibase().unwrap();
+        let holder_key_id = format!("did:key:{multibase}#{multibase}");
+        let jwt = proof_jwt_for(
+            &key.key,
+            "EdDSA".to_string(),
+            Some(&holder_key_id),
+            Some(nonce),
+        )
+        .await;
         let api = Client::new(context.api.base_url.clone(), access_token);
 
         issuances.push(async move {
@@ -504,7 +517,12 @@ async fn test_post_issuer_credential_with_disabled_issuer_key_storage() {
             }),
         )
         .await;
-    test_post_issuer_credential_with(PostCredentialTestParams::default(), Some(issuer_setup)).await;
+
+    let params = PostCredentialTestParams {
+        use_kid_in_proof: true,
+        ..Default::default()
+    };
+    test_post_issuer_credential_with(params, Some(issuer_setup)).await;
 }
 
 struct TestIssuerSetup {

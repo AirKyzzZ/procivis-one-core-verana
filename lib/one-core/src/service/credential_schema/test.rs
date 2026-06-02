@@ -41,6 +41,7 @@ use crate::proto::credential_schema::parser::{
 use crate::proto::session_provider::NoSessionProvider;
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
+use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{Features, FormatterCapabilities};
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::provider_directory::ProviderError;
@@ -1465,14 +1466,40 @@ async fn test_create_credential_schema_failed_schema_id_not_allowed() {
     formatter
         .expect_get_capabilities()
         .returning(generic_formatter_capabilities);
+    formatter
+        .expect_credential_schema_id()
+        .once()
+        .withf(|_, _, schema_id, _, _, _| {
+            assert_eq!(schema_id, &Some("schema.id"));
+            true
+        })
+        .return_once(|_, _, _, _, _, _| Err(FormatterError::SchemaIdNotAllowed));
     formatter_provider
         .expect_get_credential_formatter()
         .once()
         .return_once(|_| Ok(Arc::new(formatter)));
 
+    let mut credential_schema_repository = MockCredentialSchemaRepository::new();
+    credential_schema_repository
+        .expect_get_credential_schema_list()
+        .once()
+        .return_once(|_| {
+            Ok(GetCredentialSchemaList {
+                values: vec![],
+                total_pages: 0,
+                total_items: 0,
+            })
+        });
+
+    let mut organisation_repository = MockOrganisationRepository::new();
+    organisation_repository
+        .expect_get_organisation()
+        .once()
+        .return_once(|id| Ok(Some(dummy_organisation(Some(*id)))));
+
     let service = setup_service(
-        MockCredentialSchemaRepository::default(),
-        MockOrganisationRepository::default(),
+        credential_schema_repository,
+        organisation_repository,
         formatter_provider,
         MockRevocationMethodProvider::default(),
         generic_config().core,
@@ -1503,13 +1530,7 @@ async fn test_create_credential_schema_failed_schema_id_not_allowed() {
         })
         .await;
 
-    match result {
-        Err(CredentialSchemaServiceError::SchemaIdNotAllowed) => { /* Expected */ }
-        other => panic!(
-            "Expected Err(CredentialSchemaServiceError::SchemaIdNotAllowed), got {:?}",
-            other
-        ),
-    }
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0139);
 }
 
 #[tokio::test]

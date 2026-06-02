@@ -8,6 +8,7 @@ use serde_json::json;
 use shared_types::CredentialFormat;
 
 use super::CredentialFormatter;
+use super::decorators::CapabilityChecked;
 use super::json_ld_bbsplus::JsonLdBbsplus;
 use super::json_ld_classic::JsonLdClassic;
 use super::jwt_formatter::JWTFormatter;
@@ -159,7 +160,7 @@ pub(crate) fn credential_formatter_provider_from_config(
     let directory = ProviderDirectory::initialize(
         config.format.iter_mut(),
         |name: &CredentialFormat, fields: &Fields<FormatType>| {
-            initialize_provider(
+            let provider = initialize_provider(
                 name,
                 fields,
                 &key_algorithm_provider,
@@ -171,7 +172,11 @@ pub(crate) fn credential_formatter_provider_from_config(
                 &vct_type_metadata_cache,
                 &certificate_validator,
                 datatype_config,
-            )
+            )?;
+
+            let provider: Arc<dyn CredentialFormatter> = Arc::new(CapabilityChecked(provider));
+
+            Ok(provider)
         },
     )
     .error_while("initializing credential format providers")?;

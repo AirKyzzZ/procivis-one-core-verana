@@ -18,7 +18,7 @@ use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::credential_schema::{GetCredentialSchemaList, KeyStorageSecurity};
 use crate::provider::ProviderExt;
 use crate::provider::credential_formatter::CredentialFormatter;
-use crate::provider::credential_formatter::model::{Features, FormatterCapabilities};
+use crate::provider::credential_formatter::model::Features;
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::model::Operation;
 use crate::provider::revocation::provider::RevocationMethodProvider;
@@ -103,7 +103,6 @@ pub(crate) fn validate_create_request(
     )?;
     validate_credential_design(request.layout_properties.as_ref(), formatter)?;
     validate_mdoc_claim_types(&request.claims, &request.format, config)?;
-    validate_schema_id_is_allowed(request.schema_id.as_deref(), formatter)?;
     validate_transaction_code(request.transaction_code.as_ref(), formatter)?;
 
     Ok(())
@@ -135,7 +134,6 @@ pub(crate) fn validate_create_v2_request(
 
         let formatter = formatter_provider.get_credential_formatter(&format_req.format)?;
 
-        validate_schema_id_is_allowed(format_req.schema_id.as_deref(), &*formatter)?;
         validate_nested_claim_schemas(&request.claims, config, &*formatter)?;
         validate_claim_names_for_formatter(&request.claims, &*formatter)?;
         validate_credential_design(request.layout_properties.as_ref(), &*formatter)?;
@@ -292,25 +290,6 @@ fn validate_revocation_method_is_compatible_with_suspension(
                 );
             }
         }
-    }
-
-    Ok(())
-}
-
-fn validate_schema_id_is_allowed(
-    schema_id: Option<&str>,
-    formatter: &dyn CredentialFormatter,
-) -> Result<(), CredentialSchemaServiceError> {
-    let FormatterCapabilities { features, .. } = formatter.get_capabilities();
-
-    if features.contains(&Features::SupportsSchemaId) {
-        if let Some(schema_id) = schema_id
-            && schema_id.is_empty()
-        {
-            return Err(CredentialSchemaServiceError::SchemaIdNotAllowed);
-        }
-    } else if schema_id.is_some() {
-        return Err(CredentialSchemaServiceError::SchemaIdNotAllowed);
     }
 
     Ok(())

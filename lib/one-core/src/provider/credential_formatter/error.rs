@@ -25,6 +25,8 @@ pub enum FormatterError {
     FloatValueIsNaN,
     #[error("Unsupported identifier type `{0}`")]
     UnsupportedIdentifierType(IdentifierType),
+    #[error("Schema ID not allowed")]
+    SchemaIdNotAllowed,
 
     #[error("Crypto library error: `{0}`")]
     CryptoError(#[from] one_crypto::CryptoProviderError),
@@ -73,6 +75,7 @@ impl ErrorCodeMixin for FormatterError {
     fn error_code(&self) -> ErrorCode {
         match self {
             Self::BBSOnly => ErrorCode::BR_0090,
+            Self::SchemaIdNotAllowed => ErrorCode::BR_0139,
             Self::CouldNotVerify(_)
             | Self::CouldNotFormat(_)
             | Self::CouldNotExtractCredentials(_)
