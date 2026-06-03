@@ -21,6 +21,7 @@ use crate::provider::credential_formatter::model::{
 };
 use crate::service::credential::dto::{
     CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO,
+    DetailCredentialSchemaResponseDTO,
 };
 
 pub const W3C_SCHEMA_TYPE: &str = "ProcivisOneSchema2024";
@@ -38,7 +39,7 @@ pub(crate) fn credential_data_from_credential_detail_response(
     holder_key_id: String,
     core_base_url: &str,
     credential_status: Vec<CredentialStatus>,
-    context: IndexSet<ContextType>,
+    mut context: IndexSet<ContextType>,
 ) -> Result<CredentialData, FormatterError> {
     let flat_claims = map_claims(&credential_detail.claims, false);
     let claims = nest_claims(flat_claims.clone()).error_while("nesting claims")?;
@@ -54,9 +55,7 @@ pub(crate) fn credential_data_from_credential_detail_response(
         None
     };
 
-    let mut context = context;
-    let credential_schema_context: Url =
-        format!("{core_base_url}/ssi/context/v1/{}", schema.id).parse()?;
+    let credential_schema_context = get_credential_schema_context(core_base_url, &schema)?;
     context.insert(ContextType::Url(credential_schema_context));
     let issuer = issuer_for_credential(credential, core_base_url)?;
     // We don't add the credentialSubject.id here for backwards compatibility with older JWT/SD-JWT formatters where they store the "id" in the "sub" claim.
@@ -95,6 +94,31 @@ pub(crate) fn credential_data_from_credential_detail_response(
         holder_key_id: Some(holder_key_id),
         issuer_certificate,
     })
+}
+
+fn get_credential_schema_context(
+    core_base_url: &str,
+    schema: &DetailCredentialSchemaResponseDTO,
+) -> Result<Url, FormatterError> {
+    // default for v1 schema
+    let mut context = format!("{core_base_url}/ssi/context/v1/{}", schema.id);
+
+    // append format if v2 schema with format
+    if let Ok(url) = schema.schema_id.parse::<Url>()
+        && let Some(path) = url.path_segments()
+    {
+        let mut path: Vec<_> = path.collect();
+
+        if let Some(format) = path.pop()
+            && let Some(id) = path.pop()
+            && schema.id.to_string() == id
+            && path.join("/") == "ssi/schema/v2"
+        {
+            context = format!("{core_base_url}/ssi/context/v1/{id}/{format}");
+        }
+    }
+
+    Ok(context.parse()?)
 }
 
 fn issuer_for_credential(

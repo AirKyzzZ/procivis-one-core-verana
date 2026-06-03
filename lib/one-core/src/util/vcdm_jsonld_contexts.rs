@@ -75,8 +75,10 @@ pub(crate) fn is_context_list_valid(
                 // Phase two - match with available credential schemas
                 if let Some(schemas) = credential_schemas
                     && schemas.iter().any(|schema| {
-                        let jsonld_context =
-                            schema.id.replace("/ssi/schema/v1/", "/ssi/context/v1/");
+                        let jsonld_context = schema
+                            .id
+                            .replace("/ssi/schema/v1/", "/ssi/context/v1/")
+                            .replace("/ssi/schema/v2/", "/ssi/context/v1/");
 
                         jsonld_context == url.as_str()
                     })
