@@ -6,6 +6,7 @@ use futures::FutureExt;
 use futures::future::BoxFuture;
 use key_agreement_key::KeyAgreementKey;
 use mqtt::oidc_mqtt_verifier::MqttVerifier;
+use proc_macros::Provider;
 use serde::Deserialize;
 use serde_json::Value;
 use serde_with::{DurationSeconds, serde_as};
@@ -53,6 +54,7 @@ use crate::provider::presentation_formatter::model::{CredentialToPresent, Format
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::Handover;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::openid4vp_final1_0::OID4VPFinal1_0Handover;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
+use crate::provider::provider_directory::InitializationError;
 use crate::provider::verification_protocol::dto::{
     Feature, FormattedCredentialPresentation, InvitationResponseDTO,
     PresentationDefinitionResponseDTO, PresentationDefinitionV2ResponseDTO,
@@ -83,7 +85,7 @@ pub mod mqtt;
 mod peer_encryption;
 
 #[derive(Debug, Deserialize, Clone)]
-pub(crate) struct OpenID4VPProximityDraft00Params {
+struct OpenID4VPProximityDraft00Params {
     #[serde(default = "default_presentation_url_scheme")]
     pub url_scheme: String,
     #[serde(default)]
@@ -102,7 +104,9 @@ pub(crate) struct OpenID4VPProximityDraft00PresentationVerifierParams {
     pub interaction_expires_in: Option<Duration>,
 }
 
+#[derive(Provider)]
 pub struct OpenID4VPProximityDraft00 {
+    config_id: String,
     ble: Option<BleWaiter>,
     ble_holder_transport: Option<BleHolderTransport>,
     mqtt_holder_transport: Option<MqttHolderTransport>,
@@ -126,9 +130,10 @@ pub struct OpenID4VPProximityDraft00 {
 impl OpenID4VPProximityDraft00 {
     #[expect(clippy::too_many_arguments)]
     pub(crate) fn new(
+        config_id: String,
         mqtt_client: Option<Arc<dyn MqttClient>>,
         config: Arc<CoreConfig>,
-        params: OpenID4VPProximityDraft00Params,
+        params: serde_json::Value,
         credential_repository: Arc<dyn CredentialRepository>,
         credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
         interaction_repository: Arc<dyn InteractionRepository>,
@@ -142,7 +147,13 @@ impl OpenID4VPProximityDraft00 {
         identifier_creator: Arc<dyn IdentifierCreator>,
         trust_information_provider: Arc<dyn TrustInformationProvider>,
         ble: Option<BleWaiter>,
-    ) -> Self {
+    ) -> Result<Self, InitializationError> {
+        let params: OpenID4VPProximityDraft00Params =
+            serde_json::from_value(params).map_err(|err| InitializationError::InvalidParams {
+                key: config_id.to_string(),
+                source: err,
+            })?;
+
         let url_scheme = params.url_scheme.clone();
         let ble_holder_transport = ble
             .clone()
@@ -160,7 +171,8 @@ impl OpenID4VPProximityDraft00 {
             (None, None)
         };
 
-        Self {
+        Ok(Self {
+            config_id,
             ble,
             mqtt_verifier: openid_mqtt,
             mqtt_holder_transport,
@@ -179,7 +191,7 @@ impl OpenID4VPProximityDraft00 {
             trust_information_provider,
             config,
             params,
-        }
+        })
     }
 
     async fn holder_handle_invitation_inner<T: Send + Sync + 'static>(
@@ -615,6 +627,10 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
             &self.config,
         )
         .await
+    }
+
+    fn config_name(&self) -> &str {
+        &self.config_id
     }
 }
 

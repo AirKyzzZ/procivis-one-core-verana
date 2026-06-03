@@ -79,6 +79,7 @@ async fn test_presentation_reject_ok() {
         .unwrap();
 
     let provider = IsoMdl::new(
+        "ISO_MDL".to_string(),
         Arc::new(core_config),
         Arc::new(MockCredentialRepository::new()),
         Arc::new(MockPresentationFormatterProvider::new()),
@@ -483,6 +484,7 @@ async fn test_get_presentation_definition_ok() {
         .return_once(move |_, _| Ok(Some(credential)));
 
     let service = IsoMdl::new(
+        "ISO_MDL".to_string(),
         Arc::new(generic_config().core),
         Arc::new(credential_repository),
         Arc::new(MockPresentationFormatterProvider::new()),

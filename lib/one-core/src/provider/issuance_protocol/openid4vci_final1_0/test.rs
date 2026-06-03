@@ -2211,7 +2211,7 @@ async fn test_holder_reject_credential() {
         method
             .expect_get_reference_for_key()
             .return_once(|_| Ok("1".to_string()));
-        Ok(Arc::new(method))
+        Ok((Arc::new(method), crate::config::core_config::DidType::Key))
     });
 
     interaction_repository

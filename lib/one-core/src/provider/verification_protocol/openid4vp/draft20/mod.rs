@@ -5,6 +5,7 @@ use futures::future::BoxFuture;
 use mappers::create_openidvp20_authorization_request;
 use model::OpenID4Vp20Params;
 use one_crypto::utilities;
+use proc_macros::Provider;
 use serde_json::Value;
 use url::Url;
 use utils::{interaction_data_from_openid4vp_20_query, validate_interaction_data};
@@ -26,6 +27,7 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
+use crate::provider::provider_directory::InitializationError;
 use crate::provider::verification_protocol::dto::{
     Feature, FormattedCredentialPresentation, InvitationResponseDTO,
     PresentationDefinitionResponseDTO, PresentationDefinitionV2ResponseDTO,
@@ -66,7 +68,9 @@ const PRESENTATION_DEFINITION_REFERENCE_QUERY_PARAM_KEY: &str = "presentation_de
 const REQUEST_URI_QUERY_PARAM_KEY: &str = "request_uri";
 const REQUEST_QUERY_PARAM_KEY: &str = "request";
 
+#[derive(Provider)]
 pub(crate) struct OpenID4VP20HTTP {
+    config_id: String,
     client: Arc<dyn HttpClient>,
     metadata_cache: Arc<dyn OpenIDMetadataFetcher>,
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
@@ -85,6 +89,7 @@ pub(crate) struct OpenID4VP20HTTP {
 impl OpenID4VP20HTTP {
     #[expect(clippy::too_many_arguments)]
     pub(crate) fn new(
+        config_id: String,
         base_url: Option<String>,
         credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
         presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
@@ -96,10 +101,17 @@ impl OpenID4VP20HTTP {
         interaction_repository: Arc<dyn InteractionRepository>,
         client: Arc<dyn HttpClient>,
         metadata_cache: Arc<dyn OpenIDMetadataFetcher>,
-        params: OpenID4Vp20Params,
+        params: serde_json::Value,
         config: Arc<CoreConfig>,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, InitializationError> {
+        let params =
+            serde_json::from_value(params).map_err(|err| InitializationError::InvalidParams {
+                key: config_id.to_string(),
+                source: err,
+            })?;
+
+        Ok(Self {
+            config_id,
             base_url,
             metadata_cache,
             credential_formatter_provider,
@@ -113,7 +125,7 @@ impl OpenID4VP20HTTP {
             client,
             params,
             config,
-        }
+        })
     }
 }
 
@@ -456,6 +468,10 @@ impl VerificationProtocol for OpenID4VP20HTTP {
         _context: Value,
     ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
         Err(VerificationProtocolError::OperationNotSupported)
+    }
+
+    fn config_name(&self) -> &str {
+        &self.config_id
     }
 }
 

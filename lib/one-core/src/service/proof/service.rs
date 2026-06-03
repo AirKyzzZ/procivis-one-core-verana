@@ -66,7 +66,6 @@ use crate::provider::verification_protocol::openid4vp::mapper::create_format_map
 use crate::provider::verification_protocol::{FormatMapper, TypeToDescriptorMapper};
 use crate::service::common_dto::{ListQueryDTO, TrustInformationDetailResponseDTO};
 use crate::service::credential_schema::validator::validate_key_storage_security_supported;
-use crate::service::error::MissingProviderError;
 use crate::util::interactions::{add_new_interaction, clear_previous_interaction};
 use crate::util::key_selection::{CertificateFilter, KeyFilter, KeySelection, SelectedKey};
 use crate::validator::{throw_if_org_id_not_matching_session, throw_if_org_not_matching_session};
@@ -196,13 +195,7 @@ impl ProofService {
         id: &ProofId,
     ) -> Result<PresentationDefinitionResponseDTO, ProofServiceError> {
         let proof = self.load_proof_for_presentation_definition(id).await?;
-        let exchange = self
-            .protocol_provider
-            .get_protocol(&proof.protocol)
-            .ok_or(MissingProviderError::ExchangeProtocol(
-                proof.protocol.clone(),
-            ))
-            .error_while("getting protocol")?;
+        let exchange = self.protocol_provider.get_protocol(&proof.protocol)?;
         validate_proof_for_proof_definition(
             &proof,
             &*self.session_provider,
@@ -220,13 +213,7 @@ impl ProofService {
         id: &ProofId,
     ) -> Result<PresentationDefinitionV2ResponseDTO, ProofServiceError> {
         let proof = self.load_proof_for_presentation_definition(id).await?;
-        let exchange = self
-            .protocol_provider
-            .get_protocol(&proof.protocol)
-            .ok_or(MissingProviderError::ExchangeProtocol(
-                proof.protocol.clone(),
-            ))
-            .error_while("getting protocol")?;
+        let exchange = self.protocol_provider.get_protocol(&proof.protocol)?;
         validate_proof_for_proof_definition(
             &proof,
             &*self.session_provider,
@@ -398,13 +385,7 @@ impl ProofService {
                 .await;
         }
 
-        let exchange_protocol = self
-            .protocol_provider
-            .get_protocol(&request.protocol)
-            .ok_or(MissingProviderError::ExchangeProtocol(
-                request.protocol.to_owned(),
-            ))
-            .error_while("getting protocol")?;
+        let exchange_protocol = self.protocol_provider.get_protocol(&request.protocol)?;
 
         let exchange_protocol_capabilities = exchange_protocol.get_capabilities();
 
@@ -590,13 +571,7 @@ impl ProofService {
             .and_then(|schema| schema.organisation.as_ref())
             .ok_or_else(|| ProofServiceError::MappingError("Missing organisation".to_string()))?;
 
-        let exchange = self
-            .protocol_provider
-            .get_protocol(&proof.protocol)
-            .ok_or(MissingProviderError::ExchangeProtocol(
-                proof.protocol.to_owned(),
-            ))
-            .error_while("getting protocol")?;
+        let exchange = self.protocol_provider.get_protocol(&proof.protocol)?;
 
         let config = self.config.clone();
         let format_type_mapper: FormatMapper = Arc::new(move |input: &CredentialFormat| {
@@ -1068,7 +1043,7 @@ impl ProofService {
     async fn exchange_retract_proof(&self, proof: &Proof) -> Result<(), ProofServiceError> {
         // If the configuration is changed such that the exchange protocol of the proof no longer
         // exists we can simply skip the retracting.
-        if let Some(exchange_protocol) = self.protocol_provider.get_protocol(&proof.protocol) {
+        if let Ok(exchange_protocol) = self.protocol_provider.get_protocol(&proof.protocol) {
             exchange_protocol
                 .retract_proof(proof)
                 .await

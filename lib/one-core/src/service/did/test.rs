@@ -41,7 +41,7 @@ fn setup_service(
     let mut did_method_provider = MockDidMethodProvider::new();
     did_method_provider
         .expect_get_did_method()
-        .returning(move |_| Ok(did_method.clone()));
+        .returning(move |_| Ok((did_method.clone(), crate::config::core_config::DidType::Key)));
 
     DidService::new(
         did_repository,

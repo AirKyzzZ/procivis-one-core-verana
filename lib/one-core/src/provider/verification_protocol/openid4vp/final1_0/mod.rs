@@ -7,6 +7,7 @@ use futures::future::BoxFuture;
 use mappers::{create_openid4vp_final1_0_authorization_request, encode_client_id_with_scheme};
 use model::Params;
 use one_crypto::utilities;
+use proc_macros::Provider;
 use serde_json::Value;
 use standardized_types::jwa::EncryptionAlgorithm;
 use standardized_types::jwk::PublicJwk;
@@ -40,6 +41,7 @@ use crate::provider::presentation_formatter::model::{CredentialToPresent, Format
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::Handover;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::openid4vp_final1_0::OID4VPFinal1_0Handover;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
+use crate::provider::provider_directory::InitializationError;
 use crate::provider::verification_protocol::dto::{
     Feature, FormattedCredentialPresentation, InvitationResponseDTO,
     PresentationDefinitionResponseDTO, PresentationDefinitionV2ResponseDTO,
@@ -85,7 +87,9 @@ const REQUEST_QUERY_PARAM_KEY: &str = "request";
 const CLIENT_ID_SCHEME_QUERY_PARAM_KEY: &str = "client_id_scheme";
 const PROXIMITY_QUERY_PARAM_KEY: &str = "key";
 
+#[derive(Provider)]
 pub(crate) struct OpenID4VPFinal1_0 {
+    config_id: String,
     client: Arc<dyn HttpClient>,
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
     presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
@@ -114,6 +118,7 @@ struct EncryptionInfo {
 impl OpenID4VPFinal1_0 {
     #[expect(clippy::too_many_arguments)]
     pub(crate) fn new(
+        config_id: String,
         base_url: Option<String>,
         credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
         presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
@@ -130,10 +135,17 @@ impl OpenID4VPFinal1_0 {
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
         trust_information_provider: Arc<dyn TrustInformationProvider>,
         client: Arc<dyn HttpClient>,
-        params: Params,
+        params: serde_json::Value,
         config: Arc<CoreConfig>,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, InitializationError> {
+        let params =
+            serde_json::from_value(params).map_err(|err| InitializationError::InvalidParams {
+                key: config_id.to_string(),
+                source: err,
+            })?;
+
+        Ok(Self {
+            config_id,
             base_url,
             credential_formatter_provider,
             presentation_formatter_provider,
@@ -152,7 +164,7 @@ impl OpenID4VPFinal1_0 {
             config,
             blob_storage_provider,
             trust_information_provider,
-        }
+        })
     }
 
     async fn encryption_info_from_metadata(
@@ -702,6 +714,10 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
             &self.config,
         )
         .await
+    }
+
+    fn config_name(&self) -> &str {
+        &self.config_id
     }
 }
 

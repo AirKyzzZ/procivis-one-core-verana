@@ -52,7 +52,6 @@ use crate::provider::verification_protocol::openid4vp::model::OpenID4VPHolderInt
 use crate::service::credential::dto::{
     CredentialDetailResponseDTO, DetailCredentialClaimValueResponseDTO,
 };
-use crate::service::error::MissingProviderError;
 use crate::validator::{throw_if_endpoint_version_incompatible, throw_if_proof_state_not_eq};
 
 impl SSIHolderService {
@@ -88,11 +87,7 @@ impl SSIHolderService {
 
         let (state, error_metadata) = if let Err(err) = self
             .verification_protocol_provider
-            .get_protocol(&proof.protocol)
-            .ok_or(MissingProviderError::ExchangeProtocol(
-                proof.protocol.clone(),
-            ))
-            .error_while("getting protocol")?
+            .get_protocol(&proof.protocol)?
             .holder_reject_proof(&proof)
             .await
         {
@@ -179,11 +174,7 @@ impl SSIHolderService {
 
         let verification_protocol = self
             .verification_protocol_provider
-            .get_protocol(&proof.protocol)
-            .ok_or(MissingProviderError::ExchangeProtocol(
-                proof.protocol.clone(),
-            ))
-            .error_while("getting protocol")?;
+            .get_protocol(&proof.protocol)?;
 
         throw_if_endpoint_version_incompatible(
             &*verification_protocol,
@@ -434,11 +425,7 @@ impl SSIHolderService {
 
         let verification_protocol = self
             .verification_protocol_provider
-            .get_protocol(&proof.protocol)
-            .ok_or(MissingProviderError::ExchangeProtocol(
-                proof.protocol.clone(),
-            ))
-            .error_while("getting protocol")?;
+            .get_protocol(&proof.protocol)?;
 
         throw_if_endpoint_version_incompatible(
             &*verification_protocol,

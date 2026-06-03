@@ -391,7 +391,7 @@ async fn test_get_presentation_definition_proof_role_verifier() {
     let mut protocol_provider = MockVerificationProtocolProvider::default();
     protocol_provider
         .expect_get_protocol()
-        .returning(|_| Some(Arc::new(MockVerificationProtocol::default())));
+        .returning(|_| Ok(Arc::new(MockVerificationProtocol::default())));
 
     let service = setup_service(Repositories {
         proof_repository,
@@ -2551,7 +2551,7 @@ async fn test_create_proof_using_formatter_doesnt_support_did_identifiers() {
             }
         });
 
-        Some(Arc::new(protocol))
+        Ok(Arc::new(protocol))
     });
 
     let service = setup_service(Repositories {
@@ -2679,7 +2679,7 @@ async fn test_create_proof_using_invalid_did_method() {
             }
         });
 
-        Some(Arc::new(protocol))
+        Ok(Arc::new(protocol))
     });
 
     let service = setup_service(Repositories {
@@ -2812,7 +2812,7 @@ async fn test_create_proof_using_identifier() {
             }
         });
 
-        Some(Arc::new(protocol))
+        Ok(Arc::new(protocol))
     });
 
     let service = setup_service(Repositories {
@@ -2949,7 +2949,7 @@ async fn test_create_proof_without_related_key() {
             }
         });
 
-        Some(Arc::new(protocol))
+        Ok(Arc::new(protocol))
     });
 
     let service = setup_service(Repositories {
@@ -3084,7 +3084,7 @@ async fn test_create_proof_with_related_key() {
             }
         });
 
-        Some(Arc::new(protocol))
+        Ok(Arc::new(protocol))
     });
 
     let service = setup_service(Repositories {
@@ -3216,7 +3216,7 @@ async fn test_create_proof_fail_unsupported_wallet_storage_type() {
             }
         });
 
-        Some(Arc::new(protocol))
+        Ok(Arc::new(protocol))
     });
 
     let service = setup_service(Repositories {
@@ -3322,7 +3322,7 @@ async fn test_create_proof_failed_no_key_with_authentication_method_role() {
             }
         });
 
-        Some(Arc::new(protocol))
+        Ok(Arc::new(protocol))
     });
 
     let service = setup_service(Repositories {
@@ -3490,7 +3490,7 @@ async fn test_create_proof_did_deactivated_error() {
             }
         });
 
-        Some(Arc::new(protocol))
+        Ok(Arc::new(protocol))
     });
 
     let service = setup_service(Repositories {
@@ -3662,7 +3662,7 @@ async fn test_create_proof_failed_incompatible_verification_key_storage() {
             }
         });
 
-        Some(Arc::new(protocol))
+        Ok(Arc::new(protocol))
     });
 
     let service = setup_service(Repositories {
@@ -3804,7 +3804,7 @@ async fn test_share_proof_created_success() {
     protocol_provider
         .expect_get_protocol()
         .once()
-        .returning(move |_| Some(protocol.clone()));
+        .returning(move |_| Ok(protocol.clone()));
 
     let mut seq = Sequence::new();
     let mut proof_repository = MockProofRepository::default();
@@ -3910,7 +3910,7 @@ async fn test_share_proof_pending_success() {
     protocol_provider
         .expect_get_protocol()
         .once()
-        .returning(move |_| Some(protocol.clone()));
+        .returning(move |_| Ok(protocol.clone()));
 
     let mut proof_repository = MockProofRepository::default();
     {
@@ -4022,7 +4022,7 @@ async fn test_share_proof_interaction_expired_success() {
     protocol_provider
         .expect_get_protocol()
         .once()
-        .returning(move |_| Some(protocol.clone()));
+        .returning(move |_| Ok(protocol.clone()));
 
     let mut proof_repository = MockProofRepository::default();
     {
@@ -4176,7 +4176,7 @@ async fn test_delete_proof_ok_for_allowed_state(
             .times(1)
             .returning(|_| Ok(()));
 
-        Some(Arc::new(protocol))
+        Ok(Arc::new(protocol))
     });
 
     let mut proof_repository = MockProofRepository::default();
@@ -4255,7 +4255,7 @@ async fn test_delete_proof_ok_for_requested_state() {
             .times(1)
             .returning(|_| Ok(()));
 
-        Some(Arc::new(protocol))
+        Ok(Arc::new(protocol))
     });
 
     let mut proof_repository = MockProofRepository::default();
@@ -4428,7 +4428,7 @@ async fn test_retract_proof_with_bluetooth_ok() {
             .times(1)
             .returning(|_| Ok(()));
 
-        Some(Arc::new(protocol))
+        Ok(Arc::new(protocol))
     });
 
     let mut proof_repository = MockProofRepository::default();
@@ -4520,7 +4520,7 @@ async fn test_retract_proof_success_holder_iso_mdl() {
             .times(1)
             .returning(|_| Ok(()));
 
-        Some(Arc::new(protocol))
+        Ok(Arc::new(protocol))
     });
 
     let mut proof_repository = MockProofRepository::default();
@@ -4664,7 +4664,7 @@ async fn test_proof_ops_session_org_mismatch() {
     let mut protocol_provider = MockVerificationProtocolProvider::default();
     protocol_provider
         .expect_get_protocol()
-        .returning(|_| Some(Arc::new(MockVerificationProtocol::default())));
+        .returning(|_| Ok(Arc::new(MockVerificationProtocol::default())));
     let service = setup_service(Repositories {
         session_provider: Some(Arc::new(StaticSessionProvider::new_random())),
         protocol_provider,

@@ -9,7 +9,6 @@ use serde_json::{Value, json};
 use shared_types::{CredentialFormat, DidValue};
 use similar_asserts::assert_eq;
 use standardized_types::openid4vp::{GenericAlgs, PresentationFormat};
-use time::Duration;
 use url::Url;
 use uuid::Uuid;
 use wiremock::http::Method;
@@ -17,7 +16,6 @@ use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use super::OpenID4VP20HTTP;
-use super::model::OpenID4Vp20Params;
 use crate::config::core_config::{CoreConfig, FormatType, KeyAlgorithmType};
 use crate::model::credential_schema::{CredentialSchema, LayoutType};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
@@ -43,12 +41,10 @@ use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::presentation_formatter::provider::MockPresentationFormatterProvider;
 use crate::provider::verification_protocol::dto::ShareResponse;
-use crate::provider::verification_protocol::model::CommonParams;
 use crate::provider::verification_protocol::openid4vp::VerificationProtocolError;
-use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VC20PresentationVerifierParams;
 use crate::provider::verification_protocol::openid4vp::model::{
-    ClientIdScheme, OpenID4VCPresentationHolderParams, OpenID4VCRedirectUriParams,
-    OpenID4VPDraftClientMetadata, OpenID4VPHolderInteractionData, OpenID4VPPresentationDefinition,
+    ClientIdScheme, OpenID4VPDraftClientMetadata, OpenID4VPHolderInteractionData,
+    OpenID4VPPresentationDefinition,
 };
 use crate::provider::verification_protocol::{
     FormatMapper, TypeToDescriptorMapper, VerificationProtocol, deserialize_interaction_data,
@@ -68,11 +64,12 @@ struct TestInputs {
     pub certificate_validator: MockCertificateValidator,
     pub metadata_cache: MockOpenIDMetadataFetcher,
     pub interaction_repository: MockInteractionRepository,
-    pub params: Option<OpenID4Vp20Params>,
+    pub params: Option<serde_json::Value>,
 }
 
 fn setup_protocol(inputs: TestInputs) -> OpenID4VP20HTTP {
     OpenID4VP20HTTP::new(
+        "draft20".to_string(),
         Some("http://base_url".to_string()),
         Arc::new(inputs.credential_formatter_provider),
         Arc::new(inputs.presentation_formatter_provider),
@@ -87,37 +84,36 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VP20HTTP {
         inputs.params.unwrap_or(generic_params()),
         Arc::new(CoreConfig::default()),
     )
+    .unwrap()
 }
 
-fn generic_params() -> OpenID4Vp20Params {
-    OpenID4Vp20Params {
-        client_metadata_by_value: false,
-        presentation_definition_by_value: false,
-        allow_insecure_http_transport: true,
-        use_request_uri: false,
-        url_scheme: "openid4vp".to_string(),
-        holder: OpenID4VCPresentationHolderParams {
-            supported_client_id_schemes: vec![
+fn generic_params() -> serde_json::Value {
+    json!({
+        "clientMetadataByValue": false,
+        "presentationDefinitionByValue": false,
+        "allowInsecureHttpTransport": true,
+        "useRequestUri": false,
+        "urlScheme": "openid4vp",
+        "holder":  {
+            "supportedClientIdSchemes": [
                 ClientIdScheme::RedirectUri,
                 ClientIdScheme::VerifierAttestation,
                 ClientIdScheme::Did,
             ],
         },
-        verifier: OpenID4VC20PresentationVerifierParams {
-            interaction_expires_in: Some(Duration::seconds(1000)),
-            supported_client_id_schemes: vec![
+        "verifier": {
+            "interactionExpiresIn": 1000,
+            "supportedClientIdSchemes": [
                 ClientIdScheme::RedirectUri,
                 ClientIdScheme::VerifierAttestation,
                 ClientIdScheme::Did,
             ],
         },
-        redirect_uri: OpenID4VCRedirectUriParams {
-            enabled: true,
-            allowed_schemes: vec!["https".to_string()],
-        },
-        predefined_client_metadata: None,
-        common: CommonParams { webhook_task: None },
-    }
+        "redirectUri": {
+            "enabled": true,
+            "allowedSchemes": ["https"],
+        }
+    })
 }
 
 fn test_client_request_response(
@@ -455,9 +451,10 @@ async fn test_share_proof_with_use_request_uri() {
         .returning(move |_| Ok(arc.clone()));
 
     let protocol = setup_protocol(TestInputs {
-        params: Some(OpenID4Vp20Params {
-            use_request_uri: true,
-            ..generic_params()
+        params: Some({
+            let mut params = generic_params();
+            params["useRequestUri"] = json!(true);
+            params
         }),
         credential_formatter_provider,
         ..Default::default()
@@ -511,9 +508,10 @@ async fn test_share_proof_with_use_request_uri_did_client_id_scheme() {
 
     let protocol = setup_protocol(TestInputs {
         credential_formatter_provider,
-        params: Some(OpenID4Vp20Params {
-            use_request_uri: true,
-            ..generic_params()
+        params: Some({
+            let mut params = generic_params();
+            params["useRequestUri"] = json!(true);
+            params
         }),
         ..Default::default()
     });
@@ -892,9 +890,10 @@ async fn test_handle_invitation_proof_failed() {
     ));
 
     let protocol_https_only = setup_protocol(TestInputs {
-        params: Some(OpenID4Vp20Params {
-            allow_insecure_http_transport: false,
-            ..generic_params()
+        params: Some({
+            let mut params = generic_params();
+            params["allowInsecureHttpTransport"] = json!(false);
+            params
         }),
         ..Default::default()
     });
@@ -1036,31 +1035,8 @@ async fn test_share_proof_custom_scheme() {
     assert!(url.starts_with(url_scheme));
 }
 
-fn test_params(presentation_url_scheme: &str) -> OpenID4Vp20Params {
-    OpenID4Vp20Params {
-        client_metadata_by_value: false,
-        presentation_definition_by_value: false,
-        allow_insecure_http_transport: true,
-        use_request_uri: false,
-        url_scheme: presentation_url_scheme.to_string(),
-        holder: OpenID4VCPresentationHolderParams {
-            supported_client_id_schemes: vec![
-                ClientIdScheme::RedirectUri,
-                ClientIdScheme::VerifierAttestation,
-            ],
-        },
-        verifier: OpenID4VC20PresentationVerifierParams {
-            interaction_expires_in: Some(Duration::seconds(1000)),
-            supported_client_id_schemes: vec![
-                ClientIdScheme::RedirectUri,
-                ClientIdScheme::VerifierAttestation,
-            ],
-        },
-        redirect_uri: OpenID4VCRedirectUriParams {
-            enabled: true,
-            allowed_schemes: vec!["https".to_string()],
-        },
-        predefined_client_metadata: None,
-        common: CommonParams { webhook_task: None },
-    }
+fn test_params(presentation_url_scheme: &str) -> serde_json::Value {
+    let mut params = generic_params();
+    params["urlScheme"] = json!(presentation_url_scheme);
+    params
 }

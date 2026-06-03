@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt::{Display, Formatter};
 use std::sync::Arc;
 
 use dto::{
@@ -7,6 +8,7 @@ use dto::{
 };
 use error::VerificationProtocolError;
 use futures::future::BoxFuture;
+use proc_macros::provider_mock;
 use serde::de::Deserialize;
 use shared_types::CredentialFormat;
 use standardized_types::openid4vp::PresentationFormat;
@@ -15,9 +17,11 @@ use url::Url;
 use crate::config::core_config::FormatType;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
+use crate::provider::Provider;
 use crate::provider::verification_protocol::dto::PresentationDefinitionV2ResponseDTO;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 
+mod decorators;
 pub mod dto;
 pub mod error;
 pub mod iso_mdl;
@@ -54,9 +58,9 @@ pub(crate) type TypeToDescriptorMapper = Arc<
 >;
 
 /// This trait contains methods for exchanging credentials between holders and verifiers.
-#[cfg_attr(test, mockall::automock)]
+#[provider_mock]
 #[async_trait::async_trait]
-pub(crate) trait VerificationProtocol: Send + Sync {
+pub(crate) trait VerificationProtocol: Provider + Send + Sync {
     // Holder methods:
     /// Check if the holder can handle the necessary URLs.
     fn holder_can_handle(&self, url: &Url) -> bool;
@@ -117,4 +121,12 @@ pub(crate) trait VerificationProtocol: Send + Sync {
     async fn retract_proof(&self, proof: &Proof) -> Result<(), VerificationProtocolError>;
 
     fn get_capabilities(&self) -> VerificationProtocolCapabilities;
+
+    fn config_name(&self) -> &str;
+}
+
+impl Display for dyn VerificationProtocol {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Verification protocol `{}`", self.config_name())
+    }
 }

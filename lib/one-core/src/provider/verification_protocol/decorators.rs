@@ -1,0 +1,245 @@
+use std::fmt::Display;
+use std::sync::Arc;
+
+use futures::future::BoxFuture;
+use url::Url;
+
+use super::dto::{
+    FormattedCredentialPresentation, InvitationResponseDTO, PresentationDefinitionResponseDTO,
+    PresentationDefinitionV2ResponseDTO, UpdateResponse, VerificationProtocolCapabilities,
+};
+use super::error::VerificationProtocolError;
+use super::{FormatMapper, ShareResponse, TypeToDescriptorMapper, VerificationProtocol};
+use crate::model::identifier::IdentifierType;
+use crate::model::organisation::Organisation;
+use crate::model::proof::Proof;
+use crate::provider::Provider;
+use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::disabled_provider::DisabledProvider;
+use crate::provider::provider_directory::WithDisabledDecorator;
+use crate::provider::verification_protocol::dto::PresentationDefinitionVersion;
+use crate::service::proof::dto::ShareProofRequestParamsDTO;
+
+impl WithDisabledDecorator for dyn VerificationProtocol {
+    fn decorate(self: Arc<dyn VerificationProtocol>) -> Arc<dyn VerificationProtocol> {
+        Arc::new(DisabledProvider::new(self))
+    }
+}
+
+#[async_trait::async_trait]
+impl<T: Provider + VerificationProtocol + Display + ?Sized> VerificationProtocol
+    for DisabledProvider<T>
+{
+    fn holder_can_handle(&self, _url: &Url) -> bool {
+        false
+    }
+
+    async fn holder_handle_invitation(
+        &self,
+        _url: Url,
+        _organisation: Organisation,
+        _transport: String,
+    ) -> Result<InvitationResponseDTO, VerificationProtocolError> {
+        self.disabled_error()
+    }
+
+    async fn holder_reject_proof(&self, _proof: &Proof) -> Result<(), VerificationProtocolError> {
+        self.disabled_error()
+    }
+
+    async fn holder_submit_proof(
+        &self,
+        _proof: &Proof,
+        _credential_presentations: Vec<FormattedCredentialPresentation>,
+    ) -> Result<UpdateResponse, VerificationProtocolError> {
+        self.disabled_error()
+    }
+
+    async fn holder_get_presentation_definition(
+        &self,
+        _proof: &Proof,
+        _context: serde_json::Value,
+    ) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError> {
+        self.disabled_error()
+    }
+
+    async fn holder_get_presentation_definition_v2(
+        &self,
+        _proof: &Proof,
+        _context: serde_json::Value,
+    ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
+        self.disabled_error()
+    }
+
+    async fn verifier_share_proof(
+        &self,
+        _proof: &Proof,
+        _format_to_type_mapper: FormatMapper,
+        _type_to_descriptor: TypeToDescriptorMapper,
+        _on_submission_callback: Option<BoxFuture<'static, ()>>,
+        _params: Option<ShareProofRequestParamsDTO>,
+    ) -> Result<ShareResponse, VerificationProtocolError> {
+        self.disabled_error()
+    }
+
+    async fn retract_proof(&self, proof: &Proof) -> Result<(), VerificationProtocolError> {
+        self.inner().retract_proof(proof).await
+    }
+
+    fn get_capabilities(&self) -> VerificationProtocolCapabilities {
+        self.inner().get_capabilities()
+    }
+
+    fn config_name(&self) -> &str {
+        self.inner().config_name()
+    }
+}
+
+/// Checks supported operations
+pub(super) struct CapabilityChecked {
+    pub inner: Arc<dyn VerificationProtocol>,
+    pub did_method_provider: Arc<dyn DidMethodProvider>,
+}
+
+impl Provider for CapabilityChecked {
+    fn capabilities(&self) -> Option<serde_json::Value> {
+        self.inner.capabilities()
+    }
+}
+
+#[async_trait::async_trait]
+impl VerificationProtocol for CapabilityChecked {
+    fn holder_can_handle(&self, url: &Url) -> bool {
+        self.inner.holder_can_handle(url)
+    }
+
+    async fn holder_handle_invitation(
+        &self,
+        url: Url,
+        organisation: Organisation,
+        transport: String,
+    ) -> Result<InvitationResponseDTO, VerificationProtocolError> {
+        self.inner
+            .holder_handle_invitation(url, organisation, transport)
+            .await
+    }
+
+    async fn holder_reject_proof(&self, proof: &Proof) -> Result<(), VerificationProtocolError> {
+        self.inner.holder_reject_proof(proof).await
+    }
+
+    async fn holder_submit_proof(
+        &self,
+        proof: &Proof,
+        credential_presentations: Vec<FormattedCredentialPresentation>,
+    ) -> Result<UpdateResponse, VerificationProtocolError> {
+        self.inner
+            .holder_submit_proof(proof, credential_presentations)
+            .await
+    }
+
+    async fn holder_get_presentation_definition(
+        &self,
+        proof: &Proof,
+        context: serde_json::Value,
+    ) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError> {
+        let capabilities = self.inner.get_capabilities();
+        if !capabilities
+            .supported_presentation_definition
+            .contains(&PresentationDefinitionVersion::V1)
+        {
+            return Err(VerificationProtocolError::OperationNotSupported);
+        }
+
+        self.inner
+            .holder_get_presentation_definition(proof, context)
+            .await
+    }
+
+    async fn holder_get_presentation_definition_v2(
+        &self,
+        proof: &Proof,
+        context: serde_json::Value,
+    ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
+        let capabilities = self.inner.get_capabilities();
+        if !capabilities
+            .supported_presentation_definition
+            .contains(&PresentationDefinitionVersion::V2)
+        {
+            return Err(VerificationProtocolError::OperationNotSupported);
+        }
+
+        self.inner
+            .holder_get_presentation_definition_v2(proof, context)
+            .await
+    }
+
+    async fn verifier_share_proof(
+        &self,
+        proof: &Proof,
+        format_to_type_mapper: FormatMapper,
+        type_to_descriptor: TypeToDescriptorMapper,
+        on_submission_callback: Option<BoxFuture<'static, ()>>,
+        params: Option<ShareProofRequestParamsDTO>,
+    ) -> Result<ShareResponse, VerificationProtocolError> {
+        let capabilities = self.inner.get_capabilities();
+
+        let verifier_identifier =
+            proof
+                .verifier_identifier
+                .as_ref()
+                .ok_or(VerificationProtocolError::Failed(
+                    "Missing verifier identifier".to_string(),
+                ))?;
+        if !capabilities
+            .verifier_identifier_types
+            .contains(&verifier_identifier.r#type.into())
+        {
+            return Err(VerificationProtocolError::Failed(format!(
+                "Invalid verifier identifier type: {}",
+                verifier_identifier.r#type
+            )));
+        }
+
+        if verifier_identifier.r#type == IdentifierType::Did {
+            let verifier_did =
+                verifier_identifier
+                    .did
+                    .as_ref()
+                    .ok_or(VerificationProtocolError::Failed(
+                        "Missing verifier DID".to_string(),
+                    ))?;
+            let (_, did_type) = self
+                .did_method_provider
+                .get_did_method(&verifier_did.did_method)?;
+            if !capabilities.did_methods.contains(&did_type) {
+                return Err(VerificationProtocolError::Failed(format!(
+                    "Invalid verifier DID method: {}",
+                    verifier_did.did_method
+                )));
+            }
+        }
+
+        self.inner
+            .verifier_share_proof(
+                proof,
+                format_to_type_mapper,
+                type_to_descriptor,
+                on_submission_callback,
+                params,
+            )
+            .await
+    }
+
+    async fn retract_proof(&self, proof: &Proof) -> Result<(), VerificationProtocolError> {
+        self.inner.retract_proof(proof).await
+    }
+
+    fn get_capabilities(&self) -> VerificationProtocolCapabilities {
+        self.inner.get_capabilities()
+    }
+
+    fn config_name(&self) -> &str {
+        self.inner.config_name()
+    }
+}

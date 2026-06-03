@@ -10,6 +10,7 @@ use ble::ISO_MDL_FLOW;
 use ble_holder::{MdocBleHolderInteractionData, send_mdl_response};
 use common::{DeviceRequest, to_cbor};
 use futures::future::BoxFuture;
+use proc_macros::Provider;
 use serde_json::Value;
 use url::Url;
 
@@ -66,7 +67,9 @@ mod session;
 mod test;
 mod verify_proof;
 
+#[derive(Provider)]
 pub(crate) struct IsoMdl {
+    config_id: String,
     config: Arc<CoreConfig>,
     credential_repository: Arc<dyn CredentialRepository>,
     presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
@@ -77,7 +80,9 @@ pub(crate) struct IsoMdl {
 }
 
 impl IsoMdl {
+    #[expect(clippy::too_many_arguments)]
     pub(crate) fn new(
+        config_id: String,
         config: Arc<CoreConfig>,
         credential_repository: Arc<dyn CredentialRepository>,
         presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
@@ -87,6 +92,7 @@ impl IsoMdl {
         nfc_hce: Option<Arc<dyn NfcHce>>,
     ) -> Self {
         Self {
+            config_id,
             config,
             credential_repository,
             presentation_formatter_provider,
@@ -437,5 +443,9 @@ impl VerificationProtocol for IsoMdl {
             verifier_identifier_types: vec![IdentifierType::Did],
             supported_presentation_definition: vec![PresentationDefinitionVersion::V1],
         }
+    }
+
+    fn config_name(&self) -> &str {
+        &self.config_id
     }
 }

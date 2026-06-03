@@ -38,7 +38,7 @@ pub trait DidMethodProvider: Send + Sync {
     fn get_did_method(
         &self,
         did_method_id: &DidMethodId,
-    ) -> Result<Arc<dyn DidMethod>, NestedError>;
+    ) -> Result<(Arc<dyn DidMethod>, DidType), NestedError>;
 
     fn get_did_method_id(&self, did: &DidValue) -> Result<DidMethodId, DidMethodProviderError>;
 
@@ -80,8 +80,10 @@ impl DidMethodProvider for DidMethodProviderImpl {
     fn get_did_method(
         &self,
         did_method_id: &DidMethodId,
-    ) -> Result<Arc<dyn DidMethod>, NestedError> {
-        self.directory.provider(did_method_id)
+    ) -> Result<(Arc<dyn DidMethod>, DidType), NestedError> {
+        let provider = self.directory.provider(did_method_id)?;
+        let config = self.directory.config(did_method_id)?;
+        Ok((provider, config.r#type))
     }
 
     fn get_did_method_id(&self, did: &DidValue) -> Result<DidMethodId, DidMethodProviderError> {

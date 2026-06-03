@@ -13,7 +13,7 @@ use super::{
     CreateLocalIdentifierRequest, IdentifierCreator, IdentifierName, IdentifierRole,
     RemoteIdentifierRelation,
 };
-use crate::config::core_config::{CoreConfig, KeyAlgorithmType};
+use crate::config::core_config::{CoreConfig, DidType, KeyAlgorithmType};
 use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::certificate::{Certificate, CertificateState, GetCertificateList};
 use crate::model::identifier::{GetIdentifierList, Identifier};
@@ -448,7 +448,7 @@ async fn test_create_local_identifier_did() {
                 .expect_get_reference_for_key()
                 .once()
                 .returning(|_| Ok("ref".to_string()));
-            move |_| Ok(Arc::new(did_method))
+            move |_| Ok((Arc::new(did_method), DidType::Key))
         });
 
     let mut did_repository = MockDidRepository::new();
@@ -542,7 +542,7 @@ async fn test_create_local_identifier_did_did_value_already_exists() {
                 .expect_get_reference_for_key()
                 .once()
                 .returning(|_| Ok("ref".to_string()));
-            move |_| Ok(Arc::new(did_method))
+            move |_| Ok((Arc::new(did_method), DidType::Key))
         });
 
     let mut did_repository = MockDidRepository::new();
@@ -630,7 +630,7 @@ async fn test_create_local_identifier_did_create_failure() {
                 .expect_create()
                 .once()
                 .returning(|_, _, _| Err(DidMethodError::CreationError("test".to_string())));
-            move |_| Ok(Arc::new(did_method))
+            move |_| Ok((Arc::new(did_method), DidType::Key))
         });
 
     let creator = setup_creator(Mocks {

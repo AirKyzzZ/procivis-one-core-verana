@@ -135,7 +135,7 @@ mod test {
     use time::macros::datetime;
 
     use super::*;
-    use crate::config::core_config::KeyAlgorithmType;
+    use crate::config::core_config::{DidType, KeyAlgorithmType};
     use crate::error::NestedError;
     use crate::proto::http_client::{Method, MockHttpClient, Request, Response, StatusCode};
     use crate::provider::credential_formatter::vcdm::VcdmProof;
@@ -546,7 +546,7 @@ mod test {
         fn get_did_method(
             &self,
             _did_method_id: &DidMethodId,
-        ) -> Result<Arc<dyn DidMethod>, NestedError> {
+        ) -> Result<(Arc<dyn DidMethod>, DidType), NestedError> {
             unimplemented!()
         }
 

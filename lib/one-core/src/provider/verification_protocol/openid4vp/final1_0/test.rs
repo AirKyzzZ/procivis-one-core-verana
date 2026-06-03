@@ -4,17 +4,16 @@ use std::sync::Arc;
 
 use dcql::DcqlQuery;
 use mockall::predicate::{always, eq};
+use serde_json::json;
 use shared_types::CredentialFormat;
 use similar_asserts::assert_eq;
 use standardized_types::jwa::EncryptionAlgorithm;
 use standardized_types::jwk::{JwkUse, PublicJwk, PublicJwkEc};
 use standardized_types::openid4vp::{ClientMetadata, MdocAlgs, PresentationFormat, ResponseMode};
-use time::Duration;
 use url::Url;
 use uuid::Uuid;
 
 use super::OpenID4VPFinal1_0;
-use super::model::{HolderParams, Params, PresentationVerifierParams};
 use crate::config::core_config::FormatType;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::CredentialSchema;
@@ -48,10 +47,8 @@ use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::presentation_formatter::provider::MockPresentationFormatterProvider;
 use crate::provider::verification_protocol::dto::ShareResponse;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
-use crate::provider::verification_protocol::model::CommonParams;
 use crate::provider::verification_protocol::openid4vp::model::{
-    ClientIdScheme, OpenID4VCRedirectUriParams, OpenID4VPClientMetadata,
-    OpenID4VPHolderInteractionData,
+    ClientIdScheme, OpenID4VPClientMetadata, OpenID4VPHolderInteractionData,
 };
 use crate::provider::verification_protocol::{
     FormatMapper, TypeToDescriptorMapper, VerificationProtocol, serialize_interaction_data,
@@ -79,11 +76,12 @@ struct TestInputs {
     pub wrp_validator: MockWRPValidator,
     pub blob_storage_provider: MockBlobStorageProvider,
     pub trust_information_provider: MockTrustInformationProvider,
-    pub params: Option<Params>,
+    pub params: Option<serde_json::Value>,
 }
 
 fn setup_protocol(inputs: TestInputs) -> OpenID4VPFinal1_0 {
     OpenID4VPFinal1_0::new(
+        "final1".to_string(),
         Some("http://base_url".to_string()),
         Arc::new(inputs.credential_formatter_provider),
         Arc::new(inputs.presentation_formatter_provider),
@@ -103,33 +101,33 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VPFinal1_0 {
         inputs.params.unwrap_or(generic_params()),
         Arc::new(generic_config().core),
     )
+    .unwrap()
 }
 
-fn generic_params() -> Params {
-    Params {
-        allow_insecure_http_transport: true,
-        use_request_uri: false,
-        url_scheme: "openid4vp".to_string(),
-        holder: HolderParams {
-            supported_client_id_schemes: vec![
+fn generic_params() -> serde_json::Value {
+    json!({
+        "allowInsecureHttpTransport": true,
+        "useRequestUri": false,
+        "urlScheme": "openid4vp",
+        "holder":  {
+            "supportedClientIdSchemes": [
                 ClientIdScheme::RedirectUri,
-                ClientIdScheme::VerifierAttestation,
+                ClientIdScheme::VerifierAttestation
             ],
-            trust_ecosystems_leeway: Duration::seconds(45),
+            "trustEcosystemsLeeway": 45
         },
-        verifier: PresentationVerifierParams {
-            interaction_expires_in: Some(Duration::seconds(1000)),
-            supported_client_id_schemes: vec![
+        "verifier": {
+            "interactionExpiresIn": 1000,
+            "supportedClientIdSchemes": [
                 ClientIdScheme::RedirectUri,
-                ClientIdScheme::VerifierAttestation,
+                ClientIdScheme::VerifierAttestation
             ],
         },
-        redirect_uri: OpenID4VCRedirectUriParams {
-            enabled: true,
-            allowed_schemes: vec!["https".to_string()],
-        },
-        common: CommonParams { webhook_task: None },
-    }
+        "redirectUri": {
+            "enabled": true,
+            "allowedSchemes": ["https"],
+        }
+    })
 }
 
 fn test_credential_schema(format: CredentialFormat) -> CredentialSchema {

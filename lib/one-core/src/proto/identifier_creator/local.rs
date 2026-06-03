@@ -213,7 +213,7 @@ impl IdentifierCreatorProto {
             return Err(Error::MappingError("Organisation ID mismatch".to_string()));
         }
 
-        let did_method = self
+        let (did_method, _) = self
             .did_method_provider
             .get_did_method(&request.did_method)?;
 

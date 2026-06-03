@@ -1,11 +1,10 @@
 use std::sync::Arc;
 
 use futures::future::BoxFuture;
-use maplit::hashmap;
+use proc_macros::Provider;
 use serde::Deserialize;
-use serde_json::Value;
+use serde_json::{Value, json};
 use serde_with::{DurationSeconds, serde_as};
-use standardized_types::openid4vp::{PresentationFormat, SdJwtVcAlgs};
 use time::Duration;
 use url::Url;
 
@@ -16,20 +15,18 @@ use crate::model::proof::Proof;
 use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::DecomposedJwt;
+use crate::provider::provider_directory::InitializationError;
 use crate::provider::verification_protocol::dto::{
     Feature, FormattedCredentialPresentation, InvitationResponseDTO,
     PresentationDefinitionResponseDTO, PresentationDefinitionV2ResponseDTO,
     PresentationDefinitionVersion, ShareResponse, UpdateResponse, VerificationProtocolCapabilities,
 };
-use crate::provider::verification_protocol::model::CommonParams;
 use crate::provider::verification_protocol::openid4vp::draft20::OpenID4VP20HTTP;
 use crate::provider::verification_protocol::openid4vp::draft20::model::{
-    OpenID4VC20PresentationVerifierParams, OpenID4VP20AuthorizationRequest,
-    OpenID4VP20AuthorizationRequestQueryParams, OpenID4Vp20Params,
+    OpenID4VP20AuthorizationRequest, OpenID4VP20AuthorizationRequestQueryParams,
 };
 use crate::provider::verification_protocol::openid4vp::model::{
-    ClientIdScheme, OpenID4VCPresentationHolderParams, OpenID4VCRedirectUriParams,
-    OpenID4VPDraftClientMetadata, OpenID4VPVerifierInteractionContent,
+    ClientIdScheme, OpenID4VPVerifierInteractionContent,
 };
 use crate::provider::verification_protocol::openid4vp::{
     FormatMapper, TypeToDescriptorMapper, VerificationProtocolError,
@@ -39,79 +36,91 @@ use crate::provider::verification_protocol::{
 };
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 
+#[derive(Provider)]
 pub(crate) struct OpenID4VP20Swiyu {
     inner: OpenID4VP20HTTP,
     client: Arc<dyn HttpClient>,
-    allow_insecure_http_transport: bool,
+    params: OpenID4Vp20SwiyuParams,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct OpenID4Vp20SwiyuParams {
+struct OpenID4Vp20SwiyuParams {
     #[serde(default)]
-    pub allow_insecure_http_transport: bool,
-    pub redirect_uri: OpenID4VCRedirectUriParams,
+    allow_insecure_http_transport: bool,
     #[serde(default)]
-    pub verifier: Option<OpenID4Vp20SwiyuPresentationVerifierParams>,
-
-    #[serde(flatten)]
-    pub common: CommonParams,
+    verifier: Option<OpenID4Vp20SwiyuPresentationVerifierParams>,
 }
 
 #[serde_as]
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct OpenID4Vp20SwiyuPresentationVerifierParams {
+struct OpenID4Vp20SwiyuPresentationVerifierParams {
     #[serde(default)]
     #[serde_as(as = "Option<DurationSeconds<i64>>")]
-    pub interaction_expires_in: Option<Duration>,
+    interaction_expires_in: Option<Duration>,
 }
 
-impl From<OpenID4Vp20SwiyuParams> for OpenID4Vp20Params {
-    fn from(value: OpenID4Vp20SwiyuParams) -> Self {
-        Self {
-            client_metadata_by_value: false,
-            presentation_definition_by_value: false,
-            allow_insecure_http_transport: value.allow_insecure_http_transport,
-            use_request_uri: true,
-            url_scheme: "swiyu-verify".to_string(),
-            holder: OpenID4VCPresentationHolderParams {
-                supported_client_id_schemes: vec![ClientIdScheme::Did],
-            },
-            verifier: OpenID4VC20PresentationVerifierParams {
-                supported_client_id_schemes: vec![ClientIdScheme::Did],
-                interaction_expires_in: value
-                    .verifier
-                    .and_then(|verifier| verifier.interaction_expires_in),
-            },
-            redirect_uri: value.redirect_uri,
-            predefined_client_metadata: Some(OpenID4VPDraftClientMetadata {
-                vp_formats: hashmap! {
-                    "dc+sd-jwt".to_string() =>  PresentationFormat::SdJwtVcAlgs(
-                        SdJwtVcAlgs {
-                            sd_jwt_alg_values: vec!["ES256".to_string()],
-                            kb_jwt_alg_values: vec!["ES256".to_string()]
-                        }
-                    )
-                },
-                ..Default::default()
-            }),
-            common: value.common,
+pub(crate) fn swiyu_to_draft20_params(
+    mut params: serde_json::Value,
+) -> Result<serde_json::Value, serde_json::Error> {
+    let swiyu_params: OpenID4Vp20SwiyuParams = serde_json::from_value(params.clone())?;
+
+    let verifier = if let Some(interaction_expires_in) = swiyu_params
+        .verifier
+        .and_then(|verifier| verifier.interaction_expires_in)
+    {
+        json!({
+           "supportedClientIdSchemes": [ClientIdScheme::Did],
+           "interactionExpiresIn": interaction_expires_in.whole_seconds()
+        })
+    } else {
+        json!({ "supportedClientIdSchemes": [ClientIdScheme::Did] })
+    };
+
+    let additional_draft20_params = json!({
+        "useRequestUri": true,
+        "urlScheme": "swiyu-verify",
+        "holder": {
+            "supportedClientIdSchemes": [ClientIdScheme::Did]
+        },
+        "verifier": verifier,
+        "predefinedClientMetadata": {
+            "vp_formats": {
+                "dc+sd-jwt": {
+                    "sd-jwt_alg_values": ["ES256"],
+                    "kb-jwt_alg_values": ["ES256"],
+                }
+            }
         }
+    });
+
+    if let (serde_json::Value::Object(a), serde_json::Value::Object(b)) =
+        (&mut params, additional_draft20_params)
+    {
+        a.extend(b);
     }
+
+    Ok(params)
 }
 
 impl OpenID4VP20Swiyu {
     pub(crate) fn new(
         inner: OpenID4VP20HTTP,
         client: Arc<dyn HttpClient>,
-        allow_insecure_http_transport: bool,
-    ) -> Self {
-        Self {
+        params: serde_json::Value,
+    ) -> Result<Self, InitializationError> {
+        let params =
+            serde_json::from_value(params).map_err(|err| InitializationError::InvalidParams {
+                key: inner.config_name().to_string(),
+                source: err,
+            })?;
+
+        Ok(Self {
             inner,
             client,
-            allow_insecure_http_transport,
-        }
+            params,
+        })
     }
 }
 
@@ -123,7 +132,7 @@ impl VerificationProtocol for OpenID4VP20Swiyu {
     fn holder_can_handle(&self, url: &Url) -> bool {
         self.inner.holder_can_handle(url)
             || (url.scheme() == "https"
-                || self.allow_insecure_http_transport && url.scheme() == "http")
+                || self.params.allow_insecure_http_transport && url.scheme() == "http")
                 && url.query().is_none() // SWIYU invite links have no query param
     }
 
@@ -276,5 +285,9 @@ impl VerificationProtocol for OpenID4VP20Swiyu {
         _context: Value,
     ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
         Err(VerificationProtocolError::OperationNotSupported)
+    }
+
+    fn config_name(&self) -> &str {
+        self.inner.config_name()
     }
 }

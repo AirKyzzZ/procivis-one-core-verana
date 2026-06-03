@@ -188,9 +188,6 @@ pub enum MissingProviderError {
     #[error("Cannot find revocation method provider for credential status type `{0}`")]
     RevocationMethodByCredentialStatusType(String),
 
-    #[error("Cannot find `{0}` in exchange protocol provider")]
-    ExchangeProtocol(String),
-
     #[error("Cannot find task `{0}`")]
     Task(TaskId),
 
@@ -284,7 +281,6 @@ impl ErrorCodeMixin for MissingProviderError {
             Self::DidMethod(_) => ErrorCode::BR_0031,
             Self::RevocationMethod(_) => ErrorCode::BR_0044,
             Self::RevocationMethodByCredentialStatusType(_) => ErrorCode::BR_0045,
-            Self::ExchangeProtocol(_) => ErrorCode::BR_0046,
             Self::Task(_) => ErrorCode::BR_0103,
             Self::Verifier(_) => ErrorCode::BR_0380,
             Self::TrustListSubscriber(_) => ErrorCode::BR_0400,

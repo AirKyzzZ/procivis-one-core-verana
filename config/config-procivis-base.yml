@@ -222,7 +222,6 @@ verificationProtocol:
     params:
       public:
         webhookTask: "WEBHOOK_NOTIFY"
-        urlScheme: swiyu-verify
         redirectUri:
           enabled: true
           allowedSchemes: ["https"]

@@ -15,7 +15,7 @@ use standardized_types::jwk::{PublicJwk, PublicJwkEc};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
-use crate::config::core_config::KeyAlgorithmType;
+use crate::config::core_config::{DidType, KeyAlgorithmType};
 use crate::error::NestedError;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::LayoutType;
@@ -1570,7 +1570,7 @@ impl DidMethodProvider for FakeDidMethodProvider {
     fn get_did_method(
         &self,
         _did_method_id: &DidMethodId,
-    ) -> Result<Arc<dyn DidMethod>, NestedError> {
+    ) -> Result<(Arc<dyn DidMethod>, DidType), NestedError> {
         unimplemented!()
     }
 

@@ -134,7 +134,7 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
             true
         })
         .once()
-        .return_once(move |_| Some(Arc::new(verification_protocol_mock)));
+        .return_once(move |_| Ok(Arc::new(verification_protocol_mock)));
 
     let service = SSIHolderService {
         proof_repository: Arc::new(proof_repository),
@@ -252,7 +252,7 @@ async fn test_reject_proof_request_suceeds_when_holder_reject_proof_errors_state
             true
         })
         .once()
-        .return_once(move |_| Some(Arc::new(verification_protocol_mock)));
+        .return_once(move |_| Ok(Arc::new(verification_protocol_mock)));
 
     let service = SSIHolderService {
         proof_repository: Arc::new(proof_repository),
@@ -423,7 +423,7 @@ async fn test_submit_proof_succeeds() {
         .expect_get_protocol()
         .with(eq(protocol))
         .once()
-        .return_once(move |_| Some(Arc::new(verification_protocol)));
+        .return_once(move |_| Ok(Arc::new(verification_protocol)));
 
     let mut blob_storage = MockBlobStorage::new();
     blob_storage
@@ -634,7 +634,7 @@ async fn test_submit_proof_multiple_credentials_succeeds() {
         .expect_get_protocol()
         .with(eq(protocol))
         .once()
-        .return_once(move |_| Some(Arc::new(verification_protocol)));
+        .return_once(move |_| Ok(Arc::new(verification_protocol)));
 
     let mut blob_storage = MockBlobStorage::new();
     blob_storage
@@ -860,7 +860,7 @@ async fn test_submit_proof_repeating_claims() {
         .expect_get_protocol()
         .with(eq(protocol))
         .once()
-        .return_once(move |_| Some(Arc::new(verification_protocol)));
+        .return_once(move |_| Ok(Arc::new(verification_protocol)));
 
     proof_repository
         .expect_set_proof_claims()
