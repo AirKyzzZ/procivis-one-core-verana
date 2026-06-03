@@ -31,15 +31,14 @@ use crate::router::AppState;
     ),
     summary = "Create an identifier",
     description = indoc::formatdoc! {"
-    Creates a new identifier for use in credential issuance and verification.
+    Creates a new identifier for use in signing and credential operations.
 
     An identifier wraps an underlying resource (key, certificate, CA, or DID)
-    and provides a stable identifier ID for credential operations. The
-    underlying resource retains its own ID for resource-specific management
-    via its respective API.
+    and provides a stable identifier ID. The underlying resource retains its
+    own ID for resource-specific management via its respective API.
 
-    Provide one of: `key`, `certificates`, `certificateAuthorities`, or
-    `did`.
+    Provide exactly one of: `key`, `certificates`, `certificateAuthorities`,
+    or `did`.
     "},
 )]
 pub(crate) async fn post_identifier(
@@ -75,10 +74,13 @@ pub(crate) async fn post_identifier(
     ),
     summary = "Create a remote identifier",
     description = indoc::formatdoc! {"
-    Creates a new remote identifier, usually operated by external parties.
-    This is useful in the context of trust management, allowing remote identifiers to be listed in LoTEs.
+    Creates a new remote identifier for an external party whose private key 
+    is not held within Procivis One. Remote identifiers can be added as 
+    entries to trust list publications.
 
-    Provide exactly one of: `key`, `certificates`, `certificateAuthorities`, or `did`.
+    The request follows the same structure as `POST /api/identifier/v1`.
+    Provide exactly one of: `key`, `certificates`, `certificateAuthorities`,
+    or `did`.
     "},
 )]
 pub(crate) async fn post_remote_identifier(
