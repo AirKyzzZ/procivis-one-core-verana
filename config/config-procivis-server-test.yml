@@ -30,6 +30,40 @@ verifierProvider:
         verifierName: "Procivis One Test Verifier"
         featureFlags:
           trustEcosystemsEnabled: true
+format:
+  MDOC_SHORT_EXPIRY:
+    type: "MDOC"
+    display:
+      en: "ISO mdoc (short expiry)"
+      de: "ISO mdoc (kurze Gültigkeit)"
+    order: 101
+    params:
+      public:
+        msoExpiresIn: 60
+        msoExpectedUpdateIn: 60
+        msoMinimumRefreshTime: 10
+        leeway: 10
+        revocationMethod: "MDOC_MSO_UPDATE_SUSPENSION"
+transport:
+  MQTT:
+    type: "MQTT"
+    display: "transport.mqtt"
+    enabled: true
+    order: 1
+    params:
+      private:
+        brokerUrl: "mqtts://mqtt.dev.procivis-one.com:8883"
+verificationProtocol:
+  OPENID4VP_PROXIMITY_DRAFT00:
+    display:
+      en: "OpenID4VP Proximity"
+      de: "OpenID4VP Nahbereich"
+    order: 5
+    type: "OPENID4VP_PROXIMITY_DRAFT00"
+    params:
+      public:
+        verifier:
+          interactionExpiresIn: 3600
 signer:
   REGISTRATION_CERTIFICATE:
     params:
