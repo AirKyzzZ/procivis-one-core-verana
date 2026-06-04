@@ -113,9 +113,14 @@ pub struct CreateRemoteIdentifierRequestDTO {
     pub name: String,
     pub did: Option<DidValue>,
     pub key: Option<PublicJwk>,
-    pub certificates: Option<Vec<String>>,
-    pub certificate_authorities: Option<Vec<String>>,
+    pub certificates: Option<Vec<CreateRemoteCertificateChainDTO>>,
+    pub certificate_authorities: Option<Vec<CreateRemoteCertificateChainDTO>>,
     pub organisation_id: OrganisationId,
+}
+
+#[derive(Clone, Debug)]
+pub struct CreateRemoteCertificateChainDTO {
+    pub chain: String,
 }
 
 #[derive(Clone, Debug)]

@@ -167,6 +167,7 @@ pub(crate) struct CertificateValidationOptions {
     /// OID of extensions that cannot be present outside of the leaf certificate.
     /// This is specifically used in the Android App integrity check.
     pub leaf_only_extensions: Vec<String>,
+    /// Validations applied to the leaf certificate.
     pub leaf_validations: Vec<LeafValidation>,
 }
 

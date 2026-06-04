@@ -190,7 +190,7 @@ impl IdentifierService {
                     .create_remote_certificate_identifier(
                         organisation,
                         request.name,
-                        chains,
+                        chains.into_iter().map(|c| c.chain).collect(),
                         IdentifierType::Certificate,
                     )
                     .await
@@ -205,7 +205,7 @@ impl IdentifierService {
                     .create_remote_certificate_identifier(
                         organisation,
                         request.name,
-                        chains,
+                        chains.into_iter().map(|c| c.chain).collect(),
                         IdentifierType::CertificateAuthority,
                     )
                     .await

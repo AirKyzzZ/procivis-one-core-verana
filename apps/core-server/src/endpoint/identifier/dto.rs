@@ -9,8 +9,8 @@ use one_core::service::error::ServiceError;
 use one_core::service::identifier::dto::{
     CertificateRolesMatchMode, CreateCertificateAuthorityRequestDTO, CreateIdentifierDidRequestDTO,
     CreateIdentifierKeyRequestDTO, CreateIdentifierRequestDTO,
-    CreateIdentifierTrustInformationRequestDTO, CreateRemoteIdentifierRequestDTO,
-    CreateSelfSignedCertificateAuthorityContentRequestDTO,
+    CreateIdentifierTrustInformationRequestDTO, CreateRemoteCertificateChainDTO,
+    CreateRemoteIdentifierRequestDTO, CreateSelfSignedCertificateAuthorityContentRequestDTO,
     CreateSelfSignedCertificateAuthorityIssuerAlternativeNameRequest,
     CreateSelfSignedCertificateAuthorityIssuerAlternativeNameType,
     CreateSelfSignedCertificateAuthorityRequestDTO, GetIdentifierListItemResponseDTO,
@@ -102,15 +102,24 @@ pub(crate) struct CreateRemoteIdentifierRequestRestDTO {
     #[try_into(with_fn = convert_inner, infallible)]
     pub key: Option<PublicJwk>,
     /// PEM-encoded certificate chains, each from the leaf up to the root.
-    #[try_into(infallible)]
-    pub certificates: Option<Vec<String>>,
+    #[try_into(with_fn = convert_inner_of_inner, infallible)]
+    pub certificates: Option<Vec<CreateRemoteCertificateChainRestDTO>>,
     /// PEM-encoded CA certificate chains.
-    #[try_into(infallible)]
-    pub certificate_authorities: Option<Vec<String>>,
+    #[try_into(with_fn = convert_inner_of_inner, infallible)]
+    pub certificate_authorities: Option<Vec<CreateRemoteCertificateChainRestDTO>>,
     /// Required when not using STS authentication mode. Specifies
     /// organizational context for this operation.
     #[try_into(with_fn = fallback_organisation_id_from_session)]
     pub organisation_id: Option<OrganisationId>,
+}
+
+#[derive(Debug, Deserialize, ToSchema, Into)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[into(CreateRemoteCertificateChainDTO)]
+pub(crate) struct CreateRemoteCertificateChainRestDTO {
+    /// Full certificate chain in PEM format. Include all certificates
+    /// from the leaf up to the root.
+    pub chain: String,
 }
 
 #[options_not_nullable]

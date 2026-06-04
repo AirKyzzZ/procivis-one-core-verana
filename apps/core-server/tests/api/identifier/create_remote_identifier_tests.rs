@@ -105,7 +105,7 @@ async fn test_create_remote_certificate_identifier_success() {
         .identifiers
         .create_remote(json!({
             "name": "remote-cert",
-            "certificates": [sample_chain()],
+            "certificates": [{ "chain": sample_chain() }],
             "organisationId": organisation.id,
         }))
         .await;
@@ -134,7 +134,7 @@ async fn test_create_remote_ca_identifier_success() {
         .identifiers
         .create_remote(json!({
             "name": "remote-ca",
-            "certificateAuthorities": [sample_ca_chain()],
+            "certificateAuthorities": [{ "chain": sample_ca_chain() }],
             "organisationId": organisation.id,
         }))
         .await;
@@ -152,6 +152,42 @@ async fn test_create_remote_ca_identifier_success() {
     assert_eq!(body["name"].as_str().unwrap(), "remote-ca");
     assert_eq!(body["type"].as_str().unwrap(), "CA");
     assert!(body["isRemote"].as_bool().unwrap());
+}
+
+#[tokio::test]
+async fn test_create_remote_ca_identifier_with_end_entity_chain_fails() {
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let resp = context
+        .api
+        .identifiers
+        .create_remote(json!({
+            "name": "remote-ca",
+            "certificateAuthorities": [{ "chain": sample_chain() }],
+            "organisationId": organisation.id,
+        }))
+        .await;
+
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.json_value().await["code"].as_str().unwrap(), "BR_0244");
+}
+
+#[tokio::test]
+async fn test_create_remote_certificate_identifier_with_ca_chain_fails() {
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let resp = context
+        .api
+        .identifiers
+        .create_remote(json!({
+            "name": "remote-cert",
+            "certificates": [{ "chain": sample_ca_chain() }],
+            "organisationId": organisation.id,
+        }))
+        .await;
+
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.json_value().await["code"].as_str().unwrap(), "BR_0250");
 }
 
 #[tokio::test]
@@ -195,7 +231,7 @@ async fn test_create_remote_certificate_identifier_duplicate_chain_returns_colli
         .identifiers
         .create_remote(json!({
             "name": "first-cert",
-            "certificates": [chain.clone()],
+            "certificates": [{ "chain": chain.clone() }],
             "organisationId": organisation.id,
         }))
         .await;
@@ -206,7 +242,7 @@ async fn test_create_remote_certificate_identifier_duplicate_chain_returns_colli
         .identifiers
         .create_remote(json!({
             "name": "second-cert",
-            "certificates": [chain],
+            "certificates": [{ "chain": chain }],
             "organisationId": organisation.id,
         }))
         .await;
@@ -294,7 +330,7 @@ async fn test_remote_certificate_identifier_can_be_added_to_trust_list_entry() {
         .identifiers
         .create_remote(json!({
             "name": "remote-cert-for-trust-list",
-            "certificates": [sample_chain()],
+            "certificates": [{ "chain": sample_chain() }],
             "organisationId": organisation.id,
         }))
         .await;

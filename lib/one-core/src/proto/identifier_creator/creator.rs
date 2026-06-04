@@ -16,7 +16,10 @@ use crate::model::certificate::{
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::organisation::Organisation;
-use crate::proto::certificate_validator::{CertificateValidationOptions, ParsedCertificate};
+use crate::proto::certificate_validator::x509_extension::{validate_ca, validate_not_ca};
+use crate::proto::certificate_validator::{
+    CertificateValidationOptions, LeafValidation, ParsedCertificate,
+};
 use crate::proto::csr_creator::CsrCreator;
 use crate::proto::transaction_manager::{IsolationLevel, TransactionManager};
 use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
@@ -161,6 +164,11 @@ impl IdentifierCreator for IdentifierCreatorProto {
             return Err(Error::InvalidCertificateInput);
         }
 
+        let leaf_validations: Vec<LeafValidation> = match identifier_type {
+            IdentifierType::CertificateAuthority => vec![validate_ca],
+            _ => vec![validate_not_ca],
+        };
+
         self.tx_manager
             .tx_with_config(
                 async move {
@@ -177,7 +185,10 @@ impl IdentifierCreator for IdentifierCreatorProto {
                             .certificate_validator
                             .parse_pem_chain(
                                 &chain,
-                                CertificateValidationOptions::signature_and_revocation(None),
+                                CertificateValidationOptions {
+                                    leaf_validations: leaf_validations.clone(),
+                                    ..CertificateValidationOptions::signature_and_revocation(None)
+                                },
                             )
                             .await
                             .error_while("parsing pem chain")?;

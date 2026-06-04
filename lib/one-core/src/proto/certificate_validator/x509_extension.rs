@@ -98,6 +98,17 @@ pub(crate) fn validate_ca(ca_certificate: &X509Certificate) -> Result<(), Error>
     validate_ca_key_cert_sign_key_usage(ca_certificate)
 }
 
+/// Validates the certificate is an end-entity certificate, i.e. its BasicConstraints `ca` is not set.
+pub(crate) fn validate_not_ca(certificate: &X509Certificate) -> Result<(), Error> {
+    if certificate.is_ca() {
+        return Err(Error::BasicConstraintsViolation(
+            "Expected an end-entity certificate but found a CA certificate".to_string(),
+        ));
+    }
+
+    Ok(())
+}
+
 pub(crate) fn validate_required_cert_key_usage(
     certificate: &X509Certificate,
     required_key_usages: &[EnforceKeyUsage],

@@ -50,8 +50,9 @@ use crate::service::common_dto::ListQueryDTO;
 use crate::service::identifier::IdentifierService;
 use crate::service::identifier::dto::{
     CertificateRolesMatchMode, CreateIdentifierKeyRequestDTO, CreateIdentifierRequestDTO,
-    CreateIdentifierTrustInformationRequestDTO, CreateRemoteIdentifierRequestDTO,
-    IdentifierFilterParamsDTO, IdentifierTrustInformationType, ResolveTrustEntriesRequestDTO,
+    CreateIdentifierTrustInformationRequestDTO, CreateRemoteCertificateChainDTO,
+    CreateRemoteIdentifierRequestDTO, IdentifierFilterParamsDTO, IdentifierTrustInformationType,
+    ResolveTrustEntriesRequestDTO,
 };
 use crate::service::identifier::error::IdentifierServiceError;
 use crate::service::test_utilities::{
@@ -1308,7 +1309,7 @@ async fn test_create_remote_certificate_identifier_single_chain_success() {
 
     let result = service
         .create_remote_identifier(CreateRemoteIdentifierRequestDTO {
-            certificates: Some(vec![chain]),
+            certificates: Some(vec![CreateRemoteCertificateChainDTO { chain }]),
             ..remote_dto(organisation_id, "my-cert")
         })
         .await
@@ -1352,7 +1353,12 @@ async fn test_create_remote_certificate_identifier_multiple_chains_success() {
 
     let result = service
         .create_remote_identifier(CreateRemoteIdentifierRequestDTO {
-            certificates: Some(chains),
+            certificates: Some(
+                chains
+                    .into_iter()
+                    .map(|chain| CreateRemoteCertificateChainDTO { chain })
+                    .collect(),
+            ),
             ..remote_dto(organisation_id, "multi-cert")
         })
         .await
@@ -1384,7 +1390,9 @@ async fn test_create_remote_certificate_identifier_duplicate_returns_colliding_i
 
     let err = service
         .create_remote_identifier(CreateRemoteIdentifierRequestDTO {
-            certificates: Some(vec!["chain".to_string()]),
+            certificates: Some(vec![CreateRemoteCertificateChainDTO {
+                chain: "chain".to_string(),
+            }]),
             ..remote_dto(organisation_id, "my-cert")
         })
         .await
@@ -1428,7 +1436,7 @@ async fn test_create_remote_ca_identifier_single_chain_success() {
 
     let result = service
         .create_remote_identifier(CreateRemoteIdentifierRequestDTO {
-            certificate_authorities: Some(vec![chain]),
+            certificate_authorities: Some(vec![CreateRemoteCertificateChainDTO { chain }]),
             ..remote_dto(organisation_id, "my-ca")
         })
         .await
@@ -1471,7 +1479,12 @@ async fn test_create_remote_ca_identifier_multiple_chains_success() {
 
     let result = service
         .create_remote_identifier(CreateRemoteIdentifierRequestDTO {
-            certificate_authorities: Some(chains),
+            certificate_authorities: Some(
+                chains
+                    .into_iter()
+                    .map(|chain| CreateRemoteCertificateChainDTO { chain })
+                    .collect(),
+            ),
             ..remote_dto(organisation_id, "multi-ca")
         })
         .await
@@ -1503,7 +1516,9 @@ async fn test_create_remote_ca_identifier_duplicate_returns_colliding_id() {
 
     let err = service
         .create_remote_identifier(CreateRemoteIdentifierRequestDTO {
-            certificate_authorities: Some(vec!["chain".to_string()]),
+            certificate_authorities: Some(vec![CreateRemoteCertificateChainDTO {
+                chain: "chain".to_string(),
+            }]),
             ..remote_dto(organisation_id, "my-ca")
         })
         .await
