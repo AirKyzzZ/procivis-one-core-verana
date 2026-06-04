@@ -5,7 +5,9 @@ use one_core::model::localized_text::{LocalizedTextEntityType, LocalizedTextFiel
 use shared_types::EntityId;
 use similar_asserts::assert_eq;
 
-use crate::utils::api_clients::credential_schemas::{CreateSchemaV2Params, TestClaim};
+use crate::utils::api_clients::credential_schemas::{
+    CreateSchemaV2Params, TestClaim, TestClaimMappings,
+};
 use crate::utils::context::TestContext;
 use crate::utils::field_match::FieldHelpers;
 
@@ -21,9 +23,11 @@ fn default_claims() -> Vec<TestClaim> {
             claims: vec![],
             array: None,
             translations: None,
+            mappings: None,
         }],
         array: None,
         translations: None,
+        mappings: None,
     }]
 }
 
@@ -120,6 +124,7 @@ async fn test_create_credential_schema_v2_mdoc_with_jwt_without_root_object_succ
         claims: vec![],
         array: None,
         translations: None,
+        mappings: None,
     }];
 
     // when
@@ -384,6 +389,95 @@ async fn test_create_credential_schema_v2_mdoc_with_schema_id() {
 }
 
 #[tokio::test]
+async fn test_create_credential_schema_v2_mdoc_with_nesting_and_namespace() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credential_schemas
+        .create_v2(CreateSchemaV2Params {
+            name: "v2 mdoc schema".into(),
+            organisation_id: organisation.id.into(),
+            formats: vec![
+                serde_json::json!({ "format": "MDOC", "schemaId": "org.iso.18013.5.1.mDL" }),
+            ],
+            claims: vec![TestClaim {
+                datatype: "OBJECT".to_string(),
+                key: "root".to_string(),
+                required: true,
+                claims: vec![TestClaim {
+                    datatype: "STRING".to_string(),
+                    key: "nestedClaim".to_string(),
+                    required: true,
+                    claims: vec![],
+                    array: None,
+                    translations: None,
+                    mappings: Some(vec![TestClaimMappings {
+                        format: "MDOC".to_string(),
+                        technical_key: "nestedClaim_tech_key".to_string(),
+                        namespace: None,
+                    }]),
+                }],
+                array: None,
+                translations: None,
+                mappings: Some(vec![TestClaimMappings {
+                    format: "MDOC".to_string(),
+                    technical_key: "root_tech_key".to_string(),
+                    namespace: Some("mapped_namespace".to_string()),
+                }]),
+            }],
+            ..Default::default()
+        })
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+    let schema = context
+        .db
+        .credential_schemas
+        .get(&resp.json_value().await["id"].parse())
+        .await;
+    let claims = schema.claim_schemas.as_ref().await.unwrap();
+    let formats = schema.formats.as_ref().await.unwrap();
+    let mappings = formats[0].claim_mappings.as_ref().await.unwrap();
+    assert_eq!(formats.len(), 1);
+    assert_eq!(formats[0].format, "MDOC".into());
+    assert_eq!(mappings.len(), 3);
+    let root = mappings
+        .iter()
+        .find(|m| m.technical_key == "root_tech_key")
+        .unwrap();
+    assert_eq!(root.namespace, Some("mapped_namespace".to_string()));
+    let root_claim = claims
+        .iter()
+        .find(|c| c.id == root.claim_schema_id)
+        .unwrap();
+    assert_eq!(root_claim.key, "root");
+    let child = mappings
+        .iter()
+        .find(|m| m.technical_key == "root_tech_key/nestedClaim_tech_key")
+        .unwrap();
+    assert_eq!(child.namespace, Some("mapped_namespace".to_string()));
+    let child_claim = claims
+        .iter()
+        .find(|c| c.id == child.claim_schema_id)
+        .unwrap();
+    assert_eq!(child_claim.key, "root/nestedClaim");
+    let metadata = mappings
+        .iter()
+        .find(|m| m.technical_key == "doctype")
+        .unwrap();
+    assert_eq!(metadata.namespace, None);
+    let metadata_claim = claims
+        .iter()
+        .find(|c| c.id == metadata.claim_schema_id)
+        .unwrap();
+    assert_eq!(metadata_claim.key, "doctype");
+}
+
+#[tokio::test]
 async fn test_fail_create_credential_schema_v2_duplicate_schema_id() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;
@@ -442,9 +536,11 @@ async fn test_fail_create_credential_schema_v2_forbidden_claim_name() {
                     claims: vec![],
                     array: None,
                     translations: None,
+                    mappings: None,
                 }],
                 array: None,
                 translations: None,
+                mappings: None,
             }],
             ..Default::default()
         })
@@ -527,6 +623,7 @@ async fn test_fail_create_credential_schema_v2_unsupported_data_type() {
                 claims: vec![],
                 array: Some(true),
                 translations: None,
+                mappings: None,
             }],
             ..Default::default()
         })
@@ -566,6 +663,7 @@ async fn test_create_credential_schema_v2_with_claim_translations() {
                             "de": "Vorname"
                         }
                     })),
+                    mappings: None,
                 }],
                 array: None,
                 translations: Some(serde_json::json!({
@@ -574,6 +672,7 @@ async fn test_create_credential_schema_v2_with_claim_translations() {
                         "de": "Hauptobjekt"
                     }
                 })),
+                mappings: None,
             }],
             ..Default::default()
         })

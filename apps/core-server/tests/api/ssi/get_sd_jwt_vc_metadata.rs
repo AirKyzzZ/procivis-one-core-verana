@@ -269,6 +269,7 @@ async fn test_vct_metadata_v2_simple() {
                     claims: vec![],
                     array: None,
                     translations: None,
+                    mappings: None,
                 },
                 TestClaim {
                     datatype: "STRING".to_string(),
@@ -277,6 +278,7 @@ async fn test_vct_metadata_v2_simple() {
                     claims: vec![],
                     array: None,
                     translations: None,
+                    mappings: None,
                 },
             ],
             ..Default::default()
@@ -336,6 +338,7 @@ async fn test_vct_metadata_v2_with_format_wrong_format_returns_not_found() {
                 claims: vec![],
                 array: None,
                 translations: None,
+                mappings: None,
             }],
             ..Default::default()
         })

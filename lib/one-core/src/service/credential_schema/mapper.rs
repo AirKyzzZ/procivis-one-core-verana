@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use dcql::CredentialMeta;
 use one_dto_mapper::convert_inner;
 use shared_types::{CredentialFormat, CredentialSchemaId, OrganisationId};
@@ -39,7 +41,7 @@ use crate::model::organisation::Organisation;
 use crate::model::relation::RelatedVec;
 use crate::proto::credential_schema::dto::CredentialClaimSchemaMappingDTO;
 use crate::provider::credential_formatter::CredentialFormatter;
-use crate::provider::credential_formatter::model::{Context, Features};
+use crate::provider::credential_formatter::model::Context;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 
 pub(crate) async fn schema_to_detail_response_dto(
@@ -310,7 +312,7 @@ pub(super) fn from_create_request_with_id(
 
     let now = crate::clock::now_utc();
 
-    let claim_schemas = unnest_claim_schemas(request.claims);
+    let claim_schemas = unnest_claim_schemas(request.claims, &[&request.format], &HashMap::new())?;
 
     Ok(CredentialSchema {
         id,
@@ -445,53 +447,69 @@ fn default_name_translation(
     }]
 }
 
+pub(super) fn add_metadata_claims_and_mappings(
+    format: &CredentialFormat,
+    formatter: &dyn CredentialFormatter,
+    now: time::OffsetDateTime,
+    key_to_claim_schema_and_mappings: &mut HashMap<
+        String,
+        (ClaimSchema, Vec<CredentialClaimSchemaMappingDTO>),
+    >,
+) {
+    for metadata_claim in formatter.get_metadata_claims() {
+        let key = metadata_claim.key.clone();
+        // the metadata claim could already have been created by a different formatter of the same type
+        if let Some((metadata_claim, mappings)) = key_to_claim_schema_and_mappings.get_mut(&key) {
+            mappings.push(CredentialClaimSchemaMappingDTO {
+                format: format.clone(),
+                technical_key: metadata_claim.key.clone(),
+                namespace: None,
+            })
+        } else {
+            let metadata_claim = claim_schema_from_metadata_claim_schema(metadata_claim, now);
+            key_to_claim_schema_and_mappings.insert(
+                key.clone(),
+                (
+                    metadata_claim,
+                    vec![CredentialClaimSchemaMappingDTO {
+                        format: format.clone(),
+                        technical_key: key,
+                        namespace: None,
+                    }],
+                ),
+            );
+        };
+    }
+}
 pub(super) fn build_format_with_claim_mappings(
     credential_schema_id: CredentialSchemaId,
+    format: CredentialFormat,
     schema_id: String,
-    format: shared_types::CredentialFormat,
     now: time::OffsetDateTime,
-    claim_schemas_to_mappings: &[(ClaimSchema, Vec<CredentialClaimSchemaMappingDTO>)],
-    formatter: &dyn CredentialFormatter,
-) -> (CredentialSchemaFormat, Vec<ClaimSchema>) {
+    key_to_claim_schema_and_mappings: &HashMap<
+        String,
+        (ClaimSchema, Vec<CredentialClaimSchemaMappingDTO>),
+    >,
+) -> Result<CredentialSchemaFormat, CredentialSchemaServiceError> {
     let format_id = Uuid::new_v4().into();
-    let uses_namespaces = formatter
-        .get_capabilities()
-        .features
-        .contains(&Features::RequiresNamespaces);
-
-    let metadata_claims_with_mappings = formatter
-        .get_metadata_claims()
-        .into_iter()
-        .map(|metadata_claim| {
-            (
-                claim_schema_from_metadata_claim_schema(metadata_claim, now),
-                vec![],
-            )
-        })
-        .collect::<Vec<_>>();
-
-    let mut mappings = vec![];
-    for (claim_schema, claim_mappings) in claim_schemas_to_mappings
-        .iter()
-        .chain(metadata_claims_with_mappings.iter())
-    {
-        let mapping_for_format = claim_mappings.iter().find(|m| m.format == format);
-
-        let technical_key = mapping_for_format
-            .map(|m| m.technical_key.clone())
-            .unwrap_or_else(|| claim_schema.key.clone());
-
-        let namespace = mapping_for_format
-            .and_then(|m| m.namespace.clone())
-            .or_else(|| {
-                if uses_namespaces {
-                    Some(schema_id.clone())
-                } else {
-                    None
-                }
-            });
-
-        mappings.push(CredentialSchemaFormatClaimSchema {
+    let mut format_specific_mappings = vec![];
+    for (claim_schema, mappings) in key_to_claim_schema_and_mappings.values() {
+        let mapping = mappings.iter().find(|m| m.format == format);
+        if mapping.is_none() && claim_schema.metadata {
+            // metadata claims do only exist for their respective format
+            continue;
+        }
+        let CredentialClaimSchemaMappingDTO {
+            technical_key,
+            namespace,
+            ..
+        } = mapping
+            .ok_or(CredentialSchemaServiceError::MappingError(format!(
+                "missing mapping for claim schema `{}` and format `{format}`",
+                claim_schema.key
+            )))?
+            .clone();
+        format_specific_mappings.push(CredentialSchemaFormatClaimSchema {
             id: Uuid::new_v4().into(),
             created_date: now,
             last_modified: now,
@@ -499,24 +517,18 @@ pub(super) fn build_format_with_claim_mappings(
             claim_schema_id: claim_schema.id,
             technical_key,
             namespace,
-        });
+        })
     }
 
-    (
-        CredentialSchemaFormat {
-            id: format_id,
-            created_date: now,
-            last_modified: now,
-            credential_schema_id,
-            format,
-            schema_id,
-            claim_mappings: RelatedVec::from(mappings),
-        },
-        metadata_claims_with_mappings
-            .into_iter()
-            .map(|(claim_schema, _)| claim_schema)
-            .collect(),
-    )
+    Ok(CredentialSchemaFormat {
+        id: format_id,
+        created_date: now,
+        last_modified: now,
+        credential_schema_id,
+        format,
+        schema_id,
+        claim_mappings: RelatedVec::from(format_specific_mappings),
+    })
 }
 
 pub(crate) async fn to_credential_schema_list_response(
@@ -645,32 +657,122 @@ pub(super) fn renest_claim_schemas(
 
 pub(super) fn unnest_claim_schemas(
     claim_schemas: Vec<CredentialClaimSchemaRequestDTO>,
-) -> Vec<CredentialClaimSchemaRequestDTO> {
-    unnest_claim_schemas_inner(claim_schemas, "".to_string())
+    formats: &[&CredentialFormat],
+    default_namespaces: &HashMap<&CredentialFormat, String>,
+) -> Result<Vec<CredentialClaimSchemaRequestDTO>, CredentialSchemaServiceError> {
+    unnest_claim_schemas_inner(
+        claim_schemas,
+        Prefixes::root(),
+        formats,
+        default_namespaces,
+        &mut HashMap::new(),
+    )
+}
+
+#[derive(Debug, Clone)]
+struct Prefixes {
+    key: String,
+    technical_key: HashMap<CredentialFormat, String>,
+}
+
+impl Prefixes {
+    fn root() -> Self {
+        Self {
+            key: "".to_string(),
+            technical_key: HashMap::new(),
+        }
+    }
+
+    fn is_root(&self) -> bool {
+        self.key.is_empty()
+    }
+
+    fn nest_key(&mut self, key: &String) -> String {
+        let key = format!("{}{key}", self.key);
+        self.key = format!("{key}{NESTED_CLAIM_MARKER}");
+        key
+    }
+
+    fn nest_technical_key(&mut self, format: &CredentialFormat, technical_key: &String) -> String {
+        let entry = self.technical_key.entry(format.clone()).or_default();
+        let technical_key = format!("{}{}", entry, technical_key);
+        *entry = format!("{technical_key}{NESTED_CLAIM_MARKER}");
+        technical_key
+    }
 }
 
 fn unnest_claim_schemas_inner(
     claim_schemas: Vec<CredentialClaimSchemaRequestDTO>,
-    prefix: String,
-) -> Vec<CredentialClaimSchemaRequestDTO> {
+    prefixes: Prefixes,
+    formats: &[&CredentialFormat],
+    default_namespaces: &HashMap<&CredentialFormat, String>,
+    parent_namespaces: &mut HashMap<CredentialFormat, String>,
+) -> Result<Vec<CredentialClaimSchemaRequestDTO>, CredentialSchemaServiceError> {
     let mut result = vec![];
 
+    let root_level = prefixes.is_root();
+    if root_level && !parent_namespaces.is_empty() {
+        return Err(CredentialSchemaServiceError::MappingError(
+            "parent namespaces supplied on root level".to_string(),
+        ));
+    }
+
     for claim_schema in claim_schemas {
-        let key = format!("{prefix}{}", claim_schema.key);
+        let mut claim_prefixes = prefixes.clone();
+        let key = claim_prefixes.nest_key(&claim_schema.key);
+        if root_level {
+            // each root claim starts fresh for each schema
+            parent_namespaces.clear();
+        }
 
-        let nested =
-            unnest_claim_schemas_inner(claim_schema.claims, format!("{key}{NESTED_CLAIM_MARKER}"));
+        let mut mappings = claim_schema.mappings.unwrap_or_default();
+        for format in formats {
+            if let Some(mapping) = mappings.iter_mut().find(|m| m.format == **format) {
+                mapping.technical_key =
+                    claim_prefixes.nest_technical_key(format, &mapping.technical_key);
+                if let Some(namespace) = &mapping.namespace {
+                    if !root_level {
+                        return Err(CredentialSchemaServiceError::MappingError(format!(
+                            "namespace must only be supplied on root level, but was supplied for claim schema with key `{key}`"
+                        )));
+                    }
+                    parent_namespaces.insert((*format).clone(), namespace.to_string());
+                } else {
+                    mapping.namespace = parent_namespaces
+                        .get(format)
+                        .or_else(|| default_namespaces.get(format))
+                        .cloned()
+                }
+            } else {
+                mappings.push(CredentialClaimSchemaMappingDTO {
+                    format: (*format).clone(),
+                    technical_key: claim_prefixes.nest_technical_key(format, &claim_schema.key),
+                    namespace: parent_namespaces
+                        .get(format)
+                        .or_else(|| default_namespaces.get(format))
+                        .cloned(),
+                });
+            }
+        }
 
+        let nested = unnest_claim_schemas_inner(
+            claim_schema.claims,
+            claim_prefixes,
+            formats,
+            default_namespaces,
+            parent_namespaces,
+        )?;
         result.push(CredentialClaimSchemaRequestDTO {
             key,
             claims: vec![],
+            mappings: Some(mappings),
             ..claim_schema
         });
 
         result.extend(nested);
     }
 
-    result
+    Ok(result)
 }
 
 impl From<CredentialSchemaLogoPropertiesRequestDTO>

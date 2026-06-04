@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use shared_types::{CredentialFormat, CredentialSchemaId, OrganisationId};
 use uuid::Uuid;
 
@@ -11,7 +13,8 @@ use super::dto::{
     ImportCredentialSchemaV2RequestDTO,
 };
 use super::error::CredentialSchemaServiceError;
-use super::validator::UniquenessCheckResult;
+use super::validator::{UniquenessCheckResult, validate_claim_mappings_for_format};
+use crate::config::core_config::FormatType;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::credential_schema_claim::{
     backfill_default_translations, claim_schema_from_metadata_claim_schema,
@@ -27,10 +30,10 @@ use crate::service::credential_schema::dto::{
     CredentialSchemaListItemResponseDTO, CredentialSchemaListItemV2ResponseDTO,
 };
 use crate::service::credential_schema::mapper::{
-    build_format_with_claim_mappings, from_create_request_with_id, from_create_v2_request_with_id,
-    schema_to_detail_response_dto, schema_to_detail_v2_response_dto,
-    to_credential_schema_list_response, to_credential_schema_list_v2_response,
-    unnest_claim_schemas,
+    add_metadata_claims_and_mappings, build_format_with_claim_mappings,
+    from_create_request_with_id, from_create_v2_request_with_id, schema_to_detail_response_dto,
+    schema_to_detail_v2_response_dto, to_credential_schema_list_response,
+    to_credential_schema_list_v2_response, unnest_claim_schemas,
 };
 use crate::util::logging::quoted_opt_provider;
 use crate::validator::throw_if_org_id_not_matching_session;
@@ -184,26 +187,66 @@ impl CredentialSchemaService {
         let credential_schema_id = CredentialSchemaId::from(Uuid::new_v4());
         let now = crate::clock::now_utc();
 
-        let flat_claims = unnest_claim_schemas(request.claims.clone());
-        let claim_schemas_with_raw_mappings = flat_claims
+        let mut formats = Vec::with_capacity(request.formats.len());
+        let mut default_namespaces = HashMap::new();
+        for format in &request.formats {
+            formats.push(&format.format);
+            let format_type = self
+                .config
+                .format
+                .get_type(&format.format)
+                .error_while("getting format type")?;
+
+            if format_type == FormatType::Mdoc {
+                let formatter = self
+                    .formatter_provider
+                    .get_credential_formatter(&format.format)?;
+                let schema_id = formatter
+                    .credential_schema_id(
+                        credential_schema_id,
+                        organisation.id,
+                        format.schema_id.as_deref(),
+                        core_base_url,
+                        CredentialSchemaVersion::V2(format.format.clone()),
+                    )
+                    .error_while("creating schemaId")?;
+                default_namespaces.insert(&format.format, schema_id);
+            }
+        }
+
+        let flat_claims =
+            unnest_claim_schemas(request.claims.clone(), &formats, &default_namespaces)?;
+        validate_claim_mappings_for_format(
+            &flat_claims,
+            &request.formats,
+            &*self.formatter_provider,
+        )?;
+
+        let mut key_to_claim_schemas_and_mappings = flat_claims
             .into_iter()
             .map(|claim_schema_request| {
+                let claim_schema = from_request_claim_schema(now, &claim_schema_request);
                 (
-                    from_request_claim_schema(now, &claim_schema_request),
-                    claim_schema_request.mappings.unwrap_or_default(),
+                    claim_schema.key.clone(),
+                    (
+                        claim_schema,
+                        claim_schema_request.mappings.unwrap_or_default(),
+                    ),
                 )
             })
-            .collect::<Vec<_>>();
+            .collect::<HashMap<_, _>>();
 
-        let mut claim_schemas: Vec<_> = claim_schemas_with_raw_mappings
-            .iter()
-            .map(|(cs, _)| cs.clone())
-            .collect();
         let mut resolved_formats = vec![];
         for format_req in &request.formats {
             let formatter = self
                 .formatter_provider
                 .get_credential_formatter(&format_req.format)?;
+            add_metadata_claims_and_mappings(
+                &format_req.format,
+                formatter.as_ref(),
+                now,
+                &mut key_to_claim_schemas_and_mappings,
+            );
 
             let schema_id = formatter
                 .credential_schema_id(
@@ -215,16 +258,14 @@ impl CredentialSchemaService {
                 )
                 .error_while("creating schemaId")?;
 
-            let (schema_format, format_specific_claim_schemas) = build_format_with_claim_mappings(
+            let schema_format = build_format_with_claim_mappings(
                 credential_schema_id,
-                schema_id,
                 format_req.format.clone(),
+                schema_id,
                 now,
-                &claim_schemas_with_raw_mappings,
-                formatter.as_ref(),
-            );
+                &key_to_claim_schemas_and_mappings,
+            )?;
             resolved_formats.push(schema_format);
-            claim_schemas.extend(format_specific_claim_schemas);
         }
         let resolved_format_types = resolved_formats
             .iter()
@@ -238,7 +279,10 @@ impl CredentialSchemaService {
             organisation,
             now,
             resolved_formats,
-            claim_schemas,
+            key_to_claim_schemas_and_mappings
+                .into_values()
+                .map(|(cs, _)| cs)
+                .collect(),
             imported_source_url,
             &self.config.default_language,
         );

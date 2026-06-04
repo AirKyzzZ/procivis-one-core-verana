@@ -17,9 +17,11 @@ fn default_claims() -> Vec<TestClaim> {
             claims: vec![],
             array: None,
             translations: None,
+            mappings: None,
         }],
         array: None,
         translations: None,
+        mappings: None,
     }]
 }
 

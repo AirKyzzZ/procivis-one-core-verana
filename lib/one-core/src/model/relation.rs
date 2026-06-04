@@ -86,6 +86,7 @@ impl<M: Model> Related<M> {
     }
 }
 
+#[derive(Debug)]
 pub struct RoLoadedRelated<'a, M: Model> {
     guard: RwLockReadGuard<'a, AsyncModelStore<M>>,
 }
@@ -109,6 +110,7 @@ impl<M: Model> Deref for RoLoadedRelated<'_, M> {
     }
 }
 
+#[derive(Debug)]
 pub struct RwLoadedRelated<'a, M: Model> {
     guard: RwLockWriteGuard<'a, AsyncModelStore<M>>,
 }
@@ -232,6 +234,7 @@ impl<T> RelatedVec<T> {
     }
 }
 
+#[derive(Debug)]
 pub struct RoLoadedRelatedVec<'a, M> {
     guard: RwLockReadGuard<'a, AsyncVecStore<M>>,
 }
@@ -264,6 +267,7 @@ impl<'a, M> IntoIterator for &'a RoLoadedRelatedVec<'_, M> {
     }
 }
 
+#[derive(Debug)]
 pub struct RwLoadedRelatedVec<'a, M> {
     guard: RwLockWriteGuard<'a, AsyncVecStore<M>>,
 }

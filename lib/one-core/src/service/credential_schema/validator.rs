@@ -19,6 +19,7 @@ use crate::model::credential_schema::{GetCredentialSchemaList, KeyStorageSecurit
 use crate::provider::ProviderExt;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::Features;
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::model::Operation;
 use crate::provider::revocation::provider::RevocationMethodProvider;
@@ -139,11 +140,6 @@ pub(crate) fn validate_create_v2_request(
         validate_credential_design(request.layout_properties.as_ref(), &*formatter)?;
         validate_transaction_code(request.transaction_code.as_ref(), &*formatter)?;
     }
-    validate_claim_mappings_for_format(
-        request.claims.clone(),
-        &request.formats,
-        formatter_provider,
-    )?;
     Ok(())
 }
 
@@ -295,14 +291,13 @@ fn validate_revocation_method_is_compatible_with_suspension(
     Ok(())
 }
 
-fn validate_claim_mappings_for_format(
-    claims: Vec<CredentialClaimSchemaRequestDTO>,
+pub(super) fn validate_claim_mappings_for_format(
+    flat_claims: &[CredentialClaimSchemaRequestDTO],
     formats: &[CredentialSchemaFormatRequestDTO],
-    formatter_provider: &dyn crate::provider::credential_formatter::provider::CredentialFormatterProvider,
+    formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<(), CredentialSchemaServiceError> {
-    let flat_claims = super::mapper::unnest_claim_schemas(claims);
-
-    for claim in &flat_claims {
+    let formats = formats.iter().map(|f| &f.format).collect::<Vec<_>>();
+    for claim in flat_claims {
         if let Some(mappings) = &claim.mappings {
             if !mappings.iter().map(|m| &m.format).all_unique() {
                 return Err(CredentialSchemaServiceError::DuplicateMappingFormats(
@@ -311,7 +306,7 @@ fn validate_claim_mappings_for_format(
             }
 
             for mapping in mappings {
-                if !formats.iter().any(|f| f.format == mapping.format) {
+                if !formats.iter().any(|f| **f == mapping.format) {
                     return Err(CredentialSchemaServiceError::MappingFormatNotPartOfFormats(
                         claim.key.clone(),
                         mapping.format.clone(),

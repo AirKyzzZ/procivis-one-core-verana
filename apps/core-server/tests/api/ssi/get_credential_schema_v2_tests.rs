@@ -92,6 +92,7 @@ async fn test_ssi_get_credential_schema_v2_created_via_v2_endpoint() {
                 claims: vec![],
                 array: None,
                 translations: None,
+                mappings: None,
             }],
             batch_size: Some(5),
             ..Default::default()
@@ -228,9 +229,11 @@ async fn test_ssi_get_credential_schema_v2_by_format_returns_only_requested_form
                     claims: vec![],
                     array: None,
                     translations: None,
+                    mappings: None,
                 }],
                 array: None,
                 translations: None,
+                mappings: None,
             }],
             ..Default::default()
         })

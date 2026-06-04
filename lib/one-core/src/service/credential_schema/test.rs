@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::vec;
 
@@ -11,13 +12,13 @@ use uuid::Uuid;
 
 use super::CredentialSchemaService;
 use super::dto::{
-    CreateCredentialSchemaRequestDTO, CredentialClaimSchemaDTO, CredentialClaimSchemaRequestDTO,
-    CredentialClaimSchemaTranslationsDTO, CredentialSchemaBackgroundPropertiesRequestDTO,
-    CredentialSchemaCodePropertiesDTO, CredentialSchemaCodeTypeEnum,
-    CredentialSchemaFilterParamsDTO, CredentialSchemaLayoutPropertiesRequestDTO,
-    CredentialSchemaLogoPropertiesRequestDTO, CredentialSchemaTransactionCodeRequestDTO,
-    ImportCredentialSchemaClaimSchemaDTO, ImportCredentialSchemaRequestDTO,
-    ImportCredentialSchemaRequestSchemaDTO,
+    CreateCredentialSchemaRequestDTO, CredentialClaimSchemaDTO, CredentialClaimSchemaMappingDTO,
+    CredentialClaimSchemaRequestDTO, CredentialClaimSchemaTranslationsDTO,
+    CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaCodePropertiesDTO,
+    CredentialSchemaCodeTypeEnum, CredentialSchemaFilterParamsDTO,
+    CredentialSchemaLayoutPropertiesRequestDTO, CredentialSchemaLogoPropertiesRequestDTO,
+    CredentialSchemaTransactionCodeRequestDTO, ImportCredentialSchemaClaimSchemaDTO,
+    ImportCredentialSchemaRequestDTO, ImportCredentialSchemaRequestSchemaDTO,
 };
 use super::error::CredentialSchemaServiceError;
 use super::mapper::{renest_claim_schemas, unnest_claim_schemas};
@@ -1374,7 +1375,8 @@ async fn test_create_credential_schema_fail_incompatible_revocation_and_format()
         .await;
 
     match result {
-        Err(CredentialSchemaServiceError::RevocationMethodNotCompatibleWithSelectedFormat) => { /* Expected */
+        Err(CredentialSchemaServiceError::RevocationMethodNotCompatibleWithSelectedFormat) => {
+            /* Expected */
         }
         other => panic!(
             "Expected Err(CredentialSchemaServiceError::RevocationMethodNotCompatibleWithSelectedFormat), got {:?}",
@@ -1449,7 +1451,8 @@ async fn test_create_credential_schema_failed_mdoc_not_all_top_claims_are_object
         .await;
 
     match result {
-        Err(CredentialSchemaServiceError::InvalidClaimTypeMdocTopLevelOnlyObjectsAllowed) => { /* Expected */
+        Err(CredentialSchemaServiceError::InvalidClaimTypeMdocTopLevelOnlyObjectsAllowed) => {
+            /* Expected */
         }
         other => panic!(
             "Expected Err(CredentialSchemaServiceError::InvalidClaimTypeMdocTopLevelOnlyObjectsAllowed), got {:?}",
@@ -1666,11 +1669,18 @@ async fn test_unnest_claim_schemas_from_request_no_nested_claims() {
         array: Some(false),
         required: true,
         claims: vec![],
-        mappings: None,
+        mappings: Some(vec![CredentialClaimSchemaMappingDTO {
+            format: "JWT".into(),
+            technical_key: "test".to_string(),
+            namespace: None,
+        }]),
         translations: None,
     }];
 
-    assert_eq!(expected, unnest_claim_schemas(request));
+    assert_eq!(
+        expected,
+        unnest_claim_schemas(request, &[&"JWT".into()], &HashMap::new()).unwrap()
+    );
 }
 
 #[tokio::test]
@@ -1711,7 +1721,11 @@ async fn test_unnest_claim_schemas_from_request_single_layer_of_nested_claims() 
             required: true,
             array: Some(false),
             claims: vec![],
-            mappings: None,
+            mappings: Some(vec![CredentialClaimSchemaMappingDTO {
+                format: "JWT".into(),
+                technical_key: "location".to_string(),
+                namespace: None,
+            }]),
             translations: None,
         },
         CredentialClaimSchemaRequestDTO {
@@ -1720,7 +1734,11 @@ async fn test_unnest_claim_schemas_from_request_single_layer_of_nested_claims() 
             required: true,
             array: Some(false),
             claims: vec![],
-            mappings: None,
+            mappings: Some(vec![CredentialClaimSchemaMappingDTO {
+                format: "JWT".into(),
+                technical_key: "location/x".to_string(),
+                namespace: None,
+            }]),
             translations: None,
         },
         CredentialClaimSchemaRequestDTO {
@@ -1729,12 +1747,19 @@ async fn test_unnest_claim_schemas_from_request_single_layer_of_nested_claims() 
             required: true,
             claims: vec![],
             array: Some(false),
-            mappings: None,
+            mappings: Some(vec![CredentialClaimSchemaMappingDTO {
+                format: "JWT".into(),
+                technical_key: "location/y".to_string(),
+                namespace: None,
+            }]),
             translations: None,
         },
     ];
 
-    assert_eq!(expected, unnest_claim_schemas(request));
+    assert_eq!(
+        expected,
+        unnest_claim_schemas(request, &[&"JWT".into()], &HashMap::new()).unwrap()
+    );
 }
 
 #[tokio::test]
@@ -1813,7 +1838,11 @@ async fn test_unnest_claim_schemas_from_request_multiple_layers_of_nested_claims
             required: true,
             array: Some(false),
             claims: vec![],
-            mappings: None,
+            mappings: Some(vec![CredentialClaimSchemaMappingDTO {
+                format: "JWT".into(),
+                technical_key: "address".to_string(),
+                namespace: None,
+            }]),
             translations: None,
         },
         CredentialClaimSchemaRequestDTO {
@@ -1822,7 +1851,11 @@ async fn test_unnest_claim_schemas_from_request_multiple_layers_of_nested_claims
             required: true,
             claims: vec![],
             array: Some(false),
-            mappings: None,
+            mappings: Some(vec![CredentialClaimSchemaMappingDTO {
+                format: "JWT".into(),
+                technical_key: "address/location".to_string(),
+                namespace: None,
+            }]),
             translations: None,
         },
         CredentialClaimSchemaRequestDTO {
@@ -1831,7 +1864,11 @@ async fn test_unnest_claim_schemas_from_request_multiple_layers_of_nested_claims
             required: true,
             claims: vec![],
             array: Some(false),
-            mappings: None,
+            mappings: Some(vec![CredentialClaimSchemaMappingDTO {
+                format: "JWT".into(),
+                technical_key: "address/location/x".to_string(),
+                namespace: None,
+            }]),
             translations: None,
         },
         CredentialClaimSchemaRequestDTO {
@@ -1840,7 +1877,11 @@ async fn test_unnest_claim_schemas_from_request_multiple_layers_of_nested_claims
             required: true,
             array: Some(false),
             claims: vec![],
-            mappings: None,
+            mappings: Some(vec![CredentialClaimSchemaMappingDTO {
+                format: "JWT".into(),
+                technical_key: "address/location/y".to_string(),
+                namespace: None,
+            }]),
             translations: None,
         },
         CredentialClaimSchemaRequestDTO {
@@ -1849,7 +1890,11 @@ async fn test_unnest_claim_schemas_from_request_multiple_layers_of_nested_claims
             required: true,
             array: Some(false),
             claims: vec![],
-            mappings: None,
+            mappings: Some(vec![CredentialClaimSchemaMappingDTO {
+                format: "JWT".into(),
+                technical_key: "address/postal_data".to_string(),
+                namespace: None,
+            }]),
             translations: None,
         },
         CredentialClaimSchemaRequestDTO {
@@ -1858,7 +1903,11 @@ async fn test_unnest_claim_schemas_from_request_multiple_layers_of_nested_claims
             required: true,
             array: Some(false),
             claims: vec![],
-            mappings: None,
+            mappings: Some(vec![CredentialClaimSchemaMappingDTO {
+                format: "JWT".into(),
+                technical_key: "address/postal_data/code".to_string(),
+                namespace: None,
+            }]),
             translations: None,
         },
         CredentialClaimSchemaRequestDTO {
@@ -1867,12 +1916,19 @@ async fn test_unnest_claim_schemas_from_request_multiple_layers_of_nested_claims
             required: true,
             array: Some(false),
             claims: vec![],
-            mappings: None,
+            mappings: Some(vec![CredentialClaimSchemaMappingDTO {
+                format: "JWT".into(),
+                technical_key: "address/postal_data/street".to_string(),
+                namespace: None,
+            }]),
             translations: None,
         },
     ];
 
-    assert_eq!(expected, unnest_claim_schemas(request));
+    assert_eq!(
+        expected,
+        unnest_claim_schemas(request, &[&"JWT".into()], &HashMap::new()).unwrap()
+    );
 }
 
 #[test]

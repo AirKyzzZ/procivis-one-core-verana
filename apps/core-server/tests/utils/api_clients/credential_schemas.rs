@@ -24,6 +24,17 @@ pub struct TestClaim {
     pub array: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub translations: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mappings: Option<Vec<TestClaimMappings>>,
+}
+
+#[derive(Debug, Clone, Serialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct TestClaimMappings {
+    pub format: String,
+    pub technical_key: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub namespace: Option<String>,
 }
 
 impl TestClaim {
@@ -80,9 +91,11 @@ impl CreateSchemaParams {
                 claims: vec![],
                 array: None,
                 translations: None,
+                mappings: None,
             }],
             array: None,
             translations: None,
+            mappings: None,
         }];
         self
     }
