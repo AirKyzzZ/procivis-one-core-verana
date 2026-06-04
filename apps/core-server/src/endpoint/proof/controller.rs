@@ -138,7 +138,7 @@ pub(crate) async fn get_proof_details(
     `REQUESTED` state then the proof is retracted instead, retaining history
     of the interaction.
 
-    Related guide: [Managing Proof Requests](https://docs.procivis.ch/verify/manage-proofs)
+    Related guide: [Managing Proof Requests](https://docs.procivis.ch/verify/states)
 "},
 )]
 pub(crate) async fn delete_proof(
