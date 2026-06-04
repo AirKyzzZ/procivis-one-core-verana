@@ -79,6 +79,17 @@ pub mod ecdsa {
             let seq = SequenceOf::from_iter([r, s]);
             seq.to_der_vec().unwrap()
         }
+
+        /// Returns a raw r||s ECDSA P256 signature suitable for JWT ES256 (IEEE P1363 format).
+        pub fn sign_jwt(msg: &[u8]) -> Vec<u8> {
+            ECDSASigner {}
+                .sign(
+                    msg,
+                    &PUB_KEY_COMPRESSED,
+                    &SecretSlice::from(PRIV_KEY.to_owned()),
+                )
+                .unwrap()
+        }
     }
 
     #[async_trait]

@@ -32,7 +32,7 @@ use crate::proto::certificate_validator::{
 };
 use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::Jwt;
-use crate::proto::jwt::model::JWTPayload;
+use crate::proto::jwt::model::{DecomposedJwt, JWTPayload};
 use crate::proto::key_verification::KeyVerification;
 use crate::proto::verifier_provider_client::VerifierProviderClient;
 use crate::proto::wallet_provider_client::WalletProviderClient;
@@ -81,7 +81,7 @@ impl WRPValidator for WRPValidatorImpl {
         let trust_entity = if let Some(organisation_id) = validate_trust {
             Some(
                 self.perform_trust_validation(
-                    TrustEntityIdentifier::PemChain(pem_chain),
+                    TrustEntityIdentifier::PemChain(Cow::from(pem_chain)),
                     TrustListRoleEnum::WrpAcProvider,
                     organisation_id,
                 )
@@ -136,7 +136,7 @@ impl WRPValidator for WRPValidatorImpl {
         let trust_entity = if let Some(organisation_id) = validate_trust {
             Some(
                 self.perform_trust_validation(
-                    TrustEntityIdentifier::PemChain(&issuer_chain),
+                    TrustEntityIdentifier::PemChain(Cow::from(&issuer_chain)),
                     TrustListRoleEnum::WrpRcProvider,
                     organisation_id,
                 )
@@ -222,49 +222,23 @@ impl WRPValidator for WRPValidatorImpl {
         .await
         .error_while("fetching relying party dataset")?;
 
-        let jku_url = response
-            .header_get("x-jku-url")
-            .ok_or(WRPValidatorError::MissingRegistryKeysUrl)?
-            .to_owned();
+        let jku_url = response.header_get("x-jku-url").map(|s| s.to_owned());
 
         let jwt = String::from_utf8(response.body)?;
         let token = Jwt::<WRPPayload>::decompose_token(&jwt).error_while("parsing JWT")?;
         validate_jwt_timestamps(&token.payload, leeway)?;
-
-        let jwks: RegistryKeys = async {
-            self.client
-                .get(&jku_url)
-                .header("Accept", "application/json")
-                .send()
-                .await?
-                .error_for_status()?
-                .json()
-        }
-        .await
-        .error_while("fetching registry keys")?;
-
-        let registry_key = jwks
-            .keys
-            .iter()
-            .find(|key| key.kid() == token.header.key_id.as_deref())
-            .ok_or(WRPValidatorError::MissingRegistryKey(
-                token.header.key_id.to_owned(),
-            ))?;
-
+        let signing_method = self
+            .resolve_signing_method(&token, jku_url.as_deref())
+            .await?;
         token
-            .verify_signature(
-                PublicKeySource::Jwk {
-                    jwk: Cow::Borrowed(registry_key),
-                },
-                &self.verification_fn(),
-            )
+            .verify_signature(signing_method.clone(), &self.verification_fn())
             .await
             .error_while("verifying registry dataset signature")?;
 
         let trust_entity = if let Some(organisation_id) = validate_trust {
             Some(
                 self.perform_trust_validation(
-                    TrustEntityIdentifier::Jwk(registry_key),
+                    signing_method.try_into()?,
                     TrustListRoleEnum::NationalRegistryRegistrar,
                     organisation_id,
                 )
@@ -309,7 +283,7 @@ impl WRPValidator for WRPValidatorImpl {
 
         let trusted_entity = self
             .perform_trust_validation(
-                TrustEntityIdentifier::PemChain(pem_chain),
+                TrustEntityIdentifier::PemChain(Cow::from(pem_chain)),
                 TrustListRoleEnum::PidProvider,
                 organisation_id,
             )
@@ -406,8 +380,8 @@ impl WRPValidator for WRPValidatorImpl {
 }
 
 enum TrustEntityIdentifier<'a> {
-    PemChain(&'a str),
-    Jwk(&'a PublicJwk),
+    PemChain(Cow<'a, str>),
+    Jwk(Cow<'a, PublicJwk>),
 }
 
 impl WRPValidatorImpl {
@@ -473,12 +447,16 @@ impl WRPValidatorImpl {
                 .error_while("getting trust list subscriber")?;
 
             let reference = subscription.reference.parse()?;
-            let trust_entity = match identifier {
+            let trust_entity = match &identifier {
                 TrustEntityIdentifier::PemChain(pem_chain) => {
-                    subscriber.resolve_certificate(&reference, pem_chain).await
+                    subscriber
+                        .resolve_certificate(&reference, pem_chain.as_ref())
+                        .await
                 }
                 TrustEntityIdentifier::Jwk(jwk) => {
-                    subscriber.resolve_public_key(&reference, jwk).await
+                    subscriber
+                        .resolve_public_key(&reference, jwk.as_ref())
+                        .await
                 }
             }
             .error_while("resolving trust")?;
@@ -599,6 +577,41 @@ impl WRPValidatorImpl {
             certificate_validator: self.certificate_validator.clone(),
         })
     }
+
+    async fn resolve_signing_method<'a>(
+        &self,
+        token: &'a DecomposedJwt<WRPPayload>,
+        jwks_url: Option<&str>,
+    ) -> Result<PublicKeySource<'a>, WRPValidatorError> {
+        if let Some(jwks_url) = jwks_url {
+            let jwks: RegistryKeys = async {
+                self.client
+                    .get(jwks_url)
+                    .header("Accept", "application/json")
+                    .send()
+                    .await?
+                    .error_for_status()?
+                    .json()
+            }
+            .await
+            .error_while("fetching registry keys")?;
+
+            let registry_key = jwks
+                .keys
+                .into_iter()
+                .find(|key| key.kid() == token.header.key_id.as_deref())
+                .ok_or(WRPValidatorError::MissingRegistryKey(
+                    token.header.key_id.to_owned(),
+                ))?;
+            return Ok(PublicKeySource::Jwk {
+                jwk: Cow::Owned(registry_key),
+            });
+        };
+        if let Some(x5c) = &token.header.x5c {
+            return Ok(PublicKeySource::X5c { x5c });
+        };
+        Err(WRPValidatorError::MissingSigningDetails)
+    }
 }
 
 fn validate_jwt_timestamps<T>(
@@ -610,20 +623,45 @@ fn validate_jwt_timestamps<T>(
     Ok(())
 }
 
+impl<'a> TryFrom<PublicKeySource<'a>> for TrustEntityIdentifier<'a> {
+    type Error = WRPValidatorError;
+
+    fn try_from(value: PublicKeySource<'a>) -> Result<Self, Self::Error> {
+        match value {
+            PublicKeySource::Did { .. } => {
+                Err(WRPValidatorError::InvalidSigningMethod("DID".to_string()))
+            }
+            PublicKeySource::X5c { x5c } => Ok(Self::PemChain(Cow::from(
+                x5c_into_pem_chain(x5c).error_while("converting chain")?,
+            ))),
+            PublicKeySource::Jwk { jwk } => Ok(Self::Jwk(jwk)),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use std::borrow::Cow;
     use std::collections::HashMap;
     use std::sync::Arc;
 
+    use shared_types::DidValue;
+    use similar_asserts::assert_eq;
+    use standardized_types::jwk::{PublicJwk, PublicJwkEc};
     use url::Url;
 
-    use super::WRPValidatorImpl;
+    use super::{TrustEntityIdentifier, WRPValidatorImpl};
     use crate::proto::certificate_validator::MockCertificateValidator;
-    use crate::proto::http_client::MockHttpClient;
+    use crate::proto::http_client::{
+        HttpClient, Method, MockHttpClient, Request, RequestBuilder, Response, StatusCode,
+    };
+    use crate::proto::jwt::model::{DecomposedJwt, JWTHeader, JWTPayload};
     use crate::proto::verifier_provider_client::MockVerifierProviderClient;
     use crate::proto::wallet_provider_client::MockWalletProviderClient;
     use crate::proto::wrp_validator::WRPValidator;
     use crate::proto::wrp_validator::error::WRPValidatorError;
+    use crate::proto::wrp_validator::model::{LegalEntity, WRPPayload, WRPPayloadData};
+    use crate::provider::credential_formatter::model::PublicKeySource;
     use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
     use crate::provider::did_method::provider::MockDidMethodProvider;
     use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
@@ -653,6 +691,103 @@ mod tests {
             Arc::new(MockRevocationMethodProvider::default()),
             Arc::new(MockCredentialFormatterProvider::default()),
         )
+    }
+
+    fn make_validator_with_client(client: Arc<dyn HttpClient>) -> WRPValidatorImpl {
+        WRPValidatorImpl::new(
+            Arc::new(MockTrustCollectionRepository::default()),
+            Arc::new(MockTrustListSubscriptionRepository::default()),
+            Arc::new(MockTrustListSubscriberProvider::default()),
+            Arc::new(MockHolderWalletInstanceRepository::default()),
+            Arc::new(MockWalletProviderClient::default()),
+            Arc::new(MockVerifierInstanceRepository::default()),
+            Arc::new(MockVerifierProviderClient::default()),
+            Arc::new(MockDidMethodProvider::default()),
+            Arc::new(MockKeyAlgorithmProvider::default()),
+            Arc::new(MockCertificateValidator::default()),
+            client,
+            Arc::new(MockRevocationMethodProvider::default()),
+            Arc::new(MockCredentialFormatterProvider::default()),
+        )
+    }
+
+    fn dummy_wrp_payload() -> WRPPayload {
+        WRPPayload {
+            data: WRPPayloadData {
+                trade_name: None,
+                support_uri: vec![],
+                srv_description: vec![],
+                intended_use: vec![],
+                is_psb: None,
+                entitlement: vec![],
+                provides_attestations: vec![],
+                supervisory_authority: LegalEntity {
+                    legal_person: None,
+                    natural_person: None,
+                    identifier: vec![],
+                    postal_address: None,
+                    country: "AT".to_string(),
+                    email: vec![],
+                    phone: vec![],
+                    info_uri: vec![],
+                },
+                registry_uri: Url::parse("https://registry.example.com").unwrap(),
+                uses_intermediary: None,
+                legal_person: None,
+                natural_person: None,
+                identifier: vec![],
+                postal_address: None,
+                country: "AT".to_string(),
+                email: vec![],
+                phone: vec![],
+                info_uri: vec![],
+            },
+        }
+    }
+
+    fn dummy_decomposed_jwt(
+        key_id: Option<String>,
+        x5c: Option<Vec<String>>,
+    ) -> DecomposedJwt<WRPPayload> {
+        DecomposedJwt {
+            header: JWTHeader {
+                algorithm: "ES256".to_string(),
+                key_id,
+                r#type: None,
+                jwk: None,
+                jwt: None,
+                key_attestation: None,
+                x5c,
+            },
+            payload: JWTPayload {
+                issued_at: None,
+                expires_at: None,
+                invalid_before: None,
+                issuer: None,
+                subject: None,
+                audience: None,
+                jwt_id: None,
+                proof_of_possession_key: None,
+                custom: dummy_wrp_payload(),
+            },
+            signature: vec![],
+            unverified_jwt: String::new(),
+        }
+    }
+
+    fn make_http_response(body: Vec<u8>, url: &str) -> Response {
+        Response {
+            body,
+            headers: Default::default(),
+            status: StatusCode(200),
+            request: Request {
+                body: None,
+                headers: Default::default(),
+                method: Method::Get,
+                url: url.to_owned(),
+                timeout: None,
+            },
+        }
     }
 
     fn dummy_payload() -> Payload {
@@ -814,5 +949,167 @@ mod tests {
 
         // then
         assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_resolve_signing_method_returns_error_when_no_jwks_url_and_no_x5c() {
+        // given
+        let validator = make_validator();
+        let token = dummy_decomposed_jwt(None, None);
+
+        // when
+        let result = validator.resolve_signing_method(&token, None).await;
+
+        // then
+        assert!(
+            matches!(result, Err(WRPValidatorError::MissingSigningDetails)),
+            "unexpected result: {result:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_resolve_signing_method_falls_back_to_x5c_when_no_jwks_url() {
+        // given
+        let validator = make_validator();
+        let x5c = vec!["cert-data".to_string()];
+        let token = dummy_decomposed_jwt(None, Some(x5c.clone()));
+
+        // when
+        let result = validator
+            .resolve_signing_method(&token, None)
+            .await
+            .unwrap();
+
+        // then
+        assert!(
+            matches!(result, PublicKeySource::X5c { x5c: refs } if refs == x5c.as_slice()),
+            "expected X5c signing method"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_resolve_signing_method_fetches_jwks_and_returns_matching_key() {
+        // given
+        const JWKS_URL: &str = "https://jwks.example.com/keys";
+        const KEY_ID: &str = "test-key-id";
+
+        let mut mock_client = MockHttpClient::new();
+        mock_client
+            .expect_get()
+            .withf(|url| url == JWKS_URL)
+            .returning(|url| {
+                let mut inner = MockHttpClient::new();
+                let body = serde_json::json!({
+                    "keys": [{"kty": "EC", "crv": "P-256", "x": "AAAA", "kid": "test-key-id"}]
+                })
+                .to_string()
+                .into_bytes();
+                inner
+                    .expect_send()
+                    .returning(move |url, _, _, _, _| Ok(make_http_response(body.clone(), url)));
+                RequestBuilder::new(Arc::new(inner), Method::Get, url)
+            });
+
+        let validator = make_validator_with_client(Arc::new(mock_client));
+        let token = dummy_decomposed_jwt(Some(KEY_ID.to_string()), None);
+
+        // when
+        let result = validator
+            .resolve_signing_method(&token, Some(JWKS_URL))
+            .await
+            .unwrap();
+
+        // then
+        let PublicKeySource::Jwk { jwk } = result else {
+            panic!("expected Jwk signing method, got something else");
+        };
+        assert_eq!(jwk.kid(), Some(KEY_ID));
+    }
+
+    #[tokio::test]
+    async fn test_resolve_signing_method_returns_error_when_key_not_found_in_jwks() {
+        // given
+        const JWKS_URL: &str = "https://jwks.example.com/keys";
+
+        let mut mock_client = MockHttpClient::new();
+        mock_client
+            .expect_get()
+            .withf(|url| url == JWKS_URL)
+            .returning(|url| {
+                let mut inner = MockHttpClient::new();
+                let body = serde_json::json!({
+                    "keys": [{"kty": "EC", "crv": "P-256", "x": "AAAA", "kid": "other-key-id"}]
+                })
+                .to_string()
+                .into_bytes();
+                inner
+                    .expect_send()
+                    .returning(move |url, _, _, _, _| Ok(make_http_response(body.clone(), url)));
+                RequestBuilder::new(Arc::new(inner), Method::Get, url)
+            });
+
+        let validator = make_validator_with_client(Arc::new(mock_client));
+        let token = dummy_decomposed_jwt(Some("requested-key-id".to_string()), None);
+
+        // when
+        let result = validator
+            .resolve_signing_method(&token, Some(JWKS_URL))
+            .await;
+
+        // then
+        assert!(
+            matches!(
+                result,
+                Err(WRPValidatorError::MissingRegistryKey(Some(ref kid))) if kid == "requested-key-id"
+            ),
+            "unexpected result: {result:?}"
+        );
+    }
+
+    #[test]
+    fn test_try_from_did_public_key_source_returns_invalid_signing_method() {
+        // given
+        let did = DidValue::try_from("did:example:123".to_string()).unwrap();
+        let source: PublicKeySource<'_> = PublicKeySource::Did {
+            did: Cow::Owned(did),
+            key_id: None,
+        };
+
+        // when
+        let result: Result<TrustEntityIdentifier<'_>, WRPValidatorError> = source.try_into();
+
+        // then
+        assert!(
+            matches!(
+                result,
+                Err(WRPValidatorError::InvalidSigningMethod(ref method)) if method == "DID"
+            ),
+            "expected InvalidSigningMethod(DID)"
+        );
+    }
+
+    #[test]
+    fn test_try_from_jwk_public_key_source_returns_jwk_identifier() {
+        // given
+        let jwk = PublicJwk::Ec(PublicJwkEc {
+            alg: None,
+            r#use: None,
+            kid: Some("key-1".to_string()),
+            crv: "P-256".to_string(),
+            x: "AAAA".to_string(),
+            y: None,
+        });
+        let source: PublicKeySource<'_> = PublicKeySource::Jwk {
+            jwk: Cow::Owned(jwk),
+        };
+
+        // when
+        let result: Result<TrustEntityIdentifier<'_>, WRPValidatorError> = source.try_into();
+
+        // then
+        assert!(
+            matches!(result, Ok(TrustEntityIdentifier::Jwk(_))),
+            "expected TrustEntityIdentifier::Jwk"
+        );
     }
 }

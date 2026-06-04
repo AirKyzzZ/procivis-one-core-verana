@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 use std::str::FromStr;
 
-use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
+use ct_codecs::{Base64, Base64UrlSafeNoPadding, Encoder};
 use one_core::provider::verification_protocol::openid4vp::model::{
     OpenID4VPDraftClientMetadata, OpenID4VPPresentationDefinition,
 };
+use rcgen::{CertificateParams, SanType};
 use serde_json::{Value, json};
 use similar_asserts::assert_eq;
 use standardized_types::openid4vp::{ClientMetadata, GenericAlgs, PresentationFormat, SdJwtVcAlgs};
@@ -14,7 +15,9 @@ use wiremock::http::Method;
 use wiremock::matchers::{header, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
+use crate::fixtures::certificate::{create_ca_cert, create_cert, ecdsa};
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::holder_wallet_instance::TestHolderWalletInstanceParams;
 use crate::utils::field_match::FieldHelpers;
 
 fn openid4vci_final1_json_metadata_config() -> Option<String> {
@@ -2226,4 +2229,273 @@ async fn test_handle_invitation_openid4vc_final1_wua_required_fails_no_compatibl
     // THEN
     assert_eq!(resp.status(), 400);
     assert_eq!(resp.error_code().await, "BR_0225");
+}
+
+fn make_redirect_uri_openid4vp_request() -> Url {
+    let callback_url = "http://127.0.0.1/callback";
+    let client_id = format!("redirect_uri:{callback_url}");
+    let auth_request = json!({
+        "client_id": client_id,
+        "response_type": "vp_token",
+        "response_mode": "direct_post",
+        "client_metadata": {"vp_formats_supported": {"mso_mdoc": {}}},
+        "nonce": "test-nonce-12345",
+        "dcql_query": {
+            "credentials": [{"id": "q1", "format": "mso_mdoc", "meta": {"doctype_value": "org.iso.18013.5.1.mDL"}}]
+        },
+        "response_uri": callback_url,
+    });
+    let header = json!({ "alg": "none", "typ": "oauth-authz-req+jwt" });
+    let header_b64 =
+        Base64UrlSafeNoPadding::encode_to_string(serde_json::to_vec(&header).unwrap()).unwrap();
+    let payload_b64 =
+        Base64UrlSafeNoPadding::encode_to_string(serde_json::to_vec(&auth_request).unwrap())
+            .unwrap();
+    let request_jwt = format!("{header_b64}.{payload_b64}.");
+    let mut query = Url::parse(&format!("openid4vp://?client_id={client_id}")).unwrap();
+    query.query_pairs_mut().append_pair("request", &request_jwt);
+    query
+}
+
+#[tokio::test]
+async fn test_handle_invitation_trust_disabled_succeeds() {
+    // GIVEN — wallet instance present but provider has trust ecosystems disabled → TrustMode::Disabled
+    let mock_server = MockServer::start().await;
+    let (context, organisation) =
+        TestContext::new_with_organisation(openid4vci_final1_json_metadata_config()).await;
+
+    context
+        .db
+        .holder_wallet_units
+        .create(
+            organisation.clone(),
+            None,
+            TestHolderWalletInstanceParams {
+                wallet_provider_name: Some("PROCIVIS_ONE".to_string()),
+                wallet_provider_url: Some(mock_server.uri()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    Mock::given(method(Method::GET))
+        .and(path("/ssi/wallet-provider/v1/PROCIVIS_ONE"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "name": "PROCIVIS_ONE",
+            "walletUnitAttestation": {"appIntegrityCheckRequired": false, "enabled": false, "required": false},
+            "featureFlags": {"trustEcosystemsEnabled": false, "refreshCredentialBatchEnabled": false},
+            "trustCollections": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .interactions
+        .handle_invitation(
+            organisation.id,
+            make_redirect_uri_openid4vp_request().as_ref(),
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+    assert_eq!(resp.json_value().await["interactionType"], "VERIFICATION");
+}
+
+#[tokio::test]
+async fn test_handle_invitation_trust_optional_without_wallet_instance_succeeds() {
+    // GIVEN — no wallet instance registered → defaults to TrustMode::TrustOptional
+    //         redirect_uri produces no verifier identifier, but optional mode still succeeds
+    let (context, organisation) =
+        TestContext::new_with_organisation(openid4vci_final1_json_metadata_config()).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .interactions
+        .handle_invitation(
+            organisation.id,
+            make_redirect_uri_openid4vp_request().as_ref(),
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+    assert_eq!(resp.json_value().await["interactionType"], "VERIFICATION");
+}
+
+#[tokio::test]
+async fn test_handle_invitation_trust_mandatory_without_identifier_returns_error() {
+    // GIVEN — wallet instance with trusted_rp_required + trust ecosystems enabled → TrustMode::TrustMandatory
+    //         redirect_uri client_id_scheme provides no verifier identifier → Untrusted → 400
+    let mock_server = MockServer::start().await;
+    let (context, organisation) =
+        TestContext::new_with_organisation(openid4vci_final1_json_metadata_config()).await;
+
+    context
+        .db
+        .holder_wallet_units
+        .create(
+            organisation.clone(),
+            None,
+            TestHolderWalletInstanceParams {
+                wallet_provider_name: Some("PROCIVIS_ONE".to_string()),
+                wallet_provider_url: Some(mock_server.uri()),
+                trusted_rp_required: Some(true),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    Mock::given(method(Method::GET))
+        .and(path("/ssi/wallet-provider/v1/PROCIVIS_ONE"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "name": "PROCIVIS_ONE",
+            "walletUnitAttestation": {"appIntegrityCheckRequired": false, "enabled": true, "required": true},
+            "featureFlags": {"trustEcosystemsEnabled": true, "refreshCredentialBatchEnabled": false},
+            "trustCollections": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .interactions
+        .handle_invitation(
+            organisation.id,
+            make_redirect_uri_openid4vp_request().as_ref(),
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.error_code().await, "BR_0433");
+}
+
+/// Builds an `openid4vp://` URL with an `x509_san_dns` request JWT signed with a fresh ECDSA
+/// P256 certificate chain. The certificate carries a SAN DNS entry for the domain used as
+/// `client_id` and `response_uri`, so all structural validations in the holder parsing path
+/// pass without a real CA or trust-list lookup.
+fn make_x509_san_dns_openid4vp_request() -> Url {
+    const DOMAIN: &str = "verifier.example.com";
+
+    let mut ca_params = CertificateParams::default();
+    let (ca_cert, ca_issuer) = create_ca_cert(&mut ca_params, ecdsa::Key);
+
+    let mut leaf_params = CertificateParams::default();
+    leaf_params.subject_alt_names = vec![SanType::DnsName(DOMAIN.try_into().unwrap())];
+    let leaf_cert = create_cert(&mut leaf_params, ecdsa::Key, &ca_issuer, &ca_params);
+
+    // x5c uses standard base64-encoded DER (leaf first, then CA)
+    let x5c = vec![
+        Base64::encode_to_string(leaf_cert.der()).unwrap(),
+        Base64::encode_to_string(ca_cert.der()).unwrap(),
+    ];
+
+    let client_id = format!("x509_san_dns:{DOMAIN}");
+    let response_uri = format!("https://{DOMAIN}/callback");
+
+    let header = json!({"alg": "ES256", "x5c": x5c});
+    let payload = json!({
+        "client_id": client_id,
+        "response_type": "vp_token",
+        "response_mode": "direct_post",
+        "response_uri": response_uri,
+        "nonce": "test-nonce-12345",
+        "client_metadata": {"vp_formats_supported": {"mso_mdoc": {}}},
+        "dcql_query": {
+            "credentials": [{"id": "q1", "format": "mso_mdoc", "meta": {"doctype_value": "org.iso.18013.5.1.mDL"}}]
+        }
+    });
+
+    let header_b64 =
+        Base64UrlSafeNoPadding::encode_to_string(serde_json::to_vec(&header).unwrap()).unwrap();
+    let payload_b64 =
+        Base64UrlSafeNoPadding::encode_to_string(serde_json::to_vec(&payload).unwrap()).unwrap();
+    let signing_input = format!("{header_b64}.{payload_b64}");
+
+    // Raw r||s format required for JWT ES256
+    let signature = ecdsa::Key::sign_jwt(signing_input.as_bytes());
+    let sig_b64 = Base64UrlSafeNoPadding::encode_to_string(&signature).unwrap();
+
+    let jwt = format!("{signing_input}.{sig_b64}");
+    let mut url = Url::parse(&format!("openid4vp://?client_id={client_id}")).unwrap();
+    url.query_pairs_mut().append_pair("request", &jwt);
+    url
+}
+
+#[tokio::test]
+async fn test_handle_invitation_trust_optional_with_x509_certificate_untrusted_succeeds() {
+    // GIVEN — no wallet instance → TrustOptional
+    //         x509_san_dns cert present but no trust subscriptions → AccessCertificateNotTrusted
+    //         Optional mode swallows the error → TrustResolutionResult::Untrusted → 201
+    let (context, organisation) =
+        TestContext::new_with_organisation(openid4vci_final1_json_metadata_config()).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .interactions
+        .handle_invitation(
+            organisation.id,
+            make_x509_san_dns_openid4vp_request().as_ref(),
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+    assert_eq!(resp.json_value().await["interactionType"], "VERIFICATION");
+}
+
+#[tokio::test]
+async fn test_handle_invitation_trust_mandatory_with_x509_certificate_not_in_trust_list_returns_error()
+ {
+    // GIVEN — wallet instance with trusted_rp_required + trustEcosystemsEnabled → TrustMandatory
+    //         x509_san_dns cert not in any trust list → AccessCertificateNotTrusted → 400 BR_0410
+    let mock_server = MockServer::start().await;
+    let (context, organisation) =
+        TestContext::new_with_organisation(openid4vci_final1_json_metadata_config()).await;
+
+    context
+        .db
+        .holder_wallet_units
+        .create(
+            organisation.clone(),
+            None,
+            TestHolderWalletInstanceParams {
+                wallet_provider_name: Some("PROCIVIS_ONE".to_string()),
+                wallet_provider_url: Some(mock_server.uri()),
+                trusted_rp_required: Some(true),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    Mock::given(method(Method::GET))
+        .and(path("/ssi/wallet-provider/v1/PROCIVIS_ONE"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "name": "PROCIVIS_ONE",
+            "walletUnitAttestation": {"appIntegrityCheckRequired": false, "enabled": true, "required": true},
+            "featureFlags": {"trustEcosystemsEnabled": true, "refreshCredentialBatchEnabled": false},
+            "trustCollections": []
+        })))
+        .mount(&mock_server)
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .interactions
+        .handle_invitation(
+            organisation.id,
+            make_x509_san_dns_openid4vp_request().as_ref(),
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.error_code().await, "BR_0410");
 }

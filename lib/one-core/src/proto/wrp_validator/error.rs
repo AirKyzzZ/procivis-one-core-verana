@@ -26,10 +26,12 @@ pub(crate) enum WRPValidatorError {
     InvalidOrganisationIdentifier,
     #[error("Invalid registry URL: `{0}`")]
     InvalidRegistryUrl(String),
-    #[error("Missing registry keys URL")]
-    MissingRegistryKeysUrl,
     #[error("Missing registry key: `{0:?}`")]
     MissingRegistryKey(Option<String>),
+    #[error("Missing signing details")]
+    MissingSigningDetails,
+    #[error("Invalid signing method: `{0}`")]
+    InvalidSigningMethod(String),
 
     #[error("Missing issuer")]
     MissingIssuer,
@@ -51,10 +53,11 @@ impl ErrorCodeMixin for WRPValidatorError {
             | Self::RegistryNotTrusted
             | Self::CertificateRevoked => ErrorCode::BR_0410,
             Self::InvalidOrganisationIdentifier
-            | Self::MissingRegistryKeysUrl
+            | Self::MissingSigningDetails
             | Self::MissingRegistryKey(_)
             | Self::MissingIssuer
             | Self::InvalidRegistryUrl(_)
+            | Self::InvalidSigningMethod(_)
             | Self::RegistrationCertificateMissmatch { .. } => ErrorCode::BR_0224,
             Self::URLParsing(_) | Self::FromUtf8Error(_) => ErrorCode::BR_0047,
             Self::Nested(nested) => nested.error_code(),

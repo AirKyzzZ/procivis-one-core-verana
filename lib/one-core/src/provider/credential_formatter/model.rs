@@ -33,7 +33,7 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 pub type AuthenticationFn = Box<dyn SignatureProvider>;
 pub type VerificationFn = Box<dyn TokenVerifier>;
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum PublicKeySource<'a> {
     Did {
         did: Cow<'a, DidValue>,
