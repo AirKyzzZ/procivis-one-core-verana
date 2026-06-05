@@ -369,6 +369,17 @@ async fn test_check_revocation_batch_parent_becoming_revoked() {
             move |_, _| Ok(Some(credential.clone()))
         });
     credential_repository
+        .expect_get_credential()
+        .with(eq(item_credential_id), always())
+        .once()
+        .returning({
+            let mut credential = credential.clone();
+            credential.id = item_credential_id;
+            credential.r#type = CredentialType::BatchItem;
+            credential.credential_blob_id = Some(credential_blob_id);
+            move |_, _| Ok(Some(credential.clone()))
+        });
+    credential_repository
         .expect_get_credential_list()
         .once()
         .return_once({

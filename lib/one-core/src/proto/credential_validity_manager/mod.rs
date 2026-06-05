@@ -704,6 +704,26 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
 
                 let mut item_states = vec![];
                 for batch_item in batch_items {
+                    let batch_item = self
+                        .credential_repository
+                        .get_credential(
+                            &batch_item.id,
+                            &CredentialRelations {
+                                issuer_identifier: Some(IdentifierRelations {
+                                    did: Some(Default::default()),
+                                    certificates: Some(Default::default()),
+                                    ..Default::default()
+                                }),
+                                ..Default::default()
+                            },
+                        )
+                        .await
+                        .error_while("getting batch item")?
+                        .ok_or(
+                            EntityNotFoundError::Credential(batch_item.id)
+                                .error_while("getting batch item"),
+                        )?;
+
                     let (result, suspend_end_date) = self
                         .check_status_for_single_credential(
                             &batch_item,
