@@ -65,7 +65,7 @@ pub(crate) struct CreateIdentifierRequestRestDTO {
     pub did: Option<CreateIdentifierDidRequestRestDTO>,
     #[try_into(infallible)]
     /// Deprecated. Use `key` instead.
-    #[schema(deprecated = true, nullable = false)]
+    #[schema(deprecated = true, nullable = false, value_type = Option<Uuid>)]
     pub key_id: Option<KeyId>,
     /// Create a key identifier.
     #[try_into(with_fn = convert_inner, infallible)]

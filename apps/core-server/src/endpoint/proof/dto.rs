@@ -86,7 +86,8 @@ pub(crate) struct CreateProofRequestRestDTO {
     #[schema(
         example = "<uuid; did identifier>",
         nullable = false,
-        deprecated = true
+        deprecated = true,
+        value_type = Option<Uuid>
     )]
     /// Choose a DID to use as an identifier.
     pub verifier_did: Option<DidId>,

@@ -467,7 +467,7 @@ pub(crate) struct CreateCredentialRequestRestDTO {
     /// created via the identifiers API. Use the `id` field from the identifier,
     /// not the actual DID string or key value.
     pub issuer: Option<IdentifierId>,
-    #[schema(deprecated = true)]
+    #[schema(deprecated = true, nullable = false, value_type = Option<Uuid>)]
     /// Deprecated. Use `issuer` to set the identifier, regardless of type.
     pub issuer_did: Option<DidId>,
     /// If multiple keys are specified for the assertion method of the DID,

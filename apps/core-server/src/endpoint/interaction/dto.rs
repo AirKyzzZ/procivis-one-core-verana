@@ -134,9 +134,9 @@ pub(crate) struct IssuanceAcceptRequestRestDTO {
     /// will be used.
     pub key_id: Option<KeyId>,
     pub tx_code: Option<String>,
-    #[schema(deprecated = true, nullable = false)]
+    #[schema(deprecated = true, nullable = false, value_type = Option<Uuid>)]
     #[expect(unused)]
-    /// Deprecated. The holder wallet unit registered for the linked organisation is used
+    /// Deprecated. The holder wallet instance registered for the linked organisation is used
     pub holder_wallet_unit_id: Option<HolderWalletInstanceId>,
 }
 
