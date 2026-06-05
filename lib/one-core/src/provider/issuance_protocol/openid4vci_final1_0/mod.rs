@@ -66,7 +66,9 @@ use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
 use crate::model::certificate::CertificateRelations;
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
-use crate::model::credential::{Credential, CredentialRelations, CredentialStateEnum};
+use crate::model::credential::{
+    Credential, CredentialRelations, CredentialStateEnum, CredentialType,
+};
 use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity};
 use crate::model::did::KeyRole;
 use crate::model::history::TrustResolutionResult;
@@ -89,9 +91,12 @@ use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
 use crate::provider::credential_formatter::mapper::credential_data_from_credential_detail_response;
 use crate::provider::credential_formatter::mdoc_formatter;
-use crate::provider::credential_formatter::model::VerificationFn;
+use crate::provider::credential_formatter::model::{
+    CredentialData, CredentialStatus, VerificationFn,
+};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::issuance_protocol::openid4vci_final1_0::mapper_v2::credential_to_credential_detail_v2;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_security_level::provider::KeySecurityLevelProvider;
 use crate::provider::key_storage::provider::KeyProvider;
@@ -115,6 +120,7 @@ use crate::util::vcdm_jsonld_contexts::vcdm_v2_base_context;
 mod attestations;
 mod holder_credentials;
 pub(crate) mod mapper;
+mod mapper_v2;
 pub mod model;
 pub mod proof_formatter;
 pub mod service;
@@ -1342,6 +1348,60 @@ impl OpenID4VCIFinal1_0 {
             credential_configurations_supported,
         })
     }
+
+    async fn map_to_credential_data(
+        &self,
+        format_id: CredentialSchemaFormatId,
+        credential: &Credential,
+        credential_status: Vec<CredentialStatus>,
+        core_base_url: &str,
+    ) -> Result<CredentialData, IssuanceProtocolError> {
+        let schema = credential
+            .schema
+            .as_ref()
+            .ok_or(IssuanceProtocolError::Failed(
+                "missing credential schema".to_string(),
+            ))?;
+        let schema_formats = schema.formats.as_ref().await?;
+        let schema_format = schema_formats.iter().find(|f| f.id == format_id).ok_or(
+            IssuanceProtocolError::Failed("missing credential schema format".to_string()),
+        )?;
+        let mappings = schema_format.claim_mappings.as_ref().await?;
+        if !mappings.is_empty() {
+            return credential_to_credential_detail_v2(
+                credential,
+                schema,
+                schema_format,
+                &self.config,
+                core_base_url,
+                credential_status,
+            )
+            .await;
+        }
+        let credential_detail = credential_detail_response_from_model(
+            credential.clone(),
+            &self.config,
+            CredentialAttestationBlobs::default(),
+            None,
+            None,
+            self.credential_repository.as_ref(),
+        )
+        .await
+        .error_while("creating credential detail")?;
+
+        let credential_data = credential_data_from_credential_detail_response(
+            credential_detail,
+            credential,
+            core_base_url,
+            credential_status,
+            vcdm_v2_base_context(None),
+            schema,
+            schema_format,
+            &self.config,
+        )
+        .error_while("getting credential data")?;
+        Ok(credential_data)
+    }
 }
 
 #[async_trait]
@@ -1771,6 +1831,35 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             ));
         };
 
+        if credential.r#type == CredentialType::BatchItem {
+            // backfill claims for batch items, as these are only stored on the parent
+            let parent_id = credential
+                .parent
+                .as_ref()
+                .ok_or(IssuanceProtocolError::Failed(format!(
+                    "batch item {} is missing parent id",
+                    credential.id
+                )))?
+                .id();
+            let parent = self
+                .credential_repository
+                .get_credential(
+                    &parent_id,
+                    &CredentialRelations {
+                        claims: Some(ClaimRelations {
+                            schema: Some(ClaimSchemaRelations::default()),
+                        }),
+                        ..Default::default()
+                    },
+                )
+                .await
+                .error_while("getting parent credential claims")?
+                .ok_or(IssuanceProtocolError::Failed(
+                    "parent credential not found".to_string(),
+                ))?;
+            credential.claims = parent.claims;
+        }
+
         credential.holder_identifier = Some(holder_identifier.clone());
 
         let credential_schema = credential
@@ -1849,46 +1938,27 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         let core_base_url = self.base_url.as_ref().ok_or(IssuanceProtocolError::Failed(
             "Missing core_base_url for credential issuance".to_string(),
         ))?;
-
-        let credential_detail = credential_detail_response_from_model(
-            credential.clone(),
-            &self.config,
-            CredentialAttestationBlobs::default(),
-            None,
-            None,
-            self.credential_repository.as_ref(),
-        )
-        .await
-        .error_while("creating credential detail")?;
-
-        let contexts = vcdm_v2_base_context(None);
-
-        let issuer_certificate = if let Some(cert) = credential.issuer_certificate.clone() {
-            Some(cert)
-        } else {
-            credential
-                .issuer_identifier
-                .as_ref()
-                .and_then(|identifier| {
-                    identifier
-                        .certificates
-                        .as_ref()
-                        .and_then(|certs| certs.first().cloned())
-                })
-        };
-
         let holder_identifier_id = holder_identifier.id;
-        let credential_data = credential_data_from_credential_detail_response(
-            credential_detail,
-            &credential,
-            issuer_certificate,
-            Some(holder_identifier),
-            holder_key_id,
-            core_base_url,
-            credential_status,
-            contexts,
-        )
-        .error_while("getting credential data")?;
+        let mut credential_data = self
+            .map_to_credential_data(format_id, &credential, credential_status, core_base_url)
+            .await?;
+
+        credential_data.holder_identifier = Some(holder_identifier);
+        credential_data.holder_key_id = Some(holder_key_id);
+        credential_data.issuer_certificate =
+            if let Some(cert) = credential.issuer_certificate.clone() {
+                Some(cert)
+            } else {
+                credential
+                    .issuer_identifier
+                    .as_ref()
+                    .and_then(|identifier| {
+                        identifier
+                            .certificates
+                            .as_ref()
+                            .and_then(|certs| certs.first().cloned())
+                    })
+            };
 
         let token = formatter
             .format_credential(credential_data, auth_fn)

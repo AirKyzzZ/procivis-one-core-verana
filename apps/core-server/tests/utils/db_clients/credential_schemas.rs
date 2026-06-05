@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use one_core::model::claim_schema::ClaimSchema;
@@ -7,6 +8,7 @@ use one_core::model::credential_schema::{
     TransactionCode,
 };
 use one_core::model::credential_schema_format::CredentialSchemaFormat;
+use one_core::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use one_core::model::localized_text::{LocalizedText, LocalizedTextEntityType, LocalizedTextField};
 use one_core::model::organisation::Organisation;
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
@@ -30,6 +32,7 @@ pub struct TestingCreateSchemaParams {
     pub deleted_at: Option<OffsetDateTime>,
     pub transaction_code: Option<TransactionCode>,
     pub batch_size: Option<i32>,
+    pub claim_mappings: Option<HashMap<String, String>>,
 }
 
 fn claim_name_translation(id: ClaimSchemaId, key: &str) -> LocalizedText {
@@ -61,6 +64,7 @@ impl CredentialSchemasDB {
         revocation_method: impl Into<Option<RevocationMethodId>>,
         params: TestingCreateSchemaParams,
     ) -> Result<CredentialSchema, DataLayerError> {
+        let credential_schema_format_id = Uuid::new_v4().into();
         let claim_schemas = params.claim_schemas.unwrap_or_else(|| {
             let claim_schema = ClaimSchema {
                 business_key: None,
@@ -89,6 +93,28 @@ impl CredentialSchemasDB {
             vec![claim_schema, claim_schema1]
         });
 
+        let claim_mappings = if let Some(claim_mappings) = params.claim_mappings {
+            let mut cm = vec![];
+            for claim_schema in &claim_schemas {
+                let technical_key = claim_mappings
+                    .get(&claim_schema.key)
+                    .unwrap_or(&claim_schema.key)
+                    .clone();
+                cm.push(CredentialSchemaFormatClaimSchema {
+                    id: Uuid::new_v4().into(),
+                    created_date: get_dummy_date(),
+                    last_modified: get_dummy_date(),
+                    credential_schema_format_id,
+                    claim_schema_id: claim_schema.id,
+                    technical_key,
+                    namespace: None,
+                })
+            }
+            cm
+        } else {
+            Default::default()
+        };
+
         let id = params.id.unwrap_or(Uuid::new_v4().into());
         let mut credential_schema = CredentialSchema {
             batch_size: params.batch_size,
@@ -102,13 +128,13 @@ impl CredentialSchemasDB {
             organisation: organisation.clone().into(),
             deleted_at: params.deleted_at,
             formats: vec![CredentialSchemaFormat {
-                id: Uuid::new_v4().into(),
+                id: credential_schema_format_id,
                 created_date: one_core::clock::now_utc(),
                 last_modified: one_core::clock::now_utc(),
                 credential_schema_id: id,
                 format: params.format.unwrap_or("JWT".into()),
                 schema_id: params.schema_id.unwrap_or_else(|| id.to_string()),
-                claim_mappings: Default::default(),
+                claim_mappings: claim_mappings.into(),
             }]
             .into(),
             revocation_method: revocation_method.into(),

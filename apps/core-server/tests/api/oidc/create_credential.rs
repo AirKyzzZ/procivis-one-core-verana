@@ -2,14 +2,17 @@ use std::ops::Add;
 use std::str::FromStr;
 
 use futures::future::join_all;
+use maplit::hashmap;
 use one_core::model::certificate::{Certificate, CertificateState};
 use one_core::model::credential::CredentialStateEnum;
+use one_core::model::credential_schema::CredentialSchema;
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::identifier::{Identifier, IdentifierType};
 use one_core::model::interaction::InteractionType;
 use one_core::model::key::Key;
 use one_core::model::organisation::Organisation;
 use one_core::model::revocation_list::{RevocationListPurpose, RevocationListRelations};
+use one_core::proto::jwt::Jwt;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::eddsa::Eddsa;
 use one_crypto::Hasher;
@@ -32,6 +35,7 @@ use crate::utils::db_clients::certificates::TestingCertificateParams;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 use crate::utils::db_clients::keys::eddsa_testing_params;
 use crate::utils::db_clients::revocation_lists::TestingRevocationListParams;
+use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
 async fn test_post_issuer_credential() {
@@ -605,6 +609,7 @@ struct PostCredentialTestParams<'a> {
     expect_failure: bool,
     access_token_expired: bool,
     credential_format: Option<CredentialFormat>,
+    credential_schema: Option<CredentialSchema>,
 }
 
 async fn test_post_issuer_credential_with(
@@ -631,23 +636,29 @@ async fn test_post_issuer_credential_with(
         expect_failure,
         credential_format,
         access_token_expired,
+        credential_schema,
     } = test_params;
 
     let schema_id = "test-schema-id".to_string();
-    let credential_schema = context
-        .db
-        .credential_schemas
-        .create(
-            "schema-1",
-            &organisation,
-            revocation_method.map(|v| v.into()),
-            TestingCreateSchemaParams {
-                format: credential_format,
-                schema_id: Some(schema_id.clone()),
-                ..Default::default()
-            },
-        )
-        .await;
+    let credential_schema = match credential_schema {
+        None => {
+            context
+                .db
+                .credential_schemas
+                .create(
+                    "schema-1",
+                    &organisation,
+                    revocation_method.map(|v| v.into()),
+                    TestingCreateSchemaParams {
+                        format: credential_format,
+                        schema_id: Some(schema_id.clone()),
+                        ..Default::default()
+                    },
+                )
+                .await
+        }
+        Some(schema) => schema,
+    };
 
     let interaction_data = dummy_issuer_interaction_data(
         &access_token,
@@ -914,4 +925,52 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         .await;
 
     assert_eq!(200, resp.status());
+}
+
+#[tokio::test]
+async fn test_post_issuer_credential_jwt_vc_v2_mapped_claimed() {
+    let mut params = PostCredentialTestParams {
+        credential_format: Some("JWT".into()),
+        use_kid_in_proof: true,
+        ..Default::default()
+    };
+    let context = issuer_setup(None).await;
+
+    let schema = context
+        .context
+        .db
+        .credential_schemas
+        .create(
+            "schema-1",
+            &context.organisation,
+            None,
+            TestingCreateSchemaParams {
+                format: params.credential_format.clone(),
+                claim_mappings: Some(hashmap! {
+                    "firstName".to_string() => "firstName_Mapped".to_string(),
+                    "isOver18".to_string() => "isOver18_Mapped".to_string()
+                }),
+                schema_id: Some("test-schema-id".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+    params.credential_schema = Some(schema);
+
+    let (context, credential_id) = test_post_issuer_credential_with(params, Some(context)).await;
+
+    let credential = context.db.credentials.get(&credential_id).await;
+    let serialized_credential_blob = context
+        .db
+        .blobs
+        .get(credential.credential_blob_id.as_ref().unwrap())
+        .await
+        .unwrap();
+    let parsed_credential = Jwt::<serde_json::Value>::decompose_token(
+        str::from_utf8(&serialized_credential_blob.value).unwrap(),
+    )
+    .unwrap();
+    parsed_credential.payload.custom["vc"]["credentialSubject"]["firstName_Mapped"]
+        .assert_eq(&"test".to_string());
+    parsed_credential.payload.custom["vc"]["credentialSubject"]["isOver18_Mapped"].assert_eq(&true);
 }

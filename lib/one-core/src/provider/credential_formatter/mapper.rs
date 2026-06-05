@@ -3,26 +3,27 @@ use std::collections::HashMap;
 use convert_case::{Case, Casing};
 use indexmap::IndexSet;
 use one_dto_mapper::{convert_inner, try_convert_inner};
+use shared_types::CredentialSchemaId;
 use time::Duration;
 use url::Url;
 use uuid::fmt::Urn;
 
 use super::common::map_claims;
-use super::model::{CredentialData, CredentialSchema};
+use super::model::{CredentialData, CredentialSchema, PublishedClaim};
 use super::nest_claims;
 use super::vcdm::{ContextType, VcdmCredential, VcdmCredentialSubject};
+use crate::config::core_config::{CoreConfig, FormatType};
 use crate::error::ContextWithErrorCode;
-use crate::model::certificate::Certificate;
 use crate::model::credential::Credential;
-use crate::model::identifier::Identifier;
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     CredentialClaim, CredentialClaimValue, CredentialSchemaMetadata, CredentialStatus, Issuer,
 };
 use crate::service::credential::dto::{
     CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO,
-    DetailCredentialSchemaResponseDTO,
 };
+use crate::service::credential_schema::dto::CredentialSchemaLayoutPropertiesResponseDTO;
 
 pub const W3C_SCHEMA_TYPE: &str = "ProcivisOneSchema2024";
 
@@ -34,19 +35,54 @@ pub(super) fn default_2_years() -> Duration {
 pub(crate) fn credential_data_from_credential_detail_response(
     credential_detail: CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>,
     credential: &Credential,
-    issuer_certificate: Option<Certificate>,
-    holder_identifier: Option<Identifier>,
-    holder_key_id: String,
+    core_base_url: &str,
+    credential_status: Vec<CredentialStatus>,
+    context: IndexSet<ContextType>,
+    credential_schema: &crate::model::credential_schema::CredentialSchema,
+    credential_schema_format: &CredentialSchemaFormat,
+    config: &CoreConfig,
+) -> Result<CredentialData, FormatterError> {
+    let flat_claims = map_claims(&credential_detail.claims, false);
+
+    let vcdm = vcdm_from_credential_and_published_claims(
+        credential,
+        core_base_url,
+        credential_status,
+        context,
+        flat_claims.clone(),
+        credential_schema,
+        credential_schema_format,
+        config,
+    )?;
+
+    Ok(CredentialData {
+        vcdm,
+        claims: flat_claims,
+        holder_identifier: None,
+        holder_key_id: None,
+        issuer_certificate: None,
+    })
+}
+
+#[expect(clippy::too_many_arguments)]
+pub(crate) fn vcdm_from_credential_and_published_claims(
+    credential: &Credential,
     core_base_url: &str,
     credential_status: Vec<CredentialStatus>,
     mut context: IndexSet<ContextType>,
-) -> Result<CredentialData, FormatterError> {
-    let flat_claims = map_claims(&credential_detail.claims, false);
-    let claims = nest_claims(flat_claims.clone()).error_while("nesting claims")?;
+    flat_claims: Vec<PublishedClaim>,
+    credential_schema: &crate::model::credential_schema::CredentialSchema,
+    credential_schema_format: &CredentialSchemaFormat,
+    config: &CoreConfig,
+) -> Result<VcdmCredential, FormatterError> {
+    let claims = nest_claims(flat_claims).error_while("nesting claims")?;
 
-    let schema = credential_detail.schema;
     // The ID property is optional according to the VCDM. We need to include it for BBS+ due to ONE-3193
-    let credential_id = if schema.format.to_string() == "JSON_LD_BBSPLUS" {
+    let format_type = config
+        .format
+        .get_type(&credential_schema_format.format)
+        .error_while("getting format type")?;
+    let credential_id = if format_type == FormatType::JsonLdBbsPlus {
         Urn::from_uuid(credential.id.into())
             .to_string()
             .parse()
@@ -55,7 +91,11 @@ pub(crate) fn credential_data_from_credential_detail_response(
         None
     };
 
-    let credential_schema_context = get_credential_schema_context(core_base_url, &schema)?;
+    let credential_schema_context = get_credential_schema_context(
+        core_base_url,
+        credential_schema.id,
+        credential_schema_format,
+    )?;
     context.insert(ContextType::Url(credential_schema_context));
     let issuer = issuer_for_credential(credential, core_base_url)?;
     // We don't add the credentialSubject.id here for backwards compatibility with older JWT/SD-JWT formatters where they store the "id" in the "sub" claim.
@@ -63,55 +103,45 @@ pub(crate) fn credential_data_from_credential_detail_response(
     // This is currently the only way to remain backwards compatible with the old formatters.
     let credential_subject = VcdmCredentialSubject::new(claims).error_while("creating subject")?;
 
-    let layout_metadata =
-        schema
-            .layout_properties
-            .zip(schema.layout_type)
-            .map(
-                |(layout_properties, layout_type)| CredentialSchemaMetadata {
-                    layout_properties: layout_properties.into(),
-                    layout_type,
-                },
-            );
+    let layout_properties: Option<CredentialSchemaLayoutPropertiesResponseDTO> =
+        convert_inner(credential_schema.layout_properties.clone());
+    let metadata = layout_properties.map(|layout_properties| CredentialSchemaMetadata {
+        layout_properties: layout_properties.into(),
+        layout_type: credential_schema.layout_type.clone(),
+    });
 
-    let credential_schema = CredentialSchema {
-        id: schema.schema_id,
+    let vcdm_schema = CredentialSchema {
+        id: credential_schema_format.schema_id.clone(),
         r#type: W3C_SCHEMA_TYPE.to_string(),
-        metadata: layout_metadata,
+        metadata,
     };
 
     let mut vcdm = VcdmCredential::new_v2(issuer, credential_subject)
-        .add_type(schema.name.to_case(Case::Pascal))
-        .add_credential_schema(credential_schema);
+        .add_type(credential_schema.name.to_case(Case::Pascal))
+        .add_credential_schema(vcdm_schema);
     vcdm.id = credential_id;
     vcdm.context.extend(context);
     vcdm.credential_status.extend(credential_status);
-
-    Ok(CredentialData {
-        vcdm,
-        claims: flat_claims,
-        holder_identifier,
-        holder_key_id: Some(holder_key_id),
-        issuer_certificate,
-    })
+    Ok(vcdm)
 }
 
 fn get_credential_schema_context(
     core_base_url: &str,
-    schema: &DetailCredentialSchemaResponseDTO,
+    credential_schema_id: CredentialSchemaId,
+    schema_format: &CredentialSchemaFormat,
 ) -> Result<Url, FormatterError> {
     // default for v1 schema
-    let mut context = format!("{core_base_url}/ssi/context/v1/{}", schema.id);
+    let mut context = format!("{core_base_url}/ssi/context/v1/{}", credential_schema_id);
 
     // append format if v2 schema with format
-    if let Ok(url) = schema.schema_id.parse::<Url>()
+    if let Ok(url) = schema_format.schema_id.parse::<Url>()
         && let Some(path) = url.path_segments()
     {
         let mut path: Vec<_> = path.collect();
 
         if let Some(format) = path.pop()
             && let Some(id) = path.pop()
-            && schema.id.to_string() == id
+            && credential_schema_id.to_string() == id
             && path.join("/") == "ssi/schema/v2"
         {
             context = format!("{core_base_url}/ssi/context/v1/{id}/{format}");

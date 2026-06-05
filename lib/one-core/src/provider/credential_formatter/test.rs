@@ -23,7 +23,7 @@ use crate::service::credential::dto::{
 use crate::service::credential_schema::dto::{
     CredentialClaimSchemaDTO, CredentialClaimSchemaTranslationsDTO, CredentialSchemaTranslationsDTO,
 };
-use crate::service::test_utilities::{dummy_did, dummy_identifier, dummy_organisation};
+use crate::service::test_utilities::{dummy_organisation, generic_config};
 
 fn generate_credential_detail_response(
     claims: Vec<DetailCredentialClaimResponseDTO>,
@@ -45,7 +45,7 @@ fn generate_credential_detail_response(
             imported_source_url: "CORE_URL".to_string(),
             deleted_at: None,
             name: "".to_string(),
-            format: "".into(),
+            format: "JWT".into(),
             revocation_method: None,
             organisation_id: Uuid::new_v4().into(),
             key_storage_security: None,
@@ -195,10 +195,9 @@ fn generate_credential_matching_detail(
     }
 }
 
-#[test]
-fn test_from_credential_detail_response_nested_claim_mapping() {
+#[tokio::test]
+async fn test_from_credential_detail_response_nested_claim_mapping() {
     let now = crate::clock::now_utc();
-    let holder_did = DidValue::from_str("did:key:holder").unwrap();
 
     let credential_detail = generate_credential_detail_response(vec![
         DetailCredentialClaimResponseDTO {
@@ -272,24 +271,18 @@ fn test_from_credential_detail_response_nested_claim_mapping() {
         },
     ]);
     let credential = generate_credential_matching_detail(&credential_detail);
-
-    let holder_identifier = Identifier {
-        did: Some(Did {
-            did: holder_did.clone(),
-            ..dummy_did()
-        }),
-        ..dummy_identifier()
-    };
+    let schema = credential.schema.as_ref().unwrap();
+    let formats = schema.formats.as_ref().await.unwrap();
 
     let actual = credential_data_from_credential_detail_response(
         credential_detail,
         &credential,
-        None,
-        Some(holder_identifier),
-        format!("{holder_did}#0"),
         "http://127.0.0.1",
         vec![],
         indexset![],
+        schema,
+        formats.first().unwrap(),
+        &generic_config().core,
     )
     .unwrap()
     .claims;
@@ -318,10 +311,9 @@ fn test_from_credential_detail_response_nested_claim_mapping() {
     assert_eq!(expected, actual);
 }
 
-#[test]
-fn test_from_credential_detail_response_nested_claim_mapping_array() {
+#[tokio::test]
+async fn test_from_credential_detail_response_nested_claim_mapping_array() {
     let now = crate::clock::now_utc();
-    let holder_did = DidValue::from_str("did:key:holder").unwrap();
 
     let mut datatype_config = DatatypeConfig::default();
     datatype_config.insert(
@@ -336,10 +328,14 @@ fn test_from_credential_detail_response_nested_claim_mapping_array() {
             params: None,
         },
     );
+    let location_cs_id = Uuid::new_v4().into();
+    let location_x_cs_id = Uuid::new_v4().into();
+    let location_y_cs_id = Uuid::new_v4().into();
+    let street_cs_id = Uuid::new_v4().into();
     let credential_detail = generate_credential_detail_response(vec![
         DetailCredentialClaimResponseDTO {
             schema: CredentialClaimSchemaDTO {
-                id: Uuid::new_v4().into(),
+                id: location_cs_id,
                 created_date: now,
                 last_modified: now,
                 key: "location".to_string(),
@@ -355,7 +351,7 @@ fn test_from_credential_detail_response_nested_claim_mapping_array() {
             value: DetailCredentialClaimValueResponseDTO::Nested(vec![
                 DetailCredentialClaimResponseDTO {
                     schema: CredentialClaimSchemaDTO {
-                        id: Uuid::new_v4().into(),
+                        id: location_x_cs_id,
                         created_date: now,
                         last_modified: now,
                         key: "location/x".to_string(),
@@ -372,7 +368,7 @@ fn test_from_credential_detail_response_nested_claim_mapping_array() {
                 },
                 DetailCredentialClaimResponseDTO {
                     schema: CredentialClaimSchemaDTO {
-                        id: Uuid::new_v4().into(),
+                        id: location_y_cs_id,
                         created_date: now,
                         last_modified: now,
                         key: "location/y".to_string(),
@@ -391,7 +387,7 @@ fn test_from_credential_detail_response_nested_claim_mapping_array() {
         },
         DetailCredentialClaimResponseDTO {
             schema: CredentialClaimSchemaDTO {
-                id: Uuid::new_v4().into(),
+                id: street_cs_id,
                 created_date: now,
                 last_modified: now,
                 key: "street".to_string(),
@@ -408,24 +404,18 @@ fn test_from_credential_detail_response_nested_claim_mapping_array() {
         },
     ]);
     let credential = generate_credential_matching_detail(&credential_detail);
-
-    let holder_identifier = Identifier {
-        did: Some(Did {
-            did: holder_did.clone(),
-            ..dummy_did()
-        }),
-        ..dummy_identifier()
-    };
+    let schema = credential.schema.as_ref().unwrap();
+    let formats = schema.formats.as_ref().await.unwrap();
 
     let actual = credential_data_from_credential_detail_response(
-        credential_detail,
+        credential_detail.clone(),
         &credential,
-        None,
-        Some(holder_identifier),
-        format!("{holder_did}#0"),
         "http://127.0.0.1",
         vec![],
         indexset![],
+        schema,
+        formats.first().unwrap(),
+        &generic_config().core,
     )
     .unwrap()
     .claims;
