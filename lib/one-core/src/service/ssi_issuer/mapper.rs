@@ -18,6 +18,7 @@ use crate::model::credential_schema::{
     Arrayed, CredentialSchema, CredentialSchemaClaimsNestedTypeView,
     CredentialSchemaClaimsNestedView,
 };
+use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::service::credential_schema::dto::CredentialSchemaLayoutPropertiesResponseDTO;
 
 impl Default for JsonLDContextDTO {
@@ -35,14 +36,27 @@ impl Default for JsonLDContextDTO {
 pub(crate) fn generate_jsonld_context_response(
     claim_schemas: &Vec<ClaimSchema>,
     base_url: &str,
+    claim_mappings: &Option<Vec<CredentialSchemaFormatClaimSchema>>,
 ) -> Result<HashMap<String, JsonLDEntityDTO>, IssuerServiceError> {
     let mut entities: HashMap<String, JsonLDEntityDTO> = HashMap::new();
     for claim_schema in claim_schemas {
         // Metadata claims are not part of our JSON-LD context
-        if claim_schema.data_type != "OBJECT" && !claim_schema.metadata {
-            let key_parts: Vec<&str> = claim_schema.key.split(NESTED_CLAIM_MARKER).collect();
-            insert_claim(&mut entities, &key_parts, base_url, 0)?;
+        if claim_schema.data_type == "OBJECT" || claim_schema.metadata {
+            continue;
         }
+
+        let key_path = if let Some(claim_mappings) = claim_mappings
+            && let Some(mapping) = claim_mappings
+                .iter()
+                .find(|m| m.claim_schema_id == claim_schema.id)
+        {
+            &mapping.technical_key
+        } else {
+            &claim_schema.key
+        };
+
+        let key_parts = key_path.split(NESTED_CLAIM_MARKER).collect();
+        insert_claim(&mut entities, &key_parts, base_url, 0)?;
     }
     Ok(entities)
 }

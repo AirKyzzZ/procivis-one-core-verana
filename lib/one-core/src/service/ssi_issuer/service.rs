@@ -107,14 +107,17 @@ impl SSIIssuerService {
             ));
         };
 
-        let schema_format = if let Some(format) = format {
+        let (schema_format, claim_mappings) = if let Some(format) = format {
             let formats = credential_schema.formats.as_ref().await?;
             let Some(format) = formats.iter().find(|f| f.format == *format) else {
                 return Err(IssuerServiceError::InvalidFormat);
             };
-            format.format.clone()
+            (
+                format.format.clone(),
+                Some(format.claim_mappings.as_ref().await?.to_vec()),
+            )
         } else {
-            credential_schema.format().await?
+            (credential_schema.format().await?, None)
         };
 
         let config = self
@@ -170,7 +173,11 @@ impl SSIIssuerService {
         ]);
 
         let claim_schemas = credential_schema.claim_schemas.as_ref().await?;
-        entities.extend(generate_jsonld_context_response(&claim_schemas, &base_url)?);
+        entities.extend(generate_jsonld_context_response(
+            &claim_schemas,
+            &base_url,
+            &claim_mappings,
+        )?);
 
         Ok(JsonLDContextResponseDTO {
             context: JsonLDContextDTO {
