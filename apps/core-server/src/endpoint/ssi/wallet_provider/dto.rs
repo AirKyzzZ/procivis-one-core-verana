@@ -105,6 +105,29 @@ pub(crate) struct WalletProviderMetadataResponseRestDTO {
     #[from(with_fn = convert_inner)]
     trust_collections: Vec<ProviderTrustCollectionRestDTO>,
     feature_flags: FeatureFlagsRestDTO,
+    #[from(with_fn = convert_inner)]
+    user_authentication: Option<UserAuthenticationRestDTO>,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[serde(rename_all = "camelCase")]
+#[from(dto::UserAuthenticationDTO)]
+pub(crate) struct UserAuthenticationRestDTO {
+    required: bool,
+    identity_provider: String,
+    client_id: String,
+    redirect_uri: String,
+    #[from(with_fn = convert_inner)]
+    token_validation: Option<TokenValidationRestDTO>,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[serde(rename_all = "camelCase")]
+#[from(dto::TokenValidationDTO)]
+pub(crate) struct TokenValidationRestDTO {
+    aud: String,
+    iss: String,
+    jwks_uri: String,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

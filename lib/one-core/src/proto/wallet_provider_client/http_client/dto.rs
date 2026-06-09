@@ -80,6 +80,29 @@ pub struct WalletProviderMetadataResponseRestDTO {
     app_version: Option<AppVersionRestDTO>,
     trust_collections: Vec<ProviderTrustCollectionDTO>,
     feature_flags: FeatureFlags,
+    #[into(with_fn = convert_inner)]
+    user_authentication: Option<UserAuthenticationRestDTO>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Into)]
+#[serde(rename_all = "camelCase")]
+#[into(dto::UserAuthenticationDTO)]
+pub struct UserAuthenticationRestDTO {
+    required: bool,
+    identity_provider: String,
+    client_id: String,
+    redirect_uri: String,
+    #[into(with_fn = convert_inner)]
+    token_validation: Option<TokenValidationRestDTO>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Into)]
+#[serde(rename_all = "camelCase")]
+#[into(dto::TokenValidationDTO)]
+pub struct TokenValidationRestDTO {
+    aud: String,
+    iss: String,
+    jwks_uri: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Into)]

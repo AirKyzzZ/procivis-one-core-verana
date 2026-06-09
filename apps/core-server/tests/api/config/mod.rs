@@ -9,3 +9,4 @@ mod key_storage;
 mod revocation_method;
 mod transport;
 mod verification_engagement;
+mod wallet_provider;

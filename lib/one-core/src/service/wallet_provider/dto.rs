@@ -88,6 +88,7 @@ pub(super) struct WalletProviderParams {
     #[serde(default)]
     pub trust_collections: HashMap<TrustCollectionId, TrustCollectionParams>, // FIX ME: This is a temporary solution, should be changed to a proper structure ONE-9309
     pub feature_flags: FeatureFlags,
+    pub user_authentication: Option<UserAuthenticationParams>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -95,6 +96,24 @@ pub(super) struct WalletProviderParams {
 pub struct FeatureFlags {
     pub trust_ecosystems_enabled: bool,
     pub refresh_credential_batch_enabled: bool,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct UserAuthenticationParams {
+    pub required: bool,
+    pub identity_provider: String,
+    pub client_id: String,
+    pub redirect_uri: String,
+    pub token_validation: TokenValidationParams,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct TokenValidationParams {
+    pub aud: String,
+    pub iss: String,
+    pub jwks_uri: String,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -262,6 +281,23 @@ pub struct WalletProviderMetadataResponseDTO {
     pub app_version: Option<AppVersionDTO>,
     pub trust_collections: Vec<ProviderTrustCollectionDTO>,
     pub feature_flags: FeatureFlags,
+    pub user_authentication: Option<UserAuthenticationDTO>,
+}
+
+#[derive(Clone, Debug)]
+pub struct UserAuthenticationDTO {
+    pub required: bool,
+    pub identity_provider: String,
+    pub client_id: String,
+    pub redirect_uri: String,
+    pub token_validation: Option<TokenValidationDTO>,
+}
+
+#[derive(Clone, Debug)]
+pub struct TokenValidationDTO {
+    pub aud: String,
+    pub iss: String,
+    pub jwks_uri: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

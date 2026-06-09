@@ -170,6 +170,7 @@ async fn holder_register_success() {
                     refresh_credential_batch_enabled: true,
                 },
                 trust_collections: vec![],
+                user_authentication: None,
             })
         });
 
@@ -308,6 +309,7 @@ async fn holder_register_key_attestation_not_supported() {
                     refresh_credential_batch_enabled: true,
                 },
                 trust_collections: vec![],
+                user_authentication: None,
             })
         });
 

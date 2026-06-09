@@ -275,6 +275,7 @@ impl MigratorTrait for Migrator {
             Box::new(
                 migrations::m20260528_120000_bump_credential_schema_import_url_to_v2::Migration,
             ),
+            Box::new(migrations::m20260608_120000_add_user_nonce_and_user_sub_to_holder_wallet_instance::Migration),
         ]
     }
 }

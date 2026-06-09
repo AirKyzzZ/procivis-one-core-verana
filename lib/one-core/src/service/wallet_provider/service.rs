@@ -17,10 +17,10 @@ use super::app_integrity::ios::{validate_attestation_ios, webauthn_signed_jwt_to
 use super::dto::{
     GetWalletUnitListResponseDTO, GetWalletUnitResponseDTO, IssueWalletUnitAttestationRequestDTO,
     IssueWalletUnitAttestationResponseDTO, NoncePayload, ProviderTrustCollectionDTO,
-    RegisterWalletUnitRequestDTO, RegisterWalletUnitResponseDTO, WalletInstanceAttestationClaims,
-    WalletProviderMetadataResponseDTO, WalletProviderParams, WalletRegistrationRequirement,
-    WalletUnitActivationRequestDTO, WalletUnitAttestationClaims, WalletUnitAttestationMetadataDTO,
-    WalletUnitFilterParamsDTO,
+    RegisterWalletUnitRequestDTO, RegisterWalletUnitResponseDTO, TokenValidationDTO,
+    UserAuthenticationDTO, WalletInstanceAttestationClaims, WalletProviderMetadataResponseDTO,
+    WalletProviderParams, WalletRegistrationRequirement, WalletUnitActivationRequestDTO,
+    WalletUnitAttestationClaims, WalletUnitAttestationMetadataDTO, WalletUnitFilterParamsDTO,
 };
 use super::error::WalletProviderError;
 use super::mapper::{
@@ -1348,6 +1348,17 @@ impl WalletProviderService {
             app_version: params.app_version,
             feature_flags: params.feature_flags,
             trust_collections,
+            user_authentication: params.user_authentication.map(|ua| UserAuthenticationDTO {
+                required: ua.required,
+                identity_provider: ua.identity_provider,
+                client_id: ua.client_id,
+                redirect_uri: ua.redirect_uri,
+                token_validation: Some(TokenValidationDTO {
+                    aud: ua.token_validation.aud,
+                    iss: ua.token_validation.iss,
+                    jwks_uri: ua.token_validation.jwks_uri,
+                }),
+            }),
         })
     }
 }
