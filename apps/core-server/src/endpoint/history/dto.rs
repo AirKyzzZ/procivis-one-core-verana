@@ -36,13 +36,23 @@ pub(crate) type GetHistoryQuery =
 #[into(CreateHistoryRequestDTO)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct CreateHistoryRequestRestDTO {
+    /// The action that occurred on the entity.
     pub action: HistoryAction,
+    /// Display name of the entity at the time the event was recorded. For
+    /// credential events, this is the credential schema name; for proof
+    /// events, this is the proof schema name.
     pub name: String,
+    /// UUID of the entity the event relates to.
     pub entity_id: Option<EntityId>,
+    /// Type of entity the event relates to.
     pub entity_type: HistoryEntityType,
+    /// Organization the event belongs to.
     pub organisation_id: Option<OrganisationId>,
+    /// The external service submitting this event. Must not be `CORE`.
     pub source: ExternalHistorySource,
+    /// External participant in the interaction, if applicable.
     pub target: Option<String>,
+    /// Optional structured metadata attached to the event.
     pub metadata: Option<Value>,
 }
 
@@ -61,8 +71,16 @@ pub(crate) struct HistoryResponseRestDTO {
     pub entity_id: Option<Uuid>,
     pub entity_type: HistoryEntityType,
     pub organisation_id: Option<OrganisationId>,
+    /// Service that recorded the event.
     pub source: HistorySource,
+    /// Identifier UUID of the external participant in the interaction, if
+    /// applicable. For credential events, this is the counterpart's identifier
+    /// (holder when the system is issuer, issuer when the system is holder).
+    /// For presentation events, this is the holder's identifier when the system
+    /// is verifier, or the verifier's identifier when the system is holder.
     pub target: Option<String>,
+    /// Identifier of the user who triggered the event. Present only when
+    /// STS authentication is in use.
     pub user: Option<String>,
 }
 
@@ -87,24 +105,37 @@ pub(crate) struct HistoryResponseDetailRestDTO {
     pub entity_type: HistoryEntityType,
     #[try_from(infallible)]
     pub organisation_id: Option<OrganisationId>,
+    /// Structured metadata attached to the event. The variant present
+    /// depends on the event type.
     #[try_from(with_fn = try_convert_inner)]
     pub metadata: Option<HistoryMetadataRestEnum>,
+    /// Service that recorded the event.
     #[try_from(infallible)]
     pub source: HistorySource,
+    /// Secondary entity involved in the event, if any.
     #[try_from(infallible)]
     pub target: Option<String>,
     #[try_from(with_fn = convert_inner, infallible)]
+    /// Identifier of the user who triggered the event. Present only when
+    /// STS authentication is in use.
     pub user: Option<String>,
 }
 
 #[derive(Serialize, ToSchema, TryFrom)]
 #[try_from(T = one_core::service::history::dto::HistoryMetadataResponse, Error = MapperError)]
 pub(crate) enum HistoryMetadataRestEnum {
+    /// Items lost during finalization of a backup.
     UnexportableEntities(UnexportableEntitiesResponseRestDTO),
+    /// Metadata for error events.
     ErrorMetadata(#[try_from(infallible)] HistoryErrorMetadataRestDTO),
+    /// The hash of a wallet unit's JWT.
     WalletUnitJWT(#[try_from(infallible)] String),
+    /// Additional information from non-Core services recording history
+    /// events.
     External(#[try_from(infallible)] serde_json::Value),
+    /// The name of the WRP the event relates to.
     WalletRelyingParty(#[try_from(infallible)] WalletRelyingPartyMetadataRestDTO),
+    /// The trust resolution verdict.
     TrustResolution(#[try_from(infallible)] TrustResolutionMetadataRestDTO),
 }
 
@@ -302,7 +333,7 @@ pub(crate) struct HistoryFilterQueryParamsRest {
     #[param(nullable = false)]
     #[try_into(infallible)]
     pub created_date_before: Option<OffsetDateTime>,
-    /// Return only events associated with the provided Identifier UUID.
+    /// Return only events associated with the provided identifier UUID.
     #[param(nullable = false)]
     #[try_into(infallible)]
     pub identifier_id: Option<IdentifierId>,
@@ -340,8 +371,8 @@ pub(crate) struct HistoryFilterQueryParamsRest {
     #[param(nullable = false)]
     #[try_into(infallible, rename = "search_query")]
     pub search_text: Option<String>,
-    /// Changes where `searchText` is searched. To search history entries,
-    /// pass a `searchText` and optionally a `searchType`.
+    /// Changes where `searchText` is searched. If no value is provided, events
+    /// that have any field matching `searchText` will be returned.
     #[try_into(infallible, with_fn = convert_inner, rename = "search_type")]
     #[param(inline, nullable = false)]
     pub search_type: Option<HistorySearchTypeRestEnum>,

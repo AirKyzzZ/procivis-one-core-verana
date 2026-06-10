@@ -31,9 +31,11 @@ use crate::session::CoreServerSessionProvider;
     ),
     summary = "List history events",
     description = indoc::formatdoc! {"
-        Returns a list of history events for entities in the system.
+        Returns a paginated list of history events recorded in Core. Use
+        filters to scope results by entity type, entity ID, time range, or
+        more.
 
-        Related guide: [History](https://docs.procivis.ch/history)
+        Related guide: [Searching and Reading History](https://docs.procivis.ch/history)
     "},
 )]
 pub(crate) async fn get_history_list(
@@ -96,7 +98,9 @@ pub(crate) async fn get_history_list(
     ),
     summary = "Create history event",
     description = indoc::formatdoc! {"
-        For services external to Core, creates a new history entry in Core.
+        Records a history event submitted by an external service. Use this
+        endpoint to write entries to Core's centralized history log from services
+        that operate outside Core.
     "},
 )]
 pub(crate) async fn create_history(
@@ -128,7 +132,7 @@ pub(crate) async fn create_history(
         ("bearer" = [])
     ),
     summary = "Retrieve history entry",
-    description = "Returns details on a single event.",
+    description = "Returns the full record for a single history event.",
 )]
 pub(crate) async fn get_history_entry(
     state: State<AppState>,

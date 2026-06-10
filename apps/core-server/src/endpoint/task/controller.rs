@@ -21,10 +21,10 @@ use crate::router::AppState;
     ),
     summary = "Run task",
     description = indoc::formatdoc! {"
-        Runs a task. Tasks can be also be run via the CLI after starting
-        the core-server.
-
-        Related guide: [Regular Tasks](https://docs.procivis.ch/reference/configuration/core#regular-tasks)
+        Triggers a configured task by name. Tasks can also be run from
+        the CLI after starting `core-server`. See 
+        [Regular Tasks](https://docs.procivis.ch/reference/configuration/core#regular-tasks)
+        for supported task types and their parameters.
     "},
 )]
 pub(crate) async fn post_task(

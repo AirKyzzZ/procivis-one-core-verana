@@ -5,9 +5,9 @@ use crate::error::BindingError;
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCore {
-    /// Deletes the system cache. See the
+    /// Deletes entries from the system cache. See
     /// [Caching](https://docs.procivis.ch/configure/caching#cached-entities)
-    /// guide for details on cached entities.
+    /// for details on cached entity types.
     #[uniffi::method]
     pub async fn delete_cache(
         &self,
@@ -28,14 +28,22 @@ impl OneCore {
 pub enum CacheTypeBindingDTO {
     DidDocument,
     JsonLdContext,
+    /// Credential status list fetched from an external source.
     StatusListCredential,
+    /// Metadata for SD-JWT VC type (VCT).
     VctMetadata,
     JsonSchema,
     TrustList,
+    /// X.509 certificate revocation list.
     X509Crl,
+    /// Certificate revocation list used for Android key attestation.
     AndroidAttestationCrl,
+    /// OpenID provider metadata fetched from holder endpoints.
     OpenIdMetadataHolder,
+    /// OpenID provider metadata fetched from issuer endpoints.
     OpenIdMetadataIssuer,
+    /// Metadata fetched from the registered wallet provider.
     WalletProviderMetadata,
+    /// Trust collection data fetched from a remote source.
     RemoteTrustCollection,
 }

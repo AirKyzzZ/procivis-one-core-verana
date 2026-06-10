@@ -15,7 +15,8 @@ use crate::utils::into_id;
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCore {
-    /// Returns details on a single event.
+    /// Returns the full record for a single history event, including metadata
+    /// if present.
     #[uniffi::method]
     pub async fn get_history_entry(
         &self,
@@ -179,12 +180,23 @@ pub struct HistoryListItemBindingDTO {
     pub id: String,
     pub created_date: String,
     pub action: HistoryActionBindingEnum,
+    /// For credential events, this is the credential schema name. For
+    /// presentation events, this is the proof schema name. For all other
+    /// entity types, it is the entity name.
     pub name: String,
     pub entity_id: Option<String>,
     pub entity_type: HistoryEntityTypeBindingEnum,
+    /// Structured metadata attached to the event. The variant depends on
+    /// the type.
     pub metadata: Option<HistoryMetadataBinding>,
     pub organisation_id: Option<String>,
+    /// Identifier UUID of the external participant in the interaction, if
+    /// applicable. For credential events, this is the counterpart's identifier
+    /// (holder when the system is issuer, issuer when the system is holder).
+    /// For presentation events, this is the holder's identifier when the system
+    /// is verifier, or the verifier's identifier when the system is holder.
     pub target: Option<String>,
+    /// Identifier of the user who triggered the event.
     pub user: Option<String>,
 }
 
@@ -217,7 +229,7 @@ pub struct HistoryListQueryBindingDTO {
     pub entity_ids: Option<Vec<String>>,
     /// Return only events associated with the provided entity types.
     pub entity_types: Option<Vec<HistoryEntityTypeBindingEnum>>,
-    /// Return only the provided events.
+    /// Return only events of the specified action types.
     pub actions: Option<Vec<HistoryActionBindingEnum>>,
     /// Return only entries created after this time. Timestamp in
     /// RFC 3339 format (for example `2023-06-09T14:19:57.000Z`).
@@ -235,9 +247,11 @@ pub struct HistoryListQueryBindingDTO {
     pub proof_id: Option<String>,
     /// Return only events associated with the provided proof schema ID.
     pub proof_schema_id: Option<String>,
-    /// Search for a string.
+    /// Search history events by string. Set `text` to specify the search
+    /// string and optionally `type` to restrict which field is searched.
+    /// When `type` is omitted, all searchable fields are checked.
     pub search: Option<HistorySearchBindingDTO>,
-    /// Return only events associated with the provided user(s).
+    /// Return only events triggered by the specified users.
     pub users: Option<Vec<String>>,
 }
 
@@ -270,5 +284,7 @@ pub enum HistorySearchTypeBindingEnum {
 #[uniffi(name = "HistorySearch")]
 pub struct HistorySearchBindingDTO {
     pub text: String,
+    /// When omitted, all searchable fields are checked. Set to restrict
+    /// the search to a specific field.
     pub r#type: Option<HistorySearchTypeBindingEnum>,
 }

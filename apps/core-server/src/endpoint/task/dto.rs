@@ -6,11 +6,11 @@ use utoipa::ToSchema;
 #[derive(Clone, Debug, Deserialize, ToSchema, ModifySchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct TaskRequestRestDTO {
-    /// Choose a task to run. Check the `task` object of the configuration
-    /// for supported options and reference the configuration instance.
+    /// Name of the task to run, as defined in the `task` configuration
+    /// object.
     #[modify_schema(field = task)]
     pub name: String,
-    /// Parameters to pass to the task.
+    /// Task-specific parameters. Most tasks require no parameters.
     #[schema(value_type = Option<Object>)]
     pub params: Option<serde_json::Value>,
 }
@@ -18,6 +18,7 @@ pub(crate) struct TaskRequestRestDTO {
 #[derive(Clone, Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct TaskResponseRestDTO {
+    /// Task execution result. The structure varies by task type.
     #[serde(flatten)]
     pub result: serde_json::Value,
 }

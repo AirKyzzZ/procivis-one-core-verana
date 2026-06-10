@@ -328,7 +328,9 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
             Tag::builder()
                 .name("history_management")
                 .description(Some(indoc::formatdoc! {"
-                Retrieve event history.
+                Manage and query the event history log. External services use this API
+                to submit history entries to Core's centralized history service; all
+                consumers use it to list or retrieve recorded events.
             "}))
                 .extensions(Some(
                     Extensions::builder()
@@ -383,7 +385,7 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
             Tag::builder()
                 .name("jsonld")
                 .description(Some(indoc::formatdoc! {"
-                Operations for credentials formatted with JSON-LD.
+                Retrieve cached JSON-LD context documents.
             "}))
                 .extensions(Some(
                     Extensions::builder()
@@ -394,7 +396,10 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
             Tag::builder()
                 .name("task")
                 .description(Some(indoc::formatdoc! {"
-                Run tasks.
+                Trigger configured maintenance and operational tasks.
+                Tasks can also be run from the CLI or scheduled as cron
+                jobs. See [Regular Tasks](https://docs.procivis.ch/reference/configuration/core#regular-tasks)
+                for supported task types and their parameters.
             "}))
                 .extensions(Some(
                     Extensions::builder().add("x-displayName", "Tasks").build(),
@@ -403,7 +408,8 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
             Tag::builder()
                 .name("cache")
                 .description(Some(indoc::formatdoc! {"
-                Manage cached entities.
+                Manage the remote entity cache. See [Caching](https://docs.procivis.ch/configure/caching)
+                for configuration.
             "}))
                 .extensions(Some(
                     Extensions::builder().add("x-displayName", "Cache").build(),
