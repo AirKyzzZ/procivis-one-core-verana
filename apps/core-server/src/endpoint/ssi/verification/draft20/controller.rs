@@ -61,6 +61,7 @@ pub(crate) async fn oid4vp_draft20_direct_post(
                 StatusCode::BAD_REQUEST,
                 Json(OpenID4VCIErrorResponseRestDTO {
                     error: OpenID4VCIErrorRestEnum::InvalidRequest,
+                    error_description: None,
                 }),
             )
                 .into_response()
@@ -71,6 +72,7 @@ pub(crate) async fn oid4vp_draft20_direct_post(
                 StatusCode::BAD_REQUEST,
                 Json(OpenID4VCIErrorResponseRestDTO {
                     error: OpenID4VCIErrorRestEnum::InvalidRequest,
+                    error_description: None,
                 }),
             )
                 .into_response()
@@ -138,6 +140,7 @@ pub(crate) async fn oid4vp_draft20_presentation_definition(
             StatusCode::BAD_REQUEST,
             Json(OpenID4VCIErrorResponseRestDTO {
                 error: OpenID4VCIErrorRestEnum::InvalidRequest,
+                error_description: None,
             }),
         )
             .into_response(),
@@ -191,6 +194,7 @@ pub(crate) async fn oid4vp_draft20_client_metadata(
                 StatusCode::BAD_REQUEST,
                 Json(OpenID4VCIErrorResponseRestDTO {
                     error: OpenID4VCIErrorRestEnum::InvalidRequest,
+                    error_description: None,
                 }),
             )
                 .into_response()
@@ -246,6 +250,7 @@ pub(crate) async fn oid4vp_draft20_client_request(
                 StatusCode::BAD_REQUEST,
                 Json(OpenID4VCIErrorResponseRestDTO {
                     error: OpenID4VCIErrorRestEnum::InvalidRequest,
+                    error_description: None,
                 }),
             )
                 .into_response()

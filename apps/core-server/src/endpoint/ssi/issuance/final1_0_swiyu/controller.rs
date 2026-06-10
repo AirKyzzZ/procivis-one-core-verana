@@ -11,12 +11,12 @@ use proc_macros::endpoint;
 use shared_types::{CredentialId, CredentialSchemaId, IdentifierId};
 
 use crate::dto::error::ErrorResponseRestDTO;
+use crate::endpoint::ssi::dto::OpenID4VCIErrorResponseRestDTO;
 use crate::endpoint::ssi::issuance::final1_0::dto::{
-    OAuthAuthorizationServerMetadataRestDTO, OpenID4VCIErrorResponseRestDTO,
-    OpenID4VCIFinal1CredentialOfferRestDTO, OpenID4VCIFinal1CredentialRequestRestDTO,
-    OpenID4VCIFinal1CredentialResponseRestDTO, OpenID4VCINonceResponseRestDTO,
-    OpenID4VCINotificationRequestRestDTO, OpenID4VCITokenRequestRestDTO,
-    OpenID4VCITokenResponseRestDTO,
+    OAuthAuthorizationServerMetadataRestDTO, OpenID4VCIFinal1CredentialOfferRestDTO,
+    OpenID4VCIFinal1CredentialRequestRestDTO, OpenID4VCIFinal1CredentialResponseRestDTO,
+    OpenID4VCINonceResponseRestDTO, OpenID4VCINotificationRequestRestDTO,
+    OpenID4VCITokenRequestRestDTO, OpenID4VCITokenResponseRestDTO,
 };
 use crate::endpoint::ssi::issuance::final1_0_swiyu::dto::OpenID4VCISwiyuIssuerMetadataResponseRestDTO;
 use crate::extractor::QsOrForm;

@@ -68,9 +68,11 @@ pub(crate) struct DidVerificationMethodRestDTO {
     pub public_key_jwk: PublicJwk,
 }
 
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema)]
 pub(crate) struct OpenID4VCIErrorResponseRestDTO {
     pub error: OpenID4VCIErrorRestEnum,
+    pub error_description: Option<String>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, ToSchema, From)]

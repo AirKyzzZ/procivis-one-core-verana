@@ -8,18 +8,9 @@ use one_core::service::oid4vci_final1_0::error::OID4VCIFinal1_0ServiceError;
 use one_dto_mapper::{convert_inner, convert_inner_of_inner};
 
 use super::dto::{
-    OpenID4VCIErrorResponseRestDTO, OpenID4VCIIssuerMetadataResponseRestDTO,
-    OpenID4VCITokenRequestRestDTO, TimestampRest,
+    OpenID4VCIIssuerMetadataResponseRestDTO, OpenID4VCITokenRequestRestDTO, TimestampRest,
 };
 use crate::endpoint::ssi::issuance::final1_0::dto::OpenID4VCIIssuerMetadataCredentialMetadataProcivisDesignRestDTO;
-
-impl From<OpenID4VCIError> for OpenID4VCIErrorResponseRestDTO {
-    fn from(value: OpenID4VCIError) -> Self {
-        Self {
-            error: value.into(),
-        }
-    }
-}
 
 impl From<Timestamp> for TimestampRest {
     fn from(value: Timestamp) -> Self {

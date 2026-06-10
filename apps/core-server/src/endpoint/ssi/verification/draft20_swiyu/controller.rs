@@ -61,6 +61,7 @@ pub(crate) async fn oid4vp_draft20_swiyu_direct_post(
                 StatusCode::BAD_REQUEST,
                 Json(OpenID4VCIErrorResponseRestDTO {
                     error: OpenID4VCIErrorRestEnum::InvalidRequest,
+                    error_description: None,
                 }),
             )
                 .into_response()
@@ -71,6 +72,7 @@ pub(crate) async fn oid4vp_draft20_swiyu_direct_post(
                 StatusCode::BAD_REQUEST,
                 Json(OpenID4VCIErrorResponseRestDTO {
                     error: OpenID4VCIErrorRestEnum::InvalidRequest,
+                    error_description: None,
                 }),
             )
                 .into_response()

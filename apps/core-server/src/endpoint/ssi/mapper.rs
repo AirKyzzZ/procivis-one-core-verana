@@ -6,6 +6,7 @@ impl From<OpenID4VCIError> for OpenID4VCIErrorResponseRestDTO {
     fn from(value: OpenID4VCIError) -> Self {
         Self {
             error: value.into(),
+            error_description: None,
         }
     }
 }

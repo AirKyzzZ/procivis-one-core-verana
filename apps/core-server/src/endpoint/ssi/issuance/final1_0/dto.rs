@@ -1,7 +1,6 @@
 use indexmap::IndexMap;
 use one_core::mapper::opt_secret_string;
 use one_core::provider::credential_formatter::vcdm::ContextType;
-use one_core::provider::issuance_protocol::error::OpenID4VCIError;
 use one_core::provider::issuance_protocol::model::{
     OpenID4VCIProofTypeSupported, OpenID4VCITxCode, OpenID4VCITxCodeInputMode,
 };
@@ -303,29 +302,6 @@ pub(crate) struct OpenID4VCITokenResponseRestDTO {
     pub refresh_token: Option<SecretString>,
     #[from(with_fn = convert_inner)]
     pub refresh_token_expires_in: Option<TimestampRest>,
-}
-
-#[derive(Clone, Debug, Serialize, ToSchema)]
-pub(crate) struct OpenID4VCIErrorResponseRestDTO {
-    pub error: OpenID4VCIErrorRestEnum,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, ToSchema, From)]
-#[serde(rename_all = "snake_case")]
-#[from(OpenID4VCIError)]
-pub(crate) enum OpenID4VCIErrorRestEnum {
-    UnsupportedGrantType,
-    InvalidGrant,
-    InvalidRequest,
-    InvalidToken,
-    InvalidNonce,
-    InvalidOrMissingProof,
-    UnsupportedCredentialFormat,
-    UnsupportedCredentialType,
-    CredentialRequestDenied,
-    InvalidNotificationId,
-    InvalidNotificationRequest,
-    RuntimeError(String),
 }
 
 #[options_not_nullable]

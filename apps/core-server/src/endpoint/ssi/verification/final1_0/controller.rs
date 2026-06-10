@@ -59,6 +59,7 @@ pub(crate) async fn oid4vp_final1_0_direct_post(
                 StatusCode::BAD_REQUEST,
                 Json(OpenID4VCIErrorResponseRestDTO {
                     error: OpenID4VCIErrorRestEnum::InvalidRequest,
+                    error_description: None,
                 }),
             )
                 .into_response()
@@ -75,6 +76,7 @@ pub(crate) async fn oid4vp_final1_0_direct_post(
                 StatusCode::BAD_REQUEST,
                 Json(OpenID4VCIErrorResponseRestDTO {
                     error: OpenID4VCIErrorRestEnum::InvalidRequest,
+                    error_description: None,
                 }),
             )
                 .into_response()
@@ -83,17 +85,38 @@ pub(crate) async fn oid4vp_final1_0_direct_post(
             tracing::error!("Config validation error: {error}");
             StatusCode::NOT_FOUND.into_response()
         }
-        Err(error) if error.error_code() == ErrorCode::BR_0099 => {
-            tracing::error!("Credential is revoked or suspended");
+        Err(error) if error.error_code() == ErrorCode::BR_0433 => {
+            tracing::info!("Credential issuer untrusted");
             (
                 StatusCode::BAD_REQUEST,
-                "Credential is revoked or suspended",
+                Json(OpenID4VCIErrorResponseRestDTO {
+                    error: OpenID4VCIErrorRestEnum::InvalidRequest,
+                    error_description: Some("Credential issuer untrusted".to_string()),
+                }),
+            )
+                .into_response()
+        }
+        Err(error) if error.error_code() == ErrorCode::BR_0099 => {
+            tracing::info!("Credential is revoked or suspended");
+            (
+                StatusCode::BAD_REQUEST,
+                Json(OpenID4VCIErrorResponseRestDTO {
+                    error: OpenID4VCIErrorRestEnum::InvalidRequest,
+                    error_description: Some("Credential is revoked or suspended".to_string()),
+                }),
             )
                 .into_response()
         }
         Err(OID4VPFinal1_0ServiceError::MissingProofForInteraction(_)) => {
             tracing::error!("Missing interaction or proof");
-            (StatusCode::BAD_REQUEST, "Missing interaction of proof").into_response()
+            (
+                StatusCode::BAD_REQUEST,
+                Json(OpenID4VCIErrorResponseRestDTO {
+                    error: OpenID4VCIErrorRestEnum::InvalidRequest,
+                    error_description: Some("Missing interaction of proof".to_string()),
+                }),
+            )
+                .into_response()
         }
         Err(e) => {
             tracing::error!("Error: {:?}", e);
@@ -140,6 +163,7 @@ pub(crate) async fn oid4vp_final1_0_client_metadata(
                 StatusCode::BAD_REQUEST,
                 Json(OpenID4VCIErrorResponseRestDTO {
                     error: OpenID4VCIErrorRestEnum::InvalidRequest,
+                    error_description: None,
                 }),
             )
                 .into_response()
@@ -195,6 +219,7 @@ pub(crate) async fn oid4vp_final1_0_client_request(
                 StatusCode::BAD_REQUEST,
                 Json(OpenID4VCIErrorResponseRestDTO {
                     error: OpenID4VCIErrorRestEnum::InvalidRequest,
+                    error_description: None,
                 }),
             )
                 .into_response()

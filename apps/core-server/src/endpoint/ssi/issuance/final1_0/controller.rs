@@ -18,14 +18,14 @@ use proc_macros::endpoint;
 use shared_types::{CredentialId, CredentialSchemaId, IdentifierId};
 
 use super::dto::{
-    OAuthAuthorizationServerMetadataRestDTO, OpenID4VCIErrorResponseRestDTO,
-    OpenID4VCIErrorRestEnum, OpenID4VCIFinal1CredentialOfferRestDTO,
+    OAuthAuthorizationServerMetadataRestDTO, OpenID4VCIFinal1CredentialOfferRestDTO,
     OpenID4VCIFinal1CredentialRequestRestDTO, OpenID4VCIFinal1CredentialResponseRestDTO,
     OpenID4VCIIssuerMetadataResponseRestDTO, OpenID4VCINonceResponseRestDTO,
     OpenID4VCINotificationRequestRestDTO, OpenID4VCITokenRequestRestDTO,
     OpenID4VCITokenResponseRestDTO,
 };
 use crate::dto::error::ErrorResponseRestDTO;
+use crate::endpoint::ssi::dto::{OpenID4VCIErrorResponseRestDTO, OpenID4VCIErrorRestEnum};
 use crate::extractor::Accept;
 use crate::router::AppState;
 
@@ -377,6 +377,7 @@ pub(crate) async fn oid4vci_final1_0_create_credential(
             StatusCode::BAD_REQUEST,
             Json(OpenID4VCIErrorResponseRestDTO {
                 error: OpenID4VCIErrorRestEnum::InvalidRequest,
+                error_description: None,
             }),
         )
             .into_response(),
