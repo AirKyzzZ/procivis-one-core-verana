@@ -26,16 +26,19 @@ impl CredentialSchemaRepository for CredentialSchemaHistoryDecorator {
         &self,
         request: CredentialSchema,
     ) -> Result<CredentialSchemaId, DataLayerError> {
-        let local_import_source_url = self
-            .core_base_url
-            .as_ref()
-            .map(|core_base_url| format!("{core_base_url}/ssi/schema/v1/{}", request.id));
-        let history_action =
-            if local_import_source_url.as_ref() == Some(&request.imported_source_url) {
-                HistoryAction::Created
-            } else {
-                HistoryAction::Imported
-            };
+        let local_import_source_urls = if let Some(core_base_url) = self.core_base_url.as_ref() {
+            vec![
+                format!("{core_base_url}/ssi/schema/v1/{}", request.id),
+                format!("{core_base_url}/ssi/schema/v2/{}", request.id),
+            ]
+        } else {
+            vec![]
+        };
+        let history_action = if local_import_source_urls.contains(&request.imported_source_url) {
+            HistoryAction::Created
+        } else {
+            HistoryAction::Imported
+        };
 
         let result = self
             .inner
