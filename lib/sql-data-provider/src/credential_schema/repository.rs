@@ -204,19 +204,37 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
             ..Default::default()
         };
 
-        update_model
-            .update(&self.db)
-            .await
-            .map_err(to_update_data_layer_error)?;
+        self.db
+            .tx(async {
+                update_model
+                    .update(&self.db)
+                    .await
+                    .map_err(to_update_data_layer_error)?;
 
-        if let Some(claim_schemas) = request.claim_schemas {
-            let claim_schema_models = claim_schemas_to_model_vec(claim_schemas, &request.id);
+                if let Some(claim_schemas) = request.claim_schemas {
+                    let mut localized_texts = vec![];
+                    for claim_schema in &claim_schemas {
+                        localized_texts
+                            .extend(claim_schema.translations.as_ref().await?.to_owned());
+                    }
+                    let claim_schema_models =
+                        claim_schemas_to_model_vec(claim_schemas, &request.id);
 
-            claim_schema::Entity::insert_many(claim_schema_models)
-                .exec(&self.db)
-                .await
-                .map_err(|e| DataLayerError::Db(e.into()))?;
-        }
+                    claim_schema::Entity::insert_many(claim_schema_models)
+                        .exec(&self.db)
+                        .await
+                        .map_err(|e| DataLayerError::Db(e.into()))?;
+
+                    if !localized_texts.is_empty() {
+                        self.localized_text_repository
+                            .upsert_many(localized_texts)
+                            .await?;
+                    }
+                }
+                Ok::<_, DataLayerError>(())
+            }
+            .boxed())
+            .await??;
 
         Ok(())
     }
