@@ -3,6 +3,7 @@ use std::sync::Arc;
 use crate::config::core_config;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::clock::Clock;
+use crate::proto::http_client::HttpClient;
 use crate::proto::session_provider::SessionProvider;
 use crate::proto::transaction_manager::TransactionManager;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -36,6 +37,7 @@ pub struct WalletProviderService {
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     certificate_validator: Arc<dyn CertificateValidator>,
+    http_client: Arc<dyn HttpClient>,
     clock: Arc<dyn Clock>,
     session_provider: Arc<dyn SessionProvider>,
     base_url: Option<String>,
@@ -55,6 +57,7 @@ impl WalletProviderService {
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
         certificate_validator: Arc<dyn CertificateValidator>,
+        http_client: Arc<dyn HttpClient>,
         clock: Arc<dyn Clock>,
         session_provider: Arc<dyn SessionProvider>,
         config: Arc<core_config::CoreConfig>,
@@ -71,6 +74,7 @@ impl WalletProviderService {
             key_algorithm_provider,
             revocation_method_provider,
             certificate_validator,
+            http_client,
             config,
             base_url,
             clock,

@@ -18,9 +18,10 @@ use super::dto::{
     GetWalletUnitListResponseDTO, GetWalletUnitResponseDTO, IssueWalletUnitAttestationRequestDTO,
     IssueWalletUnitAttestationResponseDTO, NoncePayload, ProviderTrustCollectionDTO,
     RegisterWalletUnitRequestDTO, RegisterWalletUnitResponseDTO, TokenValidationDTO,
-    UserAuthenticationDTO, WalletInstanceAttestationClaims, WalletProviderMetadataResponseDTO,
-    WalletProviderParams, WalletRegistrationRequirement, WalletUnitActivationRequestDTO,
-    WalletUnitAttestationClaims, WalletUnitAttestationMetadataDTO, WalletUnitFilterParamsDTO,
+    UserAuthenticationDTO, UserAuthenticationParams, WalletInstanceAttestationClaims,
+    WalletProviderMetadataResponseDTO, WalletProviderParams, WalletRegistrationRequirement,
+    WalletUnitActivationRequestDTO, WalletUnitAttestationClaims, WalletUnitAttestationMetadataDTO,
+    WalletUnitFilterParamsDTO,
 };
 use super::error::WalletProviderError;
 use super::mapper::{
@@ -191,8 +192,13 @@ impl WalletProviderService {
                     .error_while("validating request")
                     .into());
             }
-            self.create_wallet_unit_with_nonce(request, organisation, config.r#type)
-                .await
+            self.create_wallet_unit_with_nonce(
+                request,
+                organisation,
+                config.r#type,
+                config_params.user_authentication.is_some(),
+            )
+            .await
         } else {
             let proof = Jwt::<NoncePayload>::decompose_token(
                 request
@@ -222,6 +228,7 @@ impl WalletProviderService {
                 organisation,
                 config.r#type,
                 public_key_jwk,
+                config_params.user_authentication.is_some(),
             )
             .await
         }?;
@@ -239,9 +246,11 @@ impl WalletProviderService {
         request: RegisterWalletUnitRequestDTO,
         organisation: Organisation,
         wallet_provider_type: WalletProviderType,
+        user_authentication_configured: bool,
     ) -> Result<RegisterWalletUnitResponseDTO, WalletProviderError> {
         let now = self.clock.now_utc();
         let nonce = generate_alphanumeric(44).to_owned();
+        let user_nonce = user_authentication_configured.then(|| generate_alphanumeric(44));
         let organisation_id = organisation.id;
         let wallet_unit = wallet_unit_from_request(
             request,
@@ -250,6 +259,7 @@ impl WalletProviderService {
             None,
             now,
             Some(nonce.clone()),
+            user_nonce.clone(),
         )?;
         let wallet_unit_name = wallet_unit.name.clone();
         let wallet_unit_id = self
@@ -270,6 +280,7 @@ impl WalletProviderService {
         Ok(RegisterWalletUnitResponseDTO {
             id: wallet_unit_id,
             nonce: Some(nonce),
+            user_nonce,
         })
     }
 
@@ -309,8 +320,10 @@ impl WalletProviderService {
         organisation: Organisation,
         wallet_provider_type: WalletProviderType,
         public_key_jwk: PublicJwk,
+        user_authentication_configured: bool,
     ) -> Result<RegisterWalletUnitResponseDTO, WalletProviderError> {
         let now = self.clock.now_utc();
+        let user_nonce = user_authentication_configured.then(|| generate_alphanumeric(44));
         let organisation_id = organisation.id;
         let wallet_unit = wallet_unit_from_request(
             request,
@@ -319,6 +332,7 @@ impl WalletProviderService {
             Some(&public_key_jwk),
             now,
             None,
+            user_nonce.clone(),
         )?;
         let wallet_unit_name = wallet_unit.name.clone();
         let wallet_unit_id = self
@@ -338,6 +352,7 @@ impl WalletProviderService {
         Ok(RegisterWalletUnitResponseDTO {
             id: wallet_unit_id,
             nonce: None,
+            user_nonce,
         })
     }
 
@@ -391,6 +406,15 @@ impl WalletProviderService {
 
         validate_org_wallet_provider(organisation, &wallet_unit.wallet_provider_name)
             .error_while("validating provider")?;
+
+        let user_sub = self
+            .validate_user_id_token(
+                request.user_id_token.as_deref(),
+                config_params.user_authentication.as_ref(),
+                wallet_unit.user_nonce.as_deref(),
+            )
+            .await
+            .error_while("validating user ID token")?;
 
         if wallet_unit.last_modified
             + Duration::seconds(
@@ -499,6 +523,7 @@ impl WalletProviderService {
                     last_issuance: Some(self.clock.now_utc()),
                     authentication_key_jwk: Some(jwk),
                     attested_keys: None,
+                    user_sub,
                 },
             )
             .await
@@ -590,6 +615,7 @@ impl WalletProviderService {
                     last_issuance: None,
                     authentication_key_jwk: None,
                     attested_keys: None,
+                    user_sub: None,
                 },
             )
             .await
@@ -1361,6 +1387,121 @@ impl WalletProviderService {
             }),
         })
     }
+
+    pub(super) async fn validate_user_id_token(
+        &self,
+        user_id_token: Option<&str>,
+        user_authentication: Option<&UserAuthenticationParams>,
+        user_nonce: Option<&str>,
+    ) -> Result<Option<String>, WalletProviderError> {
+        let Some(user_id_token) = user_id_token else {
+            if user_authentication.is_some_and(|ua| ua.required) {
+                return Err(WalletProviderError::MissingUserIdToken);
+            }
+            return Ok(None);
+        };
+
+        let Some(user_auth) = user_authentication else {
+            return Err(WalletProviderError::UserIdTokenNotExpected);
+        };
+
+        let token = Jwt::<UserIdTokenClaims>::decompose_token(user_id_token)
+            .map_err(|e| WalletProviderError::InvalidUserIdToken(e.to_string()))
+            .error_while("parsing user ID token")?;
+
+        let jwks: UserIdTokenJwks = self
+            .http_client
+            .get(&user_auth.token_validation.jwks_uri)
+            .header("Accept", "application/json")
+            .send()
+            .await
+            .error_while("fetching JWKS")?
+            .error_for_status()
+            .error_while("fetchin JWKS returned error")?
+            .json()
+            .error_while("deserializing JWKS")?;
+
+        let kid = token.header.key_id.as_deref();
+        let matching_jwk = jwks
+            .keys
+            .iter()
+            .find(|k| kid.is_none() || k.kid() == kid)
+            .ok_or_else(|| {
+                WalletProviderError::InvalidUserIdToken("No matching key found in JWKS".to_string())
+            })?;
+
+        let (_, alg) = self
+            .key_algorithm_provider
+            .key_algorithm_from_jose_alg(&token.header.algorithm)
+            .ok_or_else(|| {
+                WalletProviderError::InvalidUserIdToken(format!(
+                    "Unsupported algorithm: {}",
+                    token.header.algorithm
+                ))
+            })?;
+
+        let key_handle = alg
+            .parse_jwk(matching_jwk)
+            .map_err(|e| WalletProviderError::InvalidUserIdToken(e.to_string()))
+            .error_while("parsing JWKS key")?;
+
+        key_handle
+            .verify(token.unverified_jwt.as_bytes(), &token.signature)
+            .map_err(|e| WalletProviderError::InvalidUserIdToken(e.to_string()))
+            .error_while("verifying user ID token signature")?;
+
+        if token.payload.issuer.as_deref() != Some(&user_auth.token_validation.iss) {
+            return Err(
+                WalletProviderError::InvalidUserIdToken("Invalid issuer".to_string())
+                    .error_while("validating iss")
+                    .into(),
+            );
+        }
+
+        let aud_matches = token
+            .payload
+            .audience
+            .as_ref()
+            .is_some_and(|aud| aud.iter().any(|a| a == &user_auth.token_validation.aud));
+        if !aud_matches {
+            return Err(
+                WalletProviderError::InvalidUserIdToken("Invalid audience".to_string())
+                    .error_while("validating aud")
+                    .into(),
+            );
+        }
+
+        let expected_nonce = user_nonce.ok_or_else(|| {
+            WalletProviderError::InvalidUserIdToken(
+                "Missing user nonce in wallet instance".to_string(),
+            )
+        })?;
+        let token_nonce = token.payload.custom.nonce.as_deref().unwrap_or("");
+        if token_nonce != expected_nonce {
+            return Err(
+                WalletProviderError::InvalidUserIdToken("Invalid nonce".to_string())
+                    .error_while("validating nonce")
+                    .into(),
+            );
+        }
+
+        let sub = token
+            .payload
+            .subject
+            .ok_or_else(|| WalletProviderError::InvalidUserIdToken("Missing sub".to_string()))?;
+
+        Ok(Some(sub))
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct UserIdTokenJwks {
+    keys: Vec<PublicJwk>,
+}
+
+#[derive(Debug, serde::Deserialize, Default)]
+struct UserIdTokenClaims {
+    nonce: Option<String>,
 }
 
 struct KeyAttestationInput {

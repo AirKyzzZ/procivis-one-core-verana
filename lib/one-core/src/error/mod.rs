@@ -911,6 +911,15 @@ pub enum ErrorCode {
 
     #[strum(message = "No unused, active credentials left in credential batch")]
     BR_0443,
+
+    #[strum(message = "User ID token not expected")]
+    BR_0446,
+
+    #[strum(message = "Missing user ID token")]
+    BR_0447,
+
+    #[strum(message = "Invalid user ID token")]
+    BR_0448,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

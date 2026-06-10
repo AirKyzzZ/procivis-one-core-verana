@@ -26,6 +26,7 @@ pub struct RegisterWalletUnitRequestDTO {
 pub struct RegisterWalletUnitResponseDTO {
     pub id: WalletInstanceId,
     pub nonce: Option<String>,
+    pub user_nonce: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -40,6 +41,7 @@ pub struct WalletUnitActivationRequestDTO {
     pub attestation: Vec<String>,
     pub attestation_key_proof: String,
     pub device_signing_key_proof: Option<String>,
+    pub user_id_token: Option<String>,
 }
 
 #[derive(Clone, Debug)]

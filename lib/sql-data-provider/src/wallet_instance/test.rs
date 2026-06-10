@@ -66,6 +66,8 @@ fn dummy_wallet_instance(id: WalletInstanceId, org: OrganisationId) -> WalletIns
         wallet_provider_name: "Test Provider Name".to_string(),
         authentication_key_jwk: Some(random_jwk()),
         nonce: None,
+        user_nonce: None,
+        user_sub: None,
         organisation: Some(Organisation {
             id: org,
             created_date: now,
@@ -621,6 +623,7 @@ async fn test_update_wallet_instance_status_success() {
         last_issuance: None,
         authentication_key_jwk: None,
         attested_keys: None,
+        user_sub: None,
     };
 
     let result = provider
@@ -672,6 +675,7 @@ async fn test_update_wallet_instance_nonexistent() {
         last_issuance: None,
         authentication_key_jwk: None,
         attested_keys: None,
+        user_sub: None,
     };
 
     let result = provider
@@ -737,6 +741,7 @@ async fn test_update_wallet_instance_status_changes() {
         last_issuance: None,
         authentication_key_jwk: None,
         attested_keys: None,
+        user_sub: None,
     };
 
     let result = provider
@@ -761,6 +766,7 @@ async fn test_update_wallet_instance_status_changes() {
         last_issuance: None,
         authentication_key_jwk: None,
         attested_keys: None,
+        user_sub: None,
     };
 
     let result = provider
@@ -799,6 +805,7 @@ async fn test_update_wallet_instance_public_key_changes() {
         last_issuance: None,
         authentication_key_jwk: Some(new_jwk.clone()),
         attested_keys: None,
+        user_sub: None,
     };
 
     let result = provider
@@ -841,6 +848,7 @@ async fn test_update_and_list_wallet_instances() {
         last_issuance: None,
         authentication_key_jwk: None,
         attested_keys: None,
+        user_sub: None,
     };
 
     provider
@@ -1321,6 +1329,7 @@ async fn test_sort_by_last_modified_after_updates() {
         last_issuance: None,
         authentication_key_jwk: None,
         attested_keys: None,
+        user_sub: None,
     };
     provider
         .update_wallet_instance(&wallet_unit_id1, update_request)

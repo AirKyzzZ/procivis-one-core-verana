@@ -39,7 +39,7 @@ async fn activate_wallet_unit_nonce_expired() {
     let resp = context
         .api
         .wallet_provider
-        .activate_wallet(wallet_unit.id, "dummy attestation", nonce)
+        .activate_wallet(wallet_unit.id, "dummy attestation", nonce, None)
         .await;
 
     // then
@@ -85,7 +85,7 @@ async fn activate_wallet_unit_attestation_invalid() {
     let resp = context
         .api
         .wallet_provider
-        .activate_wallet(wallet_unit.id, "dummy attestation", &proof)
+        .activate_wallet(wallet_unit.id, "dummy attestation", &proof, None)
         .await;
 
     // then
@@ -136,7 +136,7 @@ async fn activate_wallet_unit_nonce_wrong_state() {
     let resp = context
         .api
         .wallet_provider
-        .activate_wallet(wallet_unit.id, "dummy attestation", "dummy proof")
+        .activate_wallet(wallet_unit.id, "dummy attestation", "dummy proof", None)
         .await;
 
     // then
@@ -153,10 +153,94 @@ async fn activate_wallet_unit_invalid_id() {
     let resp = context
         .api
         .wallet_provider
-        .activate_wallet(Uuid::new_v4().into(), "dummy attestation", "dummy proof")
+        .activate_wallet(
+            Uuid::new_v4().into(),
+            "dummy attestation",
+            "dummy proof",
+            None,
+        )
         .await;
 
     // then
     assert_eq!(resp.status(), 404);
     assert_eq!(resp.error_code().await, "BR_0259");
+}
+
+#[tokio::test]
+async fn activate_wallet_unit_user_id_token_not_expected() {
+    let (context, org) = TestContext::new_with_organisation(None).await;
+    create_wallet_unit_attestation_issuer_identifier(&context, &org).await;
+
+    let nonce = "nonce-1234";
+    let wallet_unit = context
+        .db
+        .wallet_instances
+        .create(
+            org.clone(),
+            TestWalletInstance {
+                status: Some(WalletInstanceStatus::Pending),
+                nonce: Some(nonce.to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let resp = context
+        .api
+        .wallet_provider
+        .activate_wallet(
+            wallet_unit.id,
+            "dummy attestation",
+            "dummy proof",
+            Some("some.jwt.token"),
+        )
+        .await;
+
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.error_code().await, "BR_0446");
+}
+
+#[tokio::test]
+async fn activate_wallet_unit_missing_required_user_id_token() {
+    let config = indoc::indoc! {"
+      walletProvider:
+        PROCIVIS_ONE:
+            params:
+              public:
+                userAuthentication:
+                  required: true
+                  identityProvider: https://idp.example.com
+                  clientId: my-client
+                  redirectUri: myapp://callback
+                  tokenValidation:
+                    aud: my-client
+                    iss: https://idp.example.com
+                    jwksUri: https://idp.example.com/.well-known/jwks.json
+    "}
+    .to_string();
+    let (context, org) = TestContext::new_with_organisation(Some(config)).await;
+    create_wallet_unit_attestation_issuer_identifier(&context, &org).await;
+
+    let nonce = "nonce-1234";
+    let wallet_unit = context
+        .db
+        .wallet_instances
+        .create(
+            org.clone(),
+            TestWalletInstance {
+                status: Some(WalletInstanceStatus::Pending),
+                nonce: Some(nonce.to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let resp = context
+        .api
+        .wallet_provider
+        .activate_wallet(wallet_unit.id, "dummy attestation", "dummy proof", None)
+        .await;
+
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.error_code().await, "BR_0447");
 }

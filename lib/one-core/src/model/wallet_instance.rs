@@ -28,6 +28,8 @@ pub struct WalletInstance {
     pub authentication_key_jwk: Option<PublicJwk>,
     pub last_issuance: Option<OffsetDateTime>,
     pub nonce: Option<String>,
+    pub user_nonce: Option<String>,
+    pub user_sub: Option<String>,
 
     // Relations:
     pub organisation: Option<Organisation>,
@@ -106,4 +108,5 @@ pub struct UpdateWalletInstanceRequest {
     pub last_issuance: Option<OffsetDateTime>,
     pub authentication_key_jwk: Option<PublicJwk>,
     pub attested_keys: Option<Vec<WalletInstanceAttestedKey>>,
+    pub user_sub: Option<String>,
 }

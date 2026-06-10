@@ -777,6 +777,7 @@ impl OneCore {
                 key_algorithm_provider.clone(),
                 revocation_method_provider,
                 certificate_validator,
+                client.clone(),
                 clock.clone(),
                 session_provider.clone(),
                 config.clone(),

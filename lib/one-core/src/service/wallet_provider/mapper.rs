@@ -33,6 +33,7 @@ pub(crate) fn wallet_unit_from_request(
     public_key: Option<&PublicJwk>,
     now: OffsetDateTime,
     nonce: Option<String>,
+    user_nonce: Option<String>,
 ) -> Result<WalletInstance, WalletProviderError> {
     let status = match &nonce {
         None => WalletInstanceStatus::Active,
@@ -55,6 +56,8 @@ pub(crate) fn wallet_unit_from_request(
         wallet_provider_type: wallet_provider_type.into(),
         authentication_key_jwk: public_key.cloned(),
         nonce,
+        user_nonce,
+        user_sub: None,
         organisation: Some(organisation),
         attested_keys: None,
     })

@@ -151,6 +151,7 @@ async fn holder_register_success() {
             Ok(RegisterWalletUnitResponseDTO {
                 id: wallet_unit_id,
                 nonce: Some("test_nonce".to_string()),
+                user_nonce: None,
             })
         });
     wallet_provider_client
@@ -290,6 +291,7 @@ async fn holder_register_key_attestation_not_supported() {
             Ok(RegisterWalletUnitResponseDTO {
                 id: wallet_unit_id,
                 nonce: Some("test_nonce".to_string()),
+                user_nonce: None,
             })
         });
     wallet_provider_client

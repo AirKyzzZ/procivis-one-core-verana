@@ -40,12 +40,15 @@ impl WalletProviderApi {
         wallet_unit_id: WalletInstanceId,
         attestation: &str,
         proof: &str,
+        user_id_token: Option<&str>,
     ) -> Response {
-        let body = json!( {
+        let mut body = json!( {
             "attestation": attestation,
             "attestationKeyProof": proof,
         });
-
+        if let Some(token) = user_id_token {
+            body["userIdToken"] = json!(token);
+        }
         self.client
             .post(
                 &format!("/ssi/wallet-unit/v1/{wallet_unit_id}/activate"),

@@ -759,6 +759,8 @@ pub async fn insert_wallet_instance_to_database(
         // Generate unique public key to avoid constraint violations
         authentication_key_jwk: Set(Some(random_jwk_string())),
         nonce: Set(None),
+        user_nonce: Set(None),
+        user_sub: Set(None),
         organisation_id: Set(organisation_id),
     }
     .insert(db)

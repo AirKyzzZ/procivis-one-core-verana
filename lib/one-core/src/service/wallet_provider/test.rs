@@ -22,6 +22,9 @@ use crate::model::wallet_instance::{
 };
 use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::clock::DefaultClock;
+use crate::proto::http_client::{
+    Method, MockHttpClient, Request, RequestBuilder, Response, StatusCode,
+};
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::{JWTHeader, JWTPayload};
 use crate::proto::session_provider::NoSessionProvider;
@@ -62,6 +65,7 @@ fn mock_wallet_provider_service() -> WalletProviderService {
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::default()),
         revocation_method_provider: Arc::new(MockRevocationMethodProvider::default()),
         certificate_validator: Arc::new(MockCertificateValidator::default()),
+        http_client: Arc::new(MockHttpClient::default()),
         clock: Arc::new(DefaultClock),
         base_url: Some(BASE_URL.to_string()),
         config: Arc::new(CoreConfig::default()),
@@ -399,6 +403,8 @@ async fn provider_get_wallet_unit_session_org_mismatch() {
         authentication_key_jwk: None,
         last_issuance: None,
         nonce: None,
+        user_nonce: None,
+        user_sub: None,
         organisation: Some(dummy_organisation(None)),
         attested_keys: None,
     };
@@ -491,4 +497,376 @@ impl SignatureProvider for FakeEcdsaSigner {
     fn get_public_key(&self) -> Vec<u8> {
         self.public_key.clone()
     }
+}
+
+// ===== validate_user_id_token tests =====
+
+#[derive(serde::Serialize, serde::Deserialize, Default)]
+struct TestIdTokenClaims {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    nonce: Option<String>,
+}
+
+fn user_auth_params(required: bool) -> super::dto::UserAuthenticationParams {
+    super::dto::UserAuthenticationParams {
+        required,
+        identity_provider: "https://idp.example.com".to_string(),
+        client_id: "my-client".to_string(),
+        redirect_uri: "myapp://callback".to_string(),
+        token_validation: super::dto::TokenValidationParams {
+            aud: "test-aud".to_string(),
+            iss: "https://idp.example.com".to_string(),
+            jwks_uri: "https://idp.example.com/.well-known/jwks.json".to_string(),
+        },
+    }
+}
+
+async fn make_user_id_token(
+    iss: &str,
+    aud: &str,
+    sub: Option<&str>,
+    nonce: Option<&str>,
+) -> (String, standardized_types::jwk::PublicJwk) {
+    let (private, public) = ECDSASigner::generate_key_pair();
+    let key_handle = Ecdsa
+        .reconstruct_key(&public, Some(private.clone()), None)
+        .unwrap();
+    let public_jwk = key_handle.public_key_as_jwk().unwrap();
+
+    let jwt: Jwt<TestIdTokenClaims> = Jwt {
+        header: JWTHeader {
+            algorithm: "ES256".to_string(),
+            key_id: None,
+            r#type: None,
+            jwk: None,
+            jwt: None,
+            key_attestation: None,
+            x5c: None,
+        },
+        payload: JWTPayload {
+            issued_at: None,
+            expires_at: None,
+            invalid_before: None,
+            issuer: Some(iss.to_string()),
+            subject: sub.map(str::to_string),
+            audience: Some(vec![aud.to_string()]),
+            jwt_id: None,
+            proof_of_possession_key: None,
+            custom: TestIdTokenClaims {
+                nonce: nonce.map(str::to_string),
+            },
+        },
+    };
+
+    let signer = FakeEcdsaSigner {
+        public_key: public,
+        private_key: private,
+        key_id: "".to_string(),
+    };
+    let token = jwt.tokenize(Some(&signer)).await.unwrap();
+    (token, public_jwk)
+}
+
+fn make_jwks_http_client(public_jwk: standardized_types::jwk::PublicJwk) -> MockHttpClient {
+    let jwks_body = serde_json::to_vec(&serde_json::json!({ "keys": [public_jwk] })).unwrap();
+    let mut http_client = MockHttpClient::new();
+    http_client.expect_get().returning(move |url| {
+        let body = jwks_body.clone();
+        let url_owned = url.to_string();
+        let url_for_inner = url_owned.clone();
+        let mut inner = MockHttpClient::new();
+        inner.expect_send().returning(move |_, _, _, _, _| {
+            Ok(Response {
+                body: body.clone(),
+                headers: Default::default(),
+                status: StatusCode(200),
+                request: Request {
+                    body: None,
+                    headers: Default::default(),
+                    method: Method::Get,
+                    url: url_for_inner.clone(),
+                    timeout: None,
+                },
+            })
+        });
+        RequestBuilder::new(Arc::new(inner), Method::Get, &url_owned)
+    });
+    http_client
+}
+
+fn make_jwks_http_client_error() -> MockHttpClient {
+    let mut http_client = MockHttpClient::new();
+    http_client.expect_get().returning(|url| {
+        let url_owned = url.to_string();
+        let url_for_inner = url_owned.clone();
+        let mut inner = MockHttpClient::new();
+        inner.expect_send().returning(move |_, _, _, _, _| {
+            Ok(Response {
+                body: vec![],
+                headers: Default::default(),
+                status: StatusCode(500),
+                request: Request {
+                    body: None,
+                    headers: Default::default(),
+                    method: Method::Get,
+                    url: url_for_inner.clone(),
+                    timeout: None,
+                },
+            })
+        });
+        RequestBuilder::new(Arc::new(inner), Method::Get, &url_owned)
+    });
+    http_client
+}
+
+fn make_key_algorithm_provider() -> MockKeyAlgorithmProvider {
+    let mut kap = MockKeyAlgorithmProvider::new();
+    kap.expect_key_algorithm_from_jose_alg()
+        .returning(|_| Some((KeyAlgorithmType::Ecdsa, Arc::new(Ecdsa))));
+    kap
+}
+
+#[tokio::test]
+async fn validate_user_id_token_no_token_not_required() {
+    let service = mock_wallet_provider_service();
+    let result = service.validate_user_id_token(None, None, None).await;
+    assert_eq!(result.unwrap(), None);
+}
+
+#[tokio::test]
+async fn validate_user_id_token_no_token_optional_auth() {
+    let service = mock_wallet_provider_service();
+    let auth = user_auth_params(false);
+    let result = service
+        .validate_user_id_token(None, Some(&auth), None)
+        .await;
+    assert_eq!(result.unwrap(), None);
+}
+
+#[tokio::test]
+async fn validate_user_id_token_no_token_required() {
+    let service = mock_wallet_provider_service();
+    let auth = user_auth_params(true);
+    let result = service
+        .validate_user_id_token(None, Some(&auth), None)
+        .await;
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0447);
+}
+
+#[tokio::test]
+async fn validate_user_id_token_not_expected() {
+    let service = mock_wallet_provider_service();
+    let result = service
+        .validate_user_id_token(Some("some.jwt.token"), None, None)
+        .await;
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0446);
+}
+
+#[tokio::test]
+async fn validate_user_id_token_invalid_jwt_format() {
+    let service = mock_wallet_provider_service();
+    let auth = user_auth_params(false);
+    let result = service
+        .validate_user_id_token(Some("not-a-jwt"), Some(&auth), Some("nonce"))
+        .await;
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0448);
+}
+
+#[tokio::test]
+async fn validate_user_id_token_jwks_fetch_error() {
+    let (token, _) = make_user_id_token(
+        "https://idp.example.com",
+        "test-aud",
+        Some("user-sub"),
+        Some("nonce-123"),
+    )
+    .await;
+
+    let service = WalletProviderService {
+        http_client: Arc::new(make_jwks_http_client_error()),
+        ..mock_wallet_provider_service()
+    };
+    let auth = user_auth_params(false);
+    let result = service
+        .validate_user_id_token(Some(&token), Some(&auth), Some("nonce-123"))
+        .await;
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0347);
+}
+
+#[tokio::test]
+async fn validate_user_id_token_no_matching_jwks_key() {
+    let (token, _) = make_user_id_token(
+        "https://idp.example.com",
+        "test-aud",
+        Some("user-sub"),
+        Some("nonce-123"),
+    )
+    .await;
+
+    let jwks_body = serde_json::to_vec(&serde_json::json!({ "keys": [] })).unwrap();
+    let mut http_client = MockHttpClient::new();
+    http_client.expect_get().returning(move |url| {
+        let body = jwks_body.clone();
+        let url_owned = url.to_string();
+        let url_for_inner = url_owned.clone();
+        let mut inner = MockHttpClient::new();
+        inner.expect_send().returning(move |_, _, _, _, _| {
+            Ok(Response {
+                body: body.clone(),
+                headers: Default::default(),
+                status: StatusCode(200),
+                request: Request {
+                    body: None,
+                    headers: Default::default(),
+                    method: Method::Get,
+                    url: url_for_inner.clone(),
+                    timeout: None,
+                },
+            })
+        });
+        RequestBuilder::new(Arc::new(inner), Method::Get, &url_owned)
+    });
+
+    let service = WalletProviderService {
+        http_client: Arc::new(http_client),
+        key_algorithm_provider: Arc::new(make_key_algorithm_provider()),
+        ..mock_wallet_provider_service()
+    };
+    let auth = user_auth_params(false);
+    let result = service
+        .validate_user_id_token(Some(&token), Some(&auth), Some("nonce-123"))
+        .await;
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0448);
+}
+
+#[tokio::test]
+async fn validate_user_id_token_invalid_iss() {
+    let (token, public_jwk) = make_user_id_token(
+        "https://wrong-idp.example.com",
+        "test-aud",
+        Some("user-sub"),
+        Some("nonce-123"),
+    )
+    .await;
+
+    let service = WalletProviderService {
+        http_client: Arc::new(make_jwks_http_client(public_jwk)),
+        key_algorithm_provider: Arc::new(make_key_algorithm_provider()),
+        ..mock_wallet_provider_service()
+    };
+    let auth = user_auth_params(false);
+    let result = service
+        .validate_user_id_token(Some(&token), Some(&auth), Some("nonce-123"))
+        .await;
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0448);
+}
+
+#[tokio::test]
+async fn validate_user_id_token_invalid_aud() {
+    let (token, public_jwk) = make_user_id_token(
+        "https://idp.example.com",
+        "wrong-aud",
+        Some("user-sub"),
+        Some("nonce-123"),
+    )
+    .await;
+
+    let service = WalletProviderService {
+        http_client: Arc::new(make_jwks_http_client(public_jwk)),
+        key_algorithm_provider: Arc::new(make_key_algorithm_provider()),
+        ..mock_wallet_provider_service()
+    };
+    let auth = user_auth_params(false);
+    let result = service
+        .validate_user_id_token(Some(&token), Some(&auth), Some("nonce-123"))
+        .await;
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0448);
+}
+
+#[tokio::test]
+async fn validate_user_id_token_missing_user_nonce() {
+    let (token, public_jwk) = make_user_id_token(
+        "https://idp.example.com",
+        "test-aud",
+        Some("user-sub"),
+        Some("nonce-123"),
+    )
+    .await;
+
+    let service = WalletProviderService {
+        http_client: Arc::new(make_jwks_http_client(public_jwk)),
+        key_algorithm_provider: Arc::new(make_key_algorithm_provider()),
+        ..mock_wallet_provider_service()
+    };
+    let auth = user_auth_params(false);
+    let result = service
+        .validate_user_id_token(Some(&token), Some(&auth), None)
+        .await;
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0448);
+}
+
+#[tokio::test]
+async fn validate_user_id_token_nonce_mismatch() {
+    let (token, public_jwk) = make_user_id_token(
+        "https://idp.example.com",
+        "test-aud",
+        Some("user-sub"),
+        Some("wrong-nonce"),
+    )
+    .await;
+
+    let service = WalletProviderService {
+        http_client: Arc::new(make_jwks_http_client(public_jwk)),
+        key_algorithm_provider: Arc::new(make_key_algorithm_provider()),
+        ..mock_wallet_provider_service()
+    };
+    let auth = user_auth_params(false);
+    let result = service
+        .validate_user_id_token(Some(&token), Some(&auth), Some("expected-nonce"))
+        .await;
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0448);
+}
+
+#[tokio::test]
+async fn validate_user_id_token_missing_sub() {
+    let (token, public_jwk) = make_user_id_token(
+        "https://idp.example.com",
+        "test-aud",
+        None, // no sub
+        Some("nonce-123"),
+    )
+    .await;
+
+    let service = WalletProviderService {
+        http_client: Arc::new(make_jwks_http_client(public_jwk)),
+        key_algorithm_provider: Arc::new(make_key_algorithm_provider()),
+        ..mock_wallet_provider_service()
+    };
+    let auth = user_auth_params(false);
+    let result = service
+        .validate_user_id_token(Some(&token), Some(&auth), Some("nonce-123"))
+        .await;
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0448);
+}
+
+#[tokio::test]
+async fn validate_user_id_token_success() {
+    let (token, public_jwk) = make_user_id_token(
+        "https://idp.example.com",
+        "test-aud",
+        Some("user-sub-123"),
+        Some("nonce-123"),
+    )
+    .await;
+
+    let service = WalletProviderService {
+        http_client: Arc::new(make_jwks_http_client(public_jwk)),
+        key_algorithm_provider: Arc::new(make_key_algorithm_provider()),
+        ..mock_wallet_provider_service()
+    };
+    let auth = user_auth_params(false);
+    let result = service
+        .validate_user_id_token(Some(&token), Some(&auth), Some("nonce-123"))
+        .await;
+    assert_eq!(result.unwrap(), Some("user-sub-123".to_string()));
 }

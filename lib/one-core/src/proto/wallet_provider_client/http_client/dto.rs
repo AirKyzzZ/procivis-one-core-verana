@@ -26,6 +26,7 @@ pub(crate) struct RegisterWalletUnitRequestRestDTO {
 pub(crate) struct RegisterWalletUnitResponseRestDTO {
     pub id: WalletInstanceId,
     pub nonce: Option<String>,
+    pub user_nonce: Option<String>,
 }
 
 #[skip_serializing_none]

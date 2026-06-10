@@ -145,6 +145,10 @@ impl WalletInstanceRepository for WalletInstanceProvider {
             authentication_key_jwk: authentication_key_jwk
                 .map(|key| Set(Some(key)))
                 .unwrap_or_default(),
+            user_sub: request
+                .user_sub
+                .map(|sub| Set(Some(sub)))
+                .unwrap_or_default(),
             ..Default::default()
         };
 

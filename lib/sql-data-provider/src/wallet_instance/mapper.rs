@@ -36,6 +36,8 @@ impl TryFrom<wallet_instance::Model> for WalletInstance {
             name: value.name,
             organisation: None,
             nonce: value.nonce,
+            user_nonce: value.user_nonce,
+            user_sub: value.user_sub,
             attested_keys: None,
         })
     }

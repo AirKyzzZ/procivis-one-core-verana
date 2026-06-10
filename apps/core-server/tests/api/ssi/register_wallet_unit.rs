@@ -274,6 +274,145 @@ async fn test_register_wallet_unit_provider_no_org() {
 }
 
 #[tokio::test]
+async fn test_register_wallet_unit_with_user_authentication_nonce_path_returns_user_nonce() {
+    let config = indoc::indoc! {"
+      walletProvider:
+        PROCIVIS_ONE:
+            params:
+              public:
+                userAuthentication:
+                  required: true
+                  identityProvider: https://idp.example.com
+                  clientId: my-client
+                  redirectUri: myapp://callback
+                  tokenValidation:
+                    aud: my-client
+                    iss: https://idp.example.com
+                    jwksUri: https://idp.example.com/.well-known/jwks.json
+    "}
+    .to_string();
+    // given
+    let (context, org) = TestContext::new_with_organisation(Some(config)).await;
+    create_wallet_unit_attestation_issuer_identifier(&context, &org).await;
+
+    // when
+    let resp = context
+        .api
+        .wallet_provider
+        .register_wallet("PROCIVIS_ONE", "ANDROID", None, None)
+        .await;
+
+    // then
+    assert_eq!(resp.status(), 201);
+    let resp_json = resp.json_value().await;
+
+    assert!(resp_json["id"].as_str().is_some());
+    assert!(resp_json["nonce"].as_str().is_some());
+    assert!(resp_json["userNonce"].as_str().is_some());
+
+    let wallet_units = context
+        .db
+        .wallet_instances
+        .list(WalletInstanceListQuery::default())
+        .await;
+    assert_eq!(wallet_units.values.len(), 1);
+    let wallet_unit = &wallet_units.values[0];
+    resp_json["nonce"].assert_eq(&wallet_unit.nonce);
+    resp_json["userNonce"].assert_eq(&wallet_unit.user_nonce);
+}
+
+#[tokio::test]
+async fn test_register_wallet_unit_with_user_authentication_auth_key_path_returns_user_nonce() {
+    let config = indoc::indoc! {"
+      walletProvider:
+        PROCIVIS_ONE:
+            params:
+              public:
+                walletInstanceAttestation:
+                    integrityCheck:
+                        enabled: false
+                userAuthentication:
+                  required: true
+                  identityProvider: https://idp.example.com
+                  clientId: my-client
+                  redirectUri: myapp://callback
+                  tokenValidation:
+                    aud: my-client
+                    iss: https://idp.example.com
+                    jwksUri: https://idp.example.com/.well-known/jwks.json
+    "}
+    .to_string();
+    // given
+    let (context, org) = TestContext::new_with_organisation(Some(config)).await;
+    create_wallet_unit_attestation_issuer_identifier(&context, &org).await;
+
+    let holder_key_pair = Ecdsa.generate_key().unwrap();
+    let holder_public_jwk = holder_key_pair.key.public_key_as_jwk().unwrap();
+    let proof =
+        create_key_possession_proof(&holder_key_pair, context.config.app.core_base_url.clone())
+            .await;
+
+    // when
+    let resp = context
+        .api
+        .wallet_provider
+        .register_wallet(
+            "PROCIVIS_ONE",
+            "ANDROID",
+            Some(&holder_public_jwk),
+            Some(&proof),
+        )
+        .await;
+
+    // then
+    assert_eq!(resp.status(), 201);
+    let resp_json = resp.json_value().await;
+
+    assert!(resp_json["id"].as_str().is_some());
+    assert!(resp_json["userNonce"].as_str().is_some());
+
+    let wallet_units = context
+        .db
+        .wallet_instances
+        .list(WalletInstanceListQuery::default())
+        .await;
+    assert_eq!(wallet_units.values.len(), 1);
+    let wallet_unit = &wallet_units.values[0];
+    resp_json["userNonce"].assert_eq(&wallet_unit.user_nonce);
+}
+
+#[tokio::test]
+async fn test_register_wallet_unit_without_user_authentication_no_user_nonce() {
+    // given
+    let (context, org) = TestContext::new_with_organisation(None).await;
+    create_wallet_unit_attestation_issuer_identifier(&context, &org).await;
+
+    // when
+    let resp = context
+        .api
+        .wallet_provider
+        .register_wallet("PROCIVIS_ONE", "ANDROID", None, None)
+        .await;
+
+    // then
+    assert_eq!(resp.status(), 201);
+    let resp_json = resp.json_value().await;
+
+    assert!(resp_json["id"].as_str().is_some());
+    assert!(resp_json["nonce"].as_str().is_some());
+    assert_eq!(resp_json["userNonce"], serde_json::Value::Null);
+
+    let wallet_units = context
+        .db
+        .wallet_instances
+        .list(WalletInstanceListQuery::default())
+        .await;
+    assert_eq!(wallet_units.values.len(), 1);
+    let wallet_unit = &wallet_units.values[0];
+    assert!(wallet_unit.user_nonce.is_none());
+}
+
+#[tokio::test]
 async fn test_register_wallet_unit_provider_org_disabled() {
     // given
     let (context, org) = TestContext::new_with_organisation(None).await;

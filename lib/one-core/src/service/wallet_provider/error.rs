@@ -54,6 +54,13 @@ pub enum WalletProviderError {
     #[error("Trust collection `{0}` not found")]
     MissingTrustCollection(TrustCollectionId),
 
+    #[error("User ID token not expected: userAuthentication not configured")]
+    UserIdTokenNotExpected,
+    #[error("User ID token required but not provided")]
+    MissingUserIdToken,
+    #[error("Invalid user ID token: {0}")]
+    InvalidUserIdToken(String),
+
     #[error("Mapping error: {0}")]
     MappingError(String),
     #[error(transparent)]
@@ -88,6 +95,9 @@ impl ErrorCodeMixin for WalletProviderError {
             Self::InsufficientSecurityLevel => ErrorCode::BR_0297,
             Self::MissingIdentifier(_) => ErrorCode::BR_0207,
             Self::MissingTrustCollection(_) => ErrorCode::BR_0391,
+            Self::UserIdTokenNotExpected => ErrorCode::BR_0446,
+            Self::MissingUserIdToken => ErrorCode::BR_0447,
+            Self::InvalidUserIdToken(_) => ErrorCode::BR_0448,
             Self::MappingError(_) => ErrorCode::BR_0047,
             Self::Nested(nested) => nested.error_code(),
         }

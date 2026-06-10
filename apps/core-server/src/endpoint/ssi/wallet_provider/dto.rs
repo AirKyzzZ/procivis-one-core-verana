@@ -79,6 +79,7 @@ pub(crate) struct RegisterWalletUnitRequestRestDTO {
 pub(crate) struct RegisterWalletUnitResponseRestDTO {
     pub id: WalletInstanceId,
     pub nonce: Option<String>,
+    pub user_nonce: Option<String>,
 }
 
 #[serde_as]
@@ -91,6 +92,7 @@ pub(crate) struct WalletUnitActivationRequestRestDTO {
     pub attestation: Vec<String>,
     pub attestation_key_proof: String,
     pub device_signing_key_proof: Option<String>,
+    pub user_id_token: Option<String>,
 }
 
 #[options_not_nullable]
