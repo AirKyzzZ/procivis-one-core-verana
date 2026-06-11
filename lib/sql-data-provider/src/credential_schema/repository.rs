@@ -60,7 +60,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
                                 .extend(claim_schema.translations.as_ref().await?.to_owned());
                         }
                         let claim_schema_models =
-                            claim_schemas_to_model_vec(claim_schemas, &credential_schema.id);
+                            claim_schemas_to_model_vec(claim_schemas, &credential_schema.id, 0);
 
                         claim_schema::Entity::insert_many(claim_schema_models)
                             .exec(&self.db)
@@ -199,6 +199,15 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
 
         self.db
             .tx(async {
+                let max_existing_order = claim_schema::Entity::find()
+                    .filter(claim_schema::Column::CredentialSchemaId.eq(id))
+                    .order_by_desc(claim_schema::Column::Order)
+                    .one(&self.db)
+                    .await
+                    .map_err(to_data_layer_error)?
+                    .map(|claim_schema| claim_schema.order)
+                    .unwrap_or_default();
+
                 update_model
                     .update(&self.db)
                     .await
@@ -210,8 +219,11 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
                         localized_texts
                             .extend(claim_schema.translations.as_ref().await?.to_owned());
                     }
-                    let claim_schema_models =
-                        claim_schemas_to_model_vec(claim_schemas, &request.id);
+                    let claim_schema_models = claim_schemas_to_model_vec(
+                        claim_schemas,
+                        &request.id,
+                        max_existing_order + 1,
+                    );
 
                     claim_schema::Entity::insert_many(claim_schema_models)
                         .exec(&self.db)

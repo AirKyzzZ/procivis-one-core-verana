@@ -181,6 +181,7 @@ impl From<CredentialSchema> for credential_schema::ActiveModel {
 pub(super) fn claim_schemas_to_model_vec(
     claim_schemas: Vec<ClaimSchema>,
     credential_schema_id: &CredentialSchemaId,
+    min_order: i32,
 ) -> Vec<claim_schema::ActiveModel> {
     claim_schemas
         .into_iter()
@@ -196,7 +197,7 @@ pub(super) fn claim_schemas_to_model_vec(
             metadata: Set(claim_schema.metadata),
             credential_schema_id: Set(*credential_schema_id),
             required: Set(claim_schema.required),
-            order: Set(index as i32),
+            order: Set(index as i32 + min_order),
         })
         .collect()
 }

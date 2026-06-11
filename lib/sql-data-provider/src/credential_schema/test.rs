@@ -627,6 +627,48 @@ async fn test_update_credential_schema_success() {
 }
 
 #[tokio::test]
+async fn test_update_credential_schema_claims_success() {
+    let TestSetupWithCredentialSchema {
+        credential_schema,
+        repository,
+        db,
+        ..
+    } = setup_with_schema(Repositories::default()).await;
+
+    let now = now_utc();
+    let claim_schema_id = Uuid::new_v4().into();
+    let result = repository
+        .update_credential_schema(UpdateCredentialSchemaRequest {
+            id: credential_schema.id,
+            revocation_method: None,
+            format: None,
+            claim_schemas: Some(vec![ClaimSchema {
+                id: claim_schema_id,
+                key: "new claim".to_string(),
+                business_key: None,
+                data_type: "STRING".to_string(),
+                created_date: now,
+                last_modified: now,
+                array: false,
+                metadata: false,
+                required: false,
+                translations: Default::default(),
+            }]),
+            layout_properties: None,
+            layout_type: None,
+            claim_mappings: None,
+        })
+        .await;
+    assert!(result.is_ok());
+    let claim_schema = crate::entity::claim_schema::Entity::find_by_id(claim_schema_id)
+        .one(&db)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(claim_schema.order, 2);
+}
+
+#[tokio::test]
 async fn test_get_by_schema_id_and_organisation() {
     let TestSetupWithCredentialSchema {
         credential_schema,
