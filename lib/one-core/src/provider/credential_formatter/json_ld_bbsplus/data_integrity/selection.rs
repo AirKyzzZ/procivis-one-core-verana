@@ -144,8 +144,16 @@ fn select_paths(
     let mut selected = &mut selection_document;
 
     for path in paths {
-        // if path doesn't exists in source document we stop
-        let value = path.lookup_into(source)?;
+        // if path doesn't exist in source document we stop
+        let Some(value) = path.lookup_into(source) else {
+            // JSON-LD conflates arrays of size 1 with plain values, so if matching index 0 fails,
+            // but matching the parent was successful, then the last iteration can be skipped.
+            if *path == PathComponent::Index(0) {
+                break;
+            } else {
+                return None;
+            }
+        };
         // if path doesn't exists in selection document we need to create it
         let selected_value = path.lookup_into(selected);
         // if the selected value is not present we set it or if null must be array value that we need to initialize
@@ -191,6 +199,7 @@ fn remove_array_null_paddings(document: &mut serde_json::Value) {
     }
 }
 
+#[derive(Eq, PartialEq)]
 enum PathComponent<'a> {
     Index(usize),
     Key(&'a str),
