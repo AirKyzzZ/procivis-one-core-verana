@@ -6,7 +6,7 @@ use uuid::Uuid;
 use super::model::OpenID4VCICredentialMetadataResponseDTO;
 use super::{HolderInteractionData, OpenID4VCIFinal1_0, SubmitIssuerResponse};
 use crate::clock::now_utc;
-use crate::config::core_config::BlobStorageType;
+use crate::config::core_config::{BlobStorageType, CoreConfig};
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin};
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::mapper::credential_schema_claim::add_fallback_translation;
@@ -746,6 +746,7 @@ impl OpenID4VCIFinal1_0 {
             self.credential_schema_repository.as_ref(),
             schema,
             organisation.id,
+            &self.config,
         )
         .await?;
 
@@ -757,6 +758,7 @@ async fn get_or_create_credential_schema(
     credential_schema_repository: &dyn CredentialSchemaRepository,
     credential_schema: CredentialSchema,
     organisation_id: OrganisationId,
+    config: &CoreConfig,
 ) -> Result<CredentialSchema, IssuanceProtocolError> {
     let parsed_schema_id = credential_schema
         .schema_id()
@@ -777,10 +779,27 @@ async fn get_or_create_credential_schema(
                 format.schema_id == parsed_schema_id && format.format != parsed_format
             })
         {
-            return Err(IssuanceProtocolError::Failed(format!(
-                "Credential schema conflict: credential schema with id {} has matching schema_id {} but different format {}",
-                conflicting_schema.id, conflicting_schema.schema_id, conflicting_schema.format
-            )));
+            if config
+                .format
+                .get_type(&conflicting_schema.format)
+                .error_while("getting format type")?
+                == config
+                    .format
+                    .get_type(&parsed_format)
+                    .error_while("getting format type")?
+            {
+                tracing::debug!(
+                    "Found matching existing schema {} with different format `{}` of same type, replacing format `{}`.",
+                    conflicting_schema.id,
+                    conflicting_schema.format,
+                    parsed_format
+                );
+            } else {
+                return Err(IssuanceProtocolError::Failed(format!(
+                    "Credential schema conflict: credential schema with id {} has matching schema_id {} but different format {}",
+                    conflicting_schema.id, conflicting_schema.schema_id, conflicting_schema.format
+                )));
+            }
         }
         Ok(stored_schema)
     } else {
