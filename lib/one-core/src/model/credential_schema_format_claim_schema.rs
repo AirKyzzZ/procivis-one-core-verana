@@ -2,6 +2,8 @@ use proc_macros::Model;
 use shared_types::{ClaimSchemaId, CredentialSchemaFormatClaimSchemaId, CredentialSchemaFormatId};
 use time::OffsetDateTime;
 
+use crate::mapper::NESTED_CLAIM_MARKER;
+
 #[derive(Clone, Debug, Model)]
 #[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct CredentialSchemaFormatClaimSchema {
@@ -13,4 +15,14 @@ pub struct CredentialSchemaFormatClaimSchema {
     pub claim_schema_id: ClaimSchemaId,
     pub technical_key: String,
     pub namespace: Option<String>,
+}
+
+impl CredentialSchemaFormatClaimSchema {
+    pub fn formatted_technical_key(&self) -> String {
+        if let Some(namespace) = &self.namespace {
+            format!("{}{NESTED_CLAIM_MARKER}{}", namespace, self.technical_key)
+        } else {
+            self.technical_key.clone()
+        }
+    }
 }

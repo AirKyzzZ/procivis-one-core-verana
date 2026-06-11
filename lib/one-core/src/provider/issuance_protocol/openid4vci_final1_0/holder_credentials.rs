@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use itertools::Itertools;
 use one_dto_mapper::convert_inner;
 use shared_types::{CredentialFormat, CredentialId, OrganisationId, SerializedCredential};
@@ -883,17 +885,9 @@ async fn validate_existing_and_find_new_claim_schemas(
             )))?;
         let stored_claim_schema_id = if stored_mappings.is_empty() {
             // V1 stored schema
-            let mapping_key = if let Some(namespace) = &parsed_mapping.namespace {
-                format!(
-                    "{}{NESTED_CLAIM_MARKER}{}",
-                    namespace, parsed_mapping.technical_key
-                )
-            } else {
-                parsed_mapping.technical_key.to_string()
-            };
             stored_claim_schemas
                 .iter()
-                .find(|s| s.key == mapping_key)
+                .find(|s| s.key == parsed_mapping.formatted_technical_key())
                 .map(|s| s.id)
         } else {
             // V2 stored schema
@@ -1025,14 +1019,37 @@ async fn apply_issuer_metadata_to_schema(
     let issuer_metadata_claims = metadata.and_then(|m| m.claims.as_deref()).unwrap_or(&[]);
     if !issuer_metadata_claims.is_empty() {
         let mut claim_schemas = schema.claim_schemas.as_mut().await?;
+        let formats = schema.formats.as_ref().await?;
+        let format = formats
+            .first()
+            .ok_or(IssuanceProtocolError::Failed(format!(
+                "empty formats on credential schema {}",
+                schema.id
+            )))?;
+        let mappings = format.claim_mappings.as_ref().await?;
+        let mappings_by_schema_id: HashMap<_, _> = mappings
+            .into_iter()
+            .map(|m| (m.claim_schema_id, m))
+            .collect();
+
         for claim_schema in &mut claim_schemas {
             if claim_schema.metadata {
                 continue;
             }
 
+            let metadata_key = if let Some(mapping) = mappings_by_schema_id.get(&claim_schema.id) {
+                mapping.formatted_technical_key()
+            } else {
+                claim_schema.key.to_string()
+            };
+
+            // NOTE: OpenID4VCI allows putting array selectors into the issuer metadata claim path.
+            // (I.e. giving the different indices of the array different descriptions)
+            // This is explicitly not supported for now since the translation is stored on the schema,
+            // which exists only once to represent the whole array.
             let Some(issuer_metadata_claim) = issuer_metadata_claims
                 .iter()
-                .find(|mc| mc.path.join("/") == claim_schema.key)
+                .find(|mc| mc.path.join("/") == metadata_key)
             else {
                 continue;
             };

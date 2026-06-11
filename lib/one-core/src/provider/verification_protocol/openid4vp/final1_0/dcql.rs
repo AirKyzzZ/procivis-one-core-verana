@@ -155,14 +155,7 @@ fn format_dcql_path(
 ) -> Vec<String> {
     // Note: Reaching into arrays is _not_ supported by our verifier. Hence, there is no handling for array index selectors.
     let effective_claim_key = if let Some(mapping) = mapping {
-        if let Some(namespace) = &mapping.namespace {
-            format!(
-                "{}{NESTED_CLAIM_MARKER}{}",
-                namespace, mapping.technical_key
-            )
-        } else {
-            mapping.technical_key.clone()
-        }
+        mapping.formatted_technical_key()
     } else {
         claim_key.to_string()
     };
