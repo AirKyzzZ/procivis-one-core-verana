@@ -188,7 +188,6 @@ impl WRPValidator for WRPValidatorImpl {
         validate_field!(supervisory_authority);
         validate_field!(policy_id);
         validate_field!(certificate_policy);
-        validate_field!(status);
         validate_field!(support_uri);
         validate_field!(intermediary);
 
