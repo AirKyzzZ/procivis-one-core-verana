@@ -79,6 +79,7 @@ pub enum SortableWalletInstanceColumn {
     Name,
     Status,
     Os,
+    UserSub,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -92,6 +93,7 @@ pub enum WalletInstanceFilterValue {
     AttestationHash(String),
     CreatedDate(ValueComparison<OffsetDateTime>),
     LastModified(ValueComparison<OffsetDateTime>),
+    UserSub(StringMatch),
 }
 
 impl ListFilterValue for WalletInstanceFilterValue {}

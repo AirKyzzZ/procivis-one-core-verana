@@ -259,6 +259,7 @@ pub struct GetWalletUnitResponseDTO {
     pub wallet_provider_type: WalletProviderType,
     pub wallet_provider_name: String,
     pub authentication_key_jwk: Option<PublicJwk>,
+    pub user_sub: Option<String>,
 }
 
 pub type GetWalletUnitListResponseDTO = GetListResponse<GetWalletUnitResponseDTO>;
@@ -274,6 +275,7 @@ pub struct WalletUnitFilterParamsDTO {
     pub organisation_id: shared_types::OrganisationId,
     pub created_date_after: Option<OffsetDateTime>,
     pub created_date_before: Option<OffsetDateTime>,
+    pub user_sub: Option<String>,
 }
 
 #[derive(Clone, Debug)]

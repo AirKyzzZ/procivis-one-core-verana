@@ -11,6 +11,7 @@ pub struct WalletUnitsApi {
 pub struct ListFilters {
     pub organisation_id: OrganisationId,
     pub attestation: Option<String>,
+    pub user_sub: Option<String>,
 }
 
 impl ListFilters {
@@ -18,6 +19,7 @@ impl ListFilters {
         Self {
             organisation_id,
             attestation: None,
+            user_sub: None,
         }
     }
 }
@@ -31,12 +33,16 @@ impl WalletUnitsApi {
         let ListFilters {
             attestation,
             organisation_id,
+            user_sub,
         } = list_filters;
 
         let mut url =
             format!("/api/wallet-instance/v1?organisationId={organisation_id}&page=0&pageSize=50");
         if let Some(attestation) = attestation {
-            url += &format!("&attestation={attestation}")
+            url += &format!("&attestation={attestation}");
+        }
+        if let Some(user_sub) = user_sub {
+            url += &format!("&userSub={user_sub}");
         }
 
         self.client.get(&url).await

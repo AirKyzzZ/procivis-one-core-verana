@@ -27,6 +27,7 @@ pub struct TestWalletInstance {
     pub status: Option<WalletInstanceStatus>,
     pub last_issuance: Option<Option<OffsetDateTime>>,
     pub attested_keys: Option<Vec<WalletInstanceAttestedKey>>,
+    pub user_sub: Option<String>,
 }
 
 impl WalletInstancesDB {
@@ -62,7 +63,7 @@ impl WalletInstancesDB {
                 .unwrap_or(Some(six_hours_ago)),
             nonce: test_wallet_instance.nonce,
             user_nonce: None,
-            user_sub: None,
+            user_sub: test_wallet_instance.user_sub,
             organisation: Some(organisation),
             attested_keys: test_wallet_instance.attested_keys,
         };

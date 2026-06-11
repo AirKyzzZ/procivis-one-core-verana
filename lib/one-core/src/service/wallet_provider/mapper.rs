@@ -156,6 +156,13 @@ impl TryFrom<WalletUnitFilterParamsDTO> for ListFilterCondition<WalletInstanceFi
             })
         });
 
+        let user_sub = value.user_sub.map(|user_sub| {
+            WalletInstanceFilterValue::UserSub(StringMatch {
+                r#match: StringMatchType::StartsWith,
+                value: user_sub,
+            })
+        });
+
         Ok(organisation_id
             & name
             & ids
@@ -164,6 +171,7 @@ impl TryFrom<WalletUnitFilterParamsDTO> for ListFilterCondition<WalletInstanceFi
             & wallet_provider_type
             & attestation
             & created_date_after
-            & created_date_before)
+            & created_date_before
+            & user_sub)
     }
 }

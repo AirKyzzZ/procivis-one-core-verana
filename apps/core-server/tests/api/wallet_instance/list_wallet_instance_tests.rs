@@ -174,6 +174,7 @@ async fn test_list_wallet_instance_by_attestation_success() {
         .list(ListFilters {
             organisation_id: organisation.id,
             attestation: Some(attestation),
+            user_sub: None,
         })
         .await;
 
@@ -217,6 +218,128 @@ async fn test_list_wallet_instance_empty_success() {
     assert_eq!(resp["totalItems"], 0);
     let values = resp["values"].as_array().unwrap();
     assert_eq!(values.len(), 0);
+}
+
+#[tokio::test]
+async fn test_list_wallet_instance_user_sub_in_response() {
+    // GIVEN
+    let (context, org) = TestContext::new_with_organisation(None).await;
+
+    context
+        .db
+        .wallet_instances
+        .create(
+            org.clone(),
+            TestWalletInstance {
+                name: Some("wallet_with_sub".to_string()),
+                user_sub: Some("sub-alice".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .wallet_units
+        .list(ListFilters::new(org.id))
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    let values = resp["values"].as_array().unwrap();
+    assert_eq!(values.len(), 1);
+    assert_eq!(values[0]["userSub"], "sub-alice");
+}
+
+#[tokio::test]
+async fn test_list_wallet_instance_filter_by_user_sub() {
+    // GIVEN
+    let (context, org) = TestContext::new_with_organisation(None).await;
+
+    context
+        .db
+        .wallet_instances
+        .create(
+            org.clone(),
+            TestWalletInstance {
+                name: Some("wallet_alice".to_string()),
+                user_sub: Some("sub-alice".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+    context
+        .db
+        .wallet_instances
+        .create(
+            org.clone(),
+            TestWalletInstance {
+                name: Some("wallet_bob".to_string()),
+                user_sub: Some("sub-bob".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN — filter by exact user_sub
+    let resp = context
+        .api
+        .wallet_units
+        .list(ListFilters {
+            organisation_id: org.id,
+            user_sub: Some("sub-alice".to_string()),
+            ..ListFilters::new(org.id)
+        })
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    assert_eq!(resp["totalItems"], 1);
+    let values = resp["values"].as_array().unwrap();
+    assert_eq!(values[0]["userSub"], "sub-alice");
+}
+
+#[tokio::test]
+async fn test_list_wallet_instance_filter_by_user_sub_prefix() {
+    // GIVEN
+    let (context, org) = TestContext::new_with_organisation(None).await;
+
+    for name in ["alice", "adam", "bob"] {
+        context
+            .db
+            .wallet_instances
+            .create(
+                org.clone(),
+                TestWalletInstance {
+                    name: Some(name.to_string()),
+                    user_sub: Some(format!("sub-{name}")),
+                    ..Default::default()
+                },
+            )
+            .await;
+    }
+
+    // WHEN — filter by prefix "sub-a" should match alice and adam
+    let resp = context
+        .api
+        .wallet_units
+        .list(ListFilters {
+            organisation_id: org.id,
+            user_sub: Some("sub-a".to_string()),
+            ..ListFilters::new(org.id)
+        })
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    assert_eq!(resp["totalItems"], 2);
 }
 
 #[tokio::test]

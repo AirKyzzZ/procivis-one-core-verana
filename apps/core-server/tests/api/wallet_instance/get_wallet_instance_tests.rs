@@ -70,6 +70,32 @@ async fn test_get_revoked_wallet_instance_success() {
 }
 
 #[tokio::test]
+async fn test_get_wallet_instance_user_sub_in_response() {
+    // GIVEN
+    let (context, org) = TestContext::new_with_organisation(None).await;
+    let wallet_unit = context
+        .db
+        .wallet_instances
+        .create(
+            org,
+            TestWalletInstance {
+                user_sub: Some("sub-alice".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context.api.wallet_units.get(&wallet_unit.id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    assert_eq!(resp["userSub"], "sub-alice");
+}
+
+#[tokio::test]
 async fn test_get_wallet_instance_not_found() {
     // GIVEN
     let context = TestContext::new(None).await;

@@ -574,6 +574,139 @@ async fn test_get_wallet_instance_list_with_os_filter() {
 }
 
 #[tokio::test]
+async fn test_get_wallet_instance_list_with_user_sub_filter() {
+    let TestSetup {
+        provider,
+        wallet_unit_ids,
+        organisation_id,
+    } = setup(3).await;
+
+    // Set user_sub only on the first wallet instance
+    provider
+        .update_wallet_instance(
+            &wallet_unit_ids[0],
+            UpdateWalletInstanceRequest {
+                user_sub: Some("sub-alice".to_string()),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+
+    let query = WalletInstanceListQuery {
+        pagination: Some(ListPagination {
+            page: 0,
+            page_size: 10,
+        }),
+        sorting: None,
+        filtering: Some(
+            WalletInstanceFilterValue::OrganisationId(organisation_id).condition()
+                & WalletInstanceFilterValue::UserSub(
+                    one_core::model::list_filter::StringMatch::equals("sub-alice".to_string()),
+                ),
+        ),
+        include: None,
+    };
+
+    let result = provider.get_wallet_instance_list(query).await.unwrap();
+    assert_eq!(result.total_items, 1);
+    assert_eq!(result.values[0].id, wallet_unit_ids[0]);
+    assert_eq!(result.values[0].user_sub.as_deref(), Some("sub-alice"));
+}
+
+#[tokio::test]
+async fn test_get_wallet_instance_list_with_user_sub_prefix_filter() {
+    let TestSetup {
+        provider,
+        wallet_unit_ids,
+        organisation_id,
+    } = setup(3).await;
+
+    provider
+        .update_wallet_instance(
+            &wallet_unit_ids[0],
+            UpdateWalletInstanceRequest {
+                user_sub: Some("user|alice".to_string()),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+    provider
+        .update_wallet_instance(
+            &wallet_unit_ids[1],
+            UpdateWalletInstanceRequest {
+                user_sub: Some("user|bob".to_string()),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+
+    let query = WalletInstanceListQuery {
+        pagination: Some(ListPagination {
+            page: 0,
+            page_size: 10,
+        }),
+        sorting: None,
+        filtering: Some(
+            WalletInstanceFilterValue::OrganisationId(organisation_id).condition()
+                & WalletInstanceFilterValue::UserSub(
+                    one_core::model::list_filter::StringMatch::starts_with("user|".to_string()),
+                ),
+        ),
+        include: None,
+    };
+
+    let result = provider.get_wallet_instance_list(query).await.unwrap();
+    assert_eq!(result.total_items, 2);
+}
+
+#[tokio::test]
+async fn test_get_wallet_instance_list_with_user_sub_sorting() {
+    let TestSetup {
+        provider,
+        wallet_unit_ids,
+        ..
+    } = setup(3).await;
+
+    for (id, sub) in wallet_unit_ids.iter().zip(["charlie", "alice", "bob"]) {
+        provider
+            .update_wallet_instance(
+                id,
+                UpdateWalletInstanceRequest {
+                    user_sub: Some(sub.to_string()),
+                    ..Default::default()
+                },
+            )
+            .await
+            .unwrap();
+    }
+
+    let query = WalletInstanceListQuery {
+        pagination: Some(ListPagination {
+            page: 0,
+            page_size: 10,
+        }),
+        sorting: Some(ListSorting {
+            column: SortableWalletInstanceColumn::UserSub,
+            direction: Some(one_core::model::common::SortDirection::Ascending),
+        }),
+        filtering: None,
+        include: None,
+    };
+
+    let result = provider.get_wallet_instance_list(query).await.unwrap();
+    assert_eq!(result.total_items, 3);
+    let subs: Vec<Option<&str>> = result
+        .values
+        .iter()
+        .map(|wu| wu.user_sub.as_deref())
+        .collect();
+    assert_eq!(subs, vec![Some("alice"), Some("bob"), Some("charlie")]);
+}
+
+#[tokio::test]
 async fn test_get_wallet_instance_list_empty_result() {
     let TestSetup { provider, .. } = setup(3).await;
 

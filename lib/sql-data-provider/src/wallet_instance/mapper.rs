@@ -51,6 +51,7 @@ impl IntoSortingColumn for SortableWalletInstanceColumn {
             Self::Name => wallet_instance::Column::Name.into_simple_expr(),
             Self::Status => wallet_instance::Column::Status.into_simple_expr(),
             Self::Os => wallet_instance::Column::Os.into_simple_expr(),
+            Self::UserSub => wallet_instance::Column::UserSub.into_simple_expr(),
         }
     }
 }
@@ -117,6 +118,9 @@ impl IntoFilterCondition for WalletInstanceFilterValue {
             }
             Self::LastModified(comparison) => {
                 get_comparison_condition(wallet_instance::Column::LastModified, comparison)
+            }
+            Self::UserSub(string_match) => {
+                get_string_match_condition(wallet_instance::Column::UserSub, string_match)
             }
         }
     }

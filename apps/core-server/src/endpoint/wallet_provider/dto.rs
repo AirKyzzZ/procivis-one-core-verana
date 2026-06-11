@@ -54,6 +54,7 @@ pub(crate) struct WalletInstanceResponseRestDTO {
     pub wallet_provider_name: String,
     #[from(with_fn = convert_inner)]
     pub authentication_key_jwk: Option<PublicJwk>,
+    pub user_sub: Option<String>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize, ToSchema, From, Into)]
@@ -132,6 +133,10 @@ pub(crate) struct WalletInstanceFilterQueryParamsRestDTO {
     #[param(nullable = false)]
     #[try_into(infallible)]
     pub created_date_before: Option<OffsetDateTime>,
+    /// Return only wallet units with a userSub starting with this string.
+    #[param(nullable = false)]
+    #[try_into(infallible)]
+    pub user_sub: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From, Into)]
@@ -144,4 +149,5 @@ pub(crate) enum SortableWalletInstanceColumnRest {
     Name,
     Status,
     Os,
+    UserSub,
 }
