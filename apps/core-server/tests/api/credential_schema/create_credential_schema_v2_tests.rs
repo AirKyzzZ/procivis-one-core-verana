@@ -73,6 +73,75 @@ async fn test_create_credential_schema_v2_success_single_format() {
 }
 
 #[tokio::test]
+async fn test_create_credential_schema_v2_success_single_format_multiple_claims() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credential_schemas
+        .create_v2(CreateSchemaV2Params {
+            name: "v2 schema".into(),
+            organisation_id: organisation.id.into(),
+            formats: vec![jwt_format()],
+            claims: vec![
+                TestClaim {
+                    datatype: "STRING".to_string(),
+                    key: "First name".to_string(),
+                    required: true,
+                    claims: vec![],
+                    array: None,
+                    translations: None,
+                    mappings: None,
+                },
+                TestClaim {
+                    datatype: "STRING".to_string(),
+                    key: "Last name".to_string(),
+                    required: true,
+                    claims: vec![],
+                    array: None,
+                    translations: None,
+                    mappings: None,
+                },
+                TestClaim {
+                    datatype: "BIRTH_DATE".to_string(),
+                    key: "Birthday".to_string(),
+                    required: true,
+                    claims: vec![],
+                    array: None,
+                    translations: None,
+                    mappings: None,
+                },
+            ],
+            ..Default::default()
+        })
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+    let resp = resp.json_value().await;
+    let id = resp["id"].parse();
+    let credential_schema = context.db.credential_schemas.get(&id).await;
+    assert_eq!(credential_schema.name, "v2 schema");
+    assert_eq!(credential_schema.organisation.id(), organisation.id);
+
+    let formats = credential_schema.formats.as_ref().await.unwrap();
+    assert_eq!(formats.len(), 1);
+    let claims = credential_schema.claim_schemas.as_ref().await.unwrap();
+    let non_metadata_claims = claims.iter().filter(|c| !c.metadata).collect::<Vec<_>>();
+    assert_eq!(non_metadata_claims.len(), 3);
+    // ordered correctly
+    assert_eq!(
+        non_metadata_claims
+            .iter()
+            .map(|c| c.key.as_str())
+            .collect::<Vec<_>>(),
+        vec!["First name", "Last name", "Birthday"]
+    );
+}
+
+#[tokio::test]
 async fn test_create_credential_schema_v2_success_multiple_formats() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;

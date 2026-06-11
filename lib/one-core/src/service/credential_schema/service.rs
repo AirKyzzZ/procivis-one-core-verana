@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use indexmap::IndexMap;
 use shared_types::{CredentialFormat, CredentialSchemaId, OrganisationId};
 use uuid::Uuid;
 
@@ -222,6 +223,7 @@ impl CredentialSchemaService {
             &*self.formatter_provider,
         )?;
 
+        // Use indexmap because the order of the claims is relevant when inserting into the DB.
         let mut key_to_claim_schemas_and_mappings = flat_claims
             .into_iter()
             .map(|claim_schema_request| {
@@ -234,7 +236,7 @@ impl CredentialSchemaService {
                     ),
                 )
             })
-            .collect::<HashMap<_, _>>();
+            .collect::<IndexMap<_, _>>();
 
         let mut resolved_formats = vec![];
         for format_req in &request.formats {

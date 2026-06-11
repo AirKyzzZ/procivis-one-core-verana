@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use dcql::CredentialMeta;
+use indexmap::IndexMap;
 use one_dto_mapper::convert_inner;
 use shared_types::{CredentialFormat, CredentialSchemaId, OrganisationId};
 use url::Url;
@@ -112,10 +113,10 @@ pub(crate) async fn schema_to_detail_v2_response_dto(
         .collect();
 
     let non_metadata_claim_schemas = non_metadata_claim_schemas(&value).await?;
-    let mut claim_mappings_map: std::collections::HashMap<
+    let mut claim_mappings_map: HashMap<
         shared_types::ClaimSchemaId,
         Vec<CredentialClaimSchemaMappingDTO>,
-    > = std::collections::HashMap::new();
+    > = HashMap::new();
 
     for format in &formats {
         let mappings = format.claim_mappings.as_ref().await?;
@@ -451,7 +452,7 @@ pub(super) fn add_metadata_claims_and_mappings(
     format: &CredentialFormat,
     formatter: &dyn CredentialFormatter,
     now: time::OffsetDateTime,
-    key_to_claim_schema_and_mappings: &mut HashMap<
+    key_to_claim_schema_and_mappings: &mut IndexMap<
         String,
         (ClaimSchema, Vec<CredentialClaimSchemaMappingDTO>),
     >,
@@ -486,7 +487,7 @@ pub(super) fn build_format_with_claim_mappings(
     format: CredentialFormat,
     schema_id: String,
     now: time::OffsetDateTime,
-    key_to_claim_schema_and_mappings: &HashMap<
+    key_to_claim_schema_and_mappings: &IndexMap<
         String,
         (ClaimSchema, Vec<CredentialClaimSchemaMappingDTO>),
     >,
