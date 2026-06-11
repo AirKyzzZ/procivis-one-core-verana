@@ -35,7 +35,9 @@ use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::proto::bluetooth_low_energy::ble_resource::{Abort, BleWaiter};
 use crate::proto::nfc::NfcError;
 use crate::proto::nfc::hce::NfcHce;
+use crate::proto::trust_information::TrustInformationProvider;
 use crate::provider::credential_formatter::mdoc_formatter::util::EmbeddedCbor;
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::presentation_formatter::model::{
@@ -47,8 +49,10 @@ use crate::provider::presentation_formatter::mso_mdoc::model::{
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::SessionTranscript;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::verification_protocol::deserialize_interaction_data;
+use crate::provider::verification_protocol::openid4vp::dcql::get_presentation_definition_v2;
 use crate::provider::verification_protocol::openid4vp::mapper::format_to_type;
 use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::service::credential::dto::CredentialAttestationBlobs;
 use crate::service::credential::mapper::{
     credential_detail_response_from_model, get_remaining_batch_item_count,
@@ -75,6 +79,9 @@ pub(crate) struct IsoMdl {
     presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
+    credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    trust_information_provider: Arc<dyn TrustInformationProvider>,
     ble: Option<BleWaiter>,
     nfc_hce: Option<Arc<dyn NfcHce>>,
 }
@@ -88,6 +95,9 @@ impl IsoMdl {
         presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
         key_provider: Arc<dyn KeyProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+        credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
+        credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
+        trust_information_provider: Arc<dyn TrustInformationProvider>,
         ble: Option<BleWaiter>,
         nfc_hce: Option<Arc<dyn NfcHce>>,
     ) -> Self {
@@ -98,6 +108,9 @@ impl IsoMdl {
             presentation_formatter_provider,
             key_provider,
             key_algorithm_provider,
+            credential_schema_repository,
+            credential_formatter_provider,
+            trust_information_provider,
             ble,
             nfc_hce,
         }
@@ -429,10 +442,75 @@ impl VerificationProtocol for IsoMdl {
 
     async fn holder_get_presentation_definition_v2(
         &self,
-        _proof: &Proof,
-        _context: Value,
+        proof: &Proof,
+        context: Value,
     ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
-        Err(VerificationProtocolError::OperationNotSupported)
+        let interaction_data: MdocBleHolderInteractionData = serde_json::from_value(context)?;
+
+        let device_request_bytes = interaction_data
+            .session
+            .ok_or_else(|| VerificationProtocolError::Failed("Missing device_request".to_string()))?
+            .device_request_bytes;
+
+        let device_request: DeviceRequest = ciborium::from_reader(device_request_bytes.as_slice())
+            .context("device request deserialization error")
+            .map_err(VerificationProtocolError::Other)?;
+
+        use dcql::{
+            ClaimPath, ClaimQuery, CredentialFormat, CredentialMeta, CredentialQuery, DcqlQuery,
+            PathSegment,
+        };
+
+        let mut credentials = Vec::with_capacity(device_request.doc_requests.len());
+        for doc_request in device_request.doc_requests {
+            let request = doc_request.items_request.into_inner();
+            let mut claims = vec![];
+            for (namespace, elements) in request.name_spaces {
+                for (element, intent_to_retain) in elements {
+                    claims.push(ClaimQuery {
+                        id: None,
+                        path: ClaimPath {
+                            segments: vec![
+                                PathSegment::PropertyName(namespace.to_owned()),
+                                PathSegment::PropertyName(element),
+                            ],
+                        },
+                        values: None,
+                        required: Some(false),
+                        intent_to_retain: Some(intent_to_retain),
+                    });
+                }
+            }
+
+            credentials.push(CredentialQuery {
+                id: request.doc_type.to_owned().into(),
+                format: CredentialFormat::MsoMdoc,
+                meta: CredentialMeta::MsoMdoc {
+                    doctype_value: request.doc_type,
+                },
+                claims: Some(claims),
+                claim_sets: None,
+                trusted_authorities: None,
+                multiple: false,
+                require_cryptographic_holder_binding: true,
+            });
+        }
+
+        let dcql_query = DcqlQuery {
+            credentials,
+            credential_sets: None,
+        };
+
+        get_presentation_definition_v2(
+            dcql_query,
+            proof,
+            &*self.credential_repository,
+            &*self.credential_schema_repository,
+            &*self.credential_formatter_provider,
+            &*self.trust_information_provider,
+            &self.config,
+        )
+        .await
     }
 
     fn get_capabilities(&self) -> VerificationProtocolCapabilities {
@@ -441,7 +519,10 @@ impl VerificationProtocol for IsoMdl {
             supported_transports: vec![TransportType::Ble],
             did_methods: vec![DidType::Key, DidType::Jwk, DidType::Web],
             verifier_identifier_types: vec![IdentifierType::Did],
-            supported_presentation_definition: vec![PresentationDefinitionVersion::V1],
+            supported_presentation_definition: vec![
+                PresentationDefinitionVersion::V1,
+                PresentationDefinitionVersion::V2,
+            ],
         }
     }
 
