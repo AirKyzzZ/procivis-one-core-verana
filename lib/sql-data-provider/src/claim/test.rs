@@ -58,7 +58,7 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
             id: Set(*id),
             created_date: Set(get_dummy_date()),
             last_modified: Set(get_dummy_date()),
-            key: Set("TestKey".to_string()),
+            key: Set(format!("TestKey-{index}")),
             datatype: Set("STRING".to_string()),
             array: Set(false),
             metadata: Set(false),

@@ -7,6 +7,7 @@ pub(crate) struct NullableIdxOpts<C: IntoIden> {
     pub non_nullable_columns: Vec<C>,
     pub null_value: Option<&'static str>,
     pub nullable_column_index_pos: Option<usize>,
+    pub materialized_column_size_limit: Option<usize>,
 }
 
 impl<C: IntoIden> Default for NullableIdxOpts<C> {
@@ -15,6 +16,7 @@ impl<C: IntoIden> Default for NullableIdxOpts<C> {
             non_nullable_columns: vec![],
             null_value: None,
             nullable_column_index_pos: None,
+            materialized_column_size_limit: None,
         }
     }
 }
@@ -30,6 +32,7 @@ pub(crate) async fn add_nullable_unique_idx<T: IntoIden + 'static, C: IntoIden +
         non_nullable_columns,
         null_value,
         nullable_column_index_pos,
+        materialized_column_size_limit,
     } = options;
     let db_backend = manager.get_database_backend();
     if DatabaseBackend::Postgres == db_backend {
@@ -48,6 +51,7 @@ pub(crate) async fn add_nullable_unique_idx<T: IntoIden + 'static, C: IntoIden +
     let table = table.into_iden().to_string();
     let nullable_column = nullable_column.into_iden().to_string();
     let null_value = null_value.unwrap_or("not_deleted");
+    let materialized_column_size_limit = materialized_column_size_limit.unwrap_or(50);
 
     let quoted_materialzed_column_or_expr = if DatabaseBackend::Sqlite == db_backend {
         format!("COALESCE(`{nullable_column}`, '{null_value}')")
@@ -68,7 +72,7 @@ pub(crate) async fn add_nullable_unique_idx<T: IntoIden + 'static, C: IntoIden +
     let db = manager.get_connection();
     if db_backend == DatabaseBackend::MySql {
         let add_materialized_column_stmt = format!(
-            "ALTER TABLE `{table}` ADD COLUMN IF NOT EXISTS {quoted_materialzed_column_or_expr} VARCHAR(50) AS (COALESCE(TRIM(`{nullable_column}`), '{null_value}')) PERSISTENT;"
+            "ALTER TABLE `{table}` ADD COLUMN IF NOT EXISTS {quoted_materialzed_column_or_expr} VARCHAR({materialized_column_size_limit}) AS (COALESCE(TRIM(`{nullable_column}`), '{null_value}')) PERSISTENT;"
         );
         db.execute_unprepared(&add_materialized_column_stmt).await?;
     }

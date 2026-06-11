@@ -150,25 +150,41 @@ async fn test_db_schema_credential_schema() {
         .column("batch_size")
         .r#type(ColumnType::Integer)
         .nullable(true);
+    credential_schema
+        .column("allow_revocation")
+        .r#type(ColumnType::Boolean)
+        .nullable(true);
 }
 
 #[tokio::test]
 async fn test_db_schema_claim_schema() {
     let schema = get_schema().await;
 
-    let claim_schema = schema.table("claim_schema").columns(&[
-        "id",
-        "created_date",
-        "last_modified",
-        "key",
-        "business_key",
-        "datatype",
-        "array",
-        "metadata",
-        "credential_schema_id",
-        "required",
-        "order",
-    ]);
+    let claim_schema = schema
+        .table("claim_schema")
+        .columns(&[
+            "id",
+            "created_date",
+            "last_modified",
+            "key",
+            "business_key",
+            "datatype",
+            "array",
+            "metadata",
+            "credential_schema_id",
+            "required",
+            "order",
+        ])
+        .index(
+            "index-ClaimSchema-Key-CredentialSchemaId-Unique",
+            true,
+            &["key", "credential_schema_id"],
+        )
+        .index(
+            "index-ClaimSchema-Order-CredentialSchemaId-Unique",
+            true,
+            &["order", "credential_schema_id"],
+        );
     claim_schema
         .column("id")
         .r#type(ColumnType::Uuid)
@@ -299,7 +315,7 @@ async fn test_db_schema_credential_schema_format() {
 async fn test_db_schema_credential_schema_format_claim_schema() {
     let schema = get_schema().await;
 
-    let columns = vec![
+    let mut columns = vec![
         "id",
         "created_date",
         "last_modified",
@@ -308,6 +324,16 @@ async fn test_db_schema_credential_schema_format_claim_schema() {
         "technical_key",
         "namespace",
     ];
+    if schema.backend() == DbBackend::MySql {
+        columns.push("namespace_materialized");
+    }
+
+    let mut technical_key_index_columns = vec!["technical_key", "credential_schema_format_id"];
+    if schema.backend() == DbBackend::MySql {
+        technical_key_index_columns.push("namespace_materialized")
+    } else {
+        technical_key_index_columns.push("namespace")
+    }
 
     let cs_format_claim = schema
         .table("credential_schema_format_claim_schema")
@@ -316,6 +342,11 @@ async fn test_db_schema_credential_schema_format_claim_schema() {
             "index-FormatClaimSchema-FormatId-ClaimSchemaId_Unique",
             true,
             &["credential_schema_format_id", "claim_schema_id"],
+        )
+        .index(
+            "index-FormatClaimSchema-TechKey-FormatId-Namespace-Unique",
+            true,
+            &technical_key_index_columns,
         );
     cs_format_claim
         .column("id")

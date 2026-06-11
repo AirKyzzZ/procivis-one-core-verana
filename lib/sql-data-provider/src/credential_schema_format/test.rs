@@ -29,7 +29,7 @@ async fn test_create_and_get_credential_schema_format() {
         credential_schema_id,
         claims: &vec![ClaimInsertInfo {
             id: claim_schema_id,
-            key: "first_name",
+            key: "first_name".to_string(),
             required: true,
             order: 0,
             datatype: "STRING",
@@ -168,7 +168,7 @@ async fn test_unique_format_claim_schema_mapping() {
             credential_schema_id,
             claims: &vec![ClaimInsertInfo {
                 id: claim_schema_id,
-                key: "first_name",
+                key: "first_name".to_string(),
                 required: true,
                 order: 0,
                 datatype: "STRING",

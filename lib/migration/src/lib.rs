@@ -277,6 +277,7 @@ impl MigratorTrait for Migrator {
             ),
             Box::new(migrations::m20260608_120000_add_user_nonce_and_user_sub_to_holder_wallet_instance::Migration),
             Box::new(migrations::m20260609_090000_move_user_nonce_user_sub_to_wallet_instance::Migration),
+            Box::new(migrations::m20260611_052438_unique_claim_schema_keys::Migration),
         ]
     }
 }

@@ -413,7 +413,7 @@ enum CredentialSchemaFormat {
 }
 
 #[derive(DeriveIden)]
-enum CredentialSchemaFormatClaimSchema {
+pub enum CredentialSchemaFormatClaimSchema {
     Table,
     Id,
     CreatedDate,

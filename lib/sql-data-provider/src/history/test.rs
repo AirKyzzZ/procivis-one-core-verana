@@ -159,7 +159,7 @@ struct TestSetupWithCredentialsSchemaAndProof {
     pub did_id: DidId,
     pub did_name: &'static str,
     pub did_value: &'static str,
-    pub claim_schema_name: &'static str,
+    pub claim_schema_name: String,
     pub claim_value: &'static str,
     pub credential_id: CredentialId,
     pub proof_schema_id: ProofSchemaId,
@@ -294,11 +294,10 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
     .await
     .unwrap();
 
-    let claim_schema_name = "test";
     let new_claim_schemas: Vec<ClaimInsertInfo> = (0..2)
         .map(|i| ClaimInsertInfo {
             id: Uuid::new_v4().into(),
-            key: claim_schema_name,
+            key: format!("test-{i}"),
             required: i % 2 == 0,
             order: i as u32,
             datatype: "STRING",
@@ -306,6 +305,7 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
             metadata: false,
         })
         .collect();
+    let claim_schema_name = new_claim_schemas[0].key.to_owned();
 
     let claim_input = ProofInput {
         credential_schema_id,
@@ -776,10 +776,7 @@ async fn test_get_history_list_search_query() {
     let search_by_claim_schema_name = provider
         .get_history_list(history_list_query_with_filter(
             organisation.id,
-            HistoryFilterValue::SearchQuery(
-                claim_schema_name.to_string(),
-                HistorySearchEnum::ClaimName,
-            ),
+            HistoryFilterValue::SearchQuery(claim_schema_name, HistorySearchEnum::ClaimName),
         ))
         .await
         .unwrap();
@@ -880,7 +877,7 @@ async fn test_get_history_list_search_all_query() {
     let search_for_claim_schema_name = provider
         .get_history_list(history_list_query_with_filter(
             organisation.id,
-            HistoryFilterValue::SearchQuery(claim_schema_name.to_string(), HistorySearchEnum::All),
+            HistoryFilterValue::SearchQuery(claim_schema_name, HistorySearchEnum::All),
         ))
         .await
         .unwrap();

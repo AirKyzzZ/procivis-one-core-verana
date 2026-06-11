@@ -304,7 +304,7 @@ pub async fn insert_proof_request_to_database(
 
 pub struct ClaimInsertInfo<'a> {
     pub id: ClaimSchemaId,
-    pub key: &'a str,
+    pub key: String,
     pub required: bool,
     pub order: u32,
     pub datatype: &'a str,

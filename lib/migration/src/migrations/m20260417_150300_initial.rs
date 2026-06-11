@@ -1424,6 +1424,7 @@ async fn revocation_list_table(manager: &SchemaManager<'_>) -> Result<(), DbErr>
             ],
             null_value: Some("no_certificate"),
             nullable_column_index_pos: Some(1),
+            materialized_column_size_limit: None,
         },
         manager,
     )

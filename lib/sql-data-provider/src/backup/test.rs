@@ -6,7 +6,9 @@ use one_core::repository::credential_repository::MockCredentialRepository;
 use one_core::repository::key_repository::MockKeyRepository;
 use one_core::repository::organisation_repository::MockOrganisationRepository;
 use sea_orm::ActiveValue::NotSet;
-use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Iterable, Set};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, Iterable, QueryFilter, Set,
+};
 use shared_types::{
     CertificateId, CredentialId, CredentialSchemaId, DidId, IdentifierId, KeyId, OrganisationId,
 };
@@ -21,8 +23,8 @@ use crate::entity::credential::{self, CredentialRole, CredentialState, Credentia
 use crate::entity::credential_schema::KeyStorageSecurity;
 use crate::entity::did::{self, DidType};
 use crate::entity::identifier::{self, IdentifierState, IdentifierType};
-use crate::entity::key;
 use crate::entity::key_did::KeyRole;
+use crate::entity::{claim_schema, key};
 use crate::test_utilities::{
     ClaimInsertInfo, ProofInput, assert_eq_unordered, get_dummy_date,
     insert_credential_schema_to_database, insert_credential_schema_with_revocation_to_database,
@@ -100,25 +102,39 @@ async fn insert_credential_to_database(
     .unwrap()
     .id;
 
-    let claim_schema_id = Uuid::new_v4().into();
-    let claim = ClaimInsertInfo {
-        id: claim_schema_id,
-        key: "name",
-        required: false,
-        order: 0,
-        datatype: "STRING",
-        array: false,
-        metadata: false,
-    };
-
-    let proof_input = ProofInput {
-        credential_schema_id: schema_id,
-        claims: &vec![claim],
-    };
-
-    insert_many_claims_schema_to_database(database, &proof_input)
+    let stored_model = claim_schema::Entity::find()
+        .filter(claim_schema::Column::CredentialSchemaId.eq(schema_id))
+        .filter(claim_schema::Column::Key.eq("name"))
+        .one(database)
         .await
         .unwrap();
+
+    let claim_schema_id = if let Some(stored_model) = stored_model {
+        stored_model.id
+    } else {
+        let claim_schema_id = Uuid::new_v4().into();
+        let claim = ClaimInsertInfo {
+            id: claim_schema_id,
+            key: "name".to_string(),
+            required: false,
+            order: 0,
+            datatype: "STRING",
+            array: false,
+            metadata: false,
+        };
+
+        let proof_input = ProofInput {
+            credential_schema_id: schema_id,
+            claims: &vec![claim],
+        };
+
+        insert_many_claims_schema_to_database(database, &proof_input)
+            .await
+            .unwrap();
+
+        claim_schema_id
+    };
+
     insert_many_claims_to_database(
         database,
         &[(

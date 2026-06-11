@@ -94,7 +94,7 @@ async fn setup(
     let new_claim_schemas: Vec<ClaimInsertInfo> = (0..2)
         .map(|i| ClaimInsertInfo {
             id: Uuid::new_v4().into(),
-            key: "test",
+            key: format!("test-{i}"),
             required: i % 2 == 0,
             order: i as u32,
             datatype: "STRING",

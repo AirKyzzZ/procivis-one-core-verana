@@ -176,16 +176,23 @@ async fn test_db_schema_credential() {
 async fn test_db_schema_claim() {
     let schema = get_schema().await;
 
-    let claim = schema.table("claim").columns(&[
-        "id",
-        "created_date",
-        "last_modified",
-        "claim_schema_id",
-        "credential_id",
-        "value",
-        "path",
-        "selectively_disclosable",
-    ]);
+    let claim = schema
+        .table("claim")
+        .columns(&[
+            "id",
+            "created_date",
+            "last_modified",
+            "claim_schema_id",
+            "credential_id",
+            "value",
+            "path",
+            "selectively_disclosable",
+        ])
+        .index(
+            "index-Claim-Path-CredentialId-Unique",
+            true,
+            &["path", "credential_id"],
+        );
     claim
         .column("id")
         .r#type(ColumnType::Uuid)

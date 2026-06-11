@@ -259,7 +259,7 @@ async fn test_create_proof_schema_success() {
     let new_claim_schemas: Vec<ClaimInsertInfo> = (0..2)
         .map(|i| ClaimInsertInfo {
             id: Uuid::new_v4().into(),
-            key: "test",
+            key: format!("test-{i}"),
             required: i % 2 == 0,
             order: i as u32,
             datatype: "STRING",
@@ -590,7 +590,7 @@ async fn test_get_proof_schema_with_relations() {
     let new_claim_schemas: Vec<ClaimInsertInfo> = (0..2)
         .map(|i| ClaimInsertInfo {
             id: Uuid::new_v4().into(),
-            key: "test",
+            key: format!("test-{i}"),
             required: i % 2 == 0,
             order: i as u32,
             datatype: "STRING",
@@ -759,7 +759,7 @@ async fn test_get_proof_schema_with_input_proof_relations() {
     let new_claim_schemas: Vec<ClaimInsertInfo> = (0..2)
         .map(|i| ClaimInsertInfo {
             id: Uuid::new_v4().into(),
-            key: "test",
+            key: format!("test-{i}"),
             required: i % 2 == 0,
             order: i as u32,
             datatype: "STRING",
@@ -771,7 +771,7 @@ async fn test_get_proof_schema_with_input_proof_relations() {
     let new_claim_schemas2: Vec<ClaimInsertInfo> = (0..2)
         .map(|i| ClaimInsertInfo {
             id: Uuid::new_v4().into(),
-            key: "test",
+            key: format!("test-{i}"),
             required: i % 2 == 0,
             order: 2 + i as u32,
             datatype: "STRING",

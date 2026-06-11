@@ -16,3 +16,4 @@ pub mod m20260526_124033_drop_validity_creds;
 pub mod m20260528_120000_bump_credential_schema_import_url_to_v2;
 pub mod m20260608_120000_add_user_nonce_and_user_sub_to_holder_wallet_instance;
 pub mod m20260609_090000_move_user_nonce_user_sub_to_wallet_instance;
+pub mod m20260611_052438_unique_claim_schema_keys;
