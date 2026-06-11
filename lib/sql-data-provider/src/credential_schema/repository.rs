@@ -4,6 +4,7 @@ use one_core::model::credential_schema::{
     CredentialSchema, CredentialSchemaListQuery, GetCredentialSchemaList,
     UpdateCredentialSchemaRequest,
 };
+use one_core::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use one_core::proto::transaction_manager::IsolationLevel;
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
 use one_core::repository::error::DataLayerError;
@@ -74,15 +75,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
                             .await
                             .map_err(|e| DataLayerError::Db(e.into()))?;
                     }
-                    if !claim_mappings.is_empty() {
-                        let mapping_models: Vec<
-                            credential_schema_format_claim_schema::ActiveModel,
-                        > = convert_inner(claim_mappings);
-                        credential_schema_format_claim_schema::Entity::insert_many(mapping_models)
-                            .exec(&self.db)
-                            .await
-                            .map_err(|e| DataLayerError::Db(e.into()))?;
-                    }
+                    self.insert_claim_mappings(claim_mappings).await?;
                     if !localized_texts.is_empty() {
                         self.localized_text_repository
                             .upsert_many(localized_texts)
@@ -231,6 +224,10 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
                             .await?;
                     }
                 }
+
+                if let Some(claim_mappings) = request.claim_mappings {
+                    self.insert_claim_mappings(claim_mappings).await?;
+                }
                 Ok::<_, DataLayerError>(())
             }
             .boxed())
@@ -279,5 +276,22 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
             &self.organisation_repository,
         )?
         .into())
+    }
+}
+
+impl CredentialSchemaProvider {
+    async fn insert_claim_mappings(
+        &self,
+        claim_mappings: Vec<CredentialSchemaFormatClaimSchema>,
+    ) -> Result<(), DataLayerError> {
+        if !claim_mappings.is_empty() {
+            let mapping_models: Vec<credential_schema_format_claim_schema::ActiveModel> =
+                convert_inner(claim_mappings);
+            credential_schema_format_claim_schema::Entity::insert_many(mapping_models)
+                .exec(&self.db)
+                .await
+                .map_err(|e| DataLayerError::Db(e.into()))?;
+        }
+        Ok(())
     }
 }

@@ -7,16 +7,19 @@ use dcql::{
 };
 use itertools::Itertools;
 use one_dto_mapper::convert_inner;
-use shared_types::{ClaimId, OrganisationId};
+use shared_types::{ClaimId, ClaimSchemaId, OrganisationId};
 use standardized_types::x509::KeyIdentifier;
 
 use crate::config::core_config::{CoreConfig, FormatType};
 use crate::error::ContextWithErrorCode;
+use crate::mapper::NESTED_CLAIM_MARKER;
+use crate::mapper::credential_schema_claim::claim_path_to_formatted_path;
 use crate::mapper::x509::pem_chain_to_authority_key_identifiers;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaListQuery};
+use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::list_filter::{ListFilterCondition, ListFilterValue, StringMatch};
 use crate::model::list_query::ListPagination;
 use crate::model::proof::Proof;
@@ -530,22 +533,39 @@ async fn select_claims(
 
     let mut missing_claims = vec![];
 
-    let credential_claim_schemas = credential
+    let credential_schema = credential
         .schema
         .as_ref()
         .ok_or(VerificationProtocolError::Failed(format!(
             "missing schema for credential {}",
             credential.id
+        )))?;
+    let formats = credential_schema.formats.as_ref().await?;
+    let mappings = formats
+        .first()
+        .ok_or(VerificationProtocolError::Failed(format!(
+            "empty formats on credential schema {}",
+            credential_schema.id
         )))?
-        .claim_schemas
+        .claim_mappings
         .as_ref()
         .await?;
+    let mappings_by_schema_id = mappings
+        .iter()
+        .map(|m| (m.claim_schema_id, m.clone()))
+        .collect();
+    let credential_claim_schemas = credential_schema.claim_schemas.as_ref().await?;
 
     let user_claim_path = formatter.user_claims_path();
     // add claims requested by the verifier
     for claim_filter in &filter.claims {
-        let matching_claims =
-            get_matching_claims(claims, claim_filter, &user_claim_path, select_children)?;
+        let matching_claims = get_matching_claims(
+            claims,
+            claim_filter,
+            &user_claim_path,
+            select_children,
+            &mappings_by_schema_id,
+        )?;
         if !matching_claims.is_empty() {
             matching_claims.into_iter().try_for_each(
                 |(ClaimMatchId { exact, .. }, matching_claim)| {
@@ -613,6 +633,7 @@ fn get_matching_claims<'a>(
     claim_filter: &ClaimFilter,
     user_claim_path: &[String],
     select_children: bool,
+    claim_mappings: &HashMap<ClaimSchemaId, CredentialSchemaFormatClaimSchema>,
 ) -> Result<HashMap<ClaimMatchId, &'a Claim>, VerificationProtocolError> {
     let values_filter = claim_filter
         .values
@@ -624,21 +645,27 @@ fn get_matching_claims<'a>(
         .iter()
         // use filter_map to propagate errors of fallible predicate
         .filter_map(|claim| {
-            dcql_path_exactly_matches_claim(&claim_filter.path, claim, claims, user_claim_path)
-                .map(|matches| {
-                    if matches
-                        && (values_filter.is_empty()
-                            || claim
-                                .value
-                                .as_ref()
-                                .is_some_and(|value| values_filter.contains(value)))
-                    {
-                        Some(claim)
-                    } else {
-                        None
-                    }
-                })
-                .transpose()
+            dcql_path_exactly_matches_claim(
+                &claim_filter.path,
+                claim,
+                claims,
+                user_claim_path,
+                claim_mappings,
+            )
+            .map(|matches| {
+                if matches
+                    && (values_filter.is_empty()
+                        || claim
+                            .value
+                            .as_ref()
+                            .is_some_and(|value| values_filter.contains(value)))
+                {
+                    Some(claim)
+                } else {
+                    None
+                }
+            })
+            .transpose()
         })
         .collect::<Result<_, _>>()?;
 
@@ -811,42 +838,95 @@ fn dcql_path_exactly_matches_claim(
     claim: &Claim,
     all_claims: &[Claim],
     user_claim_path: &[String],
+    claim_mappings: &HashMap<ClaimSchemaId, CredentialSchemaFormatClaimSchema>,
 ) -> Result<bool, VerificationProtocolError> {
-    let dcql_segments = if !claim
+    let schema = claim
         .schema
         .as_ref()
         .ok_or(VerificationProtocolError::Failed(format!(
             "missing schema for claim '{}'",
             claim.id
-        )))?
-        .metadata
-    {
+        )))?;
+    let dcql_segments = if !schema.metadata {
         adjust_dcql_path_for_user_claims(dcql_path, user_claim_path)?
     } else {
         dcql_path.segments.iter().collect()
     };
-    let claim_path_segments = claim.path.split('/').collect::<Vec<_>>();
+    let effective_path = if let Some(mapping) = claim_mappings.get(&schema.id) {
+        let (path, _) = claim_path_to_formatted_path(claim, schema, mapping)
+            .error_while("mapping claim path")?;
+        path
+    } else {
+        claim.path.to_owned()
+    };
+    let claim_path_segments = effective_path.split('/').collect::<Vec<_>>();
+
     if dcql_segments.len() != claim_path_segments.len() {
         // nesting depth mismatch -> no match
         return Ok(false);
     }
+    let mut claim_schemas = VecDeque::with_capacity(dcql_segments.len());
+    claim_schemas.push_front(schema);
+    if schema.array
+        && dcql_segments
+            .last()
+            .is_some_and(|s| matches!(s, PathSegment::ArrayAll | PathSegment::ArrayIndex(_)))
+    {
+        // Array claim schemas are shared between the elements and the container.
+        // The leaf schema thus needs to be included twice if the last segment addresses elements and not the container.
+        claim_schemas.push_front(schema);
+    }
+    while let Some((parent_key, _)) = claim_schemas
+        .front()
+        .and_then(|schema| schema.key.rsplit_once(NESTED_CLAIM_MARKER))
+    {
+        let parent_claim = all_claims
+            .iter()
+            .find(|claim| {
+                claim
+                    .schema
+                    .as_ref()
+                    .is_some_and(|claim_schema| claim_schema.key == parent_key)
+            })
+            .ok_or(VerificationProtocolError::Failed(format!(
+                "missing claim schema for claim '{}'",
+                claim.id
+            )))?;
+        let parent_schema =
+            parent_claim
+                .schema
+                .as_ref()
+                .ok_or(VerificationProtocolError::Failed(format!(
+                    "missing schema for claim '{}'",
+                    parent_claim.id
+                )))?;
+        claim_schemas.push_front(parent_schema);
+        if parent_schema.array {
+            // Array claim schemas are shared between the elements and the container, thus need to be
+            // included twice.
+            claim_schemas.push_front(parent_schema);
+        }
+    }
+
+    let mut array_flags = vec![];
+    if claim_schemas.len() < dcql_segments.len() {
+        // The root claim schema represents 2 levels in case of MDOC (also the namespace).
+        // The namespace is never an array.
+        array_flags.push(false);
+    }
+    array_flags.extend(claim_schemas.iter().map(|schema| schema.array));
 
     let mut current_path = "".to_string();
-    for (dcql_path_segment, claim_path_segment) in
-        dcql_segments.into_iter().zip(claim.path.split('/'))
+    for ((dcql_path_segment, claim_path_segment), is_array) in dcql_segments
+        .into_iter()
+        .zip(claim_path_segments)
+        .zip(array_flags)
     {
         current_path = if current_path.is_empty() {
             claim_path_segment.to_string()
         } else {
             format!("{current_path}/{claim_path_segment}")
         };
-        let schema = all_claims
-            .iter()
-            .find(|claim| claim.path == current_path)
-            .and_then(|claim| claim.schema.as_ref())
-            .ok_or(VerificationProtocolError::Failed(format!(
-                "missing schema for claim with path '{current_path}'"
-            )))?;
         match dcql_path_segment {
             PathSegment::PropertyName(name) => {
                 if name != claim_path_segment {
@@ -855,7 +935,7 @@ fn dcql_path_exactly_matches_claim(
                 }
             }
             PathSegment::ArrayIndex(index) => {
-                if !schema.array {
+                if !is_array {
                     // property is not an array -> no match
                     return Ok(false);
                 }
@@ -865,7 +945,7 @@ fn dcql_path_exactly_matches_claim(
                 }
             }
             PathSegment::ArrayAll => {
-                if !schema.array {
+                if !is_array {
                     // property is not an array -> no match
                     return Ok(false);
                 }

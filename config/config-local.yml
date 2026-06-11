@@ -138,6 +138,12 @@ verificationProtocol:
         allowInsecureHttpTransport: true
         redirectUri:
           allowedSchemes: ["http", "https"]
+  OPENID4VP_FINAL1_HAIP:
+    params:
+      public:
+        allowInsecureHttpTransport: true
+        redirectUri:
+          allowedSchemes: ["http", "https"]
   OPENID4VP_PROXIMITY_DRAFT00:
     display: "exchange.openid00_proximity"
     order: 4

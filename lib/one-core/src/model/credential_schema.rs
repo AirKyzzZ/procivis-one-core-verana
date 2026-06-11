@@ -14,6 +14,7 @@ use super::organisation::Organisation;
 use super::relation::{Related, RelatedVec};
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, NestedError};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
+use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::localized_text::LocalizedText;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::service::credential_schema::dto::{
@@ -122,6 +123,20 @@ impl CredentialSchema {
         }
 
         None
+    }
+
+    pub async fn is_v2(&self) -> Result<bool, NestedError> {
+        let formats = self.formats.as_ref().await?;
+        if formats.len() > 1 {
+            return Ok(true);
+        }
+        for format in formats.iter() {
+            let mappings = format.claim_mappings.as_ref().await?;
+            if !mappings.is_empty() {
+                return Ok(true);
+            }
+        }
+        Ok(false)
     }
 }
 
@@ -255,6 +270,7 @@ pub struct UpdateCredentialSchemaRequest {
     pub revocation_method: Option<Option<RevocationMethodId>>,
     pub format: Option<CredentialFormat>,
     pub claim_schemas: Option<Vec<ClaimSchema>>,
+    pub claim_mappings: Option<Vec<CredentialSchemaFormatClaimSchema>>,
     pub layout_type: Option<LayoutType>,
     pub layout_properties: Option<LayoutProperties>,
 }

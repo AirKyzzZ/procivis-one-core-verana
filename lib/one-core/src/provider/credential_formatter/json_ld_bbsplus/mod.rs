@@ -33,14 +33,13 @@ use crate::config::core_config::{
 };
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
 use crate::model::credential_schema::{CredentialSchema, LayoutType};
-use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::organisation::Organisation;
 use crate::proto::http_client::HttpClient;
 use crate::provider::caching_loader::json_ld_context::{ContextCache, JsonLdCachingLoader};
 use crate::provider::credential_formatter::json_ld_bbsplus::mapper::{
     mark_claims_selectively_disclosable, metadata_claims_with_sd_flags,
 };
-use crate::provider::credential_formatter::mapper::default_2_years;
+use crate::provider::credential_formatter::mapper::{default_2_years, to_format_with_mappings};
 use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -478,6 +477,13 @@ impl CredentialFormatter for JsonLdBbsplus {
             .unwrap_or_else(|| schema_name.clone());
 
         let credential_schema_id = Uuid::new_v4().into();
+        let format = to_format_with_mappings(
+            self.config_id.clone(),
+            credential_schema_id,
+            schema_id,
+            &claim_schemas,
+            now,
+        );
         let schema = CredentialSchema {
             id: credential_schema_id,
             deleted_at: None,
@@ -494,16 +500,7 @@ impl CredentialFormatter for JsonLdBbsplus {
             claim_schemas: claim_schemas.into(),
             organisation: organisation.clone().into(),
             transaction_code: None,
-            formats: vec![CredentialSchemaFormat {
-                id: Uuid::new_v4().into(),
-                created_date: now,
-                last_modified: now,
-                credential_schema_id,
-                format: "".into(), // Will be overridden based on config priority
-                schema_id,
-                claim_mappings: Default::default(),
-            }]
-            .into(),
+            formats: vec![format].into(),
             batch_size: None,
             allow_revocation: None,
             translations: Default::default(),

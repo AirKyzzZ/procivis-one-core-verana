@@ -35,6 +35,7 @@ use crate::model::common::GetListResponse;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
 use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, LayoutType};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
+use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::history::{HistoryAction, TrustResolutionResult};
 use crate::model::holder_wallet_instance::HolderWalletInstance;
@@ -308,6 +309,17 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
         translations: Default::default(),
     };
 
+    let credential_schema_format_id = Uuid::new_v4().into();
+    let claim_schema_mapping = CredentialSchemaFormatClaimSchema {
+        id: Uuid::new_v4().into(),
+        created_date: now,
+        last_modified: now,
+        credential_schema_format_id,
+        claim_schema_id: claim_schema.id,
+        technical_key: "NUMBER".to_string(),
+        namespace: None,
+    };
+
     let credential_id = Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
         .unwrap()
         .into();
@@ -357,13 +369,13 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
             last_modified: now,
             name: "schema".to_string(),
             formats: vec![CredentialSchemaFormat {
-                id: Uuid::new_v4().into(),
+                id: credential_schema_format_id,
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 credential_schema_id,
                 format: "JWT".into(),
                 schema_id: "CredentialSchemaId".to_owned(),
-                claim_mappings: Default::default(),
+                claim_mappings: vec![claim_schema_mapping].into(),
             }]
             .into(),
             revocation_method: None,

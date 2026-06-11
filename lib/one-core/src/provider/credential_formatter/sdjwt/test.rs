@@ -25,7 +25,7 @@ use crate::provider::credential_formatter::sdjwt::prepare_sd_presentation;
 use crate::provider::credential_formatter::vcdm::{
     ContextType, VcdmCredential, VcdmCredentialSubject,
 };
-use crate::service::test_utilities::{dummy_did, dummy_identifier};
+use crate::service::test_utilities::{dummy_credential, dummy_did, dummy_identifier};
 
 const W3C_USER_CLAIM_PATH: [&str; 2] = ["vc", "credentialSubject"];
 
@@ -49,6 +49,7 @@ async fn test_prepare_sd_presentation() {
 
     // Take name and age
     let presentation = CredentialPresentation {
+        credential: dummy_credential(),
         token: token.clone(),
         disclosed_keys: vec!["name".to_string(), "age".to_string()],
     };
@@ -69,6 +70,7 @@ async fn test_prepare_sd_presentation() {
 
     // Take name
     let presentation = CredentialPresentation {
+        credential: dummy_credential(),
         token: token.clone(),
         disclosed_keys: vec!["name".to_string()],
     };
@@ -88,6 +90,7 @@ async fn test_prepare_sd_presentation() {
 
     // Take age
     let presentation = CredentialPresentation {
+        credential: dummy_credential(),
         token: token.clone(),
         disclosed_keys: vec!["age".to_string()],
     };
@@ -105,6 +108,7 @@ async fn test_prepare_sd_presentation() {
 
     // Take none
     let presentation = CredentialPresentation {
+        credential: dummy_credential(),
         token,
         disclosed_keys: vec![],
     };
@@ -144,6 +148,7 @@ async fn test_prepare_sd_presentation_malformed() {
 
     // Take name and age
     let presentation = CredentialPresentation {
+        credential: dummy_credential(),
         token: token.clone(),
         disclosed_keys: vec!["name".to_string(), "age".to_string()],
     };
@@ -164,6 +169,7 @@ async fn test_prepare_sd_presentation_malformed() {
 
     // Take name
     let presentation = CredentialPresentation {
+        credential: dummy_credential(),
         token: token.clone(),
         disclosed_keys: vec!["name".to_string()],
     };
@@ -183,6 +189,7 @@ async fn test_prepare_sd_presentation_malformed() {
 
     // Take age
     let presentation = CredentialPresentation {
+        credential: dummy_credential(),
         token: token.clone(),
         disclosed_keys: vec!["age".to_string()],
     };
@@ -200,6 +207,7 @@ async fn test_prepare_sd_presentation_malformed() {
 
     // Take none
     let presentation = CredentialPresentation {
+        credential: dummy_credential(),
         token,
         disclosed_keys: vec![],
     };

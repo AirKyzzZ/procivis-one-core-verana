@@ -23,6 +23,7 @@ use crate::config::core_config::{
 };
 use crate::error::ContextWithErrorCode;
 use crate::model::certificate::Certificate;
+use crate::model::credential::Credential;
 use crate::model::credential_schema::{LayoutProperties, LayoutType};
 use crate::model::identifier::Identifier;
 use crate::proto::jwt::TokenError;
@@ -359,8 +360,9 @@ pub struct HolderBindingCtx {
     pub audience: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug)]
 pub struct CredentialPresentation {
+    pub credential: Credential,
     pub token: SerializedCredential,
     pub disclosed_keys: Vec<String>,
 }

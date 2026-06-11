@@ -600,6 +600,7 @@ async fn test_update_credential_schema_success() {
                 ..Default::default()
             }),
             layout_type: Some(LayoutType::Document),
+            claim_mappings: None,
         })
         .await;
     assert!(result.is_ok());

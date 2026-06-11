@@ -280,6 +280,7 @@ impl SSIHolderService {
                     .formatter_for_blob_and_schema(&credential_content, credential_schema)
                     .await?;
                 let credential_presentation = CredentialPresentation {
+                    credential: credential.clone(),
                     token: credential_content,
                     disclosed_keys: submitted_paths,
                 };
@@ -665,7 +666,9 @@ impl SSIHolderService {
             .get_credential(
                 &credential_id,
                 &CredentialRelations {
-                    claims: Some(Default::default()),
+                    claims: Some(ClaimRelations {
+                        schema: Some(Default::default()),
+                    }),
                     key: Some(Default::default()),
                     holder_identifier: Some(IdentifierRelations {
                         did: Some(Default::default()),
@@ -771,6 +774,7 @@ impl SSIHolderService {
             .await?;
 
         let credential_presentation = CredentialPresentation {
+            credential: credential.clone(),
             token: credential_content,
             // credential formatters do not use intermediary claims
             disclosed_keys: paths_to_leafs(presented_paths),

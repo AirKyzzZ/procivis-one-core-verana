@@ -17,8 +17,8 @@ use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
 use sha2::{Digest, Sha256, Sha384, Sha512};
 use shared_types::{
-    CredentialFormat, CredentialId, CredentialSchemaId, DidValue, OrganisationId,
-    RevocationMethodId, SerializedCredential,
+    CredentialFormat, CredentialId, CredentialSchemaFormatId, CredentialSchemaId, DidValue,
+    OrganisationId, RevocationMethodId, SerializedCredential,
 };
 use standardized_types::jwk::PublicJwk;
 use time::format_description::FormatItem;
@@ -40,12 +40,14 @@ use crate::config::core_config::{
     KeyStorageType, RevocationType, VerificationProtocolType,
 };
 use crate::error::ContextWithErrorCode;
+use crate::mapper::credential_schema_claim::claim_path_to_formatted_path;
 use crate::mapper::x509::pem_chain_into_x5c;
 use crate::mapper::{NESTED_CLAIM_MARKER, decode_cbor_base64, encode_cbor_base64};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
+use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::organisation::Organisation;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::cose::{CoseSign1, CoseSign1Builder};
@@ -310,10 +312,63 @@ impl CredentialFormatter for MdocFormatter {
             .iter()
             .map(|key| key.as_str())
             .collect();
+        let claims =
+            credential
+                .credential
+                .claims
+                .as_ref()
+                .ok_or(FormatterError::CouldNotFormat(
+                    "Missing credential claims".to_string(),
+                ))?;
+        let formats = credential
+            .credential
+            .schema
+            .as_ref()
+            .ok_or(FormatterError::CouldNotFormat(
+                "Missing schema on credential".to_string(),
+            ))?
+            .formats
+            .as_ref()
+            .await?;
+        let mappings = formats
+            .iter()
+            .find(|f| f.format == self.config_id)
+            .ok_or(FormatterError::CouldNotFormat(format!(
+                "Schema has no matching format for formatter {}",
+                self.config_id
+            )))?
+            .claim_mappings
+            .as_ref()
+            .await?;
 
         let mut elements_for_namespace = IndexMap::new();
         for disclosed_key in disclosed_keys {
-            match disclosed_key.split_once(NESTED_CLAIM_MARKER) {
+            let claim = claims.iter().find(|c| c.path == disclosed_key).ok_or(
+                FormatterError::CouldNotFormat(format!(
+                    "Missing claim for disclosed key {}",
+                    disclosed_key
+                )),
+            )?;
+            let claim_schema =
+                claim
+                    .schema
+                    .as_ref()
+                    .ok_or(FormatterError::CouldNotFormat(format!(
+                        "Missing claim schema for claim {}",
+                        claim.id
+                    )))?;
+            let disclosed_path = if let Some(mapping) = mappings
+                .iter()
+                .find(|m| m.claim_schema_id == claim_schema.id)
+            {
+                let (path, _) = claim_path_to_formatted_path(claim, claim_schema, mapping)
+                    .error_while("mapping claim path")?;
+                path
+            } else {
+                disclosed_key.to_string()
+            };
+
+            match disclosed_path.split_once(NESTED_CLAIM_MARKER) {
                 Some((namespace, path)) => {
                     let element = match path.split_once(NESTED_CLAIM_MARKER) {
                         Some((element, _)) => element,
@@ -321,13 +376,13 @@ impl CredentialFormatter for MdocFormatter {
                     };
 
                     elements_for_namespace
-                        .entry(namespace)
+                        .entry(namespace.to_owned())
                         .or_insert(vec![])
-                        .push(element);
+                        .push(element.to_string());
                 }
                 None => {
                     // the entire namespace is requested
-                    elements_for_namespace.insert(disclosed_key, vec![]);
+                    elements_for_namespace.insert(disclosed_path, vec![]);
                 }
             }
         }
@@ -343,7 +398,7 @@ impl CredentialFormatter for MdocFormatter {
                 return true;
             }
 
-            claims.retain(|claim| elements.contains(&claim.inner().element_identifier.as_str()));
+            claims.retain(|claim| elements.contains(&claim.inner().element_identifier));
 
             !claims.is_empty()
         });
@@ -461,7 +516,14 @@ impl CredentialFormatter for MdocFormatter {
         let now = crate::clock::now_utc();
         let doctype = mso.doc_type;
         let credential_id = Uuid::new_v4().into();
-        let mut claims = parse_claims(namespaces, self.datatype_provider.as_ref(), credential_id)?;
+        let credential_format_id = Uuid::new_v4().into();
+        let (mut claims, mut mappings) = parse_claims(
+            namespaces,
+            self.datatype_provider.as_ref(),
+            credential_id,
+            credential_format_id,
+        )?;
+        let doctype_schema_id = Uuid::new_v4().into();
         claims.push(Claim {
             id: Uuid::new_v4().into(),
             credential_id,
@@ -471,7 +533,7 @@ impl CredentialFormatter for MdocFormatter {
             path: "doctype".to_string(),
             selectively_disclosable: false,
             schema: Some(ClaimSchema {
-                id: Uuid::new_v4().into(),
+                id: doctype_schema_id,
                 created_date: now,
                 last_modified: now,
                 key: "doctype".to_string(),
@@ -483,6 +545,16 @@ impl CredentialFormatter for MdocFormatter {
                 translations: Default::default(),
             }),
         });
+        let doctype_mapping = CredentialSchemaFormatClaimSchema {
+            id: Uuid::new_v4().into(),
+            created_date: now,
+            last_modified: now,
+            credential_schema_format_id: credential_format_id,
+            claim_schema_id: doctype_schema_id,
+            technical_key: "doctype".to_string(),
+            namespace: None,
+        };
+        mappings.push(doctype_mapping);
 
         // Collect unique claim schemas
         let mut claim_schemas: Vec<ClaimSchema> = vec![];
@@ -512,13 +584,13 @@ impl CredentialFormatter for MdocFormatter {
             claim_schemas: claim_schemas.into(),
             transaction_code: None,
             formats: vec![CredentialSchemaFormat {
-                id: Uuid::new_v4().into(),
+                id: credential_format_id,
                 created_date: now,
                 last_modified: now,
                 credential_schema_id,
-                format: "".into(), // Will be overridden based on config priority
+                format: self.config_id.clone(),
                 schema_id: doctype,
-                claim_mappings: Default::default(),
+                claim_mappings: mappings.into(),
             }]
             .into(),
             batch_size: None,
@@ -1126,54 +1198,32 @@ fn parse_claims(
     namespaces: Namespaces,
     datatype_provider: &dyn DataTypeProvider,
     credential_id: CredentialId,
-) -> Result<Vec<Claim>, FormatterError> {
-    let mut result = vec![];
+    credential_schema_format_id: CredentialSchemaFormatId,
+) -> Result<(Vec<Claim>, Vec<CredentialSchemaFormatClaimSchema>), FormatterError> {
+    let mut claims_with_schemas = vec![];
+    let mut claim_mappings = vec![];
     for (namespace, inner_claims) in namespaces {
         for issuer_signed_item in inner_claims {
             let issuer_signed_item = issuer_signed_item.into_inner();
-            let path = format!("{namespace}/{}", issuer_signed_item.element_identifier);
-            let mut claims = parse_claim(
-                &path,
-                &path,
+            let paths = Paths::new(
+                issuer_signed_item.element_identifier.as_str(),
+                namespace.as_str(),
+            );
+            let (claims, mappings) = parse_claim(
+                paths,
                 issuer_signed_item.element_value,
                 datatype_provider,
                 credential_id,
+                credential_schema_format_id,
             )?;
 
-            // only the top-level claim / element root is selectively disclosable
-            if let Some(top_level_claim) = claims.iter_mut().find(|claim| claim.path == path) {
-                top_level_claim.selectively_disclosable = true;
-            }
-
-            result.extend(claims);
+            claims_with_schemas.extend(claims);
+            claim_mappings.extend(mappings);
         }
-
-        let now = crate::clock::now_utc();
-        result.push(Claim {
-            id: Uuid::new_v4().into(),
-            credential_id,
-            created_date: now,
-            last_modified: now,
-            value: None,
-            path: namespace.to_string(),
-            selectively_disclosable: true,
-            schema: Some(ClaimSchema {
-                id: Uuid::new_v4().into(),
-                created_date: now,
-                last_modified: now,
-                key: namespace,
-                business_key: None,
-                data_type: "OBJECT".to_owned(),
-                array: false,
-                metadata: false,
-                required: false,
-                translations: Default::default(),
-            }),
-        });
     }
 
     let mut known_schemas: HashMap<String, ClaimSchema> = HashMap::new();
-    for claim in result.iter_mut() {
+    for claim in claims_with_schemas.iter_mut() {
         let Some(schema) = claim.schema.as_ref() else {
             continue;
         };
@@ -1196,17 +1246,95 @@ fn parse_claims(
             }
         };
     }
+    // Only keep mappings of known schemas
+    claim_mappings.retain(|m| known_schemas.values().any(|cs| cs.id == m.claim_schema_id));
+    Ok((claims_with_schemas, claim_mappings))
+}
 
-    Ok(result)
+struct Paths {
+    claim_schema_path: String,
+    claim_path: String,
+    technical_path: String,
+    namespace: String,
+    root_level: bool,
+}
+
+impl Paths {
+    fn new(root_identifier: &str, namespace: &str) -> Self {
+        Self {
+            claim_schema_path: root_identifier.to_owned(),
+            claim_path: root_identifier.to_owned(),
+            technical_path: root_identifier.to_owned(),
+            namespace: namespace.to_owned(),
+            root_level: true,
+        }
+    }
+    fn claim_schema_path(&self) -> String {
+        if self.root_level {
+            return format!("{}_{}", self.namespace, self.claim_schema_path);
+        }
+        self.claim_schema_path.to_owned()
+    }
+
+    fn claim_path(&self) -> String {
+        if self.root_level {
+            return format!("{}_{}", self.namespace, self.claim_path);
+        }
+        self.claim_path.to_owned()
+    }
+
+    fn technical_path(&self) -> String {
+        self.technical_path.to_owned()
+    }
+
+    fn namespace(&self) -> Option<String> {
+        Some(self.namespace.to_owned())
+    }
+
+    fn is_root_level(&self) -> bool {
+        self.root_level
+    }
+
+    fn nest_object_property(&self, property_name: &str) -> Self {
+        Self {
+            claim_schema_path: format!(
+                "{}{NESTED_CLAIM_MARKER}{}",
+                self.claim_schema_path(),
+                property_name
+            ),
+            claim_path: format!(
+                "{}{NESTED_CLAIM_MARKER}{}",
+                self.claim_path(),
+                property_name
+            ),
+            technical_path: format!(
+                "{}{NESTED_CLAIM_MARKER}{}",
+                self.technical_path(),
+                property_name
+            ),
+            namespace: self.namespace.to_owned(),
+            root_level: false,
+        }
+    }
+
+    fn nest_array_index(&self, index: usize) -> Self {
+        Self {
+            claim_schema_path: self.claim_schema_path(),
+            claim_path: format!("{}{NESTED_CLAIM_MARKER}{}", self.claim_path(), index),
+            technical_path: self.technical_path(),
+            namespace: self.namespace.to_owned(),
+            root_level: false,
+        }
+    }
 }
 
 fn parse_claim(
-    claim_path: &str,
-    claim_schema_path: &str,
+    paths: Paths,
     value: Value,
     datatype_provider: &dyn DataTypeProvider,
     credential_id: CredentialId,
-) -> Result<Vec<Claim>, FormatterError> {
+    credential_schema_format_id: CredentialSchemaFormatId,
+) -> Result<(Vec<Claim>, Vec<CredentialSchemaFormatClaimSchema>), FormatterError> {
     let now = crate::clock::now_utc();
 
     // specific case of encoding picture claim as array
@@ -1214,155 +1342,146 @@ fn parse_claim(
         && let Ok(ExtractedClaim { data_type, value }) =
             datatype_provider.extract_cbor_claim(&value)
     {
-        return Ok(vec![Claim {
-            id: Uuid::new_v4().into(),
-            credential_id,
-            created_date: now,
-            last_modified: now,
-            value: Some(value),
-            path: claim_path.to_string(),
-            selectively_disclosable: false,
-            schema: Some(ClaimSchema {
-                id: Uuid::new_v4().into(),
-                created_date: now,
-                last_modified: now,
-                key: claim_schema_path.to_string(),
-                business_key: None,
-                data_type,
-                array: false,
-                metadata: false,
-                required: false,
-                translations: Default::default(),
-            }),
-        }]);
+        let claim = claim_with_schema(&paths, credential_id, now, data_type, Some(value));
+        let mapping = mapping_for_claim(&claim, &paths, credential_schema_format_id)?;
+        return Ok((vec![claim], vec![mapping]));
     }
 
     Ok(match value {
         Value::Array(values) => {
             // Check if array has all elements with the same type
             let Some(first) = values.first() else {
-                return Ok(vec![]);
+                return Ok((vec![], vec![]));
             };
             if !values.iter().all(|item| is_same_type(item, first)) {
                 return Err(FormatterError::CouldNotExtractCredentials(format!(
-                    "Non-homogenous array at: {claim_path}"
+                    "Non-homogenous array at: {}",
+                    paths.claim_path()
                 )));
             }
 
-            let mut subclaims: Vec<Claim> = vec![];
+            let mut claims = vec![];
+            let mut mappings = vec![];
             for (index, value) in values.into_iter().enumerate() {
-                let item_path = format!("{claim_path}/{index}");
-                let claims = parse_claim(
-                    &item_path,
-                    claim_schema_path,
+                let child_paths = paths.nest_array_index(index);
+                let (child_claims, child_mappings) = parse_claim(
+                    child_paths,
                     value,
                     datatype_provider,
                     credential_id,
+                    credential_schema_format_id,
                 )?;
-                subclaims.extend(claims);
+                claims.extend(child_claims);
+                mappings.extend(child_mappings);
             }
 
             // data type of the array elements based on first item data_type
-            let Some(first) = subclaims
-                .iter()
-                .find(|claim| claim.path == format!("{claim_path}/0"))
-                .and_then(|claim| claim.schema.as_ref())
-            else {
-                return Ok(vec![]);
+            let Some(first) = claims.first().and_then(|claim| claim.schema.as_ref()) else {
+                return Ok((vec![], vec![]));
             };
 
-            let mut result = vec![Claim {
-                id: Uuid::new_v4().into(),
-                credential_id,
-                created_date: now,
-                last_modified: now,
-                value: None,
-                path: claim_path.to_string(),
-                selectively_disclosable: false,
-                schema: Some(ClaimSchema {
-                    id: Uuid::new_v4().into(),
-                    created_date: now,
-                    last_modified: now,
-                    key: claim_schema_path.to_string(),
-                    business_key: None,
-                    data_type: first.data_type.to_owned(),
-                    array: true,
-                    metadata: false,
-                    required: false,
-                    translations: Default::default(),
-                }),
-            }];
-            result.extend(subclaims);
-            result
+            let mut claim =
+                claim_with_schema(&paths, credential_id, now, first.data_type.to_owned(), None);
+            claim
+                .schema
+                .as_mut()
+                .ok_or(FormatterError::CouldNotExtractCredentials(
+                    "missing array claim schema".to_owned(),
+                ))?
+                .array = true;
+            let mapping = mapping_for_claim(&claim, &paths, credential_schema_format_id)?;
+            // Insert parent claim & mapping _first_ so that it's schema (with the array flag set) will be used
+            // as the main schema for all child claims.
+            claims.insert(0, claim);
+            mappings.push(mapping);
+            (claims, mappings)
         }
         Value::Map(map) => {
-            let mut result = vec![];
+            let mut claims = vec![];
+            let mut mappings = vec![];
             for (key, value) in map {
                 let key = key.as_text().ok_or(FormatterError::JsonMapping(
                     "Expected a text map key".to_string(),
                 ))?;
-                let item_path = format!("{claim_path}/{key}");
-                let item_schema_path = format!("{claim_schema_path}/{key}");
-                let claims = parse_claim(
-                    &item_path,
-                    &item_schema_path,
+                let item_paths = paths.nest_object_property(key);
+                let (child_claims, child_mappings) = parse_claim(
+                    item_paths,
                     value,
                     datatype_provider,
                     credential_id,
+                    credential_schema_format_id,
                 )?;
-                result.extend(claims);
+                claims.extend(child_claims);
+                mappings.extend(child_mappings);
             }
 
-            result.push(Claim {
-                id: Uuid::new_v4().into(),
-                credential_id,
-                created_date: now,
-                last_modified: now,
-                value: None,
-                path: claim_path.to_string(),
-                selectively_disclosable: false,
-                schema: Some(ClaimSchema {
-                    id: Uuid::new_v4().into(),
-                    created_date: now,
-                    last_modified: now,
-                    key: claim_schema_path.to_string(),
-                    business_key: None,
-                    data_type: "OBJECT".to_owned(),
-                    array: false,
-                    metadata: false,
-                    required: false,
-                    translations: Default::default(),
-                }),
-            });
-
-            result
+            let claim = claim_with_schema(&paths, credential_id, now, "OBJECT".to_owned(), None);
+            let mapping = mapping_for_claim(&claim, &paths, credential_schema_format_id)?;
+            claims.push(claim);
+            mappings.push(mapping);
+            (claims, mappings)
         }
         simple_value => {
             let ExtractedClaim { data_type, value } = datatype_provider
                 .extract_cbor_claim(&simple_value)
                 .error_while("extracting CBOR claim")?;
 
-            vec![Claim {
-                id: Uuid::new_v4().into(),
-                credential_id,
-                created_date: now,
-                last_modified: now,
-                value: Some(value),
-                path: claim_path.to_string(),
-                selectively_disclosable: false,
-                schema: Some(ClaimSchema {
-                    id: Uuid::new_v4().into(),
-                    created_date: now,
-                    last_modified: now,
-                    key: claim_schema_path.to_string(),
-                    business_key: None,
-                    data_type,
-                    array: false,
-                    metadata: false,
-                    required: false,
-                    translations: Default::default(),
-                }),
-            }]
+            let claim = claim_with_schema(&paths, credential_id, now, data_type, Some(value));
+            let mapping = mapping_for_claim(&claim, &paths, credential_schema_format_id)?;
+            (vec![claim], vec![mapping])
         }
     })
+}
+
+fn mapping_for_claim(
+    claim: &Claim,
+    paths: &Paths,
+    credential_schema_format_id: CredentialSchemaFormatId,
+) -> Result<CredentialSchemaFormatClaimSchema, FormatterError> {
+    let schema = claim
+        .schema
+        .as_ref()
+        .ok_or(FormatterError::CouldNotExtractCredentials(format!(
+            "missing claim schema on claim {}",
+            claim.id
+        )))?;
+    Ok(CredentialSchemaFormatClaimSchema {
+        id: Uuid::new_v4().into(),
+        created_date: claim.created_date,
+        last_modified: claim.last_modified,
+        credential_schema_format_id,
+        claim_schema_id: schema.id,
+        technical_key: paths.technical_path(),
+        namespace: paths.namespace(),
+    })
+}
+
+fn claim_with_schema(
+    paths: &Paths,
+    credential_id: CredentialId,
+    now: OffsetDateTime,
+    data_type: String,
+    value: Option<String>,
+) -> Claim {
+    Claim {
+        id: Uuid::new_v4().into(),
+        credential_id,
+        created_date: now,
+        last_modified: now,
+        value,
+        path: paths.claim_path(),
+        selectively_disclosable: paths.is_root_level(),
+        schema: Some(ClaimSchema {
+            id: Uuid::new_v4().into(),
+            created_date: now,
+            last_modified: now,
+            key: paths.claim_schema_path(),
+            business_key: None,
+            data_type,
+            array: false,
+            metadata: false,
+            required: false,
+            translations: Default::default(),
+        }),
+    }
 }

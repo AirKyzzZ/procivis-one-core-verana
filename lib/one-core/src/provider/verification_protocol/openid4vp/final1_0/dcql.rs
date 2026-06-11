@@ -1,9 +1,12 @@
+use std::collections::HashMap;
+
 use convert_case::{Case, Casing};
 use dcql::{ClaimQuery, ClaimQueryId, CredentialFormat, CredentialQuery, DcqlQuery};
 
 use crate::config::core_config::FormatType;
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::credential_schema::CredentialSchema;
+use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::verification_protocol::FormatMapper;
@@ -39,10 +42,21 @@ pub async fn create_dcql_query(
                 .ok_or(VerificationProtocolError::Failed(
                     "Claim schemas not found".to_string(),
                 ))?;
-        let schema_format = credential_schema.format().await?;
-        let formatter = credential_formatter_provider.get_credential_formatter(&schema_format)?;
+        let formats = credential_schema.formats.as_ref().await?;
+        let format = formats
+            .first()
+            .ok_or(VerificationProtocolError::Failed(format!(
+                "empty formats on credential schema {}",
+                credential_schema.id
+            )))?;
+        let mappings = format.claim_mappings.as_ref().await?;
+        let mappings_by_schema_id: HashMap<_, _> = mappings
+            .into_iter()
+            .map(|m| (m.claim_schema_id, m))
+            .collect();
+        let formatter = credential_formatter_provider.get_credential_formatter(&format.format)?;
 
-        let credential_format = format_to_type_mapper(&schema_format)?;
+        let credential_format = format_to_type_mapper(&format.format)?;
         let dcql_format: CredentialFormat = credential_format.into();
 
         let schema_id = credential_schema.schema_id().await?;
@@ -64,11 +78,13 @@ pub async fn create_dcql_query(
         let claim_queries: Vec<ClaimQuery> = claim_schemas
             .iter()
             .map(|claim_schema| {
+                let mapping = mappings_by_schema_id.get(&claim_schema.schema.id);
                 let claim_query_builder = ClaimQuery::builder()
                     .id(claim_schema.schema.id.to_string())
                     .path(format_dcql_path(
                         &claim_schema.schema.key,
                         formatter.user_claims_path(),
+                        mapping.copied(), // resolves the first reference of the && value
                     ))
                     .required(claim_schema.required);
 
@@ -132,7 +148,28 @@ async fn w3c_credential_query_type_values(
     ])
 }
 
-fn format_dcql_path(claim_key: &str, mut user_claim_path: Vec<String>) -> Vec<String> {
-    user_claim_path.extend(claim_key.split(NESTED_CLAIM_MARKER).map(str::to_string));
+fn format_dcql_path(
+    claim_key: &str,
+    mut user_claim_path: Vec<String>,
+    mapping: Option<&CredentialSchemaFormatClaimSchema>,
+) -> Vec<String> {
+    // Note: Reaching into arrays is _not_ supported by our verifier. Hence, there is no handling for array index selectors.
+    let effective_claim_key = if let Some(mapping) = mapping {
+        if let Some(namespace) = &mapping.namespace {
+            format!(
+                "{}{NESTED_CLAIM_MARKER}{}",
+                namespace, mapping.technical_key
+            )
+        } else {
+            mapping.technical_key.clone()
+        }
+    } else {
+        claim_key.to_string()
+    };
+    user_claim_path.extend(
+        effective_claim_key
+            .split(NESTED_CLAIM_MARKER)
+            .map(str::to_string),
+    );
     user_claim_path
 }

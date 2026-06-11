@@ -3,9 +3,10 @@ use std::collections::HashMap;
 use convert_case::{Case, Casing};
 use indexmap::IndexSet;
 use one_dto_mapper::{convert_inner, try_convert_inner};
-use shared_types::CredentialSchemaId;
-use time::Duration;
+use shared_types::{CredentialFormat, CredentialSchemaId};
+use time::{Duration, OffsetDateTime};
 use url::Url;
+use uuid::Uuid;
 use uuid::fmt::Urn;
 
 use super::common::map_claims;
@@ -14,8 +15,10 @@ use super::nest_claims;
 use super::vcdm::{ContextType, VcdmCredential, VcdmCredentialSubject};
 use crate::config::core_config::{CoreConfig, FormatType};
 use crate::error::ContextWithErrorCode;
+use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::Credential;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
+use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     CredentialClaim, CredentialClaimValue, CredentialSchemaMetadata, CredentialStatus, Issuer,
@@ -280,5 +283,38 @@ impl CredentialClaimValue {
 
     pub fn is_array(&self) -> bool {
         matches!(self, Self::Array(_))
+    }
+}
+
+pub(super) fn to_format_with_mappings(
+    format: CredentialFormat,
+    credential_schema_id: CredentialSchemaId,
+    schema_id: String,
+    claim_schemas: &[ClaimSchema],
+    now: OffsetDateTime,
+) -> CredentialSchemaFormat {
+    let credential_schema_format_id = Uuid::new_v4().into();
+    let mut claim_mappings = Vec::with_capacity(claim_schemas.len());
+    for claim_schema in claim_schemas {
+        let mapping = CredentialSchemaFormatClaimSchema {
+            id: Uuid::new_v4().into(),
+            created_date: now,
+            last_modified: now,
+            credential_schema_format_id,
+            claim_schema_id: claim_schema.id,
+            technical_key: claim_schema.key.clone(),
+            namespace: None,
+        };
+        claim_mappings.push(mapping);
+    }
+
+    CredentialSchemaFormat {
+        id: credential_schema_format_id,
+        created_date: now,
+        last_modified: now,
+        credential_schema_id,
+        format,
+        schema_id,
+        claim_mappings: claim_mappings.into(),
     }
 }

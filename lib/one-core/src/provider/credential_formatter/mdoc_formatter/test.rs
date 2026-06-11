@@ -1085,7 +1085,7 @@ async fn test_parse_credential() {
         datetime!(2025-10-15 08:58:13 UTC)
     );
     let claims = credential.claims.unwrap();
-    assert_eq!(claims.len(), 9);
+    assert_eq!(claims.len(), 7);
 
     let get_claim_paths = |filter: &dyn Fn(&Claim) -> bool| {
         HashSet::from_iter(
@@ -1099,18 +1099,12 @@ async fn test_parse_credential() {
     // intermediary
     assert_eq!(
         get_claim_paths(&|claim| claim.value.is_none()),
-        hashset! {
-            "namespace1", "namespace1/obj",
-            "namespace2", "namespace2/arr"
-        }
+        hashset! { "namespace1_obj", "namespace2_arr" }
     );
     // leaf
     assert_eq!(
         get_claim_paths(&|claim| claim.value == Some("value".to_string())),
-        hashset! {
-            "namespace1/str", "namespace1/obj/nestedStr",
-            "namespace2/arr/0", "namespace2/arr/1"
-        }
+        hashset! { "namespace1_str", "namespace1_obj/nestedStr", "namespace2_arr/0", "namespace2_arr/1" }
     );
     // doctype meta claim
     let doctype_claim = claims.iter().find(|claim| claim.path == "doctype").unwrap();
@@ -1120,20 +1114,17 @@ async fn test_parse_credential() {
     // check selectively disclosable flags
     assert_eq!(
         get_claim_paths(&|claim| claim.selectively_disclosable),
-        hashset! {
-            "namespace1", "namespace1/str", "namespace1/obj",
-            "namespace2", "namespace2/arr"
-        }
+        hashset! {"namespace1_str", "namespace1_obj", "namespace2_arr"}
     );
 
     // claim schema ids of siblings must match
     let arr_0_claim = claims
         .iter()
-        .find(|claim| claim.path == "namespace2/arr/0")
+        .find(|claim| claim.path == "namespace2_arr/0")
         .unwrap();
     let arr_1_claim = claims
         .iter()
-        .find(|claim| claim.path == "namespace2/arr/1")
+        .find(|claim| claim.path == "namespace2_arr/1")
         .unwrap();
     assert_eq!(
         arr_0_claim.schema.as_ref().unwrap().id,
@@ -1143,7 +1134,7 @@ async fn test_parse_credential() {
     let schema = credential.schema.unwrap();
     assert_eq!(schema.schema_id().await.unwrap(), "pavel.7545.strings");
     let claim_schemas = schema.claim_schemas.as_ref().await.unwrap();
-    assert_eq!(claim_schemas.len(), 7);
+    assert_eq!(claim_schemas.len(), 5);
 
     let get_claim_schema_keys = |filter: &dyn Fn(&ClaimSchema) -> bool| {
         HashSet::from_iter(
@@ -1156,11 +1147,7 @@ async fn test_parse_credential() {
 
     assert_eq!(
         get_claim_schema_keys(&|_| true),
-        hashset! {
-            "namespace1", "namespace1/str", "namespace1/obj", "namespace1/obj/nestedStr",
-            "namespace2", "namespace2/arr",
-            "doctype"
-        }
+        hashset! { "namespace1_str", "namespace1_obj", "namespace1_obj/nestedStr", "namespace2_arr", "doctype" }
     );
 
     assert_eq!(
@@ -1170,23 +1157,56 @@ async fn test_parse_credential() {
 
     assert_eq!(
         get_claim_schema_keys(&|schema| schema.data_type == "OBJECT"),
-        hashset! {
-            "namespace1", "namespace1/obj",
-            "namespace2"
-        }
+        hashset! { "namespace1_obj" }
     );
 
     assert_eq!(
         get_claim_schema_keys(&|schema| schema.data_type == "STRING"),
-        hashset! {
-            "namespace1/str", "namespace1/obj/nestedStr",
-            "namespace2/arr",
-            "doctype"
-        }
+        hashset! { "namespace1_str", "namespace1_obj/nestedStr", "namespace2_arr", "doctype" }
     );
 
     assert_eq!(
         get_claim_schema_keys(&|schema| schema.array),
-        hashset! { "namespace2/arr" }
+        hashset! { "namespace2_arr" }
+    );
+
+    let formats = schema.formats.as_ref().await.unwrap();
+    let mappings = formats
+        .first()
+        .unwrap()
+        .claim_mappings
+        .as_ref()
+        .await
+        .unwrap();
+    assert_eq!(mappings.len(), 5);
+    assert!(
+        mappings
+            .iter()
+            .all(|m| claim_schemas.iter().any(|s| s.id == m.claim_schema_id))
+    );
+    assert_eq!(
+        mappings
+            .iter()
+            .map(|m| m.claim_schema_id)
+            .collect::<HashSet<_>>()
+            .len(),
+        5
+    );
+
+    let get_mapping_keys = |filter: &dyn Fn(&CredentialSchemaFormatClaimSchema) -> bool| {
+        HashSet::from_iter(
+            mappings
+                .iter()
+                .filter(|mapping| filter(mapping))
+                .map(|mapping| mapping.technical_key.as_str()),
+        )
+    };
+    assert_eq!(
+        get_mapping_keys(&|mapping| mapping.namespace == Some("namespace1".to_string())),
+        hashset! { "obj", "str", "obj/nestedStr" }
+    );
+    assert_eq!(
+        get_mapping_keys(&|mapping| mapping.namespace == Some("namespace2".to_string())),
+        hashset! { "arr" }
     );
 }

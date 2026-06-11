@@ -8,9 +8,11 @@ use super::{HolderInteractionData, OpenID4VCIFinal1_0, SubmitIssuerResponse};
 use crate::clock::now_utc;
 use crate::config::core_config::BlobStorageType;
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin};
+use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::mapper::credential_schema_claim::add_fallback_translation;
 use crate::mapper::oidc::map_from_oidc_format_to_core_detailed;
 use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
+use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
     Credential, CredentialRelations, CredentialStateEnum, CredentialType,
@@ -18,7 +20,6 @@ use crate::model::credential::{
 use crate::model::credential_schema::{
     CredentialSchema, LayoutType, UpdateCredentialSchemaRequest,
 };
-use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::history::{
     History, HistoryAction, HistoryEntityType, HistoryMetadata, HistorySource,
     TrustResolutionMetadata, TrustResolutionResult, WalletRelyingPartyMetadata,
@@ -238,22 +239,101 @@ impl OpenID4VCIFinal1_0 {
 
     async fn process_schema(
         &self,
-        main_credential: &mut Credential,
+        credential: &mut Credential,
         organisation: &Organisation,
         interaction_data: &HolderInteractionData,
         format: &CredentialFormat,
     ) -> Result<CredentialSchema, IssuanceProtocolError> {
         let mut schema = self
-            .prepare_credential_schema(interaction_data, main_credential, format, organisation)
+            .prepare_credential_schema(interaction_data, credential, organisation)
             .await?;
         let claim_schema_update = validate_existing_and_find_new_claim_schemas(
             &mut schema,
-            main_credential,
+            credential,
+            format,
             &self.config.default_language,
             true,
         )
         .await?;
-        if let Some(new_claim_schemas) = claim_schema_update {
+
+        // TODO ONE-9985: Clean up all the v1 related logic
+        if let Some(mut new_claim_schemas) = claim_schema_update {
+            let is_v2_schema = schema.is_v2().await?;
+
+            let mut new_mappings = vec![];
+            let formats = schema.formats.as_ref().await?;
+            let mut namespace_backfilling = vec![];
+            for format in &*formats {
+                let mappings = format.claim_mappings.as_ref().await?;
+                for mapping in &*mappings {
+                    if let Some(claim_schema) = new_claim_schemas
+                        .iter_mut()
+                        .find(|c| c.id == mapping.claim_schema_id)
+                    {
+                        if is_v2_schema {
+                            new_mappings.push(mapping.clone());
+                        } else if let Some(namespace) = mapping.namespace.as_ref() {
+                            claim_schema.key =
+                                format!("{}{NESTED_CLAIM_MARKER}{}", namespace, claim_schema.key);
+                            if let Some(claim) = credential
+                                .claims
+                                .iter_mut()
+                                .flat_map(|c| c.iter_mut())
+                                .find(|c| {
+                                    c.schema.as_ref().is_some_and(|cs| cs.id == claim_schema.id)
+                                })
+                            {
+                                claim.path =
+                                    format!("{}{NESTED_CLAIM_MARKER}{}", namespace, claim.path);
+                            }
+                            namespace_backfilling.push(namespace.to_owned());
+                        }
+                    }
+                }
+            }
+
+            for namespace in namespace_backfilling {
+                let claim_schemas = schema.claim_schemas.as_ref().await?;
+                if !claim_schemas.iter().any(|cs| cs.key == namespace) {
+                    let now = now_utc();
+                    let namespace_schema = ClaimSchema {
+                        id: Uuid::new_v4().into(),
+                        key: namespace.to_owned(),
+                        business_key: None,
+                        data_type: "OBJECT".to_string(),
+                        created_date: now,
+                        last_modified: now,
+                        array: false,
+                        metadata: false,
+                        required: false,
+                        translations: Default::default(),
+                    };
+                    new_claim_schemas.push(namespace_schema.clone());
+                    let claims =
+                        credential
+                            .claims
+                            .as_mut()
+                            .ok_or(IssuanceProtocolError::Failed(
+                                "missing credential claims".to_string(),
+                            ))?;
+                    claims.push(Claim {
+                        id: Uuid::new_v4().into(),
+                        credential_id: credential.id,
+                        created_date: now,
+                        last_modified: now,
+                        value: None,
+                        path: namespace.to_owned(),
+                        selectively_disclosable: false,
+                        schema: Some(namespace_schema),
+                    })
+                }
+            }
+
+            let claim_mappings = if new_mappings.is_empty() {
+                None
+            } else {
+                Some(new_mappings)
+            };
             self.credential_schema_repository
                 .update_credential_schema(UpdateCredentialSchemaRequest {
                     id: schema.id,
@@ -262,6 +342,7 @@ impl OpenID4VCIFinal1_0 {
                     format: None,
                     layout_type: None,
                     layout_properties: None,
+                    claim_mappings,
                 })
                 .await
                 .error_while("updating credential schema")?;
@@ -420,7 +501,7 @@ impl OpenID4VCIFinal1_0 {
                 .as_ref(),
         )?;
 
-        let (_, formatter) = self
+        let (config_key, formatter) = self
             .formatter_provider
             .get_formatter_by_type(format_type)
             .ok_or_else(|| {
@@ -454,6 +535,7 @@ impl OpenID4VCIFinal1_0 {
         validate_existing_and_find_new_claim_schemas(
             &mut schema,
             &mut batch_credential.credential,
+            &config_key,
             &self.config.default_language,
             false,
         )
@@ -632,7 +714,6 @@ impl OpenID4VCIFinal1_0 {
         &self,
         interaction_data: &HolderInteractionData,
         parsed_credential: &Credential,
-        format: &CredentialFormat,
         organisation: &Organisation,
     ) -> Result<CredentialSchema, IssuanceProtocolError> {
         let mut schema = parsed_credential
@@ -647,19 +728,6 @@ impl OpenID4VCIFinal1_0 {
             &self.config.default_language,
         )
         .await?;
-
-        let schema_id = schema.schema_id().await?;
-        let now = now_utc();
-        schema.formats = vec![CredentialSchemaFormat {
-            id: Uuid::new_v4().into(),
-            created_date: now,
-            last_modified: now,
-            credential_schema_id: schema.id,
-            format: format.to_owned(),
-            schema_id,
-            claim_mappings: Default::default(),
-        }]
-        .into();
         schema.batch_size = interaction_data.batch_size.map(|size| size as _);
         schema.organisation = organisation.to_owned().into();
         schema.layout_type = LayoutType::Card;
@@ -747,6 +815,7 @@ async fn get_or_create_credential_schema(
 async fn validate_existing_and_find_new_claim_schemas(
     stored_schema: &mut CredentialSchema,
     credential: &mut Credential,
+    format: &CredentialFormat,
     default_language: &str,
     allow_new_claim_schemas: bool,
 ) -> Result<Option<Vec<ClaimSchema>>, IssuanceProtocolError> {
@@ -756,22 +825,76 @@ async fn validate_existing_and_find_new_claim_schemas(
         .as_mut()
         .ok_or(IssuanceProtocolError::Failed("Missing claims".to_string()))?;
 
-    let parsed_claim_schemas = credential
+    let parsed_schema = credential
         .schema
         .as_ref()
-        .ok_or(IssuanceProtocolError::Failed("Missing schema".to_string()))?
-        .claim_schemas
+        .ok_or(IssuanceProtocolError::Failed("Missing schema".to_string()))?;
+    let parsed_claim_schemas = parsed_schema.claim_schemas.as_ref().await?.to_owned();
+
+    let parsed_formats = parsed_schema.formats.as_ref().await?;
+    let parsed_mappings = parsed_formats
+        .iter()
+        .find(|f| f.format == *format)
+        .ok_or(IssuanceProtocolError::Failed(format!(
+            "No matching parsed format found for `{format}`"
+        )))?
+        .claim_mappings
         .as_ref()
-        .await?
-        .to_owned();
+        .await?;
+
+    let stored_formats = stored_schema.formats.as_ref().await?;
+    let stored_mappings = stored_formats
+        .iter()
+        .find(|f| f.format == *format)
+        .ok_or(IssuanceProtocolError::Failed(format!(
+            "No matching stored format found for `{format}`"
+        )))?
+        .claim_mappings
+        .as_ref()
+        .await?;
 
     let mut stored_claim_schemas = stored_schema.claim_schemas.as_mut().await?;
     for parsed_claim_schema in parsed_claim_schemas {
-        let known_claim_schema = stored_claim_schemas
+        let parsed_mapping = parsed_mappings
             .iter()
-            .find(|schema| schema.key == parsed_claim_schema.key);
+            .find(|m| m.claim_schema_id == parsed_claim_schema.id)
+            .ok_or(IssuanceProtocolError::Failed(format!(
+                "missing mapping for claim schema `{}`",
+                parsed_claim_schema.key
+            )))?;
+        let stored_claim_schema_id = if stored_mappings.is_empty() {
+            // V1 stored schema
+            let mapping_key = if let Some(namespace) = &parsed_mapping.namespace {
+                format!(
+                    "{}{NESTED_CLAIM_MARKER}{}",
+                    namespace, parsed_mapping.technical_key
+                )
+            } else {
+                parsed_mapping.technical_key.to_string()
+            };
+            stored_claim_schemas
+                .iter()
+                .find(|s| s.key == mapping_key)
+                .map(|s| s.id)
+        } else {
+            // V2 stored schema
+            stored_mappings
+                .iter()
+                .find(|m| {
+                    m.technical_key == parsed_mapping.technical_key
+                        && m.namespace == parsed_mapping.namespace
+                })
+                .map(|m| m.claim_schema_id)
+        };
 
-        if let Some(known_claim_schema) = known_claim_schema {
+        if let Some(stored_claim_schema_id) = stored_claim_schema_id {
+            let known_claim_schema = stored_claim_schemas
+                .iter()
+                .find(|schema| schema.id == stored_claim_schema_id)
+                .ok_or(IssuanceProtocolError::Failed(format!(
+                    "stored claim schema {} not found",
+                    stored_claim_schema_id
+                )))?;
             // link all matching credential claims to the stored claim_schema
             for claim in claims.iter_mut().filter(|claim| {
                 claim
@@ -802,6 +925,9 @@ async fn validate_existing_and_find_new_claim_schemas(
             );
         }
     }
+
+    drop(parsed_mappings);
+
     if !allow_new_claim_schemas && !new_claim_schemas.is_empty() {
         return Err(IssuanceProtocolError::Failed(format!(
             "Unknown claims found: {}",
@@ -812,6 +938,7 @@ async fn validate_existing_and_find_new_claim_schemas(
         )));
     }
     stored_claim_schemas.extend(new_claim_schemas.clone());
+    drop(parsed_formats);
     drop(stored_claim_schemas);
     credential.schema = Some(stored_schema.to_owned());
     if new_claim_schemas.is_empty() {

@@ -39,7 +39,9 @@ use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
-use crate::service::test_utilities::{dummy_did, dummy_identifier, dummy_organisation};
+use crate::service::test_utilities::{
+    dummy_credential, dummy_did, dummy_identifier, dummy_organisation,
+};
 
 fn get_credential_data(status: CredentialStatus, core_base_url: &str) -> CredentialData {
     let issuance_date: OffsetDateTime = crate::clock::now_utc();
@@ -696,6 +698,7 @@ async fn test_format_credential_presentation() {
 
     // Both
     let credential_presentation = CredentialPresentation {
+        credential: dummy_credential(),
         token: jwt_token.into(),
         disclosed_keys: vec!["name".to_string(), "age".to_string()],
     };
@@ -708,6 +711,7 @@ async fn test_format_credential_presentation() {
 
     // Just name
     let credential_presentation = CredentialPresentation {
+        credential: dummy_credential(),
         token: jwt_token.into(),
         disclosed_keys: vec!["name".to_string()],
     };

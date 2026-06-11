@@ -1,8 +1,6 @@
-use std::collections::VecDeque;
-
 use crate::config::core_config::{CoreConfig, DatatypeType};
 use crate::error::ContextWithErrorCode;
-use crate::mapper::{NESTED_CLAIM_MARKER, NESTED_CLAIM_MARKER_STR};
+use crate::mapper::credential_schema_claim::claim_path_to_formatted_path;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::Credential;
@@ -114,74 +112,11 @@ fn claim_to_published_claim(
     };
 
     // map to technical keys
-    let (key, array_item) = map_path(claim, claim_schema, claim_mapping)?;
+    let (key, array_item) = claim_path_to_formatted_path(claim, claim_schema, claim_mapping)?;
     Ok(PublishedClaim {
         key,
         value,
         datatype: Some(claim_schema.data_type.clone()),
         array_item,
     })
-}
-
-fn map_path(
-    claim: &Claim,
-    claim_schema: &ClaimSchema,
-    claim_mapping: &CredentialSchemaFormatClaimSchema,
-) -> Result<(String, bool), IssuanceProtocolError> {
-    let key_segments = claim_schema
-        .key
-        .split(NESTED_CLAIM_MARKER)
-        .collect::<Vec<&str>>();
-    let technical_key_segments = claim_mapping
-        .technical_key
-        .split(NESTED_CLAIM_MARKER)
-        .collect::<Vec<&str>>();
-    let mut path_segments = claim
-        .path
-        .split(NESTED_CLAIM_MARKER)
-        .collect::<VecDeque<&str>>();
-    if key_segments.len() != technical_key_segments.len() {
-        return Err(IssuanceProtocolError::Failed(format!(
-            "key `{}` and technical key `{}` have different number of segments",
-            claim_schema.key, claim_mapping.technical_key
-        )));
-    }
-    let mut mapped_path = vec![];
-    for (key_segment, technical_key_segment) in
-        key_segments.iter().zip(technical_key_segments.iter())
-    {
-        map_array_indices(&mut path_segments, key_segment, &mut mapped_path)?;
-        mapped_path.push(technical_key_segment);
-    }
-    let mut array_item = false;
-    if !path_segments.is_empty() {
-        // there are path segments left over, which _must_ be an array indices, so _this_ claim is an array item
-        array_item = true;
-        mapped_path.extend(path_segments);
-    }
-    if let Some(namespace) = &claim_mapping.namespace {
-        mapped_path.insert(0, namespace);
-    }
-    Ok((mapped_path.join(NESTED_CLAIM_MARKER_STR), array_item))
-}
-
-/// Maps path segments to the mapped path until one matches the key segment.
-/// The path may contain additional segments (the array indices), which are not represented in the
-/// schema keys, which is why we need to do this in the first place.
-fn map_array_indices<'a>(
-    path_segments: &mut VecDeque<&'a str>,
-    key_segment: &str,
-    mapped_path: &mut Vec<&'a str>,
-) -> Result<(), IssuanceProtocolError> {
-    loop {
-        let Some(curr_path_segment) = path_segments.pop_front() else {
-            return Err(IssuanceProtocolError::Failed(format!(
-                "path segment missing for key segment `{key_segment}`"
-            )));
-        };
-        if curr_path_segment == key_segment {
-            return Ok(());
-        }
-        mapped_path.push(curr_path_segment);
-    }
 }
