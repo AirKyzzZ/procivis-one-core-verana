@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use dcql::CredentialMeta;
 use indexmap::IndexMap;
@@ -8,22 +8,21 @@ use url::Url;
 use uuid::Uuid;
 
 use super::dto::{
-    CreateCredentialSchemaRequestDTO, CreateCredentialSchemaV2RequestDTO, CredentialClaimSchemaDTO,
-    CredentialClaimSchemaRequestDTO, CredentialClaimSchemaTranslationsDTO,
-    CredentialClaimSchemaV2DTO, CredentialSchemaBackgroundPropertiesRequestDTO,
-    CredentialSchemaCodePropertiesDTO, CredentialSchemaDcqlResponseDTO,
-    CredentialSchemaDetailResponseDTO, CredentialSchemaDetailV2ResponseDTO,
-    CredentialSchemaFilterParamsDTO, CredentialSchemaFilterValue,
-    CredentialSchemaFormatResponseDTO, CredentialSchemaListItemResponseDTO,
+    CreateCredentialSchemaV2RequestDTO, CredentialClaimSchemaDTO, CredentialClaimSchemaRequestDTO,
+    CredentialClaimSchemaTranslationsDTO, CredentialClaimSchemaV2DTO,
+    CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaCodePropertiesDTO,
+    CredentialSchemaDcqlResponseDTO, CredentialSchemaDetailResponseDTO,
+    CredentialSchemaDetailV2ResponseDTO, CredentialSchemaFilterParamsDTO,
+    CredentialSchemaFilterValue, CredentialSchemaFormatResponseDTO,
+    CredentialSchemaLayoutPropertiesRequestDTO, CredentialSchemaListItemResponseDTO,
     CredentialSchemaListItemV2ResponseDTO, CredentialSchemaLogoPropertiesRequestDTO,
     CredentialSchemaTranslationsDTO,
 };
 use super::error::CredentialSchemaServiceError;
-use crate::config::core_config::{CoreConfig, FormatType};
+use crate::config::core_config::{CoreConfig, DatatypeType, FormatType};
 use crate::error::{ContextWithErrorCode, NestedError};
 use crate::mapper::credential_schema_claim::{
-    claim_schema_from_metadata_claim_schema, claim_schema_to_dto, from_jwt_request_claim_schema,
-    translations_to_i18n,
+    claim_schema_from_metadata_claim_schema, claim_schema_to_dto, translations_to_i18n,
 };
 use crate::mapper::{NESTED_CLAIM_MARKER, remove_first_nesting_layer};
 use crate::model::claim_schema::ClaimSchema;
@@ -45,9 +44,111 @@ use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::Context;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 
-pub(crate) async fn schema_to_detail_response_dto(
+pub(super) fn map_v1_mdoc_create_claims_to_v2(
+    claims: Vec<CredentialClaimSchemaRequestDTO>,
+    config: &CoreConfig,
+    format: &CredentialFormat,
+    layout_properties: &mut Option<CredentialSchemaLayoutPropertiesRequestDTO>,
+) -> Result<Vec<CredentialClaimSchemaRequestDTO>, CredentialSchemaServiceError> {
+    let mut result = vec![];
+
+    #[derive(Clone, Copy, Hash, PartialEq, Eq)]
+    enum LayoutClaimAttribute {
+        Primary,
+        Secondary,
+        Picture,
+        Code,
+    }
+    let mut modified_layout_attrs = HashSet::new();
+    let mut known_keys = HashSet::new();
+
+    for root_claim in claims {
+        if let Some(mappings) = &root_claim.mappings
+            && let Some(mapping) = mappings.iter().find(|m| &m.format == format)
+            && mapping.namespace.is_some()
+        {
+            // namespace already filled, do not modify
+            result.push(root_claim);
+            continue;
+        }
+
+        let data_type = config
+            .datatype
+            .get_fields(&root_claim.datatype)
+            .error_while("getting datatype config")?
+            .r#type;
+        if data_type != DatatypeType::Object
+            || root_claim.array == Some(true)
+            || root_claim.claims.is_empty()
+        {
+            return Err(
+                CredentialSchemaServiceError::InvalidClaimTypeMdocTopLevelOnlyObjectsAllowed,
+            );
+        }
+
+        let namespace = root_claim.key;
+
+        for mut element in root_claim.claims {
+            element.mappings = Some(vec![CredentialClaimSchemaMappingDTO {
+                format: format.to_owned(),
+                technical_key: element.key.to_owned(),
+                namespace: Some(namespace.to_owned()),
+            }]);
+            if known_keys.contains(&element.key) {
+                element.key = format!("{namespace}_{}", element.key);
+            }
+            known_keys.insert(element.key.clone());
+            result.push(element);
+        }
+
+        // modify layout properties where modified claim paths mentioned
+        if let Some(layout_properties) = layout_properties {
+            let get_modified_path = |path: &str| {
+                if path.starts_with(&format!("{namespace}{NESTED_CLAIM_MARKER}")) {
+                    let strip_len = namespace.len() + 1;
+                    return Some(path[strip_len..].to_string());
+                }
+                None
+            };
+            let mut modify_path = |path: &mut Option<String>, prop: LayoutClaimAttribute| {
+                if !modified_layout_attrs.contains(&prop)
+                    && let Some(path_ref) = path
+                    && let Some(modified) = get_modified_path(path_ref)
+                {
+                    *path = Some(modified);
+                    modified_layout_attrs.insert(prop);
+                }
+            };
+
+            modify_path(
+                &mut layout_properties.primary_attribute,
+                LayoutClaimAttribute::Primary,
+            );
+            modify_path(
+                &mut layout_properties.secondary_attribute,
+                LayoutClaimAttribute::Secondary,
+            );
+            modify_path(
+                &mut layout_properties.picture_attribute,
+                LayoutClaimAttribute::Picture,
+            );
+            if !modified_layout_attrs.contains(&LayoutClaimAttribute::Code)
+                && let Some(code) = layout_properties.code.as_mut()
+                && let Some(modified) = get_modified_path(&code.attribute)
+            {
+                code.attribute = modified;
+                modified_layout_attrs.insert(LayoutClaimAttribute::Code);
+            }
+        }
+    }
+
+    Ok(result)
+}
+
+pub(crate) async fn schema_to_detail_v1_response_dto(
     value: CredentialSchema,
     config: &CoreConfig,
+    formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<CredentialSchemaDetailResponseDTO, CredentialSchemaServiceError> {
     let formats = value.formats.as_ref().await?;
     let format = formats
@@ -56,8 +157,76 @@ pub(crate) async fn schema_to_detail_response_dto(
             "Missing formats".to_string(),
         ))?;
     let dcql = map_dcql_format_meta(format, config);
-    let non_metadata_claims = non_metadata_claim_schemas(&value).await?;
+    let mut non_metadata_claims = non_metadata_claim_schemas(&value).await?;
     let mut claim_schema_dtos = Vec::with_capacity(non_metadata_claims.len());
+
+    let format_type = config
+        .format
+        .get_type(&format.format)
+        .error_while("getting format config")?;
+    if format_type == FormatType::Mdoc {
+        let claim_mappings = format.claim_mappings.as_ref().await?;
+
+        // prepend namespaces
+        for cs in non_metadata_claims.iter_mut() {
+            let mapping = claim_mappings
+                .iter()
+                .find(|m| m.claim_schema_id == cs.id)
+                .ok_or(CredentialSchemaServiceError::MappingError(
+                    "Missing MDOC claim mapping".to_string(),
+                ))?;
+
+            let namespace =
+                mapping
+                    .namespace
+                    .as_ref()
+                    .ok_or(CredentialSchemaServiceError::MappingError(
+                        "Missing MDOC claim mapping namespace".to_string(),
+                    ))?;
+
+            cs.key = format!("{namespace}{NESTED_CLAIM_MARKER}{}", cs.key);
+        }
+
+        // re-create namespace level claim schemas
+        let mut namespaces: HashMap<String, ClaimSchema> = HashMap::new();
+        for claim_mapping in &claim_mappings {
+            let Some(namespace) = &claim_mapping.namespace else {
+                continue;
+            };
+
+            // stable id
+            let id = Uuid::from(claim_mapping.id).into();
+
+            if !namespaces.contains_key(namespace) {
+                namespaces.insert(
+                    namespace.to_owned(),
+                    ClaimSchema {
+                        id,
+                        key: namespace.to_owned(),
+                        data_type: DatatypeType::Object.to_string(),
+                        created_date: claim_mapping.created_date,
+                        last_modified: claim_mapping.last_modified,
+                        array: false,
+                        metadata: false,
+                        required: true,
+                        translations: vec![LocalizedText {
+                            entity_id: id.into(),
+                            field: LocalizedTextField::Name,
+                            created_date: claim_mapping.created_date,
+                            last_modified: claim_mapping.last_modified,
+                            lang: config.default_language.to_owned(),
+                            value: namespace.to_owned(),
+                            entity_type: LocalizedTextEntityType::ClaimSchema,
+                        }]
+                        .into(),
+                    },
+                );
+            }
+        }
+
+        non_metadata_claims.extend(namespaces.into_values());
+    }
+
     for cs in non_metadata_claims {
         claim_schema_dtos.push(
             claim_schema_to_dto(cs)
@@ -67,6 +236,9 @@ pub(crate) async fn schema_to_detail_response_dto(
     }
     let claim_schemas = renest_claim_schemas(claim_schema_dtos)?;
 
+    let formatter = formatter_provider.get_credential_formatter(&format.format)?;
+    let revocation_method = value.revocation_method_id(&*formatter).cloned();
+
     Ok(CredentialSchemaDetailResponseDTO {
         translations: map_translations(&value).await?,
         id: value.id,
@@ -75,7 +247,7 @@ pub(crate) async fn schema_to_detail_response_dto(
         name: value.name,
         format: format.format.clone(),
         imported_source_url: value.imported_source_url,
-        revocation_method: value.revocation_method,
+        revocation_method,
         organisation_id: value.organisation.id(),
         claims: claim_schemas,
         key_storage_security: value.key_storage_security,
@@ -296,67 +468,6 @@ pub(super) fn create_unique_name_check_request(
                     | CredentialSchemaFilterValue::SchemaIds(schema_ids)),
         ),
         ..Default::default()
-    })
-}
-
-pub(super) fn from_create_request_with_id(
-    id: CredentialSchemaId,
-    request: CreateCredentialSchemaRequestDTO,
-    organisation: Organisation,
-    schema_id: String,
-    imported_source_url: String,
-    default_language: &str,
-) -> Result<CredentialSchema, CredentialSchemaServiceError> {
-    if request.claims.is_empty() {
-        return Err(CredentialSchemaServiceError::MissingClaimSchemas);
-    }
-
-    let now = crate::clock::now_utc();
-
-    let claim_schemas = unnest_claim_schemas(request.claims, &[&request.format], &HashMap::new())?;
-
-    Ok(CredentialSchema {
-        id,
-        allow_revocation: request.revocation_method.as_ref().map(|_| true),
-        deleted_at: None,
-        created_date: now,
-        last_modified: now,
-        name: request.name.clone(),
-        key_storage_security: request.key_storage_security,
-        revocation_method: request.revocation_method,
-        claim_schemas: claim_schemas
-            .into_iter()
-            .map(|claim_schema| {
-                from_jwt_request_claim_schema(
-                    now,
-                    Uuid::new_v4().into(),
-                    claim_schema.key,
-                    claim_schema.datatype,
-                    claim_schema.required,
-                    claim_schema.array,
-                )
-            })
-            .collect::<Vec<_>>()
-            .into(),
-        organisation: organisation.into(),
-        layout_type: request.layout_type,
-        layout_properties: request.layout_properties.map(Into::into),
-        imported_source_url,
-        allow_suspension: request.allow_suspension.unwrap_or_default(),
-        requires_wallet_instance_attestation: request.requires_wallet_instance_attestation,
-        transaction_code: convert_inner(request.transaction_code),
-        batch_size: None,
-        formats: vec![CredentialSchemaFormat {
-            id: Uuid::new_v4().into(),
-            created_date: now,
-            last_modified: now,
-            credential_schema_id: id,
-            format: request.format,
-            schema_id,
-            claim_mappings: Default::default(),
-        }]
-        .into(),
-        translations: default_name_translation(id, request.name, now, default_language).into(),
     })
 }
 

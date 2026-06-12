@@ -26,6 +26,7 @@ use one_core::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, KeyStorageSecurity, LayoutProperties, LayoutType,
 };
 use one_core::model::credential_schema_format::CredentialSchemaFormat;
+use one_core::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use one_core::model::did::{Did, DidType, RelatedKey};
 use one_core::model::history::HistoryAction;
 use one_core::model::identifier::{
@@ -628,7 +629,6 @@ pub async fn create_credential_schema(
     let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
     let claim_schema = ClaimSchema {
-        business_key: None,
         id: Uuid::new_v4().into(),
         key: "firstName".to_string(),
         data_type: "STRING".to_string(),
@@ -702,7 +702,6 @@ pub async fn create_credential_schema_with_claims(
     let claim_schemas: Vec<_> = claims
         .iter()
         .map(|(id, key, required, data_type, array)| ClaimSchema {
-            business_key: None,
             id: (*id).into(),
             key: key.to_string(),
             data_type: data_type.to_string(),
@@ -715,6 +714,7 @@ pub async fn create_credential_schema_with_claims(
         })
         .collect();
     let id = Uuid::new_v4();
+    let format_id = Uuid::new_v4().into();
     let mut credential_schema = CredentialSchema {
         batch_size: None,
         allow_revocation: None,
@@ -727,13 +727,25 @@ pub async fn create_credential_schema_with_claims(
         organisation: organisation.to_owned().into(),
         deleted_at: None,
         formats: vec![CredentialSchemaFormat {
-            id: Uuid::new_v4().into(),
+            id: format_id,
             created_date: one_core::clock::now_utc(),
             last_modified: one_core::clock::now_utc(),
             credential_schema_id: id.into(),
             format: "JWT".into(),
             schema_id: id.to_string(),
-            claim_mappings: Default::default(),
+            claim_mappings: claim_schemas
+                .iter()
+                .map(|cs| CredentialSchemaFormatClaimSchema {
+                    id: Uuid::new_v4().into(),
+                    created_date: get_dummy_date(),
+                    last_modified: get_dummy_date(),
+                    credential_schema_format_id: format_id,
+                    claim_schema_id: cs.id,
+                    technical_key: cs.key.to_owned(),
+                    namespace: None,
+                })
+                .collect::<Vec<_>>()
+                .into(),
         }]
         .into(),
         revocation_method: revocation_method.into(),
@@ -775,7 +787,6 @@ pub async fn create_proof_schema(
                 .enumerate()
                 .map(|(order, claim)| ProofInputClaimSchema {
                     schema: ClaimSchema {
-                        business_key: None,
                         id: claim.id.to_owned(),
                         key: claim.key.to_string(),
                         data_type: claim.data_type.to_string(),

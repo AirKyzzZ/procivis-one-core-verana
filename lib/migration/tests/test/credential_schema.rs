@@ -12,10 +12,8 @@ async fn test_db_schema_credential_schema() {
         "last_modified",
         "deleted_at",
         "name",
-        "format",
         "revocation_method",
         "organisation_id",
-        "schema_id",
         "layout_properties",
         "layout_type",
         "imported_source_url",
@@ -32,31 +30,19 @@ async fn test_db_schema_credential_schema() {
         columns.push("deleted_at_materialized");
     }
 
-    let mut index_columns1 = vec!["organisation_id", "schema_id"];
+    let mut index_name_unique_columns = vec!["name", "organisation_id"];
     if schema.backend() == DbBackend::MySql {
-        index_columns1.push("deleted_at_materialized")
+        index_name_unique_columns.push("deleted_at_materialized")
     } else {
-        index_columns1.push("deleted_at")
-    }
-
-    let mut index_columns2 = vec!["name", "organisation_id"];
-    if schema.backend() == DbBackend::MySql {
-        index_columns2.push("deleted_at_materialized")
-    } else {
-        index_columns2.push("deleted_at")
+        index_name_unique_columns.push("deleted_at")
     }
     let credential_schema = schema
         .table("credential_schema")
         .columns(&columns)
         .index(
-            "index-Organisation-SchemaId-DeletedAt-Partial_Unique",
-            true,
-            &index_columns1,
-        )
-        .index(
             "index_CredentialSchema_Name-OrganisationId-DeletedAt_Unique",
             true,
-            &index_columns2,
+            &index_name_unique_columns,
         )
         .index(
             "index-CredentialSchema-CreatedDate",
@@ -89,10 +75,6 @@ async fn test_db_schema_credential_schema() {
         .nullable(false)
         .default(None);
     credential_schema
-        .column("format")
-        .r#type(ColumnType::String(None))
-        .nullable(true);
-    credential_schema
         .column("revocation_method")
         .r#type(ColumnType::String(None))
         .nullable(true);
@@ -102,10 +84,6 @@ async fn test_db_schema_credential_schema() {
         .nullable(false)
         .default(None)
         .foreign_key("fk-CredentialSchema-OrganisationId", "organisation", "id");
-    credential_schema
-        .column("schema_id")
-        .r#type(ColumnType::String(None))
-        .nullable(true);
     credential_schema
         .column("layout_properties")
         .r#type(ColumnType::JsonBinary)
@@ -167,7 +145,6 @@ async fn test_db_schema_claim_schema() {
             "created_date",
             "last_modified",
             "key",
-            "business_key",
             "datatype",
             "array",
             "metadata",
@@ -206,10 +183,6 @@ async fn test_db_schema_claim_schema() {
         .r#type(ColumnType::String(None))
         .nullable(false)
         .default(None);
-    claim_schema
-        .column("business_key")
-        .r#type(ColumnType::String(None))
-        .nullable(true);
     claim_schema
         .column("datatype")
         .r#type(ColumnType::String(None))

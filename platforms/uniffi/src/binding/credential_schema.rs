@@ -185,7 +185,6 @@ pub struct CredentialSchemaShareResponseBindingDTO {
 #[uniffi(name = "SortableCredentialSchemaColumn")]
 pub enum SortableCredentialSchemaColumnBindingEnum {
     Name,
-    Format,
     CreatedDate,
 }
 

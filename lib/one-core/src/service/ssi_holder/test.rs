@@ -750,7 +750,6 @@ async fn test_submit_proof_repeating_claims() {
                     path: "claim1".to_string(),
                     selectively_disclosable: false,
                     schema: Some(ClaimSchema {
-                        business_key: None,
                         id: claim_id.into(),
                         key: "claim1".to_string(),
                         data_type: "STRING".to_string(),
@@ -1763,7 +1762,6 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
             .into(),
             revocation_method: None,
             claim_schemas: vec![ClaimSchema {
-                business_key: None,
                 id: Uuid::new_v4().into(),
                 key: "key1".to_string(),
                 data_type: "STRING".to_string(),

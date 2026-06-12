@@ -236,14 +236,6 @@ impl BackupRepository for BackupProvider {
             )
             .column_as(credential_schema::Column::Name, "credential_schema_name")
             .column_as(
-                credential_schema::Column::Format,
-                "credential_schema_format",
-            )
-            .column_as(
-                credential_schema::Column::SchemaId,
-                "credential_schema_schema_id",
-            )
-            .column_as(
                 credential_schema::Column::RevocationMethod,
                 "credential_schema_revocation_method",
             )

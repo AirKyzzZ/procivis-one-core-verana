@@ -342,7 +342,6 @@ async fn test_delete_proof_schema_failure() {
 async fn test_create_proof_schema_success() {
     let claim_schema_id = Uuid::new_v4().into();
     let claim_schema = ClaimSchema {
-        business_key: None,
         id: claim_schema_id,
         key: "key".to_string(),
         data_type: "STRING".to_string(),
@@ -498,7 +497,6 @@ async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
 
     let claim_schema_software_id = Uuid::new_v4().into();
     let claim_schema_software = ClaimSchema {
-        business_key: None,
         id: claim_schema_software_id,
         key: "key".to_string(),
         data_type: "STRING".to_string(),
@@ -640,7 +638,6 @@ async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
 async fn test_create_proof_schema_fail_unsupported_wallet_storage_type() {
     let claim_schema_id = Uuid::new_v4().into();
     let claim_schema = ClaimSchema {
-        business_key: None,
         id: claim_schema_id,
         key: "key".to_string(),
         data_type: "STRING".to_string(),
@@ -744,7 +741,6 @@ async fn test_create_proof_schema_fail_unsupported_wallet_storage_type() {
 #[tokio::test]
 async fn test_create_proof_schema_array_object_fail() {
     let claim_schema_root = ClaimSchema {
-        business_key: None,
         id: Uuid::new_v4().into(),
         key: "root".to_string(),
         data_type: "OBJECT".to_string(),
@@ -757,7 +753,6 @@ async fn test_create_proof_schema_array_object_fail() {
     };
 
     let claim_schema_array = ClaimSchema {
-        business_key: None,
         id: Uuid::new_v4().into(),
         key: "root/nested_array".to_string(),
         data_type: "OBJECT".to_string(),
@@ -770,7 +765,6 @@ async fn test_create_proof_schema_array_object_fail() {
     };
 
     let claim_schema_array_object = ClaimSchema {
-        business_key: None,
         id: Uuid::new_v4().into(),
         key: "root/nested_array/0".to_string(),
         data_type: "OBJECT".to_string(),
@@ -783,7 +777,6 @@ async fn test_create_proof_schema_array_object_fail() {
     };
 
     let claim_schema_array_object_item = ClaimSchema {
-        business_key: None,
         id: Uuid::new_v4().into(),
         key: "root/nested_array/0/item".to_string(),
         data_type: "STRING".to_string(),
@@ -915,7 +908,6 @@ async fn test_create_proof_schema_array_object_fail() {
 #[tokio::test]
 async fn test_create_proof_schema_array_success() {
     let claim_schema_root = ClaimSchema {
-        business_key: None,
         id: Uuid::new_v4().into(),
         key: "root".to_string(),
         data_type: "OBJECT".to_string(),
@@ -928,7 +920,6 @@ async fn test_create_proof_schema_array_success() {
     };
 
     let claim_schema_array = ClaimSchema {
-        business_key: None,
         id: Uuid::new_v4().into(),
         key: "root/nested_array".to_string(),
         data_type: "OBJECT".to_string(),
@@ -941,7 +932,6 @@ async fn test_create_proof_schema_array_success() {
     };
 
     let claim_schema_array_object = ClaimSchema {
-        business_key: None,
         id: Uuid::new_v4().into(),
         key: "root/nested_array/0".to_string(),
         data_type: "OBJECT".to_string(),
@@ -954,7 +944,6 @@ async fn test_create_proof_schema_array_success() {
     };
 
     let claim_schema_array_object_item = ClaimSchema {
-        business_key: None,
         id: Uuid::new_v4().into(),
         key: "root/nested_array/0/item".to_string(),
         data_type: "STRING".to_string(),
@@ -1181,7 +1170,6 @@ async fn test_create_proof_schema_claims_dont_exist() {
                 revocation_method: None,
                 key_storage_security: None,
                 claim_schemas: vec![ClaimSchema {
-                    business_key: None,
                     id: Uuid::new_v4().into(),
                     key: "key".to_string(),
                     data_type: "STRING".to_string(),
@@ -1967,7 +1955,6 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
                 layout_type: LayoutType::Card,
                 layout_properties: None,
                 claim_schemas: vec![ClaimSchema {
-                    business_key: None,
                     id: Uuid::new_v4().into(),
                     key: "root/name".to_string(),
                     data_type: "STRING".to_string(),
@@ -2312,7 +2299,6 @@ fn generic_proof_schema() -> ProofSchema {
 async fn test_get_proof_schema_success_nested_claims() {
     let now = crate::clock::now_utc();
     let location_claim_schema = ClaimSchema {
-        business_key: None,
         id: Uuid::new_v4().into(),
         key: "location".to_string(),
         data_type: "OBJECT".to_string(),
@@ -2324,7 +2310,6 @@ async fn test_get_proof_schema_success_nested_claims() {
         translations: Default::default(),
     };
     let location_x_claim_schema = ClaimSchema {
-        business_key: None,
         id: Uuid::new_v4().into(),
         key: "location/X".to_string(),
         data_type: "STRING".to_string(),
@@ -2376,7 +2361,6 @@ async fn test_get_proof_schema_success_nested_claims() {
 async fn test_get_proof_schema_success_nested_claims_not_mandatory() {
     let now = crate::clock::now_utc();
     let location_cs = ClaimSchema {
-        business_key: None,
         id: Uuid::new_v4().into(),
         key: "location".to_string(),
         data_type: "OBJECT".to_string(),
@@ -2388,7 +2372,6 @@ async fn test_get_proof_schema_success_nested_claims_not_mandatory() {
         translations: Default::default(),
     };
     let location_x_cs = ClaimSchema {
-        business_key: None,
         id: Uuid::new_v4().into(),
         key: "location/X".to_string(),
         data_type: "STRING".to_string(),
@@ -2400,7 +2383,6 @@ async fn test_get_proof_schema_success_nested_claims_not_mandatory() {
         translations: Default::default(),
     };
     let location_foo_cs = ClaimSchema {
-        business_key: None,
         id: Uuid::new_v4().into(),
         key: "location/foo".to_string(),
         data_type: "STRING".to_string(),
@@ -2453,7 +2435,6 @@ async fn test_get_proof_schema_success_nested_claims_not_mandatory() {
 async fn test_get_proof_schema_success_nested_claims_parent_not_mandatory() {
     let now = crate::clock::now_utc();
     let bar_cs = ClaimSchema {
-        business_key: None,
         id: Uuid::new_v4().into(),
         key: "bar".to_string(),
         data_type: "STRING".to_string(),
@@ -2465,7 +2446,6 @@ async fn test_get_proof_schema_success_nested_claims_parent_not_mandatory() {
         translations: Default::default(),
     };
     let location_cs = ClaimSchema {
-        business_key: None,
         id: Uuid::new_v4().into(),
         key: "location".to_string(),
         data_type: "OBJECT".to_string(),
@@ -2477,7 +2457,6 @@ async fn test_get_proof_schema_success_nested_claims_parent_not_mandatory() {
         translations: Default::default(),
     };
     let location_x_cs = ClaimSchema {
-        business_key: None,
         id: Uuid::new_v4().into(),
         key: "location/X".to_string(),
         data_type: "STRING".to_string(),
@@ -2780,7 +2759,6 @@ async fn test_create_proof_schema_verify_nested_generic(
     let claim_schemas: Vec<_> = keys
         .iter()
         .map(|key| ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: key.to_string(),
             data_type: "OBJECT".to_string(),

@@ -70,7 +70,6 @@ async fn dummy_unexportable_entities() -> UnexportableEntities {
                 path: "key".into(),
                 selectively_disclosable: false,
                 schema: Some(ClaimSchema {
-                    business_key: None,
                     id: claim_schema_id,
                     key: "key".into(),
                     data_type: "STRING".into(),
@@ -109,7 +108,6 @@ async fn dummy_unexportable_entities() -> UnexportableEntities {
                         .into(),
                         revocation_method: Some("revocation_method".into()),
                         claim_schemas: vec![ClaimSchema {
-                            business_key: None,
                             id: claim_schema_id,
                             key: "key".into(),
                             data_type: "STRING".into(),

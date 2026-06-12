@@ -7,7 +7,6 @@ use proc_macros::provider_mock;
 use shared_types::{
     CredentialFormat, CredentialSchemaId, OrganisationId, RevocationMethodId, SerializedCredential,
 };
-use strum::Display;
 use time::Duration;
 
 use crate::config::core_config::{KeyAlgorithmType, RevocationType};
@@ -46,14 +45,6 @@ pub struct MetadataClaimSchema {
     pub data_type: String,
     pub array: bool,
     pub required: bool,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Display)]
-pub enum CredentialSchemaVersion {
-    #[strum(to_string = "v1")]
-    V1,
-    #[strum(to_string = "v2")]
-    V2(CredentialFormat),
 }
 
 /// Format credentials for sharing and parse credentials which have been shared.
@@ -126,14 +117,9 @@ pub trait CredentialFormatter: Provider + Send + Sync {
         _organisation_id: OrganisationId,
         _schema_id: Option<&'a str>,
         core_base_url: &'a str,
-        version: CredentialSchemaVersion,
+        format: &CredentialFormat,
     ) -> Result<String, FormatterError> {
-        Ok(match version {
-            CredentialSchemaVersion::V1 => format!("{core_base_url}/ssi/schema/v1/{id}"),
-            CredentialSchemaVersion::V2(format) => {
-                format!("{core_base_url}/ssi/schema/v2/{id}/{format}")
-            }
-        })
+        Ok(format!("{core_base_url}/ssi/schema/v2/{id}/{format}"))
     }
 
     /// Returns definitions of metadata claims for the format

@@ -14,7 +14,6 @@ pub(crate) fn claim_schema_from_model(
         created_date: value.created_date,
         last_modified: value.last_modified,
         key: value.key,
-        business_key: value.business_key,
         data_type: value.datatype,
         array: value.array,
         metadata: value.metadata,

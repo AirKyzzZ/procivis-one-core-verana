@@ -16,7 +16,6 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: ClaimSchemaId,
     pub key: String,
-    pub business_key: Option<String>,
 
     #[serde(with = "time::serde::rfc3339")]
     pub created_date: OffsetDateTime,

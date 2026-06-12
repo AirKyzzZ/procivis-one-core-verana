@@ -57,7 +57,6 @@ async fn test_get_claim_schema_list() {
 
     let schemas = [
         ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: "key1".to_string(),
             data_type: "STRING".to_string(),
@@ -69,7 +68,6 @@ async fn test_get_claim_schema_list() {
             translations: Default::default(),
         },
         ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: "key2".to_string(),
             data_type: "STRING".to_string(),
@@ -84,7 +82,6 @@ async fn test_get_claim_schema_list() {
 
     for (index, claim) in schemas.iter().enumerate() {
         entity::claim_schema::ActiveModel {
-            business_key: Set(None),
             id: Set(claim.id),
             key: Set(claim.key.to_owned()),
             created_date: Set(claim.created_date),

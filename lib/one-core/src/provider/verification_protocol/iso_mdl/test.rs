@@ -282,7 +282,6 @@ async fn test_get_presentation_definition_ok() {
 
     let claim_schemas = hashmap![
        "org.iso.18013.5.1.mDL" => ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: "org.iso.18013.5.1.mDL".to_string(),
             data_type: "OBJECT".to_string(),
@@ -293,7 +292,6 @@ async fn test_get_presentation_definition_ok() {
             required: true,        translations: Default::default(),
         },
         "org.iso.18013.5.1.mDL/name" => ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: "org.iso.18013.5.1.mDL/name".to_string(),
             data_type: "STRING".to_string(),
@@ -304,7 +302,6 @@ async fn test_get_presentation_definition_ok() {
             required: true,        translations: Default::default(),
         },
        "org.iso.18013.5.1.mDL/age" => ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: "org.iso.18013.5.1.mDL/age".to_string(),
             data_type: "NUMBER".to_string(),
@@ -315,7 +312,6 @@ async fn test_get_presentation_definition_ok() {
             required: true,        translations: Default::default(),
         },
        "org.iso.18013.5.1.mDL/country" => ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: "org.iso.18013.5.1.mDL/country".to_string(),
             data_type: "STRING".to_string(),
@@ -326,7 +322,6 @@ async fn test_get_presentation_definition_ok() {
             required: true,        translations: Default::default(),
         },
        "org.iso.18013.5.1.mDL/country_code" => ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: "org.iso.18013.5.1.mDL/country_code".to_string(),
             data_type: "STRING".to_string(),
@@ -337,7 +332,6 @@ async fn test_get_presentation_definition_ok() {
             required: true,        translations: Default::default(),
         },
         "org.iso.18013.5.1.mDL/info" => ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: "org.iso.18013.5.1.mDL/info".to_string(),
             data_type: "OBJECT".to_string(),
@@ -348,7 +342,6 @@ async fn test_get_presentation_definition_ok() {
             required: true,        translations: Default::default(),
         },
         "org.iso.18013.5.1.mDL/info/code" => ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: "org.iso.18013.5.1.mDL/info/code".to_string(),
             data_type: "STRING".to_string(),
@@ -627,7 +620,6 @@ async fn test_get_presentation_definition_v2() {
 
     let claim_schemas = hashmap![
         "org.iso.18013.5.1.mDL_name" => ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: "org.iso.18013.5.1.mDL_name".to_string(),
             data_type: "STRING".to_string(),
@@ -639,7 +631,6 @@ async fn test_get_presentation_definition_v2() {
             translations: Default::default(),
         },
         "org.iso.18013.5.1.mDL_age" => ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: "org.iso.18013.5.1.mDL_age".to_string(),
             data_type: "NUMBER".to_string(),
@@ -651,7 +642,6 @@ async fn test_get_presentation_definition_v2() {
             translations: Default::default(),
         },
         "org.iso.18013.5.1.mDL_country" => ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: "org.iso.18013.5.1.mDL_country".to_string(),
             data_type: "STRING".to_string(),
@@ -663,7 +653,6 @@ async fn test_get_presentation_definition_v2() {
             translations: Default::default(),
         },
         "org.iso.18013.5.1.mDL_country_code" => ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: "org.iso.18013.5.1.mDL_country_code".to_string(),
             data_type: "STRING".to_string(),
@@ -675,7 +664,6 @@ async fn test_get_presentation_definition_v2() {
             translations: Default::default(),
         },
         "org.iso.18013.5.1.mDL_info" => ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: "org.iso.18013.5.1.mDL_info".to_string(),
             data_type: "OBJECT".to_string(),
@@ -687,7 +675,6 @@ async fn test_get_presentation_definition_v2() {
             translations: Default::default(),
         },
         "org.iso.18013.5.1.mDL_info/code" => ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: "org.iso.18013.5.1.mDL_info/code".to_string(),
             data_type: "STRING".to_string(),

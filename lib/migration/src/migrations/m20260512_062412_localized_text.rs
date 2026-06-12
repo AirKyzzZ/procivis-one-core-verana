@@ -144,7 +144,7 @@ async fn migrate_claim_schemas(manager: &SchemaManager<'_>) -> Result<(), DbErr>
 }
 
 #[derive(DeriveIden)]
-enum LocalizedText {
+pub enum LocalizedText {
     Table,
     CreatedDate,
     LastModified,

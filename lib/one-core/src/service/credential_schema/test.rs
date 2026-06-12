@@ -2,11 +2,10 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::vec;
 
-use assert2::let_assert;
 use maplit::hashmap;
 use mockall::predicate::*;
+use shared_types::CredentialSchemaId;
 use shared_types::i18n::I18nString;
-use shared_types::{CredentialSchemaId, RevocationMethodId};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
@@ -45,8 +44,6 @@ use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{Features, FormatterCapabilities};
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
-use crate::provider::provider_directory::ProviderError;
-use crate::provider::revocation::MockRevocationMethod;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
@@ -106,14 +103,13 @@ fn generic_credential_schema() -> CredentialSchema {
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
             credential_schema_id,
-            format: "".into(),
+            format: "JWT".into(),
             schema_id: "CredentialSchemaId".to_owned(),
             claim_mappings: Default::default(),
         }]
         .into(),
         revocation_method: None,
         claim_schemas: vec![ClaimSchema {
-            business_key: None,
             id: claim_schema_id,
             key: "".to_string(),
             data_type: "".to_string(),
@@ -168,18 +164,24 @@ async fn test_get_credential_schema_success() {
             .returning(move |_| Ok(Some(clone.clone())));
     }
 
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .returning(|_| {
+            let mut formatter = MockCredentialFormatter::new();
+            formatter.expect_revocation_method_id().returning(|| None);
+            Ok(Arc::new(formatter))
+        });
+
     let service = setup_service(
         repository,
         organisation_repository,
-        MockCredentialFormatterProvider::default(),
+        formatter_provider,
         MockRevocationMethodProvider::default(),
         generic_config().core,
     );
 
-    let result = service.get_credential_schema(&schema.id).await;
-
-    assert!(result.is_ok());
-    let result = result.unwrap();
+    let result = service.get_credential_schema(&schema.id).await.unwrap();
     assert_eq!(result.id, schema.id);
 }
 
@@ -366,10 +368,10 @@ async fn test_create_credential_schema_success() {
         .expect_credential_schema_id()
         .returning(|_, _, _, _, _| Ok("schema id".to_string()));
     formatter.expect_get_metadata_claims().returning(Vec::new);
+    let formatter = Arc::new(formatter);
     formatter_provider
         .expect_get_credential_formatter()
-        .once()
-        .return_once(|_| Ok(Arc::new(formatter)));
+        .returning(move |_| Ok(formatter.clone()));
 
     let service = setup_service(
         repository,
@@ -457,10 +459,10 @@ async fn test_create_credential_schema_success_mdoc_with_custom_schema_id() {
         .expect_credential_schema_id()
         .returning(|_, _, _, _, _| Ok(custom_schema_id.to_string()));
     formatter.expect_get_metadata_claims().returning(Vec::new);
+    let formatter = Arc::new(formatter);
     formatter_provider
         .expect_get_credential_formatter()
-        .once()
-        .return_once(|_| Ok(Arc::new(formatter)));
+        .returning(move |_| Ok(formatter.clone()));
 
     let service = setup_service(
         repository,
@@ -555,10 +557,10 @@ async fn test_create_credential_schema_success_nested_claims() {
         .expect_credential_schema_id()
         .returning(|_, _, _, _, _| Ok("some schema id".to_string()));
     formatter.expect_get_metadata_claims().returning(Vec::new);
+    let formatter = Arc::new(formatter);
     formatter_provider
         .expect_get_credential_formatter()
-        .once()
-        .return_once(|_| Ok(Arc::new(formatter)));
+        .returning(move |_| Ok(formatter.clone()));
 
     let service = setup_service(
         repository,
@@ -649,16 +651,12 @@ async fn test_create_credential_schema_failed_slash_in_claim_name() {
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: None,
-            allow_suspension: Some(true),
+            allow_suspension: None,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
         })
-        .await
-        .unwrap_err();
-    assert!(matches!(
-        result,
-        CredentialSchemaServiceError::ClaimSchemaSlashInKeyName(_)
-    ));
+        .await;
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0108);
 }
 
 #[tokio::test]
@@ -714,16 +712,12 @@ async fn test_create_credential_schema_failed_nested_claims_not_in_object_type()
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: None,
-            allow_suspension: Some(true),
+            allow_suspension: None,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
         })
-        .await
-        .unwrap_err();
-    assert!(matches!(
-        result,
-        CredentialSchemaServiceError::NestedClaimsShouldBeEmpty(_)
-    ));
+        .await;
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0107);
 }
 
 #[tokio::test]
@@ -760,16 +754,12 @@ async fn test_create_credential_schema_failed_nested_claims_object_type_has_empt
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: None,
-            allow_suspension: Some(true),
+            allow_suspension: None,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
         })
-        .await
-        .unwrap_err();
-    assert!(matches!(
-        result,
-        CredentialSchemaServiceError::MissingNestedClaims(_)
-    ));
+        .await;
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0106);
 }
 
 #[tokio::test]
@@ -823,7 +813,7 @@ async fn test_create_credential_schema_failed_nested_claim_fails_validation() {
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: None,
-            allow_suspension: Some(true),
+            allow_suspension: None,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
         })
@@ -902,13 +892,7 @@ async fn test_create_credential_schema_unique_name_error() {
             transaction_code: None,
         })
         .await;
-    match result {
-        Err(CredentialSchemaServiceError::AlreadyExists) => { /* Expected */ }
-        other => panic!(
-            "Expected Err(CredentialSchemaServiceError::AlreadyExists), got {:?}",
-            other
-        ),
-    }
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0007);
 }
 
 #[tokio::test]
@@ -956,16 +940,12 @@ async fn test_create_credential_schema_failed_unique_claims_error() {
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: None,
-            allow_suspension: Some(true),
+            allow_suspension: None,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
         })
-        .await
-        .unwrap_err();
-    assert!(matches!(
-        result,
-        CredentialSchemaServiceError::DuplicitClaim
-    ));
+        .await;
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0133);
 
     let result = service
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
@@ -1005,16 +985,12 @@ async fn test_create_credential_schema_failed_unique_claims_error() {
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: None,
-            allow_suspension: Some(true),
+            allow_suspension: None,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
         })
-        .await
-        .unwrap_err();
-    assert!(matches!(
-        result,
-        CredentialSchemaServiceError::DuplicitClaim
-    ));
+        .await;
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0133);
 }
 
 #[tokio::test]
@@ -1022,26 +998,17 @@ async fn test_create_credential_schema_fail_validation() {
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
         .expect_get_credential_formatter()
-        .times(4)
-        .returning(|_| Ok(Arc::new(MockCredentialFormatter::default())));
-
-    let mut revocation_provider = MockRevocationMethodProvider::default();
-    revocation_provider
-        .expect_get_revocation_method()
-        .once()
-        .return_once(|id| {
-            Err(ProviderError::MissingProvider {
-                config_key: id.to_string(),
-                provider_type: "revocation".to_string(),
-            }
-            .into())
+        .returning(|_| {
+            let mut formatter = MockCredentialFormatter::default();
+            formatter.expect_revocation_method_id().return_const(None);
+            Ok(Arc::new(formatter))
         });
 
     let service = setup_service(
         MockCredentialSchemaRepository::default(),
         MockOrganisationRepository::default(),
         formatter_provider,
-        revocation_provider,
+        MockRevocationMethodProvider::default(),
         generic_config().core,
     );
 
@@ -1064,7 +1031,7 @@ async fn test_create_credential_schema_fail_validation() {
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: None,
-            allow_suspension: Some(true),
+            allow_suspension: None,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
         })
@@ -1100,7 +1067,7 @@ async fn test_create_credential_schema_fail_validation() {
         .await;
     assert_eq!(
         non_existing_revocation_method.unwrap_err().error_code(),
-        ErrorCode::BR_0430
+        ErrorCode::BR_0110
     );
 
     let wrong_datatype = service
@@ -1122,7 +1089,7 @@ async fn test_create_credential_schema_fail_validation() {
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: None,
-            allow_suspension: Some(true),
+            allow_suspension: None,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
         })
@@ -1140,48 +1107,24 @@ async fn test_create_credential_schema_fail_validation() {
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: None,
-            allow_suspension: Some(true),
+            allow_suspension: None,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
         })
         .await;
-    assert!(
-        no_claims.is_err_and(|e| matches!(e, CredentialSchemaServiceError::MissingClaimSchemas))
-    );
+    assert_eq!(no_claims.unwrap_err().error_code(), ErrorCode::BR_0008);
 }
 
 #[tokio::test]
 async fn test_create_credential_schema_fail_unsupported_wallet_storage_type() {
-    let config = generic_config().core;
-    let mut repository = MockCredentialSchemaRepository::default();
-    let organisation_repository = MockOrganisationRepository::default();
     let mut formatter = MockCredentialFormatter::default();
     let mut formatter_provider = MockCredentialFormatterProvider::default();
 
     let organisation = dummy_organisation(None);
 
-    let response = GetCredentialSchemaList {
-        values: vec![
-            generic_credential_schema(),
-            generic_credential_schema(),
-            generic_credential_schema(),
-        ],
-        total_pages: 0,
-        total_items: 0,
-    };
-
-    {
-        let clone = response.clone();
-        repository
-            .expect_get_credential_schema_list()
-            .times(1)
-            .returning(move |_| Ok(clone.clone()));
-    }
-
     formatter
         .expect_get_capabilities()
         .returning(|| FormatterCapabilities {
-            revocation_methods: vec![],
             datatypes: vec!["STRING".into()],
             ..Default::default()
         });
@@ -1194,11 +1137,11 @@ async fn test_create_credential_schema_fail_unsupported_wallet_storage_type() {
         .return_once(|_| Ok(Arc::new(formatter)));
 
     let service = setup_service(
-        repository,
-        organisation_repository,
+        MockCredentialSchemaRepository::default(),
+        MockOrganisationRepository::default(),
         formatter_provider,
         MockRevocationMethodProvider::default(),
-        config,
+        generic_config().core,
     );
 
     let result = service
@@ -1226,10 +1169,7 @@ async fn test_create_credential_schema_fail_unsupported_wallet_storage_type() {
         })
         .await;
 
-    assert!(result.is_err_and(|e| matches!(
-        e,
-        CredentialSchemaServiceError::KeyStorageSecurityDisabled(_)
-    )));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0309);
 }
 
 #[tokio::test]
@@ -1306,13 +1246,7 @@ async fn test_create_credential_schema_fail_missing_organisation() {
         })
         .await;
 
-    match result {
-        Err(CredentialSchemaServiceError::MissingOrganisation(_)) => { /* Expected */ }
-        other => panic!(
-            "Expected Err(CredentialSchemaServiceError::MissingOrganisation(_)), got {:?}",
-            other
-        ),
-    }
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0088);
 }
 
 #[tokio::test]
@@ -1326,26 +1260,17 @@ async fn test_create_credential_schema_fail_incompatible_revocation_and_format()
             datatypes: vec!["STRING".into()],
             ..Default::default()
         });
+    formatter.expect_revocation_method_id().return_const(None);
     formatter_provider
         .expect_get_credential_formatter()
         .once()
         .return_once(|_| Ok(Arc::new(formatter)));
 
-    let mut revocation_method = MockRevocationMethod::default();
-    revocation_method.expect_enabled().once().returning(|| true);
-
-    let mut revocation_method_provider = MockRevocationMethodProvider::new();
-    revocation_method_provider
-        .expect_get_revocation_method()
-        .with(eq::<RevocationMethodId>("BITSTRINGSTATUSLIST".into()))
-        .once()
-        .return_once(move |_| Ok(Arc::new(revocation_method)));
-
     let service = setup_service(
         MockCredentialSchemaRepository::default(),
         MockOrganisationRepository::default(),
         formatter_provider,
-        revocation_method_provider,
+        MockRevocationMethodProvider::default(),
         generic_config().core,
     );
 
@@ -1387,21 +1312,10 @@ async fn test_create_credential_schema_fail_incompatible_revocation_and_format()
 
 #[tokio::test]
 async fn test_create_credential_schema_failed_mdoc_not_all_top_claims_are_object() {
-    let mut formatter = MockCredentialFormatter::default();
-    let mut formatter_provider = MockCredentialFormatterProvider::default();
-
-    formatter
-        .expect_get_capabilities()
-        .returning(generic_formatter_capabilities);
-    formatter_provider
-        .expect_get_credential_formatter()
-        .once()
-        .return_once(|_| Ok(Arc::new(formatter)));
-
     let service = setup_service(
         MockCredentialSchemaRepository::default(),
         MockOrganisationRepository::default(),
-        formatter_provider,
+        MockCredentialFormatterProvider::default(),
         MockRevocationMethodProvider::default(),
         generic_config().core,
     );
@@ -1471,16 +1385,15 @@ async fn test_create_credential_schema_failed_schema_id_not_allowed() {
         .returning(generic_formatter_capabilities);
     formatter
         .expect_credential_schema_id()
-        .once()
         .withf(|_, _, schema_id, _, _| {
             assert_eq!(schema_id, &Some("schema.id"));
             true
         })
         .return_once(|_, _, _, _, _| Err(FormatterError::SchemaIdNotAllowed));
+    let formatter = Arc::new(formatter);
     formatter_provider
         .expect_get_credential_formatter()
-        .once()
-        .return_once(|_| Ok(Arc::new(formatter)));
+        .returning(move |_| Ok(formatter.clone()));
 
     let mut credential_schema_repository = MockCredentialSchemaRepository::new();
     credential_schema_repository
@@ -1538,15 +1451,10 @@ async fn test_create_credential_schema_failed_schema_id_not_allowed() {
 
 #[tokio::test]
 async fn test_create_credential_schema_failed_claim_schema_key_too_long() {
-    let mut formatter_provider = MockCredentialFormatterProvider::default();
-    formatter_provider
-        .expect_get_credential_formatter()
-        .times(3)
-        .returning(|_| Ok(Arc::new(MockCredentialFormatter::default())));
     let service = setup_service(
         Default::default(),
         Default::default(),
-        formatter_provider,
+        Default::default(),
         Default::default(),
         generic_config().core,
     );
@@ -1574,15 +1482,15 @@ async fn test_create_credential_schema_failed_claim_schema_key_too_long() {
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: None,
-            allow_suspension: Some(true),
+            allow_suspension: None,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
         })
         .await;
-    assert!(matches!(
-        first_level_fail,
-        Err(CredentialSchemaServiceError::ClaimSchemaKeyTooLong)
-    ));
+    assert_eq!(
+        first_level_fail.unwrap_err().error_code(),
+        ErrorCode::BR_0126
+    );
 
     let nested_fail = service
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
@@ -1611,15 +1519,12 @@ async fn test_create_credential_schema_failed_claim_schema_key_too_long() {
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: None,
-            allow_suspension: Some(true),
+            allow_suspension: None,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
         })
         .await;
-    assert!(matches!(
-        nested_fail,
-        Err(CredentialSchemaServiceError::ClaimSchemaKeyTooLong)
-    ));
+    assert_eq!(nested_fail.unwrap_err().error_code(), ErrorCode::BR_0126);
 
     let unicode_len_fail = service
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
@@ -1640,15 +1545,15 @@ async fn test_create_credential_schema_failed_claim_schema_key_too_long() {
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: None,
-            allow_suspension: Some(true),
+            allow_suspension: None,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
         })
         .await;
-    assert!(matches!(
-        unicode_len_fail,
-        Err(CredentialSchemaServiceError::ClaimSchemaKeyTooLong)
-    ));
+    assert_eq!(
+        unicode_len_fail.unwrap_err().error_code(),
+        ErrorCode::BR_0126
+    );
 }
 
 #[tokio::test]
@@ -2830,7 +2735,6 @@ async fn test_import_credential_schema_success() {
     let formatter = Arc::new(formatter);
     formatter_provider
         .expect_get_credential_formatter()
-        .times(1)
         .returning(move |_| Ok(formatter.clone()));
 
     repository
@@ -2969,22 +2873,13 @@ async fn test_create_credential_schema_fail_unsupported_datatype() {
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: None,
-            allow_suspension: Some(true),
+            allow_suspension: None,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
         })
-        .await
-        .unwrap_err();
+        .await;
 
-    // then
-    let_assert!(
-        CredentialSchemaServiceError::ClaimSchemaUnsupportedDatatype {
-            claim_name,
-            data_type
-        } = result
-    );
-    assert2::assert!(claim_name == "location");
-    assert2::assert!(data_type == "OBJECT");
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0245);
 }
 
 #[tokio::test]
@@ -3074,10 +2969,7 @@ async fn test_create_credential_schema_fail_tx_code_not_supported() {
         })
         .await;
 
-    assert!(matches!(
-        result,
-        Err(CredentialSchemaServiceError::TransactionCodeNotSupported)
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0337);
 }
 
 #[tokio::test]
@@ -3135,10 +3027,7 @@ async fn test_create_credential_schema_fail_tx_code_description_too_long() {
         })
         .await;
 
-    assert!(matches!(
-        result,
-        Err(CredentialSchemaServiceError::InvalidTransactionCodeDescriptionLength)
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0346);
 }
 
 #[tokio::test]

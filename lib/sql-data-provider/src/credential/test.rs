@@ -119,7 +119,6 @@ async fn setup_empty() -> TestSetup {
         claim_schemas: new_claim_schemas
             .into_iter()
             .map(|schema| ClaimSchema {
-                business_key: None,
                 id: schema.id,
                 key: schema.key.to_string(),
                 data_type: schema.datatype.to_string(),

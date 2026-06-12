@@ -43,9 +43,7 @@ use crate::provider::credential_formatter::sdjwt::test::get_credential_data;
 use crate::provider::credential_formatter::sdjwtvc_formatter::SDJWTVCFormatter;
 use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVc;
 use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredentialSubject};
-use crate::provider::credential_formatter::{
-    CredentialFormatter, CredentialSchemaVersion, nest_claims,
-};
+use crate::provider::credential_formatter::{CredentialFormatter, nest_claims};
 use crate::provider::data_type::provider::MockDataTypeProvider;
 use crate::provider::did_method::error::DidMethodProviderError;
 use crate::provider::did_method::jwk::JWKDidMethod;
@@ -681,7 +679,6 @@ async fn test_extract_credentials_swiyu() {
         allow_suspension: false,
         requires_wallet_instance_attestation: false,
         claim_schemas: vec![ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: "portrait".to_string(),
             data_type: "SWIYU_PICTURE".to_string(),
@@ -1119,18 +1116,19 @@ fn test_schema_id() {
     };
 
     let id = Uuid::new_v4();
-    let result = formatter.credential_schema_id(
-        id.into(),
-        request_dto.organisation_id,
-        request_dto.schema_id.as_deref(),
-        "https://example.com",
-        CredentialSchemaVersion::V1,
-    );
-    assert!(result.is_ok());
+    let result = formatter
+        .credential_schema_id(
+            id.into(),
+            request_dto.organisation_id,
+            request_dto.schema_id.as_deref(),
+            "https://example.com",
+            &"format".into(),
+        )
+        .unwrap();
     assert_eq!(
-        result.unwrap(),
+        result,
         format!(
-            "https://example.com/ssi/vct/v1/{}/{id}",
+            "https://example.com/ssi/vct/v2/{}/{id}/format",
             request_dto.organisation_id
         )
     )

@@ -301,7 +301,6 @@ impl OpenID4VCIFinal1_0 {
                     let namespace_schema = ClaimSchema {
                         id: Uuid::new_v4().into(),
                         key: namespace.to_owned(),
-                        business_key: None,
                         data_type: "OBJECT".to_string(),
                         created_date: now,
                         last_modified: now,
@@ -341,7 +340,6 @@ impl OpenID4VCIFinal1_0 {
                     id: schema.id,
                     claim_schemas: Some(new_claim_schemas),
                     revocation_method: None,
-                    format: None,
                     layout_type: None,
                     layout_properties: None,
                     claim_mappings,

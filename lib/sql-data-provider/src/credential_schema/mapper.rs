@@ -15,11 +15,9 @@ use sea_orm::ActiveValue::Set;
 use sea_orm::sea_query::query::IntoCondition;
 use sea_orm::sea_query::{ExprTrait, Query, SimpleExpr};
 use sea_orm::{
-    ColumnTrait, Condition, EntityTrait, IntoSimpleExpr, JoinType, QueryFilter, QueryOrder,
-    RelationTrait,
+    ColumnTrait, EntityTrait, IntoSimpleExpr, JoinType, QueryFilter, QueryOrder, RelationTrait,
 };
 use shared_types::CredentialSchemaId;
-use uuid::Uuid;
 
 use crate::TransactionManagerImpl;
 use crate::claim_schema::mapper::claim_schema_from_model;
@@ -38,7 +36,6 @@ impl IntoSortingColumn for SortableCredentialSchemaColumn {
         match self {
             Self::CreatedDate => credential_schema::Column::CreatedDate.into_simple_expr(),
             Self::Name => credential_schema::Column::Name.into_simple_expr(),
-            Self::Format => credential_schema::Column::Format.into_simple_expr(),
         }
     }
 }
@@ -49,21 +46,15 @@ impl IntoFilterCondition for CredentialSchemaFilterValue {
             Self::Name(string_match) => {
                 get_string_match_condition(credential_schema::Column::Name, string_match)
             }
-            Self::SchemaId(string_match) => Condition::any()
-                .add(get_string_match_condition(
-                    credential_schema::Column::SchemaId,
-                    string_match.clone(),
-                ))
-                .add(get_string_match_condition(
-                    credential_schema_format::Column::SchemaId,
-                    string_match,
-                )),
-            Self::SchemaIds(schema_ids) => Condition::any()
-                .add(credential_schema::Column::SchemaId.is_in(&schema_ids))
-                .add(credential_schema_format::Column::SchemaId.is_in(&schema_ids)),
-            Self::Formats(formats) => Condition::any()
-                .add(credential_schema::Column::Format.is_in(&formats))
-                .add(credential_schema_format::Column::Format.is_in(&formats)),
+            Self::SchemaId(string_match) => {
+                get_string_match_condition(credential_schema_format::Column::SchemaId, string_match)
+            }
+            Self::SchemaIds(schema_ids) => credential_schema_format::Column::SchemaId
+                .is_in(&schema_ids)
+                .into_condition(),
+            Self::Formats(formats) => credential_schema_format::Column::Format
+                .is_in(&formats)
+                .into_condition(),
             Self::OrganisationId(organisation_id) => get_equals_condition(
                 credential_schema::Column::OrganisationId,
                 organisation_id.to_string(),
@@ -132,7 +123,7 @@ impl IntoJoinRelations for CredentialSchemaFilterValue {
             CredentialSchemaFilterValue::SchemaId(_)
             | CredentialSchemaFilterValue::SchemaIds(_)
             | CredentialSchemaFilterValue::Formats(_) => vec![JoinRelation {
-                join_type: JoinType::LeftJoin,
+                join_type: JoinType::InnerJoin,
                 relation_def: credential_schema::Relation::CredentialSchemaFormat.def(),
                 alias: None,
             }],
@@ -160,13 +151,11 @@ impl From<CredentialSchema> for credential_schema::ActiveModel {
             last_modified: Set(value.last_modified),
             name: Set(value.name),
             imported_source_url: Set(value.imported_source_url),
-            format: Set(None),
             revocation_method: Set(value.revocation_method),
             organisation_id: Set(value.organisation.id()),
             key_storage_security: Set(convert_inner(value.key_storage_security)),
             layout_type: Set(value.layout_type.into()),
             layout_properties: Set(convert_inner(value.layout_properties)),
-            schema_id: Set(None),
             allow_suspension: Set(value.allow_suspension),
             requires_wallet_instance_attestation: Set(value.requires_wallet_instance_attestation),
             transaction_code_type: Set(transaction_code_type),
@@ -191,7 +180,6 @@ pub(super) fn claim_schemas_to_model_vec(
             created_date: Set(claim_schema.created_date),
             last_modified: Set(claim_schema.last_modified),
             key: Set(claim_schema.key),
-            business_key: Set(claim_schema.business_key),
             datatype: Set(claim_schema.data_type),
             array: Set(claim_schema.array),
             metadata: Set(claim_schema.metadata),
@@ -222,21 +210,6 @@ pub(super) fn credential_schema_from_models(
     };
 
     let id = credential_schema.id;
-    let formats = match (credential_schema.format, credential_schema.schema_id) {
-        // Stable id (reuse schema id) so successive loads of the same legacy row
-        // yield the same CredentialSchemaFormatId — required by issue_tx's
-        // format-by-id lookup. Legacy rows are single-format so no collision.
-        (Some(format), Some(schema_id)) => RelatedVec::from(vec![CredentialSchemaFormat {
-            id: Uuid::from(credential_schema.id).into(),
-            created_date: credential_schema.created_date,
-            last_modified: credential_schema.last_modified,
-            credential_schema_id: credential_schema.id,
-            format,
-            schema_id,
-            claim_mappings: RelatedVec::default(),
-        }]),
-        _ => RelatedVec::new(CredentialSchemaFormatsLoader { id, db: db.clone() }),
-    };
     Ok(CredentialSchema {
         id,
         deleted_at: credential_schema.deleted_at,
@@ -244,7 +217,7 @@ pub(super) fn credential_schema_from_models(
         last_modified: credential_schema.last_modified,
         name: credential_schema.name,
         key_storage_security: convert_inner(credential_schema.key_storage_security),
-        formats,
+        formats: RelatedVec::new(CredentialSchemaFormatsLoader { id, db: db.clone() }),
         revocation_method: credential_schema.revocation_method,
         claim_schemas: RelatedVec::new(ClaimSchemasLoader { id, db: db.clone() }),
         organisation: Related::new(
@@ -300,7 +273,6 @@ impl AsyncVecLoader<CredentialSchemaFormat> for CredentialSchemaFormatsLoader {
     async fn load(&self) -> Result<Vec<CredentialSchemaFormat>, DataLayerError> {
         let credential_schema_formats = credential_schema_format::Entity::find()
             .filter(credential_schema_format::Column::CredentialSchemaId.eq(self.id.to_string()))
-            .order_by_asc(credential_schema_format::Column::CreatedDate)
             .order_by_asc(credential_schema_format::Column::Format)
             .all(&self.db)
             .await

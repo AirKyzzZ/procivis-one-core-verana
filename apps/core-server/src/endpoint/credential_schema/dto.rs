@@ -295,7 +295,6 @@ pub(crate) type GetCredentialSchemaQuery = ListQueryParamsRest<
 #[into("one_core::model::credential_schema::SortableCredentialSchemaColumn")]
 pub(crate) enum SortableCredentialSchemaColumnRestEnum {
     Name,
-    Format,
     CreatedDate,
 }
 

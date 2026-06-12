@@ -4,7 +4,7 @@ use one_dto_mapper::{From, Into, convert_inner};
 use sea_orm::FromJsonQueryResult;
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
-use shared_types::{CredentialFormat, CredentialSchemaId, OrganisationId, RevocationMethodId};
+use shared_types::{CredentialSchemaId, OrganisationId, RevocationMethodId};
 use time::OffsetDateTime;
 
 use crate::common::bool_from_int;
@@ -18,7 +18,6 @@ pub struct Model {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub name: String,
-    pub format: Option<CredentialFormat>,
     pub revocation_method: Option<RevocationMethodId>,
     pub key_storage_security: Option<KeyStorageSecurity>,
     pub organisation_id: OrganisationId,
@@ -26,7 +25,6 @@ pub struct Model {
     pub layout_type: LayoutType,
     #[sea_orm(column_type = "Json")]
     pub layout_properties: Option<LayoutProperties>,
-    pub schema_id: Option<String>,
     pub imported_source_url: String,
     #[serde(deserialize_with = "bool_from_int")]
     pub allow_suspension: bool,

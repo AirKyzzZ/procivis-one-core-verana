@@ -3449,6 +3449,7 @@ dependencies = [
  "sea-orm",
  "sea-orm-migration",
  "sea-schema 0.17.0-rc.17",
+ "serde_json",
  "shared-types",
  "similar-asserts",
  "time",

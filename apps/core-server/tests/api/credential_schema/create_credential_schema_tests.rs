@@ -46,7 +46,10 @@ async fn test_create_credential_schema_success() {
     assert_eq!(claim_schemas.iter().filter(|cs| cs.metadata).count(), 10);
     assert_eq!(
         credential_schema.schema_id().await.unwrap(),
-        format!("{}/ssi/schema/v1/{id}", context.config.app.core_base_url)
+        format!(
+            "{}/ssi/schema/v2/{id}/JWT",
+            context.config.app.core_base_url
+        )
     );
 }
 

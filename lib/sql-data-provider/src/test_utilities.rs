@@ -164,7 +164,6 @@ pub async fn insert_credential_schema_to_database(
         imported_source_url: Set("CORE_URL".to_string()),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
-        format: NotSet,
         name: Set(name.to_owned()),
         revocation_method: Set(revocation_method.into()),
         organisation_id: Set(organisation_id),
@@ -172,7 +171,6 @@ pub async fn insert_credential_schema_to_database(
         deleted_at: Set(deleted_at),
         layout_type: Set(LayoutType::Card),
         layout_properties: Set(None),
-        schema_id: NotSet,
         allow_suspension: Set(true),
         requires_wallet_instance_attestation: Set(key_storage_security.is_some()),
         transaction_code_type: Set(None),
@@ -239,7 +237,6 @@ pub async fn insert_many_claims_schema_to_database<'a>(
 ) -> Result<(), DbErr> {
     for claim_schema in claim_input.claims {
         claim_schema::ActiveModel {
-            business_key: Set(None),
             id: Set(claim_schema.id),
             created_date: Set(get_dummy_date()),
             last_modified: Set(get_dummy_date()),

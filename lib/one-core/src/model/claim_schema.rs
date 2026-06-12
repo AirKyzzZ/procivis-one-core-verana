@@ -11,7 +11,6 @@ pub struct ClaimSchema {
     #[model(id)]
     pub id: ClaimSchemaId,
     pub key: String,
-    pub business_key: Option<String>,
     pub data_type: String,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,

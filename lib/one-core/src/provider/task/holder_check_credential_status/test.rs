@@ -193,7 +193,6 @@ fn generic_credential() -> Credential {
     let now = crate::clock::now_utc();
 
     let claim_schema = ClaimSchema {
-        business_key: None,
         array: false,
         id: Uuid::new_v4().into(),
         key: "NUMBER".to_string(),

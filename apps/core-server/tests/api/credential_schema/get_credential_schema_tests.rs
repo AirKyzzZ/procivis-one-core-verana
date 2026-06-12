@@ -1,7 +1,6 @@
 use similar_asserts::assert_eq;
 
 use crate::utils::context::TestContext;
-use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
@@ -32,6 +31,7 @@ async fn test_get_credential_schema_success() {
 
     resp["id"].assert_eq(&credential_schema.id);
     resp["schemaId"].assert_eq(&credential_schema.id);
+    assert_eq!(resp["format"], "JWT");
     resp["requiresWalletInstanceAttestation"]
         .assert_eq(&credential_schema.requires_wallet_instance_attestation);
     assert_eq!(resp["claims"].as_array().unwrap().len(), 2);
@@ -50,36 +50,4 @@ async fn test_get_credential_schema_success() {
     assert_eq!(resp["layoutProperties"]["code"]["type"], "BARCODE");
     assert_eq!(resp["claims"][0]["translations"]["name"]["en"], "firstName");
     assert_eq!(resp["translations"]["name"]["en"], "test schema");
-}
-
-#[tokio::test]
-async fn test_get_credential_scheme_with_3rd_party_type() {
-    // GIVEN
-    let (context, organisation) = TestContext::new_with_organisation(None).await;
-
-    let credential_schema = context
-        .db
-        .credential_schemas
-        .create(
-            "test",
-            &organisation,
-            None,
-            TestingCreateSchemaParams {
-                format: Some("foo".into()),
-                ..Default::default()
-            },
-        )
-        .await;
-
-    // WHEN
-    let resp = context
-        .api
-        .credential_schemas
-        .get(&credential_schema.id)
-        .await;
-
-    // THEN
-    assert_eq!(resp.status(), 200);
-    let resp = resp.json_value().await;
-    assert_eq!(resp["format"], "foo");
 }

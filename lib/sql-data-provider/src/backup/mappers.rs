@@ -4,14 +4,12 @@ use one_core::model::claim::Claim;
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential::Credential;
 use one_core::model::credential_schema::{CredentialSchema, LayoutType, TransactionCode};
-use one_core::model::credential_schema_format::CredentialSchemaFormat;
 use one_core::model::organisation::Organisation;
 use one_core::model::relation::{Related, RelatedVec};
 use one_core::repository::credential_repository::CredentialRepository;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::organisation_repository::OrganisationRepository;
 use one_dto_mapper::convert_inner;
-use uuid::Uuid;
 
 use super::models::{ClaimWithSchema, UnexportableCredentialModel};
 use crate::claim_schema::mapper::claim_schema_from_model;
@@ -55,24 +53,10 @@ pub(super) fn credential_from_unexportable_model(
         _ => return Err(DataLayerError::MappingError),
     };
 
-    let formats = match (
-        value.credential_schema_format,
-        value.credential_schema_schema_id,
-    ) {
-        (Some(format), Some(schema_id)) => RelatedVec::from(vec![CredentialSchemaFormat {
-            id: Uuid::new_v4().into(),
-            created_date: value.credential_schema_created_date,
-            last_modified: value.credential_schema_last_modified,
-            credential_schema_id: value.credential_schema_id,
-            format,
-            schema_id,
-            claim_mappings: RelatedVec::default(),
-        }]),
-        _ => RelatedVec::new(CredentialSchemaFormatsLoader {
-            id: value.credential_schema_id,
-            db: db.clone(),
-        }),
-    };
+    let formats = RelatedVec::new(CredentialSchemaFormatsLoader {
+        id: value.credential_schema_id,
+        db: db.clone(),
+    });
 
     Ok(Credential {
         id: value.id,

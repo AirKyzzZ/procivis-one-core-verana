@@ -62,7 +62,7 @@ impl CredentialSchemaImporter for CredentialSchemaImporterProto {
         };
 
         let conflicting_credential_schemas = self
-            .get_credential_schemas_with_same_name_and_schema_ids(
+            .get_credential_schemas_with_same_name_or_schema_ids(
                 credential_schema.organisation.id(),
                 credential_schema.name.clone(),
                 schema_ids.clone(),
@@ -104,7 +104,7 @@ impl CredentialSchemaImporter for CredentialSchemaImporterProto {
 }
 
 impl CredentialSchemaImporterProto {
-    async fn get_credential_schemas_with_same_name_and_schema_ids(
+    async fn get_credential_schemas_with_same_name_or_schema_ids(
         &self,
         organisation_id: OrganisationId,
         name: String,

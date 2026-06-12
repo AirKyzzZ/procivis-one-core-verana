@@ -295,7 +295,6 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
     let now = crate::clock::now_utc();
 
     let claim_schema = ClaimSchema {
-        business_key: None,
         id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
             .unwrap()
             .into(),

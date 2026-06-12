@@ -48,7 +48,7 @@ use crate::service::credential_schema::dto::{
     CredentialSchemaDetailResponseDTO, CredentialSchemaFilterValue,
     CredentialSchemaListIncludeEntityTypeEnum,
 };
-use crate::service::credential_schema::mapper::schema_to_detail_response_dto;
+use crate::service::credential_schema::mapper::schema_to_detail_v1_response_dto;
 
 pub(crate) async fn get_presentation_definition_v2(
     dcql_query: DcqlQuery,
@@ -140,7 +140,7 @@ pub(crate) async fn get_presentation_definition_v2(
             let credential_schema = match credential_schema {
                 None => None,
                 Some(schema) => Some(
-                    schema_to_detail_response_dto(schema, config)
+                    schema_to_detail_v1_response_dto(schema, config, formatter_provider)
                         .await
                         .error_while("converting credential schema")?,
                 ),
@@ -168,7 +168,7 @@ pub(crate) async fn get_presentation_definition_v2(
             {
                 None => None,
                 Some(schema) => Some(
-                    schema_to_detail_response_dto(schema, config)
+                    schema_to_detail_v1_response_dto(schema, config, formatter_provider)
                         .await
                         .error_while("converting credential schema")?,
                 ),
@@ -231,7 +231,7 @@ pub(crate) async fn get_presentation_definition_v2(
                     match failure_hint_schema {
                         None => None,
                         Some(schema) => Some(
-                            schema_to_detail_response_dto(schema, config)
+                            schema_to_detail_v1_response_dto(schema, config, formatter_provider)
                                 .await
                                 .error_while("converting failure hint schema")?,
                         ),

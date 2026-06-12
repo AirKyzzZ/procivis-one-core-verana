@@ -16,7 +16,7 @@ use one_core::repository::organisation_repository::{
     MockOrganisationRepository, OrganisationRepository,
 };
 use one_core::service::credential_schema::dto::CredentialSchemaFilterValue;
-use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, NotSet, Set, Unchanged};
+use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set, Unchanged};
 use shared_types::{CredentialSchemaId, RevocationMethodId};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
@@ -142,7 +142,6 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
             claim_schemas: new_claim_schemas
                 .into_iter()
                 .map(|claim| ClaimSchema {
-                    business_key: None,
                     id: claim.id,
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
@@ -181,7 +180,6 @@ async fn test_create_credential_schema_success() {
     let credential_schema_id: CredentialSchemaId = Uuid::new_v4().into();
     let claim_schemas = vec![
         ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
@@ -193,7 +191,6 @@ async fn test_create_credential_schema_success() {
             translations: Default::default(),
         },
         ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
@@ -300,61 +297,6 @@ async fn test_get_credential_schema_list_success() {
 }
 
 #[tokio::test]
-async fn test_get_credential_schema_list_success_v1_and_v2() {
-    let TestSetupWithCredentialSchema {
-        db,
-        organisation,
-        repository,
-        ..
-    } = setup_with_schema(Repositories::default()).await;
-
-    // v1 without schema_format entry
-    credential_schema::ActiveModel {
-        batch_size: Set(None),
-        allow_revocation: Set(None),
-        id: Set(Uuid::new_v4().into()),
-        imported_source_url: Set("CORE_URL".to_string()),
-        created_date: Set(get_dummy_date()),
-        last_modified: Set(get_dummy_date()),
-        format: Set(Some("JWT".into())),
-        name: Set("schema v1".to_owned()),
-        revocation_method: NotSet,
-        organisation_id: Set(organisation.id),
-        key_storage_security: NotSet,
-        deleted_at: NotSet,
-        layout_type: Set(credential_schema::LayoutType::Card),
-        layout_properties: Set(None),
-        schema_id: NotSet,
-        allow_suspension: Set(true),
-        requires_wallet_instance_attestation: Set(false),
-        transaction_code_type: Set(None),
-        transaction_code_length: Set(None),
-        transaction_code_description: Set(None),
-    }
-    .insert(&db)
-    .await
-    .unwrap();
-
-    let result = repository
-        .get_credential_schema_list(CredentialSchemaListQuery {
-            pagination: Some(ListPagination {
-                page: 0,
-                page_size: 5,
-            }),
-            filtering: Some(
-                CredentialSchemaFilterValue::Formats(vec!["JWT".to_owned()]).condition(),
-            ),
-            ..Default::default()
-        })
-        .await;
-    assert!(result.is_ok());
-    let result = result.unwrap();
-    assert_eq!(1, result.total_pages);
-    assert_eq!(2, result.total_items);
-    assert_eq!(2, result.values.len());
-}
-
-#[tokio::test]
 async fn test_get_credential_schema_list_deleted_schema() {
     let TestSetupWithCredentialSchema {
         organisation,
@@ -457,65 +399,6 @@ async fn test_get_credential_schema_not_found() {
     assert!(matches!(result, Ok(None)));
 }
 
-// Legacy schemas (format/schema_id on the parent row, no credential_schema_format
-// row) fall back to a synthesized CredentialSchemaFormat. Its id must be stable
-// across loads or OID4VCIFinal1_0Service::issue_tx fails with "missing format".
-#[tokio::test]
-async fn test_legacy_credential_schema_format_id_is_stable_across_loads() {
-    let TestSetup {
-        db,
-        organisation,
-        repository,
-        ..
-    } = setup_empty(Repositories::default()).await;
-
-    let credential_schema_id: CredentialSchemaId = Uuid::new_v4().into();
-    credential_schema::ActiveModel {
-        id: Set(credential_schema_id),
-        created_date: Set(get_dummy_date()),
-        last_modified: Set(get_dummy_date()),
-        name: Set("legacy schema".to_owned()),
-        format: Set(Some("JWT".into())),
-        schema_id: Set(Some(credential_schema_id.to_string())),
-        organisation_id: Set(organisation.id),
-        imported_source_url: Set("CORE_URL".to_string()),
-        layout_type: Set(LayoutType::Card.into()),
-        layout_properties: Set(None),
-        allow_suspension: Set(true),
-        requires_wallet_instance_attestation: Set(false),
-        revocation_method: Set(None),
-        key_storage_security: Set(None),
-        deleted_at: Set(None),
-        batch_size: Set(None),
-        allow_revocation: Set(None),
-        transaction_code_type: Set(None),
-        transaction_code_length: Set(None),
-        transaction_code_description: Set(None),
-    }
-    .insert(&db)
-    .await
-    .unwrap();
-
-    let load = || async {
-        repository
-            .get_credential_schema(&credential_schema_id)
-            .await
-            .unwrap()
-            .expect("schema should exist")
-            .formats
-            .as_ref()
-            .await
-            .unwrap()
-            .to_owned()
-    };
-
-    let first = load().await;
-    let second = load().await;
-
-    assert_eq!(first.len(), 1);
-    assert_eq!(first[0].id, second[0].id);
-}
-
 #[tokio::test]
 async fn test_delete_credential_schema_success() {
     let TestSetupWithCredentialSchema {
@@ -585,12 +468,10 @@ async fn test_update_credential_schema_success() {
     } = setup_with_schema(Repositories::default()).await;
 
     let new_revocation_method: RevocationMethodId = "new-method".into();
-    let new_format = "new-format";
     let result = repository
         .update_credential_schema(UpdateCredentialSchemaRequest {
             id: credential_schema.id,
             revocation_method: Some(Some(new_revocation_method.clone())),
-            format: Some(new_format.into()),
             claim_schemas: None,
             layout_properties: Some(LayoutProperties {
                 background: Some(BackgroundProperties {
@@ -608,10 +489,6 @@ async fn test_update_credential_schema_success() {
     let db_schemas = credential_schema::Entity::find().all(&db).await.unwrap();
     assert_eq!(db_schemas.len(), 1);
     assert_eq!(db_schemas[0].revocation_method, Some(new_revocation_method));
-    assert_eq!(
-        db_schemas[0].format.as_ref().map(|f| f.as_ref()),
-        Some(new_format)
-    );
     assert_eq!(db_schemas[0].layout_type, LayoutType::Document.into());
     assert_eq!(
         &db_schemas[0]
@@ -641,11 +518,9 @@ async fn test_update_credential_schema_claims_success() {
         .update_credential_schema(UpdateCredentialSchemaRequest {
             id: credential_schema.id,
             revocation_method: None,
-            format: None,
             claim_schemas: Some(vec![ClaimSchema {
                 id: claim_schema_id,
                 key: "new claim".to_string(),
-                business_key: None,
                 data_type: "STRING".to_string(),
                 created_date: now,
                 last_modified: now,
@@ -686,46 +561,4 @@ async fn test_get_by_schema_id_and_organisation() {
         .unwrap();
 
     assert_eq!(res, credential_schema);
-}
-
-#[tokio::test]
-async fn test_partial_unique_index_allows_multiple_null_schema_ids() {
-    let setup = setup_empty(Repositories::default()).await;
-
-    insert_null_schema_id_credential_schema(&setup.db, setup.organisation.id, "schema-a")
-        .await
-        .expect("first NULL-schema_id insert should succeed");
-    insert_null_schema_id_credential_schema(&setup.db, setup.organisation.id, "schema-b")
-        .await
-        .expect("second NULL-schema_id insert should also succeed");
-}
-
-async fn insert_null_schema_id_credential_schema(
-    db: &DatabaseConnection,
-    organisation_id: shared_types::OrganisationId,
-    name: &str,
-) -> Result<(), sea_orm::DbErr> {
-    let model = credential_schema::ActiveModel {
-        id: Set(Uuid::new_v4().into()),
-        deleted_at: Set(None),
-        created_date: Set(get_dummy_date()),
-        last_modified: Set(get_dummy_date()),
-        name: Set(name.to_string()),
-        format: Set(None),
-        schema_id: Set(None),
-        revocation_method: Set(None),
-        organisation_id: Set(organisation_id),
-        layout_type: Set(credential_schema::LayoutType::Card),
-        layout_properties: Set(None),
-        imported_source_url: Set("CORE_URL".into()),
-        allow_suspension: Set(false),
-        requires_wallet_instance_attestation: Set(false),
-        key_storage_security: Set(None),
-        transaction_code_type: Set(None),
-        transaction_code_length: Set(None),
-        transaction_code_description: Set(None),
-        batch_size: Set(None),
-        allow_revocation: Set(None),
-    };
-    model.insert(db).await.map(|_| ())
 }

@@ -172,11 +172,6 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
             Some(revocation_method) => Set(revocation_method),
         };
 
-        let format = match request.format {
-            None => Unchanged(Some("".into())), // Previously default empty string
-            Some(format) => Set(Some(format)),
-        };
-
         let layout_type = match request.layout_type {
             None => Unchanged(LayoutType::Card),
             Some(layout_type) => Set(layout_type.into()),
@@ -191,7 +186,6 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
             id: Unchanged(*id),
             last_modified: Set(one_core::clock::now_utc()),
             revocation_method,
-            format,
             layout_type,
             layout_properties,
             ..Default::default()
@@ -260,17 +254,15 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
                     .eq(organisation_id)
                     .and(credential_schema::Column::DeletedAt.is_null())
                     .and(
-                        credential_schema::Column::Id
-                            .in_subquery(
-                                Query::select()
-                                    .column(credential_schema_format::Column::CredentialSchemaId)
-                                    .from(credential_schema_format::Entity)
-                                    .cond_where(
-                                        credential_schema_format::Column::SchemaId.eq(schema_id),
-                                    )
-                                    .to_owned(),
-                            )
-                            .or(credential_schema::Column::SchemaId.eq(schema_id)),
+                        credential_schema::Column::Id.in_subquery(
+                            Query::select()
+                                .column(credential_schema_format::Column::CredentialSchemaId)
+                                .from(credential_schema_format::Entity)
+                                .cond_where(
+                                    credential_schema_format::Column::SchemaId.eq(schema_id),
+                                )
+                                .to_owned(),
+                        ),
                     ),
             )
             .one(&self.db)

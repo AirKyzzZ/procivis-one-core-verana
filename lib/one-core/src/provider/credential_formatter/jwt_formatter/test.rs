@@ -29,9 +29,7 @@ use crate::provider::credential_formatter::model::{
 use crate::provider::credential_formatter::vcdm::{
     ContextType, VcdmCredential, VcdmCredentialSubject,
 };
-use crate::provider::credential_formatter::{
-    CredentialFormatter, CredentialSchemaVersion, nest_claims,
-};
+use crate::provider::credential_formatter::{CredentialFormatter, nest_claims};
 use crate::provider::data_type::model::ExtractedClaim;
 use crate::provider::data_type::provider::MockDataTypeProvider;
 use crate::provider::did_method::MockDidMethod;
@@ -778,17 +776,18 @@ fn test_schema_id() {
     };
 
     let id = CredentialSchemaId::from(Uuid::new_v4());
-    let result = formatter.credential_schema_id(
-        id,
-        request_dto.organisation_id,
-        request_dto.schema_id.as_deref(),
-        "https://example.com",
-        CredentialSchemaVersion::V1,
-    );
-    assert!(result.is_ok());
+    let result = formatter
+        .credential_schema_id(
+            id,
+            request_dto.organisation_id,
+            request_dto.schema_id.as_deref(),
+            "https://example.com",
+            &"format".into(),
+        )
+        .unwrap();
     assert_eq!(
-        result.unwrap(),
-        format!("https://example.com/ssi/schema/v1/{id}")
+        result,
+        format!("https://example.com/ssi/schema/v2/{id}/format")
     )
 }
 

@@ -26,6 +26,7 @@ use uuid::Uuid;
 
 use super::error::FormatterError;
 use super::json_claims::{parse_claims, prepare_identifier};
+use super::mapper::{default_2_years, to_format_with_mappings};
 use super::model::{
     AuthenticationFn, CredentialClaim, CredentialClaimValue, CredentialData,
     CredentialPresentation, CredentialStatus, CredentialSubject, DetailCredential, Features,
@@ -36,7 +37,7 @@ use super::sdjwt::disclosures::parse_token;
 use super::sdjwt::model::{DecomposedToken, SdJwtFormattingInputs};
 use super::sdjwt::{parse_holder_identifier, prepare_sd_presentation};
 use super::vcdm::VcdmCredential;
-use super::{CredentialFormatter, CredentialSchemaVersion, MetadataClaimSchema, sdjwt};
+use super::{CredentialFormatter, MetadataClaimSchema, sdjwt};
 use crate::config::core_config::{
     DatatypeConfig, DatatypeType, DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType,
     KeyStorageType, RevocationType, VerificationProtocolType,
@@ -51,7 +52,6 @@ use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::jwt_metadata_claims;
 use crate::provider::caching_loader::vct::VctTypeMetadataFetcher;
-use crate::provider::credential_formatter::mapper::{default_2_years, to_format_with_mappings};
 use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -438,18 +438,11 @@ impl CredentialFormatter for SDJWTVCFormatter {
         organisation_id: OrganisationId,
         schema_id: Option<&'a str>,
         core_base_url: &'a str,
-        version: CredentialSchemaVersion,
+        format: &CredentialFormat,
     ) -> Result<String, FormatterError> {
         Ok(match schema_id {
             Some(schema_id) => schema_id.to_string(),
-            None => match version {
-                CredentialSchemaVersion::V1 => {
-                    format!("{core_base_url}/ssi/vct/v1/{organisation_id}/{id}")
-                }
-                CredentialSchemaVersion::V2(format) => {
-                    format!("{core_base_url}/ssi/vct/v2/{organisation_id}/{id}/{format}")
-                }
-            },
+            None => format!("{core_base_url}/ssi/vct/v2/{organisation_id}/{id}/{format}"),
         })
     }
 

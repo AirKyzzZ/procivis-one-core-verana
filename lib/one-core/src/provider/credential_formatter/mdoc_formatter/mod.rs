@@ -34,7 +34,15 @@ use self::util::{
     extract_algorithm_from_header, extract_certificate_from_x5chain_header,
     try_build_algorithm_header, try_extract_holder_public_key, try_extract_mobile_security_object,
 };
-use super::{CredentialSchemaVersion, nest_claims};
+use super::error::FormatterError;
+use super::json_claims::prepare_identifier;
+use super::model::{
+    AuthenticationFn, CredentialClaim, CredentialClaimValue, CredentialData,
+    CredentialPresentation, CredentialSchema, CredentialSubject, DetailCredential, Features,
+    FormatterCapabilities, IdentifierDetails, PublicKeySource, PublishedClaim, SelectiveDisclosure,
+    TokenVerifier, VerificationFn,
+};
+use super::{CredentialFormatter, MetadataClaimSchema, nest_claims};
 use crate::config::core_config::{
     DatatypeConfig, DatatypeType, DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType,
     KeyStorageType, RevocationType, VerificationProtocolType,
@@ -52,15 +60,6 @@ use crate::model::organisation::Organisation;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::cose::{CoseSign1, CoseSign1Builder};
 use crate::proto::jwt::TokenError;
-use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::json_claims::prepare_identifier;
-use crate::provider::credential_formatter::model::{
-    AuthenticationFn, CredentialClaim, CredentialClaimValue, CredentialData,
-    CredentialPresentation, CredentialSchema, CredentialSubject, DetailCredential, Features,
-    FormatterCapabilities, IdentifierDetails, PublicKeySource, PublishedClaim, SelectiveDisclosure,
-    TokenVerifier, VerificationFn,
-};
-use crate::provider::credential_formatter::{CredentialFormatter, MetadataClaimSchema};
 use crate::provider::data_type::model::ExtractedClaim;
 use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -471,7 +470,7 @@ impl CredentialFormatter for MdocFormatter {
         _organisation_id: OrganisationId,
         schema_id: Option<&'a str>,
         _core_base_url: &'a str,
-        _version: CredentialSchemaVersion,
+        _format: &CredentialFormat,
     ) -> Result<String, FormatterError> {
         Ok(schema_id
             .map(ToOwned::to_owned)
@@ -537,7 +536,6 @@ impl CredentialFormatter for MdocFormatter {
                 created_date: now,
                 last_modified: now,
                 key: "doctype".to_string(),
-                business_key: None,
                 data_type: "STRING".to_owned(),
                 array: false,
                 metadata: true,
@@ -1476,7 +1474,6 @@ fn claim_with_schema(
             created_date: now,
             last_modified: now,
             key: paths.claim_schema_path(),
-            business_key: None,
             data_type,
             array: false,
             metadata: false,

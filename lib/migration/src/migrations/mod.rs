@@ -10,10 +10,10 @@ pub mod m20260511_120000_reset_trusted_requirements_to_false;
 pub mod m20260512_062412_localized_text;
 pub mod m20260512_090000_remove_legacy_trust;
 pub mod m20260522_120000_credential_schema_layout_properties_to_jsonb;
-
 pub mod m20260526_095002_credential_grouping;
 pub mod m20260526_124033_drop_validity_creds;
 pub mod m20260528_120000_bump_credential_schema_import_url_to_v2;
+pub mod m20260604_030754_credential_schema_v2;
 pub mod m20260608_120000_add_user_nonce_and_user_sub_to_holder_wallet_instance;
 pub mod m20260609_090000_move_user_nonce_user_sub_to_wallet_instance;
 pub mod m20260611_052438_unique_claim_schema_keys;

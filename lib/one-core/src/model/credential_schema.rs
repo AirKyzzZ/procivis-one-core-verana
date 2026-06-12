@@ -169,7 +169,6 @@ pub struct CredentialSchemaRelations {}
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SortableCredentialSchemaColumn {
     Name,
-    Format,
     CreatedDate,
 }
 
@@ -268,7 +267,6 @@ pub type CredentialSchemaListQuery = ListQuery<
 pub struct UpdateCredentialSchemaRequest {
     pub id: CredentialSchemaId,
     pub revocation_method: Option<Option<RevocationMethodId>>,
-    pub format: Option<CredentialFormat>,
     pub claim_schemas: Option<Vec<ClaimSchema>>,
     pub claim_mappings: Option<Vec<CredentialSchemaFormatClaimSchema>>,
     pub layout_type: Option<LayoutType>,

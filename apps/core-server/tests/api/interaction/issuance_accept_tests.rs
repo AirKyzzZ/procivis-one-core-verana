@@ -112,7 +112,6 @@ async fn test_issuance_accept_openid4vc() {
             TestingCreateSchemaParams {
                 claim_schemas: Some(vec![
                     ClaimSchema {
-                        business_key: None,
                         id: schema_id.into(),
                         key: "string".to_string(),
                         data_type: "STRING".to_string(),
@@ -124,7 +123,6 @@ async fn test_issuance_accept_openid4vc() {
                         translations: Default::default(),
                     },
                     ClaimSchema {
-                        business_key: None,
                         id: metadata_schema_id.into(),
                         key: "iss".to_string(),
                         data_type: "STRING".to_string(),
@@ -313,7 +311,6 @@ async fn test_issuance_accept_schema_name_already_exists() {
             TestingCreateSchemaParams {
                 claim_schemas: Some(vec![
                     ClaimSchema {
-                        business_key: None,
                         id: schema_id.into(),
                         key: "string".to_string(),
                         data_type: "STRING".to_string(),
@@ -325,7 +322,6 @@ async fn test_issuance_accept_schema_name_already_exists() {
                         translations: Default::default(),
                     },
                     ClaimSchema {
-                        business_key: None,
                         id: metadata_schema_id.into(),
                         key: "iss".to_string(),
                         data_type: "STRING".to_string(),
@@ -472,7 +468,6 @@ async fn test_issuance_accept_openid4vc_issuer_invalid_signature() {
             None,
             TestingCreateSchemaParams {
                 claim_schemas: Some(vec![ClaimSchema {
-                    business_key: None,
                     id: schema_id.into(),
                     key: "string".to_string(),
                     data_type: "STRING".to_string(),
@@ -611,7 +606,6 @@ async fn test_issuance_accept_openid4vc_with_key_id() {
             None,
             TestingCreateSchemaParams {
                 claim_schemas: Some(vec![ClaimSchema {
-                    business_key: None,
                     id: schema_id.into(),
                     key: "string".to_string(),
                     data_type: "STRING".to_string(),
@@ -1316,7 +1310,6 @@ async fn test_issuance_accept_openid4vc_with_tx_code() {
             None,
             TestingCreateSchemaParams {
                 claim_schemas: Some(vec![ClaimSchema {
-                    business_key: None,
                     id: schema_id.into(),
                     key: "string".to_string(),
                     data_type: "STRING".to_string(),
@@ -1518,7 +1511,6 @@ async fn test_wia_pop_iss_equals_wia_sub() {
             None,
             TestingCreateSchemaParams {
                 claim_schemas: Some(vec![ClaimSchema {
-                    business_key: None,
                     id: schema_id.into(),
                     key: "string".to_string(),
                     data_type: "STRING".to_string(),

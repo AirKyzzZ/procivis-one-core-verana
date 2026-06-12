@@ -10,6 +10,7 @@ version                = "0.1.0"
 [dependencies]
 sea-orm               = { workspace = true, features = ["with-time", "with-uuid"] }
 sea-orm-migration     = { version = "1.1", default-features = false, features = ["runtime-tokio", "sqlx-sqlite"] }
+serde_json.workspace  = true
 shared-types          = { workspace = true, features = ["sea-orm"] }
 time.workspace        = true
 tokio                 = { workspace = true, features = ["macros", "rt-multi-thread"] }

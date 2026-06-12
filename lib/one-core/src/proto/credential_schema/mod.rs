@@ -26,6 +26,8 @@ pub(crate) enum Error {
     ClaimSchemaKeyTooLong,
     #[error("Invalid claim type (mdoc top level only objects allowed)")]
     InvalidClaimTypeMdocTopLevelOnlyObjectsAllowed,
+    #[error("Credential schema: Missing namespace")]
+    MissingNamespace,
     #[error("Credential schema: Missing claims")]
     MissingClaims,
     #[error("Credential schema: Claim `{0}` name contains invalid character '/'")]
@@ -71,6 +73,7 @@ impl ErrorCodeMixin for Error {
         match self {
             Self::AlreadyExists => ErrorCode::BR_0007,
             Self::MissingClaims => ErrorCode::BR_0008,
+            Self::MissingNamespace => ErrorCode::BR_0438,
             Self::RevocationMethodNotCompatibleWithSelectedFormat => ErrorCode::BR_0110,
             Self::SuspensionNotAvailableForSelectedRevocationMethod => ErrorCode::BR_0162,
             Self::SuspensionNotEnabledForSuspendOnlyRevocationMethod => ErrorCode::BR_0191,

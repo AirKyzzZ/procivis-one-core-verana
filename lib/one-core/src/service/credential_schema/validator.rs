@@ -4,25 +4,23 @@ use itertools::Itertools;
 use shared_types::OrganisationId;
 
 use super::dto::{
-    CreateCredentialSchemaRequestDTO, CreateCredentialSchemaV2RequestDTO,
-    CredentialClaimSchemaRequestDTO, CredentialSchemaFormatRequestDTO,
-    CredentialSchemaLayoutPropertiesRequestDTO, CredentialSchemaTransactionCodeRequestDTO,
+    CreateCredentialSchemaV2RequestDTO, CredentialClaimSchemaRequestDTO,
+    CredentialSchemaFormatRequestDTO, CredentialSchemaLayoutPropertiesRequestDTO,
+    CredentialSchemaTransactionCodeRequestDTO,
 };
 use super::error::CredentialSchemaServiceError;
 use super::mapper::create_unique_name_check_request;
-use crate::config::core_config::{ConfigExt, CoreConfig, DatatypeType, FormatType};
+use crate::config::core_config::{ConfigExt, CoreConfig, DatatypeType};
 use crate::config::validator::datatype::validate_datatypes;
 use crate::config::validator::format::validate_format;
 use crate::error::{ContextWithErrorCode, NestedError};
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::credential_schema::{GetCredentialSchemaList, KeyStorageSecurity};
-use crate::provider::ProviderExt;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::Features;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::model::Operation;
-use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 
 pub(crate) async fn credential_schema_already_exists(
@@ -66,47 +64,6 @@ pub(crate) enum UniquenessCheckResult {
     SchemaIdConflict,
     NameConflict,
     Ok,
-}
-
-pub(crate) fn validate_create_request(
-    request: &CreateCredentialSchemaRequestDTO,
-    config: &CoreConfig,
-    formatter: &dyn CredentialFormatter,
-    revocation_method_provider: &dyn RevocationMethodProvider,
-) -> Result<(), CredentialSchemaServiceError> {
-    // at least one claim must be declared
-    if request.claims.is_empty() {
-        return Err(CredentialSchemaServiceError::MissingClaimSchemas);
-    }
-
-    validate_key_lengths(&request.claims, 0)?;
-    validate_format(&request.format, &config.format).error_while("validating format")?;
-
-    let revocation_method = match &request.revocation_method {
-        Some(method_id) => {
-            let revocation_method = revocation_method_provider.get_revocation_method(method_id)?;
-            revocation_method.ensure_enabled()?;
-            Some(revocation_method)
-        }
-        None => None,
-    };
-
-    validate_nested_claim_schemas(&request.claims, config, formatter)?;
-    validate_claim_names_for_formatter(&request.claims, formatter)?;
-    validate_revocation_method_is_compatible_with_format(
-        request.revocation_method.as_ref(),
-        config,
-        formatter,
-    )?;
-    validate_revocation_method_is_compatible_with_suspension(
-        request.allow_suspension,
-        revocation_method.as_deref(),
-    )?;
-    validate_credential_design(request.layout_properties.as_ref(), formatter)?;
-    validate_mdoc_claim_types(&request.claims, &request.format, config)?;
-    validate_transaction_code(request.transaction_code.as_ref(), formatter)?;
-
-    Ok(())
 }
 
 pub(crate) fn validate_create_v2_request(
@@ -168,31 +125,6 @@ fn validate_claim_names_for_formatter(
     Ok(())
 }
 
-fn validate_revocation_method_is_compatible_with_format(
-    revocation_method_id: Option<&shared_types::RevocationMethodId>,
-    config: &CoreConfig,
-    formatter: &dyn CredentialFormatter,
-) -> Result<(), CredentialSchemaServiceError> {
-    let Some(method_id) = revocation_method_id else {
-        return Ok(());
-    };
-
-    let revocation_method = config
-        .revocation
-        .get_fields(method_id)
-        .error_while("getting revocation config")?;
-
-    if formatter
-        .get_capabilities()
-        .revocation_methods
-        .contains(&revocation_method.r#type)
-    {
-        Ok(())
-    } else {
-        Err(CredentialSchemaServiceError::RevocationMethodNotCompatibleWithSelectedFormat)
-    }
-}
-
 fn validate_credential_design(
     layout_properties: Option<&CredentialSchemaLayoutPropertiesRequestDTO>,
     formatter: &dyn CredentialFormatter,
@@ -205,37 +137,6 @@ fn validate_credential_design(
     {
         return Err(CredentialSchemaServiceError::LayoutPropertiesNotSupported);
     }
-    Ok(())
-}
-
-fn validate_mdoc_claim_types(
-    claims: &[CredentialClaimSchemaRequestDTO],
-    format: &shared_types::CredentialFormat,
-    config: &CoreConfig,
-) -> Result<(), CredentialSchemaServiceError> {
-    let format_type = config
-        .format
-        .get_fields(format)
-        .error_while("getting format config")?
-        .r#type;
-
-    if format_type != FormatType::Mdoc {
-        return Ok(());
-    }
-
-    for claim in claims {
-        let data_type = config
-            .datatype
-            .get_fields(&claim.datatype)
-            .error_while("getting datatype config")?
-            .r#type;
-        if data_type != DatatypeType::Object {
-            return Err(
-                CredentialSchemaServiceError::InvalidClaimTypeMdocTopLevelOnlyObjectsAllowed,
-            );
-        }
-    }
-
     Ok(())
 }
 
@@ -262,7 +163,7 @@ fn validate_transaction_code(
     Ok(())
 }
 
-fn validate_revocation_method_is_compatible_with_suspension(
+pub(super) fn validate_revocation_method_is_compatible_with_suspension(
     allow_suspension: Option<bool>,
     revocation_method: Option<&dyn RevocationMethod>,
 ) -> Result<(), CredentialSchemaServiceError> {

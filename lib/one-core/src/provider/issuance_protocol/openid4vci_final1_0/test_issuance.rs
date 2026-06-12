@@ -733,7 +733,6 @@ async fn dummy_credential() -> Credential {
             path: "key".to_string(),
             selectively_disclosable: false,
             schema: Some(ClaimSchema {
-                business_key: None,
                 id: claim_schema_id,
                 key: "key".to_string(),
                 data_type: "STRING".to_string(),
@@ -772,7 +771,6 @@ async fn dummy_credential() -> Credential {
                     .into(),
                     revocation_method: None,
                     claim_schemas: vec![ClaimSchema {
-                        business_key: None,
                         id: claim_schema_id,
                         key: "key".to_string(),
                         data_type: "STRING".to_string(),

@@ -984,7 +984,7 @@ fn test_credential_schema_id() {
         request_dto.organisation_id,
         request_dto.schema_id.as_deref(),
         "https://example.com",
-        CredentialSchemaVersion::V1,
+        &"format".into(),
     );
 
     assert!(result.is_ok());

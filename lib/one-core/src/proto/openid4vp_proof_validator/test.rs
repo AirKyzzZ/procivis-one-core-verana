@@ -13,6 +13,8 @@ use uuid::Uuid;
 
 use crate::config::core_config::VerificationProtocolType;
 use crate::model::claim_schema::ClaimSchema;
+use crate::model::credential_schema_format::CredentialSchemaFormat;
+use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::did::Did;
 use crate::model::identifier::Identifier;
 use crate::model::interaction::{Interaction, InteractionType};
@@ -485,8 +487,33 @@ fn test_data(
         required: false,
         ..dummy_claim_schema()
     };
-    credential_schema.claim_schemas =
-        vec![claim_schema_required.clone(), claim_schema_optional.clone()].into();
+    let claim_schemas = vec![claim_schema_required.clone(), claim_schema_optional.clone()];
+
+    let format_id = Uuid::new_v4().into();
+    credential_schema.formats = vec![CredentialSchemaFormat {
+        id: format_id,
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        credential_schema_id: credential_schema.id,
+        format: "format".into(),
+        schema_id: "CredentialSchemaId".to_owned(),
+        claim_mappings: claim_schemas
+            .iter()
+            .map(|cs| CredentialSchemaFormatClaimSchema {
+                id: Uuid::new_v4().into(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                credential_schema_format_id: format_id,
+                claim_schema_id: cs.id,
+                technical_key: cs.key.to_owned(),
+                namespace: None,
+            })
+            .collect::<Vec<_>>()
+            .into(),
+    }]
+    .into();
+    credential_schema.claim_schemas = claim_schemas.into();
+
     let proof = Proof {
         id: proof_id,
         verifier_identifier: Some(Identifier {

@@ -149,7 +149,6 @@ async fn test_presentation_definition_success() {
                         input_schemas: Some(vec![ProofInputSchema {
                             claim_schemas: Some(vec![ProofInputClaimSchema {
                                 schema: ClaimSchema {
-                                    business_key: None,
                                     id: Uuid::from_str("2fa85f64-5717-4562-b3fc-2c963f66afa6")
                                         .unwrap()
                                         .into(),

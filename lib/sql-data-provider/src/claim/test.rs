@@ -54,7 +54,6 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
     let claim_schema_ids: Vec<ClaimSchemaId> = (0..4).map(|_| Uuid::new_v4().into()).collect();
     for (index, id) in claim_schema_ids.iter().enumerate() {
         claim_schema::ActiveModel {
-            business_key: Set(None),
             id: Set(*id),
             created_date: Set(get_dummy_date()),
             last_modified: Set(get_dummy_date()),
@@ -117,7 +116,6 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
         claim_schemas: claim_schema_ids
             .into_iter()
             .map(|id| ClaimSchema {
-                business_key: None,
                 id,
                 key: format!("key {id}"),
                 data_type: "STRING".to_string(),
@@ -394,7 +392,6 @@ async fn test_get_claim_list_with_relation() {
             Ok(ids
                 .into_iter()
                 .map(|id| ClaimSchema {
-                    business_key: None,
                     id,
                     key: format!("key {id}"),
                     data_type: "STRING".to_string(),

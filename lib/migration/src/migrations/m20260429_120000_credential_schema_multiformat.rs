@@ -395,14 +395,14 @@ enum CredentialSchemaNew {
 }
 
 #[derive(DeriveIden)]
-enum ClaimSchema {
+pub enum ClaimSchema {
     Table,
     Id,
     BusinessKey,
 }
 
 #[derive(DeriveIden)]
-enum CredentialSchemaFormat {
+pub enum CredentialSchemaFormat {
     Table,
     Id,
     CreatedDate,

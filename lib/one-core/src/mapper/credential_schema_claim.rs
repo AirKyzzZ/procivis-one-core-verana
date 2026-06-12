@@ -25,7 +25,6 @@ pub(crate) fn claim_schema_from_metadata_claim_schema(
     ClaimSchema {
         id: Uuid::new_v4().into(),
         key: metadata_claim.key.to_string(),
-        business_key: None,
         data_type: metadata_claim.data_type,
         created_date: now,
         last_modified: now,
@@ -63,7 +62,6 @@ pub(crate) fn from_request_claim_schema(
     ClaimSchema {
         id,
         key: request.key.clone(),
-        business_key: Some(request.key.clone()),
         data_type: request.datatype.clone(),
         created_date: now,
         last_modified: now,
@@ -71,28 +69,6 @@ pub(crate) fn from_request_claim_schema(
         metadata: false,
         required: request.required,
         translations,
-    }
-}
-
-pub(crate) fn from_jwt_request_claim_schema(
-    now: OffsetDateTime,
-    id: ClaimSchemaId,
-    key: String,
-    datatype: String,
-    required: bool,
-    array: Option<bool>,
-) -> ClaimSchema {
-    ClaimSchema {
-        id,
-        key,
-        business_key: None,
-        data_type: datatype,
-        created_date: now,
-        last_modified: now,
-        array: array.unwrap_or(false),
-        metadata: false,
-        required,
-        translations: Default::default(),
     }
 }
 

@@ -272,10 +272,6 @@ fn get_credential_list_query(query_params: CredentialListQuery) -> Select<creden
             credential_schema::Column::DeletedAt,
             "credential_schema_deleted_at",
         )
-        .column_as(
-            credential_schema::Column::Format,
-            "credential_schema_format",
-        )
         .column_as(credential_schema::Column::Id, "credential_schema_id")
         .column_as(
             credential_schema::Column::LastModified,
@@ -289,10 +285,6 @@ fn get_credential_list_query(query_params: CredentialListQuery) -> Select<creden
         .column_as(
             credential_schema::Column::KeyStorageSecurity,
             "credential_schema_key_storage_security",
-        )
-        .column_as(
-            credential_schema::Column::SchemaId,
-            "credential_schema_schema_id",
         )
         .column_as(
             credential_schema::Column::OrganisationId,

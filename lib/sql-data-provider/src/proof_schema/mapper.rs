@@ -7,7 +7,9 @@ use sea_orm::prelude::Expr;
 use sea_orm::sea_query::{IntoCondition, Query, SimpleExpr};
 use sea_orm::{ColumnTrait, IntoSimpleExpr, JoinType, Set};
 
-use crate::entity::{credential_schema, proof_input_schema, proof_schema};
+use crate::entity::{
+    credential_schema, credential_schema_format, proof_input_schema, proof_schema,
+};
 use crate::list_query_generic::{
     IntoFilterCondition, IntoSortingColumn, get_comparison_condition, get_equals_condition,
     get_string_match_condition,
@@ -62,7 +64,16 @@ impl IntoFilterCondition for ProofSchemaFilterValue {
                                     proof_input_schema::Column::CredentialSchema,
                                 )),
                         )
-                        .and_where(credential_schema::Column::Format.is_not_in(formats))
+                        .join(
+                            JoinType::InnerJoin,
+                            credential_schema_format::Entity,
+                            Expr::col((
+                                credential_schema_format::Entity,
+                                credential_schema_format::Column::CredentialSchemaId,
+                            ))
+                            .equals((credential_schema::Entity, credential_schema::Column::Id)),
+                        )
+                        .and_where(credential_schema_format::Column::Format.is_not_in(formats))
                         .to_owned(),
                 )
                 .into_condition(),

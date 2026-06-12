@@ -56,12 +56,11 @@ async fn test_parse_import_credential_schema_success() {
             ..Default::default()
         });
     formatter.expect_get_metadata_claims().returning(Vec::new);
-
+    let formatter = Arc::new(formatter);
     formatter_provider
         .expect_get_credential_formatter()
         .with(eq(CredentialFormat::from("JWT")))
-        .once()
-        .return_once(|_| Ok(Arc::new(formatter)));
+        .returning(move |_| Ok(formatter.clone()));
 
     let parser = setup_parser(
         generic_config().core,
@@ -132,11 +131,10 @@ async fn test_parse_import_with_nested_claims_success() {
             ..Default::default()
         });
     formatter.expect_get_metadata_claims().returning(Vec::new);
-
+    let formatter = Arc::new(formatter);
     formatter_provider
         .expect_get_credential_formatter()
-        .once()
-        .return_once(|_| Ok(Arc::new(formatter)));
+        .returning(move |_| Ok(formatter.clone()));
 
     let parser = setup_parser(
         generic_config().core,
@@ -220,7 +218,6 @@ async fn test_importer_import_credential_schema_success() {
         .into(),
         revocation_method: None,
         claim_schemas: vec![ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: "claim1".to_string(),
             data_type: "STRING".to_string(),

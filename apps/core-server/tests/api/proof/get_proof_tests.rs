@@ -799,7 +799,6 @@ async fn test_get_proof_with_nested_optional_inputs() {
         TestContext::new_with_did(None).await;
 
     let root_claim = ClaimSchema {
-        business_key: None,
         array: false,
         id: Uuid::new_v4().into(),
         key: "root".to_string(),
@@ -811,7 +810,6 @@ async fn test_get_proof_with_nested_optional_inputs() {
         translations: Default::default(),
     };
     let obj_claim = ClaimSchema {
-        business_key: None,
         array: false,
         id: Uuid::new_v4().into(),
         key: "obj".to_string(),
@@ -823,7 +821,6 @@ async fn test_get_proof_with_nested_optional_inputs() {
         translations: Default::default(),
     };
     let nested_claim = ClaimSchema {
-        business_key: None,
         array: false,
         id: Uuid::new_v4().into(),
         key: "obj/nested".to_string(),

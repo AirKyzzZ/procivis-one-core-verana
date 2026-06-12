@@ -304,7 +304,6 @@ async fn test_get_presentation_definition_proof_role_verifier() {
             input_schemas: Some(vec![ProofInputSchema {
                 claim_schemas: Some(vec![ProofInputClaimSchema {
                     schema: ClaimSchema {
-                        business_key: None,
                         id: Uuid::new_v4().into(),
                         key: "key_123".to_string(),
                         data_type: "STRING".to_string(),
@@ -433,7 +432,6 @@ async fn test_get_proof_exists() {
             input_schemas: Some(vec![ProofInputSchema {
                 claim_schemas: Some(vec![ProofInputClaimSchema {
                     schema: ClaimSchema {
-                        business_key: None,
                         id: Uuid::new_v4().into(),
                         key: "key".to_string(),
                         data_type: "STRING".to_string(),
@@ -471,7 +469,6 @@ async fn test_get_proof_exists() {
                             .into(),
                             revocation_method: None,
                             claim_schemas: vec![ClaimSchema {
-                                business_key: None,
                                 id: Uuid::new_v4().into(),
                                 key: "ClaimKey".to_owned(),
                                 data_type: "STRING".to_owned(),
@@ -606,7 +603,6 @@ async fn test_get_proof_with_array_holder() {
 
     let organisation = dummy_organisation(None);
     let claim_schema = ClaimSchema {
-        business_key: None,
         id: Uuid::new_v4().into(),
         key: "key".to_string(),
         data_type: "STRING".to_string(),
@@ -868,7 +864,6 @@ async fn test_get_proof_with_array_in_object_holder() {
     let organisation = dummy_organisation(None);
     let claim_schemas = vec![
         ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: "key".to_string(),
             data_type: "OBJECT".to_string(),
@@ -880,7 +875,6 @@ async fn test_get_proof_with_array_in_object_holder() {
             translations: Default::default(),
         },
         ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: "key/address".to_string(),
             data_type: "STRING".to_string(),
@@ -1158,7 +1152,6 @@ async fn test_get_proof_with_object_array_holder() {
     let organisation = dummy_organisation(None);
     let claim_schemas = vec![
         ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: "key".to_string(),
             data_type: "OBJECT".to_string(),
@@ -1170,7 +1163,6 @@ async fn test_get_proof_with_object_array_holder() {
             translations: Default::default(),
         },
         ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: "key/address".to_string(),
             data_type: "STRING".to_string(),
@@ -1465,7 +1457,6 @@ async fn test_get_proof_with_array() {
     let organisation = dummy_organisation(None);
 
     let claim_schema = ClaimSchema {
-        business_key: None,
         id: Uuid::new_v4().into(),
         key: "key".to_string(),
         data_type: "STRING".to_string(),
@@ -1734,7 +1725,6 @@ async fn test_get_proof_with_array_in_object() {
     let organisation = dummy_organisation(None);
     let claim_schemas = vec![
         ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: "key".to_string(),
             data_type: "OBJECT".to_string(),
@@ -1746,7 +1736,6 @@ async fn test_get_proof_with_array_in_object() {
             translations: Default::default(),
         },
         ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: "key/address".to_string(),
             data_type: "STRING".to_string(),
@@ -2032,7 +2021,6 @@ async fn test_get_proof_with_object_array() {
     let organisation = dummy_organisation(None);
     let claim_schemas = vec![
         ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: "key".to_string(),
             data_type: "OBJECT".to_string(),
@@ -2044,7 +2032,6 @@ async fn test_get_proof_with_object_array() {
             translations: Default::default(),
         },
         ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: "key/address".to_string(),
             data_type: "STRING".to_string(),

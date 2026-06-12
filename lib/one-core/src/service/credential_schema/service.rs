@@ -8,138 +8,123 @@ use super::CredentialSchemaService;
 use super::dto::{
     CreateCredentialSchemaRequestDTO, CreateCredentialSchemaV2RequestDTO,
     CredentialSchemaDetailResponseDTO, CredentialSchemaDetailV2ResponseDTO,
-    CredentialSchemaFilterParamsDTO, CredentialSchemaListIncludeEntityTypeEnum,
-    CredentialSchemaShareResponseDTO, GetCredentialSchemaListResponseDTO,
-    GetCredentialSchemaListV2ResponseDTO, ImportCredentialSchemaRequestDTO,
-    ImportCredentialSchemaV2RequestDTO,
+    CredentialSchemaFilterParamsDTO, CredentialSchemaFormatRequestDTO,
+    CredentialSchemaListIncludeEntityTypeEnum, CredentialSchemaListItemResponseDTO,
+    CredentialSchemaListItemV2ResponseDTO, CredentialSchemaShareResponseDTO,
+    GetCredentialSchemaListResponseDTO, GetCredentialSchemaListV2ResponseDTO,
+    ImportCredentialSchemaRequestDTO, ImportCredentialSchemaV2RequestDTO,
 };
 use super::error::CredentialSchemaServiceError;
-use super::validator::{UniquenessCheckResult, validate_claim_mappings_for_format};
+use super::mapper::{
+    add_metadata_claims_and_mappings, build_format_with_claim_mappings,
+    from_create_v2_request_with_id, map_v1_mdoc_create_claims_to_v2,
+    schema_to_detail_v1_response_dto, schema_to_detail_v2_response_dto,
+    to_credential_schema_list_response, to_credential_schema_list_v2_response,
+    unnest_claim_schemas,
+};
+use super::validator::{
+    UniquenessCheckResult, validate_claim_mappings_for_format,
+    validate_revocation_method_is_compatible_with_suspension,
+};
 use crate::config::core_config::FormatType;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::credential_schema_claim::{
-    backfill_default_translations, claim_schema_from_metadata_claim_schema,
-    from_request_claim_schema,
+    backfill_default_translations, from_request_claim_schema,
 };
 use crate::model::common::GetListResponse;
 use crate::model::credential_schema::SortableCredentialSchemaColumn;
 use crate::model::organisation::Organisation;
-use crate::provider::credential_formatter::CredentialSchemaVersion;
+use crate::provider::ProviderExt;
+use crate::provider::revocation::model::Operation;
 use crate::repository::error::DataLayerError;
 use crate::service::common_dto::ListQueryDTO;
-use crate::service::credential_schema::dto::{
-    CredentialSchemaListItemResponseDTO, CredentialSchemaListItemV2ResponseDTO,
-};
-use crate::service::credential_schema::mapper::{
-    add_metadata_claims_and_mappings, build_format_with_claim_mappings,
-    from_create_request_with_id, from_create_v2_request_with_id, schema_to_detail_response_dto,
-    schema_to_detail_v2_response_dto, to_credential_schema_list_response,
-    to_credential_schema_list_v2_response, unnest_claim_schemas,
-};
 use crate::util::logging::quoted_opt_provider;
 use crate::validator::throw_if_org_id_not_matching_session;
 
 impl CredentialSchemaService {
     /// Creates a credential schema according to request
     ///
-    /// # Arguments
-    ///
-    /// * `request` - create credential schema request
+    /// internally translating to v2 request
     pub async fn create_credential_schema(
         &self,
-        request: CreateCredentialSchemaRequestDTO,
+        mut request: CreateCredentialSchemaRequestDTO,
     ) -> Result<CredentialSchemaId, CredentialSchemaServiceError> {
-        throw_if_org_id_not_matching_session(&request.organisation_id, &*self.session_provider)
-            .error_while("checking session")?;
-        let core_base_url = self.core_base_url.as_ref().ok_or_else(|| {
-            CredentialSchemaServiceError::MappingError("Missing core base_url".to_string())
-        })?;
+        let format_type = self
+            .config
+            .format
+            .get_type(&request.format)
+            .error_while("parsing format")?;
 
-        let formatter = self
-            .formatter_provider
-            .get_credential_formatter(&request.format)?;
-        super::validator::validate_create_request(
-            &request,
-            &self.config,
-            &*formatter,
-            &*self.revocation_method_provider,
-        )?;
+        let claims = match format_type {
+            FormatType::Mdoc => map_v1_mdoc_create_claims_to_v2(
+                request.claims,
+                self.config.as_ref(),
+                &request.format,
+                &mut request.layout_properties,
+            )?,
+            _ => request.claims,
+        };
 
-        self.validate_credential_schema_already_exists(
-            &request.name,
-            request.schema_id.iter().cloned().collect(),
-            request.organisation_id,
-        )
-        .await?;
+        let (allow_revocation, method) = match request.revocation_method {
+            None => (Some(false), None),
+            Some(revocation_method_id) => {
+                let formatter = self
+                    .formatter_provider
+                    .get_credential_formatter(&request.format)?;
 
-        super::validator::check_claims_presence_in_layout_properties(
-            request.layout_properties.as_ref(),
-            &request.claims,
-        )?;
-        super::validator::check_background_properties(request.layout_properties.as_ref())?;
-        super::validator::check_logo_properties(request.layout_properties.as_ref())?;
-        super::validator::validate_key_storage_security_supported(
-            request.key_storage_security,
-            &self.config,
-        )?;
+                if formatter
+                    .revocation_method_id()
+                    .is_none_or(|formatter_method_id| formatter_method_id != &revocation_method_id)
+                {
+                    return Err(CredentialSchemaServiceError::RevocationMethodNotCompatibleWithSelectedFormat);
+                }
 
-        let organisation = self.get_organisation(request.organisation_id).await?;
+                let method = self
+                    .revocation_method_provider
+                    .get_revocation_method(&revocation_method_id)?;
+                method.ensure_enabled()?;
 
-        let id = CredentialSchemaId::from(Uuid::new_v4());
-        let schema_id = formatter
-            .credential_schema_id(
-                id,
-                organisation.id,
-                request.schema_id.as_deref(),
-                core_base_url,
-                CredentialSchemaVersion::V1,
-            )
-            .error_while("creating schemaId")?;
-        let imported_source_url = format!("{core_base_url}/ssi/schema/v1/{id}");
-        let mut credential_schema = from_create_request_with_id(
-            id,
-            request,
-            organisation,
-            schema_id,
-            imported_source_url,
-            &self.config.default_language,
-        )?;
-
-        let metadata_claims = formatter
-            .get_metadata_claims()
-            .into_iter()
-            .map(|metadata_claim| {
-                claim_schema_from_metadata_claim_schema(
-                    metadata_claim,
-                    credential_schema.created_date,
+                (
+                    Some(
+                        method
+                            .get_capabilities()
+                            .operations
+                            .contains(&Operation::Revoke),
+                    ),
+                    Some(method),
                 )
-            })
-            .collect::<Vec<_>>();
+            }
+        };
+        validate_revocation_method_is_compatible_with_suspension(
+            request.allow_suspension,
+            method.as_ref().map(|m| m.as_ref()),
+        )?;
 
-        {
-            let mut claim_schemas = credential_schema.claim_schemas.as_mut().await?;
-            claim_schemas.extend(metadata_claims);
-        }
-        let credential_schema =
-            backfill_default_translations(credential_schema, &self.config.default_language)
-                .await
-                .error_while("backfilling default translations")?;
+        let request_v2 = CreateCredentialSchemaV2RequestDTO {
+            name: request.name,
+            formats: vec![CredentialSchemaFormatRequestDTO {
+                format: request.format,
+                schema_id: request.schema_id,
+            }],
+            organisation_id: request.organisation_id,
+            claims,
+            key_storage_security: request.key_storage_security,
+            layout_type: request.layout_type,
+            layout_properties: request.layout_properties,
+            allow_suspension: request.allow_suspension,
+            allow_revocation,
+            batch_size: None,
+            requires_wallet_instance_attestation: request.requires_wallet_instance_attestation,
+            transaction_code: request.transaction_code,
+            translations: None,
+        };
 
-        let success_log = format!(
-            "Created credential schema `{}` ({id}): format `{:?}`, revocation method {:?}, key storage security {}",
-            credential_schema.name,
-            credential_schema.formats,
-            credential_schema.revocation_method,
-            quoted_opt_provider(&credential_schema.key_storage_security)
-        );
-        let schema_id = self
-            .credential_schema_repository
-            .create_credential_schema(credential_schema)
+        let id = self
+            .create_credential_schema_v2(request_v2)
             .await
-            .error_while("creating credential schema")?;
+            .error_while("creating credential schema (v2 translated)")?;
 
-        tracing::info!(message = success_log);
-        Ok(schema_id)
+        Ok(id)
     }
 
     pub async fn create_credential_schema_v2(
@@ -159,13 +144,6 @@ impl CredentialSchemaService {
             .flat_map(|format| format.schema_id.clone())
             .collect();
 
-        self.validate_credential_schema_already_exists(
-            &request.name,
-            schema_ids,
-            request.organisation_id,
-        )
-        .await?;
-
         super::validator::validate_create_v2_request(
             &request,
             &self.config,
@@ -182,6 +160,13 @@ impl CredentialSchemaService {
             request.key_storage_security,
             &self.config,
         )?;
+
+        self.validate_credential_schema_already_exists(
+            &request.name,
+            schema_ids,
+            request.organisation_id,
+        )
+        .await?;
 
         let organisation = self.get_organisation(request.organisation_id).await?;
 
@@ -208,7 +193,7 @@ impl CredentialSchemaService {
                         organisation.id,
                         format.schema_id.as_deref(),
                         core_base_url,
-                        CredentialSchemaVersion::V2(format.format.clone()),
+                        &format.format,
                     )
                     .error_while("creating schemaId")?;
                 default_namespaces.insert(&format.format, schema_id);
@@ -243,12 +228,6 @@ impl CredentialSchemaService {
             let formatter = self
                 .formatter_provider
                 .get_credential_formatter(&format_req.format)?;
-            add_metadata_claims_and_mappings(
-                &format_req.format,
-                formatter.as_ref(),
-                now,
-                &mut key_to_claim_schemas_and_mappings,
-            );
 
             let schema_id = formatter
                 .credential_schema_id(
@@ -256,9 +235,16 @@ impl CredentialSchemaService {
                     organisation.id,
                     format_req.schema_id.as_deref(),
                     core_base_url,
-                    CredentialSchemaVersion::V2(format_req.format.clone()),
+                    &format_req.format,
                 )
                 .error_while("creating schemaId")?;
+
+            add_metadata_claims_and_mappings(
+                &format_req.format,
+                formatter.as_ref(),
+                now,
+                &mut key_to_claim_schemas_and_mappings,
+            );
 
             let schema_format = build_format_with_claim_mappings(
                 credential_schema_id,
@@ -425,7 +411,7 @@ impl CredentialSchemaService {
             ));
         }
 
-        schema_to_detail_response_dto(schema, &self.config).await
+        schema_to_detail_v1_response_dto(schema, &self.config, &*self.formatter_provider).await
     }
 
     pub async fn get_credential_schema_v2(

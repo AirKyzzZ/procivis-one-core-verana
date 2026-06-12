@@ -303,7 +303,6 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
             path: "key".to_string(),
             selectively_disclosable: false,
             schema: Some(ClaimSchema {
-                business_key: None,
                 id: claim_schema_id,
                 key: "key".to_string(),
                 data_type: "STRING".to_string(),
@@ -343,7 +342,6 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
             imported_source_url: "CORE_URL".to_string(),
             revocation_method: Some("revocation method".into()),
             claim_schemas: vec![ClaimSchema {
-                business_key: None,
                 id: claim_schema_id,
                 key: "key".to_string(),
                 data_type: "STRING".to_string(),
@@ -564,7 +562,6 @@ pub fn dummy_claim_schema() -> ClaimSchema {
     ClaimSchema {
         id: Uuid::new_v4().into(),
         key: "key".to_string(),
-        business_key: None,
         data_type: "data type".to_string(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),

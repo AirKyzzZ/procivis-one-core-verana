@@ -11,7 +11,7 @@ use super::model::{
     AuthenticationFn, CredentialData, CredentialPresentation, DetailCredential, Features,
     FormatterCapabilities, TokenVerifier,
 };
-use super::{CredentialFormatter, CredentialSchemaVersion, MetadataClaimSchema};
+use super::{CredentialFormatter, MetadataClaimSchema};
 use crate::config::core_config::{KeyAlgorithmType, RevocationType};
 use crate::error::ContextWithErrorCode;
 use crate::model::credential::Credential;
@@ -96,10 +96,10 @@ impl<T: Provider + CredentialFormatter + Display + ?Sized> CredentialFormatter
         organisation_id: OrganisationId,
         schema_id: Option<&'a str>,
         core_base_url: &'a str,
-        version: CredentialSchemaVersion,
+        format: &CredentialFormat,
     ) -> Result<String, FormatterError> {
         self.inner()
-            .credential_schema_id(id, organisation_id, schema_id, core_base_url, version)
+            .credential_schema_id(id, organisation_id, schema_id, core_base_url, format)
     }
 
     fn get_metadata_claims(&self) -> Vec<MetadataClaimSchema> {
@@ -238,7 +238,7 @@ impl CredentialFormatter for CapabilityChecked {
         organisation_id: OrganisationId,
         schema_id: Option<&'a str>,
         core_base_url: &'a str,
-        version: CredentialSchemaVersion,
+        format: &CredentialFormat,
     ) -> Result<String, FormatterError> {
         if let Some(schema_id) = schema_id {
             if schema_id.is_empty() {
@@ -252,7 +252,7 @@ impl CredentialFormatter for CapabilityChecked {
         }
 
         self.0
-            .credential_schema_id(id, organisation_id, schema_id, core_base_url, version)
+            .credential_schema_id(id, organisation_id, schema_id, core_base_url, format)
     }
 
     fn get_metadata_claims(&self) -> Vec<MetadataClaimSchema> {

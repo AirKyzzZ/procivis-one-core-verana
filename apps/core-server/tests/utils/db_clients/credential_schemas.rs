@@ -67,7 +67,6 @@ impl CredentialSchemasDB {
         let credential_schema_format_id = Uuid::new_v4().into();
         let claim_schemas = params.claim_schemas.unwrap_or_else(|| {
             let claim_schema = ClaimSchema {
-                business_key: None,
                 id: Uuid::new_v4().into(),
                 key: "firstName".to_string(),
                 data_type: "STRING".to_string(),
@@ -79,7 +78,6 @@ impl CredentialSchemasDB {
                 translations: Default::default(),
             };
             let claim_schema1 = ClaimSchema {
-                business_key: None,
                 id: Uuid::new_v4().into(),
                 key: "isOver18".to_string(),
                 data_type: "BOOLEAN".to_string(),
@@ -193,7 +191,6 @@ impl CredentialSchemasDB {
     ) -> CredentialSchema {
         let id = Uuid::new_v4();
         let claim_schema = ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: "first name#".to_string(),
             data_type: "STRING".to_string(),
@@ -257,7 +254,6 @@ impl CredentialSchemasDB {
         params: TestingCreateSchemaParams,
     ) -> CredentialSchema {
         let claim_schema_root_namespace: ClaimSchema = ClaimSchema {
-            business_key: None,
             array: false,
             metadata: false,
             id: Uuid::new_v4().into(),
@@ -269,7 +265,6 @@ impl CredentialSchemasDB {
             translations: Default::default(),
         };
         let claim_schema_root_field: ClaimSchema = ClaimSchema {
-            business_key: None,
             array: false,
             metadata: false,
             id: Uuid::new_v4().into(),
@@ -281,7 +276,6 @@ impl CredentialSchemasDB {
             translations: Default::default(),
         };
         let claim_schema_root_array = ClaimSchema {
-            business_key: None,
             array: true,
             id: Uuid::new_v4().into(),
             key: "namespace/root_array".to_string(),
@@ -293,7 +287,6 @@ impl CredentialSchemasDB {
             translations: Default::default(),
         };
         let claim_schema_nested = ClaimSchema {
-            business_key: None,
             array: true,
             id: Uuid::new_v4().into(),
             key: "namespace/root_array/nested".to_string(),
@@ -305,7 +298,6 @@ impl CredentialSchemasDB {
             translations: Default::default(),
         };
         let claim_schema_field = ClaimSchema {
-            business_key: None,
             array: false,
             metadata: false,
             id: Uuid::new_v4().into(),
@@ -376,7 +368,6 @@ impl CredentialSchemasDB {
         params: TestingCreateSchemaParams,
     ) -> CredentialSchema {
         let claim_schema_address = ClaimSchema {
-            business_key: None,
             array: false,
             metadata: false,
             id: Uuid::new_v4().into(),
@@ -388,7 +379,6 @@ impl CredentialSchemasDB {
             translations: Default::default(),
         };
         let claim_schema_address_street = ClaimSchema {
-            business_key: None,
             array: false,
             metadata: false,
             id: Uuid::new_v4().into(),
@@ -400,7 +390,6 @@ impl CredentialSchemasDB {
             translations: Default::default(),
         };
         let claim_schema_address_coordinates = ClaimSchema {
-            business_key: None,
             array: false,
             metadata: false,
             id: Uuid::new_v4().into(),
@@ -412,7 +401,6 @@ impl CredentialSchemasDB {
             translations: Default::default(),
         };
         let claim_schema_address_coordinates_x = ClaimSchema {
-            business_key: None,
             array: false,
             metadata: false,
             id: Uuid::new_v4().into(),
@@ -424,7 +412,6 @@ impl CredentialSchemasDB {
             translations: Default::default(),
         };
         let claim_schema_address_coordinates_y = ClaimSchema {
-            business_key: None,
             array: false,
             metadata: false,
             id: Uuid::new_v4().into(),
@@ -495,7 +482,6 @@ impl CredentialSchemasDB {
         params: TestingCreateSchemaParams,
     ) -> CredentialSchema {
         let claim_schema_name = ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: "name".to_string(),
             data_type: "STRING".to_string(),
@@ -507,7 +493,6 @@ impl CredentialSchemasDB {
             translations: Default::default(),
         };
         let claim_schema_address = ClaimSchema {
-            business_key: None,
             array: false,
             metadata: false,
             id: Uuid::new_v4().into(),
@@ -519,7 +504,6 @@ impl CredentialSchemasDB {
             translations: Default::default(),
         };
         let claim_schema_address_street = ClaimSchema {
-            business_key: None,
             array: false,
             metadata: false,
             id: Uuid::new_v4().into(),
@@ -531,7 +515,6 @@ impl CredentialSchemasDB {
             translations: Default::default(),
         };
         let claim_schema_address_coordinates = ClaimSchema {
-            business_key: None,
             array: false,
             metadata: false,
             id: Uuid::new_v4().into(),
@@ -543,7 +526,6 @@ impl CredentialSchemasDB {
             translations: Default::default(),
         };
         let claim_schema_address_coordinates_x = ClaimSchema {
-            business_key: None,
             array: false,
             metadata: false,
             id: Uuid::new_v4().into(),
@@ -555,7 +537,6 @@ impl CredentialSchemasDB {
             translations: Default::default(),
         };
         let claim_schema_address_coordinates_y = ClaimSchema {
-            business_key: None,
             array: false,
             metadata: false,
             id: Uuid::new_v4().into(),
@@ -628,7 +609,6 @@ impl CredentialSchemasDB {
     ) -> CredentialSchema {
         let claim_schema_name_id: ClaimSchemaId = Uuid::new_v4().into();
         let claim_schema_name = ClaimSchema {
-            business_key: None,
             id: claim_schema_name_id,
             key: "name".to_string(),
             data_type: "STRING".to_string(),
@@ -641,7 +621,6 @@ impl CredentialSchemasDB {
         };
         let claim_schema_string_array_id: ClaimSchemaId = Uuid::new_v4().into();
         let claim_schema_string_array = ClaimSchema {
-            business_key: None,
             id: claim_schema_string_array_id,
             key: "string_array".to_string(),
             data_type: "STRING".to_string(),
@@ -657,7 +636,6 @@ impl CredentialSchemasDB {
             .into(),
         };
         let claim_schema_object_array = ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: "object_array".to_string(),
             data_type: "OBJECT".to_string(),
@@ -670,7 +648,6 @@ impl CredentialSchemasDB {
         };
         let claim_schema_object_array_field1_id: ClaimSchemaId = Uuid::new_v4().into();
         let claim_schema_object_array_field1 = ClaimSchema {
-            business_key: None,
             id: claim_schema_object_array_field1_id,
             key: "object_array/field1".to_string(),
             data_type: "STRING".to_string(),
@@ -687,7 +664,6 @@ impl CredentialSchemasDB {
         };
         let claim_schema_object_array_field2_id: ClaimSchemaId = Uuid::new_v4().into();
         let claim_schema_object_array_field2 = ClaimSchema {
-            business_key: None,
             id: claim_schema_object_array_field2_id,
             key: "object_array/field2".to_string(),
             data_type: "STRING".to_string(),
@@ -703,7 +679,6 @@ impl CredentialSchemasDB {
             .into(),
         };
         let claim_schema_address = ClaimSchema {
-            business_key: None,
             array: false,
             metadata: false,
             id: Uuid::new_v4().into(),
@@ -716,7 +691,6 @@ impl CredentialSchemasDB {
         };
         let claim_schema_address_street_id: ClaimSchemaId = Uuid::new_v4().into();
         let claim_schema_address_street = ClaimSchema {
-            business_key: None,
             array: false,
             metadata: false,
             id: claim_schema_address_street_id,
@@ -732,7 +706,6 @@ impl CredentialSchemasDB {
             .into(),
         };
         let claim_schema_address_coordinates = ClaimSchema {
-            business_key: None,
             array: false,
             metadata: false,
             id: Uuid::new_v4().into(),
@@ -745,7 +718,6 @@ impl CredentialSchemasDB {
         };
         let claim_schema_nested_string_array_id: ClaimSchemaId = Uuid::new_v4().into();
         let claim_schema_nested_string_array = ClaimSchema {
-            business_key: None,
             id: claim_schema_nested_string_array_id,
             key: "address/coordinates/string_array".to_string(),
             data_type: "STRING".to_string(),
@@ -761,7 +733,6 @@ impl CredentialSchemasDB {
             .into(),
         };
         let claim_schema_nested_object_array = ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: "address/coordinates/object_array".to_string(),
             data_type: "OBJECT".to_string(),
@@ -774,7 +745,6 @@ impl CredentialSchemasDB {
         };
         let claim_schema_nested_object_array_field1_id: ClaimSchemaId = Uuid::new_v4().into();
         let claim_schema_nested_object_array_field1 = ClaimSchema {
-            business_key: None,
             id: claim_schema_nested_object_array_field1_id,
             key: "address/coordinates/object_array/field1".to_string(),
             data_type: "STRING".to_string(),
@@ -791,7 +761,6 @@ impl CredentialSchemasDB {
         };
         let claim_schema_nested_object_array_field2_id: ClaimSchemaId = Uuid::new_v4().into();
         let claim_schema_nested_object_array_field2 = ClaimSchema {
-            business_key: None,
             id: claim_schema_nested_object_array_field2_id,
             key: "address/coordinates/object_array/field2".to_string(),
             data_type: "STRING".to_string(),
@@ -808,7 +777,6 @@ impl CredentialSchemasDB {
         };
         let claim_schema_address_coordinates_x_id: ClaimSchemaId = Uuid::new_v4().into();
         let claim_schema_address_coordinates_x = ClaimSchema {
-            business_key: None,
             array: false,
             metadata: false,
             id: claim_schema_address_coordinates_x_id,
@@ -825,7 +793,6 @@ impl CredentialSchemasDB {
         };
         let claim_schema_address_coordinates_y_id: ClaimSchemaId = Uuid::new_v4().into();
         let claim_schema_address_coordinates_y = ClaimSchema {
-            business_key: None,
             array: false,
             metadata: false,
             id: claim_schema_address_coordinates_y_id,
@@ -907,7 +874,6 @@ impl CredentialSchemasDB {
         organisation: &Organisation,
     ) -> CredentialSchema {
         let claim_schema = ClaimSchema {
-            business_key: None,
             array: false,
             metadata: false,
             id: Uuid::new_v4().into(),
@@ -978,7 +944,6 @@ impl CredentialSchemasDB {
         let claim_schemas: Vec<_> = new_claim_schemas
             .iter()
             .map(|(id, name, required, data_type, array)| ClaimSchema {
-                business_key: None,
                 id: (*id).into(),
                 key: name.to_string(),
                 data_type: data_type.to_string(),
@@ -991,6 +956,7 @@ impl CredentialSchemasDB {
             })
             .collect();
 
+        let format_id = Uuid::new_v4().into();
         let mut credential_schema = CredentialSchema {
             batch_size: None,
             allow_revocation: None,
@@ -1002,13 +968,25 @@ impl CredentialSchemasDB {
             name: name.to_owned(),
             organisation: organisation.clone().into(),
             formats: vec![CredentialSchemaFormat {
-                id: Uuid::new_v4().into(),
+                id: format_id,
                 created_date: one_core::clock::now_utc(),
                 last_modified: one_core::clock::now_utc(),
                 credential_schema_id: id.to_owned().into(),
                 format: format.into(),
                 schema_id: schema_id.to_owned(),
-                claim_mappings: Default::default(),
+                claim_mappings: claim_schemas
+                    .iter()
+                    .map(|cs| CredentialSchemaFormatClaimSchema {
+                        id: Uuid::new_v4().into(),
+                        created_date: get_dummy_date(),
+                        last_modified: get_dummy_date(),
+                        credential_schema_format_id: format_id,
+                        claim_schema_id: cs.id,
+                        technical_key: cs.key.to_owned(),
+                        namespace: None,
+                    })
+                    .collect::<Vec<_>>()
+                    .into(),
             }]
             .into(),
             deleted_at: None,
@@ -1052,7 +1030,6 @@ impl CredentialSchemasDB {
     ) -> Result<CredentialSchemaId, DataLayerError> {
         let claim_schema_id: ClaimSchemaId = Uuid::new_v4().into();
         let claim_schema = ClaimSchema {
-            business_key: None,
             id: claim_schema_id,
             key: "firstName".to_string(),
             data_type: "STRING".to_string(),
@@ -1065,7 +1042,6 @@ impl CredentialSchemasDB {
         };
         let claim_schema1_id: ClaimSchemaId = Uuid::new_v4().into();
         let claim_schema1 = ClaimSchema {
-            business_key: None,
             id: claim_schema1_id,
             key: "isOver18".to_string(),
             data_type: "BOOLEAN".to_string(),

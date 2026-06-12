@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use itertools::Itertools;
 use one_dto_mapper::convert_inner;
-use shared_types::{CredentialFormat, CredentialSchemaId, RevocationMethodId};
+use shared_types::{CredentialFormat, CredentialSchemaId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -26,6 +26,7 @@ use crate::model::credential_schema::{
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::relation::RelatedVec;
+use crate::proto::credential_schema::dto::ImportCredentialSchemaV2RequestSchemaDTO;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::{Features, FormatterCapabilities};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
@@ -58,11 +59,10 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
         &self,
         dto: ImportCredentialSchemaRequestDTO,
     ) -> Result<CredentialSchema, Error> {
-        let now = crate::clock::now_utc();
         let formatter = self
             .formatter_provider
             .get_credential_formatter(&dto.schema.format)?;
-        let format = self
+        let format_type = self
             .config
             .format
             .get_fields(&dto.schema.format)
@@ -75,53 +75,50 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
             ),
             None => None,
         };
-        let formatters = vec![(format.to_owned(), formatter.clone())];
-        let claim_schemas = self
-            .parse_all_claim_schemas_v1(now, dto.schema.claims, formatters.as_ref())?
-            .into_iter()
-            .map(|(cs, _)| cs)
-            .collect::<Vec<_>>();
-        let credential_schema_id = Uuid::new_v4().into();
-        Ok(CredentialSchema {
-            id: credential_schema_id,
-            deleted_at: None,
-            created_date: now,
-            last_modified: now,
-            name: dto.schema.name.clone(),
-            revocation_method: self
-                .parse_revocation_method(dto.schema.revocation_method, formatter.as_ref())?,
+        let claims = self.transform_claim_schemas_v1_to_v2(
+            dto.schema.claims,
+            *format_type,
+            &dto.schema.format,
+        )?;
+
+        let layout_properties = match dto.schema.layout_properties {
+            Some(layout_properties) if format_type == &FormatType::Mdoc => {
+                Some(transform_mdoc_layout_properties_v1_to_v2(layout_properties))
+            }
+            unchanged => unchanged,
+        };
+
+        let request_v2 = ImportCredentialSchemaV2RequestSchemaDTO {
+            id: dto.schema.id,
+            created_date: dto.schema.created_date,
+            last_modified: dto.schema.last_modified,
+            name: dto.schema.name,
             key_storage_security: dto.schema.key_storage_security,
-            layout_type: dto.schema.layout_type.unwrap_or(LayoutType::Card),
-            layout_properties: self.parse_layout_properties(
-                dto.schema.layout_properties,
-                &claim_schemas,
-                formatters.as_ref(),
-            )?,
+            layout_type: dto.schema.layout_type,
+            layout_properties,
             imported_source_url: dto.schema.imported_source_url,
-            allow_suspension: self.parse_allow_suspension(
+            allow_revocation: Some(
+                self.parse_allow_revocation(revocation_method.as_deref(), formatter.as_ref())?,
+            ),
+            allow_suspension: Some(self.parse_allow_suspension(
                 dto.schema.allow_suspension,
                 revocation_method.as_deref(),
-            )?,
-            requires_wallet_instance_attestation: dto
-                .schema
-                .requires_wallet_instance_attestation
-                .unwrap_or(false),
-            claim_schemas: claim_schemas.into(),
-            organisation: dto.organisation.into(),
-            formats: vec![CredentialSchemaFormat {
-                id: Uuid::new_v4().into(),
-                created_date: now,
-                last_modified: now,
-                credential_schema_id,
-                format: self.parse_format(dto.schema.format)?,
-                schema_id: self.parse_schema_id(dto.schema.schema_id, formatter.as_ref())?,
-                claim_mappings: Default::default(),
-            }]
-            .into(),
-            transaction_code: convert_inner(dto.schema.transaction_code),
+            )?),
+            requires_wallet_instance_attestation: dto.schema.requires_wallet_instance_attestation,
+            claims,
+            organisation_id: dto.schema.organisation_id,
+            formats: vec![ImportCredentialSchemaV2FormatDTO {
+                format: dto.schema.format,
+                schema_id: dto.schema.schema_id,
+            }],
+            transaction_code: dto.schema.transaction_code,
             batch_size: None,
-            allow_revocation: None,
-            translations: Default::default(),
+            translations: None,
+        };
+
+        self.parse_import_credential_schema_v2(ImportCredentialSchemaV2RequestDTO {
+            organisation: dto.organisation,
+            schema: request_v2,
         })
     }
 
@@ -180,7 +177,7 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
                 now,
                 &claim_schemas_with_raw_mappings,
                 formatter.as_ref(),
-            );
+            )?;
 
             formats.push(format);
             claim_schemas.extend(format_specific_claim_schemas);
@@ -235,30 +232,24 @@ impl CredentialSchemaImportParserImpl {
         }
     }
 
-    fn parse_revocation_method(
+    fn parse_allow_revocation(
         &self,
-        revocation_method_type: Option<RevocationMethodId>,
+        revocation_method: Option<&dyn RevocationMethod>,
         formatter: &dyn CredentialFormatter,
-    ) -> Result<Option<RevocationMethodId>, Error> {
-        let Some(revocation_method_type) = revocation_method_type else {
-            return Ok(None);
-        };
+    ) -> Result<bool, Error> {
+        Ok(match revocation_method {
+            None => false,
+            Some(method) => {
+                if formatter.revocation_method_id() != Some(method.config_name()) {
+                    return Err(Error::RevocationMethodNotCompatibleWithSelectedFormat);
+                }
 
-        let revocation_method_config = self
-            .config
-            .revocation
-            .get_if_enabled(&revocation_method_type)
-            .error_while("checking revocation")?;
-
-        if formatter
-            .get_capabilities()
-            .revocation_methods
-            .contains(revocation_method_config.r#type())
-        {
-            Ok(Some(revocation_method_type.clone()))
-        } else {
-            Err(Error::RevocationMethodNotCompatibleWithSelectedFormat)
-        }
+                method
+                    .get_capabilities()
+                    .operations
+                    .contains(&Operation::Revoke)
+            }
+        })
     }
 
     pub(super) fn parse_allow_suspension(
@@ -358,17 +349,49 @@ impl CredentialSchemaImportParserImpl {
         Ok(format)
     }
 
-    pub(super) fn parse_all_claim_schemas_v1(
+    fn transform_claim_schemas_v1_to_v2(
         &self,
-        now: OffsetDateTime,
-        claim_schemas: Vec<ImportCredentialSchemaClaimSchemaDTO>,
-        formatters: &[(FormatType, Arc<dyn CredentialFormatter>)],
-    ) -> Result<Vec<(ClaimSchema, Vec<CredentialClaimSchemaMappingDTO>)>, Error> {
+        mut claim_schemas: Vec<ImportCredentialSchemaClaimSchemaDTO>,
+        format_type: FormatType,
+        format: &CredentialFormat,
+    ) -> Result<Vec<ImportCredentialSchemaClaimSchemaDTO>, Error> {
         if claim_schemas.is_empty() {
             return Err(Error::MissingClaims);
         }
-        self.validate_top_level_claims_mdoc_types(formatters, &claim_schemas)?;
-        self.parse_level_claim_schemas(now, None, claim_schemas, formatters)
+
+        if format_type == FormatType::Mdoc {
+            let mut result: Vec<ImportCredentialSchemaClaimSchemaDTO> = vec![];
+            for mut root_claim in claim_schemas {
+                let data_type = self
+                    .config
+                    .datatype
+                    .get_fields(&root_claim.datatype)
+                    .error_while("checking claims")?
+                    .r#type;
+                if data_type != DatatypeType::Object || root_claim.array == Some(true) {
+                    return Err(Error::InvalidClaimTypeMdocTopLevelOnlyObjectsAllowed);
+                }
+
+                let namespace = root_claim.key;
+                add_mappings(&mut root_claim.claims, format, Some(&namespace), None);
+
+                // prefix element-level DB key with the namespace in case of conflict with another namespace's element's key
+                for element_claim in root_claim.claims.iter_mut() {
+                    if result.iter().any(|another_namespace_element| {
+                        another_namespace_element.key == element_claim.key
+                    }) {
+                        element_claim.key = format!("{namespace}_{}", element_claim.key);
+                    }
+                }
+
+                result.extend(root_claim.claims);
+            }
+
+            return Ok(result);
+        }
+
+        add_mappings(&mut claim_schemas, format, None, None);
+        Ok(claim_schemas)
     }
 
     pub(super) fn parse_all_claim_schemas_v2(
@@ -408,7 +431,7 @@ impl CredentialSchemaImportParserImpl {
         now: OffsetDateTime,
         claim_schemas_to_mappings: &[(ClaimSchema, Vec<CredentialClaimSchemaMappingDTO>)],
         formatter: &dyn CredentialFormatter,
-    ) -> (CredentialSchemaFormat, Vec<ClaimSchema>) {
+    ) -> Result<(CredentialSchemaFormat, Vec<ClaimSchema>), Error> {
         let format_id = Uuid::new_v4().into();
         let uses_namespaces = formatter
             .get_capabilities()
@@ -437,15 +460,18 @@ impl CredentialSchemaImportParserImpl {
                 .map(|m| m.technical_key.clone())
                 .unwrap_or_else(|| claim_schema.key.clone());
 
-            let namespace = mapping_for_format
-                .and_then(|m| m.namespace.clone())
-                .or_else(|| {
-                    if uses_namespaces {
-                        Some(schema_id.clone())
-                    } else {
-                        None
-                    }
-                });
+            let namespace = if uses_namespaces && !claim_schema.metadata {
+                Some(
+                    mapping_for_format
+                        .ok_or(Error::MissingNamespace)?
+                        .namespace
+                        .as_ref()
+                        .ok_or(Error::MissingNamespace)?
+                        .to_owned(),
+                )
+            } else {
+                None
+            };
 
             mappings.push(CredentialSchemaFormatClaimSchema {
                 id: Uuid::new_v4().into(),
@@ -458,7 +484,7 @@ impl CredentialSchemaImportParserImpl {
             });
         }
 
-        (
+        Ok((
             CredentialSchemaFormat {
                 id: format_id,
                 created_date: now,
@@ -472,7 +498,7 @@ impl CredentialSchemaImportParserImpl {
                 .into_iter()
                 .map(|(claim_schema, _)| claim_schema)
                 .collect(),
-        )
+        ))
     }
 
     pub(super) fn parse_claim_schema(
@@ -490,7 +516,6 @@ impl CredentialSchemaImportParserImpl {
         let claim_schema = ClaimSchema {
             id: Uuid::new_v4().into(),
             key: flattened_key.clone(),
-            business_key: None,
             data_type: self.parse_claim_schema_datatype(
                 &key,
                 &claim_schema_dto.claims,
@@ -643,32 +668,6 @@ impl CredentialSchemaImportParserImpl {
         Ok(())
     }
 
-    pub(super) fn validate_top_level_claims_mdoc_types(
-        &self,
-        formatters: &[(FormatType, Arc<dyn CredentialFormatter>)],
-        claim_schemas: &[ImportCredentialSchemaClaimSchemaDTO],
-    ) -> Result<(), Error> {
-        if formatters
-            .iter()
-            .all(|(format_type, _)| *format_type != FormatType::Mdoc)
-        {
-            return Ok(());
-        }
-
-        for claim in claim_schemas {
-            let data_type = self
-                .config
-                .datatype
-                .get_fields(&claim.datatype)
-                .error_while("checking claims")?
-                .r#type;
-            if data_type != DatatypeType::Object {
-                return Err(Error::InvalidClaimTypeMdocTopLevelOnlyObjectsAllowed);
-            }
-        }
-        Ok(())
-    }
-
     fn validate_unique_formats(
         &self,
         formats: &[ImportCredentialSchemaV2FormatDTO],
@@ -770,6 +769,53 @@ impl CredentialSchemaImportParserImpl {
     }
 }
 
+fn add_mappings(
+    claims: &mut [ImportCredentialSchemaClaimSchemaDTO],
+    format: &CredentialFormat,
+    namespace: Option<&String>,
+    parent_technical_key: Option<&String>,
+) {
+    for claim in claims.iter_mut() {
+        let technical_key = if let Some(parent_technical_key) = parent_technical_key {
+            format!("{parent_technical_key}{NESTED_CLAIM_MARKER}{}", claim.key)
+        } else {
+            claim.key.to_string()
+        };
+
+        add_mappings(&mut claim.claims, format, namespace, Some(&technical_key));
+
+        claim.mappings = Some(vec![CredentialClaimSchemaMappingDTO {
+            format: format.to_owned(),
+            technical_key,
+            namespace: namespace.cloned(),
+        }]);
+    }
+}
+
+fn transform_mdoc_layout_properties_v1_to_v2(
+    mut layout_properties: ImportCredentialSchemaLayoutPropertiesDTO,
+) -> ImportCredentialSchemaLayoutPropertiesDTO {
+    let remove_namespace = |path: Option<&mut String>| {
+        if let Some(path) = path
+            && let Some((_namespace, element_path)) = path.split_once(NESTED_CLAIM_MARKER)
+        {
+            *path = element_path.to_string();
+        }
+    };
+
+    remove_namespace(layout_properties.primary_attribute.as_mut());
+    remove_namespace(layout_properties.secondary_attribute.as_mut());
+    remove_namespace(layout_properties.picture_attribute.as_mut());
+    remove_namespace(
+        layout_properties
+            .code
+            .as_mut()
+            .map(|code| &mut code.attribute),
+    );
+
+    layout_properties
+}
+
 #[cfg(test)]
 mod test {
     use std::sync::Arc;
@@ -780,7 +826,7 @@ mod test {
 
     use super::Error;
     use crate::config::core_config::{
-        ConfigEntryDisplay, CoreConfig, DatatypeType, Fields, FormatType, RevocationType,
+        ConfigEntryDisplay, CoreConfig, DatatypeType, Fields, FormatType,
     };
     use crate::error::{ErrorCode, ErrorCodeMixin};
     use crate::model::claim_schema::ClaimSchema;
@@ -840,105 +886,6 @@ mod test {
         // then
         let_assert!(Ok(format) = result);
         assert_eq!("JWT", format.to_string());
-    }
-
-    #[test]
-    fn test_parse_revocation_method_success() {
-        // given
-        let mut formatter = MockCredentialFormatter::default();
-        formatter
-            .expect_get_capabilities()
-            .returning(|| FormatterCapabilities {
-                revocation_methods: vec![RevocationType::BitstringStatusList],
-                ..Default::default()
-            });
-
-        let mut config = generic_config().core;
-        config.revocation.insert(
-            "BITSTRINGSTATUSLIST".into(),
-            Fields {
-                r#type: RevocationType::BitstringStatusList,
-                display: ConfigEntryDisplay::TranslationId("test".to_string()),
-                order: None,
-                priority: None,
-                enabled: true,
-                capabilities: None,
-                params: None,
-            },
-        );
-
-        let parser = setup_parser(
-            config,
-            MockCredentialFormatterProvider::default(),
-            MockRevocationMethodProvider::new(),
-        );
-
-        // when
-        let result = parser
-            .parse_revocation_method(Some("BITSTRINGSTATUSLIST".to_owned().into()), &formatter);
-
-        // then
-        let_assert!(Ok(revocation_method) = result);
-        assert_eq!(
-            revocation_method,
-            Some("BITSTRINGSTATUSLIST".to_owned().into())
-        );
-    }
-
-    #[test]
-    fn test_parse_revocation_method_failure_not_found() {
-        // given
-        let formatter = MockCredentialFormatter::default();
-        let parser = setup_parser(
-            generic_config().core,
-            MockCredentialFormatterProvider::default(),
-            MockRevocationMethodProvider::new(),
-        );
-
-        // when
-        let result = parser.parse_revocation_method(Some("INVALID".to_owned().into()), &formatter);
-
-        // then
-        assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0089);
-    }
-
-    #[test]
-    fn test_parse_revocation_method_failure_incompatible() {
-        // given
-        let mut formatter = MockCredentialFormatter::default();
-        formatter
-            .expect_get_capabilities()
-            .returning(|| FormatterCapabilities {
-                revocation_methods: vec![RevocationType::TokenStatusList],
-                ..Default::default()
-            });
-
-        let mut config = generic_config().core;
-        config.revocation.insert(
-            "BITSTRINGSTATUSLIST".into(),
-            Fields {
-                r#type: RevocationType::BitstringStatusList,
-                display: ConfigEntryDisplay::TranslationId("test".to_string()),
-                order: None,
-                priority: None,
-                enabled: true,
-                capabilities: None,
-                params: None,
-            },
-        );
-
-        let parser = setup_parser(
-            generic_config().core,
-            MockCredentialFormatterProvider::default(),
-            MockRevocationMethodProvider::new(),
-        );
-
-        // when
-        let result = parser
-            .parse_revocation_method(Some("BITSTRINGSTATUSLIST".to_owned().into()), &formatter);
-
-        // then
-        assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0110);
     }
 
     #[test]
@@ -1096,7 +1043,6 @@ mod test {
 
         let now = crate::clock::now_utc();
         let claim_schemas = vec![ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: "claim1".to_string(),
             data_type: "STRING".to_string(),
@@ -1170,7 +1116,6 @@ mod test {
 
         let now = crate::clock::now_utc();
         let claim_schemas = vec![ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: "claim1".to_string(),
             data_type: "STRING".to_string(),
@@ -1381,7 +1326,6 @@ mod test {
 
         let now = crate::clock::now_utc();
         let claim_schemas = vec![ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: "code_claim".to_string(),
             data_type: "STRING".to_string(),
@@ -1696,16 +1640,8 @@ mod test {
     }
 
     #[test]
-    fn test_parse_all_claim_schemas_success_simple() {
+    fn test_transform_claim_schemas_v1_to_v2_success_simple() {
         // given
-        let mut formatter = MockCredentialFormatter::default();
-        formatter
-            .expect_get_capabilities()
-            .returning(|| FormatterCapabilities {
-                datatypes: vec!["STRING".into()],
-                ..Default::default()
-            });
-
         let parser = setup_parser(
             generic_config().core,
             MockCredentialFormatterProvider::default(),
@@ -1725,30 +1661,27 @@ mod test {
             mappings: None,
         }];
 
-        let formatters: Vec<(FormatType, Arc<dyn CredentialFormatter>)> =
-            vec![(FormatType::Jwt, Arc::new(formatter))];
         // when
-        let result = parser.parse_all_claim_schemas_v1(now, claims, &formatters);
+        let result =
+            parser.transform_claim_schemas_v1_to_v2(claims, FormatType::Jwt, &"JWT".into());
 
         // then
         let_assert!(Ok(schemas) = result);
-        assert!(1 == schemas.len());
-        assert!("name" == schemas[0].0.key);
-        assert!("STRING" == schemas[0].0.data_type);
-        assert!(schemas[0].0.required);
+        assert_eq!(schemas.len(), 1);
+        assert_eq!(schemas[0].key, "name");
+        assert_eq!(schemas[0].datatype, "STRING");
+        assert!(schemas[0].required);
+
+        let mappings = schemas[0].mappings.as_ref().unwrap();
+        assert_eq!(mappings.len(), 1);
+        assert_eq!(mappings[0].format, "JWT".into());
+        assert_eq!(mappings[0].technical_key, "name");
+        assert_eq!(mappings[0].namespace, None);
     }
 
     #[test]
-    fn test_parse_all_claim_schemas_success_nested() {
+    fn test_transform_claim_schemas_v1_to_v2_success_nested() {
         // given
-        let mut formatter = MockCredentialFormatter::default();
-        formatter
-            .expect_get_capabilities()
-            .returning(|| FormatterCapabilities {
-                datatypes: vec!["STRING".into(), "OBJECT".into()],
-                ..Default::default()
-            });
-
         let parser = setup_parser(
             generic_config().core,
             MockCredentialFormatterProvider::default(),
@@ -1777,22 +1710,38 @@ mod test {
             }],
             mappings: None,
         }];
-        let formatters: Vec<(FormatType, Arc<dyn CredentialFormatter>)> =
-            vec![(FormatType::Jwt, Arc::new(formatter))];
+
         // when
-        let result = parser.parse_all_claim_schemas_v1(now, claims, &formatters);
+        let result =
+            parser.transform_claim_schemas_v1_to_v2(claims, FormatType::Jwt, &"JWT".into());
 
         // then
         let_assert!(Ok(schemas) = result);
-        assert!(2 == schemas.len());
-        assert_eq!("address", schemas[0].0.key);
-        assert_eq!("address/street", schemas[1].0.key);
+        assert_eq!(schemas.len(), 1);
+        assert_eq!(schemas[0].key, "address");
+        assert_eq!(schemas[0].datatype, "OBJECT");
+        assert!(schemas[0].required);
+
+        let mappings = schemas[0].mappings.as_ref().unwrap();
+        assert_eq!(mappings.len(), 1);
+        assert_eq!(mappings[0].format, "JWT".into());
+        assert_eq!(mappings[0].technical_key, "address");
+        assert_eq!(mappings[0].namespace, None);
+
+        let claims = &schemas[0].claims;
+        assert_eq!(claims.len(), 1);
+        assert_eq!(claims[0].key, "street");
+        assert_eq!(claims[0].datatype, "STRING");
+        let mappings = claims[0].mappings.as_ref().unwrap();
+        assert_eq!(mappings.len(), 1);
+        assert_eq!(mappings[0].format, "JWT".into());
+        assert_eq!(mappings[0].technical_key, "address/street");
+        assert_eq!(mappings[0].namespace, None);
     }
 
     #[test]
-    fn test_parse_all_claim_schemas_failure_empty() {
+    fn test_transform_claim_schemas_v1_to_v2_success_mdoc() {
         // given
-        let formatter = MockCredentialFormatter::default();
         let parser = setup_parser(
             generic_config().core,
             MockCredentialFormatterProvider::default(),
@@ -1800,11 +1749,59 @@ mod test {
         );
 
         let now = crate::clock::now_utc();
-        let formatters: Vec<(FormatType, Arc<dyn CredentialFormatter>)> =
-            vec![(FormatType::Jwt, Arc::new(formatter))];
+        let claims = vec![ImportCredentialSchemaClaimSchemaDTO {
+            id: Uuid::new_v4(),
+            created_date: now,
+            last_modified: now,
+            key: "namespace".to_string(),
+            datatype: "OBJECT".to_string(),
+            required: true,
+            array: None,
+            claims: vec![ImportCredentialSchemaClaimSchemaDTO {
+                id: Uuid::new_v4(),
+                created_date: now,
+                last_modified: now,
+                key: "element".to_string(),
+                datatype: "STRING".to_string(),
+                required: true,
+                array: None,
+                claims: vec![],
+                mappings: None,
+            }],
+            mappings: None,
+        }];
 
         // when
-        let result = parser.parse_all_claim_schemas_v1(now, vec![], &formatters);
+        let result =
+            parser.transform_claim_schemas_v1_to_v2(claims, FormatType::Mdoc, &"MDOC".into());
+
+        // then
+        let_assert!(Ok(schemas) = result);
+        assert_eq!(schemas.len(), 1);
+        assert_eq!(schemas[0].key, "element");
+        assert_eq!(schemas[0].datatype, "STRING");
+        assert!(schemas[0].required);
+        assert_eq!(schemas[0].claims.len(), 0);
+
+        let mappings = schemas[0].mappings.as_ref().unwrap();
+        assert_eq!(mappings.len(), 1);
+        assert_eq!(mappings[0].format, "MDOC".into());
+        assert_eq!(mappings[0].technical_key, "element");
+        assert_eq!(mappings[0].namespace.as_ref().unwrap(), "namespace");
+    }
+
+    #[test]
+    fn test_transform_claim_schemas_v1_to_v2_failure_empty() {
+        // given
+        let parser = setup_parser(
+            generic_config().core,
+            MockCredentialFormatterProvider::default(),
+            MockRevocationMethodProvider::new(),
+        );
+
+        // when
+        let result =
+            parser.transform_claim_schemas_v1_to_v2(vec![], FormatType::Jwt, &"JWT".into());
 
         // then
         assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0008);
@@ -1813,14 +1810,6 @@ mod test {
     #[test]
     fn test_parse_all_claim_schemas_failure_mdoc_non_object_top_level() {
         // given
-        let mut formatter = MockCredentialFormatter::default();
-        formatter
-            .expect_get_capabilities()
-            .returning(|| FormatterCapabilities {
-                datatypes: vec!["STRING".into()],
-                ..Default::default()
-            });
-
         let parser = setup_parser(
             generic_config().core,
             MockCredentialFormatterProvider::default(),
@@ -1839,11 +1828,10 @@ mod test {
             claims: vec![],
             mappings: None,
         }];
-        let formatters: Vec<(FormatType, Arc<dyn CredentialFormatter>)> =
-            vec![(FormatType::Mdoc, Arc::new(formatter))];
 
         // when
-        let result = parser.parse_all_claim_schemas_v1(now, claims, &formatters);
+        let result =
+            parser.transform_claim_schemas_v1_to_v2(claims, FormatType::Mdoc, &"MDOC".into());
 
         // then
         assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0117);

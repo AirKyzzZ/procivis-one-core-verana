@@ -60,7 +60,6 @@ async fn test_get_relevant_credentials_to_credential_schemas_empty_missing_requi
         let credential_schema = credential.schema.as_mut().unwrap();
         let mut claim_schemas = credential_schema.claim_schemas.as_mut().await.unwrap();
         claim_schemas.push(ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: "optkey".to_string(),
             data_type: "STRING".to_string(),
@@ -171,7 +170,6 @@ fn mdoc_credential() -> Credential {
 
     let new_claim_schemas = [
         ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: "namespace".to_string(),
             data_type: "OBJECT".to_string(),
@@ -183,7 +181,6 @@ fn mdoc_credential() -> Credential {
             translations: Default::default(),
         },
         ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: "namespace/name".to_string(),
             data_type: "STRING".to_string(),
@@ -289,7 +286,6 @@ fn mdoc_credential_with_optional_namespace() -> Credential {
 
     let new_claim_schemas = [
         ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: "namespaceReq".to_string(),
             data_type: "OBJECT".to_string(),
@@ -301,7 +297,6 @@ fn mdoc_credential_with_optional_namespace() -> Credential {
             translations: Default::default(),
         },
         ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: "namespaceReq/name".to_string(),
             data_type: "STRING".to_string(),
@@ -313,7 +308,6 @@ fn mdoc_credential_with_optional_namespace() -> Credential {
             translations: Default::default(),
         },
         ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: "namespaceOpt".to_string(),
             data_type: "OBJECT".to_string(),
@@ -325,7 +319,6 @@ fn mdoc_credential_with_optional_namespace() -> Credential {
             translations: Default::default(),
         },
         ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: "namespaceOpt/obj".to_string(),
             data_type: "OBJECT".to_string(),
@@ -337,7 +330,6 @@ fn mdoc_credential_with_optional_namespace() -> Credential {
             translations: Default::default(),
         },
         ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: "namespaceOpt/obj/name".to_string(),
             data_type: "STRING".to_string(),
@@ -425,7 +417,6 @@ fn dummy_credential() -> Credential {
             path: "key".to_string(),
             selectively_disclosable: false,
             schema: Some(ClaimSchema {
-                business_key: None,
                 id: claim_schema_id,
                 key: "key".to_string(),
                 data_type: "STRING".to_string(),
@@ -462,7 +453,6 @@ fn dummy_credential() -> Credential {
             .into(),
             revocation_method: Some("revocation method".into()),
             claim_schemas: vec![ClaimSchema {
-                business_key: None,
                 id: claim_schema_id,
                 key: "key".to_string(),
                 data_type: "STRING".to_string(),

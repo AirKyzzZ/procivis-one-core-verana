@@ -418,7 +418,7 @@ async fn test_get_presentation_definition_dcql_nested_required_with_mandatory_di
                         selectively_disclosable: false,
                     },
                     ClaimData {
-                        schema_id: claim_3.into(),
+                        schema_id: claim_4.into(),
                         path: "first/sibling_sd".to_string(),
                         value: Some("sibling with sd".to_string()),
                         selectively_disclosable: true,
@@ -1470,7 +1470,6 @@ async fn test_get_presentation_definition_dcql_metadata_value_matching() {
                 format: Some("SD_JWT_VC".into()),
                 claim_schemas: Some(vec![
                     ClaimSchema {
-                        business_key: None,
                         id: claim_schema_id.into(),
                         key: "string_claim".to_string(),
                         data_type: "STRING".to_string(),
@@ -1482,7 +1481,6 @@ async fn test_get_presentation_definition_dcql_metadata_value_matching() {
                         translations: Default::default(),
                     },
                     ClaimSchema {
-                        business_key: None,
                         id: metadata_claim_schema_id.into(),
                         key: "iss".to_string(),
                         data_type: "STRING".to_string(),

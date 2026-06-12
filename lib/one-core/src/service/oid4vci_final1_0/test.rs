@@ -214,7 +214,6 @@ fn generic_credential_schema() -> CredentialSchema {
         claim_schemas: {
             let claim_schema_id: shared_types::ClaimSchemaId = Uuid::new_v4().into();
             vec![ClaimSchema {
-                business_key: None,
                 array: false,
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
@@ -667,7 +666,6 @@ async fn test_get_issuer_metadata_mdoc() {
     let claim_schema_id: shared_types::ClaimSchemaId = Uuid::new_v4().into();
     schema.claim_schemas = vec![
         ClaimSchema {
-            business_key: None,
             id: Uuid::new_v4().into(),
             key: "location".to_string(),
             data_type: "OBJECT".to_string(),
@@ -679,7 +677,6 @@ async fn test_get_issuer_metadata_mdoc() {
             translations: Default::default(),
         },
         ClaimSchema {
-            business_key: None,
             id: claim_schema_id,
             key: "location/X".to_string(),
             data_type: "STRING".to_string(),
@@ -976,7 +973,6 @@ async fn test_get_issuer_metadata_includes_claim_translations() {
         .id;
 
     schema.claim_schemas = vec![ClaimSchema {
-        business_key: None,
         array: false,
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),

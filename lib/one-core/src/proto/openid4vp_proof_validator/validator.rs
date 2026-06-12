@@ -12,6 +12,8 @@ use crate::config::core_config::{DidType, FormatType, VerificationProtocolType};
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::mapper::oidc::map_from_oidc_format_to_core_detailed;
 use crate::mapper::x509::pem_chain_to_authority_key_identifiers;
+use crate::model::claim_schema::ClaimSchema;
+use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::KeyRole;
 use crate::model::proof::{Proof, ProofStateEnum};
 use crate::model::proof_schema::ProofInputSchema;
@@ -312,7 +314,7 @@ impl OpenId4VpProofValidatorProto {
                 .await?;
 
             let proved_claims: Vec<ValidatedProofClaimDTO> =
-                validate_claims(credential, proof_input_schema)?;
+                validate_claims(credential, proof_input_schema).await?;
 
             if let Some(claim_sets) = credential_query.claim_sets.as_ref()
                 && claim_sets.iter().any(|claim_set| {
@@ -652,7 +654,7 @@ impl OpenId4VpProofValidatorProto {
                 )
                 .await?;
 
-            let proved_claims = validate_claims(credential, proof_schema_input)?;
+            let proved_claims = validate_claims(credential, proof_schema_input).await?;
 
             total_proved_claims.extend(proved_claims);
         }
@@ -881,7 +883,7 @@ pub(crate) fn get_trusted_akis(authorities: &[TrustedAuthority]) -> Vec<KeyIdent
     result
 }
 
-fn validate_claims(
+async fn validate_claims(
     received_credential: DetailCredential,
     proof_input_schema: &ProofInputSchema,
 ) -> Result<Vec<ValidatedProofClaimDTO>, OpenID4VCError> {
@@ -904,10 +906,12 @@ fn validate_claims(
 
     for expected_credential_claim in expected_credential_claims {
         let resolved = resolve_claim(
-            &expected_credential_claim.schema.key,
+            &expected_credential_claim.schema,
+            credential_schema,
             &received_credential.claims.claims,
-        );
-        if let Some(value) = resolved? {
+        )
+        .await?;
+        if let Some(value) = resolved {
             // Expected claim present in the presentation
             proved_claims.push(ValidatedProofClaimDTO {
                 proof_input_claim: expected_credential_claim.to_owned(),
@@ -928,16 +932,39 @@ fn validate_claims(
     Ok(proved_claims)
 }
 
-fn resolve_claim<'a>(
-    claim_name: &str,
+async fn resolve_claim<'a>(
+    claim_schema: &ClaimSchema,
+    credential_schema: &CredentialSchema,
     claims: &'a HashMap<String, CredentialClaim>,
 ) -> Result<Option<&'a CredentialClaim>, OpenID4VCError> {
+    let formats = credential_schema
+        .formats
+        .as_ref()
+        .await
+        .map_err(|e| OpenID4VCError::MappingError(e.to_string()))?;
+    let format = formats
+        .first()
+        .ok_or(OpenID4VCError::MappingError("Missing format".to_string()))?;
+    let mappings = format
+        .claim_mappings
+        .as_ref()
+        .await
+        .map_err(|e| OpenID4VCError::MappingError(e.to_string()))?;
+    let mapping = mappings
+        .iter()
+        .find(|m| m.claim_schema_id == claim_schema.id)
+        .ok_or(OpenID4VCError::MappingError(
+            "Missing claim mapping".to_string(),
+        ))?;
+
+    let claim_schema_path = mapping.formatted_technical_key();
+
     // Simplest case - claim is not nested
-    if let Some(value) = claims.get(claim_name) {
+    if let Some(value) = claims.get(&claim_schema_path) {
         return Ok(Some(value));
     }
 
-    match claim_name.split_once(NESTED_CLAIM_MARKER) {
+    match claim_schema_path.split_once(NESTED_CLAIM_MARKER) {
         None => Ok(None),
         Some((prefix, rest)) => match claims.get(prefix) {
             None => Ok(None),
