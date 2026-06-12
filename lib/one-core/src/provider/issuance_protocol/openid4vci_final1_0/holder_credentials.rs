@@ -485,10 +485,9 @@ impl OpenID4VCIFinal1_0 {
                 "No credentials found".to_string(),
             ))?;
         if batch_parent.r#type != CredentialType::BatchParent {
-            return Err(IssuanceProtocolError::Failed(format!(
-                "Expected credential {} to be of type batch parent, but founnd {:?}",
-                batch_parent.id, batch_parent.r#type
-            )));
+            return Err(IssuanceProtocolError::RefreshNotSupported(
+                batch_parent.r#type,
+            ));
         }
         let mut schema = batch_parent
             .schema

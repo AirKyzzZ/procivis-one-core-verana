@@ -882,23 +882,29 @@ pub(crate) async fn get_remaining_batch_item_count(
     credential: &Credential,
     credential_repository: &dyn CredentialRepository,
 ) -> Result<Option<u32>, CredentialServiceError> {
-    Ok(if credential.r#type == CredentialType::BatchParent {
-        Some(
-            credential_repository
-                .get_credential_list(ListQuery {
-                    filtering: Some(
-                        CredentialFilterValue::ParentCredential(credential.id).condition()
-                            & CredentialFilterValue::Consumed(false)
-                            & CredentialFilterValue::Types(vec![CredentialType::BatchItem])
-                            & CredentialFilterValue::States(vec![CredentialStateEnum::Accepted]),
-                    ),
-                    ..Default::default()
-                })
-                .await
-                .error_while("listing batch items")?
-                .total_items as _,
-        )
-    } else {
-        None
-    })
+    Ok(
+        if credential.r#type == CredentialType::BatchParent
+            && credential.role == CredentialRole::Holder
+        {
+            Some(
+                credential_repository
+                    .get_credential_list(ListQuery {
+                        filtering: Some(
+                            CredentialFilterValue::ParentCredential(credential.id).condition()
+                                & CredentialFilterValue::Consumed(false)
+                                & CredentialFilterValue::Types(vec![CredentialType::BatchItem])
+                                & CredentialFilterValue::States(vec![
+                                    CredentialStateEnum::Accepted,
+                                ]),
+                        ),
+                        ..Default::default()
+                    })
+                    .await
+                    .error_while("listing batch items")?
+                    .total_items as _,
+            )
+        } else {
+            None
+        },
+    )
 }

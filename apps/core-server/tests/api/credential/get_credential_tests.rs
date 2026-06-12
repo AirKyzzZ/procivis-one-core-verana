@@ -324,6 +324,7 @@ async fn test_get_credential_success_batch() {
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 r#type: Some(CredentialType::BatchParent),
+                role: Some(CredentialRole::Holder),
                 ..Default::default()
             },
         )

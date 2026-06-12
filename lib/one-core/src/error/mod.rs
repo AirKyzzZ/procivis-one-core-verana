@@ -920,6 +920,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Invalid user ID token")]
     BR_0448,
+
+    #[strum(message = "Refresh not supported for this credential")]
+    BR_0452,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {
