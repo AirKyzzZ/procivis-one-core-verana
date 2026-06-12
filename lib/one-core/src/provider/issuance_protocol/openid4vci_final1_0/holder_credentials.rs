@@ -844,12 +844,14 @@ async fn validate_existing_and_find_new_claim_schemas(
         .claims
         .as_mut()
         .ok_or(IssuanceProtocolError::Failed("Missing claims".to_string()))?;
+    claims.sort_by_key(|c| c.path.clone());
 
     let parsed_schema = credential
         .schema
-        .as_ref()
+        .as_mut()
         .ok_or(IssuanceProtocolError::Failed("Missing schema".to_string()))?;
-    let parsed_claim_schemas = parsed_schema.claim_schemas.as_ref().await?.to_owned();
+    let mut parsed_claim_schemas = parsed_schema.claim_schemas.as_ref().await?.to_owned();
+    parsed_claim_schemas.sort_by_key(|s| s.key.clone());
 
     let parsed_formats = parsed_schema.formats.as_ref().await?;
     let parsed_mappings = parsed_formats
@@ -874,7 +876,10 @@ async fn validate_existing_and_find_new_claim_schemas(
         .await?;
 
     let mut stored_claim_schemas = stored_schema.claim_schemas.as_mut().await?;
-    for parsed_claim_schema in parsed_claim_schemas {
+    let mut claim_path_translations = HashMap::new();
+
+    // iterate sorted by key -> parent schemas before their children
+    for parsed_claim_schema in &*parsed_claim_schemas {
         let parsed_mapping = parsed_mappings
             .iter()
             .find(|m| m.claim_schema_id == parsed_claim_schema.id)
@@ -908,6 +913,7 @@ async fn validate_existing_and_find_new_claim_schemas(
                     stored_claim_schema_id
                 )))?;
             // link all matching credential claims to the stored claim_schema
+            // iterate sorted by path -> parent claims before their children
             for claim in claims.iter_mut().filter(|claim| {
                 claim
                     .schema
@@ -927,11 +933,18 @@ async fn validate_existing_and_find_new_claim_schemas(
                         cs.data_type
                     );
                 }
+                let mapped_path = remap_claim_path(
+                    claim.path.as_str(),
+                    &mut claim_path_translations,
+                    &cs.key,
+                    known_claim_schema,
+                )?;
+                claim.path = mapped_path;
                 claim.schema = Some(known_claim_schema.to_owned());
             }
         } else {
             new_claim_schemas.push(
-                add_fallback_translation(parsed_claim_schema, default_language)
+                add_fallback_translation(parsed_claim_schema.clone(), default_language)
                     .await
                     .error_while("adding fallback claim translation")?,
             );
@@ -952,12 +965,50 @@ async fn validate_existing_and_find_new_claim_schemas(
     stored_claim_schemas.extend(new_claim_schemas.clone());
     drop(parsed_formats);
     drop(stored_claim_schemas);
+    drop(parsed_claim_schemas);
     credential.schema = Some(stored_schema.to_owned());
     if new_claim_schemas.is_empty() {
         Ok(None)
     } else {
         Ok(Some(new_claim_schemas))
     }
+}
+
+fn remap_claim_path(
+    claim_path: &str,
+    claim_path_translations: &mut HashMap<String, String>,
+    parsed_schema_key: &String,
+    cs: &ClaimSchema,
+) -> Result<String, IssuanceProtocolError> {
+    if claim_path == *parsed_schema_key {
+        // adjust path to match schema
+        claim_path_translations.insert(parsed_schema_key.clone(), cs.key.clone());
+        return Ok(cs.key.clone());
+    } else if let Some((parent_claim, child)) = claim_path.rsplit_once(NESTED_CLAIM_MARKER) {
+        let parent_key = claim_path_translations.get(parent_claim).ok_or(IssuanceProtocolError::Failed(format!(
+            "claim path `{parent_claim}` not found in translated claim paths for parsed claim with path `{claim_path}`" )))?;
+        let new_path = if parsed_schema_key.ends_with(child) {
+            // normal nesting
+            let (_, cs_leaf) =
+                cs.key
+                    .rsplit_once(NESTED_CLAIM_MARKER)
+                    .ok_or(IssuanceProtocolError::Failed(format!(
+                        "expected claim schema path `{}` to contain nesting",
+                        cs.key
+                    )))?;
+            format!("{parent_key}{NESTED_CLAIM_MARKER}{cs_leaf}")
+        } else {
+            // `child` is an array index, which is not represented in the technical key.
+            // Preserve the index, just map to the parent key.
+            format!("{parent_key}{NESTED_CLAIM_MARKER}{child}")
+        };
+        claim_path_translations.insert(claim_path.to_string(), new_path.clone());
+        return Ok(new_path);
+    }
+    Err(IssuanceProtocolError::Failed(format!(
+        "Failed to map claim path `{claim_path}` to claim schema {} with parsed schema key `{parsed_schema_key}`",
+        cs.id
+    )))
 }
 
 async fn apply_issuer_metadata_to_schema(
