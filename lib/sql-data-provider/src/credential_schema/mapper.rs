@@ -163,6 +163,7 @@ impl From<CredentialSchema> for credential_schema::ActiveModel {
             transaction_code_description: Set(transaction_code_description),
             batch_size: Set(value.batch_size),
             allow_revocation: Set(value.allow_revocation),
+            embedded_disclosure_policy: Set(value.embedded_disclosure_policy),
         }
     }
 }
@@ -237,6 +238,7 @@ pub(super) fn credential_schema_from_models(
         transaction_code,
         batch_size: credential_schema.batch_size,
         allow_revocation: credential_schema.allow_revocation,
+        embedded_disclosure_policy: credential_schema.embedded_disclosure_policy,
         translations: RelatedVec::new(LocalizedTextLoader { id: id.into(), db }),
     })
 }

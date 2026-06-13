@@ -138,6 +138,7 @@ async fn setup_empty() -> TestSetup {
         requires_wallet_instance_attestation: false,
         transaction_code: None,
         translations: Default::default(),
+        embedded_disclosure_policy: None,
     };
 
     let did_id = insert_did_key(
@@ -366,6 +367,7 @@ async fn test_create_credential_success() {
             wallet_unit_attestation_blob_id: None,
             wallet_instance_attestation_blob_id: None,
             webhook_url: None,
+            embedded_disclosure_policy: None,
             parent: None,
         })
         .await;
@@ -421,6 +423,7 @@ async fn test_create_credential_empty_claims() {
             wallet_unit_attestation_blob_id: None,
             wallet_instance_attestation_blob_id: None,
             webhook_url: None,
+            embedded_disclosure_policy: None,
             parent: None,
         })
         .await;
@@ -488,6 +491,7 @@ async fn test_create_credential_already_exists() {
             wallet_unit_attestation_blob_id: None,
             wallet_instance_attestation_blob_id: None,
             webhook_url: None,
+            embedded_disclosure_policy: None,
             parent: None,
         })
         .await;

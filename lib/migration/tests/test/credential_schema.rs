@@ -25,6 +25,7 @@ async fn test_db_schema_credential_schema() {
         "transaction_code_description",
         "batch_size",
         "allow_revocation",
+        "embedded_disclosure_policy",
     ];
     if schema.backend() == DbBackend::MySql {
         columns.push("deleted_at_materialized");
@@ -131,6 +132,10 @@ async fn test_db_schema_credential_schema() {
     credential_schema
         .column("allow_revocation")
         .r#type(ColumnType::Boolean)
+        .nullable(true);
+    credential_schema
+        .column("embedded_disclosure_policy")
+        .r#type(ColumnType::Text)
         .nullable(true);
 }
 

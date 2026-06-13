@@ -209,6 +209,7 @@ pub(crate) fn extracted_credential_to_model(
         webhook_url: None,
         r#type: CredentialType::Single,
         parent: None,
+        embedded_disclosure_policy: None,
     })
 }
 
@@ -575,6 +576,7 @@ mod tests {
                 requires_wallet_instance_attestation: false,
                 transaction_code: None,
                 translations: Default::default(),
+                embedded_disclosure_policy: None,
             },
             vec![(
                 CredentialClaim::try_from(json!({ "element": "Test" })).unwrap(),

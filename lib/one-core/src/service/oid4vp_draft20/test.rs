@@ -193,6 +193,7 @@ async fn test_presentation_definition_success() {
                                 requires_wallet_instance_attestation: false,
                                 transaction_code: None,
                                 translations: Default::default(),
+                                embedded_disclosure_policy: None,
                             }),
                         }]),
                     }),

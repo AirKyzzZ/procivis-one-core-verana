@@ -693,6 +693,7 @@ async fn test_extract_credentials_swiyu() {
         organisation: dummy_organisation(None).into(),
         transaction_code: None,
         translations: Default::default(),
+        embedded_disclosure_policy: None,
     };
 
     let credentials = sd_formatter

@@ -242,6 +242,7 @@ fn generic_credential_schema() -> CredentialSchema {
         requires_wallet_instance_attestation: false,
         transaction_code: None,
         translations: Default::default(),
+        embedded_disclosure_policy: None,
     }
 }
 
@@ -322,6 +323,7 @@ fn dummy_credential(
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
         parent: None,
+        embedded_disclosure_policy: None,
     }
 }
 

@@ -594,6 +594,7 @@ impl CredentialFormatter for MdocFormatter {
             batch_size: None,
             allow_revocation: None,
             translations: Default::default(),
+            embedded_disclosure_policy: None,
         };
 
         let issuer_identifier = prepare_identifier(
@@ -640,6 +641,7 @@ impl CredentialFormatter for MdocFormatter {
             claims: Some(claims),
             webhook_url: None,
             parent: None,
+            embedded_disclosure_policy: None,
         })
     }
 

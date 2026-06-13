@@ -381,6 +381,7 @@ fn test_proof(proof_id: Uuid, credential_format: CredentialFormat) -> Proof {
                     organisation: dummy_organisation(None).into(),
                     transaction_code: None,
                     translations: Default::default(),
+                    embedded_disclosure_policy: None,
                 }),
             }]),
         }),

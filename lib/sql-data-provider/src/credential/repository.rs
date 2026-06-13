@@ -259,6 +259,7 @@ fn get_credential_list_query(query_params: CredentialListQuery) -> Select<creden
             credential::Column::WalletUnitAttestationBlobId,
             credential::Column::WalletInstanceAttestationBlobId,
             credential::Column::WebhookUrl,
+            credential::Column::EmbeddedDisclosurePolicy,
         ])
         .join(
             sea_orm::JoinType::InnerJoin,
@@ -321,6 +322,10 @@ fn get_credential_list_query(query_params: CredentialListQuery) -> Select<creden
         .column_as(
             credential_schema::Column::AllowRevocation,
             "credential_schema_allow_revocation",
+        )
+        .column_as(
+            credential_schema::Column::EmbeddedDisclosurePolicy,
+            "credential_schema_embedded_disclosure_policy",
         )
         .join(
             JoinType::LeftJoin,

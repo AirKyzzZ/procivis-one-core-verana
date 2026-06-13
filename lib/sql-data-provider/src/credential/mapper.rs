@@ -204,6 +204,7 @@ pub(crate) fn model_to_credential(
         wallet_unit_attestation_blob_id: credential.wallet_unit_attestation_blob_id,
         wallet_instance_attestation_blob_id: credential.wallet_instance_attestation_blob_id,
         webhook_url: credential.webhook_url,
+        embedded_disclosure_policy: credential.embedded_disclosure_policy,
         parent: credential
             .parent_id
             .map(|id| Related::new(id, credential_repository.clone())),
@@ -247,6 +248,7 @@ pub(super) fn request_to_active_model(
         wallet_unit_attestation_blob_id: Set(wallet_unit_attestation_blob_id),
         wallet_instance_attestation_blob_id: Set(wallet_instance_attestation_blob_id),
         webhook_url: Set(request.webhook_url.to_owned()),
+        embedded_disclosure_policy: Set(request.embedded_disclosure_policy.clone()),
         r#type: Set(request.r#type.into()),
     }
 }
@@ -303,6 +305,7 @@ pub(super) fn credential_list_model_to_repository_model(
         transaction_code,
         batch_size: credential.credential_schema_batch_size,
         allow_revocation: credential.credential_schema_allow_revocation,
+        embedded_disclosure_policy: credential.credential_schema_embedded_disclosure_policy,
         translations: RelatedVec::new(LocalizedTextLoader {
             id: credential.credential_schema_id.into(),
             db: db.to_owned(),
@@ -367,6 +370,7 @@ pub(super) fn credential_list_model_to_repository_model(
         wallet_unit_attestation_blob_id: credential.wallet_unit_attestation_blob_id,
         wallet_instance_attestation_blob_id: credential.wallet_instance_attestation_blob_id,
         webhook_url: credential.webhook_url,
+        embedded_disclosure_policy: credential.embedded_disclosure_policy,
         parent: credential
             .parent_id
             .map(|id| Related::new(id, credential_repository.clone())),

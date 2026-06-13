@@ -198,6 +198,7 @@ async fn generic_credential() -> Credential {
                     requires_wallet_instance_attestation: false,
                     transaction_code: None,
                     translations: Default::default(),
+                    embedded_disclosure_policy: None,
                     formats: vec![CredentialSchemaFormat {
                         id: Uuid::new_v4().into(),
                         created_date: crate::clock::now_utc(),
@@ -222,6 +223,7 @@ async fn generic_credential() -> Credential {
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
         parent: None,
+        embedded_disclosure_policy: None,
     }
 }
 
@@ -303,6 +305,7 @@ async fn generic_credential_list_entity() -> Credential {
                     requires_wallet_instance_attestation: false,
                     transaction_code: None,
                     translations: Default::default(),
+                    embedded_disclosure_policy: None,
                 },
                 "en",
             )
@@ -317,6 +320,7 @@ async fn generic_credential_list_entity() -> Credential {
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
         parent: None,
+        embedded_disclosure_policy: None,
     }
 }
 
@@ -2848,6 +2852,7 @@ fn generate_credential_schema_with_claim_schemas(
         .into(),
         transaction_code: None,
         translations: Default::default(),
+        embedded_disclosure_policy: None,
     }
 }
 
@@ -3438,6 +3443,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
                     requires_wallet_instance_attestation: false,
                     transaction_code: None,
                     translations: Default::default(),
+                    embedded_disclosure_policy: None,
                 },
                 "en",
             )
@@ -3452,6 +3458,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
         parent: None,
+        embedded_disclosure_policy: None,
     };
 
     {
@@ -4205,6 +4212,7 @@ async fn test_get_credential_success_array_index_sorting() {
                     requires_wallet_instance_attestation: false,
                     transaction_code: None,
                     translations: Default::default(),
+                    embedded_disclosure_policy: None,
                 },
                 "en",
             )
@@ -4219,6 +4227,7 @@ async fn test_get_credential_success_array_index_sorting() {
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
         parent: None,
+        embedded_disclosure_policy: None,
     };
 
     {
@@ -4609,6 +4618,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
                     requires_wallet_instance_attestation: false,
                     transaction_code: None,
                     translations: Default::default(),
+                    embedded_disclosure_policy: None,
                 },
                 "en",
             )
@@ -4623,6 +4633,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
         parent: None,
+        embedded_disclosure_policy: None,
     };
 
     {
@@ -4868,6 +4879,7 @@ async fn test_get_credential_success_array_single_element() {
                     requires_wallet_instance_attestation: false,
                     transaction_code: None,
                     translations: Default::default(),
+                    embedded_disclosure_policy: None,
                 },
                 "en",
             )
@@ -4882,6 +4894,7 @@ async fn test_get_credential_success_array_single_element() {
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
         parent: None,
+        embedded_disclosure_policy: None,
     };
 
     {
@@ -5026,6 +5039,7 @@ async fn test_create_credential_array(
         transaction_code: None,
         batch_size: None,
         translations: Default::default(),
+        embedded_disclosure_policy: None,
     };
 
     let mut formatter = MockCredentialFormatter::default();
@@ -5417,6 +5431,7 @@ async fn test_create_credential_invalid_certificate_role() {
         requires_wallet_instance_attestation: false,
         transaction_code: None,
         translations: Default::default(),
+        embedded_disclosure_policy: None,
     };
 
     let mut formatter = MockCredentialFormatter::default();

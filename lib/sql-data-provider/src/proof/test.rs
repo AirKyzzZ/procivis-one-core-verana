@@ -599,6 +599,7 @@ async fn test_get_proof_with_relations() {
                 wallet_unit_attestation_blob_id: None,
                 wallet_instance_attestation_blob_id: None,
                 webhook_url: None,
+                embedded_disclosure_policy: None,
                 parent: None,
             }))
         });

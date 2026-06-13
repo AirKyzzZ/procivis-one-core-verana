@@ -504,6 +504,7 @@ impl CredentialFormatter for JsonLdBbsplus {
             batch_size: None,
             allow_revocation: None,
             translations: Default::default(),
+            embedded_disclosure_policy: None,
         };
 
         let issuer_identifier = prepare_identifier(
@@ -561,6 +562,7 @@ impl CredentialFormatter for JsonLdBbsplus {
             key: None,
             webhook_url: None,
             parent: None,
+            embedded_disclosure_policy: None,
         })
     }
 

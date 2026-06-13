@@ -160,6 +160,7 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            embedded_disclosure_policy: None,
             translations: Default::default(),
         },
         organisation,
@@ -233,6 +234,7 @@ async fn test_create_credential_schema_success() {
             requires_wallet_instance_attestation: false,
             transaction_code: None,
             translations: Default::default(),
+            embedded_disclosure_policy: None,
         })
         .await;
 
@@ -453,6 +455,7 @@ async fn test_delete_credential_schema_not_found() {
             organisation: dummy_organisation(None).into(),
             transaction_code: None,
             translations: Default::default(),
+            embedded_disclosure_policy: None,
         })
         .await;
     assert!(matches!(result, Err(DataLayerError::RecordNotUpdated)));

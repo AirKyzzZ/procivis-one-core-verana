@@ -95,6 +95,7 @@ pub async fn insert_credential(
         wallet_unit_attestation_blob_id: Set(None),
         wallet_instance_attestation_blob_id: Set(None),
         webhook_url: Set(None),
+        embedded_disclosure_policy: Set(None),
     }
     .insert(db)
     .await?;
@@ -124,6 +125,7 @@ pub async fn insert_credential(
         wallet_unit_attestation_blob_id: credential.wallet_unit_attestation_blob_id,
         wallet_instance_attestation_blob_id: credential.wallet_instance_attestation_blob_id,
         webhook_url: credential.webhook_url,
+        embedded_disclosure_policy: credential.embedded_disclosure_policy,
         parent: None,
     })
 }
@@ -176,6 +178,7 @@ pub async fn insert_credential_schema_to_database(
         transaction_code_type: Set(None),
         transaction_code_length: Set(None),
         transaction_code_description: Set(None),
+        embedded_disclosure_policy: Set(None),
     }
     .insert(database)
     .await?;

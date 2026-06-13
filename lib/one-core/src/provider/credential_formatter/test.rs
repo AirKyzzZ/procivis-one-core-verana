@@ -183,6 +183,7 @@ fn generate_credential_matching_detail(
             organisation: dummy_organisation(None).into(),
             transaction_code: None,
             translations: Default::default(),
+            embedded_disclosure_policy: None,
         }),
         interaction: None,
         key: None,
@@ -192,6 +193,7 @@ fn generate_credential_matching_detail(
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
         parent: None,
+        embedded_disclosure_policy: None,
     }
 }
 

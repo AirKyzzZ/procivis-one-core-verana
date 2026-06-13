@@ -471,6 +471,7 @@ fn dummy_credential() -> Credential {
             requires_wallet_instance_attestation: false,
             transaction_code: None,
             translations: Default::default(),
+            embedded_disclosure_policy: None,
         }),
         interaction: Some(Interaction {
             id: Uuid::new_v4().into(),
@@ -488,6 +489,7 @@ fn dummy_credential() -> Credential {
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
         parent: None,
+        embedded_disclosure_policy: None,
     }
 }
 

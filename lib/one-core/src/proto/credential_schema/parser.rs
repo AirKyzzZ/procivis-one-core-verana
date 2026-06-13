@@ -215,6 +215,7 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
                 }
                 None => Default::default(),
             },
+            embedded_disclosure_policy: None,
         })
     }
 }

@@ -409,6 +409,7 @@ impl CredentialFormatter for JWTFormatter {
             batch_size: None,
             allow_revocation: None,
             translations: Default::default(),
+            embedded_disclosure_policy: None,
         };
 
         let issuer = jwt
@@ -474,6 +475,7 @@ impl CredentialFormatter for JWTFormatter {
             key: None,
             webhook_url: None,
             parent: None,
+            embedded_disclosure_policy: None,
         })
     }
 

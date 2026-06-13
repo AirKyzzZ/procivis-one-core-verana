@@ -159,6 +159,7 @@ impl CredentialSchemasDB {
             allow_suspension: params.allow_suspension.unwrap_or(true),
             requires_wallet_instance_attestation: params.requires_wallet_instance_attestation,
             transaction_code: params.transaction_code,
+            embedded_disclosure_policy: None,
             translations: Default::default(),
         };
 
@@ -231,6 +232,7 @@ impl CredentialSchemasDB {
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            embedded_disclosure_policy: None,
             translations: Default::default(),
         };
 
@@ -345,6 +347,7 @@ impl CredentialSchemasDB {
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            embedded_disclosure_policy: None,
             translations: Default::default(),
         };
 
@@ -459,6 +462,7 @@ impl CredentialSchemasDB {
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            embedded_disclosure_policy: None,
             translations: Default::default(),
         };
 
@@ -585,6 +589,7 @@ impl CredentialSchemasDB {
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            embedded_disclosure_policy: None,
             translations: Default::default(),
         };
 
@@ -853,6 +858,7 @@ impl CredentialSchemasDB {
             allow_suspension: true,
             requires_wallet_instance_attestation: params.requires_wallet_instance_attestation,
             transaction_code: None,
+            embedded_disclosure_policy: None,
             translations: Default::default(),
         };
 
@@ -915,6 +921,7 @@ impl CredentialSchemasDB {
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            embedded_disclosure_policy: None,
             translations: Default::default(),
         };
 
@@ -1007,6 +1014,7 @@ impl CredentialSchemasDB {
             allow_suspension: true,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            embedded_disclosure_policy: None,
             translations: Default::default(),
         };
 
@@ -1094,6 +1102,7 @@ impl CredentialSchemasDB {
             allow_suspension: false,
             requires_wallet_instance_attestation: false,
             transaction_code: None,
+            embedded_disclosure_policy: None,
             translations: Default::default(),
         };
 

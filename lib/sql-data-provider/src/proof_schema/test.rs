@@ -218,6 +218,7 @@ async fn test_create_proof_schema_already_exists() {
                     requires_wallet_instance_attestation: false,
                     transaction_code: None,
                     translations: Default::default(),
+                    embedded_disclosure_policy: None,
                 }),
             }]),
         })
@@ -332,6 +333,7 @@ async fn test_create_proof_schema_success() {
                     requires_wallet_instance_attestation: false,
                     transaction_code: None,
                     translations: Default::default(),
+                    embedded_disclosure_policy: None,
                 }),
             }]),
         })
@@ -554,6 +556,7 @@ async fn test_get_proof_schema_with_relations() {
                 requires_wallet_instance_attestation: false,
                 transaction_code: None,
                 translations: Default::default(),
+                embedded_disclosure_policy: None,
             }))
         });
 
@@ -707,6 +710,7 @@ async fn test_get_proof_schema_with_input_proof_relations() {
                 requires_wallet_instance_attestation: false,
                 transaction_code: None,
                 translations: Default::default(),
+                embedded_disclosure_policy: None,
             }))
         });
 
@@ -1172,6 +1176,7 @@ async fn test_get_proof_schema_list_filter_formats() {
         transaction_code_type: Set(None),
         transaction_code_length: Set(None),
         transaction_code_description: Set(None),
+        embedded_disclosure_policy: Set(None),
     }
     .insert(&db)
     .await
@@ -1209,6 +1214,7 @@ async fn test_get_proof_schema_list_filter_formats() {
         transaction_code_type: Set(None),
         transaction_code_length: Set(None),
         transaction_code_description: Set(None),
+        embedded_disclosure_policy: Set(None),
     }
     .insert(&db)
     .await

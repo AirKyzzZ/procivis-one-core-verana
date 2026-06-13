@@ -31,6 +31,7 @@ async fn test_db_schema_credential() {
             "wallet_unit_attestation_blob_id",
             "wallet_instance_attestation_blob_id",
             "webhook_url",
+            "embedded_disclosure_policy",
         ])
         .index("index-Credential-CreatedDate", false, &["created_date"])
         .index("index-Credential-Role", false, &["role"])
@@ -168,6 +169,10 @@ async fn test_db_schema_credential() {
         );
     credential
         .column("webhook_url")
+        .r#type(ColumnType::Text)
+        .nullable(true);
+    credential
+        .column("embedded_disclosure_policy")
         .r#type(ColumnType::Text)
         .nullable(true);
 }

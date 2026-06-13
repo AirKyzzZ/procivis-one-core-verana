@@ -35,6 +35,8 @@ pub struct Model {
     pub transaction_code_description: Option<String>,
     pub batch_size: Option<i32>,
     pub allow_revocation: Option<bool>,
+    #[sea_orm(column_type = "Text")]
+    pub embedded_disclosure_policy: Option<String>,
 }
 
 #[derive(

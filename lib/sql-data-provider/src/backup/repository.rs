@@ -216,6 +216,7 @@ impl BackupRepository for BackupProvider {
                 credential::Column::CredentialBlobId,
                 credential::Column::Protocol,
                 credential::Column::WebhookUrl,
+                credential::Column::EmbeddedDisclosurePolicy,
             ])
             .column_as(credential_schema::Column::Id, "credential_schema_id")
             .column_as(
@@ -266,6 +267,10 @@ impl BackupRepository for BackupProvider {
             .column_as(
                 credential_schema::Column::AllowRevocation,
                 "credential_schema_allow_revocation",
+            )
+            .column_as(
+                credential_schema::Column::EmbeddedDisclosurePolicy,
+                "credential_schema_embedded_disclosure_policy",
             )
             .column_as(organisation::Column::Id, "organisation_id")
             .column_as(

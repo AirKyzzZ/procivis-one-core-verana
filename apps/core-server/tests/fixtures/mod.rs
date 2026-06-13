@@ -675,6 +675,7 @@ pub async fn create_credential_schema(
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
         transaction_code: None,
+        embedded_disclosure_policy: None,
         translations: Default::default(),
     };
 
@@ -755,6 +756,7 @@ pub async fn create_credential_schema_with_claims(
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
         transaction_code: None,
+        embedded_disclosure_policy: None,
         translations: Default::default(),
     };
 
@@ -960,6 +962,7 @@ pub async fn create_credential(
         wallet_unit_attestation_blob_id: params.wallet_unit_attestation_blob_id,
         wallet_instance_attestation_blob_id: params.wallet_instance_attestation_blob_id,
         webhook_url: params.webhook_url,
+        embedded_disclosure_policy: None,
         parent: params
             .parent_id
             .map(|id| Related::new(id, data_layer.get_credential_repository())),

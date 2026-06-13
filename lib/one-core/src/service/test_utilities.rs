@@ -360,6 +360,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
             requires_wallet_instance_attestation: false,
             transaction_code: None,
             translations: Default::default(),
+            embedded_disclosure_policy: None,
         }),
         interaction: Some(Interaction {
             id: Uuid::new_v4().into(),
@@ -377,6 +378,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
         parent: None,
+        embedded_disclosure_policy: None,
     }
 }
 
@@ -555,6 +557,7 @@ pub fn dummy_credential_schema() -> CredentialSchema {
         transaction_code: None,
         allow_revocation: None,
         translations: Default::default(),
+        embedded_disclosure_policy: None,
     }
 }
 

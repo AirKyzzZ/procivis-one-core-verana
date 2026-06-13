@@ -506,6 +506,7 @@ pub(super) fn from_create_v2_request_with_id(
             None => default_name_translation(id, request.name, now, default_language),
         }
         .into(),
+        embedded_disclosure_policy: None,
     }
 }
 

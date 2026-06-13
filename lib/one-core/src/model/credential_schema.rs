@@ -40,6 +40,8 @@ pub struct CredentialSchema {
     pub transaction_code: Option<TransactionCode>,
     pub batch_size: Option<i32>,
 
+    pub embedded_disclosure_policy: Option<String>,
+
     /// only specified for the v1 credential schemas
     pub revocation_method: Option<RevocationMethodId>,
     /// only specified for the v2 credential schemas

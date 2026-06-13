@@ -529,6 +529,7 @@ pub(super) fn from_create_request(
         webhook_url: request.webhook_destination_url,
         r#type,
         parent: None,
+        embedded_disclosure_policy: None,
     }
 }
 

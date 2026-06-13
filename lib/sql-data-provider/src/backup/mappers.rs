@@ -109,6 +109,7 @@ pub(super) fn credential_from_unexportable_model(
             batch_size: value.credential_schema_batch_size,
             allow_revocation: value.credential_schema_allow_revocation,
             translations: Default::default(),
+            embedded_disclosure_policy: value.credential_schema_embedded_disclosure_policy,
         }),
         interaction: None,
         key: None,
@@ -116,6 +117,7 @@ pub(super) fn credential_from_unexportable_model(
         wallet_unit_attestation_blob_id: None,
         wallet_instance_attestation_blob_id: None,
         webhook_url: value.webhook_url,
+        embedded_disclosure_policy: value.embedded_disclosure_policy,
         parent: value
             .parent_id
             .map(|id| Related::new(id, credential_repository.clone())),

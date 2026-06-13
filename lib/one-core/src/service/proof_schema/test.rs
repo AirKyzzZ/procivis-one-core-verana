@@ -408,6 +408,7 @@ async fn test_create_proof_schema_success() {
                 requires_wallet_instance_attestation: false,
                 transaction_code: None,
                 translations: Default::default(),
+                embedded_disclosure_policy: None,
             };
 
             Ok(GetListResponse {
@@ -550,6 +551,7 @@ async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
                 requires_wallet_instance_attestation: false,
                 transaction_code: None,
                 translations: Default::default(),
+                embedded_disclosure_policy: None,
             };
 
             let schema_hardware = CredentialSchema {
@@ -692,6 +694,7 @@ async fn test_create_proof_schema_fail_unsupported_wallet_storage_type() {
                 requires_wallet_instance_attestation: false,
                 transaction_code: None,
                 translations: Default::default(),
+                embedded_disclosure_policy: None,
             };
 
             Ok(GetListResponse {
@@ -854,6 +857,7 @@ async fn test_create_proof_schema_array_object_fail() {
                 requires_wallet_instance_attestation: false,
                 transaction_code: None,
                 translations: Default::default(),
+                embedded_disclosure_policy: None,
             };
 
             Ok(GetListResponse {
@@ -1022,6 +1026,7 @@ async fn test_create_proof_schema_array_success() {
                 requires_wallet_instance_attestation: false,
                 transaction_code: None,
                 translations: Default::default(),
+                embedded_disclosure_policy: None,
             };
 
             Ok(GetListResponse {
@@ -1188,6 +1193,7 @@ async fn test_create_proof_schema_claims_dont_exist() {
                 requires_wallet_instance_attestation: false,
                 transaction_code: None,
                 translations: Default::default(),
+                embedded_disclosure_policy: None,
             };
 
             Ok(GetListResponse {
@@ -1971,6 +1977,7 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
                 requires_wallet_instance_attestation: false,
                 transaction_code: None,
                 translations: Default::default(),
+                embedded_disclosure_policy: None,
             }))
         });
 
@@ -2569,6 +2576,7 @@ async fn credential_schema_with_claims(claims: Vec<ClaimSchema>) -> CredentialSc
             requires_wallet_instance_attestation: false,
             transaction_code: None,
             translations: Default::default(),
+            embedded_disclosure_policy: None,
         },
         "en",
     )
@@ -2830,6 +2838,7 @@ async fn test_create_proof_schema_verify_nested_generic(
                 requires_wallet_instance_attestation: false,
                 transaction_code: None,
                 translations: Default::default(),
+                embedded_disclosure_policy: None,
             };
 
             Ok(GetListResponse {

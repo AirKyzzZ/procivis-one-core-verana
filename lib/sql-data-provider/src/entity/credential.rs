@@ -52,6 +52,8 @@ pub struct Model {
     pub wallet_instance_attestation_blob_id: Option<BlobId>,
 
     pub webhook_url: Option<String>,
+    #[sea_orm(column_type = "Text")]
+    pub embedded_disclosure_policy: Option<String>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

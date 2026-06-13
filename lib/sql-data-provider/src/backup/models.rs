@@ -26,6 +26,7 @@ pub struct UnexportableCredentialModel {
     pub suspend_end_date: Option<OffsetDateTime>,
     pub profile: Option<String>,
     pub webhook_url: Option<String>,
+    pub embedded_disclosure_policy: Option<String>,
 
     pub credential_schema_id: CredentialSchemaId,
     pub credential_schema_deleted_at: Option<OffsetDateTime>,
@@ -42,6 +43,7 @@ pub struct UnexportableCredentialModel {
     pub credential_schema_transaction_code_description: Option<String>,
     pub credential_schema_batch_size: Option<i32>,
     pub credential_schema_allow_revocation: Option<bool>,
+    pub credential_schema_embedded_disclosure_policy: Option<String>,
 
     pub organisation_id: OrganisationId,
     pub organisation_created_date: OffsetDateTime,

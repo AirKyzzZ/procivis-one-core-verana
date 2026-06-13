@@ -386,6 +386,7 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
             requires_wallet_instance_attestation: false,
             transaction_code: None,
             translations: Default::default(),
+            embedded_disclosure_policy: None,
         }),
         interaction: Some(Interaction {
             id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
@@ -406,6 +407,7 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
         parent: None,
+        embedded_disclosure_policy: None,
     }
 }
 

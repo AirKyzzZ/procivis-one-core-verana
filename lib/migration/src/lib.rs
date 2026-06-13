@@ -280,7 +280,8 @@ impl MigratorTrait for Migrator {
             Box::new(migrations::m20260611_052438_unique_claim_schema_keys::Migration),
             Box::new(
                 migrations::m20260604_030754_credential_schema_v2::Migration,
-            )
+            ),
+            Box::new(migrations::m20260612_120000_add_embedded_disclosure_policy_to_credential_schema::Migration),
         ]
     }
 }

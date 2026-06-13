@@ -273,6 +273,7 @@ fn generic_proof_input_schema() -> ProofInputSchema {
             requires_wallet_instance_attestation: false,
             transaction_code: None,
             translations: Default::default(),
+            embedded_disclosure_policy: None,
         }),
     }
 }
@@ -346,6 +347,7 @@ async fn test_get_presentation_definition_proof_role_verifier() {
                     requires_wallet_instance_attestation: false,
                     transaction_code: None,
                     translations: Default::default(),
+                    embedded_disclosure_policy: None,
                 }),
             }]),
         }),
@@ -487,6 +489,7 @@ async fn test_get_proof_exists() {
                             requires_wallet_instance_attestation: false,
                             transaction_code: None,
                             translations: Default::default(),
+                            embedded_disclosure_policy: None,
                         },
                         "en",
                     )
@@ -645,6 +648,7 @@ async fn test_get_proof_with_array_holder() {
             requires_wallet_instance_attestation: false,
             transaction_code: None,
             translations: Default::default(),
+            embedded_disclosure_policy: None,
         },
         "en",
     )
@@ -708,6 +712,7 @@ async fn test_get_proof_with_array_holder() {
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
         parent: None,
+        embedded_disclosure_policy: None,
     };
 
     let proof = Proof {
@@ -918,6 +923,7 @@ async fn test_get_proof_with_array_in_object_holder() {
             requires_wallet_instance_attestation: false,
             transaction_code: None,
             translations: Default::default(),
+            embedded_disclosure_policy: None,
         },
         "en",
     )
@@ -991,6 +997,7 @@ async fn test_get_proof_with_array_in_object_holder() {
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
         parent: None,
+        embedded_disclosure_policy: None,
     };
 
     let proof = Proof {
@@ -1206,6 +1213,7 @@ async fn test_get_proof_with_object_array_holder() {
             requires_wallet_instance_attestation: false,
             transaction_code: None,
             translations: Default::default(),
+            embedded_disclosure_policy: None,
         },
         "en",
     )
@@ -1289,6 +1297,7 @@ async fn test_get_proof_with_object_array_holder() {
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
         parent: None,
+        embedded_disclosure_policy: None,
     };
 
     let proof = Proof {
@@ -1499,6 +1508,7 @@ async fn test_get_proof_with_array() {
             requires_wallet_instance_attestation: false,
             transaction_code: None,
             translations: Default::default(),
+            embedded_disclosure_policy: None,
         },
         "en",
     )
@@ -1562,6 +1572,7 @@ async fn test_get_proof_with_array() {
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
         parent: None,
+        embedded_disclosure_policy: None,
     };
 
     let proof = Proof {
@@ -1779,6 +1790,7 @@ async fn test_get_proof_with_array_in_object() {
             requires_wallet_instance_attestation: false,
             transaction_code: None,
             translations: Default::default(),
+            embedded_disclosure_policy: None,
         },
         "en",
     )
@@ -1852,6 +1864,7 @@ async fn test_get_proof_with_array_in_object() {
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
         parent: None,
+        embedded_disclosure_policy: None,
     };
 
     let proof = Proof {
@@ -2075,6 +2088,7 @@ async fn test_get_proof_with_object_array() {
             requires_wallet_instance_attestation: false,
             transaction_code: None,
             translations: Default::default(),
+            embedded_disclosure_policy: None,
         },
         "en",
     )
@@ -2158,6 +2172,7 @@ async fn test_get_proof_with_object_array() {
         wallet_instance_attestation_blob_id: None,
         webhook_url: None,
         parent: None,
+        embedded_disclosure_policy: None,
     };
 
     let proof = Proof {

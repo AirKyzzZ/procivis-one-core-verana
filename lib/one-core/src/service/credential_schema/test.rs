@@ -146,6 +146,7 @@ fn generic_credential_schema() -> CredentialSchema {
             entity_type: LocalizedTextEntityType::CredentialSchema,
         }]
         .into(),
+        embedded_disclosure_policy: None,
     }
 }
 

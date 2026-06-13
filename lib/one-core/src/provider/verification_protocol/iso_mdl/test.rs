@@ -186,6 +186,7 @@ async fn test_presentation_reject_ok() {
                     requires_wallet_instance_attestation: false,
                     transaction_code: None,
                     translations: Default::default(),
+                    embedded_disclosure_policy: None,
                 }),
             }]),
             organisation: None,
@@ -382,6 +383,7 @@ async fn test_get_presentation_definition_ok() {
             requires_wallet_instance_attestation: false,
             transaction_code: None,
             translations: Default::default(),
+            embedded_disclosure_policy: None,
         },
         "en",
     )
@@ -467,6 +469,7 @@ async fn test_get_presentation_definition_ok() {
         consumed_at: None,
         r#type: CredentialType::Single,
         parent: None,
+        embedded_disclosure_policy: None,
     };
 
     let mut credential_repository = MockCredentialRepository::new();
@@ -773,6 +776,7 @@ async fn test_get_presentation_definition_v2() {
             requires_wallet_instance_attestation: false,
             transaction_code: None,
             translations: Default::default(),
+            embedded_disclosure_policy: None,
         },
         "en",
     )
@@ -868,6 +872,7 @@ async fn test_get_presentation_definition_v2() {
         consumed_at: None,
         r#type: CredentialType::Single,
         parent: None,
+        embedded_disclosure_policy: None,
     };
 
     let mut credential_repository = MockCredentialRepository::new();

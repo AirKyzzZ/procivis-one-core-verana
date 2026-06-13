@@ -39,6 +39,7 @@ pub struct Credential {
     pub wallet_unit_attestation_blob_id: Option<BlobId>,
     pub wallet_instance_attestation_blob_id: Option<BlobId>,
     pub webhook_url: Option<String>,
+    pub embedded_disclosure_policy: Option<String>,
 
     // Relations:
     pub claims: Option<Vec<Claim>>,

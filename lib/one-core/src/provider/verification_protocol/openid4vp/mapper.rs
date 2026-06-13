@@ -539,6 +539,7 @@ pub(crate) fn extracted_credential_to_model(
             webhook_url: None,
             r#type: CredentialType::Single,
             parent: None,
+            embedded_disclosure_policy: None,
         },
         issuer_details,
         holder_details,
