@@ -1,7 +1,7 @@
 use one_core::model::history::HistorySearchEnum;
 use one_core::service::error::ServiceError;
 use one_core::service::history::dto::{
-    CreateHistoryRequestDTO, HistoryErrorMetadataDTO, HistoryFilterParamsDTO, HistoryResponseDTO,
+    HistoryErrorMetadataDTO, HistoryFilterParamsDTO, HistoryResponseDTO,
 };
 use one_dto_mapper::{
     From, Into, TryFrom, TryInto, convert_inner, convert_inner_of_inner, try_convert_inner,
@@ -32,8 +32,7 @@ pub(crate) type GetHistoryQuery =
     ListQueryParamsRest<HistoryFilterQueryParamsRest, SortableHistoryColumnRestDTO>;
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
-#[into(CreateHistoryRequestDTO)]
+#[derive(Clone, Debug, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct CreateHistoryRequestRestDTO {
     /// The action that occurred on the entity.

@@ -9,6 +9,7 @@ use crate::error::ContextWithErrorCode;
 use crate::model::history::{History, HistorySource, SortableHistoryColumn};
 use crate::proto::session_provider::SessionExt;
 use crate::service::common_dto::ListQueryDTO;
+use crate::validator::throw_if_org_id_not_matching_session;
 
 impl HistoryService {
     /// Returns history list filtered by query
@@ -54,6 +55,10 @@ impl HistoryService {
     ) -> Result<HistoryId, HistoryServiceError> {
         if request.source == HistorySource::Core {
             return Err(HistoryServiceError::InvalidSource);
+        }
+        if let Some(organisation_id) = &request.organisation_id {
+            throw_if_org_id_not_matching_session(organisation_id, &*self.session_provider)
+                .error_while("validating organisation")?;
         }
 
         let mut request: History = request.into();

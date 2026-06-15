@@ -19,6 +19,7 @@ async fn test_create_history_without_metadata() {
             HistoryEntityType::User,
             HistoryAction::Created,
             None,
+            None,
         )
         .await;
 
@@ -51,6 +52,7 @@ async fn test_create_history_with_metadata() {
             HistoryEntityType::User,
             HistoryAction::Created,
             Some(metadata_value.clone()),
+            None,
         )
         .await;
 
@@ -68,4 +70,50 @@ async fn test_create_history_with_metadata() {
         panic!("invalid metadata");
     };
     assert_eq!(value, metadata_value);
+}
+
+#[tokio::test]
+async fn test_create_without_org_but_required() {
+    // GIVEN
+    let context = TestContext::new(None).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .histories
+        .create(
+            "name",
+            HistorySource::Bff,
+            HistoryEntityType::Credential,
+            HistoryAction::Created,
+            None,
+            None,
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+}
+
+#[tokio::test]
+async fn test_create_with_org_required() {
+    // GIVEN
+    let (context, org) = TestContext::new_with_organisation(None).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .histories
+        .create(
+            "name",
+            HistorySource::Bff,
+            HistoryEntityType::Credential,
+            HistoryAction::Created,
+            None,
+            Some(org.id),
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
 }

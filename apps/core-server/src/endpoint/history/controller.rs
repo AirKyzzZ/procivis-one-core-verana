@@ -110,12 +110,17 @@ pub(crate) async fn create_history(
         ErrorResponseRestDTO,
     >,
 ) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
-    let result = state
-        .core
-        .history_service
-        .create_history(request.into())
-        .await;
-
+    let result = async {
+        Ok::<_, ServiceError>(
+            state
+                .core
+                .history_service
+                .create_history(request.try_into()?)
+                .await
+                .error_while("creating history")?,
+        )
+    }
+    .await;
     CreatedOrErrorResponse::from_result(result, state, "creating history")
 }
 

@@ -111,14 +111,18 @@ impl HistoriesApi {
         entity_type: impl Into<HistoryEntityType>,
         action: impl Into<HistoryAction>,
         metadata: Option<serde_json::Value>,
+        organisations: Option<OrganisationId>,
     ) -> Response {
-        let body = json!({
+        let mut body = json!({
           "name": name,
           "source": source.into(),
           "entityType": entity_type.into(),
           "action": action.into(),
           "metadata": metadata,
         });
+        if let Some(organisations) = organisations {
+            body["organisationId"] = json!(organisations);
+        }
 
         self.client.post("/api/history/v1", body).await
     }
