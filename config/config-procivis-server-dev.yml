@@ -27,10 +27,16 @@ walletProvider:
     display: walletProvider.procivisOneNative
     params:
       public:
-        walletName: "Procivis One iOS Dev Wallet"
+        walletName: "Procivis One Native Dev Wallet"
         walletInstanceAttestation:
           expirationTime: 86400 # 24*60*60 seconds
           integrityCheck:
+            android:
+              bundleId: ch.procivis.one.wallet.android.dev
+              signingCertificateFingerprints:
+                [
+                  "95:2B:22:AB:F0:7B:C3:58:D0:42:9F:59:A2:3F:47:5A:F6:1E:80:65:29:C1:F1:B6:6E:B6:1F:15:AB:AF:D9:75", # local
+                ]
             ios:
               bundleId: AGG3V6QN4G.ch.procivis.one.wallet.ios.dev
               enforceProductionBuild: false
