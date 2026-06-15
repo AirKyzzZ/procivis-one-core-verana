@@ -134,6 +134,8 @@ walletProvider:
           solutionVersion: "1"
           wscdType: HYBRID
         deviceAuthLeeway: 60
+        documentSigners:
+          - SIGN8
 verifierProvider:
   PROCIVIS_ONE:
     display: verifierProvider.procivisOne

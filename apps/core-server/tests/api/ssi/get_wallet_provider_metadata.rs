@@ -18,7 +18,12 @@ async fn test_wallet_provider_metadata_success() {
 
     // THEN
     assert_eq!(resp.status(), 200);
-    let resp = resp.json_value().await;
+    let mut resp = resp.json_value().await;
+    let document_signers = resp
+        .as_object_mut()
+        .unwrap()
+        .remove("documentSigners")
+        .unwrap();
     assert_eq!(
         resp,
         serde_json::json!({
@@ -34,12 +39,13 @@ async fn test_wallet_provider_metadata_success() {
             "featureFlags": {
               "trustEcosystemsEnabled": true,
               "refreshCredentialBatchEnabled": true,
-              "documentSigningEnabled": false
+              "documentSigningEnabled": true
             },
-            "trustCollections": [],
-            "documentSigners": []
+            "trustCollections": []
         })
     );
+    assert_eq!(document_signers.as_array().unwrap().len(), 1);
+    assert_eq!(document_signers[0]["name"], serde_json::json!("SIGN8"));
 }
 
 #[tokio::test]
@@ -75,7 +81,12 @@ async fn test_wallet_provider_metadata_success_all_fields() {
 
     // THEN
     assert_eq!(resp.status(), 200);
-    let resp = resp.json_value().await;
+    let mut resp = resp.json_value().await;
+    let document_signers = resp
+        .as_object_mut()
+        .unwrap()
+        .remove("documentSigners")
+        .unwrap();
     assert_eq!(
         resp,
         serde_json::json!({
@@ -96,12 +107,13 @@ async fn test_wallet_provider_metadata_success_all_fields() {
             "featureFlags": {
               "trustEcosystemsEnabled": true,
               "refreshCredentialBatchEnabled": true,
-              "documentSigningEnabled": false
+              "documentSigningEnabled": true
             },
-            "trustCollections": [],
-            "documentSigners": []
+            "trustCollections": []
         })
     );
+    assert_eq!(document_signers.as_array().unwrap().len(), 1);
+    assert_eq!(document_signers[0]["name"], serde_json::json!("SIGN8"));
 }
 
 #[tokio::test]
@@ -188,7 +200,12 @@ async fn test_wallet_provider_metadata_fails_disabled_wallet_provider() {
 
     // THEN
     assert_eq!(resp.status(), 200);
-    let resp = resp.json_value().await;
+    let mut resp = resp.json_value().await;
+    let document_signers = resp
+        .as_object_mut()
+        .unwrap()
+        .remove("documentSigners")
+        .unwrap();
     assert_eq!(
         resp,
         serde_json::json!({
@@ -204,12 +221,13 @@ async fn test_wallet_provider_metadata_fails_disabled_wallet_provider() {
             "featureFlags": {
               "trustEcosystemsEnabled": true,
               "refreshCredentialBatchEnabled": true,
-              "documentSigningEnabled": false
+              "documentSigningEnabled": true
             },
-            "trustCollections": [],
-            "documentSigners": []
+            "trustCollections": []
         })
     );
+    assert_eq!(document_signers.as_array().unwrap().len(), 1);
+    assert_eq!(document_signers[0]["name"], serde_json::json!("SIGN8"));
 }
 
 #[tokio::test]
@@ -306,7 +324,7 @@ async fn test_wallet_provider_metadata_with_trust_collections() {
         serde_json::json!( {
           "trustEcosystemsEnabled": true,
           "refreshCredentialBatchEnabled": true,
-          "documentSigningEnabled": false
+          "documentSigningEnabled": true
         })
     );
     assert!(resp["trustCollections"].is_array());

@@ -29,6 +29,9 @@ walletProvider:
         featureFlags:
           trustEcosystemsEnabled: false
           refreshCredentialBatchEnabled: false
+          documentSigningEnabled: true
+        documentSigners:
+          - SIGN8
 verifierProvider:
   PROCIVIS_ONE:
     params:

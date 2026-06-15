@@ -66,6 +66,9 @@ walletProvider:
         featureFlags:
           trustEcosystemsEnabled: true
           refreshCredentialBatchEnabled: true
+          documentSigningEnabled: true
+        documentSigners:
+          - SIGN8
 format:
   MDOC_SHORT_EXPIRY:
     type: "MDOC"
@@ -310,7 +313,7 @@ httpClient:
   insecureHttpTransportAllowed: true
 documentSignerProvider:
   SIGN8:
-    enabled: true
+    enabled: false
     params:
       private:
         redirectUri: "http://localhost:3000/capture"

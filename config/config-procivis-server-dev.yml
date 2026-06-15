@@ -22,6 +22,9 @@ walletProvider:
         featureFlags:
           trustEcosystemsEnabled: true
           refreshCredentialBatchEnabled: true
+          documentSigningEnabled: true
+        documentSigners:
+          - SIGN8
   PROCIVIS_ONE_NATIVE:
     type: PROCIVIS_ONE
     display: walletProvider.procivisOneNative
@@ -59,6 +62,7 @@ walletProvider:
         featureFlags:
           trustEcosystemsEnabled: true
           refreshCredentialBatchEnabled: true
+          documentSigningEnabled: true
         walletLink: "https://docs.procivis.ch/components/wallet-app"
         walletClientId: "eudiw-abca"
         walletRegistration: OPTIONAL
