@@ -126,20 +126,6 @@ impl CredentialSchema {
 
         None
     }
-
-    pub async fn is_v2(&self) -> Result<bool, NestedError> {
-        let formats = self.formats.as_ref().await?;
-        if formats.len() > 1 {
-            return Ok(true);
-        }
-        for format in formats.iter() {
-            let mappings = format.claim_mappings.as_ref().await?;
-            if !mappings.is_empty() {
-                return Ok(true);
-            }
-        }
-        Ok(false)
-    }
 }
 
 #[derive(Debug)]

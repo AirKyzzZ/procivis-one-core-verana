@@ -255,7 +255,7 @@ impl OpenID4VCIFinal1_0 {
         let mut schema = self
             .prepare_credential_schema(interaction_data, credential, organisation)
             .await?;
-        let mut new_claim_schemas = validate_existing_and_find_new_claim_schemas(
+        let (new_claim_schemas, new_mappings) = validate_existing_and_find_new_claim_schemas(
             &mut schema,
             credential,
             format,
@@ -264,83 +264,7 @@ impl OpenID4VCIFinal1_0 {
         )
         .await?;
 
-        // TODO ONE-9985: Clean up all the v1 related logic
         if !new_claim_schemas.is_empty() {
-            let is_v2_schema = schema.is_v2().await?;
-
-            let mut new_mappings = vec![];
-            let formats = schema.formats.as_ref().await?;
-            let mut namespace_backfilling = vec![];
-            for format in &*formats {
-                let mappings = format.claim_mappings.as_ref().await?;
-                for mapping in &*mappings {
-                    if let Some(claim_schema) = new_claim_schemas
-                        .iter_mut()
-                        .find(|c| c.id == mapping.claim_schema_id)
-                    {
-                        if is_v2_schema {
-                            new_mappings.push(mapping.clone());
-                        } else if let Some(namespace) = mapping.namespace.as_ref() {
-                            claim_schema.key =
-                                format!("{}{NESTED_CLAIM_MARKER}{}", namespace, claim_schema.key);
-                            if let Some(claim) = credential
-                                .claims
-                                .iter_mut()
-                                .flat_map(|c| c.iter_mut())
-                                .find(|c| {
-                                    c.schema.as_ref().is_some_and(|cs| cs.id == claim_schema.id)
-                                })
-                            {
-                                claim.path =
-                                    format!("{}{NESTED_CLAIM_MARKER}{}", namespace, claim.path);
-                            }
-                            namespace_backfilling.push(namespace.to_owned());
-                        }
-                    }
-                }
-            }
-
-            for namespace in namespace_backfilling {
-                let claim_schemas = schema.claim_schemas.as_ref().await?;
-                if !claim_schemas.iter().any(|cs| cs.key == namespace) {
-                    let now = now_utc();
-                    let namespace_schema = ClaimSchema {
-                        id: Uuid::new_v4().into(),
-                        key: namespace.to_owned(),
-                        data_type: "OBJECT".to_string(),
-                        created_date: now,
-                        last_modified: now,
-                        array: false,
-                        metadata: false,
-                        required: false,
-                        translations: Default::default(),
-                    };
-                    new_claim_schemas.push(namespace_schema.clone());
-                    let claims =
-                        credential
-                            .claims
-                            .as_mut()
-                            .ok_or(IssuanceProtocolError::Failed(
-                                "missing credential claims".to_string(),
-                            ))?;
-                    claims.push(Claim {
-                        id: Uuid::new_v4().into(),
-                        credential_id: credential.id,
-                        created_date: now,
-                        last_modified: now,
-                        value: None,
-                        path: namespace.to_owned(),
-                        selectively_disclosable: false,
-                        schema: Some(namespace_schema),
-                    })
-                }
-            }
-
-            let claim_mappings = if new_mappings.is_empty() {
-                None
-            } else {
-                Some(new_mappings)
-            };
             self.credential_schema_repository
                 .update_credential_schema(UpdateCredentialSchemaRequest {
                     id: schema.id,
@@ -348,7 +272,7 @@ impl OpenID4VCIFinal1_0 {
                     revocation_method: None,
                     layout_type: None,
                     layout_properties: None,
-                    claim_mappings,
+                    claim_mappings: Some(new_mappings),
                 })
                 .await
                 .error_while("updating credential schema")?;
@@ -842,8 +766,9 @@ async fn validate_existing_and_find_new_claim_schemas(
     format: &CredentialFormat,
     default_language: &str,
     allow_new_claim_schemas: bool,
-) -> Result<Vec<ClaimSchema>, IssuanceProtocolError> {
+) -> Result<(Vec<ClaimSchema>, Vec<CredentialSchemaFormatClaimSchema>), IssuanceProtocolError> {
     let mut new_claim_schemas = vec![];
+    let mut new_mappings = vec![];
     let claims = credential
         .claims
         .as_mut()
@@ -857,7 +782,7 @@ async fn validate_existing_and_find_new_claim_schemas(
     let mut parsed_claim_schemas = parsed_schema.claim_schemas.as_ref().await?.to_owned();
     parsed_claim_schemas.sort_by_key(|s| s.key.clone());
 
-    let parsed_formats = parsed_schema.formats.as_ref().await?;
+    let parsed_formats = parsed_schema.formats.as_ref().await?.to_owned();
     let parsed_mappings = parsed_formats
         .iter()
         .find(|f| f.format == *format)
@@ -866,18 +791,17 @@ async fn validate_existing_and_find_new_claim_schemas(
         )))?
         .claim_mappings
         .as_ref()
-        .await?;
+        .await?
+        .to_owned();
 
-    let stored_formats = stored_schema.formats.as_ref().await?;
-    let stored_mappings = stored_formats
-        .iter()
+    let mut stored_formats = stored_schema.formats.as_mut().await?;
+    let stored_format = stored_formats
+        .iter_mut()
         .find(|f| f.format == *format)
         .ok_or(IssuanceProtocolError::Failed(format!(
             "No matching stored format found for `{format}`"
-        )))?
-        .claim_mappings
-        .as_ref()
-        .await?;
+        )))?;
+    let mut stored_mappings = stored_format.claim_mappings.as_mut().await?;
 
     let mut stored_claim_schemas = stored_schema.claim_schemas.as_mut().await?;
     // parsed key -> stored key
@@ -894,8 +818,7 @@ async fn validate_existing_and_find_new_claim_schemas(
                 "missing mapping for claim schema `{}`",
                 parsed_claim_schema.key
             )))?;
-        let stored_claim_schema_id =
-            find_matching_stored_schema(parsed_mapping, &stored_claim_schemas, &stored_mappings);
+        let stored_claim_schema_id = find_matching_stored_schema(parsed_mapping, &stored_mappings);
 
         if let Some(stored_claim_schema_id) = stored_claim_schema_id {
             let known_claim_schema = stored_claim_schemas
@@ -941,6 +864,10 @@ async fn validate_existing_and_find_new_claim_schemas(
                     &mut claim_path_translations,
                 )?;
             }
+            let mut new_mapping = parsed_mapping.clone();
+            new_mapping.credential_schema_format_id = stored_format.id;
+            stored_mappings.push(new_mapping.clone());
+            new_mappings.push(new_mapping);
             new_claim_schemas.push(
                 add_fallback_translation(parsed_claim_schema, default_language)
                     .await
@@ -963,8 +890,10 @@ async fn validate_existing_and_find_new_claim_schemas(
     stored_claim_schemas.extend(new_claim_schemas.clone());
     drop(parsed_formats);
     drop(stored_claim_schemas);
+    drop(stored_mappings);
+    drop(stored_formats);
     credential.schema = Some(stored_schema.to_owned());
-    Ok(new_claim_schemas)
+    Ok((new_claim_schemas, new_mappings))
 }
 
 /// Link all claims currently linked to `claim_schema_id` to `new_claim_schema`, while rewriting
@@ -1008,25 +937,15 @@ fn relink_claims(
 
 fn find_matching_stored_schema(
     parsed_mapping: &CredentialSchemaFormatClaimSchema,
-    stored_claim_schemas: &[ClaimSchema],
     stored_mappings: &[CredentialSchemaFormatClaimSchema],
 ) -> Option<ClaimSchemaId> {
-    if stored_mappings.is_empty() {
-        // V1 stored schema
-        stored_claim_schemas
-            .iter()
-            .find(|s| s.key == parsed_mapping.formatted_technical_key())
-            .map(|s| s.id)
-    } else {
-        // V2 stored schema
-        stored_mappings
-            .iter()
-            .find(|m| {
-                m.technical_key == parsed_mapping.technical_key
-                    && m.namespace == parsed_mapping.namespace
-            })
-            .map(|m| m.claim_schema_id)
-    }
+    stored_mappings
+        .iter()
+        .find(|m| {
+            m.technical_key == parsed_mapping.technical_key
+                && m.namespace == parsed_mapping.namespace
+        })
+        .map(|m| m.claim_schema_id)
 }
 
 fn remap_claim_path(

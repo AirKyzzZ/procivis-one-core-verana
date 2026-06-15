@@ -51,7 +51,7 @@ async fn matches_existing_schema() {
 
     let mut credential = credential(parsed_schema, vec![claim("address/city", &parsed_cs)]);
 
-    let result = validate_existing_and_find_new_claim_schemas(
+    let (claim_schemas, mappings) = validate_existing_and_find_new_claim_schemas(
         &mut stored_schema,
         &mut credential,
         &format,
@@ -61,7 +61,8 @@ async fn matches_existing_schema() {
     .await
     .unwrap();
 
-    assert!(result.is_empty());
+    assert!(claim_schemas.is_empty());
+    assert!(mappings.is_empty());
     let claims = credential.claims.as_ref().unwrap();
     assert_eq!(claims[0].schema.as_ref().unwrap().id, stored_cs_id);
     assert_eq!(claims[0].path, "addr/city");
@@ -115,7 +116,7 @@ async fn remaps_nested_and_array_claim_paths() {
         ],
     );
 
-    let result = validate_existing_and_find_new_claim_schemas(
+    let (claim_schemas, mappings) = validate_existing_and_find_new_claim_schemas(
         &mut stored_schema,
         &mut credential,
         &format,
@@ -125,7 +126,8 @@ async fn remaps_nested_and_array_claim_paths() {
     .await
     .unwrap();
 
-    assert!(result.is_empty());
+    assert!(claim_schemas.is_empty());
+    assert!(mappings.is_empty());
     let claims = credential.claims.as_ref().unwrap();
     // claims keep their (original-path) sort order; only the path strings are rewritten
     assert_eq!(claims[0].path, "addr");
@@ -164,7 +166,7 @@ async fn returns_new_claim_schemas_when_allowed() {
 
     let mut credential = credential(parsed_schema, vec![claim("newClaim", &parsed_cs)]);
 
-    let new_schemas = validate_existing_and_find_new_claim_schemas(
+    let (claim_schemas, mappings) = validate_existing_and_find_new_claim_schemas(
         &mut stored_schema,
         &mut credential,
         &format,
@@ -174,11 +176,14 @@ async fn returns_new_claim_schemas_when_allowed() {
     .await
     .unwrap();
 
-    assert_eq!(new_schemas.len(), 1);
-    assert_eq!(new_schemas[0].key, "newClaim");
+    assert_eq!(claim_schemas.len(), 1);
+    assert_eq!(claim_schemas[0].key, "newClaim");
+    assert_eq!(mappings.len(), 1);
+    assert_eq!(mappings[0].technical_key, "newClaim");
+    assert_eq!(mappings[0].namespace, None);
 
     // fallback translation for the default language was added
-    let translations = new_schemas[0].translations.as_ref().await.unwrap();
+    let translations = claim_schemas[0].translations.as_ref().await.unwrap();
     assert!(translations.iter().any(|t| t.lang == "en"));
 
     // the new claim schema was appended to the stored schema
@@ -465,7 +470,7 @@ async fn remaps_new_nested_and_array_claim_paths() {
         ],
     );
 
-    let result = validate_existing_and_find_new_claim_schemas(
+    let (claim_schemas, mappings) = validate_existing_and_find_new_claim_schemas(
         &mut stored_schema,
         &mut credential,
         &format,
@@ -475,8 +480,11 @@ async fn remaps_new_nested_and_array_claim_paths() {
     .await
     .unwrap();
 
-    assert_eq!(result.len(), 1);
-    assert_eq!(result[0].key, "root/nested2");
+    assert_eq!(claim_schemas.len(), 1);
+    assert_eq!(claim_schemas[0].key, "root/nested2");
+    assert_eq!(mappings.len(), 1);
+    assert_eq!(mappings[0].technical_key, "root_mapped/nested2");
+    assert_eq!(mappings[0].namespace, None);
     let claims = credential.claims.as_ref().unwrap();
     assert_eq!(claims.len(), 5);
     assert_eq!(claims[0].path, "root");
