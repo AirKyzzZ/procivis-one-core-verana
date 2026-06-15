@@ -1,8 +1,13 @@
+#[cfg(test)]
+mod test;
+
 use std::collections::HashMap;
 
 use itertools::Itertools;
 use one_dto_mapper::convert_inner;
-use shared_types::{CredentialFormat, CredentialId, OrganisationId, SerializedCredential};
+use shared_types::{
+    ClaimSchemaId, CredentialFormat, CredentialId, OrganisationId, SerializedCredential,
+};
 use uuid::Uuid;
 
 use super::model::OpenID4VCICredentialMetadataResponseDTO;
@@ -22,6 +27,7 @@ use crate::model::credential::{
 use crate::model::credential_schema::{
     CredentialSchema, LayoutType, UpdateCredentialSchemaRequest,
 };
+use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::history::{
     History, HistoryAction, HistoryEntityType, HistoryMetadata, HistorySource,
     TrustResolutionMetadata, TrustResolutionResult, WalletRelyingPartyMetadata,
@@ -249,7 +255,7 @@ impl OpenID4VCIFinal1_0 {
         let mut schema = self
             .prepare_credential_schema(interaction_data, credential, organisation)
             .await?;
-        let claim_schema_update = validate_existing_and_find_new_claim_schemas(
+        let mut new_claim_schemas = validate_existing_and_find_new_claim_schemas(
             &mut schema,
             credential,
             format,
@@ -259,7 +265,7 @@ impl OpenID4VCIFinal1_0 {
         .await?;
 
         // TODO ONE-9985: Clean up all the v1 related logic
-        if let Some(mut new_claim_schemas) = claim_schema_update {
+        if !new_claim_schemas.is_empty() {
             let is_v2_schema = schema.is_v2().await?;
 
             let mut new_mappings = vec![];
@@ -836,7 +842,7 @@ async fn validate_existing_and_find_new_claim_schemas(
     format: &CredentialFormat,
     default_language: &str,
     allow_new_claim_schemas: bool,
-) -> Result<Option<Vec<ClaimSchema>>, IssuanceProtocolError> {
+) -> Result<Vec<ClaimSchema>, IssuanceProtocolError> {
     let mut new_claim_schemas = vec![];
     let claims = credential
         .claims
@@ -846,7 +852,7 @@ async fn validate_existing_and_find_new_claim_schemas(
 
     let parsed_schema = credential
         .schema
-        .as_mut()
+        .as_ref()
         .ok_or(IssuanceProtocolError::Failed("Missing schema".to_string()))?;
     let mut parsed_claim_schemas = parsed_schema.claim_schemas.as_ref().await?.to_owned();
     parsed_claim_schemas.sort_by_key(|s| s.key.clone());
@@ -874,10 +880,13 @@ async fn validate_existing_and_find_new_claim_schemas(
         .await?;
 
     let mut stored_claim_schemas = stored_schema.claim_schemas.as_mut().await?;
+    // parsed key -> stored key
+    let mut key_translations = HashMap::new();
+    // parsed path -> stored path
     let mut claim_path_translations = HashMap::new();
 
     // iterate sorted by key -> parent schemas before their children
-    for parsed_claim_schema in &*parsed_claim_schemas {
+    for mut parsed_claim_schema in parsed_claim_schemas {
         let parsed_mapping = parsed_mappings
             .iter()
             .find(|m| m.claim_schema_id == parsed_claim_schema.id)
@@ -885,22 +894,8 @@ async fn validate_existing_and_find_new_claim_schemas(
                 "missing mapping for claim schema `{}`",
                 parsed_claim_schema.key
             )))?;
-        let stored_claim_schema_id = if stored_mappings.is_empty() {
-            // V1 stored schema
-            stored_claim_schemas
-                .iter()
-                .find(|s| s.key == parsed_mapping.formatted_technical_key())
-                .map(|s| s.id)
-        } else {
-            // V2 stored schema
-            stored_mappings
-                .iter()
-                .find(|m| {
-                    m.technical_key == parsed_mapping.technical_key
-                        && m.namespace == parsed_mapping.namespace
-                })
-                .map(|m| m.claim_schema_id)
-        };
+        let stored_claim_schema_id =
+            find_matching_stored_schema(parsed_mapping, &stored_claim_schemas, &stored_mappings);
 
         if let Some(stored_claim_schema_id) = stored_claim_schema_id {
             let known_claim_schema = stored_claim_schemas
@@ -910,39 +905,44 @@ async fn validate_existing_and_find_new_claim_schemas(
                     "stored claim schema {} not found",
                     stored_claim_schema_id
                 )))?;
-            // link all matching credential claims to the stored claim_schema
-            // iterate sorted by path -> parent claims before their children
-            for claim in claims.iter_mut().filter(|claim| {
-                claim
-                    .schema
-                    .as_ref()
-                    .is_some_and(|schema| schema.id == parsed_claim_schema.id)
-            }) {
-                let cs = claim
-                    .schema
-                    .as_ref()
-                    .ok_or(IssuanceProtocolError::Failed("Missing schema".to_string()))?;
-                if cs.data_type != known_claim_schema.data_type {
-                    // This is just a warning because the data type detection is just a heuristic
-                    tracing::warn!(
-                        "detected data type mismatch on claim `{}`: expected `{}` but parsed `{}`",
-                        claim.path,
-                        known_claim_schema.data_type,
-                        cs.data_type
-                    );
-                }
-                let mapped_path = remap_claim_path(
-                    claim.path.as_str(),
-                    &mut claim_path_translations,
-                    &cs.key,
-                    known_claim_schema,
-                )?;
-                claim.path = mapped_path;
-                claim.schema = Some(known_claim_schema.to_owned());
-            }
+            key_translations.insert(
+                parsed_claim_schema.key.clone(),
+                known_claim_schema.key.clone(),
+            );
+            relink_claims(
+                claims,
+                parsed_claim_schema.id,
+                known_claim_schema,
+                &mut claim_path_translations,
+            )?;
         } else {
+            if let Some((parent_key, new_child_key)) =
+                parsed_claim_schema.key.rsplit_once(NESTED_CLAIM_MARKER)
+            {
+                // Due to ordering, parent key must have been processed already.
+                let parent_key =
+                    key_translations
+                        .get(parent_key)
+                        .ok_or(IssuanceProtocolError::Failed(format!(
+                            "failed to find key translation for parent claim schema for key `{}`",
+                            parent_key
+                        )))?;
+                let mapped_child_key = format!("{parent_key}{NESTED_CLAIM_MARKER}{new_child_key}");
+                key_translations.insert(
+                    parsed_claim_schema.key.to_owned(),
+                    mapped_child_key.to_owned(),
+                );
+                parsed_claim_schema.key = mapped_child_key;
+                // relink to the same schema with changed path
+                relink_claims(
+                    claims,
+                    parsed_claim_schema.id,
+                    &parsed_claim_schema,
+                    &mut claim_path_translations,
+                )?;
+            }
             new_claim_schemas.push(
-                add_fallback_translation(parsed_claim_schema.clone(), default_language)
+                add_fallback_translation(parsed_claim_schema, default_language)
                     .await
                     .error_while("adding fallback claim translation")?,
             );
@@ -963,37 +963,97 @@ async fn validate_existing_and_find_new_claim_schemas(
     stored_claim_schemas.extend(new_claim_schemas.clone());
     drop(parsed_formats);
     drop(stored_claim_schemas);
-    drop(parsed_claim_schemas);
     credential.schema = Some(stored_schema.to_owned());
-    if new_claim_schemas.is_empty() {
-        Ok(None)
+    Ok(new_claim_schemas)
+}
+
+/// Link all claims currently linked to `claim_schema_id` to `new_claim_schema`, while rewriting
+/// the path to match the new key.
+fn relink_claims(
+    claims: &mut [Claim],
+    claim_schema_id: ClaimSchemaId,
+    new_claim_schema: &ClaimSchema,
+    claim_path_translations: &mut HashMap<String, String>,
+) -> Result<(), IssuanceProtocolError> {
+    for claim in claims.iter_mut().filter(|claim| {
+        claim
+            .schema
+            .as_ref()
+            .is_some_and(|schema| schema.id == claim_schema_id)
+    }) {
+        let cs = claim
+            .schema
+            .as_ref()
+            .ok_or(IssuanceProtocolError::Failed("Missing schema".to_string()))?;
+        if cs.data_type != new_claim_schema.data_type {
+            // This is just a warning because the data type detection is just a heuristic
+            tracing::warn!(
+                "detected data type mismatch on claim `{}`: expected `{}` but parsed `{}`",
+                claim.path,
+                new_claim_schema.data_type,
+                cs.data_type
+            );
+        }
+        let mapped_path = remap_claim_path(
+            claim.path.as_str(),
+            claim_path_translations,
+            &cs.key,
+            new_claim_schema,
+        )?;
+        claim.path = mapped_path;
+        claim.schema = Some(new_claim_schema.to_owned());
+    }
+    Ok(())
+}
+
+fn find_matching_stored_schema(
+    parsed_mapping: &CredentialSchemaFormatClaimSchema,
+    stored_claim_schemas: &[ClaimSchema],
+    stored_mappings: &[CredentialSchemaFormatClaimSchema],
+) -> Option<ClaimSchemaId> {
+    if stored_mappings.is_empty() {
+        // V1 stored schema
+        stored_claim_schemas
+            .iter()
+            .find(|s| s.key == parsed_mapping.formatted_technical_key())
+            .map(|s| s.id)
     } else {
-        Ok(Some(new_claim_schemas))
+        // V2 stored schema
+        stored_mappings
+            .iter()
+            .find(|m| {
+                m.technical_key == parsed_mapping.technical_key
+                    && m.namespace == parsed_mapping.namespace
+            })
+            .map(|m| m.claim_schema_id)
     }
 }
 
 fn remap_claim_path(
     claim_path: &str,
     claim_path_translations: &mut HashMap<String, String>,
-    parsed_schema_key: &String,
-    cs: &ClaimSchema,
+    parsed_schema_key: &str,
+    stored_claim_schema: &ClaimSchema,
 ) -> Result<String, IssuanceProtocolError> {
-    if claim_path == *parsed_schema_key {
+    if claim_path == parsed_schema_key {
         // adjust path to match schema
-        claim_path_translations.insert(parsed_schema_key.clone(), cs.key.clone());
-        return Ok(cs.key.clone());
+        claim_path_translations.insert(
+            parsed_schema_key.to_string(),
+            stored_claim_schema.key.clone(),
+        );
+        return Ok(stored_claim_schema.key.clone());
     } else if let Some((parent_claim, child)) = claim_path.rsplit_once(NESTED_CLAIM_MARKER) {
         let parent_key = claim_path_translations.get(parent_claim).ok_or(IssuanceProtocolError::Failed(format!(
             "claim path `{parent_claim}` not found in translated claim paths for parsed claim with path `{claim_path}`" )))?;
-        let new_path = if parsed_schema_key.ends_with(child) {
+        let new_path = if parsed_schema_key.ends_with(&format!("{NESTED_CLAIM_MARKER}{child}")) {
             // normal nesting
-            let (_, cs_leaf) =
-                cs.key
-                    .rsplit_once(NESTED_CLAIM_MARKER)
-                    .ok_or(IssuanceProtocolError::Failed(format!(
-                        "expected claim schema path `{}` to contain nesting",
-                        cs.key
-                    )))?;
+            let (_, cs_leaf) = stored_claim_schema
+                .key
+                .rsplit_once(NESTED_CLAIM_MARKER)
+                .ok_or(IssuanceProtocolError::Failed(format!(
+                    "expected claim schema path `{}` to contain nesting",
+                    stored_claim_schema.key
+                )))?;
             format!("{parent_key}{NESTED_CLAIM_MARKER}{cs_leaf}")
         } else {
             // `child` is an array index, which is not represented in the technical key.
@@ -1005,7 +1065,7 @@ fn remap_claim_path(
     }
     Err(IssuanceProtocolError::Failed(format!(
         "Failed to map claim path `{claim_path}` to claim schema {} with parsed schema key `{parsed_schema_key}`",
-        cs.id
+        stored_claim_schema.id
     )))
 }
 
