@@ -27,6 +27,7 @@ use crate::model::credential::{
 };
 use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, LayoutType};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
+use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::key::Key;
@@ -1677,6 +1678,183 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
 }
 
 #[tokio::test]
+async fn test_create_credential_namespace_optional() {
+    let mut credential_repository = MockCredentialRepository::default();
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+    let mut identifier_repository = MockIdentifierRepository::default();
+
+    let credential = generic_credential().await;
+
+    let claim_schema_id = Uuid::new_v4().into();
+    let credential_schema = {
+        let schema = credential.schema.unwrap();
+        let format_id = Uuid::new_v4().into();
+        CredentialSchema {
+            claim_schemas: vec![ClaimSchema {
+                array: false,
+                id: claim_schema_id,
+                key: "required".to_string(),
+                data_type: "STRING".to_string(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                metadata: false,
+                required: true,
+                translations: Default::default(),
+            }]
+            .into(),
+            formats: vec![CredentialSchemaFormat {
+                id: format_id,
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                credential_schema_id: schema.id,
+                format: "MDOC".into(),
+                schema_id: "doctype".to_owned(),
+                claim_mappings: vec![CredentialSchemaFormatClaimSchema {
+                    id: Uuid::new_v4().into(),
+                    created_date: crate::clock::now_utc(),
+                    last_modified: crate::clock::now_utc(),
+                    credential_schema_format_id: format_id,
+                    claim_schema_id,
+                    technical_key: "required".to_string(),
+                    namespace: Some("namespace".to_string()),
+                }]
+                .into(),
+            }]
+            .into(),
+            ..schema
+        }
+    };
+
+    let issuer_did = credential
+        .issuer_identifier
+        .as_ref()
+        .unwrap()
+        .did
+        .as_ref()
+        .unwrap()
+        .clone();
+
+    credential_schema_repository
+        .expect_get_credential_schema()
+        .returning({
+            let credential_schema = credential_schema.clone();
+            move |_| Ok(Some(credential_schema.clone()))
+        });
+
+    identifier_repository.expect_get_from_did_id().returning({
+        let issuer_did = issuer_did.clone();
+
+        move |_, _| {
+            Ok(Some(Identifier {
+                did: Some(issuer_did.clone()),
+                ..dummy_identifier()
+            }))
+        }
+    });
+
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .with(eq(credential_schema.format().await.unwrap()))
+        .returning(|_| {
+            let mut formatter = MockCredentialFormatter::default();
+            formatter
+                .expect_get_capabilities()
+                .return_once(generic_formatter_capabilities);
+
+            Ok(Arc::new(formatter))
+        });
+
+    let mut protocol_provider = MockIssuanceProtocolProvider::default();
+    protocol_provider.expect_get_protocol().returning(|_| {
+        let mut dummy_protocol = MockIssuanceProtocol::default();
+        dummy_protocol
+            .expect_get_capabilities()
+            .once()
+            .returning(generic_capabilities);
+
+        Ok(Arc::new(dummy_protocol))
+    });
+
+    credential_repository
+        .expect_create_credential()
+        .withf(move |request| {
+            let claims = request.claims.as_ref().unwrap();
+            assert_eq!(claims.len(), 1);
+            let claim = &claims[0];
+            assert_eq!(claim.value.as_ref().unwrap(), "value");
+            assert_eq!(claim.path, "required");
+            let claim_schema = claim.schema.as_ref().unwrap();
+            assert_eq!(claim_schema.id, claim_schema_id);
+            true
+        })
+        .returning(|request| Ok(request.id));
+
+    let service = setup_service(Repositories {
+        credential_repository,
+        credential_schema_repository,
+        identifier_repository,
+        formatter_provider,
+        protocol_provider,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let create_request_template = CreateCredentialRequestDTO {
+        credential_schema_id: credential_schema.id,
+        issuer: None,
+        issuer_did: Some(issuer_did.id),
+        issuer_key: None,
+        issuer_certificate: None,
+        protocol: "OPENID4VCI_FINAL1".to_string(),
+        claim_values: vec![],
+        redirect_uri: None,
+        profile: None,
+        webhook_destination_url: None,
+    };
+
+    // not mentioning namespace
+    service
+        .create_credential(CreateCredentialRequestDTO {
+            claim_values: vec![CredentialRequestClaimDTO {
+                claim_schema_id,
+                value: "value".to_string(),
+                path: "required".to_string(),
+            }],
+            ..create_request_template.clone()
+        })
+        .await
+        .unwrap();
+
+    // with namespace
+    service
+        .create_credential(CreateCredentialRequestDTO {
+            claim_values: vec![CredentialRequestClaimDTO {
+                claim_schema_id,
+                value: "value".to_string(),
+                path: "namespace/required".to_string(),
+            }],
+            ..create_request_template.clone()
+        })
+        .await
+        .unwrap();
+
+    // not matching namespace
+    let result = service
+        .create_credential(CreateCredentialRequestDTO {
+            claim_values: vec![CredentialRequestClaimDTO {
+                claim_schema_id,
+                value: "value".to_string(),
+                path: "not_matching/required".to_string(),
+            }],
+            ..create_request_template
+        })
+        .await;
+
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0047);
+}
+
+#[tokio::test]
 async fn test_create_credential_schema_deleted() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut identifier_repository = MockIdentifierRepository::default();
@@ -2913,7 +3091,7 @@ async fn test_validate_create_request_all_nested_claims_are_required() {
 
     validate_create_request(
         "OPENID4VCI_FINAL1",
-        &[
+        &mut [
             CredentialRequestClaimDTO {
                 claim_schema_id: address_claim_id,
                 value: "Somewhere".to_string(),
@@ -3002,7 +3180,7 @@ async fn test_validate_create_request_all_optional_nested_object_with_required_c
 
     validate_create_request(
         "OPENID4VCI_FINAL1",
-        &[
+        &mut [
             CredentialRequestClaimDTO {
                 claim_schema_id: address_claim_id,
                 value: "Somewhere".to_string(),
@@ -3028,7 +3206,7 @@ async fn test_validate_create_request_all_optional_nested_object_with_required_c
 
     validate_create_request(
         "OPENID4VCI_FINAL1",
-        &[CredentialRequestClaimDTO {
+        &mut [CredentialRequestClaimDTO {
             claim_schema_id: address_claim_id,
             value: "Somewhere".to_string(),
             path: "address".to_string(),
@@ -3042,7 +3220,7 @@ async fn test_validate_create_request_all_optional_nested_object_with_required_c
 
     let result = validate_create_request(
         "OPENID4VCI_FINAL1",
-        &[
+        &mut [
             CredentialRequestClaimDTO {
                 claim_schema_id: address_claim_id,
                 value: "Somewhere".to_string(),
@@ -3122,7 +3300,7 @@ async fn test_validate_create_request_all_required_nested_object_with_optional_c
 
     validate_create_request(
         "OPENID4VCI_FINAL1",
-        &[
+        &mut [
             CredentialRequestClaimDTO {
                 claim_schema_id: address_claim_id,
                 value: "Somewhere".to_string(),
@@ -3148,7 +3326,7 @@ async fn test_validate_create_request_all_required_nested_object_with_optional_c
 
     let result = validate_create_request(
         "OPENID4VCI_FINAL1",
-        &[CredentialRequestClaimDTO {
+        &mut [CredentialRequestClaimDTO {
             claim_schema_id: address_claim_id,
             value: "Somewhere".to_string(),
             path: "address".to_string(),
@@ -3165,7 +3343,7 @@ async fn test_validate_create_request_all_required_nested_object_with_optional_c
 
     validate_create_request(
         "OPENID4VCI_FINAL1",
-        &[
+        &mut [
             CredentialRequestClaimDTO {
                 claim_schema_id: address_claim_id,
                 value: "Somewhere".to_string(),

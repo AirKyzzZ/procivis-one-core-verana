@@ -36,7 +36,7 @@ pub(crate) fn throw_if_credential_state_eq(
 
 pub(crate) async fn validate_create_request(
     exchange: &str,
-    claims: &[CredentialRequestClaimDTO],
+    claims: &mut [CredentialRequestClaimDTO],
     schema: &CredentialSchema,
     formatter_capabilities: &FormatterCapabilities,
     config: &CoreConfig,
@@ -55,24 +55,24 @@ pub(crate) async fn validate_create_request(
     let mut paths: Vec<&str> = vec![];
 
     // check all claims have valid content
-    for claim in claims {
+    for claim in claims.iter_mut() {
         let claim_schema_id = claim.claim_schema_id;
-        let schema = claim_schemas
+        let claim_schema = claim_schemas
             .iter()
             .find(|schema| schema.id == claim_schema_id);
 
-        match schema {
+        match claim_schema {
             None => return Err(CredentialServiceError::MissingClaimSchema(claim_schema_id)),
-            Some(schema) => {
-                validate_path(claim, schema, claim_schemas)?;
-                validate_array_value_non_empty(claim, schema)?;
-                validate_object_value_non_empty(claim, schema)?;
+            Some(claim_schema) => {
+                validate_path(claim, claim_schema, claim_schemas, schema).await?;
+                validate_array_value_non_empty(claim, claim_schema)?;
+                validate_object_value_non_empty(claim, claim_schema)?;
                 validate_value_non_empty(claim)?;
 
-                validate_datatype_value(&claim.value, &schema.data_type, &config.datatype)
+                validate_datatype_value(&claim.value, &claim_schema.data_type, &config.datatype)
                     .map_err(|err| CredentialServiceError::InvalidDatatype {
                         value: claim.value.clone(),
-                        datatype: schema.data_type.clone(),
+                        datatype: claim_schema.data_type.clone(),
                         source: err,
                     })?;
 
@@ -381,24 +381,35 @@ fn get_nth_segment_of_key(key: &str, index: usize) -> Result<&str, CredentialSer
         ))
 }
 
-fn validate_path(
-    claim: &CredentialRequestClaimDTO,
+async fn validate_path(
+    claim: &mut CredentialRequestClaimDTO,
     schema: &ClaimSchema,
     claim_schemas: &[ClaimSchema],
+    credential_schema: &CredentialSchema,
 ) -> Result<(), CredentialServiceError> {
     let related_claim_schemas = resolve_parent_claim_schemas(schema, claim_schemas)?;
 
-    let segments = claim.path.split(NESTED_CLAIM_MARKER).collect::<Vec<&str>>();
+    let mut segments = claim
+        .path
+        .split(NESTED_CLAIM_MARKER)
+        .map(ToString::to_string)
+        .collect::<Vec<_>>();
     let expected_segments = related_claim_schemas
         .iter()
         .map(|schema| if schema.array { 2 } else { 1 })
         .sum::<usize>();
 
-    if segments.len() != expected_segments {
-        return Err(CredentialServiceError::MappingError(format!(
-            "invalid segments [{} vs {expected_segments}]",
-            segments.len()
-        )));
+    let segments_len = segments.len();
+    if segments_len != expected_segments {
+        // ONE-9985: allow specifying paths with or without namespace
+        if segments_len == expected_segments + 1 {
+            try_strip_namespace_from_path(claim, schema, credential_schema).await?;
+            segments.remove(0);
+        } else {
+            return Err(CredentialServiceError::MappingError(format!(
+                "invalid segments [{segments_len} vs {expected_segments}]"
+            )));
+        }
     }
 
     let mut schema_index = 0;
@@ -447,6 +458,40 @@ fn validate_path(
     }
 
     Ok(())
+}
+
+async fn try_strip_namespace_from_path(
+    claim: &mut CredentialRequestClaimDTO,
+    claim_schema: &ClaimSchema,
+    credential_schema: &CredentialSchema,
+) -> Result<(), CredentialServiceError> {
+    let formats = credential_schema.formats.as_ref().await?;
+    let format = formats.first().ok_or(CredentialServiceError::MappingError(
+        "Missing format".to_string(),
+    ))?;
+    let mappings = format.claim_mappings.as_ref().await?;
+    let mapping = mappings
+        .iter()
+        .find(|m| m.claim_schema_id == claim_schema.id)
+        .ok_or(CredentialServiceError::MappingError(
+            "Missing claim mapping".to_string(),
+        ))?;
+
+    let Some(namespace) = &mapping.namespace else {
+        return Err(CredentialServiceError::MappingError(
+            "Invalid claim path".to_string(),
+        ));
+    };
+
+    let namespace_prefix = format!("{namespace}{NESTED_CLAIM_MARKER}");
+    if claim.path.starts_with(&namespace_prefix) {
+        claim.path = claim.path[namespace_prefix.len()..].to_string();
+        Ok(())
+    } else {
+        Err(CredentialServiceError::MappingError(
+            "Invalid claim path".to_string(),
+        ))
+    }
 }
 
 fn adapt_required_state_based_on_claim_presence(

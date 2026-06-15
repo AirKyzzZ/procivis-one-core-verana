@@ -54,7 +54,7 @@ impl CredentialService {
     /// * `request` - create credential request
     pub async fn create_credential(
         &self,
-        request: CreateCredentialRequestDTO,
+        mut request: CreateCredentialRequestDTO,
     ) -> Result<CredentialId, CredentialServiceError> {
         let issuer_identifier = match request.issuer {
             Some(issuer_identifier_id) => self
@@ -154,7 +154,7 @@ impl CredentialService {
 
         super::validator::validate_create_request(
             &request.protocol,
-            &request.claim_values,
+            &mut request.claim_values,
             &schema,
             &formatter_capabilities,
             &self.config,
