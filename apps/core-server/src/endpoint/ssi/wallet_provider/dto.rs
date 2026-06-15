@@ -84,14 +84,16 @@ pub(crate) struct RegisterWalletUnitResponseRestDTO {
 }
 
 #[serde_as]
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(dto::WalletUnitActivationRequestDTO)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct WalletUnitActivationRequestRestDTO {
-    #[serde_as(as = "OneOrMany<_>")]
+    #[serde(default)]
+    #[serde_as(as = "Option<OneOrMany<_>>")]
     #[schema(schema_with = one_or_many::<String>)]
-    pub attestation: Vec<String>,
-    pub attestation_key_proof: String,
+    pub attestation: Option<Vec<String>>,
+    pub attestation_key_proof: Option<String>,
     pub device_signing_key_proof: Option<String>,
     pub user_id_token: Option<String>,
 }

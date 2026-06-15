@@ -15,6 +15,7 @@ use crate::model::trust_collection::{TrustCollectionFilterValue, TrustCollection
 use crate::model::trust_list_subscription::{
     TrustListSubscriptionFilterValue, TrustListSubscriptionListQuery, TrustListSubscriptionState,
 };
+use crate::model::wallet_instance::WalletInstanceStatus;
 use crate::proto::trust_collection::dto::RemoteTrustCollectionInfoDTO;
 use crate::proto::trust_list_subscription_sync::TrustListSubscriptionSync;
 use crate::provider::key_storage::model::StorageGeneratedKey;
@@ -57,6 +58,9 @@ impl From<HolderWalletInstance> for HolderWalletInstanceResponseDTO {
             status: value.status,
             authentication_key: convert_inner(value.authentication_key),
             trusted_rp_required: value.trusted_rp_required,
+            user_nonce: (value.status == WalletInstanceStatus::Pending)
+                .then_some(value.user_nonce)
+                .flatten(),
         }
     }
 }

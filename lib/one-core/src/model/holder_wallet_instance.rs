@@ -1,4 +1,4 @@
-use shared_types::{HolderWalletInstanceId, OrganisationId, WalletInstanceId};
+use shared_types::{HolderWalletInstanceId, KeyId, OrganisationId, WalletInstanceId};
 use time::OffsetDateTime;
 
 use crate::model::common::GetListResponse;
@@ -24,6 +24,10 @@ pub struct HolderWalletInstance {
     pub provider_wallet_unit_id: WalletInstanceId,
     pub status: WalletInstanceStatus,
     pub trusted_rp_required: bool,
+    /// Integrity-check nonce issued by the server during registration; used in `holder_activate`.
+    pub nonce: Option<String>,
+    /// User-auth nonce issued by the server during registration; passed to the IdP during activation.
+    pub user_nonce: Option<String>,
 
     // Relations:
     pub organisation: Related<Organisation>,
@@ -49,6 +53,8 @@ pub struct CreateHolderWalletInstanceRequest {
     pub organisation: Organisation,
     pub authentication_key: Option<Key>,
     pub trusted_rp_required: bool,
+    pub nonce: Option<String>,
+    pub user_nonce: Option<String>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -57,6 +63,7 @@ pub struct UpdateHolderWalletInstanceRequest {
     pub status: Option<WalletInstanceStatus>,
     pub wallet_unit_attestations: Option<Vec<WalletInstanceAttestation>>,
     pub trusted_rp_required: Option<bool>,
+    pub authentication_key_id: Option<KeyId>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

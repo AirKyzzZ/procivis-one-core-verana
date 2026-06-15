@@ -57,6 +57,8 @@ impl HolderWalletInstancesDB {
             trusted_rp_required: test_holder_wallet_instance
                 .trusted_rp_required
                 .unwrap_or_default(),
+            nonce: None,
+            user_nonce: None,
         };
 
         let id = self.repository.create(wallet_instance).await.unwrap();

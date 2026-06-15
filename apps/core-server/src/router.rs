@@ -470,6 +470,10 @@ fn get_management_endpoints(
                 post(holder_wallet_instance::controller::wallet_instance_holder_status),
             )
             .route(
+                "/api/holder-wallet-instance/v1/{id}/activate",
+                post(holder_wallet_instance::controller::holder_activate_wallet_instance),
+            )
+            .route(
                 "/api/holder-wallet-instance/v1",
                 post(holder_wallet_instance::controller::wallet_instance_holder_register),
             )

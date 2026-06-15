@@ -7,8 +7,9 @@ use proc_macros::endpoint;
 use shared_types::{HolderWalletInstanceId, Permission};
 
 use super::dto::{
-    EditHolderWalletInstanceRequestRestDTO, HolderRegisterWalletInstanceRequestRestDTO,
-    HolderRegisterWalletInstanceResponseRestDTO, HolderWalletInstanceDetailRestDTO,
+    EditHolderWalletInstanceRequestRestDTO, HolderActivateWalletInstanceRequestRestDTO,
+    HolderRegisterWalletInstanceRequestRestDTO, HolderRegisterWalletInstanceResponseRestDTO,
+    HolderWalletInstanceDetailRestDTO,
 };
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
@@ -173,4 +174,40 @@ pub(crate) async fn get_holder_wallet_instance_trust_collections(
         state,
         "getting holder wallet instance trust collections",
     )
+}
+
+#[endpoint(
+    permissions = [Permission::HolderWalletInstanceRegister],
+    post,
+    path = "/api/holder-wallet-instance/v1/{id}/activate",
+    request_body = HolderActivateWalletInstanceRequestRestDTO,
+    responses(EmptyOrErrorResponse),
+    params(
+        ("id" = HolderWalletInstanceId, Path, description = "Wallet Instance ID")
+    ),
+    tag = "holder_wallet_instance",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "Activate wallet instance",
+    description = indoc::formatdoc! {"
+        Complete registration by activating the wallet instance with the Wallet Provider.
+        Required when the Wallet Provider has user authentication configured.
+    "},
+)]
+pub(crate) async fn holder_activate_wallet_instance(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<HolderWalletInstanceId>, ErrorResponseRestDTO>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<HolderActivateWalletInstanceRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
+) -> EmptyOrErrorResponse {
+    let result = state
+        .core
+        .wallet_unit_service
+        .holder_activate(id, request.into())
+        .await;
+
+    EmptyOrErrorResponse::from_result(result, state, "activating holder wallet instance")
 }

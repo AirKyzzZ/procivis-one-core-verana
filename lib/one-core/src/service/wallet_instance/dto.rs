@@ -40,12 +40,20 @@ pub struct HolderWalletInstanceResponseDTO {
     pub status: WalletInstanceStatus,
     pub authentication_key: Option<KeyListItemResponseDTO>,
     pub trusted_rp_required: bool,
+    pub user_nonce: Option<String>,
 }
 
 #[derive(Debug, Clone)]
 pub struct HolderWalletInstanceRegisterResponseDTO {
     pub id: HolderWalletInstanceId,
     pub status: WalletInstanceStatus,
+    pub user_nonce: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct HolderActivateWalletInstanceRequestDTO {
+    pub key_type: String,
+    pub user_id_token: Option<String>,
 }
 
 #[derive(Debug, Clone)]

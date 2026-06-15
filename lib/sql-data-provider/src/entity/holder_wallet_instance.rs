@@ -24,6 +24,8 @@ pub struct Model {
     pub organisation_id: OrganisationId,
     pub authentication_key_id: Option<KeyId>,
     pub trusted_rp_required: bool,
+    pub nonce: Option<String>,
+    pub user_nonce: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

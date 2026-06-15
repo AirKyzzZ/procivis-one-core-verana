@@ -30,6 +30,8 @@ pub(crate) fn holder_wallet_instance_from_model(
         provider_wallet_unit_id: value.provider_wallet_unit_id,
         status: WalletInstanceStatus::from(value.status),
         trusted_rp_required: value.trusted_rp_required,
+        nonce: value.nonce,
+        user_nonce: value.user_nonce,
         organisation: Related::new(value.organisation_id, organisation_repository.clone()),
         authentication_key: None,
         wallet_unit_attestations: None,
@@ -51,6 +53,8 @@ impl From<CreateHolderWalletInstanceRequest> for ActiveModel {
             organisation_id: Set(value.organisation.id),
             authentication_key_id: Set(value.authentication_key.map(|key| key.id)),
             trusted_rp_required: Set(value.trusted_rp_required),
+            nonce: Set(value.nonce),
+            user_nonce: Set(value.user_nonce),
         }
     }
 }

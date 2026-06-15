@@ -114,6 +114,8 @@ async fn test_db_schema_holder_wallet_instance() {
             "provider_wallet_unit_id",
             "status",
             "trusted_rp_required",
+            "nonce",
+            "user_nonce",
         ])
         .index(
             "index-HolderWalletUnit-OrganisationId-Unique",
@@ -177,6 +179,14 @@ async fn test_db_schema_holder_wallet_instance() {
         .r#type(ColumnType::Boolean)
         .nullable(false)
         .default(None);
+    holder_wallet_instance
+        .column("nonce")
+        .r#type(ColumnType::String(None))
+        .nullable(true);
+    holder_wallet_instance
+        .column("user_nonce")
+        .r#type(ColumnType::String(None))
+        .nullable(true);
 }
 
 #[tokio::test]

@@ -390,11 +390,6 @@ impl WalletProviderService {
             }
         }
 
-        let Some(wallet_unit_nonce) = &wallet_unit.nonce else {
-            return Err(WalletProviderError::MissingWalletUnitAttestationNonce
-                .error_while("validating nonce")
-                .into());
-        };
         let Some(organisation) = &wallet_unit.organisation else {
             return Err(WalletProviderError::MappingError(format!(
                 "Missing organisation on wallet unit `{}`",
@@ -416,103 +411,156 @@ impl WalletProviderService {
             .await
             .error_while("validating user ID token")?;
 
-        if wallet_unit.last_modified
-            + Duration::seconds(
-                config_params
-                    .wallet_instance_attestation
-                    .integrity_check
-                    .timeout as i64,
-            )
-            < self.clock.now_utc()
-        {
-            let error = WalletProviderError::InvalidWalletUnitAttestationNonce;
-            self.set_wallet_unit_to_error(
-                &wallet_unit,
-                HistoryErrorMetadata {
-                    error_code: error.error_code(),
-                    message: format!(
-                        "Failed to activate wallet unit {}: nonce expired",
-                        wallet_unit.id
-                    ),
-                },
-            )
-            .await?;
-            return Err(error.error_while("validating time").into());
-        };
+        let integrity_check_enabled = config_params
+            .wallet_instance_attestation
+            .integrity_check
+            .enabled
+            && wallet_unit.os != WalletInstanceOs::Web;
 
-        let attestation_result = self
-            .validate_attestation(
-                &request.attestation,
-                wallet_unit.os,
-                wallet_unit_nonce,
-                &config_params,
-            )
-            .await;
-        let attested_public_key = match attestation_result {
-            Ok(key) => key,
-            Err(err) => {
+        let authentication_key_jwk = if integrity_check_enabled {
+            let wallet_unit_nonce = wallet_unit
+                .nonce
+                .as_deref()
+                .ok_or(WalletProviderError::MissingWalletUnitAttestationNonce)
+                .error_while("validating nonce")?;
+
+            let attestation = request
+                .attestation
+                .as_deref()
+                .ok_or(WalletProviderError::MissingWalletUnitAttestation)?;
+
+            if wallet_unit.last_modified
+                + Duration::seconds(
+                    config_params
+                        .wallet_instance_attestation
+                        .integrity_check
+                        .timeout as i64,
+                )
+                < self.clock.now_utc()
+            {
+                let error = WalletProviderError::InvalidWalletUnitAttestationNonce;
                 self.set_wallet_unit_to_error(
                     &wallet_unit,
                     HistoryErrorMetadata {
-                        error_code: err.error_code(),
-                        message: err.to_string(),
+                        error_code: error.error_code(),
+                        message: format!(
+                            "Failed to activate wallet unit {}: nonce expired",
+                            wallet_unit.id
+                        ),
                     },
                 )
                 .await?;
-                return Err(err.error_while("validating attestation").into());
+                return Err(error.error_while("validating time").into());
             }
-        };
-        let attestation_key_proof =
-            Jwt::<NoncePayload>::decompose_token(&request.attestation_key_proof)
-                .error_while("parsing attestation key proof token")?;
-        self.verify_attestation_proof(
-            &attestation_key_proof,
-            &attested_public_key,
-            wallet_unit.os,
-            config_params
-                .wallet_instance_attestation
-                .integrity_check
-                .enabled,
-            config_params.device_auth_leeway,
-            Some(wallet_unit_nonce),
-        )
-        .await?;
 
-        // Allow devices to have the attestation issued to some other key than the attestation key.
-        // This is necessary as the attestation key might have limitations in regard to general
-        // purpose crypto signatures.
-        // E.g. on iOS the attestation key is only able to produce WebAuthn signatures.
-        let jwk = if let Some(device_signing_key_proof) = &request.device_signing_key_proof {
-            let device_signing_key_proof =
-                Jwt::<NoncePayload>::decompose_token(device_signing_key_proof)
-                    .error_while("parsing device signing key proof token")?;
-            let (_, alg) = self
-                .key_algorithm_provider
-                .key_algorithm_from_jose_alg(&device_signing_key_proof.header.algorithm)
-                .ok_or(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
-                    device_signing_key_proof.header.algorithm.clone(),
-                ))
-                .error_while("getting key algorithm")?;
-            let device_signing_key = device_signing_key_proof.header.jwk.clone().ok_or(
-                WalletProviderError::MappingError(
-                    "Missing JWK in device signing key header".to_string(),
-                ),
-            )?;
-            let device_signing_key_handle = alg
-                .parse_jwk(&device_signing_key)
-                .error_while("parsing device signing JWK")?;
-            self.verify_device_signing_proof(
-                &device_signing_key_proof,
-                &device_signing_key_handle,
+            let attestation_result = self
+                .validate_attestation(
+                    attestation,
+                    wallet_unit.os,
+                    wallet_unit_nonce,
+                    &config_params,
+                )
+                .await;
+            let attested_public_key = match attestation_result {
+                Ok(key) => key,
+                Err(err) => {
+                    self.set_wallet_unit_to_error(
+                        &wallet_unit,
+                        HistoryErrorMetadata {
+                            error_code: err.error_code(),
+                            message: err.to_string(),
+                        },
+                    )
+                    .await?;
+                    return Err(err.error_while("validating attestation").into());
+                }
+            };
+
+            let attestation_key_proof = Jwt::<NoncePayload>::decompose_token(
+                request
+                    .attestation_key_proof
+                    .as_deref()
+                    .ok_or(WalletProviderError::MissingProof)
+                    .error_while("parsing attestation key proof token")?,
+            )
+            .error_while("parsing attestation key proof token")?;
+            self.verify_attestation_proof(
+                &attestation_key_proof,
+                &attested_public_key,
+                wallet_unit.os,
+                true,
                 config_params.device_auth_leeway,
                 Some(wallet_unit_nonce),
             )
             .await?;
-            device_signing_key
+
+            // Allow devices to have the attestation issued to some other key than the attestation
+            // key. This is necessary as the attestation key might have limitations in regard to
+            // general purpose crypto signatures.
+            // E.g. on iOS the attestation key is only able to produce WebAuthn signatures.
+            let jwk = if let Some(device_signing_key_proof) = &request.device_signing_key_proof {
+                let device_signing_key_proof =
+                    Jwt::<NoncePayload>::decompose_token(device_signing_key_proof)
+                        .error_while("parsing device signing key proof token")?;
+                let (_, alg) = self
+                    .key_algorithm_provider
+                    .key_algorithm_from_jose_alg(&device_signing_key_proof.header.algorithm)
+                    .ok_or(KeyAlgorithmProviderError::MissingAlgorithmImplementation(
+                        device_signing_key_proof.header.algorithm.clone(),
+                    ))
+                    .error_while("getting key algorithm")?;
+                let device_signing_key = device_signing_key_proof.header.jwk.clone().ok_or(
+                    WalletProviderError::MappingError(
+                        "Missing JWK in device signing key header".to_string(),
+                    ),
+                )?;
+                let device_signing_key_handle = alg
+                    .parse_jwk(&device_signing_key)
+                    .error_while("parsing device signing JWK")?;
+                self.verify_device_signing_proof(
+                    &device_signing_key_proof,
+                    &device_signing_key_handle,
+                    config_params.device_auth_leeway,
+                    Some(wallet_unit_nonce),
+                )
+                .await?;
+                device_signing_key
+            } else {
+                attested_public_key
+                    .public_key_as_jwk()
+                    .error_while("creating JWK")?
+            };
+
+            Some(jwk)
+        } else if let Some(proof_str) = &request.attestation_key_proof {
+            // No integrity check: self-certify by verifying the JWT is signed by the key embedded
+            // in its own header. No server-provided nonce is available in this path (none was
+            // issued at registration), so replay protection relies solely on the JWT timestamp
+            // bounds validated inside verify_attestation_proof.
+            let proof = Jwt::<NoncePayload>::decompose_token(proof_str)
+                .error_while("parsing attestation key proof token")?;
+            let jwk = proof
+                .header
+                .jwk
+                .clone()
+                .ok_or(WalletProviderError::MappingError(
+                    "Missing JWK in attestation key proof header".to_string(),
+                ))?;
+            let key_handle = self
+                .parse_jwk(&proof.header.algorithm, &jwk)
+                .error_while("parsing attestation key proof JWK")?;
+            self.verify_attestation_proof(
+                &proof,
+                &key_handle,
+                wallet_unit.os,
+                false,
+                config_params.device_auth_leeway,
+                None,
+            )
+            .await?;
+            Some(jwk)
         } else {
-            attested_public_key
-                .public_key_as_jwk()
-                .error_while("creating JWK")?
+            None
         };
 
         self.wallet_instance_repository
@@ -521,7 +569,7 @@ impl WalletProviderService {
                 UpdateWalletInstanceRequest {
                     status: Some(WalletInstanceStatus::Active),
                     last_issuance: Some(self.clock.now_utc()),
-                    authentication_key_jwk: Some(jwk),
+                    authentication_key_jwk,
                     attested_keys: None,
                     user_sub,
                 },

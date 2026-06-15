@@ -30,17 +30,18 @@ pub struct RegisterWalletUnitResponseDTO {
     pub user_nonce: Option<String>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct ActivateWalletUnitRequestDTO {
-    pub attestation: Vec<String>,
-    pub attestation_key_proof: String,
+    pub attestation: Option<Vec<String>>,
+    pub attestation_key_proof: Option<String>,
     pub device_signing_key_proof: Option<String>,
+    pub user_id_token: Option<String>,
 }
 
 #[derive(Clone, Debug)]
 pub struct WalletUnitActivationRequestDTO {
-    pub attestation: Vec<String>,
-    pub attestation_key_proof: String,
+    pub attestation: Option<Vec<String>>,
+    pub attestation_key_proof: Option<String>,
     pub device_signing_key_proof: Option<String>,
     pub user_id_token: Option<String>,
 }

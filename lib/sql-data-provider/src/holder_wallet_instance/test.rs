@@ -105,6 +105,7 @@ async fn update_holder_wallet_instance_success() {
             attested_key: Some(key.clone()),
         }]),
         trusted_rp_required: None,
+        authentication_key_id: None,
     };
 
     provider.update(&id, update_request).await.unwrap();
@@ -147,6 +148,8 @@ fn test_wallet_instance(
         provider_wallet_unit_id: Uuid::new_v4().into(),
         wallet_unit_attestations: None,
         trusted_rp_required: false,
+        nonce: None,
+        user_nonce: None,
     }
 }
 
@@ -163,6 +166,8 @@ async fn instance_to_create_request(
         organisation: instance.organisation.as_ref().await.unwrap().to_owned(),
         authentication_key: instance.authentication_key,
         trusted_rp_required: instance.trusted_rp_required,
+        nonce: instance.nonce,
+        user_nonce: instance.user_nonce,
     }
 }
 

@@ -261,6 +261,8 @@ fn dummy_wallet_unit() -> HolderWalletInstance {
         authentication_key: None,
         wallet_unit_attestations: None,
         trusted_rp_required: false,
+        nonce: None,
+        user_nonce: None,
     }
 }
 

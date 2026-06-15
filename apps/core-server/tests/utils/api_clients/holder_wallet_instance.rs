@@ -8,6 +8,12 @@ pub struct HolderWalletInstancesApi {
 }
 
 #[derive(Debug, Default)]
+pub struct TestHolderActivateRequest {
+    pub key_type: Option<String>,
+    pub user_id_token: Option<String>,
+}
+
+#[derive(Debug, Default)]
 pub struct TestHolderRegisterRequest {
     pub organization_id: Option<OrganisationId>,
     pub wallet_provider_url: Option<String>,
@@ -58,6 +64,25 @@ impl HolderWalletInstancesApi {
 
         self.client
             .post("/api/holder-wallet-instance/v1", body)
+            .await
+    }
+
+    pub async fn holder_activate(
+        &self,
+        wallet_unit_id: &HolderWalletInstanceId,
+        request: TestHolderActivateRequest,
+    ) -> Response {
+        let mut body = json!({
+            "keyType": request.key_type.unwrap_or("ECDSA".to_string()),
+        });
+        if let Some(token) = request.user_id_token {
+            body["userIdToken"] = json!(token);
+        }
+        self.client
+            .post(
+                &format!("/api/holder-wallet-instance/v1/{wallet_unit_id}/activate"),
+                body,
+            )
             .await
     }
 

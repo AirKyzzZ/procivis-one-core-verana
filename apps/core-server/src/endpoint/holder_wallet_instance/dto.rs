@@ -45,6 +45,7 @@ pub(crate) struct HolderRegisterWalletInstanceRequestRestDTO {
 pub(crate) struct HolderRegisterWalletInstanceResponseRestDTO {
     pub id: HolderWalletInstanceId,
     pub status: WalletInstanceStatusRestEnum,
+    pub user_nonce: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into, From)]
@@ -94,6 +95,19 @@ pub(crate) struct HolderWalletInstanceDetailRestDTO {
     pub authentication_key: Option<KeyListItemResponseRestDTO>,
     #[try_from(infallible)]
     pub trusted_rp_required: bool,
+    #[try_from(infallible)]
+    pub user_nonce: Option<String>,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[into(dto::HolderActivateWalletInstanceRequestDTO)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct HolderActivateWalletInstanceRequestRestDTO {
+    /// Key type for the new authentication key generated during activation.
+    pub key_type: String,
+    /// Identity token obtained from the identity provider after user authentication.
+    pub user_id_token: Option<String>,
 }
 
 #[options_not_nullable]

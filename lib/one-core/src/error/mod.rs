@@ -926,9 +926,22 @@ pub enum ErrorCode {
 
     #[strum(message = "Invalid user ID token")]
     BR_0448,
+    #[strum(message = "User authentication not configured for wallet provider")]
+    BR_0449,
+
+    #[strum(message = "Wallet unit is not in pending state")]
+    BR_0450,
+
+    #[strum(message = "Missing wallet unit attestation")]
+    BR_0451,
 
     #[strum(message = "Refresh not supported for this credential")]
     BR_0452,
+
+    #[strum(message = "User authentication not required")]
+    BR_0453,
+    #[strum(message = "User authentication required")]
+    BR_0454,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

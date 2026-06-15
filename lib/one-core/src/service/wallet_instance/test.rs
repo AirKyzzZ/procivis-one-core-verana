@@ -398,6 +398,8 @@ async fn holder_wallet_unit_status_check_still_valid() {
                     authentication_key: None,
                     wallet_unit_attestations: None,
                     trusted_rp_required: false,
+                    nonce: None,
+                    user_nonce: None,
                 },
             ))
         });
@@ -456,6 +458,8 @@ async fn holder_wallet_unit_status_check_revocation() {
                 authentication_key: None,
                 wallet_unit_attestations: None,
                 trusted_rp_required: false,
+                nonce: None,
+                user_nonce: None,
             }))
         });
 
@@ -544,6 +548,8 @@ async fn holder_wallet_unit_status_check_already_revoked() {
                     authentication_key: None,
                     wallet_unit_attestations: None,
                     trusted_rp_required: false,
+                    nonce: None,
+                    user_nonce: None,
                 },
             ))
         });
@@ -607,6 +613,8 @@ async fn holder_register_already_exists() {
                 authentication_key: None,
                 wallet_unit_attestations: None,
                 trusted_rp_required: false,
+                nonce: None,
+                user_nonce: None,
             }))
         });
 

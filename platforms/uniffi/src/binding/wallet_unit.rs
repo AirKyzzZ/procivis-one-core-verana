@@ -1,7 +1,8 @@
 use one_core::model::wallet_instance::{WalletInstanceStatus, WalletProviderType};
 use one_core::service::wallet_instance::dto::{
-    HolderRegisterWalletInstanceRequestDTO, HolderWalletInstanceRegisterResponseDTO,
-    HolderWalletInstanceResponseDTO, TrustCollectionsDetailResponseDTO, WalletProviderDTO,
+    HolderActivateWalletInstanceRequestDTO, HolderRegisterWalletInstanceRequestDTO,
+    HolderWalletInstanceRegisterResponseDTO, HolderWalletInstanceResponseDTO,
+    TrustCollectionsDetailResponseDTO, WalletProviderDTO,
 };
 use one_core::service::wallet_provider::dto::DisplayNameDTO;
 use one_dto_mapper::{From, Into, TryInto, convert_inner};
@@ -69,6 +70,20 @@ impl OneCore {
         Ok(())
     }
 
+    /// Activates the wallet instance with the Wallet Provider after user authentication.
+    #[uniffi::method]
+    pub async fn holder_activate_wallet_unit(
+        &self,
+        id: String,
+        request: HolderActivateWalletUnitRequestBindingDTO,
+    ) -> Result<(), BindingError> {
+        let core = self.use_core().await?;
+        core.wallet_unit_service
+            .holder_activate(into_id(&id)?, request.into())
+            .await?;
+        Ok(())
+    }
+
     /// Returns trust collections curated by the Wallet Provider.
     #[uniffi::method]
     pub async fn holder_get_wallet_unit_trust_collections(
@@ -121,6 +136,7 @@ pub struct HolderRegisterWalletUnitResponseBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
     pub id: String,
     pub status: WalletUnitStatusBindingEnum,
+    pub user_nonce: Option<String>,
 }
 
 #[derive(Clone, Debug, Into, uniffi::Record)]
@@ -208,4 +224,14 @@ pub struct TrustCollectionInfoBindingDTO {
 pub struct DisplayNameBindingDTO {
     pub lang: String,
     pub value: String,
+}
+
+#[derive(Clone, Debug, Into, uniffi::Record)]
+#[into(HolderActivateWalletInstanceRequestDTO)]
+#[uniffi(name = "HolderActivateWalletUnitRequest")]
+pub struct HolderActivateWalletUnitRequestBindingDTO {
+    /// Key type for the authentication key generated during activation.
+    pub key_type: String,
+    /// Identity token obtained from the identity provider after user authentication.
+    pub user_id_token: Option<String>,
 }

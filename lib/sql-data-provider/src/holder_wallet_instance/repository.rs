@@ -86,6 +86,10 @@ impl HolderWalletInstanceRepository for HolderWalletInstanceProvider {
                     .map(|status| Set(status.into()))
                     .unwrap_or_default(),
                 trusted_rp_required: request.trusted_rp_required.map(Set).unwrap_or_default(),
+                authentication_key_id: request
+                    .authentication_key_id
+                    .map(|key_id| Set(Some(key_id)))
+                    .unwrap_or_default(),
                 ..Default::default()
             };
             update_model

@@ -60,6 +60,8 @@ pub enum WalletProviderError {
     MissingUserIdToken,
     #[error("Invalid user ID token: {0}")]
     InvalidUserIdToken(String),
+    #[error("Missing wallet unit attestation")]
+    MissingWalletUnitAttestation,
 
     #[error("Mapping error: {0}")]
     MappingError(String),
@@ -98,6 +100,7 @@ impl ErrorCodeMixin for WalletProviderError {
             Self::UserIdTokenNotExpected => ErrorCode::BR_0446,
             Self::MissingUserIdToken => ErrorCode::BR_0447,
             Self::InvalidUserIdToken(_) => ErrorCode::BR_0448,
+            Self::MissingWalletUnitAttestation => ErrorCode::BR_0451,
             Self::MappingError(_) => ErrorCode::BR_0047,
             Self::Nested(nested) => nested.error_code(),
         }

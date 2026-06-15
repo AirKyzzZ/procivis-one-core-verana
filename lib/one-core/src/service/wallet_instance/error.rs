@@ -38,6 +38,18 @@ pub enum HolderWalletInstanceError {
     #[error("Mapping error: `{0}`")]
     MappingError(String),
 
+    #[error("User authentication not configured for this wallet provider")]
+    UserAuthenticationNotConfigured,
+
+    #[error("User authentication not required")]
+    UserAuthenticationNotRequired,
+
+    #[error("User authentication required")]
+    UserAuthenticationRequired,
+
+    #[error("Wallet unit is not in pending state")]
+    WalletUnitNotPending,
+
     #[error(transparent)]
     Nested(#[from] NestedError),
 }
@@ -58,6 +70,10 @@ impl ErrorCodeMixin for HolderWalletInstanceError {
             Self::MissingTrustCollection(_) => ErrorCode::BR_0391,
             Self::TrustCollectionsNotInSync => ErrorCode::BR_0407,
             Self::MappingError(_) => ErrorCode::BR_0047,
+            Self::UserAuthenticationNotConfigured => ErrorCode::BR_0449,
+            Self::WalletUnitNotPending => ErrorCode::BR_0450,
+            Self::UserAuthenticationNotRequired => ErrorCode::BR_0453,
+            Self::UserAuthenticationRequired => ErrorCode::BR_0454,
             Self::Nested(nested) => nested.error_code(),
         }
     }
