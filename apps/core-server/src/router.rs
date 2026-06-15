@@ -29,7 +29,7 @@ use crate::endpoint::trust_collection::controller::{
 use crate::endpoint::{
     cache, certificate, config, credential, credential_schema, did, did_resolver, history,
     holder_wallet_instance, identifier, interaction, jsonld, key, misc, organisation, proof,
-    proof_schema, signature, ssi, statistics, task, trust_collection, trust_list_publication,
+    proof_schema, qes, signature, ssi, statistics, task, trust_collection, trust_list_publication,
     vc_api, verifier_instance, wallet_provider,
 };
 use crate::middleware::{UserInfo, get_http_request_context};
@@ -566,6 +566,15 @@ fn get_management_endpoints(
             paths.shift_remove("/api/signature/v1");
             paths.shift_remove("/api/signature/v1/{id}/revoke");
             paths.shift_remove("/api/signature/v1/revocation-check");
+        }
+
+        if config.enable_qes_endpoints {
+            router = router
+                .route("/api/qes/v1/authorize", post(qes::controller::authorize))
+                .route("/api/qes/v1/sign", post(qes::controller::sign));
+        } else if let Some(paths) = openapi_paths {
+            paths.shift_remove("/api/qes/v1/authorize");
+            paths.shift_remove("/api/qes/v1/sign");
         }
 
         if config.enable_server_info {

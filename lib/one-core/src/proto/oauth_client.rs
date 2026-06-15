@@ -13,6 +13,25 @@ use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
     OAuthAuthorizationServerMetadata, OAuthCodeChallengeMethod,
 };
 
+/// A PKCE (RFC 7636) `S256` verifier/challenge pair.
+pub(crate) struct Pkce {
+    pub verifier: String,
+    pub challenge: String,
+}
+
+impl Pkce {
+    pub(crate) fn generate() -> Result<Self, one_crypto::HasherError> {
+        // SHA-256 has 32 bytes of output; 44 random alphanumeric characters
+        // carry a comparable amount of entropy.
+        let verifier = generate_alphanumeric(44);
+        let challenge = SHA256.hash_base64_url(verifier.as_bytes())?;
+        Ok(Self {
+            verifier,
+            challenge,
+        })
+    }
+}
+
 pub(crate) struct OAuthClient {
     http_client: Arc<dyn HttpClient>,
 }
@@ -37,14 +56,10 @@ impl OAuthClient {
             .code_challenge_methods_supported
             .contains(&OAuthCodeChallengeMethod::S256)
         {
-            // SHA-256 result has 32 bytes. 44 of (completely random) alphanumeric characters should contain
-            // a similar amount of entropy (around 32-33 bytes). So it does not really make sense to generate
-            // more as the hash cannot contain more entropy.
-            let code_verifier = generate_alphanumeric(44);
-            let code_challenge = SHA256.hash_base64_url(code_verifier.as_bytes())?;
+            let pkce = Pkce::generate()?;
             (
-                request.with_code_challenge(code_challenge, OAuthCodeChallengeMethod::S256),
-                Some(code_verifier),
+                request.with_code_challenge(pkce.challenge, OAuthCodeChallengeMethod::S256),
+                Some(pkce.verifier),
             )
         } else {
             (request, None)

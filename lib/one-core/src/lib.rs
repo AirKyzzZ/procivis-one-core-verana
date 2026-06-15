@@ -51,6 +51,7 @@ use crate::provider::caching_loader::wallet_provider_metadata::wallet_provider_m
 use crate::provider::credential_formatter::provider::credential_formatter_provider_from_config;
 use crate::provider::data_type::provider::data_type_provider_from_config;
 use crate::provider::did_method::provider::did_method_provider_from_config;
+use crate::provider::document_signer::provider::document_signer_provider_from_config;
 use crate::provider::issuance_protocol::provider::issuance_protocol_provider_from_config;
 use crate::provider::key_algorithm::provider::{
     KeyAlgorithmProvider, key_algorithm_provider_from_config,
@@ -87,6 +88,7 @@ use crate::service::oid4vp_final1_0::OID4VPFinal1_0Service;
 use crate::service::organisation::OrganisationService;
 use crate::service::proof::ProofService;
 use crate::service::proof_schema::ProofSchemaService;
+use crate::service::qes::QesService;
 use crate::service::revocation_list::RevocationListService;
 use crate::service::signature::SignatureService;
 use crate::service::ssi_holder::SSIHolderService;
@@ -134,6 +136,7 @@ pub struct OneCore {
     pub ssi_issuer_service: SSIIssuerService,
     pub ssi_holder_service: SSIHolderService,
     pub wallet_provider_service: WalletProviderService,
+    pub qes_service: QesService,
     pub task_service: TaskService,
     pub jsonld_service: JsonLdService,
     pub config: Arc<CoreConfig>,
@@ -344,6 +347,9 @@ impl OneCore {
         )?;
 
         let verifier_provider = verifier_provider_from_config(&config)?;
+
+        let document_signer_provider =
+            document_signer_provider_from_config(&mut config, client.clone())?;
 
         let identifier_creator = Arc::new(IdentifierCreatorProto::new(
             did_method_provider.clone(),
@@ -780,8 +786,15 @@ impl OneCore {
                 client.clone(),
                 clock.clone(),
                 session_provider.clone(),
+                document_signer_provider.clone(),
                 config.clone(),
                 core_base_url.clone(),
+            ),
+            qes_service: QesService::new(
+                document_signer_provider,
+                data_provider.get_history_repository(),
+                session_provider.clone(),
+                clock.clone(),
             ),
             task_service: TaskService::new(task_provider),
             config_service: ConfigService::new(config.clone()),

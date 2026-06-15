@@ -43,6 +43,8 @@ pub enum InitializationError {
     },
     #[error("Missing provider dependency: {0}")]
     MissingDependency(String),
+    #[error("unsupported configuration for config entry `{key}`: {detail}")]
+    UnsupportedConfiguration { key: String, detail: String },
     #[error(transparent)]
     Nested(#[from] NestedError),
 }
@@ -50,7 +52,9 @@ pub enum InitializationError {
 impl ErrorCodeMixin for InitializationError {
     fn error_code(&self) -> ErrorCode {
         match self {
-            Self::InvalidParams { .. } => ErrorCode::BR_0429,
+            Self::InvalidParams { .. } | Self::UnsupportedConfiguration { .. } => {
+                ErrorCode::BR_0429
+            }
             Self::MissingDependency(_) => ErrorCode::BR_0428,
             Self::Nested(nested) => nested.error_code(),
         }

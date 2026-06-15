@@ -70,6 +70,8 @@ pub struct ServerConfig {
     pub enable_history_create_endpoint: bool,
     #[serde(default)]
     pub enable_signature_endpoints: bool,
+    #[serde(default)]
+    pub enable_qes_endpoints: bool,
     #[serde(default = "default_oid4vp_response_body_bytes")]
     pub max_oid4vp_response_body_bytes: usize,
     pub auth: AuthMode,

@@ -15,13 +15,13 @@ use super::WalletProviderService;
 use super::app_integrity::android::validate_attestation_android;
 use super::app_integrity::ios::{validate_attestation_ios, webauthn_signed_jwt_to_msg_and_sig};
 use super::dto::{
-    GetWalletUnitListResponseDTO, GetWalletUnitResponseDTO, IssueWalletUnitAttestationRequestDTO,
-    IssueWalletUnitAttestationResponseDTO, NoncePayload, ProviderTrustCollectionDTO,
-    RegisterWalletUnitRequestDTO, RegisterWalletUnitResponseDTO, TokenValidationDTO,
-    UserAuthenticationDTO, UserAuthenticationParams, WalletInstanceAttestationClaims,
-    WalletProviderMetadataResponseDTO, WalletProviderParams, WalletRegistrationRequirement,
-    WalletUnitActivationRequestDTO, WalletUnitAttestationClaims, WalletUnitAttestationMetadataDTO,
-    WalletUnitFilterParamsDTO,
+    DocumentSignerMetadataDTO, GetWalletUnitListResponseDTO, GetWalletUnitResponseDTO,
+    IssueWalletUnitAttestationRequestDTO, IssueWalletUnitAttestationResponseDTO, NoncePayload,
+    ProviderTrustCollectionDTO, RegisterWalletUnitRequestDTO, RegisterWalletUnitResponseDTO,
+    TokenValidationDTO, UserAuthenticationDTO, UserAuthenticationParams,
+    WalletInstanceAttestationClaims, WalletProviderMetadataResponseDTO, WalletProviderParams,
+    WalletRegistrationRequirement, WalletUnitActivationRequestDTO, WalletUnitAttestationClaims,
+    WalletUnitAttestationMetadataDTO, WalletUnitFilterParamsDTO,
 };
 use super::error::WalletProviderError;
 use super::mapper::{
@@ -1361,6 +1361,25 @@ impl WalletProviderService {
                 .collect::<Result<_, WalletProviderError>>()?
         };
 
+        let document_signers = params
+            .document_signers
+            .into_iter()
+            .map(|name| {
+                let metadata = self
+                    .document_signer_provider
+                    .metadata(&name)
+                    .error_while("getting document signer metadata")?;
+
+                Ok(DocumentSignerMetadataDTO {
+                    name,
+                    r#type: metadata.r#type,
+                    display_name: params_into_display_names(metadata.display_name),
+                    description: params_into_display_names(metadata.description),
+                    logo: metadata.logo,
+                })
+            })
+            .collect::<Result<Vec<_>, WalletProviderError>>()?;
+
         Ok(WalletProviderMetadataResponseDTO {
             wallet_unit_attestation: WalletUnitAttestationMetadataDTO {
                 app_integrity_check_required: params
@@ -1385,6 +1404,7 @@ impl WalletProviderService {
                     jwks_uri: ua.token_validation.jwks_uri,
                 }),
             }),
+            document_signers,
         })
     }
 

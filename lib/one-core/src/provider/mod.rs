@@ -10,6 +10,7 @@ pub mod credential_formatter;
 pub mod data_type;
 pub mod did_method;
 mod disabled_provider;
+pub mod document_signer;
 pub mod issuance_protocol;
 pub mod key_algorithm;
 pub mod key_security_level;

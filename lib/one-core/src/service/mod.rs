@@ -20,6 +20,7 @@ pub mod oid4vp_final1_0;
 pub mod organisation;
 pub mod proof;
 pub mod proof_schema;
+pub mod qes;
 pub mod revocation_list;
 pub mod signature;
 pub mod ssi_holder;

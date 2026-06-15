@@ -729,3 +729,29 @@ httpClient:
   maxRedirects: 3
   deniedHosts: []
   maxResponseSize: 10485760 # 10MiB
+documentSignerProvider:
+  SIGN8:
+    type: WALLET_CENTRIC
+    display:
+      en: "SIGN8 document signer"
+      de: "SIGN8 document signer"
+    order: 1
+    enabled: false
+    params:
+      public:
+        url: ""
+        description:
+          en: "Sign documents with SIGN8"
+          de: "Dokumente mit SIGN8 signieren"
+        logo: ""
+      private:
+        signatureQualifier: "eu_eidas_qes"
+        signatureFormat: "P"
+        conformanceLevel: "Ades-B-B"
+        hashAlgorithm: "2.16.840.1.101.3.4.2.1" # SHA-256
+        cscBaseUrl: "https://api.uat.sign8.eu"
+        oauthUrl: "https://auth.uat.sign8.eu"
+        clientId: ""
+        clientSecret: ""
+        accountId: ""
+        redirectUri: ""

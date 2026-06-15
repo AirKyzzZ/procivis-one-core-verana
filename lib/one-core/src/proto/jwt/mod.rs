@@ -25,6 +25,7 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 #[cfg(test)]
 mod test;
 
+pub(crate) mod hmac;
 pub mod mapper;
 pub mod model;
 

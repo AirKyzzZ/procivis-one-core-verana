@@ -90,6 +90,7 @@ async fn test_server_starts_with_base_config() {
         enable_wallet_provider: Default::default(),
         enable_history_create_endpoint: Default::default(),
         enable_signature_endpoints: Default::default(),
+        enable_qes_endpoints: Default::default(),
         max_oid4vp_response_body_bytes: 10 * 1024 * 1024,
         auth: AuthMode::UnsafeStatic {
             static_token: "test".to_string(),

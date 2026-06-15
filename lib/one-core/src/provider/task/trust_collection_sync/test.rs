@@ -299,9 +299,11 @@ fn dummy_wallet_provider_metadata(
                 description: vec![],
             })
             .collect(),
+        document_signers: vec![],
         feature_flags: FeatureFlags {
             trust_ecosystems_enabled: true,
             refresh_credential_batch_enabled: true,
+            document_signing_enabled: false,
         },
         user_authentication: None,
     }

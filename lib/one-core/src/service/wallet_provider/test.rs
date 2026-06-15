@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::ops::{Add, Sub};
 use std::sync::Arc;
 
@@ -12,7 +13,9 @@ use time::Duration;
 use uuid::Uuid;
 
 use crate::config;
-use crate::config::core_config::{CoreConfig, Fields, KeyAlgorithmType, Params};
+use crate::config::core_config::{
+    CoreConfig, DocumentSignerType, Fields, KeyAlgorithmType, Params,
+};
 use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::key::Key;
@@ -31,6 +34,9 @@ use crate::proto::session_provider::NoSessionProvider;
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::proto::transaction_manager::NoTransactionManager;
 use crate::provider::credential_formatter::common::SignatureProvider;
+use crate::provider::document_signer::provider::{
+    DocumentSignerMetadata, MockDocumentSignerProvider,
+};
 use crate::provider::key_algorithm::KeyAlgorithm;
 use crate::provider::key_algorithm::ecdsa::Ecdsa;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
@@ -70,6 +76,7 @@ fn mock_wallet_provider_service() -> WalletProviderService {
         base_url: Some(BASE_URL.to_string()),
         config: Arc::new(CoreConfig::default()),
         session_provider: Arc::new(NoSessionProvider),
+        document_signer_provider: Arc::new(MockDocumentSignerProvider::default()),
     }
 }
 
@@ -114,8 +121,10 @@ fn wallet_provider_config(
                 },
                 "featureFlags": {
                     "trustEcosystemsEnabled": true,
-                    "refreshCredentialBatchEnabled": true
-                }
+                    "refreshCredentialBatchEnabled": true,
+                    "documentSigningEnabled": true
+                },
+                "documentSigners": ["SIGN8"]
             })),
             private: None,
         }),
@@ -870,4 +879,51 @@ async fn validate_user_id_token_success() {
         .validate_user_id_token(Some(&token), Some(&auth), Some("nonce-123"))
         .await;
     assert_eq!(result.unwrap(), Some("user-sub-123".to_string()));
+}
+
+#[tokio::test]
+async fn test_get_wallet_provider_metadata_includes_document_signers() {
+    let mut config = CoreConfig::default();
+    config
+        .wallet_provider
+        .insert("PROCIVIS_ONE".to_string(), wallet_provider_config(false));
+
+    let mut document_signer_provider = MockDocumentSignerProvider::default();
+    document_signer_provider
+        .expect_metadata()
+        .withf(|name| name == "SIGN8")
+        .once()
+        .returning(|_| {
+            Ok(DocumentSignerMetadata {
+                r#type: DocumentSignerType::WalletCentric,
+                display_name: HashMap::from([
+                    ("en".to_string(), "SIGN8 Signer".to_string()),
+                    ("de".to_string(), "SIGN8 Signierer".to_string()),
+                ]),
+                description: HashMap::from([
+                    ("en".to_string(), "Sign documents".to_string()),
+                    ("de".to_string(), "Dokumente signieren".to_string()),
+                ]),
+                logo: "sign8-logo".to_string(),
+            })
+        });
+
+    let mut service = mock_wallet_provider_service();
+    service.config = Arc::new(config);
+    service.document_signer_provider = Arc::new(document_signer_provider);
+
+    let result = service
+        .get_wallet_provider_metadata("PROCIVIS_ONE".to_string())
+        .await
+        .unwrap();
+
+    assert!(result.feature_flags.document_signing_enabled);
+    assert_eq!(result.document_signers.len(), 1);
+
+    let doc_signer = &result.document_signers[0];
+    assert_eq!(doc_signer.name, "SIGN8");
+    assert_eq!(doc_signer.r#type, DocumentSignerType::WalletCentric);
+    assert_eq!(doc_signer.logo, "sign8-logo");
+    assert_eq!(doc_signer.display_name.len(), 2);
+    assert_eq!(doc_signer.description.len(), 2);
 }

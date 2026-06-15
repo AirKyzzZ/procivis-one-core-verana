@@ -1,3 +1,4 @@
+use one_core::config::core_config::DocumentSignerType;
 use one_core::provider::issuance_protocol::model::KeyStorageSecurityLevel;
 use one_core::service::wallet_provider::dto;
 use one_dto_mapper::{From, Into, convert_inner};
@@ -106,6 +107,8 @@ pub(crate) struct WalletProviderMetadataResponseRestDTO {
     app_version: Option<AppVersionRestDTO>,
     #[from(with_fn = convert_inner)]
     trust_collections: Vec<ProviderTrustCollectionRestDTO>,
+    #[from(with_fn = convert_inner)]
+    document_signers: Vec<DocumentSignerMetadataRestDTO>,
     feature_flags: FeatureFlagsRestDTO,
     #[from(with_fn = convert_inner)]
     user_authentication: Option<UserAuthenticationRestDTO>,
@@ -138,6 +141,28 @@ pub(crate) struct TokenValidationRestDTO {
 pub(crate) struct FeatureFlagsRestDTO {
     pub trust_ecosystems_enabled: bool,
     pub refresh_credential_batch_enabled: bool,
+    pub document_signing_enabled: bool,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[from(DocumentSignerType)]
+pub(crate) enum DocumentSignerTypeRestEnum {
+    WalletCentric,
+    RpCentric,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[serde(rename_all = "camelCase")]
+#[from(dto::DocumentSignerMetadataDTO)]
+pub(crate) struct DocumentSignerMetadataRestDTO {
+    pub name: String,
+    pub r#type: DocumentSignerTypeRestEnum,
+    #[from(with_fn = convert_inner)]
+    pub display_name: Vec<DisplayNameRestDTO>,
+    #[from(with_fn = convert_inner)]
+    pub description: Vec<DisplayNameRestDTO>,
+    pub logo: String,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

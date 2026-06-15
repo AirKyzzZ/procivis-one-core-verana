@@ -123,6 +123,14 @@ rusty_fork_test! {
             httpClient:
               insecureHttpTransportAllowed: true
               maxRedirects: 3
+            documentSignerProvider:
+              SIGN8:
+                display: 'qes.sign8'
+                type: 'WALLET_CENTRIC'
+                order: 1
+                params:
+                  private:
+                    clientId: ''
         "};
 
         let config3 = indoc::indoc! {"
@@ -196,6 +204,17 @@ rusty_fork_test! {
         assert_eq!(bbs_plus.display, ConfigEntryDisplay::from("NewDisplay")); // via env 2
 
         assert_eq!(config.app.server_ip, Some("192.168.1.1".into())); // via env 3
+
+        let sign8 = config.core.document_signer_provider.get_fields("SIGN8").unwrap();
+        assert_eq!(sign8.r#type, DocumentSignerType::WalletCentric);
+        assert_eq!(sign8.order, Some(1));
+
+        let wallet_centric_key = config
+            .core
+            .document_signer_provider
+            .get_key_by_type(DocumentSignerType::WalletCentric)
+            .unwrap();
+        assert_eq!(wallet_centric_key, "SIGN8");
     }
 }
 

@@ -6,6 +6,7 @@ use crate::proto::clock::Clock;
 use crate::proto::http_client::HttpClient;
 use crate::proto::session_provider::SessionProvider;
 use crate::proto::transaction_manager::TransactionManager;
+use crate::provider::document_signer::provider::DocumentSignerProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
@@ -40,6 +41,7 @@ pub struct WalletProviderService {
     http_client: Arc<dyn HttpClient>,
     clock: Arc<dyn Clock>,
     session_provider: Arc<dyn SessionProvider>,
+    document_signer_provider: Arc<dyn DocumentSignerProvider>,
     base_url: Option<String>,
     config: Arc<core_config::CoreConfig>,
 }
@@ -60,6 +62,7 @@ impl WalletProviderService {
         http_client: Arc<dyn HttpClient>,
         clock: Arc<dyn Clock>,
         session_provider: Arc<dyn SessionProvider>,
+        document_signer_provider: Arc<dyn DocumentSignerProvider>,
         config: Arc<core_config::CoreConfig>,
         base_url: Option<String>,
     ) -> Self {
@@ -79,6 +82,7 @@ impl WalletProviderService {
             base_url,
             clock,
             session_provider,
+            document_signer_provider,
         }
     }
 }

@@ -15,6 +15,7 @@ pub mod misc;
 pub mod organisation;
 pub mod proof;
 pub mod proof_schema;
+pub mod qes;
 pub mod signature;
 pub mod ssi;
 pub mod statistics;

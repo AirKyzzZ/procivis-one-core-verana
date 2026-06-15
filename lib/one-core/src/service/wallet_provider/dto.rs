@@ -7,6 +7,7 @@ use shared_types::{RevocationMethodId, TrustCollectionId, WalletInstanceId};
 use standardized_types::jwk::PublicJwk;
 use time::{Duration, OffsetDateTime};
 
+use crate::config::core_config::DocumentSignerType;
 use crate::model::common::GetListResponse;
 use crate::model::wallet_instance::{
     WalletInstance, WalletInstanceOs, WalletInstanceStatus, WalletProviderType,
@@ -89,6 +90,8 @@ pub(super) struct WalletProviderParams {
     pub eudi_wallet_info: Option<EudiWalletInfoConfig>,
     #[serde(default)]
     pub trust_collections: HashMap<TrustCollectionId, TrustCollectionParams>, // FIX ME: This is a temporary solution, should be changed to a proper structure ONE-9309
+    #[serde(default)]
+    pub document_signers: Vec<String>,
     pub feature_flags: FeatureFlags,
     pub user_authentication: Option<UserAuthenticationParams>,
 }
@@ -98,6 +101,8 @@ pub(super) struct WalletProviderParams {
 pub struct FeatureFlags {
     pub trust_ecosystems_enabled: bool,
     pub refresh_credential_batch_enabled: bool,
+    #[serde(default)]
+    pub document_signing_enabled: bool,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -284,6 +289,7 @@ pub struct WalletProviderMetadataResponseDTO {
     pub name: String,
     pub app_version: Option<AppVersionDTO>,
     pub trust_collections: Vec<ProviderTrustCollectionDTO>,
+    pub document_signers: Vec<DocumentSignerMetadataDTO>,
     pub feature_flags: FeatureFlags,
     pub user_authentication: Option<UserAuthenticationDTO>,
 }
@@ -302,6 +308,16 @@ pub struct TokenValidationDTO {
     pub aud: String,
     pub iss: String,
     pub jwks_uri: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DocumentSignerMetadataDTO {
+    pub name: String,
+    pub r#type: DocumentSignerType,
+    pub display_name: Vec<DisplayNameDTO>,
+    pub description: Vec<DisplayNameDTO>,
+    pub logo: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

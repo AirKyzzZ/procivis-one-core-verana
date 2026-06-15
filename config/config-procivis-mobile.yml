@@ -50,3 +50,6 @@ keySecurityLevel:
       public:
         holder:
           keyStorages: ["UBIQU_RSE"]
+documentSignerProvider:
+  SIGN8:
+    enabled: true

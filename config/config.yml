@@ -21,3 +21,4 @@ verifierProvider: {}
 keySecurityLevel: {}
 trustListPublisher: {}
 trustListSubscriber: {}
+documentSignerProvider: {}

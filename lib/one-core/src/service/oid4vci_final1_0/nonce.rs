@@ -1,21 +1,18 @@
 use std::str::FromStr;
 
 use one_crypto::utilities;
-use secrecy::{ExposeSecret, SecretSlice};
+use secrecy::ExposeSecret;
 use serde::{Deserialize, Serialize};
 use time::Duration;
 use uuid::Uuid;
 
 use super::error::OID4VCIFinal1_0ServiceError;
-use crate::config::core_config::KeyAlgorithmType;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
-use crate::model::key::KeyModelError;
 use crate::proto::jwt::Jwt;
+use crate::proto::jwt::hmac::HS256Signer;
 use crate::proto::jwt::model::{DecomposedJwt, JWTPayload};
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::model::SignatureProvider;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::OpenID4VCNonceParams;
-use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::validator::{validate_expiration_time, validate_issuance_time};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -50,9 +47,7 @@ pub(super) async fn generate_nonce(
     let jwt = Jwt::new("JWT".to_string(), "HS256".to_string(), None, None, payload);
 
     Ok(jwt
-        .tokenize(Some(&HS256Signer {
-            signing_key: params.signing_key,
-        }))
+        .tokenize(Some(&HS256Signer::new(params.signing_key)))
         .await
         .error_while("creating nonce token")?)
 }
@@ -129,40 +124,6 @@ pub(super) fn validate_nonce(
     }
 
     Ok(id)
-}
-
-struct HS256Signer {
-    pub signing_key: SecretSlice<u8>,
-}
-
-#[async_trait::async_trait]
-impl SignatureProvider for HS256Signer {
-    async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, KeyAlgorithmError> {
-        Ok(utilities::create_hmac(
-            self.signing_key.expose_secret(),
-            message,
-        )?)
-    }
-
-    fn get_key_id(&self) -> Option<String> {
-        None
-    }
-
-    fn get_key_algorithm(&self) -> Result<KeyAlgorithmType, KeyAlgorithmError> {
-        Err(
-            KeyModelError::UnsupportedKeyAlgorithmType("HS256".to_string())
-                .error_while("getting key algorithm type")
-                .into(),
-        )
-    }
-
-    fn jose_alg(&self) -> Result<String, KeyAlgorithmError> {
-        Ok("HS256".to_string())
-    }
-
-    fn get_public_key(&self) -> Vec<u8> {
-        Default::default()
-    }
 }
 
 #[cfg(test)]

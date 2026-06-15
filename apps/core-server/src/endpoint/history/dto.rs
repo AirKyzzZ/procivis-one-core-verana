@@ -221,6 +221,7 @@ pub enum HistoryAction {
     WrpNrReceived,
     TrustResolved,
     Refreshed,
+    Signed,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]
@@ -254,6 +255,7 @@ pub enum HistoryEntityType {
     TrustCollection,
     TrustListSubscription,
     VerifierInstance,
+    QesDocument,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]
@@ -266,6 +268,7 @@ pub enum HistorySource {
     Sts,
     Wrpr,
     Bff,
+    Qtsp,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]

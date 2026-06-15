@@ -74,6 +74,7 @@ pub struct CoreConfig {
     pub signer: SignerConfig,
     pub verifier_provider: VerifierProviderConfig,
     pub http_client: HttpClientSecurityConfig,
+    pub document_signer_provider: DocumentSignerProviderConfig,
     #[serde(default = "default_en")]
     pub default_language: String,
 }
@@ -877,6 +878,32 @@ pub struct VerifierProviderFields {
     pub enabled: bool,
     pub params: Params,
 }
+
+#[derive(
+    Debug,
+    Copy,
+    Clone,
+    Display,
+    EnumString,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Serialize,
+    Deserialize,
+    AsRefStr,
+    Hash,
+)]
+pub enum DocumentSignerType {
+    #[serde(rename = "WALLET_CENTRIC")]
+    #[strum(serialize = "WALLET_CENTRIC")]
+    WalletCentric,
+    #[serde(rename = "RP_CENTRIC")]
+    #[strum(serialize = "RP_CENTRIC")]
+    RpCentric,
+}
+
+pub type DocumentSignerProviderConfig = ConfigBlock<String, DocumentSignerType>;
 
 // Alias for the collection of traits we want config keys to implement.
 pub trait ConfigKey: Debug + Display + Clone + Ord + Hash + Eq {}

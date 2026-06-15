@@ -912,6 +912,12 @@ pub enum ErrorCode {
     #[strum(message = "No unused, active credentials left in credential batch")]
     BR_0443,
 
+    #[strum(message = "Invalid document for signing")]
+    BR_0444,
+
+    #[strum(message = "Document signer not found")]
+    BR_0445,
+
     #[strum(message = "User ID token not expected")]
     BR_0446,
 

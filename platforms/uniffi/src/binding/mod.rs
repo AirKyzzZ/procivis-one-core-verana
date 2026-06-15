@@ -28,6 +28,7 @@ pub mod nfc_scan;
 pub mod organisation;
 pub mod proof;
 pub mod proof_schema;
+pub mod qes;
 pub mod revocation;
 pub mod task;
 mod trust_information;

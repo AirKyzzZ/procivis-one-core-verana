@@ -33,9 +33,11 @@ async fn test_wallet_provider_metadata_success() {
             },
             "featureFlags": {
               "trustEcosystemsEnabled": true,
-              "refreshCredentialBatchEnabled": true
+              "refreshCredentialBatchEnabled": true,
+              "documentSigningEnabled": false
             },
-            "trustCollections": []
+            "trustCollections": [],
+            "documentSigners": []
         })
     );
 }
@@ -93,9 +95,11 @@ async fn test_wallet_provider_metadata_success_all_fields() {
             },
             "featureFlags": {
               "trustEcosystemsEnabled": true,
-              "refreshCredentialBatchEnabled": true
+              "refreshCredentialBatchEnabled": true,
+              "documentSigningEnabled": false
             },
-            "trustCollections": []
+            "trustCollections": [],
+            "documentSigners": []
         })
     );
 }
@@ -199,9 +203,11 @@ async fn test_wallet_provider_metadata_fails_disabled_wallet_provider() {
             },
             "featureFlags": {
               "trustEcosystemsEnabled": true,
-              "refreshCredentialBatchEnabled": true
+              "refreshCredentialBatchEnabled": true,
+              "documentSigningEnabled": false
             },
-            "trustCollections": []
+            "trustCollections": [],
+            "documentSigners": []
         })
     );
 }
@@ -299,7 +305,8 @@ async fn test_wallet_provider_metadata_with_trust_collections() {
         resp["featureFlags"],
         serde_json::json!( {
           "trustEcosystemsEnabled": true,
-          "refreshCredentialBatchEnabled": true
+          "refreshCredentialBatchEnabled": true,
+          "documentSigningEnabled": false
         })
     );
     assert!(resp["trustCollections"].is_array());

@@ -135,6 +135,8 @@ pub enum HistoryAction {
     TrustResolved,
     #[sea_orm(string_value = "REFRESHED")]
     Refreshed,
+    #[sea_orm(string_value = "SIGNED")]
+    Signed,
 }
 
 impl From<&HistoryAction> for SimpleExpr {
@@ -200,6 +202,8 @@ pub enum HistoryEntityType {
     TrustListSubscription,
     #[sea_orm(string_value = "VERIFIER_INSTANCE")]
     VerifierInstance,
+    #[sea_orm(string_value = "QES_DOCUMENT")]
+    QesDocument,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, From, Into)]
@@ -217,4 +221,6 @@ pub enum HistorySource {
     Wrpr,
     #[sea_orm(string_value = "STS")]
     Sts,
+    #[sea_orm(string_value = "QTSP")]
+    Qtsp,
 }

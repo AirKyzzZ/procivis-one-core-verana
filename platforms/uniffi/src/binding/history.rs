@@ -84,6 +84,7 @@ pub enum HistoryActionBindingEnum {
     WrpNrReceived,
     TrustResolved,
     Refreshed,
+    Signed,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, From, Into, uniffi::Enum)]
@@ -117,6 +118,7 @@ pub enum HistoryEntityTypeBindingEnum {
     TrustCollection,
     TrustListSubscription,
     VerifierInstance,
+    QesDocument,
 }
 
 #[derive(Clone, Debug, uniffi::Enum)]

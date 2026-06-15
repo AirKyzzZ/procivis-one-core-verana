@@ -169,9 +169,11 @@ async fn holder_register_success() {
                 feature_flags: FeatureFlags {
                     trust_ecosystems_enabled: true,
                     refresh_credential_batch_enabled: true,
+                    document_signing_enabled: false,
                 },
                 trust_collections: vec![],
                 user_authentication: None,
+                document_signers: vec![],
             })
         });
 
@@ -309,9 +311,11 @@ async fn holder_register_key_attestation_not_supported() {
                 feature_flags: FeatureFlags {
                     trust_ecosystems_enabled: true,
                     refresh_credential_batch_enabled: true,
+                    document_signing_enabled: false,
                 },
                 trust_collections: vec![],
                 user_authentication: None,
+                document_signers: vec![],
             })
         });
 

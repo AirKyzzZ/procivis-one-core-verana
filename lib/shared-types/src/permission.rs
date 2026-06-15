@@ -90,6 +90,7 @@ pub enum Permission {
     X509CertificateCreate,
     X509CertificateRevoke,
     X509CertificateSign,
+    QesDocumentSign,
     #[serde(untagged)]
     Unknown(String),
 }

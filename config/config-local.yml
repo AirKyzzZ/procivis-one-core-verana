@@ -14,6 +14,7 @@ app:
   enableManagementEndpoints: true
   enableHistoryCreateEndpoint: true
   enableSignatureEndpoints: true
+  enableQesEndpoints: true
   enableWalletProvider: true
   auth:
     mode: UNSAFE_STATIC
@@ -307,3 +308,9 @@ verifierProvider:
           trustEcosystemsEnabled: true
 httpClient:
   insecureHttpTransportAllowed: true
+documentSignerProvider:
+  SIGN8:
+    enabled: true
+    params:
+      private:
+        redirectUri: "http://localhost:3000/capture"

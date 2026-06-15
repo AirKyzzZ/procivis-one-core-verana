@@ -15,6 +15,7 @@
 //! * may contain only a subset of what the relevant standard defines
 //! * must not contain any non-standard elements (e.g. EUDI / swiyu adjustments)
 
+pub mod csc;
 pub mod etsi_119_602;
 pub mod jades;
 pub mod jwa;
