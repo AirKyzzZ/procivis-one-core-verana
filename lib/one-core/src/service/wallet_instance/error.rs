@@ -50,6 +50,9 @@ pub enum HolderWalletInstanceError {
     #[error("Wallet unit is not in pending state")]
     WalletUnitNotPending,
 
+    #[error("Wallet unit registration expired, restart registration")]
+    WalletUnitRegistrationExpired,
+
     #[error(transparent)]
     Nested(#[from] NestedError),
 }
@@ -74,6 +77,7 @@ impl ErrorCodeMixin for HolderWalletInstanceError {
             Self::WalletUnitNotPending => ErrorCode::BR_0450,
             Self::UserAuthenticationNotRequired => ErrorCode::BR_0453,
             Self::UserAuthenticationRequired => ErrorCode::BR_0454,
+            Self::WalletUnitRegistrationExpired => ErrorCode::BR_0455,
             Self::Nested(nested) => nested.error_code(),
         }
     }

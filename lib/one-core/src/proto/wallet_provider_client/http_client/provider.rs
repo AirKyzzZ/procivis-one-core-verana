@@ -82,16 +82,26 @@ impl WalletProviderClient for HTTPWalletProviderClient {
             format!("{wallet_provider_url}/ssi/wallet-unit/v1/{wallet_unit_id}/activate").as_str(),
         )?;
 
-        async {
+        let response = async {
             self.http_client
                 .post(url.as_str())
                 .json(ActivateWalletUnitRequestRestDTO::from(request))?
                 .send()
-                .await?
-                .error_for_status()
+                .await
         }
         .await
         .error_while("requesting activation of wallet unit")?;
+
+        if response.status.is_client_error() {
+            let error_body: ErrorBody = serde_json::from_slice(&response.body)?;
+            if error_body.code == ErrorCode::BR_0153 {
+                return Err(WalletProviderClientError::WalletUnitNonceExpired);
+            }
+        }
+
+        response
+            .error_for_status()
+            .error_while("requesting activation of wallet unit")?;
 
         Ok(())
     }

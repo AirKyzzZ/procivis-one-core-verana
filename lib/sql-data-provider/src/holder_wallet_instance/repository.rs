@@ -141,4 +141,13 @@ impl HolderWalletInstanceRepository for HolderWalletInstanceProvider {
         })
         .await
     }
+
+    async fn delete(&self, id: &HolderWalletInstanceId) -> Result<(), DataLayerError> {
+        holder_wallet_instance::Entity::delete_by_id(*id)
+            .exec(&self.db)
+            .await
+            .map_err(to_data_layer_error)?;
+
+        Ok(())
+    }
 }

@@ -36,6 +36,7 @@ use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
 use crate::proto::session_provider::SessionExt;
 use crate::proto::wallet_instance::WalletUnitStatusCheckResponse;
 use crate::proto::wallet_provider_client::dto::MetadataTarget;
+use crate::proto::wallet_provider_client::error::WalletProviderClientError;
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::key_storage::KeyStorage;
 use crate::provider::key_storage::error::KeyStorageError;
@@ -79,11 +80,21 @@ impl WalletUnitService {
             .await
             .error_while("checking presence of wallet instance")?
             .values
-            .first()
+            .into_iter()
+            .next()
         {
-            return Err(HolderWalletInstanceError::WalletInstanceAlreadyExists(
-                wallet_unit.id,
-            ));
+            if wallet_unit.status != WalletInstanceStatus::Error {
+                return Err(HolderWalletInstanceError::WalletInstanceAlreadyExists(
+                    wallet_unit.id,
+                ));
+            }
+            // A failed (Error) wallet unit is left behind when registration is aborted (e.g.
+            // expired nonce). Remove it so the holder can restart registration (an organisation
+            // may only have a single wallet unit).
+            self.holder_wallet_instance_repository
+                .delete(&wallet_unit.id)
+                .await
+                .error_while("deleting failed wallet instance")?;
         }
 
         let (os, key_storage_id) = self.resolve_os_and_key_storage().await?;
@@ -272,7 +283,7 @@ impl WalletUnitService {
                 url: holder_wallet_instance.wallet_provider_url.clone(),
             };
 
-            let registration_status = self
+            match self
                 .activate_with_integrity_check(
                     &provider_info,
                     key_storage_id,
@@ -283,17 +294,17 @@ impl WalletUnitService {
                     nonce,
                     user_id_token,
                 )
-                .await?;
-
-            match registration_status {
-                RegistrationStatus::Active { key, .. } => {
+                .await
+            {
+                Ok(RegistrationStatus::Active { key, .. }) => {
                     Ok((WalletInstanceStatus::Active, Some(key.id)))
                 }
-                RegistrationStatus::PendingNoIntegrityCheck { .. }
-                | RegistrationStatus::PendingIntegrityCheck { .. }
-                | RegistrationStatus::Unattested { .. } => {
-                    Ok((WalletInstanceStatus::Unattested, None))
-                }
+                Ok(
+                    RegistrationStatus::PendingNoIntegrityCheck { .. }
+                    | RegistrationStatus::PendingIntegrityCheck { .. }
+                    | RegistrationStatus::Unattested { .. },
+                ) => Ok((WalletInstanceStatus::Unattested, None)),
+                Err(err) => Err(err),
             }
         } else {
             let activate_request = ActivateWalletUnitRequestDTO {
@@ -313,15 +324,36 @@ impl WalletUnitService {
                 .await
             {
                 Ok(_) => Ok((WalletInstanceStatus::Active, None)),
+                Err(WalletProviderClientError::WalletUnitNonceExpired) => {
+                    Err(HolderWalletInstanceError::WalletUnitRegistrationExpired)
+                }
                 Err(err) if err.error_code() == ErrorCode::BR_0395 => {
                     tracing::warn!("Activation request failed: {err}");
                     Ok((WalletInstanceStatus::Unattested, None))
                 }
-                Err(err) => Err(err),
+                Err(err) => Err(err.error_while("activating wallet unit").into()),
             }
         };
-        let (status, authentication_key_id) =
-            activation_status.error_while("activating wallet unit")?;
+
+        let (status, authentication_key_id) = match activation_status {
+            Err(HolderWalletInstanceError::WalletUnitRegistrationExpired) => {
+                // The registration nonce has expired. Mark the instance failed (out of PENDING)
+                // so the wallet restarts registration from scratch instead of re-activating
+                // against the dead nonce.
+                self.holder_wallet_instance_repository
+                    .update(
+                        &id,
+                        UpdateHolderWalletInstanceRequest {
+                            status: Some(WalletInstanceStatus::Error),
+                            ..Default::default()
+                        },
+                    )
+                    .await
+                    .error_while("marking holder wallet instance failed")?;
+                return Err(HolderWalletInstanceError::WalletUnitRegistrationExpired);
+            }
+            other => other.error_while("activating wallet unit")?,
+        };
 
         self.holder_wallet_instance_repository
             .update(
@@ -757,6 +789,9 @@ impl WalletUnitService {
             .await
         {
             Ok(_) => {}
+            Err(WalletProviderClientError::WalletUnitNonceExpired) => {
+                return Err(HolderWalletInstanceError::WalletUnitRegistrationExpired);
+            }
             Err(err) if err.error_code() == ErrorCode::BR_0395 => {
                 tracing::warn!("Activation request failed: {err}");
                 return Ok(RegistrationStatus::Unattested { wallet_instance_id });

@@ -1,3 +1,4 @@
+use one_core::model::wallet_instance::WalletInstanceStatus;
 use serde_json::json;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
@@ -9,6 +10,7 @@ use crate::utils::api_clients::holder_wallet_instance::{
     TestHolderActivateRequest, TestHolderRegisterRequest,
 };
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::holder_wallet_instance::TestHolderWalletInstanceParams;
 use crate::utils::field_match::FieldHelpers;
 
 fn metadata_without_user_auth() -> serde_json::Value {
@@ -496,4 +498,110 @@ async fn holder_activate_wallet_unit_required_auth_missing_token_fails_early() {
     assert_eq!(resp.status(), 400);
     let body = resp.json_value().await;
     assert_eq!(body["code"], "BR_0454");
+}
+
+#[tokio::test]
+async fn holder_activate_wallet_unit_expired_nonce_marks_error_and_signals_restart() {
+    // GIVEN
+    let (context, org) = TestContext::new_with_organisation(None).await;
+    let mock_server = MockServer::builder().start().await;
+
+    let wallet_unit_id =
+        register_with_user_auth(&context, org.id, &mock_server, metadata_with_user_auth()).await;
+
+    // The wallet provider rejects activation because the registration nonce has expired (BR_0153).
+    Mock::given(method(Method::POST))
+        .and(wiremock::matchers::path_regex(
+            r"/ssi/wallet-unit/v1/.*/activate",
+        ))
+        .respond_with(ResponseTemplate::new(400).set_body_json(json!({ "code": "BR_0153" })))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .holder_wallet_instances
+        .holder_activate(
+            &wallet_unit_id,
+            TestHolderActivateRequest {
+                key_type: Some("ECDSA".to_string()),
+                user_id_token: Some("my-jwt-token".to_string()),
+            },
+        )
+        .await;
+
+    // THEN - activation fails with the "restart registration" error
+    assert_eq!(resp.status(), 400);
+    let body = resp.json_value().await;
+    assert_eq!(body["code"], "BR_0455");
+
+    // AND - the instance is marked failed (out of PENDING) so a retry can't re-hit the dead nonce
+    let detail = context
+        .api
+        .holder_wallet_instances
+        .holder_get_wallet_instance_details(&wallet_unit_id)
+        .await;
+    assert_eq!(detail.status(), 200);
+    let detail = detail.json_value().await;
+    assert_eq!(detail["status"], "ERROR");
+}
+
+#[tokio::test]
+async fn holder_register_wallet_unit_succeeds_when_existing_wallet_unit_failed() {
+    // GIVEN - the organisation already has a failed (Error) wallet unit from a previous,
+    // aborted registration
+    let (context, org) = TestContext::new_with_organisation(None).await;
+
+    context
+        .db
+        .holder_wallet_units
+        .create(
+            org.clone(),
+            None,
+            TestHolderWalletInstanceParams {
+                status: Some(WalletInstanceStatus::Error),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let mock_server = MockServer::builder().start().await;
+
+    Mock::given(method(Method::GET))
+        .and(path("/ssi/wallet-provider/v1/PROCIVIS_ONE"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(metadata_without_user_auth()))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method(Method::POST))
+        .and(path("/ssi/wallet-unit/v1"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "id": Uuid::new_v4(),
+        })))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    // WHEN - the holder restarts registration
+    let resp = context
+        .api
+        .holder_wallet_instances
+        .holder_register(TestHolderRegisterRequest {
+            organization_id: Some(org.id),
+            wallet_provider_url: Some(format!(
+                "{}/ssi/wallet-provider/v1/PROCIVIS_ONE",
+                mock_server.uri()
+            )),
+            key_type: Some("ECDSA".to_string()),
+            ..Default::default()
+        })
+        .await;
+
+    // THEN - registration is not blocked by the existing failed wallet unit
+    assert_eq!(resp.status(), 201);
+    let resp = resp.json_value().await;
+    assert_eq!(resp["status"], "ACTIVE");
 }

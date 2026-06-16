@@ -31,4 +31,6 @@ pub trait HolderWalletInstanceRepository: Send + Sync {
         &self,
         query: HolderWalletInstanceListQuery,
     ) -> Result<GetHolderWalletInstanceList, DataLayerError>;
+
+    async fn delete(&self, id: &HolderWalletInstanceId) -> Result<(), DataLayerError>;
 }

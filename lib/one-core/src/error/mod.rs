@@ -942,6 +942,9 @@ pub enum ErrorCode {
     BR_0453,
     #[strum(message = "User authentication required")]
     BR_0454,
+
+    #[strum(message = "Wallet unit registration expired, restart registration")]
+    BR_0455,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {
