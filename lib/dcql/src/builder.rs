@@ -1,37 +1,27 @@
-use crate::credential_query_builder::{self, IsUnset, SetMultiple, State};
-use crate::{CredentialFormat, CredentialMeta, CredentialQuery, CredentialQueryBuilder};
-
-type SetMetaAndFormat = credential_query_builder::SetMeta<credential_query_builder::SetFormat>;
+use crate::credential_query_builder::{self, IsUnset, SetFormat, SetMultiple, State};
+use crate::{
+    CredentialFormat, CredentialQuery, CredentialQueryBuilder, MsoMdocMeta, SdJwtVcMeta, W3cVcMeta,
+};
 
 impl CredentialQuery {
-    pub fn mso_mdoc(doctype_value: String) -> CredentialQueryBuilder<SetMetaAndFormat> {
-        Self::builder()
-            .format(CredentialFormat::MsoMdoc)
-            .meta(CredentialMeta::MsoMdoc { doctype_value })
+    pub fn mso_mdoc(doctype_value: String) -> CredentialQueryBuilder<SetFormat> {
+        Self::builder().format(CredentialFormat::MsoMdoc(MsoMdocMeta { doctype_value }))
     }
 
-    pub fn sd_jwt_vc(vct_values: Vec<String>) -> CredentialQueryBuilder<SetMetaAndFormat> {
-        Self::builder()
-            .format(CredentialFormat::SdJwt)
-            .meta(CredentialMeta::SdJwtVc { vct_values })
+    pub fn sd_jwt_vc(vct_values: Vec<String>) -> CredentialQueryBuilder<SetFormat> {
+        Self::builder().format(CredentialFormat::SdJwt(SdJwtVcMeta { vct_values }))
     }
 
-    pub fn jwt_vc(type_values: Vec<Vec<String>>) -> CredentialQueryBuilder<SetMetaAndFormat> {
-        Self::builder()
-            .format(CredentialFormat::JwtVc)
-            .meta(CredentialMeta::W3cVc { type_values })
+    pub fn jwt_vc(type_values: Vec<Vec<String>>) -> CredentialQueryBuilder<SetFormat> {
+        Self::builder().format(CredentialFormat::JwtVc(W3cVcMeta { type_values }))
     }
 
-    pub fn ldp_vc(type_values: Vec<Vec<String>>) -> CredentialQueryBuilder<SetMetaAndFormat> {
-        Self::builder()
-            .format(CredentialFormat::LdpVc)
-            .meta(CredentialMeta::W3cVc { type_values })
+    pub fn ldp_vc(type_values: Vec<Vec<String>>) -> CredentialQueryBuilder<SetFormat> {
+        Self::builder().format(CredentialFormat::LdpVc(W3cVcMeta { type_values }))
     }
 
-    pub fn w3c_sd_jwt(type_values: Vec<Vec<String>>) -> CredentialQueryBuilder<SetMetaAndFormat> {
-        Self::builder()
-            .format(CredentialFormat::W3cSdJwt)
-            .meta(CredentialMeta::W3cVc { type_values })
+    pub fn w3c_sd_jwt(type_values: Vec<Vec<String>>) -> CredentialQueryBuilder<SetFormat> {
+        Self::builder().format(CredentialFormat::W3cSdJwt(W3cVcMeta { type_values }))
     }
 }
 
@@ -66,8 +56,7 @@ mod tests {
     use standardized_types::x509::KeyIdentifier;
 
     use crate::{
-        ClaimQuery, ClaimQueryId, CredentialFormat, CredentialMeta, CredentialQuery,
-        CredentialQueryId, DcqlQuery,
+        ClaimQuery, ClaimQueryId, CredentialFormat, CredentialQuery, CredentialQueryId, DcqlQuery,
     };
 
     #[test]
@@ -86,12 +75,11 @@ mod tests {
             .build();
 
         assert_eq!(credential.id, CredentialQueryId::from("test_id"));
-        assert_eq!(credential.format, CredentialFormat::MsoMdoc);
         assert_eq!(credential.claims.as_ref().unwrap().len(), 1);
 
-        match &credential.meta {
-            CredentialMeta::MsoMdoc { doctype_value } => {
-                assert_eq!(doctype_value, "org.iso.18013.5.1.mDL");
+        match &credential.format {
+            CredentialFormat::MsoMdoc(mdoc_meta) => {
+                assert_eq!(mdoc_meta.doctype_value, "org.iso.18013.5.1.mDL");
             }
             _ => panic!("Expected MsoMdoc metadata"),
         }
@@ -112,12 +100,11 @@ mod tests {
             .build();
 
         assert_eq!(credential.id, CredentialQueryId::from("test_id"));
-        assert_eq!(credential.format, CredentialFormat::MsoMdoc);
         assert_eq!(credential.claims.as_ref().unwrap().len(), 1);
 
-        match &credential.meta {
-            CredentialMeta::MsoMdoc { doctype_value } => {
-                assert_eq!(doctype_value, "org.iso.18013.5.1.mDL");
+        match &credential.format {
+            CredentialFormat::MsoMdoc(mdoc_meta) => {
+                assert_eq!(mdoc_meta.doctype_value, "org.iso.18013.5.1.mDL");
             }
             _ => panic!("Expected MsoMdoc metadata"),
         }
@@ -131,12 +118,14 @@ mod tests {
                 .build();
 
         assert_eq!(credential.id, CredentialQueryId::from("test_id"));
-        assert_eq!(credential.format, CredentialFormat::SdJwt);
 
-        match &credential.meta {
-            CredentialMeta::SdJwtVc { vct_values } => {
-                assert_eq!(vct_values.len(), 1);
-                assert_eq!(vct_values[0], "https://example.com/credential");
+        match &credential.format {
+            CredentialFormat::SdJwt(sd_jwt_vc_meta) => {
+                assert_eq!(sd_jwt_vc_meta.vct_values.len(), 1);
+                assert_eq!(
+                    sd_jwt_vc_meta.vct_values[0],
+                    "https://example.com/credential"
+                );
             }
             _ => panic!("Expected SdJwtVc metadata"),
         }
@@ -152,13 +141,12 @@ mod tests {
         .build();
 
         assert_eq!(credential.id, CredentialQueryId::from("jwt_vc"));
-        assert_eq!(credential.format, CredentialFormat::JwtVc);
 
-        match &credential.meta {
-            CredentialMeta::W3cVc { type_values } => {
-                assert_eq!(type_values.len(), 1);
+        match &credential.format {
+            CredentialFormat::JwtVc(jwt_meta) => {
+                assert_eq!(jwt_meta.type_values.len(), 1);
                 assert_eq!(
-                    type_values[0],
+                    jwt_meta.type_values[0],
                     vec!["VerifiableCredential", "UniversityDegreeCredential"]
                 );
             }
@@ -176,13 +164,12 @@ mod tests {
         .build();
 
         assert_eq!(credential.id, CredentialQueryId::from("ldp_vc"));
-        assert_eq!(credential.format, CredentialFormat::LdpVc);
 
-        match &credential.meta {
-            CredentialMeta::W3cVc { type_values } => {
-                assert_eq!(type_values.len(), 1);
+        match &credential.format {
+            CredentialFormat::LdpVc(ldp_vc_meta) => {
+                assert_eq!(ldp_vc_meta.type_values.len(), 1);
                 assert_eq!(
-                    type_values[0],
+                    ldp_vc_meta.type_values[0],
                     vec!["VerifiableCredential", "DriverLicense"]
                 );
             }
@@ -200,13 +187,12 @@ mod tests {
         .build();
 
         assert_eq!(credential.id, CredentialQueryId::from("w3c_sd_jwt"));
-        assert_eq!(credential.format, CredentialFormat::W3cSdJwt);
 
-        match &credential.meta {
-            CredentialMeta::W3cVc { type_values } => {
-                assert_eq!(type_values.len(), 1);
+        match &credential.format {
+            CredentialFormat::W3cSdJwt(sd_jwt_meta) => {
+                assert_eq!(sd_jwt_meta.type_values.len(), 1);
                 assert_eq!(
-                    type_values[0],
+                    sd_jwt_meta.type_values[0],
                     vec!["VerifiableCredential", "DriverLicense"]
                 );
             }
@@ -246,10 +232,22 @@ mod tests {
             .build();
 
         assert_eq!(query.credentials.len(), 4);
-        assert_eq!(query.credentials[0].format, CredentialFormat::MsoMdoc);
-        assert_eq!(query.credentials[1].format, CredentialFormat::SdJwt);
-        assert_eq!(query.credentials[2].format, CredentialFormat::JwtVc);
-        assert_eq!(query.credentials[3].format, CredentialFormat::W3cSdJwt);
+        assert!(matches!(
+            query.credentials[0].format,
+            CredentialFormat::MsoMdoc(_)
+        ));
+        assert!(matches!(
+            query.credentials[1].format,
+            CredentialFormat::SdJwt(_)
+        ));
+        assert!(matches!(
+            query.credentials[2].format,
+            CredentialFormat::JwtVc(_)
+        ));
+        assert!(matches!(
+            query.credentials[3].format,
+            CredentialFormat::W3cSdJwt(_)
+        ));
     }
 
     #[test]

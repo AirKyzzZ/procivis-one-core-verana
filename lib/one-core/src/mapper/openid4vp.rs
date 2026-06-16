@@ -1,5 +1,6 @@
 use one_dto_mapper::{convert_inner, convert_inner_of_inner};
 
+use crate::config::core_config::FormatType;
 use crate::error::ContextWithErrorCode;
 use crate::mapper::RemoteIdentifierRelation;
 use crate::model::credential::{Credential, CredentialType};
@@ -81,4 +82,15 @@ fn from_provider_schema(schema: CredentialSchema, organisation: Organisation) ->
         organisation: organisation.into(),
         ..schema
     }
+}
+
+pub(crate) fn format_type_to_dcql_format(format_type: &FormatType) -> String {
+    match format_type {
+        FormatType::Jwt => "jwt_vc_json",
+        FormatType::SdJwt => "vc+sd-jwt",
+        FormatType::SdJwtVc => "dc+sd-jwt",
+        FormatType::JsonLdClassic | FormatType::JsonLdBbsPlus => "ldp_vc",
+        FormatType::Mdoc => "mso_mdoc",
+    }
+    .to_string()
 }

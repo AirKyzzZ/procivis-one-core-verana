@@ -2,7 +2,6 @@ use core::str;
 
 use core_server::endpoint::proof::dto::ClientIdSchemeRestEnum;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
-use dcql::CredentialFormat;
 use one_core::model::blob::BlobType;
 use one_core::model::identifier_trust_information::SchemaFormat;
 use one_core::model::interaction::InteractionType;
@@ -252,7 +251,7 @@ async fn setup_final1_certificate_proof(
                 blob.id,
                 TestingIdentifierTrustInformationParams {
                     allowed_verification_types: Some(vec![SchemaFormat {
-                        format: CredentialFormat::JwtVc,
+                        format: "jwt_vc_json".to_string(),
                         schema_id: "test-schema-id".to_string(),
                     }]),
                     ..Default::default()
@@ -353,7 +352,7 @@ async fn test_get_client_request_final1_did_scheme_no_verifier_info() {
             blob.id,
             TestingIdentifierTrustInformationParams {
                 allowed_verification_types: Some(vec![SchemaFormat {
-                    format: CredentialFormat::JwtVc,
+                    format: "jwt_vc_json".to_string(),
                     schema_id: "test-schema-id".to_string(),
                 }]),
                 ..Default::default()

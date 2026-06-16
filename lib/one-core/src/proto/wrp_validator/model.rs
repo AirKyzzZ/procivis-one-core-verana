@@ -209,8 +209,8 @@ pub(crate) struct IntendedUse {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub(crate) struct Credential {
+    #[serde(flatten)]
     pub format: dcql::CredentialFormat,
-    pub meta: dcql::CredentialMeta,
     pub claim: Option<Vec<Claim>>,
 }
 

@@ -156,8 +156,8 @@ pub struct Status {
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Credential {
+    #[serde(flatten)]
     pub format: CredentialFormat,
-    pub meta: dcql::CredentialMeta,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub claim: Option<Vec<Claim>>,
 }

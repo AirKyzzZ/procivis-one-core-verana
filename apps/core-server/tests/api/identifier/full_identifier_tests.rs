@@ -1,4 +1,3 @@
-use dcql::CredentialFormat;
 use one_core::model::blob::BlobType;
 use one_core::model::identifier_trust_information::SchemaFormat;
 use rcgen::CertificateParams;
@@ -437,11 +436,11 @@ async fn test_identifier_filter_proof_schema_success() {
             TestingIdentifierTrustInformationParams {
                 allowed_verification_types: Some(vec![
                     SchemaFormat {
-                        format: CredentialFormat::JwtVc,
+                        format: "jwt_vc_json".to_string(),
                         schema_id: credential_schema.schema_id().await.unwrap().to_string(),
                     },
                     SchemaFormat {
-                        format: CredentialFormat::JwtVc,
+                        format: "jwt_vc_json".to_string(),
                         schema_id: credential_schema2.schema_id().await.unwrap().to_string(),
                     },
                 ]),

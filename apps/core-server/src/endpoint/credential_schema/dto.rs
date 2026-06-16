@@ -1,4 +1,3 @@
-use dcql::CredentialMeta;
 use one_core::model::credential_schema::{CredentialSchemaExactColumn, TransactionCodeType};
 use one_core::service::credential_schema::dto::{
     CreateCredentialSchemaRequestDTO, CreateCredentialSchemaV2RequestDTO, CredentialClaimSchemaDTO,
@@ -149,8 +148,8 @@ pub(crate) struct CredentialSchemaResponseRestDTO {
 #[serde(rename_all = "camelCase")]
 #[from(CredentialSchemaDcqlResponseDTO)]
 pub struct CredentialSchemaDcqlResponseRestDTO {
+    #[serde(flatten)]
     pub format: dcql::CredentialFormat,
-    pub meta: CredentialMeta,
 }
 
 #[options_not_nullable]

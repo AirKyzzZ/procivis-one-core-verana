@@ -1,7 +1,6 @@
 use std::str::FromStr;
 use std::sync::Arc;
 
-use dcql::CredentialFormat;
 use one_core::model::certificate::{
     Certificate, CertificateRelations, CertificateRole, CertificateState,
 };
@@ -321,11 +320,11 @@ async fn test_get_identifier_with_trust_info() {
             allowed_issuance_types: vec![],
             allowed_verification_types: vec![
                 SchemaFormat {
-                    format: CredentialFormat::JwtVc,
+                    format: "jwt_vc_json".to_string(),
                     schema_id: "test-schema-id".to_string(),
                 },
                 SchemaFormat {
-                    format: CredentialFormat::SdJwt,
+                    format: "vc+sd-jwt".to_string(),
                     schema_id: "test-schema-id".to_string(),
                 },
             ],
@@ -351,7 +350,7 @@ async fn test_get_identifier_with_trust_info() {
             valid_to: None,
             intended_use: None,
             allowed_issuance_types: vec![SchemaFormat {
-                format: CredentialFormat::JwtVc,
+                format: "jwt_vc_json".to_string(),
                 schema_id: "test-schema-id".to_string(),
             }],
             allowed_verification_types: vec![],
@@ -408,15 +407,15 @@ async fn test_list_identifier_filter_trust_info() {
     setup.provider.create(identifier.clone()).await.unwrap();
 
     let schema_format1 = SchemaFormat {
-        format: CredentialFormat::JwtVc,
+        format: "jwt_vc_json".to_string(),
         schema_id: "test-schema-id".to_string(),
     };
     let schema_format2 = SchemaFormat {
-        format: CredentialFormat::SdJwt,
+        format: "vc+sd-jwt".to_string(),
         schema_id: "test-schema-id".to_string(),
     };
     let schema_format3 = SchemaFormat {
-        format: CredentialFormat::SdJwt,
+        format: "vc+sd-jwt".to_string(),
         schema_id: "test-schema-id3".to_string(),
     };
     setup

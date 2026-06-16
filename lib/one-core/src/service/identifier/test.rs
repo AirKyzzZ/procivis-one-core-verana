@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use dcql::{CredentialFormat, CredentialMeta};
+use dcql::{CredentialFormat, SdJwtVcMeta};
 use shared_types::TrustCollectionId;
 use similar_asserts::assert_eq;
 use standardized_types::jwk::{JwkUse, PublicJwk, PublicJwkEc};
@@ -850,17 +850,15 @@ fn dummy_reg_cert() -> JWTPayload<Payload> {
                 status_list: HashMap::new(),
             },
             provides_attestations: Some(vec![Credential {
-                format: CredentialFormat::SdJwt,
-                meta: CredentialMeta::SdJwtVc {
+                format: CredentialFormat::SdJwt(SdJwtVcMeta {
                     vct_values: vec!["https://example.com".to_string()],
-                },
+                }),
                 claim: None,
             }]),
             credentials: Some(vec![Credential {
-                format: CredentialFormat::SdJwt,
-                meta: CredentialMeta::SdJwtVc {
+                format: CredentialFormat::SdJwt(SdJwtVcMeta {
                     vct_values: vec!["https://example2.com".to_string()],
-                },
+                }),
                 claim: None,
             }]),
             purpose: None,

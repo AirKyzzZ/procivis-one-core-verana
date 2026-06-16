@@ -1,6 +1,3 @@
-use std::str::FromStr;
-
-use dcql::CredentialFormat;
 use one_core::model::identifier_trust_information::{IdentifierTrustInformation, SchemaFormat};
 use one_core::repository::error::DataLayerError;
 use sea_orm::Set;
@@ -49,8 +46,10 @@ pub fn deserialize_schema_format(serialized: &str) -> Result<SchemaFormat, DataL
         return Err(DataLayerError::MappingError);
     }
     let schema_id = unescape_schema_id(splits.first().ok_or(DataLayerError::MappingError)?);
-    let format = CredentialFormat::from_str(splits.get(1).ok_or(DataLayerError::MappingError)?)
-        .map_err(|_| DataLayerError::MappingError)?;
+    let format = splits
+        .get(1)
+        .ok_or(DataLayerError::MappingError)?
+        .to_string();
     Ok(SchemaFormat { schema_id, format })
 }
 

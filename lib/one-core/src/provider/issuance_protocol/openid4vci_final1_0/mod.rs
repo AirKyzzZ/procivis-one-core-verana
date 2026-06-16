@@ -61,6 +61,7 @@ use crate::config::core_config::{
     BlobStorageType, CoreConfig, DidType as ConfigDidType, FormatType,
 };
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
+use crate::mapper::openid4vp::format_type_to_dcql_format;
 use crate::mapper::x509::x5c_into_pem_chain;
 use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
 use crate::model::certificate::CertificateRelations;
@@ -2494,6 +2495,6 @@ impl IdentifierTrustInformation {
 
 impl SchemaFormat {
     fn is_allowed_for(&self, schema_id: &str, format_type: &FormatType) -> bool {
-        self.schema_id == schema_id && self.format == (*format_type).into()
+        self.schema_id == schema_id && self.format == format_type_to_dcql_format(format_type)
     }
 }

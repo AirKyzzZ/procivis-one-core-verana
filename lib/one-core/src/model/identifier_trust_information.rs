@@ -1,4 +1,3 @@
-use dcql::CredentialFormat;
 use shared_types::{BlobId, IdentifierId, IdentifierTrustInformationId};
 use time::OffsetDateTime;
 
@@ -23,7 +22,7 @@ pub struct IdentifierTrustInformation {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SchemaFormat {
-    pub format: CredentialFormat,
+    pub format: String,
     pub schema_id: String,
 }
 

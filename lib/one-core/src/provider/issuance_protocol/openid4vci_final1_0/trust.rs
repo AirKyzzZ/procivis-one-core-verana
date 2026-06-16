@@ -309,25 +309,27 @@ fn credential_config_matches_reg_cert_attestation(
     credential_config: &OpenID4VCICredentialConfigurationData,
     reg_cert_attestation: &registration_certificate::model::Credential,
 ) -> bool {
-    if credential_config.format != reg_cert_attestation.format.to_string() {
+    if credential_config.format != reg_cert_attestation.format.dcql_format() {
         return false;
     }
 
-    match &reg_cert_attestation.meta {
-        dcql::CredentialMeta::MsoMdoc { doctype_value } => credential_config
+    match &reg_cert_attestation.format {
+        dcql::CredentialFormat::MsoMdoc(meta) => credential_config
             .doctype
             .as_ref()
-            .is_some_and(|doctype| doctype == doctype_value),
-        dcql::CredentialMeta::SdJwtVc { vct_values } => credential_config
+            .is_some_and(|doctype| doctype == &meta.doctype_value),
+        dcql::CredentialFormat::SdJwt(meta) => credential_config
             .vct
             .as_ref()
-            .is_some_and(|vct| vct_values.contains(vct)),
-        dcql::CredentialMeta::W3cVc { type_values } => credential_config
+            .is_some_and(|vct| meta.vct_values.contains(vct)),
+        dcql::CredentialFormat::JwtVc(meta)
+        | dcql::CredentialFormat::W3cSdJwt(meta)
+        | dcql::CredentialFormat::LdpVc(meta) => credential_config
             .credential_definition
             .as_ref()
             .is_some_and(|credential_definition| {
                 // TODO: support context expansion
-                type_values.iter().any(|types| {
+                meta.type_values.iter().any(|types| {
                     credential_definition
                         .r#type
                         .iter()

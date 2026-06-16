@@ -189,7 +189,7 @@ impl OpenId4VpProofValidatorProto {
                 )));
             };
 
-            let context = if dcql_credential_format == &CredentialFormat::MsoMdoc {
+            let context = if let CredentialFormat::MsoMdoc(_) = dcql_credential_format {
                 ExtractPresentationCtx {
                     format_nonce: submission.mdoc_generated_nonce.clone(),
                     ..extract_presentation_ctx_from_interaction_content(
@@ -263,9 +263,9 @@ impl OpenId4VpProofValidatorProto {
                 // Our existing implementation conflated the vc+sd-jwt and dc+sd-jwt formats.
                 // The SD_JWT(_VC) presentation formatter was used for both W3C and IETF SD-JWTs.
                 // This match ensures the correct w3c presentation format is used for W3C SD-JWTs.
-                CredentialFormat::W3cSdJwt => FormatType::Jwt,
+                CredentialFormat::W3cSdJwt(..) => FormatType::Jwt,
                 _ => map_from_oidc_format_to_core_detailed(
-                    &credential_query.format.to_string(),
+                    credential_query.format.dcql_format(),
                     Some(&presentation_string.as_str().into()),
                 )
                 .map_err(|_| OpenID4VCError::VCFormatsNotSupported)?,

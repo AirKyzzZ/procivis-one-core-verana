@@ -4,6 +4,7 @@ use std::sync::{Arc, Mutex};
 
 use assert2::let_assert;
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
+use dcql::MsoMdocMeta;
 use indexmap::IndexMap;
 use mockall::predicate::{always, eq};
 use one_crypto::encryption::encrypt_data;
@@ -2630,10 +2631,9 @@ async fn test_handle_invitation_signed_metadata() {
                         },
                         provides_attestations: Some(vec![
                             registration_certificate::model::Credential {
-                                format: dcql::CredentialFormat::MsoMdoc,
-                                meta: dcql::CredentialMeta::MsoMdoc {
+                                format: dcql::CredentialFormat::MsoMdoc(MsoMdocMeta {
                                     doctype_value: "doctype".to_string(),
-                                },
+                                }),
                                 claim: None,
                             },
                         ]),

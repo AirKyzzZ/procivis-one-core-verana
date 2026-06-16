@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use crate::{
-    ClaimPath, ClaimQuery, ClaimQueryId, ClaimValue, CredentialFormat, CredentialMeta,
-    CredentialQueryId, DcqlError, DcqlQuery,
+    ClaimPath, ClaimQuery, ClaimQueryId, ClaimValue, CredentialFormat, CredentialQueryId,
+    DcqlError, DcqlQuery,
 };
 
 /// Filter restrictions for credentials held in the wallet.
@@ -40,10 +40,13 @@ impl DcqlQuery {
     ) -> Result<HashMap<CredentialQueryId, Vec<CredentialFilter>>, DcqlError> {
         let mut result: HashMap<CredentialQueryId, Vec<CredentialFilter>> = HashMap::new();
         for credential_query in &self.credentials {
-            let schema_ids = match &credential_query.meta {
-                CredentialMeta::MsoMdoc { doctype_value } => vec![doctype_value.clone()],
-                CredentialMeta::SdJwtVc { vct_values } => vct_values.clone(),
-                CredentialMeta::W3cVc { type_values } => type_values
+            let schema_ids = match &credential_query.format {
+                CredentialFormat::MsoMdoc(meta) => vec![meta.doctype_value.clone()],
+                CredentialFormat::SdJwt(meta) => meta.vct_values.clone(),
+                CredentialFormat::W3cSdJwt(meta)
+                | CredentialFormat::JwtVc(meta)
+                | CredentialFormat::LdpVc(meta) => meta
+                    .type_values
                     .iter()
                     .flat_map(|values| values.last())
                     .cloned()
@@ -51,7 +54,7 @@ impl DcqlQuery {
             };
 
             let base_filter = CredentialFilter {
-                format: credential_query.format,
+                format: credential_query.format.clone(),
                 schema_ids,
                 claims: vec![],
             };

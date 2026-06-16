@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use dcql::{CredentialFormat, CredentialMeta, CredentialQuery, DcqlQuery};
+use dcql::{CredentialFormat, CredentialQuery, DcqlQuery, W3cVcMeta};
 use maplit::hashmap;
 use one_dto_mapper::try_convert_inner;
 use serde_json::json;
@@ -430,10 +430,9 @@ fn dummy_dcql_query(require_cryptographic_holder_binding: bool) -> DcqlQuery {
     DcqlQuery {
         credentials: vec![CredentialQuery {
             id: "a83dabc3-1601-4642-84ec-7a5ad8a70d36".into(),
-            format: CredentialFormat::JwtVc,
-            meta: CredentialMeta::W3cVc {
+            format: CredentialFormat::JwtVc(W3cVcMeta {
                 type_values: vec![vec!["CredentialSchemaId".to_string()]],
-            },
+            }),
             claims: None,
             claim_sets: None,
             trusted_authorities: None,

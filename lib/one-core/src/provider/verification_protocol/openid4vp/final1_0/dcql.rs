@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use convert_case::{Case, Casing};
-use dcql::{ClaimQuery, ClaimQueryId, CredentialFormat, CredentialQuery, DcqlQuery};
+use dcql::{ClaimQuery, ClaimQueryId, CredentialQuery, DcqlQuery};
 
 use crate::config::core_config::FormatType;
 use crate::mapper::NESTED_CLAIM_MARKER;
@@ -57,19 +57,18 @@ pub async fn create_dcql_query(
         let formatter = credential_formatter_provider.get_credential_formatter(&format.format)?;
 
         let credential_format = format_to_type_mapper(&format.format)?;
-        let dcql_format: CredentialFormat = credential_format.into();
 
         let schema_id = credential_schema.schema_id().await?;
-        let base_credential_query = match dcql_format {
-            CredentialFormat::MsoMdoc => CredentialQuery::mso_mdoc(schema_id),
-            CredentialFormat::SdJwt => CredentialQuery::sd_jwt_vc(vec![schema_id]),
-            CredentialFormat::LdpVc => {
+        let base_credential_query = match credential_format {
+            FormatType::Mdoc => CredentialQuery::mso_mdoc(schema_id),
+            FormatType::SdJwtVc => CredentialQuery::sd_jwt_vc(vec![schema_id]),
+            FormatType::JsonLdClassic | FormatType::JsonLdBbsPlus => {
                 CredentialQuery::ldp_vc(w3c_credential_query_type_values(credential_schema).await?)
             }
-            CredentialFormat::JwtVc => {
+            FormatType::Jwt => {
                 CredentialQuery::jwt_vc(w3c_credential_query_type_values(credential_schema).await?)
             }
-            CredentialFormat::W3cSdJwt => CredentialQuery::w3c_sd_jwt(
+            FormatType::SdJwt => CredentialQuery::w3c_sd_jwt(
                 w3c_credential_query_type_values(credential_schema).await?,
             ),
         };

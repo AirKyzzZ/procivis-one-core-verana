@@ -9,6 +9,7 @@ use async_trait::async_trait;
 use ble::ISO_MDL_FLOW;
 use ble_holder::{MdocBleHolderInteractionData, send_mdl_response};
 use common::{DeviceRequest, to_cbor};
+use dcql::MsoMdocMeta;
 use futures::future::BoxFuture;
 use proc_macros::Provider;
 use serde_json::Value;
@@ -461,8 +462,7 @@ impl VerificationProtocol for IsoMdl {
             .map_err(VerificationProtocolError::Other)?;
 
         use dcql::{
-            ClaimPath, ClaimQuery, CredentialFormat, CredentialMeta, CredentialQuery, DcqlQuery,
-            PathSegment,
+            ClaimPath, ClaimQuery, CredentialFormat, CredentialQuery, DcqlQuery, PathSegment,
         };
 
         let mut credentials = Vec::with_capacity(device_request.doc_requests.len());
@@ -488,10 +488,9 @@ impl VerificationProtocol for IsoMdl {
 
             credentials.push(CredentialQuery {
                 id: request.doc_type.to_owned().into(),
-                format: CredentialFormat::MsoMdoc,
-                meta: CredentialMeta::MsoMdoc {
+                format: CredentialFormat::MsoMdoc(MsoMdocMeta {
                     doctype_value: request.doc_type,
-                },
+                }),
                 claims: Some(claims),
                 claim_sets: None,
                 trusted_authorities: None,

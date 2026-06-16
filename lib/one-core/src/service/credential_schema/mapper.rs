@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use dcql::CredentialMeta;
+use dcql::{MsoMdocMeta, SdJwtVcMeta, W3cVcMeta};
 use indexmap::IndexMap;
 use one_dto_mapper::convert_inner;
 use shared_types::{CredentialFormat, CredentialSchemaId, OrganisationId};
@@ -420,8 +420,7 @@ fn map_dcql_format_meta(
     // This would happen e.g., if a provider is renamed and the schema is still using the old name.
     let format_type = config.format.get_type(&format.format).ok()?;
     let dcql = CredentialSchemaDcqlResponseDTO {
-        meta: schema_to_dcql_meta(format, &format_type),
-        format: format_type.into(),
+        format: schema_to_dcql_meta(format, &format_type),
     };
     Some(dcql)
 }
@@ -429,32 +428,34 @@ fn map_dcql_format_meta(
 fn schema_to_dcql_meta(
     format: &CredentialSchemaFormat,
     format_type: &FormatType,
-) -> CredentialMeta {
+) -> dcql::CredentialFormat {
     match format_type {
-        FormatType::SdJwtVc => CredentialMeta::SdJwtVc {
+        FormatType::SdJwtVc => dcql::CredentialFormat::SdJwt(SdJwtVcMeta {
             vct_values: vec![format.schema_id.clone()],
-        },
-        FormatType::Mdoc => CredentialMeta::MsoMdoc {
+        }),
+        FormatType::Mdoc => dcql::CredentialFormat::MsoMdoc(MsoMdocMeta {
             doctype_value: format.schema_id.clone(),
-        },
-        FormatType::Jwt
-        | FormatType::SdJwt
-        | FormatType::JsonLdClassic
-        | FormatType::JsonLdBbsPlus => {
-            // This is a terrible heuristic, but until proper support for JSON-LD contexts is added, this is the best we can do.
-            let context = if let Ok(url) = Url::parse(&format.schema_id)
-                && url.path().starts_with("/ssi/schema/v1/")
-            {
-                format
-                    .schema_id
-                    .replace("/ssi/schema/v1/", "/ssi/context/v1/")
-            } else {
-                format.schema_id.clone()
-            };
-            CredentialMeta::W3cVc {
-                type_values: vec![vec![Context::CredentialsV2.to_string(), context]],
-            }
-        }
+        }),
+        FormatType::Jwt => dcql::CredentialFormat::JwtVc(w3c_meta_from_format(format)),
+        FormatType::SdJwt => dcql::CredentialFormat::W3cSdJwt(w3c_meta_from_format(format)),
+        FormatType::JsonLdClassic => dcql::CredentialFormat::LdpVc(w3c_meta_from_format(format)),
+        FormatType::JsonLdBbsPlus => dcql::CredentialFormat::LdpVc(w3c_meta_from_format(format)),
+    }
+}
+
+fn w3c_meta_from_format(format: &CredentialSchemaFormat) -> W3cVcMeta {
+    // This is a terrible heuristic, but until proper support for JSON-LD contexts is added, this is the best we can do.
+    let context = if let Ok(url) = Url::parse(&format.schema_id)
+        && url.path().starts_with("/ssi/schema/v1/")
+    {
+        format
+            .schema_id
+            .replace("/ssi/schema/v1/", "/ssi/context/v1/")
+    } else {
+        format.schema_id.clone()
+    };
+    W3cVcMeta {
+        type_values: vec![vec![Context::CredentialsV2.to_string(), context]],
     }
 }
 

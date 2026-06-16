@@ -41,11 +41,21 @@ impl Display for PathSegment {
 impl Display for CredentialFormat {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            CredentialFormat::MsoMdoc => write!(f, "mso_mdoc"),
-            CredentialFormat::LdpVc => write!(f, "ldp_vc"),
-            CredentialFormat::JwtVc => write!(f, "jwt_vc_json"),
-            CredentialFormat::SdJwt => write!(f, "dc+sd-jwt"),
-            CredentialFormat::W3cSdJwt => write!(f, "vc+sd-jwt"),
+            CredentialFormat::MsoMdoc(meta) => {
+                write!(f, "mso_mdoc(doctype: {})", meta.doctype_value)
+            }
+            CredentialFormat::SdJwt(meta) => {
+                write!(f, "dc+sd-jwt(vct_types: {:?})", meta.vct_values)
+            }
+            CredentialFormat::LdpVc(meta) => {
+                write!(f, "ldp_vc(type_values: {:?})", meta.type_values)
+            }
+            CredentialFormat::JwtVc(meta) => {
+                write!(f, "jwt_vc_json(type_values: {:?})", meta.type_values)
+            }
+            CredentialFormat::W3cSdJwt(meta) => {
+                write!(f, "vc+sd-jwt(type_values: {:?})", meta.type_values)
+            }
         }
     }
 }

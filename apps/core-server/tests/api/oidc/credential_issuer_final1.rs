@@ -1,4 +1,3 @@
-use dcql::CredentialFormat;
 use mime::Mime;
 use one_core::mapper::x509::pem_chain_into_x5c;
 use one_core::model::blob::BlobType;
@@ -127,7 +126,7 @@ async fn test_get_credential_issuer_metadata_jwt_certificate_identifier_with_tru
             blob.id,
             TestingIdentifierTrustInformationParams {
                 allowed_issuance_types: Some(vec![SchemaFormat {
-                    format: CredentialFormat::JwtVc,
+                    format: "jwt_vc_json".to_string(),
                     schema_id: credential_schema.schema_id().await.unwrap(),
                 }]),
                 ..Default::default()

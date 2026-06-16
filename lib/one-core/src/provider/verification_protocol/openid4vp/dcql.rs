@@ -450,14 +450,14 @@ fn format_matches(
         return false;
     };
     match dcql_format {
-        CredentialFormat::JwtVc => credential_format == FormatType::Jwt,
-        CredentialFormat::LdpVc => {
+        CredentialFormat::JwtVc(_) => credential_format == FormatType::Jwt,
+        CredentialFormat::LdpVc(_) => {
             credential_format == FormatType::JsonLdBbsPlus
                 || credential_format == FormatType::JsonLdClassic
         }
-        CredentialFormat::MsoMdoc => credential_format == FormatType::Mdoc,
-        CredentialFormat::SdJwt => credential_format == FormatType::SdJwtVc,
-        CredentialFormat::W3cSdJwt => credential_format == FormatType::SdJwt,
+        CredentialFormat::MsoMdoc(_) => credential_format == FormatType::Mdoc,
+        CredentialFormat::SdJwt(_) => credential_format == FormatType::SdJwtVc,
+        CredentialFormat::W3cSdJwt(_) => credential_format == FormatType::SdJwt,
     }
 }
 
@@ -842,7 +842,7 @@ async fn fetch_credentials_for_schema_ids(
 
 fn map_schema_id(filter: &CredentialFilter, schema_id: &str) -> String {
     match filter.format {
-        CredentialFormat::JwtVc | CredentialFormat::LdpVc | CredentialFormat::W3cSdJwt => {
+        CredentialFormat::JwtVc(_) | CredentialFormat::LdpVc(_) | CredentialFormat::W3cSdJwt(_) => {
             schema_id
                 // Make use of the fact that Procivis One issuers put the schema id into the context,
                 // hence we can potentially parse it out of the supplied types.
@@ -852,7 +852,7 @@ fn map_schema_id(filter: &CredentialFilter, schema_id: &str) -> String {
                 .map(|(first, _)| first)
                 .unwrap_or(schema_id)
         }
-        CredentialFormat::MsoMdoc | CredentialFormat::SdJwt => schema_id,
+        CredentialFormat::MsoMdoc(_) | CredentialFormat::SdJwt(_) => schema_id,
     }
     .to_string()
 }
@@ -1067,19 +1067,6 @@ fn stringify_value(value: &ClaimValue) -> String {
         ClaimValue::String(string) => string.to_string(),
         ClaimValue::Integer(int) => format!("{int}"),
         ClaimValue::Boolean(bool) => format!("{bool}"),
-    }
-}
-
-impl From<FormatType> for CredentialFormat {
-    fn from(value: FormatType) -> Self {
-        match value {
-            FormatType::Jwt => CredentialFormat::JwtVc,
-            FormatType::SdJwt => CredentialFormat::W3cSdJwt,
-            FormatType::SdJwtVc => CredentialFormat::SdJwt,
-            FormatType::JsonLdClassic => CredentialFormat::LdpVc,
-            FormatType::JsonLdBbsPlus => CredentialFormat::LdpVc,
-            FormatType::Mdoc => CredentialFormat::MsoMdoc,
-        }
     }
 }
 

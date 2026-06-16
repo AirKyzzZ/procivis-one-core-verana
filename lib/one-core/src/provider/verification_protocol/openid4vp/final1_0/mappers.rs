@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use dcql::{CredentialMeta, PathSegment};
+use dcql::{CredentialFormat, CredentialQuery, MsoMdocMeta, PathSegment, SdJwtVcMeta, W3cVcMeta};
 use one_dto_mapper::convert_inner_of_inner;
 use serde::Deserialize;
 use standardized_types::jwa::EncryptionAlgorithm;
@@ -14,6 +14,7 @@ use crate::proto::wrp_validator;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::signer::registration_certificate;
+use crate::provider::signer::registration_certificate::model::Credential;
 use crate::provider::verification_protocol::openid4vp::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::mapper::{
     format_authorization_request_client_id_scheme_did,
@@ -284,51 +285,18 @@ impl From<wrp_validator::model::Credential> for registration_certificate::model:
     fn from(value: wrp_validator::model::Credential) -> Self {
         Self {
             format: value.format,
-            meta: value.meta,
             claim: convert_inner_of_inner(value.claim),
         }
     }
 }
 
 pub(super) fn credential_query_matches_reg_cert_credential(
-    credential_query: &dcql::CredentialQuery,
-    req_cert_credential: &registration_certificate::model::Credential,
+    credential_query: &CredentialQuery,
+    req_cert_credential: &Credential,
 ) -> bool {
-    if credential_query.format != req_cert_credential.format {
+    if !format_matches(credential_query, req_cert_credential) {
         return false;
     }
-
-    match (&credential_query.meta, &req_cert_credential.meta) {
-        (
-            CredentialMeta::MsoMdoc {
-                doctype_value: requested,
-            },
-            CredentialMeta::MsoMdoc {
-                doctype_value: allowed,
-            },
-        ) if requested == allowed => {}
-        (
-            CredentialMeta::SdJwtVc {
-                vct_values: requested,
-            },
-            CredentialMeta::SdJwtVc {
-                vct_values: allowed,
-            },
-        ) if requested.iter().all(|vct| allowed.contains(vct)) => {}
-        (
-            CredentialMeta::W3cVc {
-                type_values: types_requested,
-            },
-            CredentialMeta::W3cVc {
-                type_values: types_allowed,
-            },
-        ) if types_requested
-            .iter()
-            .all(|requested| types_allowed.iter().any(|allowed| requested == allowed)) => {}
-        _ => {
-            return false;
-        }
-    };
 
     // B.2.9 <https://www.etsi.org/deliver/etsi_ts/119400_119499/119475/01.02.01_60/ts_119475v010201p.pdf>
     // If claim is absent, the WRPRC does not declare any specific attributes intended to be requested by the WRP.
@@ -346,6 +314,57 @@ pub(super) fn credential_query_matches_reg_cert_credential(
         }
     }
 
+    true
+}
+
+fn format_matches(credential_query: &CredentialQuery, req_cert_credential: &Credential) -> bool {
+    match (&credential_query.format, &req_cert_credential.format) {
+        (
+            CredentialFormat::MsoMdoc(MsoMdocMeta {
+                doctype_value: requested,
+            }),
+            CredentialFormat::MsoMdoc(MsoMdocMeta {
+                doctype_value: allowed,
+            }),
+        ) if requested == allowed => {}
+        (
+            CredentialFormat::SdJwt(SdJwtVcMeta {
+                vct_values: requested,
+            }),
+            CredentialFormat::SdJwt(SdJwtVcMeta {
+                vct_values: allowed,
+            }),
+        ) if requested.iter().all(|vct| allowed.contains(vct)) => {}
+        (
+            CredentialFormat::JwtVc(W3cVcMeta {
+                type_values: types_requested,
+            }),
+            CredentialFormat::JwtVc(W3cVcMeta {
+                type_values: types_allowed,
+            }),
+        )
+        | (
+            CredentialFormat::LdpVc(W3cVcMeta {
+                type_values: types_requested,
+            }),
+            CredentialFormat::LdpVc(W3cVcMeta {
+                type_values: types_allowed,
+            }),
+        )
+        | (
+            CredentialFormat::W3cSdJwt(W3cVcMeta {
+                type_values: types_requested,
+            }),
+            CredentialFormat::W3cSdJwt(W3cVcMeta {
+                type_values: types_allowed,
+            }),
+        ) if types_requested
+            .iter()
+            .all(|requested| types_allowed.iter().any(|allowed| requested == allowed)) => {}
+        _ => {
+            return false;
+        }
+    };
     true
 }
 

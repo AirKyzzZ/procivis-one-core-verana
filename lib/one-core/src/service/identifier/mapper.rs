@@ -1,4 +1,3 @@
-use dcql::CredentialMeta;
 use one_dto_mapper::{convert_inner, try_convert_inner};
 use shared_types::{CredentialSchemaId, OrganisationId, ProofSchemaId};
 
@@ -11,6 +10,7 @@ use super::dto::{
 use super::error::IdentifierServiceError;
 use crate::config::core_config::{BlobStorageType, CoreConfig};
 use crate::error::ContextWithErrorCode;
+use crate::mapper::openid4vp::format_type_to_dcql_format;
 use crate::model::blob::BlobType;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
 use crate::model::identifier::{
@@ -455,7 +455,7 @@ async fn filter_value_from_credential_schema(
         .error_while("retrieving credential schema format")?;
     let schema_id = schema.schema_id().await?;
     let schema_format = SchemaFormat {
-        format: format_type.into(),
+        format: format_type_to_dcql_format(&format_type),
         schema_id,
     };
     let filter_value = match context {
@@ -478,10 +478,11 @@ impl TryFrom<Credential> for Vec<SchemaFormat> {
     type Error = IdentifierServiceError;
 
     fn try_from(value: Credential) -> Result<Self, Self::Error> {
-        let schema_ids = match value.meta {
-            CredentialMeta::MsoMdoc { doctype_value } => vec![doctype_value],
-            CredentialMeta::SdJwtVc { vct_values } => vct_values,
-            CredentialMeta::W3cVc { .. } => {
+        let dcql_format = value.format.dcql_format().to_owned();
+        let schema_ids = match value.format {
+            dcql::CredentialFormat::MsoMdoc(meta) => vec![meta.doctype_value],
+            dcql::CredentialFormat::SdJwt(meta) => meta.vct_values,
+            _ => {
                 return Err(IdentifierServiceError::InvalidTrustInformation(
                     "W3C credentials are not supported in trust information".to_string(),
                 ));
@@ -490,7 +491,7 @@ impl TryFrom<Credential> for Vec<SchemaFormat> {
         Ok(schema_ids
             .into_iter()
             .map(|c| SchemaFormat {
-                format: value.format,
+                format: dcql_format.to_owned(),
                 schema_id: c,
             })
             .collect())

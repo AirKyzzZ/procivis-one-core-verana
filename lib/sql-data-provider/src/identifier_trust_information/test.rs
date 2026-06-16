@@ -1,4 +1,3 @@
-use dcql::CredentialFormat;
 use one_core::model::identifier_trust_information::{IdentifierTrustInformation, SchemaFormat};
 use one_core::repository::identifier_trust_information_repository::IdentifierTrustInformationRepository;
 use shared_types::{BlobId, IdentifierId};
@@ -63,16 +62,16 @@ async fn test_create_identifier_trust_information() {
         valid_to: Some(get_dummy_date()),
         intended_use: Some("intended_use".to_string()),
         allowed_issuance_types: vec![SchemaFormat {
-            format: CredentialFormat::JwtVc,
+            format: "jwt_vc_json".to_string(),
             schema_id: "simple-format".to_string(),
         }],
         allowed_verification_types: vec![
             SchemaFormat {
-                format: CredentialFormat::MsoMdoc,
+                format: "mso_mdoc".to_string(),
                 schema_id: "difficult,|-format".to_string(),
             },
             SchemaFormat {
-                format: CredentialFormat::W3cSdJwt,
+                format: "vc+sd-jwt".to_string(),
                 schema_id: "difficult,%25,|-format2".to_string(),
             },
         ],
@@ -95,16 +94,16 @@ async fn test_get_identifier_trust_information() {
         valid_to: Some(get_dummy_date()),
         intended_use: Some("intended_use".to_string()),
         allowed_issuance_types: vec![SchemaFormat {
-            format: CredentialFormat::JwtVc,
+            format: "jwt_vc_json".to_string(),
             schema_id: "simple-format".to_string(),
         }],
         allowed_verification_types: vec![
             SchemaFormat {
-                format: CredentialFormat::MsoMdoc,
+                format: "mso_mdoc".to_string(),
                 schema_id: "difficult,|-format".to_string(),
             },
             SchemaFormat {
-                format: CredentialFormat::W3cSdJwt,
+                format: "vc+sd-jwt".to_string(),
                 schema_id: "difficult,%25,|-format2".to_string(),
             },
         ],
