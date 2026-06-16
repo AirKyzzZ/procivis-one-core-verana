@@ -518,6 +518,8 @@ pub struct CreateCredentialSchemaV2RequestBindingDTO {
     pub transaction_code: Option<CredentialSchemaTransactionCodeRequestBindingDTO>,
     #[try_into(infallible, with_fn = convert_inner)]
     pub translations: Option<CredentialSchemaTranslationsBindingDTO>,
+    #[try_into(with_fn = try_convert_inner)]
+    pub embedded_disclosure_policy: Option<DisclosurePolicyCreateRequestBindingDTO>,
 }
 
 #[derive(Clone, Debug, Into, uniffi::Record)]
@@ -580,6 +582,8 @@ pub struct ImportCredentialSchemaV2RequestSchemaBindingDTO {
     pub batch_size: Option<i32>,
     #[try_into(infallible, with_fn = convert_inner)]
     pub translations: Option<CredentialSchemaTranslationsBindingDTO>,
+    #[try_into(with_fn = try_convert_inner)]
+    pub embedded_disclosure_policy: Option<DisclosurePolicyBindingDTO>,
 }
 
 #[derive(Clone, Debug, TryInto, uniffi::Record)]
@@ -589,4 +593,37 @@ pub struct ImportCredentialSchemaV2RequestBindingDTO {
     #[try_into(with_fn_ref = into_id)]
     pub organisation_id: String,
     pub schema: ImportCredentialSchemaV2RequestSchemaBindingDTO,
+}
+
+#[derive(Clone, Debug, uniffi::Record)]
+#[uniffi(name = "DisclosurePolicy")]
+pub struct DisclosurePolicyBindingDTO {
+    pub id: String,
+    pub policy: String,
+    pub description: Option<String>,
+    pub url: Option<String>,
+    pub options: Option<DisclosurePolicyOptionsBindingDTO>,
+}
+
+#[derive(Clone, Debug, uniffi::Record)]
+#[uniffi(name = "DisclosurePolicyCreateRequest")]
+pub struct DisclosurePolicyCreateRequestBindingDTO {
+    pub policy: String,
+    pub description: Option<String>,
+    pub url: Option<String>,
+    pub options: Option<DisclosurePolicyOptionsBindingDTO>,
+}
+
+#[derive(Clone, Debug, uniffi::Record)]
+#[uniffi(name = "DisclosurePolicyOptions")]
+pub struct DisclosurePolicyOptionsBindingDTO {
+    pub values: Vec<DisclosurePolicyOptionBindingDTO>,
+}
+
+#[derive(Clone, Debug, uniffi::Record)]
+#[uniffi(name = "DisclosurePolicyOption")]
+pub struct DisclosurePolicyOptionBindingDTO {
+    pub dn: Option<String>,
+    pub entitlement: Option<String>,
+    pub serial: Option<String>,
 }

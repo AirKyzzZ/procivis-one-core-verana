@@ -996,3 +996,67 @@ async fn test_create_credential_schema_v2_default_translation() {
     assert_eq!(schema_translations[0].value, "my schema");
     assert_eq!(schema_translations[0].field, LocalizedTextField::Name);
 }
+
+#[tokio::test]
+async fn test_create_credential_schema_v2_with_dislosure_policy() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credential_schemas
+        .create_v2(CreateSchemaV2Params {
+            name: "v2 schema".into(),
+            organisation_id: organisation.id.into(),
+            formats: vec![jwt_format()],
+            claims: default_claims(),
+            embedded_disclosure_policy: Some(serde_json::json!({
+                "policy": "allowList",
+                "options": {
+                   "values": [{
+                       "dn": "DN",
+                       "entitlement": "entitlement"
+                   }]
+                },
+                "description": "description",
+                "url": "https://url",
+            })),
+            ..Default::default()
+        })
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+    let resp_json = resp.json_value().await;
+    let id = resp_json["id"].parse();
+    let credential_schema = context.db.credential_schemas.get(&id).await;
+
+    let get_resp = context
+        .api
+        .credential_schemas
+        .get_v2(&credential_schema.id)
+        .await
+        .json_value()
+        .await;
+
+    let policy = &get_resp["embeddedDisclosurePolicy"];
+    assert!(
+        policy["id"]
+            .as_str()
+            .unwrap()
+            .ends_with(&format!("/ssi/disclosure-policy/v1/{id}"))
+    );
+    assert_eq!(policy["policy"], "allowList");
+    assert_eq!(policy["description"], "description");
+    assert_eq!(policy["url"], "https://url");
+    assert_eq!(
+        policy["options"],
+        serde_json::json!({
+            "values": [{
+                "dn": "DN",
+                "entitlement": "entitlement"
+            }]
+        })
+    );
+}

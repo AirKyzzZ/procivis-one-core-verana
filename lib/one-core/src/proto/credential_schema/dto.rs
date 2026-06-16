@@ -2,6 +2,7 @@ use one_dto_mapper::{From, Into, TryFrom, convert_inner};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use shared_types::{CredentialFormat, CredentialSchemaId, OrganisationId, RevocationMethodId};
+use standardized_types::etsi_119_472::disclosure_policy::DisclosurePolicy;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -103,6 +104,7 @@ pub struct ImportCredentialSchemaV2RequestSchemaDTO {
     pub batch_size: Option<i32>,
     pub translations:
         Option<crate::service::credential_schema::dto::CredentialSchemaTranslationsDTO>,
+    pub embedded_disclosure_policy: Option<DisclosurePolicy>,
 }
 
 #[derive(Clone, Debug, Deserialize, TryFrom, Into)]

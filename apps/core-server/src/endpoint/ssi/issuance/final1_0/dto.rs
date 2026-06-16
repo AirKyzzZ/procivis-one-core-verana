@@ -26,6 +26,7 @@ use one_dto_mapper::{From, Into, convert_inner, convert_inner_of_inner};
 use proc_macros::options_not_nullable;
 use secrecy::SecretString;
 use serde::{Deserialize, Serialize};
+use standardized_types::etsi_119_472::disclosure_policy::DisclosurePolicy;
 use standardized_types::mapper::secret_string;
 use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
 use utoipa::ToSchema;
@@ -79,6 +80,7 @@ pub(crate) struct OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO {
     pub proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
     #[from(with_fn = convert_inner)]
     pub credential_definition: Option<OpenID4VCICredentialDefinitionRestDTO>,
+    pub disclosure_policy: Option<DisclosurePolicy>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

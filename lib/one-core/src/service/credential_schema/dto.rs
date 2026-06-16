@@ -6,6 +6,7 @@ use shared_types::i18n::I18nString;
 use shared_types::{
     ClaimSchemaId, CredentialFormat, CredentialSchemaId, OrganisationId, RevocationMethodId,
 };
+use standardized_types::etsi_119_472::disclosure_policy::DisclosurePolicy;
 use strum::{Display, EnumString};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -96,6 +97,7 @@ pub struct CredentialSchemaDetailV2ResponseDTO {
     pub requires_wallet_instance_attestation: bool,
     pub transaction_code: Option<CredentialSchemaTransactionCodeDTO>,
     pub translations: CredentialSchemaTranslationsDTO,
+    pub embedded_disclosure_policy: Option<DisclosurePolicy>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -252,6 +254,14 @@ pub struct CreateCredentialSchemaV2RequestDTO {
     pub requires_wallet_instance_attestation: bool,
     pub transaction_code: Option<CredentialSchemaTransactionCodeRequestDTO>,
     pub translations: Option<CredentialSchemaTranslationsDTO>,
+    pub embedded_disclosure_policy: Option<DisclosurePolicyCreateRequest>,
+}
+
+#[derive(Clone, Debug)]
+pub struct DisclosurePolicyCreateRequest {
+    pub policy: standardized_types::etsi_119_472::disclosure_policy::PolicyType,
+    pub description: Option<String>,
+    pub url: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -537,4 +547,6 @@ pub struct ImportCredentialSchemaV2RequestSchemaDTO {
     pub batch_size: Option<i32>,
     #[serde(default)]
     pub translations: Option<CredentialSchemaTranslationsDTO>,
+    #[serde(default)]
+    pub embedded_disclosure_policy: Option<DisclosurePolicy>,
 }

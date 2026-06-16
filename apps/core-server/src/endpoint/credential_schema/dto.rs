@@ -10,8 +10,8 @@ use one_core::service::credential_schema::dto::{
     CredentialSchemaListIncludeEntityTypeEnum, CredentialSchemaListItemResponseDTO,
     CredentialSchemaListItemV2ResponseDTO, CredentialSchemaTransactionCodeDTO,
     CredentialSchemaTransactionCodeRequestDTO, CredentialSchemaTranslationsDTO,
-    ImportCredentialSchemaV2FormatDTO, ImportCredentialSchemaV2RequestDTO,
-    ImportCredentialSchemaV2RequestSchemaDTO,
+    DisclosurePolicyCreateRequest, ImportCredentialSchemaV2FormatDTO,
+    ImportCredentialSchemaV2RequestDTO, ImportCredentialSchemaV2RequestSchemaDTO,
 };
 use one_core::service::error::ServiceError;
 use one_dto_mapper::{
@@ -23,6 +23,7 @@ use shared_types::i18n::I18nString;
 use shared_types::{
     ClaimSchemaId, CredentialFormat, CredentialSchemaId, OrganisationId, RevocationMethodId,
 };
+use standardized_types::etsi_119_472::disclosure_policy::DisclosurePolicy;
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
@@ -748,6 +749,20 @@ pub(crate) struct CreateCredentialSchemaV2RequestRestDTO {
     #[serde(default)]
     #[try_into(infallible, with_fn = convert_inner)]
     pub translations: Option<CredentialSchemaTranslationsRestDTO>,
+    #[serde(default)]
+    #[try_into(infallible, with_fn = convert_inner)]
+    pub embedded_disclosure_policy: Option<DisclosurePolicyCreateRequestRestDTO>,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From, Into)]
+#[from(DisclosurePolicyCreateRequest)]
+#[into(DisclosurePolicyCreateRequest)]
+pub(crate) struct DisclosurePolicyCreateRequestRestDTO {
+    #[serde(flatten)]
+    pub policy: standardized_types::etsi_119_472::disclosure_policy::PolicyType,
+    pub description: Option<String>,
+    pub url: Option<String>,
 }
 
 #[options_not_nullable]
@@ -825,6 +840,7 @@ pub(crate) struct CredentialSchemaV2ResponseRestDTO {
     #[from(with_fn = convert_inner)]
     pub transaction_code: Option<CredentialSchemaTransactionCodeRestDTO>,
     pub translations: CredentialSchemaTranslationsRestDTO,
+    pub embedded_disclosure_policy: Option<DisclosurePolicy>,
 }
 
 #[options_not_nullable]
@@ -925,6 +941,10 @@ pub(crate) struct ImportCredentialSchemaV2RequestSchemaRestDTO {
     #[serde(default)]
     #[try_into(with_fn = convert_inner, infallible)]
     pub translations: Option<CredentialSchemaTranslationsRestDTO>,
+
+    #[serde(default)]
+    #[try_into(infallible)]
+    pub embedded_disclosure_policy: Option<DisclosurePolicy>,
 }
 
 #[cfg(test)]

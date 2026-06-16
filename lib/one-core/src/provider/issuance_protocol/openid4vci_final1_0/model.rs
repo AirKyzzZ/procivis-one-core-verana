@@ -7,6 +7,7 @@ use serde::de::{MapAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::{DurationSeconds, serde_as, skip_serializing_none};
 use shared_types::OrganisationId;
+use standardized_types::etsi_119_472::disclosure_policy::DisclosurePolicy;
 use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
 use strum::Display;
 use time::{Duration, OffsetDateTime};
@@ -264,6 +265,8 @@ pub struct OpenID4VCICredentialConfigurationData {
     // mandatory for SD-JWT VC
     // https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.3.2
     pub vct: Option<String>,
+
+    pub disclosure_policy: Option<DisclosurePolicy>,
 }
 
 #[skip_serializing_none]

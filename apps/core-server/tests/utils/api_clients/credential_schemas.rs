@@ -76,6 +76,7 @@ pub struct CreateSchemaV2Params {
     pub allow_revocation: Option<bool>,
     pub transaction_code: Option<CredentialSchemaTransactionCodeRequestRestDTO>,
     pub translations: Option<serde_json::Value>,
+    pub embedded_disclosure_policy: Option<serde_json::Value>,
 }
 
 impl CreateSchemaParams {
@@ -254,6 +255,9 @@ impl CredentialSchemasApi {
         }
         if let Some(translations) = params.translations {
             body["translations"] = translations;
+        }
+        if let Some(embedded_disclosure_policy) = params.embedded_disclosure_policy {
+            body["embeddedDisclosurePolicy"] = embedded_disclosure_policy;
         }
         self.client.post("/api/credential-schema/v2", body).await
     }

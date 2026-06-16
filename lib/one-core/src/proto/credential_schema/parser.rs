@@ -114,6 +114,7 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
             transaction_code: dto.schema.transaction_code,
             batch_size: None,
             translations: None,
+            embedded_disclosure_policy: None,
         };
 
         self.parse_import_credential_schema_v2(ImportCredentialSchemaV2RequestDTO {
@@ -215,7 +216,12 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
                 }
                 None => Default::default(),
             },
-            embedded_disclosure_policy: None,
+            embedded_disclosure_policy: dto
+                .schema
+                .embedded_disclosure_policy
+                .map(|policy| serde_json::to_string(&policy))
+                .transpose()
+                .map_err(|e| Error::MappingError(e.to_string()))?,
         })
     }
 }

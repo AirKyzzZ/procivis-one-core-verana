@@ -14,6 +14,7 @@ use uuid::Uuid;
 use crate::fixtures::{TestingCertIdentifierParams, create_cert_identifier};
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::blobs::TestingBlobParams;
+use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 use crate::utils::db_clients::identifier_trust_information::TestingIdentifierTrustInformationParams;
 
 #[tokio::test]
@@ -281,6 +282,74 @@ async fn test_get_credential_issuer_metadata_fails_with_certificate_invalid_role
 
     // THEN
     assert_eq!(resp.status(), 400);
+}
+
+#[tokio::test]
+async fn test_get_credential_issuer_metadata_with_disclosure_policy() {
+    // GIVEN
+    let (context, organisation, identifier, ..) =
+        TestContext::new_with_certificate_identifier(None).await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test-schema",
+            &organisation,
+            None,
+            TestingCreateSchemaParams {
+                embedded_disclosure_policy: Some(
+                    serde_json::json!({
+                        "id": "ID",
+                        "policy": "rootOfTrust",
+                        "options": {
+                            "values": [{
+                                "dn": "DN",
+                                "serial": "serial"
+                            }]
+                        },
+                        "description": "description",
+                        "url": "https://url",
+                    })
+                    .to_string(),
+                ),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .ssi
+        .openid_credential_issuer_final1(
+            "OPENID4VCI_FINAL1",
+            identifier.id,
+            credential_schema.id,
+            mime::APPLICATION_JSON.into(),
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let body: Value = resp.json_value().await;
+
+    assert_eq!(
+        body["credential_configurations_supported"]
+            [credential_schema.schema_id().await.unwrap().as_str()]["disclosure_policy"],
+        serde_json::json!({
+            "id": "ID",
+            "policy": "rootOfTrust",
+            "options": {
+                "values": [{
+                    "dn": "DN",
+                    "serial": "serial"
+                }]
+            },
+            "description": "description",
+            "url": "https://url",
+        })
+    );
 }
 
 async fn assert_issuer_metadata(

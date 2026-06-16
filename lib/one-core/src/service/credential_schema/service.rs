@@ -117,6 +117,7 @@ impl CredentialSchemaService {
             requires_wallet_instance_attestation: request.requires_wallet_instance_attestation,
             transaction_code: request.transaction_code,
             translations: None,
+            embedded_disclosure_policy: None,
         };
 
         let id = self
@@ -273,7 +274,8 @@ impl CredentialSchemaService {
                 .collect(),
             imported_source_url,
             &self.config.default_language,
-        );
+            self.core_base_url.as_ref(),
+        )?;
 
         let credential_schema =
             backfill_default_translations(credential_schema, &self.config.default_language)

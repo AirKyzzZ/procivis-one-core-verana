@@ -20,7 +20,8 @@ use one_core::service::credential::dto::{
 };
 use one_core::service::credential_schema::dto::{
     CredentialSchemaFilterParamsDTO, CredentialSchemaListIncludeEntityTypeEnum,
-    CredentialSchemaListItemResponseDTO, ImportCredentialSchemaClaimSchemaDTO,
+    CredentialSchemaListItemResponseDTO, DisclosurePolicyCreateRequest,
+    ImportCredentialSchemaClaimSchemaDTO,
 };
 use one_core::service::did::dto::{
     CreateDidRequestDTO, CreateDidRequestKeysDTO, DidFilterParamsDTO,
@@ -51,6 +52,7 @@ use one_dto_mapper::{convert_inner, convert_inner_of_inner, try_convert_inner};
 use serde_json::json;
 use shared_types::KeyId;
 use shared_types::i18n::I18nString;
+use standardized_types::etsi_119_472::disclosure_policy::DisclosurePolicy;
 use time::OffsetDateTime;
 
 use super::ble::DeviceInfoBindingDTO;
@@ -60,7 +62,9 @@ use super::credential::{
     MdocMsoValidityResponseBindingDTO,
 };
 use super::credential_schema::{
-    CredentialSchemaListQueryBindingDTO, ImportCredentialSchemaV2ClaimSchemaBindingDTO,
+    CredentialSchemaListQueryBindingDTO, DisclosurePolicyBindingDTO,
+    DisclosurePolicyCreateRequestBindingDTO, DisclosurePolicyOptionBindingDTO,
+    ImportCredentialSchemaV2ClaimSchemaBindingDTO,
 };
 use super::did::{DidListQueryBindingDTO, DidRequestBindingDTO, DidRequestKeysBindingDTO};
 use super::history::{
@@ -954,6 +958,113 @@ impl TryFrom<CredentialSchemaListQueryBindingDTO>
             include: value
                 .include
                 .map(|incl| incl.into_iter().map(Into::into).collect()),
+        })
+    }
+}
+
+impl TryFrom<DisclosurePolicyBindingDTO> for DisclosurePolicy {
+    type Error = ErrorResponseBindingDTO;
+
+    fn try_from(value: DisclosurePolicyBindingDTO) -> Result<Self, Self::Error> {
+        use standardized_types::etsi_119_472::disclosure_policy::*;
+
+        let policy = match value.policy.as_str() {
+            "none" => PolicyType::None,
+            "allowList" => PolicyType::AllowList {
+                options: AllowListOptions {
+                    values: convert_inner(
+                        value
+                            .options
+                            .ok_or(ServiceError::MappingError("Missing options".to_string()))?
+                            .values,
+                    ),
+                },
+            },
+            "rootOfTrust" => PolicyType::RootOfTrust {
+                options: RootOfTrustOptions {
+                    values: try_convert_inner(
+                        value
+                            .options
+                            .ok_or(ServiceError::MappingError("Missing options".to_string()))?
+                            .values,
+                    )?,
+                },
+            },
+            _ => return Err(ServiceError::MappingError("Invalid policy".to_string()).into()),
+        };
+
+        Ok(Self {
+            id: value.id,
+            policy,
+            description: value.description,
+            url: value.url,
+        })
+    }
+}
+
+impl TryFrom<DisclosurePolicyCreateRequestBindingDTO> for DisclosurePolicyCreateRequest {
+    type Error = ErrorResponseBindingDTO;
+
+    fn try_from(value: DisclosurePolicyCreateRequestBindingDTO) -> Result<Self, Self::Error> {
+        use standardized_types::etsi_119_472::disclosure_policy::*;
+
+        let policy = match value.policy.as_str() {
+            "none" => PolicyType::None,
+            "allowList" => PolicyType::AllowList {
+                options: AllowListOptions {
+                    values: convert_inner(
+                        value
+                            .options
+                            .ok_or(ServiceError::MappingError("Missing options".to_string()))?
+                            .values,
+                    ),
+                },
+            },
+            "rootOfTrust" => PolicyType::RootOfTrust {
+                options: RootOfTrustOptions {
+                    values: try_convert_inner(
+                        value
+                            .options
+                            .ok_or(ServiceError::MappingError("Missing options".to_string()))?
+                            .values,
+                    )?,
+                },
+            },
+            _ => return Err(ServiceError::MappingError("Invalid policy".to_string()).into()),
+        };
+
+        Ok(Self {
+            policy,
+            description: value.description,
+            url: value.url,
+        })
+    }
+}
+
+impl From<DisclosurePolicyOptionBindingDTO>
+    for standardized_types::etsi_119_472::disclosure_policy::AllowListOption
+{
+    fn from(value: DisclosurePolicyOptionBindingDTO) -> Self {
+        Self {
+            dn: value.dn,
+            entitlement: value.entitlement,
+        }
+    }
+}
+
+impl TryFrom<DisclosurePolicyOptionBindingDTO>
+    for standardized_types::etsi_119_472::disclosure_policy::RootOfTrustOption
+{
+    type Error = ErrorResponseBindingDTO;
+
+    fn try_from(value: DisclosurePolicyOptionBindingDTO) -> Result<Self, Self::Error> {
+        Ok(Self {
+            dn: value
+                .dn
+                .ok_or(ServiceError::MappingError("Missing dn".to_string()))?,
+            serial: value
+                .serial
+                .ok_or(ServiceError::MappingError("Missing serial".to_string()))?,
         })
     }
 }

@@ -4,6 +4,7 @@ use dcql::CredentialMeta;
 use indexmap::IndexMap;
 use one_dto_mapper::convert_inner;
 use shared_types::{CredentialFormat, CredentialSchemaId, OrganisationId};
+use standardized_types::etsi_119_472::disclosure_policy::DisclosurePolicy;
 use url::Url;
 use uuid::Uuid;
 
@@ -332,6 +333,14 @@ pub(crate) async fn schema_to_detail_v2_response_dto(
 
     let claim_schemas_v2 = renest_claim_schemas_v2(claim_schemas_v2)?;
 
+    let embedded_disclosure_policy = match &value.embedded_disclosure_policy {
+        None => None,
+        Some(policy) => Some(
+            serde_json::from_str(policy)
+                .map_err(|e| CredentialSchemaServiceError::MappingError(e.to_string()))?,
+        ),
+    };
+
     Ok(CredentialSchemaDetailV2ResponseDTO {
         translations: map_translations(&value).await?,
         id: value.id,
@@ -350,6 +359,7 @@ pub(crate) async fn schema_to_detail_v2_response_dto(
         batch_size: value.batch_size,
         requires_wallet_instance_attestation: value.requires_wallet_instance_attestation,
         transaction_code: convert_inner(value.transaction_code),
+        embedded_disclosure_policy,
     })
 }
 
@@ -481,8 +491,28 @@ pub(super) fn from_create_v2_request_with_id(
     claim_schemas: Vec<ClaimSchema>,
     imported_source_url: String,
     default_language: &str,
-) -> CredentialSchema {
-    CredentialSchema {
+    core_base_url: Option<&String>,
+) -> Result<CredentialSchema, CredentialSchemaServiceError> {
+    let embedded_disclosure_policy = match request.embedded_disclosure_policy {
+        None => None,
+        Some(request) => {
+            let core_base_url = core_base_url.ok_or(CredentialSchemaServiceError::MappingError(
+                "missing core_base_url".to_string(),
+            ))?;
+            let policy = DisclosurePolicy {
+                id: format!("{core_base_url}/ssi/disclosure-policy/v1/{id}"),
+                policy: request.policy,
+                description: request.description,
+                url: request.url,
+            };
+            Some(
+                serde_json::to_string(&policy)
+                    .map_err(|e| CredentialSchemaServiceError::MappingError(e.to_string()))?,
+            )
+        }
+    };
+
+    Ok(CredentialSchema {
         id,
         allow_revocation: request.allow_revocation,
         deleted_at: None,
@@ -506,8 +536,8 @@ pub(super) fn from_create_v2_request_with_id(
             None => default_name_translation(id, request.name, now, default_language),
         }
         .into(),
-        embedded_disclosure_policy: None,
-    }
+        embedded_disclosure_policy,
+    })
 }
 
 pub(crate) fn schema_translations_from_dto(
