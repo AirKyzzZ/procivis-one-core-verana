@@ -258,9 +258,29 @@ impl OpenID4VCIFinal1_0 {
         interaction_data: &HolderInteractionData,
         format: &CredentialFormat,
     ) -> Result<CredentialSchema, IssuanceProtocolError> {
-        let mut schema = self
+        let (mut schema, conflicting_format) = self
             .prepare_credential_schema(interaction_data, credential, organisation)
             .await?;
+
+        // Adjust format if it was replaced by a different one of the same type.
+        if let Some(conflicting_format) = conflicting_format {
+            let mut formats = credential
+                .schema
+                .as_mut()
+                .ok_or(IssuanceProtocolError::Failed(
+                    "missing parsed schema".to_string(),
+                ))?
+                .formats
+                .as_mut()
+                .await?;
+            formats
+                .first_mut()
+                .ok_or(IssuanceProtocolError::Failed(
+                    "missing parsed format".to_string(),
+                ))?
+                .format = conflicting_format;
+        }
+
         let (new_claim_schemas, new_mappings) = validate_existing_and_find_new_claim_schemas(
             &mut schema,
             credential,
@@ -436,12 +456,30 @@ impl OpenID4VCIFinal1_0 {
                 .as_ref(),
         )?;
 
-        let (config_key, formatter) = self
-            .formatter_provider
-            .get_formatter_by_type(format_type)
+        // TODO: the _exact_ format of the batch parent should be known. Address when properly implementing
+        // multi-format issuance.
+        let parent_formats = schema.formats.as_ref().await?;
+        let parent_format = parent_formats
+            .iter()
+            .find(|f| {
+                self.config
+                    .format
+                    .get_type(&f.format)
+                    .ok()
+                    .is_some_and(|f| f == format_type)
+            })
             .ok_or_else(|| {
-                IssuanceProtocolError::Failed(format!("{format_type} formatter not found"))
-            })?;
+                IssuanceProtocolError::Failed(format!(
+                    "batch parent schema {} does not have a format of type `{format_type}`",
+                    schema.id
+                ))
+            })?
+            .format
+            .clone();
+        drop(parent_formats);
+        let formatter = self
+            .formatter_provider
+            .get_credential_formatter(&parent_format)?;
 
         let mut batch_credentials = Vec::with_capacity(issuer_response.credentials.len());
         for issued_credential in issuer_response.credentials {
@@ -470,7 +508,7 @@ impl OpenID4VCIFinal1_0 {
         validate_existing_and_find_new_claim_schemas(
             &mut schema,
             &mut batch_credential.credential,
-            &config_key,
+            &parent_format,
             &self.config.default_language,
             false,
         )
@@ -650,7 +688,7 @@ impl OpenID4VCIFinal1_0 {
         interaction_data: &HolderInteractionData,
         parsed_credential: &Credential,
         organisation: &Organisation,
-    ) -> Result<CredentialSchema, IssuanceProtocolError> {
+    ) -> Result<(CredentialSchema, Option<CredentialFormat>), IssuanceProtocolError> {
         let mut schema = parsed_credential
             .schema
             .as_ref()
@@ -676,7 +714,7 @@ impl OpenID4VCIFinal1_0 {
             })
             .and_then(|levels| convert_inner(KeyStorageSecurityLevel::select_lowest(levels)));
 
-        let stored_schema = get_or_create_credential_schema(
+        let result = get_or_create_credential_schema(
             self.credential_schema_importer.as_ref(),
             self.credential_schema_repository.as_ref(),
             schema,
@@ -685,7 +723,7 @@ impl OpenID4VCIFinal1_0 {
         )
         .await?;
 
-        Ok(stored_schema)
+        Ok(result)
     }
 }
 async fn get_or_create_credential_schema(
@@ -694,7 +732,7 @@ async fn get_or_create_credential_schema(
     credential_schema: CredentialSchema,
     organisation_id: OrganisationId,
     config: &CoreConfig,
-) -> Result<CredentialSchema, IssuanceProtocolError> {
+) -> Result<(CredentialSchema, Option<CredentialFormat>), IssuanceProtocolError> {
     let parsed_schema_id = credential_schema
         .schema_id()
         .await
@@ -709,11 +747,10 @@ async fn get_or_create_credential_schema(
         .error_while("getting credential schema")?;
 
     if let Some(stored_schema) = stored_schema {
-        if let Some(conflicting_schema) =
+        let conflicting_format = if let Some(conflicting_schema) =
             stored_schema.formats.as_ref().await?.iter().find(|format| {
                 format.schema_id == parsed_schema_id && format.format != parsed_format
-            })
-        {
+            }) {
             if config
                 .format
                 .get_type(&conflicting_schema.format)
@@ -729,21 +766,24 @@ async fn get_or_create_credential_schema(
                     conflicting_schema.format,
                     parsed_format
                 );
+                Some(conflicting_schema.format.clone())
             } else {
                 return Err(IssuanceProtocolError::Failed(format!(
                     "Credential schema conflict: credential schema with id {} has matching schema_id {} but different format {}",
                     conflicting_schema.id, conflicting_schema.schema_id, conflicting_schema.format
                 )));
             }
-        }
-        Ok(stored_schema)
+        } else {
+            None
+        };
+        Ok((stored_schema, conflicting_format))
     } else {
         match credential_schema_importer
             .import_credential_schema(credential_schema)
             .await
         {
             Ok(schema) => {
-                return Ok(schema);
+                return Ok((schema, None));
             }
             Err(error) if error.error_code() == ErrorCode::BR_0007 => {
                 tracing::debug!("Conflicting schema detected during parsing, refetching");
@@ -762,7 +802,7 @@ async fn get_or_create_credential_schema(
                 "Credential schema not found".to_string(),
             ))?;
 
-        Ok(stored_schema)
+        Ok((stored_schema, None))
     }
 }
 
