@@ -189,6 +189,8 @@ pub(crate) struct HolderInteractionData {
     pub trust_resolution: TrustResolutionResult,
     #[serde(default = "TrustMode::optional")]
     pub trust_mode: TrustMode,
+    #[serde(default)]
+    pub disclosure_policy: Option<DisclosurePolicy>,
 }
 
 // https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#section-12.2.4

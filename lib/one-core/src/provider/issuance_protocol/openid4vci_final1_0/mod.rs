@@ -1183,6 +1183,7 @@ impl OpenID4VCIFinal1_0 {
             trust_resolution,
             trust_mode,
             relying_party_id,
+            disclosure_policy: credential_config.disclosure_policy.clone(),
         };
         let data = serialize_interaction_data(&holder_data)?;
 

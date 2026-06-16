@@ -132,6 +132,12 @@ impl OpenID4VCIFinal1_0 {
             let cert = result.credential.issuer_certificate.clone();
             (result, cert)
         };
+
+        if let Some(disclosure_policy) = &interaction_data.disclosure_policy {
+            main_credential.credential.embedded_disclosure_policy =
+                Some(serde_json::to_string(disclosure_policy)?);
+        }
+
         let main_credential_id = main_credential.credential.id;
 
         let schema = self

@@ -2032,5 +2032,6 @@ fn dummy_interaction() -> HolderInteractionData {
         relying_party_name: None,
         trust_resolution: TrustResolutionResult::Trusted,
         trust_mode: TrustMode::TrustOptional,
+        disclosure_policy: None,
     }
 }

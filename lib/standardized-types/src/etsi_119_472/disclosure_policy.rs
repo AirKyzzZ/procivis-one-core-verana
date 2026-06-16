@@ -5,7 +5,7 @@ use serde_with::skip_serializing_none;
 
 #[skip_serializing_none]
 #[cfg_attr(feature = "utoipa", proc_macros::options_not_nullable)]
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub struct DisclosurePolicy {
     pub id: String,
@@ -15,7 +15,7 @@ pub struct DisclosurePolicy {
     pub url: Option<String>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 #[serde(rename_all = "camelCase", tag = "policy")]
 pub enum PolicyType {
@@ -24,7 +24,7 @@ pub enum PolicyType {
     RootOfTrust { options: RootOfTrustOptions },
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub struct AllowListOptions {
     pub values: Vec<AllowListOption>,
@@ -32,20 +32,20 @@ pub struct AllowListOptions {
 
 #[skip_serializing_none]
 #[cfg_attr(feature = "utoipa", proc_macros::options_not_nullable)]
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub struct AllowListOption {
     pub dn: Option<String>,
     pub entitlement: Option<String>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub struct RootOfTrustOptions {
     pub values: Vec<RootOfTrustOption>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub struct RootOfTrustOption {
     pub dn: String,
