@@ -1326,7 +1326,7 @@ impl OpenID4VCIFinal1_0 {
 
                 let configuration = credential_configuration_supported(
                     &format_type,
-                    &format.schema_id,
+                    format,
                     &schema,
                     map_cryptographic_binding_methods_supported(
                         &self.did_method_provider.supported_method_names(),

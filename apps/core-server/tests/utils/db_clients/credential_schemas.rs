@@ -111,7 +111,18 @@ impl CredentialSchemasDB {
             }
             cm
         } else {
-            Default::default()
+            claim_schemas
+                .iter()
+                .map(|cs| CredentialSchemaFormatClaimSchema {
+                    id: Uuid::new_v4().into(),
+                    created_date: get_dummy_date(),
+                    last_modified: get_dummy_date(),
+                    credential_schema_format_id,
+                    claim_schema_id: cs.id,
+                    technical_key: cs.key.to_owned(),
+                    namespace: None,
+                })
+                .collect::<Vec<_>>()
         };
 
         let id = params.id.unwrap_or(Uuid::new_v4().into());
@@ -191,7 +202,7 @@ impl CredentialSchemasDB {
         revocation_method: impl Into<Option<RevocationMethodId>>,
         params: TestingCreateSchemaParams,
     ) -> CredentialSchema {
-        let id = Uuid::new_v4();
+        let id = Uuid::new_v4().into();
         let claim_schema = ClaimSchema {
             id: Uuid::new_v4().into(),
             key: "first name#".to_string(),
@@ -205,10 +216,11 @@ impl CredentialSchemasDB {
         };
         let claim_schemas = vec![claim_schema.to_owned()];
 
+        let format_id = Uuid::new_v4().into();
         let mut credential_schema = CredentialSchema {
             batch_size: params.batch_size,
             allow_revocation: None,
-            id: id.into(),
+            id,
             imported_source_url: "CORE_URL".to_string(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
@@ -217,13 +229,25 @@ impl CredentialSchemasDB {
             organisation: organisation.clone().into(),
             deleted_at: None,
             formats: vec![CredentialSchemaFormat {
-                id: Uuid::new_v4().into(),
+                id: format_id,
                 created_date: one_core::clock::now_utc(),
                 last_modified: one_core::clock::now_utc(),
-                credential_schema_id: id.into(),
+                credential_schema_id: id,
                 format: params.format.unwrap_or("JSON_LD_BBSPLUS".into()),
                 schema_id: id.to_string(),
-                claim_mappings: Default::default(),
+                claim_mappings: claim_schemas
+                    .iter()
+                    .map(|cs| CredentialSchemaFormatClaimSchema {
+                        id: Uuid::new_v4().into(),
+                        created_date: get_dummy_date(),
+                        last_modified: get_dummy_date(),
+                        credential_schema_format_id: format_id,
+                        claim_schema_id: cs.id,
+                        technical_key: cs.key.to_owned(),
+                        namespace: None,
+                    })
+                    .collect::<Vec<_>>()
+                    .into(),
             }]
             .into(),
             revocation_method: revocation_method.into(),
@@ -319,11 +343,12 @@ impl CredentialSchemasDB {
             claim_schema_field.to_owned(),
         ];
 
-        let id = Uuid::new_v4();
+        let id = Uuid::new_v4().into();
+        let format_id = Uuid::new_v4().into();
         let mut credential_schema = CredentialSchema {
             batch_size: params.batch_size,
             allow_revocation: None,
-            id: id.into(),
+            id,
             imported_source_url: "CORE_URL".to_string(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
@@ -332,13 +357,25 @@ impl CredentialSchemasDB {
             organisation: organisation.clone().into(),
             deleted_at: None,
             formats: vec![CredentialSchemaFormat {
-                id: Uuid::new_v4().into(),
+                id: format_id,
                 created_date: one_core::clock::now_utc(),
                 last_modified: one_core::clock::now_utc(),
-                credential_schema_id: id.into(),
+                credential_schema_id: id,
                 format: params.format.unwrap_or("JWT".into()),
                 schema_id: params.schema_id.unwrap_or("doctype".to_string()),
-                claim_mappings: Default::default(),
+                claim_mappings: claim_schemas
+                    .iter()
+                    .map(|cs| CredentialSchemaFormatClaimSchema {
+                        id: Uuid::new_v4().into(),
+                        created_date: get_dummy_date(),
+                        last_modified: get_dummy_date(),
+                        credential_schema_format_id: format_id,
+                        claim_schema_id: cs.id,
+                        technical_key: cs.key.to_owned(),
+                        namespace: None,
+                    })
+                    .collect::<Vec<_>>()
+                    .into(),
             }]
             .into(),
             revocation_method: revocation_method.into(),
@@ -434,11 +471,12 @@ impl CredentialSchemasDB {
             claim_schema_address_coordinates_y.to_owned(),
         ];
 
-        let id = Uuid::new_v4();
+        let id = Uuid::new_v4().into();
+        let format_id = Uuid::new_v4().into();
         let mut credential_schema = CredentialSchema {
             batch_size: params.batch_size,
             allow_revocation: None,
-            id: id.into(),
+            id,
             imported_source_url: "CORE_URL".to_string(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
@@ -447,13 +485,25 @@ impl CredentialSchemasDB {
             organisation: organisation.clone().into(),
             deleted_at: None,
             formats: vec![CredentialSchemaFormat {
-                id: Uuid::new_v4().into(),
+                id: format_id,
                 created_date: one_core::clock::now_utc(),
                 last_modified: one_core::clock::now_utc(),
-                credential_schema_id: id.into(),
+                credential_schema_id: id,
                 format: params.format.unwrap_or("JWT".into()),
                 schema_id: format!("ssi/schema/{id}"),
-                claim_mappings: Default::default(),
+                claim_mappings: claim_schemas
+                    .iter()
+                    .map(|cs| CredentialSchemaFormatClaimSchema {
+                        id: Uuid::new_v4().into(),
+                        created_date: get_dummy_date(),
+                        last_modified: get_dummy_date(),
+                        credential_schema_format_id: format_id,
+                        claim_schema_id: cs.id,
+                        technical_key: cs.key.to_owned(),
+                        namespace: None,
+                    })
+                    .collect::<Vec<_>>()
+                    .into(),
             }]
             .into(),
             revocation_method: revocation_method.into(),
@@ -561,11 +611,12 @@ impl CredentialSchemasDB {
             claim_schema_address_coordinates_y.to_owned(),
         ];
 
-        let id = Uuid::new_v4();
+        let id = Uuid::new_v4().into();
+        let format_id = Uuid::new_v4().into();
         let mut credential_schema = CredentialSchema {
             batch_size: params.batch_size,
             allow_revocation: None,
-            id: id.into(),
+            id,
             imported_source_url: "CORE_URL".to_string(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
@@ -574,13 +625,25 @@ impl CredentialSchemasDB {
             organisation: organisation.clone().into(),
             deleted_at: None,
             formats: vec![CredentialSchemaFormat {
-                id: Uuid::new_v4().into(),
+                id: format_id,
                 created_date: one_core::clock::now_utc(),
                 last_modified: one_core::clock::now_utc(),
-                credential_schema_id: id.into(),
+                credential_schema_id: id,
                 format: params.format.unwrap_or("JWT".into()),
                 schema_id: format!("ssi/schema/{id}"),
-                claim_mappings: Default::default(),
+                claim_mappings: claim_schemas
+                    .iter()
+                    .map(|cs| CredentialSchemaFormatClaimSchema {
+                        id: Uuid::new_v4().into(),
+                        created_date: get_dummy_date(),
+                        last_modified: get_dummy_date(),
+                        credential_schema_format_id: format_id,
+                        claim_schema_id: cs.id,
+                        technical_key: cs.key.to_owned(),
+                        namespace: None,
+                    })
+                    .collect::<Vec<_>>()
+                    .into(),
             }]
             .into(),
             revocation_method: revocation_method.into(),
@@ -830,11 +893,12 @@ impl CredentialSchemasDB {
             claim_schema_address_coordinates_y.to_owned(),
         ];
 
-        let id = Uuid::new_v4();
+        let id = Uuid::new_v4().into();
+        let format_id = Uuid::new_v4().into();
         let mut credential_schema = CredentialSchema {
             batch_size: params.batch_size,
             allow_revocation: None,
-            id: id.into(),
+            id,
             imported_source_url: "CORE_URL".to_string(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
@@ -842,13 +906,25 @@ impl CredentialSchemasDB {
             key_storage_security: params.key_storage_security,
             organisation: organisation.clone().into(),
             formats: vec![CredentialSchemaFormat {
-                id: Uuid::new_v4().into(),
+                id: format_id,
                 created_date: one_core::clock::now_utc(),
                 last_modified: one_core::clock::now_utc(),
-                credential_schema_id: id.into(),
+                credential_schema_id: id,
                 format: params.format.unwrap_or("JWT".into()),
                 schema_id: format!("ssi/schema/{id}"),
-                claim_mappings: Default::default(),
+                claim_mappings: claim_schemas
+                    .iter()
+                    .map(|cs| CredentialSchemaFormatClaimSchema {
+                        id: Uuid::new_v4().into(),
+                        created_date: get_dummy_date(),
+                        last_modified: get_dummy_date(),
+                        credential_schema_format_id: format_id,
+                        claim_schema_id: cs.id,
+                        technical_key: cs.key.to_owned(),
+                        namespace: None,
+                    })
+                    .collect::<Vec<_>>()
+                    .into(),
             }]
             .into(),
             deleted_at: None,
@@ -893,11 +969,12 @@ impl CredentialSchemasDB {
         };
         let claim_schemas = vec![claim_schema.to_owned()];
 
-        let new_id = Uuid::new_v4();
+        let id = Uuid::new_v4().into();
+        let format_id = Uuid::new_v4().into();
         let mut credential_schema = CredentialSchema {
             batch_size: None,
             allow_revocation: None,
-            id: new_id.into(),
+            id,
             imported_source_url: "CORE_URL".to_string(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
@@ -905,13 +982,25 @@ impl CredentialSchemasDB {
             name: name.to_owned(),
             organisation: organisation.clone().into(),
             formats: vec![CredentialSchemaFormat {
-                id: Uuid::new_v4().into(),
+                id: format_id,
                 created_date: one_core::clock::now_utc(),
                 last_modified: one_core::clock::now_utc(),
-                credential_schema_id: new_id.into(),
+                credential_schema_id: id,
                 format: "JWT".into(),
-                schema_id: "new_id.to_string()".to_owned(),
-                claim_mappings: Default::default(),
+                schema_id: id.to_string(),
+                claim_mappings: claim_schemas
+                    .iter()
+                    .map(|cs| CredentialSchemaFormatClaimSchema {
+                        id: Uuid::new_v4().into(),
+                        created_date: get_dummy_date(),
+                        last_modified: get_dummy_date(),
+                        credential_schema_format_id: format_id,
+                        claim_schema_id: cs.id,
+                        technical_key: cs.key.to_owned(),
+                        namespace: None,
+                    })
+                    .collect::<Vec<_>>()
+                    .into(),
             }]
             .into(),
             deleted_at: None,
@@ -1064,6 +1153,8 @@ impl CredentialSchemasDB {
         let claim_schemas = vec![claim_schema, claim_schema1];
 
         let id = Uuid::new_v4().into();
+        let sd_jwt_vc_format_id = Uuid::new_v4().into();
+        let mdoc_format_id = Uuid::new_v4().into();
         let credential_schema = CredentialSchema {
             batch_size,
             allow_revocation: None,
@@ -1077,22 +1168,46 @@ impl CredentialSchemasDB {
             deleted_at: None,
             formats: vec![
                 CredentialSchemaFormat {
-                    id: Uuid::new_v4().into(),
+                    id: sd_jwt_vc_format_id,
                     created_date: one_core::clock::now_utc(),
                     last_modified: one_core::clock::now_utc(),
                     credential_schema_id: id,
                     format: "SD_JWT_VC".into(),
                     schema_id: "sd-jwt_vct".to_string(),
-                    claim_mappings: Default::default(),
+                    claim_mappings: claim_schemas
+                        .iter()
+                        .map(|cs| CredentialSchemaFormatClaimSchema {
+                            id: Uuid::new_v4().into(),
+                            created_date: get_dummy_date(),
+                            last_modified: get_dummy_date(),
+                            credential_schema_format_id: sd_jwt_vc_format_id,
+                            claim_schema_id: cs.id,
+                            technical_key: cs.key.to_owned(),
+                            namespace: None,
+                        })
+                        .collect::<Vec<_>>()
+                        .into(),
                 },
                 CredentialSchemaFormat {
-                    id: Uuid::new_v4().into(),
+                    id: mdoc_format_id,
                     created_date: one_core::clock::now_utc(),
                     last_modified: one_core::clock::now_utc(),
                     credential_schema_id: id,
                     format: "MDOC".into(),
                     schema_id: "mdoc_doctype".to_string(),
-                    claim_mappings: Default::default(),
+                    claim_mappings: claim_schemas
+                        .iter()
+                        .map(|cs| CredentialSchemaFormatClaimSchema {
+                            id: Uuid::new_v4().into(),
+                            created_date: get_dummy_date(),
+                            last_modified: get_dummy_date(),
+                            credential_schema_format_id: mdoc_format_id,
+                            claim_schema_id: cs.id,
+                            technical_key: cs.key.to_owned(),
+                            namespace: Some("namespace".to_string()),
+                        })
+                        .collect::<Vec<_>>()
+                        .into(),
                 },
             ]
             .into(),

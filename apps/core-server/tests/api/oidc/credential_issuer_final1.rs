@@ -404,7 +404,7 @@ async fn assert_issuer_metadata(
 
 fn assert_expected_claims(claims: &Value) {
     let claims_array = claims.as_array().unwrap();
-    assert_eq!(claims_array.len(), 10); // Total number of claims including nested ones
+    assert_eq!(claims_array.len(), 14); // Total number of claims including nested ones
 
     // Helper function to find a claim by path
     let find_claim = |path: &[&str]| -> &Value {
@@ -430,10 +430,22 @@ fn assert_expected_claims(claims: &Value) {
     assert_eq!(string_array_claim["mandatory"], true);
     assert_eq!(string_array_claim["display"][0]["name"], "string_array");
 
+    let object_array_claim = find_claim(&["object_array"]);
+    assert_eq!(object_array_claim["mandatory"], true);
+    assert_eq!(object_array_claim["display"][0]["name"], "object_array");
+
+    let address_claim = find_claim(&["address"]);
+    assert_eq!(address_claim["mandatory"], true);
+    assert_eq!(address_claim["display"][0]["name"], "address");
+
     // Check nested claims
     let address_street_claim = find_claim(&["address", "street"]);
     assert_eq!(address_street_claim["mandatory"], true);
     assert_eq!(address_street_claim["display"][0]["name"], "street");
+
+    let coordinates_claim = find_claim(&["address", "coordinates"]);
+    assert_eq!(coordinates_claim["mandatory"], true);
+    assert_eq!(coordinates_claim["display"][0]["name"], "coordinates");
 
     let coordinates_x_claim = find_claim(&["address", "coordinates", "x"]);
     assert_eq!(coordinates_x_claim["mandatory"], true);
@@ -461,6 +473,13 @@ fn assert_expected_claims(claims: &Value) {
     assert_eq!(object_array_field2_claim["display"][0]["name"], "field2");
 
     // Check nested object array claims
+    let nested_object_array_claim = find_claim(&["address", "coordinates", "object_array"]);
+    assert_eq!(nested_object_array_claim["mandatory"], true);
+    assert_eq!(
+        nested_object_array_claim["display"][0]["name"],
+        "object_array"
+    );
+
     let nested_object_array_field1_claim =
         find_claim(&["address", "coordinates", "object_array", "field1"]);
     assert_eq!(nested_object_array_field1_claim["mandatory"], true);

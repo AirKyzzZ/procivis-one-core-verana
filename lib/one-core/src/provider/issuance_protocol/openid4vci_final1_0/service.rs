@@ -30,6 +30,7 @@ use crate::config::core_config::FormatType;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::credential_schema::CredentialSchema;
+use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::identifier::Identifier;
 use crate::model::interaction::Interaction;
 use crate::model::localized_text::LocalizedTextField;
@@ -82,14 +83,15 @@ pub(crate) fn create_issuer_metadata_response(
 }
 
 pub(crate) async fn credential_configuration_supported(
-    format: &FormatType,
-    schema_id: &str,
+    format_type: &FormatType,
+    format: &CredentialSchemaFormat,
     credential_schema: &CredentialSchema,
     cryptographic_binding_methods_supported: Vec<String>,
     proof_types_supported: IndexMap<String, OpenID4VCIProofTypeSupported>,
     credential_signing_alg_values_supported: Vec<String>,
 ) -> Result<OpenID4VCICredentialConfigurationData, OpenID4VCIError> {
-    let credential_metadata_claims = create_claims_dtos_from_claims(credential_schema).await?;
+    let credential_metadata_claims =
+        create_claims_dtos_from_claims(credential_schema, format).await?;
     let display_dtos = create_display_dtos_from_schema(credential_schema).await?;
 
     let credential_metadata = OpenID4VCICredentialMetadataResponseDTO {
@@ -106,7 +108,7 @@ pub(crate) async fn credential_configuration_supported(
         ),
     };
 
-    Ok(match format {
+    Ok(match format_type {
         FormatType::JsonLdClassic | FormatType::JsonLdBbsPlus => jsonld_configuration(
             "ldp_vc",
             credential_metadata,
@@ -125,7 +127,7 @@ pub(crate) async fn credential_configuration_supported(
         FormatType::SdJwt => sdjwt_configuration(
             "vc+sd-jwt",
             credential_metadata,
-            schema_id,
+            &format.schema_id,
             cryptographic_binding_methods_supported,
             proof_types_supported,
             credential_signing_alg_values_supported,
@@ -134,14 +136,14 @@ pub(crate) async fn credential_configuration_supported(
         FormatType::SdJwtVc => sdjwt_configuration(
             "dc+sd-jwt",
             credential_metadata,
-            schema_id,
+            &format.schema_id,
             cryptographic_binding_methods_supported,
             proof_types_supported,
             credential_signing_alg_values_supported,
             disclosure_policy,
         ),
         FormatType::Mdoc => mdoc_configuration(
-            schema_id.to_string(),
+            format.schema_id.to_string(),
             credential_metadata,
             proof_types_supported,
             disclosure_policy,
@@ -151,30 +153,48 @@ pub(crate) async fn credential_configuration_supported(
 
 async fn create_claims_dtos_from_claims(
     credential_schema: &CredentialSchema,
+    format: &CredentialSchemaFormat,
 ) -> Result<Vec<OpenID4VCICredentialMetadataClaimResponseDTO>, OpenID4VCIError> {
-    let claims = credential_schema
+    let claim_schemas = credential_schema
         .claim_schemas
         .as_ref()
         .await
         .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?;
 
+    let claim_mappings = format
+        .claim_mappings
+        .as_ref()
+        .await
+        .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?;
+
     let mut result = vec![];
-    for claim in &claims {
-        if claim.data_type == "OBJECT" || claim.metadata {
+    for claim_schema in &claim_schemas {
+        if claim_schema.metadata {
             continue;
         }
 
-        let path = claim
-            .key
+        let mapping = claim_mappings
+            .iter()
+            .find(|m| m.claim_schema_id == claim_schema.id)
+            .ok_or(OpenID4VCIError::RuntimeError(
+                "Missing claim schema mapping".to_string(),
+            ))?;
+
+        let mut path = mapping
+            .technical_key
             .split('/')
             .map(|s| s.to_string())
             .collect::<Vec<String>>();
 
-        let display = create_claim_display_dtos(claim).await?;
+        if let Some(namespace) = &mapping.namespace {
+            path.insert(0, namespace.to_string());
+        }
+
+        let display = create_claim_display_dtos(claim_schema).await?;
 
         result.push(OpenID4VCICredentialMetadataClaimResponseDTO {
             path,
-            mandatory: Some(claim.required),
+            mandatory: Some(claim_schema.required),
             additional_values: None,
             display: Some(display),
         });

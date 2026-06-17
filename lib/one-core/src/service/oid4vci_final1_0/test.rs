@@ -19,6 +19,7 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
 use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, LayoutType};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
+use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::did::Did;
 use crate::model::identifier::{Identifier, IdentifierType};
 use crate::model::interaction::{Interaction, InteractionType};
@@ -190,6 +191,32 @@ fn generic_organisation() -> Organisation {
 fn generic_credential_schema() -> CredentialSchema {
     let now = crate::clock::now_utc();
     let credential_schema_id = Uuid::new_v4().into();
+
+    let claim_schemas = {
+        let claim_schema_id = Uuid::new_v4().into();
+        vec![ClaimSchema {
+            array: false,
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            data_type: "STRING".to_string(),
+            key: "key".to_string(),
+            id: claim_schema_id,
+            metadata: false,
+            required: true,
+            translations: vec![LocalizedText {
+                entity_id: claim_schema_id.into(),
+                field: LocalizedTextField::Name,
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                lang: "en".to_string(),
+                value: "key".to_string(),
+                entity_type: LocalizedTextEntityType::ClaimSchema,
+            }]
+            .into(),
+        }]
+    };
+
+    let format_id = Uuid::new_v4().into();
     CredentialSchema {
         batch_size: None,
         allow_revocation: None,
@@ -201,40 +228,29 @@ fn generic_credential_schema() -> CredentialSchema {
         name: "SchemaName".to_string(),
         key_storage_security: Some(KeyStorageSecurity::Basic),
         formats: vec![CredentialSchemaFormat {
-            id: Uuid::new_v4().into(),
+            id: format_id,
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
             credential_schema_id,
             format: "JWT".into(),
             schema_id: "CredentialSchemaId".to_owned(),
-            claim_mappings: Default::default(),
+            claim_mappings: claim_schemas
+                .iter()
+                .map(|cs| CredentialSchemaFormatClaimSchema {
+                    id: Uuid::new_v4().into(),
+                    created_date: get_dummy_date(),
+                    last_modified: get_dummy_date(),
+                    credential_schema_format_id: format_id,
+                    claim_schema_id: cs.id,
+                    technical_key: cs.key.to_owned(),
+                    namespace: None,
+                })
+                .collect::<Vec<_>>()
+                .into(),
         }]
         .into(),
         revocation_method: None,
-        claim_schemas: {
-            let claim_schema_id: shared_types::ClaimSchemaId = Uuid::new_v4().into();
-            vec![ClaimSchema {
-                array: false,
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-                data_type: "STRING".to_string(),
-                key: "key".to_string(),
-                id: claim_schema_id,
-                metadata: false,
-                required: true,
-                translations: vec![LocalizedText {
-                    entity_id: claim_schema_id.into(),
-                    field: LocalizedTextField::Name,
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                    lang: "en".to_string(),
-                    value: "key".to_string(),
-                    entity_type: LocalizedTextEntityType::ClaimSchema,
-                }]
-                .into(),
-            }]
-            .into()
-        },
+        claim_schemas: claim_schemas.into(),
         organisation: dummy_organisation(None).into(),
         layout_type: LayoutType::Card,
         layout_properties: None,
@@ -518,16 +534,12 @@ async fn test_get_issuer_metadata_sd_jwt() {
 
     let mut schema = generic_credential_schema();
     schema.organisation = generic_organisation().into();
-    schema.formats = vec![CredentialSchemaFormat {
-        id: Uuid::new_v4().into(),
-        created_date: crate::clock::now_utc(),
-        last_modified: crate::clock::now_utc(),
-        credential_schema_id: schema.id,
-        format: "SD_JWT".into(),
-        schema_id: "".to_owned(),
-        claim_mappings: Default::default(),
-    }]
-    .into();
+    {
+        let mut formats = schema.formats.as_mut().await.unwrap();
+        let format = formats.first_mut().unwrap();
+        format.format = "SD_JWT".into();
+        format.schema_id = "test-vct".to_string();
+    }
 
     {
         let clone = schema.clone();
@@ -612,7 +624,7 @@ async fn test_get_issuer_metadata_sd_jwt() {
         vec![CredentialSigningAlgValue::String("ES256".to_string())]
     );
     // For SD-JWT, check vct field instead of credential_definition
-    assert!(credential.vct.is_some());
+    assert_eq!(credential.vct.unwrap(), "test-vct");
 }
 
 #[tokio::test]
@@ -653,52 +665,50 @@ async fn test_get_issuer_metadata_mdoc() {
         .return_once(move |_| Ok(Arc::new(formatter)));
 
     let mut schema = generic_credential_schema();
+    schema.organisation = generic_organisation().into();
+    let now = crate::clock::now_utc();
+    let claim_schema_id = Uuid::new_v4().into();
+    schema.claim_schemas = vec![ClaimSchema {
+        id: claim_schema_id,
+        key: "X".to_string(),
+        data_type: "STRING".to_string(),
+        created_date: now,
+        last_modified: now,
+        array: false,
+        metadata: false,
+        required: true,
+        translations: vec![LocalizedText {
+            entity_id: claim_schema_id.into(),
+            field: LocalizedTextField::Name,
+            created_date: now,
+            last_modified: now,
+            lang: "en".to_string(),
+            value: "X".to_string(),
+            entity_type: LocalizedTextEntityType::ClaimSchema,
+        }]
+        .into(),
+    }]
+    .into();
+
+    let format_id = Uuid::new_v4().into();
     schema.formats = vec![CredentialSchemaFormat {
-        id: Uuid::new_v4().into(),
+        id: format_id,
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         credential_schema_id: schema.id,
         format: "MDOC".into(),
-        schema_id: "CredentialSchemaId".to_owned(),
-        claim_mappings: Default::default(),
-    }]
-    .into();
-    schema.organisation = generic_organisation().into();
-    let now = crate::clock::now_utc();
-    let claim_schema_id: shared_types::ClaimSchemaId = Uuid::new_v4().into();
-    schema.claim_schemas = vec![
-        ClaimSchema {
+        schema_id: "doctype".to_owned(),
+        claim_mappings: vec![CredentialSchemaFormatClaimSchema {
             id: Uuid::new_v4().into(),
-            key: "location".to_string(),
-            data_type: "OBJECT".to_string(),
-            created_date: now,
-            last_modified: now,
-            array: false,
-            metadata: false,
-            required: true,
-            translations: Default::default(),
-        },
-        ClaimSchema {
-            id: claim_schema_id,
-            key: "location/X".to_string(),
-            data_type: "STRING".to_string(),
-            created_date: now,
-            last_modified: now,
-            array: false,
-            metadata: false,
-            required: true,
-            translations: vec![LocalizedText {
-                entity_id: claim_schema_id.into(),
-                field: LocalizedTextField::Name,
-                created_date: now,
-                last_modified: now,
-                lang: "en".to_string(),
-                value: "X".to_string(),
-                entity_type: LocalizedTextEntityType::ClaimSchema,
-            }]
-            .into(),
-        },
-    ]
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            credential_schema_format_id: format_id,
+            claim_schema_id,
+            technical_key: "X".to_string(),
+            namespace: Some("namespace".to_string()),
+        }]
+        .into(),
+    }]
     .into();
 
     {
@@ -753,7 +763,14 @@ async fn test_get_issuer_metadata_mdoc() {
     assert_eq!("mso_mdoc".to_string(), credential.format);
     assert_eq!(
         schema.name,
-        credential.credential_metadata.unwrap().display.unwrap()[0].name
+        credential
+            .credential_metadata
+            .as_ref()
+            .unwrap()
+            .display
+            .as_ref()
+            .unwrap()[0]
+            .name
     );
     assert_eq!(
         credential.cryptographic_binding_methods_supported.unwrap(),
@@ -768,10 +785,14 @@ async fn test_get_issuer_metadata_mdoc() {
             .proof_signing_alg_values_supported,
         vec!["ES256".to_string()]
     );
-    // For mDoc format, we don't have credential_metadata with claims like JWT format
-    // mDoc uses doctype and order fields instead
-    assert!(credential.doctype.is_some());
+
+    assert_eq!(credential.doctype.unwrap(), "doctype");
     assert!(credential.vct.is_none()); // vct is not used for mdoc
+
+    let claims = credential.credential_metadata.unwrap().claims.unwrap();
+    assert_eq!(claims.len(), 1);
+    assert_eq!(claims[0].path, ["namespace".to_string(), "X".to_string()]);
+    assert_eq!(claims[0].mandatory, Some(true));
 }
 
 #[tokio::test]
