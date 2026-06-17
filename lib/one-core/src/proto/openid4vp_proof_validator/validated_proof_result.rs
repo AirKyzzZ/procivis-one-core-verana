@@ -49,7 +49,7 @@ async fn validate_proof(
             "input schemas is None".to_string(),
         ))?;
 
-    let mut claim_schemas_for_credential_schema = HashMap::new();
+    let mut credential_schema_by_id = HashMap::new();
     for input_schema in input_schemas {
         let credential_schema =
             input_schema
@@ -57,18 +57,9 @@ async fn validate_proof(
                 .ok_or(OpenID4VCError::MappingError(
                     "credential_schema is None".to_string(),
                 ))?;
-
-        let claim_schemas = credential_schema
-            .claim_schemas
-            .as_ref()
-            .await
-            .map_err(|e| OpenID4VCError::MappingError(e.to_string()))?
-            .to_owned();
-
-        claim_schemas_for_credential_schema
+        credential_schema_by_id
             .entry(credential_schema.id)
-            .or_insert(vec![])
-            .extend(claim_schemas);
+            .or_insert(credential_schema.to_owned());
     }
 
     #[derive(Debug)]
@@ -120,15 +111,35 @@ async fn validate_proof(
             ))
             .map_err(|e| OpenID4VCError::MappingError(e.to_string()))?;
 
-        let claim_schemas = claim_schemas_for_credential_schema
+        let credential_schema = credential_schema_by_id
             .get(&credential_schema_id)
             .ok_or_else(|| {
                 OpenID4VCError::MappingError(format!(
-                    "Claim schemas are missing for credential schema {credential_schema_id}"
+                    "credential schema {credential_schema_id} is missing"
                 ))
             })?;
+        let claim_schemas = credential_schema
+            .claim_schemas
+            .as_ref()
+            .await
+            .map_err(|e| OpenID4VCError::Other(e.to_string()))?;
+        let formats = credential_schema
+            .formats
+            .as_ref()
+            .await
+            .map_err(|e| OpenID4VCError::Other(e.to_string()))?;
+        let format = formats.first().ok_or(OpenID4VCError::MappingError(
+            "formats are empty".to_string(),
+        ))?;
+        let mappings = format
+            .claim_mappings
+            .as_ref()
+            .await
+            .map_err(|e| OpenID4VCError::Other(e.to_string()))?;
+        let mappings_map = mappings.iter().map(|m| (m.claim_schema_id, m)).collect();
         let proved_credential = extracted_credential_to_model(
-            claim_schemas,
+            &claim_schemas,
+            &mappings_map,
             first_claim.credential_schema.to_owned(),
             claims,
             credential.issuer.to_owned(),

@@ -413,9 +413,24 @@ pub(crate) async fn accept_proof(
 
         let credential_schema = &first_claim.credential_schema;
         let claim_schemas = credential_schema.claim_schemas.as_ref().await?;
+        let formats = credential_schema
+            .formats
+            .as_ref()
+            .await
+            .map_err(|e| ServiceError::MappingError(e.to_string()))?;
+        let format = formats
+            .first()
+            .ok_or(ServiceError::MappingError("formats are empty".to_string()))?;
+        let mappings = format
+            .claim_mappings
+            .as_ref()
+            .await
+            .map_err(|e| ServiceError::MappingError(e.to_string()))?;
+        let mappings_map = mappings.iter().map(|m| (m.claim_schema_id, m)).collect();
 
         let credential = extracted_credential_to_model(
             &claim_schemas,
+            &mappings_map,
             credential_schema.to_owned(),
             claims,
             issuer_identifier,

@@ -5,7 +5,7 @@ use std::sync::Arc;
 use one_dto_mapper::convert_inner;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
-use shared_types::{InteractionId, ProofId};
+use shared_types::{ClaimSchemaId, InteractionId, ProofId};
 use standardized_types::jwa::EncryptionAlgorithm;
 use standardized_types::jwk::PublicJwk;
 use standardized_types::openid4vp::{
@@ -34,6 +34,7 @@ use crate::mapper::{
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
 use crate::model::credential_schema::CredentialSchema;
+use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::identifier::IdentifierType;
 use crate::model::proof::Proof;
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
@@ -480,6 +481,7 @@ pub fn extract_presentation_ctx_from_interaction_content(
 #[expect(clippy::too_many_arguments)]
 pub(crate) fn extracted_credential_to_model(
     claim_schemas: &[ClaimSchema],
+    mappings: &HashMap<ClaimSchemaId, &CredentialSchemaFormatClaimSchema>,
     credential_schema: CredentialSchema,
     claims: Vec<(CredentialClaim, ClaimSchema)>,
     issuer_details: IdentifierDetails,
@@ -497,6 +499,7 @@ pub(crate) fn extracted_credential_to_model(
             value_to_model_claims(
                 credential_id,
                 claim_schemas,
+                mappings,
                 value,
                 now,
                 &claim_schema,
