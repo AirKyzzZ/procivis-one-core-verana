@@ -1,12 +1,22 @@
+use ct_codecs::{Base64, Decoder, Encoder};
 use one_core::service::error::ServiceError;
 use one_core::service::qes::dto::{
     QesAuthorizeRequestDTO, QesAuthorizeResponseDTO, QesSignRequestDTO, QesSignResponseDTO,
 };
-use one_dto_mapper::{From, TryInto};
+use one_dto_mapper::{From, TryFrom, TryInto};
 
 use super::OneCore;
 use crate::error::BindingError;
 use crate::utils::into_id_opt;
+
+fn decode_base64(value: String) -> Result<Vec<u8>, ServiceError> {
+    Base64::decode_to_vec(value.trim(), None)
+        .map_err(|_| ServiceError::ValidationError("`document` is not valid base64".to_string()))
+}
+
+fn encode_base64(value: Vec<u8>) -> Result<String, ServiceError> {
+    Base64::encode_to_string(value).map_err(|e| ServiceError::MappingError(e.to_string()))
+}
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCore {
@@ -29,7 +39,11 @@ impl OneCore {
         request: QesSignRequestBindingDTO,
     ) -> Result<QesSignResponseBindingDTO, BindingError> {
         let core = self.use_core().await?;
-        Ok(core.qes_service.sign(request.try_into()?).await?.into())
+        Ok(core
+            .qes_service
+            .sign(request.try_into()?)
+            .await?
+            .try_into()?)
     }
 }
 
@@ -39,8 +53,8 @@ impl OneCore {
 pub struct QesAuthorizeRequestBindingDTO {
     #[try_into(infallible)]
     pub provider: String,
-    #[try_into(infallible)]
-    pub document: Vec<u8>,
+    #[try_into(with_fn = decode_base64)]
+    pub document: String,
     #[try_into(infallible)]
     pub redirect_uri: Option<String>,
     #[try_into(with_fn = into_id_opt)]
@@ -65,17 +79,18 @@ pub struct QesSignRequestBindingDTO {
     pub code: String,
     #[try_into(infallible)]
     pub code_verifier: String,
-    #[try_into(infallible)]
-    pub document: Vec<u8>,
+    #[try_into(with_fn = decode_base64)]
+    pub document: String,
     #[try_into(infallible)]
     pub redirect_uri: Option<String>,
     #[try_into(with_fn = into_id_opt)]
     pub organisation_id: Option<String>,
 }
 
-#[derive(Clone, Debug, From, uniffi::Record)]
-#[from(QesSignResponseDTO)]
+#[derive(Clone, Debug, TryFrom, uniffi::Record)]
+#[try_from(T = QesSignResponseDTO, Error = ServiceError)]
 #[uniffi(name = "QesSignResponse")]
 pub struct QesSignResponseBindingDTO {
-    pub signed_document: Vec<u8>,
+    #[try_from(with_fn = encode_base64)]
+    pub signed_document: String,
 }

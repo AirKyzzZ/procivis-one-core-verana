@@ -15,6 +15,7 @@ strict = []
 
 [dependencies]
 async-trait.workspace        = true
+ct-codecs.workspace          = true
 one-core                     = { workspace = true, features = ["config_json"] }
 one-crypto.workspace         = true
 standardized-types.workspace = true
