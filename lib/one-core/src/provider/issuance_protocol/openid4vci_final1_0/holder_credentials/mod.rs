@@ -263,7 +263,7 @@ impl OpenID4VCIFinal1_0 {
             .await?;
 
         // Adjust format if it was replaced by a different one of the same type.
-        if let Some(conflicting_format) = conflicting_format {
+        if let Some(conflicting_format) = &conflicting_format {
             let mut formats = credential
                 .schema
                 .as_mut()
@@ -278,13 +278,13 @@ impl OpenID4VCIFinal1_0 {
                 .ok_or(IssuanceProtocolError::Failed(
                     "missing parsed format".to_string(),
                 ))?
-                .format = conflicting_format;
+                .format = conflicting_format.clone();
         }
 
         let (new_claim_schemas, new_mappings) = validate_existing_and_find_new_claim_schemas(
             &mut schema,
             credential,
-            format,
+            conflicting_format.as_ref().unwrap_or(format),
             &self.config.default_language,
             true,
         )
