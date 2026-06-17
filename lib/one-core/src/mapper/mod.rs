@@ -170,12 +170,18 @@ pub(crate) fn value_to_model_claims(
     Ok(model_claims)
 }
 
+#[derive(Clone, Debug)]
+pub(crate) struct ValidatedProofClaim {
+    pub claim_schema: ClaimSchema,
+    pub value: CredentialClaim,
+}
+
 #[expect(clippy::too_many_arguments)]
 pub(crate) fn extracted_credential_to_model(
     claim_schemas: &[ClaimSchema],
     mappings: &HashMap<ClaimSchemaId, &CredentialSchemaFormatClaimSchema>,
     credential_schema: CredentialSchema,
-    claims: Vec<(CredentialClaim, ClaimSchema)>,
+    claims: Vec<ValidatedProofClaim>,
     issuer_identifier: Identifier,
     issuer_identifier_relation: RemoteIdentifierRelation,
     holder_identifier: Option<Identifier>,
@@ -186,15 +192,15 @@ pub(crate) fn extracted_credential_to_model(
     let credential_id = Uuid::new_v4().into();
 
     let mut model_claims = vec![];
-    for (value, claim_schema) in claims {
+    for claim in claims {
         model_claims.extend(value_to_model_claims(
             credential_id,
             claim_schemas,
             mappings,
-            value,
+            claim.value,
             now,
-            &claim_schema,
-            &claim_schema.key,
+            &claim.claim_schema,
+            &claim.claim_schema.key,
         )?);
     }
 
@@ -512,7 +518,6 @@ pub(crate) fn paths_to_leafs(presented_paths: &[String]) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use maplit::hashmap;
-    use serde_json::json;
     use similar_asserts::assert_eq;
 
     use super::*;
@@ -522,7 +527,6 @@ mod tests {
     use crate::model::identifier::IdentifierState;
     use crate::service::test_utilities::dummy_organisation;
 
-    #[ignore] // TODO ONE-10379: Fix and re-enable once ISO MDL flow is adjusted for new credential schema v2
     #[test]
     fn test_extracted_credential_to_model_mdoc() {
         let element_claim_schema = ClaimSchema {
@@ -601,10 +605,14 @@ mod tests {
                 translations: Default::default(),
                 embedded_disclosure_policy: None,
             },
-            vec![(
-                CredentialClaim::try_from(json!({ "element": "Test" })).unwrap(),
-                element_claim_schema.clone(),
-            )],
+            vec![ValidatedProofClaim {
+                claim_schema: element_claim_schema.clone(),
+                value: CredentialClaim {
+                    selectively_disclosable: false,
+                    metadata: false,
+                    value: CredentialClaimValue::String("Test".to_string()),
+                },
+            }],
             Identifier {
                 id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
@@ -628,7 +636,7 @@ mod tests {
         .unwrap();
 
         let claims = credential.claims.unwrap();
-        assert_eq!(claims.len(), 2);
+        assert_eq!(claims.len(), 1);
         assert!(claims.iter().any(
             |claim| claim.schema.as_ref().unwrap() == &element_claim_schema
                 && claim.value == Some("Test".to_string())

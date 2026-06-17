@@ -441,7 +441,7 @@ async fn fill_proof_claims_and_credentials(
 
     let encoded = encode_cbor_base64(&device_response)?;
 
-    let (_holder_identifier, proved_claims) = super::verify_proof::validate_proof(
+    let proved_credentials = super::verify_proof::validate_proof(
         proof_schema,
         &encoded,
         session_transcript,
@@ -455,7 +455,7 @@ async fn fill_proof_claims_and_credentials(
 
     super::verify_proof::accept_proof(
         proof.clone(),
-        proved_claims,
+        proved_credentials,
         &*credential_repository,
         proof_repository,
         identifier_creator,

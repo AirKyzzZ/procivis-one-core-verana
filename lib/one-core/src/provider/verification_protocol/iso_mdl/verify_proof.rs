@@ -1,24 +1,21 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::Arc;
 
-use shared_types::{ClaimSchemaId, CredentialSchemaId};
+use shared_types::CredentialSchemaId;
 
 use super::common::to_cbor;
 use crate::config::core_config::VerificationProtocolType;
 use crate::error::ContextWithErrorCode;
-use crate::mapper::{NESTED_CLAIM_MARKER, extracted_credential_to_model};
+use crate::mapper::{ValidatedProofClaim, extracted_credential_to_model};
 use crate::model::claim::Claim;
-use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential_schema::CredentialSchema;
+use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::did::KeyRole;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::identifier_creator::{IdentifierCreator, IdentifierName, IdentifierRole};
 use crate::proto::key_verification::KeyVerification;
-use crate::provider::credential_formatter::model::{
-    CredentialClaim, DetailCredential, IdentifierDetails,
-};
+use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -30,15 +27,12 @@ use crate::repository::proof_repository::ProofRepository;
 use crate::service::error::{MissingProviderError, ServiceError};
 use crate::validator::{validate_expiration_time, validate_issuance_time};
 
-#[derive(Clone, Debug)]
-pub(crate) struct ValidatedProofClaimDTO {
-    pub claim_schema_id: ClaimSchemaId,
-    pub credential: DetailCredential,
-    pub value: (String, CredentialClaim),
+pub(super) struct ValidatedProofCredential {
+    credential: DetailCredential,
+    credential_schema_id: CredentialSchemaId,
+    claims: Vec<ValidatedProofClaim>,
 }
 
-// copied from lib/one-core/src/service/ssi_verifier/validator.rs
-// just adapted to always use MDOC
 #[expect(clippy::too_many_arguments)]
 pub(crate) async fn validate_proof(
     proof_schema: &ProofSchema,
@@ -49,7 +43,7 @@ pub(crate) async fn validate_proof(
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     certificate_validator: Arc<dyn CertificateValidator>,
-) -> Result<(IdentifierDetails, Vec<ValidatedProofClaimDTO>), ServiceError> {
+) -> Result<Vec<ValidatedProofCredential>, ServiceError> {
     let key_verification_presentation = Box::new(KeyVerification {
         key_algorithm_provider: key_algorithm_provider.clone(),
         did_method_provider: did_method_provider.clone(),
@@ -99,79 +93,60 @@ pub(crate) async fn validate_proof(
     validate_issuance_time(&presentation.issued_at, leeway)?;
     validate_expiration_time(&presentation.expires_at, leeway)?;
 
-    let (requested_cred_schema_ids, claim_schemas_with_cred_schemas) =
-        match proof_schema.input_schemas.as_ref() {
-            Some(input_schemas) if !input_schemas.is_empty() => {
-                let requested_cred_schema_ids = input_schemas
-                    .iter()
-                    .map(|input| {
-                        input
-                            .credential_schema
-                            .as_ref()
-                            .map(|schema| schema.id)
-                            .ok_or(ServiceError::MappingError(
-                                "credential_schema is None".to_string(),
-                            ))
-                    })
-                    .collect::<Result<HashSet<CredentialSchemaId>, ServiceError>>()?;
+    let input_schemas = proof_schema
+        .input_schemas
+        .as_ref()
+        .ok_or(ServiceError::MappingError(
+            "input_schemas are missing".to_string(),
+        ))?;
 
-                let mut claim_schemas_with_cred_schemas: Vec<(
-                    ProofInputClaimSchema,
-                    CredentialSchema,
-                )> = Vec::new();
-
-                for input in input_schemas {
-                    let proof_input_claim_schemas =
-                        input
-                            .claim_schemas
-                            .as_ref()
-                            .ok_or(ServiceError::MappingError(
-                                "claim_schemas is None".to_string(),
-                            ))?;
-
-                    for proof_input_claim_schema in proof_input_claim_schemas {
-                        let credential_schema =
-                            input
-                                .credential_schema
-                                .as_ref()
-                                .ok_or(ServiceError::MappingError(
-                                    "credential schema is None".to_string(),
-                                ))?;
-                        claim_schemas_with_cred_schemas.push((
-                            proof_input_claim_schema.to_owned(),
-                            credential_schema.to_owned(),
-                        ))
-                    }
-                }
-
-                (requested_cred_schema_ids, claim_schemas_with_cred_schemas)
-            }
-            _ => {
-                return Err(ServiceError::MappingError(
-                    "input_schemas are missing".to_string(),
-                ));
-            }
-        };
-
-    let mut remaining_requested_claims: HashMap<CredentialSchemaId, Vec<ProofInputClaimSchema>> =
-        HashMap::new();
-    for credential_schema_id in requested_cred_schema_ids {
-        remaining_requested_claims.insert(
-            credential_schema_id,
-            claim_schemas_with_cred_schemas
-                .iter()
-                .filter(|(_, credential_schema)| credential_schema.id == credential_schema_id)
-                .map(|(proof_claim_schema, _)| proof_claim_schema.to_owned())
-                .collect(),
-        );
+    if input_schemas.is_empty() {
+        return Err(ServiceError::MappingError(
+            "input_schemas are empty".to_string(),
+        ));
     }
 
-    let mut proved_credentials: HashMap<CredentialSchemaId, Vec<ValidatedProofClaimDTO>> =
-        HashMap::new();
+    let mut remaining_requested_claims_with_mapping = HashMap::new();
+    for input_schema in input_schemas {
+        let input_claims =
+            input_schema
+                .claim_schemas
+                .as_ref()
+                .ok_or(ServiceError::MappingError(
+                    "claim_schemas is None".to_string(),
+                ))?;
+        let credential_schema =
+            input_schema
+                .credential_schema
+                .as_ref()
+                .ok_or(ServiceError::MappingError(
+                    "credential_schema is None".to_string(),
+                ))?;
+        let formats = credential_schema.formats.as_ref().await?;
+        let format = formats.first().ok_or(ServiceError::MappingError(format!(
+            "credential schema {} has no format",
+            credential_schema.id
+        )))?;
+        let mappings = format.claim_mappings.as_ref().await?;
+        let mut claims_with_mapping = Vec::with_capacity(input_claims.len());
+        for input_claim_schema in input_claims {
+            let claim_schema = &input_claim_schema.schema;
+            let mapping = mappings
+                .iter()
+                .find(|mapping| mapping.claim_schema_id == claim_schema.id)
+                .ok_or(ServiceError::MappingError(format!(
+                    "mapping not found for claim schema {} in format {}",
+                    claim_schema.id, format.id
+                )))?;
+            claims_with_mapping.push((input_claim_schema.to_owned(), mapping.to_owned()));
+        }
+        remaining_requested_claims_with_mapping.insert(credential_schema.id, claims_with_mapping);
+    }
 
     let credential_formatter =
         credential_formatter_provider.get_credential_formatter(&format.into())?;
 
+    let mut proved_credentials = Vec::with_capacity(presentation.credentials.len());
     for credential in presentation.credentials {
         let received_credential = credential_formatter
             .extract_credentials(&credential, None, key_verification_credentials.clone())
@@ -182,15 +157,17 @@ pub(crate) async fn validate_proof(
         validate_issuance_time(&received_credential.invalid_before, leeway)?;
         validate_expiration_time(&received_credential.valid_until, leeway)?;
 
-        let (credential_schema_id, requested_proof_claims) =
-            extract_matching_requested_schema(&received_credential, &remaining_requested_claims)?;
-        remaining_requested_claims.remove(&credential_schema_id);
+        let (credential_schema_id, requested_proof_claims) = extract_matching_requested_schema(
+            &received_credential,
+            &remaining_requested_claims_with_mapping,
+        )?;
+        remaining_requested_claims_with_mapping.remove(&credential_schema_id);
 
-        // Check if all subjects of the submitted VCs is matching the holder did.
+        // Check if all subjects of the submitted VCs is matching the holder.
         let claim_subject = match &received_credential.subject {
             None => {
                 return Err(ServiceError::ValidationError(
-                    "Claim Holder DID missing".to_owned(),
+                    "Claim holder missing".to_owned(),
                 ));
             }
             Some(identifier) => identifier,
@@ -198,66 +175,66 @@ pub(crate) async fn validate_proof(
 
         if claim_subject != &holder_identifier {
             return Err(ServiceError::ValidationError(
-                "Holder DID doesn't match.".to_owned(),
+                "Holder doesn't match.".to_owned(),
             ));
         }
 
-        let mut collected_proved_claims: Vec<ValidatedProofClaimDTO> = vec![];
-        for requested_proof_claim in requested_proof_claims {
-            if let Some(received_claim) =
-                extract_matching_requested_claim(&received_credential, requested_proof_claim)?
-            {
-                collected_proved_claims.push(received_claim);
+        let mut claims = vec![];
+        for (requested_proof_claim, mapping) in requested_proof_claims {
+            if let Some(received_claim) = extract_matching_requested_claim(
+                &received_credential,
+                requested_proof_claim,
+                mapping,
+            )? {
+                claims.push(received_claim);
             }
         }
 
-        // TODO Validate collected_proved_claims when validators are ready
-
-        proved_credentials.insert(credential_schema_id, collected_proved_claims);
+        proved_credentials.push(ValidatedProofCredential {
+            credential: received_credential,
+            credential_schema_id,
+            claims,
+        });
     }
 
-    if remaining_requested_claims
+    if remaining_requested_claims_with_mapping
         .iter()
-        .any(|(_, claims)| claims.iter().any(|claim| claim.required))
+        .any(|(_, claims)| claims.iter().any(|(claim, _)| claim.required))
     {
         return Err(ServiceError::ValidationError(
             "Not all required claims fulfilled".to_owned(),
         ));
     }
 
-    Ok((
-        holder_identifier,
-        proved_credentials
-            .into_iter()
-            .flat_map(|(.., claims)| claims)
-            .collect(),
-    ))
+    Ok(proved_credentials)
 }
 
 fn extract_matching_requested_schema(
     received_credential: &DetailCredential,
-    remaining_requested_claims: &HashMap<CredentialSchemaId, Vec<ProofInputClaimSchema>>,
-) -> Result<(CredentialSchemaId, Vec<ProofInputClaimSchema>), ServiceError> {
+    remaining_requested_claims: &HashMap<
+        CredentialSchemaId,
+        Vec<(ProofInputClaimSchema, CredentialSchemaFormatClaimSchema)>,
+    >,
+) -> Result<
+    (
+        CredentialSchemaId,
+        Vec<(ProofInputClaimSchema, CredentialSchemaFormatClaimSchema)>,
+    ),
+    ServiceError,
+> {
     let (matching_credential_schema_id, matching_claim_schemas) =
         remaining_requested_claims
             .iter()
-            .find(|(_, requested_claim_schemas)| {
-                requested_claim_schemas
+            .find(|(_, requested)| {
+                requested
                     .iter()
-                    .filter(|schema| schema.required)
-                    .all(|required_claim_schema| {
+                    .filter(|(schema, _)| schema.required)
+                    .all(|(_, mapping)| {
                         received_credential.claims.claims.iter().any(
                             |(namespace, element_value)| {
-                                let required_key = &required_claim_schema.schema.key;
-
-                                namespace == required_key // requesting a whole namespace
-                                    ||
-                                    // or requesting a single element
-                                    element_value.value.as_object().is_some_and(|value| {
-                                        value.keys().any(|key| {
-                                            &format!("{namespace}{NESTED_CLAIM_MARKER}{key}")
-                                                == required_key
-                                        })
+                                mapping.namespace.as_ref().is_some_and(|n| n == namespace)
+                                    && element_value.value.as_object().is_some_and(|value| {
+                                        value.keys().any(|key| key == &mapping.technical_key)
                                     })
                             },
                         )
@@ -276,22 +253,19 @@ fn extract_matching_requested_schema(
 fn extract_matching_requested_claim(
     received_credential: &DetailCredential,
     requested_claim_schema: ProofInputClaimSchema,
-) -> Result<Option<ValidatedProofClaimDTO>, ServiceError> {
-    let requested_key = &requested_claim_schema.schema.key;
-    let found = if let Some((namespace, element_identifier)) =
-        requested_key.split_once(NESTED_CLAIM_MARKER)
-    {
-        // requested single element
-        received_credential
-            .claims
-            .claims
-            .get(namespace)
-            .and_then(|elements| elements.value.as_object())
-            .and_then(|elements| elements.get(element_identifier))
-    } else {
-        // requested whole namespace
-        received_credential.claims.claims.get(requested_key)
-    };
+    mapping: CredentialSchemaFormatClaimSchema,
+) -> Result<Option<ValidatedProofClaim>, ServiceError> {
+    let namespace = mapping.namespace.as_ref().ok_or_else(|| {
+        ServiceError::MappingError(format!("missing namespace on mapping {}", mapping.id))
+    })?;
+    // NOTE: this only works because proof requests cannot request array elements
+    // (otherwise the technical key would not match element paths)
+    let found = received_credential
+        .claims
+        .claims
+        .get(namespace)
+        .and_then(|elements| elements.value.as_object())
+        .and_then(|elements| elements.get(&mapping.technical_key));
 
     // missing optional claim
     if !requested_claim_schema.required && found.is_none() {
@@ -299,19 +273,19 @@ fn extract_matching_requested_claim(
     }
 
     let value = found.ok_or(ServiceError::ValidationError(format!(
-        "Required credential key '{requested_key}' missing",
+        "Required credential key '{}' missing",
+        mapping.technical_key
     )))?;
 
-    Ok(Some(ValidatedProofClaimDTO {
-        claim_schema_id: requested_claim_schema.schema.id,
-        credential: received_credential.to_owned(),
-        value: (requested_claim_schema.schema.key, value.to_owned()),
+    Ok(Some(ValidatedProofClaim {
+        claim_schema: requested_claim_schema.schema,
+        value: value.to_owned(),
     }))
 }
 
 pub(crate) async fn accept_proof(
     proof: Proof,
-    proved_claims: Vec<ValidatedProofClaimDTO>,
+    proved_credentials: Vec<ValidatedProofCredential>,
     credential_repository: &dyn CredentialRepository,
     proof_repository: &dyn ProofRepository,
     identifier_creator: Arc<dyn IdentifierCreator>,
@@ -320,98 +294,46 @@ pub(crate) async fn accept_proof(
         "proof schema is None".to_string(),
     ))?;
 
-    let claim_schemas_with_cred_schemas = match proof_schema.input_schemas.as_ref() {
-        Some(input_schemas) if !input_schemas.is_empty() => {
-            let mut res: Vec<(ProofInputClaimSchema, CredentialSchema)> = Vec::new();
-
-            for input in input_schemas {
-                let proof_input_claim_schemas =
-                    input
-                        .claim_schemas
-                        .as_ref()
-                        .ok_or(ServiceError::MappingError(
-                            "claim_schemas is None".to_string(),
-                        ))?;
-
-                for proof_input_claim_schema in proof_input_claim_schemas {
-                    let credential_schema =
-                        input
-                            .credential_schema
-                            .as_ref()
-                            .ok_or(ServiceError::MappingError(
-                                "credential schema is None".to_string(),
-                            ))?;
-                    res.push((
-                        proof_input_claim_schema.to_owned(),
-                        credential_schema.to_owned(),
-                    ))
-                }
-            }
-
-            res
-        }
-
-        _ => {
-            return Err(ServiceError::MappingError(
-                "proof input schemas are missing".to_string(),
-            ));
-        }
-    };
-
-    struct ProvedClaim {
-        claim_schema: ClaimSchema,
-        value: (String, CredentialClaim),
-        credential: DetailCredential,
-        credential_schema: CredentialSchema,
-    }
-    let proved_claims = proved_claims
-        .into_iter()
-        .map(|proved_claim| {
-            let (claim_schema, credential_schema) = claim_schemas_with_cred_schemas
-                .iter()
-                .find(|(claim_schema, _)| claim_schema.schema.id == proved_claim.claim_schema_id)
+    let mut credential_schemas = HashMap::new();
+    for proof_input in proof_schema
+        .input_schemas
+        .as_ref()
+        .ok_or(ServiceError::MappingError(
+            "proof input schemas is None".to_string(),
+        ))?
+    {
+        let credential_schema =
+            proof_input
+                .credential_schema
+                .as_ref()
                 .ok_or(ServiceError::MappingError(
-                    "Couldn't find matching proof claim schema".to_string(),
-                ))?
-                .to_owned();
-            Ok(ProvedClaim {
-                value: proved_claim.value,
-                credential: proved_claim.credential,
-                credential_schema,
-                claim_schema: claim_schema.schema,
-            })
-        })
-        .collect::<Result<Vec<ProvedClaim>, ServiceError>>()?;
-
-    let mut claims_per_credential: HashMap<CredentialSchemaId, Vec<ProvedClaim>> = HashMap::new();
-    for proved_claim in proved_claims {
-        claims_per_credential
-            .entry(proved_claim.credential_schema.id)
-            .or_default()
-            .push(proved_claim);
+                    "proof input credential schema is None".to_string(),
+                ))?;
+        credential_schemas.insert(credential_schema.id, credential_schema.clone());
     }
 
     let mut proof_claims: Vec<Claim> = vec![];
-    for (_, credential_claims) in claims_per_credential {
-        let claims: Vec<(CredentialClaim, ClaimSchema)> = credential_claims
-            .iter()
-            .map(|claim| Ok((claim.value.1.to_owned(), claim.claim_schema.to_owned())))
-            .collect::<Result<Vec<_>, ServiceError>>()?;
-
-        let first_claim = credential_claims
-            .first()
-            .ok_or(ServiceError::MappingError("claims are empty".to_string()))?;
-
+    for ValidatedProofCredential {
+        credential,
+        credential_schema_id,
+        claims,
+    } in proved_credentials
+    {
         let (issuer_identifier, issuer_identifier_relation) = identifier_creator
             .get_or_create_remote_identifier(
                 &proof_schema.organisation,
-                &first_claim.credential.issuer,
+                &credential.issuer,
                 IdentifierName::PrefixForId(IdentifierRole::Issuer.to_string()),
             )
             .await
             .error_while("creating remote issuer identifier")?;
 
-        let credential_schema = &first_claim.credential_schema;
+        let credential_schema =
+            credential_schemas
+                .get(&credential_schema_id)
+                .ok_or(ServiceError::MappingError(
+                    "credential schema not found".to_string(),
+                ))?;
         let claim_schemas = credential_schema.claim_schemas.as_ref().await?;
         let formats = credential_schema
             .formats
@@ -437,16 +359,15 @@ pub(crate) async fn accept_proof(
             issuer_identifier_relation,
             None,
             proof.protocol.to_owned(),
-            first_claim.credential.issuance_date,
+            credential.issuance_date,
         )?;
 
-        proof_claims.append(
-            &mut credential
-                .claims
-                .as_ref()
-                .ok_or(ServiceError::MappingError("claims missing".to_string()))?
-                .to_owned(),
-        );
+        let mut claims = credential
+            .claims
+            .as_ref()
+            .ok_or(ServiceError::MappingError("claims missing".to_string()))?
+            .to_owned();
+        proof_claims.append(&mut claims);
 
         credential_repository
             .create_credential(credential)
