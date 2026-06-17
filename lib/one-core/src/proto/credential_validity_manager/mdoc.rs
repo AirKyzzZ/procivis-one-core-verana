@@ -1,9 +1,13 @@
 use super::{CredentialValidityCheckResult, CredentialValidityManagerImpl, Error};
 use crate::config::core_config::BlobStorageType;
 use crate::error::ContextWithErrorCode;
+use crate::model::common::SortDirection;
 use crate::model::credential::{
-    Clearable, Credential, CredentialStateEnum, UpdateCredentialRequest,
+    Clearable, Credential, CredentialFilterValue, CredentialStateEnum, CredentialType,
+    SortableCredentialColumn, UpdateCredentialRequest,
 };
+use crate::model::list_filter::ListFilterValue;
+use crate::model::list_query::{ListPagination, ListQuery, ListSorting};
 use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 
@@ -33,8 +37,13 @@ impl CredentialValidityManagerImpl {
             .issuance_protocol_provider
             .get_protocol(&credential.protocol)?;
 
+        let refresh_credential_id = if credential.r#type == CredentialType::BatchParent {
+            None
+        } else {
+            Some(credential.id)
+        };
         let new_state = match protocol
-            .holder_refresh_credential(interaction, Some(credential.id))
+            .holder_refresh_credential(interaction, refresh_credential_id)
             .await
         {
             Ok(_) => CredentialStateEnum::Accepted,
@@ -84,20 +93,56 @@ impl CredentialValidityManagerImpl {
             .as_ref()
             .ok_or(Error::MappingError("schema is None".to_string()))?;
 
-        let credential_bytes = if let Some(credential_blob_id) = credential.credential_blob_id {
-            let blob_storage = self
-                .blob_storage_provider
-                .get_blob_storage(BlobStorageType::Db)?;
-
-            blob_storage
-                .get(&credential_blob_id)
+        let credential_blob_id = if let Some(credential_blob_id) = credential.credential_blob_id {
+            credential_blob_id
+        } else if credential.r#type == CredentialType::BatchParent {
+            let batch_items = self
+                .credential_repository
+                .get_credential_list(ListQuery {
+                    filtering: Some(
+                        CredentialFilterValue::ParentCredential(credential.id).condition(),
+                    ),
+                    sorting: Some(ListSorting {
+                        column: SortableCredentialColumn::CreatedDate,
+                        direction: Some(SortDirection::Descending),
+                    }),
+                    pagination: Some(ListPagination {
+                        page: 0,
+                        page_size: 1,
+                    }),
+                    ..Default::default()
+                })
                 .await
-                .error_while("getting credential blob")?
-                .ok_or(Error::MappingError("credential blob missing".to_string()))?
-                .value
+                .error_while("getting batch items")?
+                .values;
+
+            let Some(batch_item) = batch_items.first() else {
+                return Err(Error::MappingError(format!(
+                    "No batch items found for credential {}",
+                    credential.id
+                )));
+            };
+            batch_item.credential_blob_id.ok_or_else(|| {
+                Error::MappingError(format!(
+                    "Batch items {} has no credential blob id",
+                    batch_item.id
+                ))
+            })?
         } else {
-            vec![]
+            return Err(Error::MappingError(format!(
+                "No credential blob found for credential {}",
+                credential.id
+            )));
         };
+        let blob_storage = self
+            .blob_storage_provider
+            .get_blob_storage(BlobStorageType::Db)?;
+        let credential_bytes = blob_storage
+            .get(&credential_blob_id)
+            .await
+            .error_while("getting credential blob")?
+            .ok_or(Error::MappingError("credential blob missing".to_string()))?
+            .value;
         let credential_str = String::from_utf8(credential_bytes)
             .map_err(|e| Error::MappingError(e.to_string()))?
             .into();
