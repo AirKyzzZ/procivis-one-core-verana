@@ -905,6 +905,7 @@ pub struct TestingCredentialParams {
     pub wallet_unit_attestation_blob_id: Option<BlobId>,
     pub wallet_instance_attestation_blob_id: Option<BlobId>,
     pub webhook_url: Option<String>,
+    pub embedded_disclosure_policy: Option<String>,
 }
 
 pub async fn create_credential(
@@ -962,7 +963,7 @@ pub async fn create_credential(
         wallet_unit_attestation_blob_id: params.wallet_unit_attestation_blob_id,
         wallet_instance_attestation_blob_id: params.wallet_instance_attestation_blob_id,
         webhook_url: params.webhook_url,
-        embedded_disclosure_policy: None,
+        embedded_disclosure_policy: params.embedded_disclosure_policy,
         parent: params
             .parent_id
             .map(|id| Related::new(id, data_layer.get_credential_repository())),

@@ -6,9 +6,9 @@ use one_core::model::proof::{
 use one_core::provider::verification_protocol::dto::{
     CredentialDetailClaimExtResponseDTO, CredentialQueryFailureHintResponseDTO,
     CredentialQueryFailureReasonEnum, CredentialQueryResponseDTO, CredentialSetResponseDTO,
-    PresentationDefinitionRequestGroupResponseDTO, PresentationDefinitionResponseDTO,
-    PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
-    PresentationDefinitionV2ResponseDTO,
+    DisclosurePolicyViolation, PresentationDefinitionRequestGroupResponseDTO,
+    PresentationDefinitionResponseDTO, PresentationDefinitionRuleDTO,
+    PresentationDefinitionRuleTypeEnum, PresentationDefinitionV2ResponseDTO,
 };
 use one_core::provider::verification_protocol::openid4vp::model::ClientIdScheme;
 use one_core::service::credential_schema::dto::CredentialSchemaDetailResponseDTO;
@@ -661,6 +661,17 @@ pub struct PresentationDefinitionV2CredentialDetailBindingDTO {
     pub mdoc_mso_validity: Option<MdocMsoValidityResponseBindingDTO>,
     pub protocol: String,
     pub profile: Option<String>,
+    /// if violated, issuer's disclosure policy information
+    pub embedded_disclosure_policy_violation: Option<DisclosurePolicyViolationBindingDTO>,
+}
+
+#[derive(Clone, Debug, uniffi::Record, From)]
+#[from(DisclosurePolicyViolation)]
+#[uniffi(name = "DisclosurePolicyViolation")]
+pub struct DisclosurePolicyViolationBindingDTO {
+    pub id: String,
+    pub description: Option<String>,
+    pub url: Option<String>,
 }
 
 #[derive(Clone, Debug, uniffi::Record, From)]

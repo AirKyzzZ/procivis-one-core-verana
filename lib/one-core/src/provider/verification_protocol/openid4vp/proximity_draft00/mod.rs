@@ -45,6 +45,7 @@ use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::key_verification::KeyVerification;
 use crate::proto::mqtt_client::MqttClient;
 use crate::proto::trust_information::TrustInformationProvider;
+use crate::proto::wrp_validator::WRPValidator;
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -121,6 +122,7 @@ pub struct OpenID4VPProximityDraft00 {
     interaction_repository: Arc<dyn InteractionRepository>,
     proof_repository: Arc<dyn ProofRepository>,
     certificate_validator: Arc<dyn CertificateValidator>,
+    wrp_validator: Arc<dyn WRPValidator>,
     identifier_creator: Arc<dyn IdentifierCreator>,
     trust_information_provider: Arc<dyn TrustInformationProvider>,
     config: Arc<CoreConfig>,
@@ -144,6 +146,7 @@ impl OpenID4VPProximityDraft00 {
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_provider: Arc<dyn KeyProvider>,
         certificate_validator: Arc<dyn CertificateValidator>,
+        wrp_validator: Arc<dyn WRPValidator>,
         identifier_creator: Arc<dyn IdentifierCreator>,
         trust_information_provider: Arc<dyn TrustInformationProvider>,
         ble: Option<BleWaiter>,
@@ -187,6 +190,7 @@ impl OpenID4VPProximityDraft00 {
             interaction_repository,
             proof_repository,
             certificate_validator,
+            wrp_validator,
             identifier_creator,
             trust_information_provider,
             config,
@@ -624,7 +628,10 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
             &*self.credential_schema_repository,
             &*self.credential_formatter_provider,
             &*self.trust_information_provider,
+            &*self.wrp_validator,
             &self.config,
+            None,
+            &[],
         )
         .await
     }

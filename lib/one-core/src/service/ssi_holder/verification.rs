@@ -870,7 +870,7 @@ fn get_credential_paths_to_present(
         }
         let Some(selected_credential) = applicable_credentials
             .iter()
-            .find(|&credential| credential.id == credential_id)
+            .find(|&credential| credential.credential.id == credential_id)
         else {
             return Err(HolderServiceError::InvalidPresentationSubmission {
                 reason: format!(
@@ -882,7 +882,7 @@ fn get_credential_paths_to_present(
         result.push(CredentialPathsToPresent {
             credential_id,
             presented_paths: presented_claim_paths_from_nested_with_selection(
-                selected_credential,
+                &selected_credential.credential,
                 user_selections,
             )?,
         });

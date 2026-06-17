@@ -226,6 +226,7 @@ impl From<OpenID4VP20AuthorizationRequest> for OpenID4VPHolderInteractionData {
             dcql_query: None,
             redirect_uri: value.redirect_uri,
             verifier_details: None,
+            verifier_info: vec![],
         }
     }
 }

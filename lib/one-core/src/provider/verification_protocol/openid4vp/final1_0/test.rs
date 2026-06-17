@@ -264,6 +264,7 @@ fn test_holder_interaction_data(
         dcql_query: None,
         redirect_uri: None,
         verifier_details: None,
+        verifier_info: vec![],
     }
 }
 

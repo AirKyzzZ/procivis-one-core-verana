@@ -75,7 +75,6 @@ pub(crate) struct WRPPayloadData {
     pub intended_use: Vec<IntendedUse>,
     #[serde(default, rename = "isPSB")]
     pub is_psb: Option<bool>,
-    #[expect(unused)]
     pub entitlement: Vec<String>,
     #[serde(default)]
     pub provides_attestations: Vec<Credential>,

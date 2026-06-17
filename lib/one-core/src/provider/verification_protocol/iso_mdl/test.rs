@@ -25,6 +25,7 @@ use crate::proto::bluetooth_low_energy::ble_resource::{BleWaiter, OnConflict};
 use crate::proto::bluetooth_low_energy::low_level::ble_central::MockBleCentral;
 use crate::proto::bluetooth_low_energy::low_level::ble_peripheral::MockBlePeripheral;
 use crate::proto::trust_information::MockTrustInformationProvider;
+use crate::proto::wrp_validator::MockWRPValidator;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::mdoc_formatter::util::EmbeddedCbor;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
@@ -95,6 +96,7 @@ async fn test_presentation_reject_ok() {
         Arc::new(MockCredentialSchemaRepository::new()),
         Arc::new(MockCredentialFormatterProvider::new()),
         Arc::new(MockTrustInformationProvider::new()),
+        Arc::new(MockWRPValidator::new()),
         Some(ble_waiter),
         None,
     );
@@ -499,6 +501,7 @@ async fn test_get_presentation_definition_ok() {
         Arc::new(MockCredentialSchemaRepository::new()),
         Arc::new(MockCredentialFormatterProvider::new()),
         Arc::new(MockTrustInformationProvider::new()),
+        Arc::new(MockWRPValidator::new()),
         None,
         None,
     );
@@ -918,6 +921,7 @@ async fn test_get_presentation_definition_v2() {
         Arc::new(MockCredentialSchemaRepository::new()),
         Arc::new(formatter_provider),
         Arc::new(trust_information_provider),
+        Arc::new(MockWRPValidator::new()),
         None,
         None,
     );
@@ -947,27 +951,31 @@ async fn test_get_presentation_definition_v2() {
     };
 
     assert_eq!(1, applicable_credentials.len());
-    assert_eq!(credential_id, applicable_credentials[0].id);
+    assert_eq!(credential_id, applicable_credentials[0].credential.id);
     assert!(
         applicable_credentials[0]
+            .credential
             .claims
             .iter()
             .any(|claim| { claim.path == "org.iso.18013.5.1.mDL_country" })
     );
     assert!(
         applicable_credentials[0]
+            .credential
             .claims
             .iter()
             .any(|claim| { claim.path == "org.iso.18013.5.1.mDL_name" })
     );
     assert!(
         applicable_credentials[0]
+            .credential
             .claims
             .iter()
             .any(|claim| { claim.path == "org.iso.18013.5.1.mDL_age" })
     );
     assert!(
         applicable_credentials[0]
+            .credential
             .claims
             .iter()
             .any(|claim| { claim.path == "org.iso.18013.5.1.mDL_info" })
@@ -975,6 +983,7 @@ async fn test_get_presentation_definition_v2() {
     // filtered out because not requested by the proof request
     assert!(
         !applicable_credentials[0]
+            .credential
             .claims
             .iter()
             .any(|claim| { claim.path == "org.iso.18013.5.1.mDL_country_code" })

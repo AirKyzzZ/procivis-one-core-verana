@@ -2,14 +2,19 @@ use std::collections::{HashMap, VecDeque};
 
 use dcql::matching::{ClaimFilter, CredentialFilter};
 use dcql::{
-    ClaimPath, ClaimValue, CredentialFormat, CredentialQuery, DcqlQuery, PathSegment,
-    TrustedAuthority,
+    ClaimPath, ClaimValue, CredentialFormat, CredentialQuery, CredentialQueryId, DcqlQuery,
+    PathSegment, TrustedAuthority,
 };
 use itertools::Itertools;
 use one_dto_mapper::convert_inner;
 use shared_types::{ClaimId, ClaimSchemaId, OrganisationId};
 use standardized_types::x509::KeyIdentifier;
 
+use super::disclosure_policy::{
+    dn_and_serial_matches_any_in_chain, dn_matches_leaf_only, entitlement_matches_reg_cert,
+    entitlement_matches_via_registry,
+};
+use super::final1_0::model::{VerifierInfoAttestation, VerifierInfoAttestationFormat};
 use crate::config::core_config::{CoreConfig, FormatType};
 use crate::error::ContextWithErrorCode;
 use crate::mapper::NESTED_CLAIM_MARKER;
@@ -25,12 +30,15 @@ use crate::model::list_query::ListPagination;
 use crate::model::proof::Proof;
 use crate::proto::openid4vp_proof_validator::validator::get_trusted_akis;
 use crate::proto::trust_information::TrustInformationProvider;
+use crate::proto::wrp_validator::WRPValidator;
 use crate::provider::credential_formatter::CredentialFormatter;
+use crate::provider::credential_formatter::model::IdentifierDetails;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::verification_protocol::dto::{
-    ApplicableCredentialOrFailureHintEnum, CredentialDetailClaimExtResponseDTO,
-    CredentialQueryFailureHintResponseDTO, CredentialQueryFailureReasonEnum,
-    CredentialQueryResponseDTO, CredentialSetResponseDTO, PresentationDefinitionV2ResponseDTO,
+    ApplicableCredential, ApplicableCredentialOrFailureHintEnum,
+    CredentialDetailClaimExtResponseDTO, CredentialQueryFailureHintResponseDTO,
+    CredentialQueryFailureReasonEnum, CredentialQueryResponseDTO, CredentialSetResponseDTO,
+    DisclosurePolicyViolation, PresentationDefinitionV2ResponseDTO,
 };
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::mapper::get_presentation_credentials_by_schema_id;
@@ -50,6 +58,7 @@ use crate::service::credential_schema::dto::{
 };
 use crate::service::credential_schema::mapper::schema_to_detail_v1_response_dto;
 
+#[expect(clippy::too_many_arguments)]
 pub(crate) async fn get_presentation_definition_v2(
     dcql_query: DcqlQuery,
     proof: &Proof,
@@ -57,7 +66,10 @@ pub(crate) async fn get_presentation_definition_v2(
     credential_schema_repository: &dyn CredentialSchemaRepository,
     formatter_provider: &dyn CredentialFormatterProvider,
     trust_information_provider: &dyn TrustInformationProvider,
+    wrp_validator: &dyn WRPValidator,
     config: &CoreConfig,
+    verifier_details: Option<&IdentifierDetails>,
+    verifier_info: &[VerifierInfoAttestation],
 ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
     let organisation = proof
         .interaction
@@ -210,6 +222,16 @@ pub(crate) async fn get_presentation_definition_v2(
                 get_remaining_batch_item_count(&candidate, credential_repository)
                     .await
                     .error_while("getting remaining batch items")?;
+
+            let embedded_disclosure_policy_violation = check_disclosure_policy(
+                &candidate,
+                &query.id,
+                verifier_details,
+                verifier_info,
+                wrp_validator,
+            )
+            .await?;
+
             let credential_detail_dto = credential_detail_response_from_model(
                 candidate,
                 config,
@@ -220,7 +242,11 @@ pub(crate) async fn get_presentation_definition_v2(
             )
             .await
             .error_while("creating credential detail")?;
-            applicable_credentials.push(map_to_filtered_dto(credential_detail_dto, &claims));
+
+            applicable_credentials.push(ApplicableCredential {
+                credential: map_to_filtered_dto(credential_detail_dto, &claims),
+                embedded_disclosure_policy_violation,
+            });
         }
         if applicable_credentials.is_empty() {
             credential_queries.insert(
@@ -1083,4 +1109,84 @@ async fn find_schema_by_schema_ids(
         })
         .await?;
     Ok(candidates.values.into_iter().next())
+}
+
+async fn check_disclosure_policy(
+    credential: &Credential,
+    query_id: &CredentialQueryId,
+    verifier_details: Option<&IdentifierDetails>,
+    verifier_info: &[VerifierInfoAttestation],
+    wrp_validator: &dyn WRPValidator,
+) -> Result<Option<DisclosurePolicyViolation>, VerificationProtocolError> {
+    use standardized_types::etsi_119_472::disclosure_policy::*;
+
+    let Some(disclosure_policy) = &credential.embedded_disclosure_policy else {
+        return Ok(None);
+    };
+
+    let disclosure_policy: DisclosurePolicy = serde_json::from_str(disclosure_policy)?;
+    let violation = || {
+        Some(DisclosurePolicyViolation {
+            id: disclosure_policy.id,
+            description: disclosure_policy.description,
+            url: disclosure_policy.url,
+        })
+    };
+
+    match disclosure_policy.policy {
+        PolicyType::None => Ok(None),
+        PolicyType::AllowList { options } => {
+            for option in options.values {
+                if let Some(dn) = &option.dn
+                    && let Some(IdentifierDetails::Certificate(verifier)) = verifier_details
+                    && dn_matches_leaf_only(&verifier.chain, dn)?
+                {
+                    return Ok(None);
+                }
+
+                if let Some(entitlement) = &option.entitlement {
+                    for reg_cert in verifier_info
+                        .iter()
+                        .filter(|info| {
+                            info.format == VerifierInfoAttestationFormat::RegistrationCert
+                        })
+                        .filter(|info| {
+                            info.credential_ids.is_empty() || info.credential_ids.contains(query_id)
+                        })
+                    {
+                        if entitlement_matches_reg_cert(entitlement, &reg_cert.data).await? {
+                            return Ok(None);
+                        }
+                    }
+
+                    if let Some(IdentifierDetails::Certificate(access_cert)) = verifier_details
+                        && entitlement_matches_via_registry(
+                            entitlement,
+                            &access_cert.chain,
+                            wrp_validator,
+                        )
+                        .await?
+                    {
+                        return Ok(None);
+                    }
+                }
+            }
+
+            Ok(violation())
+        }
+        PolicyType::RootOfTrust { options } => {
+            let Some(IdentifierDetails::Certificate(verifier)) = verifier_details else {
+                return Ok(violation());
+            };
+
+            for option in options.values {
+                if dn_and_serial_matches_any_in_chain(&verifier.chain, &option.dn, &option.serial)?
+                {
+                    return Ok(None);
+                }
+            }
+
+            Ok(violation())
+        }
+    }
 }

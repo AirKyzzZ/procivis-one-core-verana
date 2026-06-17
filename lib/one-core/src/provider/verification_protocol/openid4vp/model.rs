@@ -17,6 +17,7 @@ use url::Url;
 use super::mapper::{deserialize_with_serde_json, unix_timestamp_option};
 use crate::model::credential::Credential;
 use crate::provider::credential_formatter::model::IdentifierDetails;
+use crate::provider::verification_protocol::openid4vp::final1_0::model::VerifierInfoAttestation;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct JwePayload {
@@ -276,6 +277,8 @@ pub(crate) struct OpenID4VPHolderInteractionData {
 
     #[serde(default)]
     pub verifier_details: Option<IdentifierDetails>,
+    #[serde(default)]
+    pub verifier_info: Vec<VerifierInfoAttestation>,
 }
 
 // Apparently the indirection via functions is required: https://github.com/serde-rs/serde/issues/368

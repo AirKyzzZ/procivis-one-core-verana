@@ -294,7 +294,7 @@ impl EntitlementRole {
         }
     }
 
-    fn get_uri(&self) -> &'static str {
+    pub(crate) fn get_uri(&self) -> &'static str {
         match self {
             EntitlementRole::ServiceProvider => {
                 "https://uri.etsi.org/19475/Entitlement/Service_Provider"

@@ -86,6 +86,7 @@ async fn test_get_presentation_definition_dcql_simple() {
         key,
         &dcql_query,
         "OPENID4VP_FINAL1",
+        None,
     )
     .await;
 
@@ -208,6 +209,7 @@ async fn test_get_presentation_definition_dcql_nesting() {
         key,
         &dcql_query,
         "OPENID4VP_FINAL1",
+        None,
     )
     .await;
 
@@ -325,6 +327,7 @@ async fn test_get_presentation_definition_dcql_nested_with_mandatory_disclosure_
         key,
         &dcql_query,
         "OPENID4VP_FINAL1",
+        None,
     )
     .await;
 
@@ -451,6 +454,7 @@ async fn test_get_presentation_definition_dcql_nested_required_with_mandatory_di
         key,
         &dcql_query,
         "OPENID4VP_FINAL1",
+        None,
     )
     .await;
 
@@ -591,6 +595,7 @@ async fn test_get_presentation_definition_dcql_nested_with_array_query() {
         key,
         &dcql_query,
         "OPENID4VP_FINAL1",
+        None,
     )
     .await;
 
@@ -731,6 +736,7 @@ async fn test_get_presentation_definition_dcql_array_all_query() {
         key,
         &dcql_query,
         "OPENID4VP_FINAL1",
+        None,
     )
     .await;
 
@@ -866,6 +872,7 @@ async fn test_get_presentation_definition_dcql_array_all_mandatory_query() {
         key,
         &dcql_query,
         "OPENID4VP_FINAL1",
+        None,
     )
     .await;
 
@@ -991,6 +998,7 @@ async fn test_get_presentation_definition_dcql_simple_w3c() {
         key,
         &dcql_query,
         "OPENID4VP_FINAL1",
+        None,
     )
     .await;
 
@@ -1083,6 +1091,7 @@ async fn test_get_presentation_definition_dcql_no_selective_disclosure_inapplica
         key,
         &dcql_query,
         "OPENID4VP_FINAL1",
+        None,
     )
     .await;
 
@@ -1178,6 +1187,7 @@ async fn test_get_presentation_definition_dcql_inapplicable_credential() {
         key,
         &dcql_query,
         "OPENID4VP_FINAL1",
+        None,
     )
     .await;
 
@@ -1280,6 +1290,7 @@ async fn test_get_presentation_definition_dcql_claim_sets() {
         key,
         &dcql_query,
         "OPENID4VP_FINAL1",
+        None,
     )
     .await;
 
@@ -1404,6 +1415,7 @@ async fn test_get_presentation_definition_dcql_claim_sets_disjoint_credentials()
         key,
         &dcql_query,
         "OPENID4VP_FINAL1",
+        None,
     )
     .await;
 
@@ -1579,6 +1591,7 @@ async fn test_get_presentation_definition_dcql_metadata_value_matching() {
         key,
         &dcql_query,
         "OPENID4VP_FINAL1",
+        None,
     )
     .await;
 
@@ -1656,6 +1669,7 @@ async fn test_get_presentation_definition_dcql_no_credentials() {
         key,
         &dcql_query,
         "OPENID4VP_FINAL1",
+        None,
     )
     .await;
 
@@ -1791,6 +1805,7 @@ async fn test_get_presentation_definition_dcql_multiple_applicable_credentials()
         key,
         &dcql_query,
         "OPENID4VP_FINAL1",
+        None,
     )
     .await;
 
@@ -1941,6 +1956,7 @@ async fn test_get_presentation_definition_dcql_multiple() {
         key,
         &dcql_query,
         "OPENID4VP_FINAL1",
+        None,
     )
     .await;
 
@@ -2033,6 +2049,7 @@ async fn test_get_presentation_definition_dcql_no_claims() {
         key,
         &dcql_query,
         "OPENID4VP_FINAL1",
+        None,
     )
     .await;
 
@@ -2177,6 +2194,7 @@ async fn test_get_presentation_definition_dcql_w3c_mixed_selective_disclosure() 
         key,
         &dcql_query,
         "OPENID4VP_FINAL1",
+        None,
     )
     .await;
 
@@ -2341,6 +2359,7 @@ async fn test_get_presentation_definition_dcql_value_match() {
         key,
         &dcql_query,
         "OPENID4VP_FINAL1",
+        None,
     )
     .await;
 
@@ -2450,6 +2469,7 @@ async fn test_get_presentation_definition_dcql_using_multiple_flag() {
         key,
         &dcql_query,
         "OPENID4VP_FINAL1",
+        None,
     )
     .await;
 
@@ -2657,6 +2677,7 @@ mod trusted_authorities {
             key,
             &dcql_query,
             "OPENID4VP_FINAL1",
+            None,
         )
         .await;
 
@@ -2771,6 +2792,7 @@ mod trusted_authorities {
             key,
             &dcql_query,
             "OPENID4VP_FINAL1",
+            None,
         )
         .await;
 
@@ -2878,6 +2900,7 @@ mod trusted_authorities {
             key,
             &dcql_query,
             "OPENID4VP_FINAL1",
+            None,
         )
         .await;
 
@@ -2969,6 +2992,7 @@ mod trusted_authorities {
             key,
             &dcql_query,
             "OPENID4VP_FINAL1",
+            None,
         )
         .await;
 

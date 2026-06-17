@@ -9,7 +9,7 @@ use one_core::model::proof::SortableProofColumn;
 use one_core::model::proof_schema::SortableProofSchemaColumn;
 use one_core::proto::bluetooth_low_energy::low_level::dto::DeviceInfo;
 use one_core::provider::verification_protocol::dto::{
-    ApplicableCredentialOrFailureHintEnum, PresentationDefinitionFieldDTO,
+    ApplicableCredential, ApplicableCredentialOrFailureHintEnum, PresentationDefinitionFieldDTO,
     PresentationDefinitionRequestedCredentialResponseDTO,
 };
 use one_core::service::common_dto::ListQueryDTO;
@@ -685,28 +685,29 @@ impl TryFrom<InitiateIssuanceRequestBindingDTO> for InitiateIssuanceRequestDTO {
     }
 }
 
-impl<IN: Into<PresentationDefinitionV2ClaimBindingDTO>> From<CredentialDetailResponseDTO<IN>>
-    for PresentationDefinitionV2CredentialDetailBindingDTO
-{
-    fn from(value: CredentialDetailResponseDTO<IN>) -> Self {
+impl From<ApplicableCredential> for PresentationDefinitionV2CredentialDetailBindingDTO {
+    fn from(value: ApplicableCredential) -> Self {
         Self {
-            id: value.id.to_string(),
-            created_date: value.created_date.format_timestamp(),
-            issuance_date: optional_time(value.issuance_date),
-            revocation_date: optional_time(value.revocation_date),
-            state: value.state.into(),
-            last_modified: value.last_modified.format_timestamp(),
-            schema: value.schema.into(),
-            issuer: convert_inner(value.issuer),
-            issuer_certificate: convert_inner(value.issuer_certificate),
-            claims: convert_inner(value.claims),
-            redirect_uri: value.redirect_uri,
-            role: value.role.into(),
-            suspend_end_date: optional_time(value.suspend_end_date),
-            mdoc_mso_validity: convert_inner(value.mdoc_mso_validity),
-            holder: convert_inner(value.holder),
-            protocol: value.protocol,
-            profile: value.profile,
+            id: value.credential.id.to_string(),
+            created_date: value.credential.created_date.format_timestamp(),
+            issuance_date: optional_time(value.credential.issuance_date),
+            revocation_date: optional_time(value.credential.revocation_date),
+            state: value.credential.state.into(),
+            last_modified: value.credential.last_modified.format_timestamp(),
+            schema: value.credential.schema.into(),
+            issuer: convert_inner(value.credential.issuer),
+            issuer_certificate: convert_inner(value.credential.issuer_certificate),
+            claims: convert_inner(value.credential.claims),
+            redirect_uri: value.credential.redirect_uri,
+            role: value.credential.role.into(),
+            suspend_end_date: optional_time(value.credential.suspend_end_date),
+            mdoc_mso_validity: convert_inner(value.credential.mdoc_mso_validity),
+            holder: convert_inner(value.credential.holder),
+            protocol: value.credential.protocol,
+            profile: value.credential.profile,
+            embedded_disclosure_policy_violation: convert_inner(
+                value.embedded_disclosure_policy_violation,
+            ),
         }
     }
 }

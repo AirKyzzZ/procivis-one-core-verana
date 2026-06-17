@@ -4,8 +4,9 @@ use one_core::model::proof::{
     ExactProofFilterColumn, ProofRole, ProofStateEnum, SortableProofColumn,
 };
 use one_core::provider::verification_protocol::dto::{
-    CredentialDetailClaimExtResponseDTO, CredentialQueryFailureHintResponseDTO,
-    CredentialQueryFailureReasonEnum, CredentialQueryResponseDTO, CredentialSetResponseDTO,
+    ApplicableCredential, CredentialDetailClaimExtResponseDTO,
+    CredentialQueryFailureHintResponseDTO, CredentialQueryFailureReasonEnum,
+    CredentialQueryResponseDTO, CredentialSetResponseDTO, DisclosurePolicyViolation,
     PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
     PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
@@ -553,8 +554,7 @@ pub(crate) struct CredentialQueryResponseRestDTO {
 pub(crate) enum ApplicableCredentialOrFailureHintRestEnum {
     ApplicableCredentials {
         #[serde(rename = "applicableCredentials")]
-        applicable_credentials:
-            Vec<GetCredentialResponseRestDTO<CredentialDetailClaimExtResponseRestDTO>>,
+        applicable_credentials: Vec<ApplicableCredentialRestDTO>,
         #[serde(rename = "purpose")]
         purpose: Option<I18nString>,
     },
@@ -565,6 +565,28 @@ pub(crate) enum ApplicableCredentialOrFailureHintRestEnum {
         #[serde(rename = "failureHint")]
         failure_hint: Box<CredentialQueryFailureHintResponseRestDTO>,
     },
+}
+
+#[options_not_nullable]
+#[derive(Debug, Serialize, ToSchema, TryFrom)]
+#[try_from(T = ApplicableCredential, Error = MapperError)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct ApplicableCredentialRestDTO {
+    #[serde(flatten)]
+    pub credential: GetCredentialResponseRestDTO<CredentialDetailClaimExtResponseRestDTO>,
+    /// if violated, issuer's disclosure policy information
+    #[try_from(infallible, with_fn = convert_inner)]
+    pub embedded_disclosure_policy_violation: Option<DisclosurePolicyViolationRestDTO>,
+}
+
+#[options_not_nullable]
+#[derive(Debug, Serialize, ToSchema, From)]
+#[from(DisclosurePolicyViolation)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct DisclosurePolicyViolationRestDTO {
+    pub id: String,
+    pub description: Option<String>,
+    pub url: Option<String>,
 }
 
 #[options_not_nullable]

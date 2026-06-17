@@ -114,7 +114,7 @@ pub(crate) struct VerifierInfoAttestation {
     pub credential_ids: Vec<dcql::CredentialQueryId>,
 }
 
-#[derive(Clone, Copy, Deserialize, Serialize, Debug)]
+#[derive(Clone, Copy, Deserialize, Serialize, Debug, PartialEq)]
 pub(crate) enum VerifierInfoAttestationFormat {
     #[serde(rename = "registration_cert")]
     RegistrationCert,

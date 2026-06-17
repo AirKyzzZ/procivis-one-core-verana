@@ -51,6 +51,7 @@ async fn test_get_presentation_definition_v2_credential_sets_simple() {
         key,
         &dcql_query,
         "OPENID4VP_FINAL1",
+        None,
     )
     .await;
 
@@ -132,6 +133,7 @@ async fn test_get_presentation_definition_v2_credential_sets_multiple_credential
         key,
         &dcql_query,
         "OPENID4VP_FINAL1",
+        None,
     )
     .await;
 
@@ -240,6 +242,7 @@ async fn test_get_presentation_definition_v2_optional_credential_sets() {
         key,
         &dcql_query,
         "OPENID4VP_FINAL1",
+        None,
     )
     .await;
 

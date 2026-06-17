@@ -3146,6 +3146,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "ldapdn"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7612c3fbac3ae551ec994ca498ffaa8b202d576f491a95ee641e4866f1764979"
+
+[[package]]
 name = "leb128fmt"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3776,6 +3782,7 @@ dependencies = [
  "json-ld",
  "json-syntax",
  "jsonptr",
+ "ldapdn",
  "maplit",
  "mime",
  "mockall",

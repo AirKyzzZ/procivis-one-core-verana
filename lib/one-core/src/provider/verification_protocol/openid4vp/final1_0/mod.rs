@@ -711,7 +711,10 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
             &*self.credential_schema_repository,
             &*self.credential_formatter_provider,
             &*self.trust_information_provider,
+            &*self.wrp_validator,
             &self.config,
+            interaction_data.verifier_details.as_ref(),
+            &interaction_data.verifier_info,
         )
         .await
     }

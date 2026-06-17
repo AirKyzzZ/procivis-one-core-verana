@@ -8,6 +8,7 @@ use one_core::model::credential_schema::CredentialSchema;
 use one_core::model::identifier::Identifier;
 use one_core::model::list_filter::ListFilterValue;
 use one_core::model::organisation::Organisation;
+use one_core::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
 use serde_json::json;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
@@ -49,6 +50,7 @@ async fn test_get_presentation_definition_2_simple_credential_success() {
         key,
         &dcql_query,
         "OPENID4VP_FINAL1",
+        None,
     )
     .await;
 
@@ -110,6 +112,7 @@ async fn test_get_presentation_definition_2_trust_purpose_success() {
         key,
         &dcql_query,
         "OPENID4VP_FINAL1",
+        None,
     )
     .await;
 
@@ -200,6 +203,7 @@ async fn test_get_presentation_definition_2_claim_filtering_success() {
         key,
         &dcql_query,
         "OPENID4VP_FINAL1",
+        None,
     )
     .await;
 
@@ -275,6 +279,7 @@ async fn test_get_presentation_definition_2_claim_non_sd_extra_claim() {
         key,
         &dcql_query,
         "OPENID4VP_FINAL1",
+        None,
     )
     .await;
 
@@ -369,6 +374,7 @@ async fn test_get_presentation_definition_2_with_user_selection() {
         key,
         &dcql_query,
         "OPENID4VP_FINAL1",
+        None,
     )
     .await;
 
@@ -478,6 +484,7 @@ async fn test_get_presentation_definition_2_with_user_selection_nesting_mixed_sd
         key,
         &dcql_query,
         "OPENID4VP_FINAL1",
+        None,
     )
     .await;
 
@@ -553,6 +560,7 @@ async fn test_get_presentation_definition_2_no_credential_no_schema() {
         key,
         &dcql_query,
         "OPENID4VP_FINAL1",
+        None,
     )
     .await;
 
@@ -705,6 +713,7 @@ async fn test_get_presentation_definition_2_nested_array_element_selection() {
         key,
         &dcql_query,
         "OPENID4VP_FINAL1",
+        None,
     )
     .await;
 
@@ -770,6 +779,7 @@ async fn test_get_presentation_definition_2_no_credential_with_schema() {
         key,
         &dcql_query,
         "OPENID4VP_FINAL1",
+        None,
     )
     .await;
 
@@ -842,6 +852,7 @@ async fn test_get_presentation_definition_2_inapplicable_credential_with_schema(
         key,
         &dcql_query,
         "OPENID4VP_FINAL1",
+        None,
     )
     .await;
 
@@ -904,6 +915,7 @@ async fn test_get_presentation_definition_2_inapplicable_credential_validity() {
         key,
         &dcql_query,
         "OPENID4VP_FINAL1",
+        None,
     )
     .await;
 
@@ -976,6 +988,7 @@ async fn test_get_presentation_definition_2_batch_credential_success() {
         key,
         &dcql_query,
         "OPENID4VP_FINAL1",
+        None,
     )
     .await;
 
@@ -1038,6 +1051,7 @@ async fn test_get_presentation_definition_2_empty_batch() {
         key,
         &dcql_query,
         "OPENID4VP_FINAL1",
+        None,
     )
     .await;
 
@@ -1115,6 +1129,7 @@ async fn test_get_presentation_definition_2_consumed_batch() {
         key,
         &dcql_query,
         "OPENID4VP_FINAL1",
+        None,
     )
     .await;
 
@@ -1192,6 +1207,7 @@ async fn test_get_presentation_definition_2_mixed_batch() {
         key,
         &dcql_query,
         "OPENID4VP_FINAL1",
+        None,
     )
     .await;
 
@@ -1210,6 +1226,169 @@ async fn test_get_presentation_definition_2_mixed_batch() {
         .unwrap();
     assert_eq!(applicable_creds.len(), 1);
     applicable_creds[0]["id"].assert_eq(&credential.id);
+}
+
+#[tokio::test]
+async fn test_get_presentation_definition_2_disclosure_policy_violation() {
+    // GIVEN
+    let (context, org, _, identifier, key) = TestContext::new_with_did(None).await;
+    let schema = complex_sd_jwt_vc_credential_schema(&context, &org).await;
+    let claims = vec![
+        claim_data(
+            "required_claim",
+            "required_claim",
+            Some("value"),
+            true,
+            &schema,
+        )
+        .await,
+    ];
+
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_FINAL1",
+            TestingCredentialParams {
+                role: Some(CredentialRole::Holder),
+                claims_data: Some(claims),
+                embedded_disclosure_policy: Some(
+                    serde_json::json!({
+                        "id": "policy-id",
+                        "policy": "allowList",
+                        "options": {
+                           "values": [{
+                               "entitlement": "https://uri.etsi.org/19475/Entitlement/Service_Provider"
+                           }]
+                        },
+                        "description": "description",
+                        "url": "https://url",
+                    })
+                    .to_string(),
+                ),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let dcql_query = simple_dcql_query(&schema).await;
+    let proof = proof_for_dcql_query(
+        &context,
+        &org,
+        &identifier,
+        key,
+        &dcql_query,
+        "OPENID4VP_FINAL1",
+        None,
+    )
+    .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .proofs
+        .presentation_definition_v2(proof.id)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let body = resp.json_value().await;
+    let applicable_credentials =
+        &body["credentialQueries"]["test_query_id"]["applicableCredentials"];
+    applicable_credentials[0]["id"].assert_eq(&credential.id);
+    applicable_credentials[0]["embeddedDisclosurePolicyViolation"].assert_eq(&serde_json::json!({
+        "id": "policy-id",
+        "description": "description",
+        "url": "https://url",
+    }));
+}
+
+#[tokio::test]
+async fn test_get_presentation_definition_2_disclosure_policy_no_violation() {
+    // GIVEN
+    let (context, org, identifier, certificate, key) =
+        TestContext::new_with_certificate_identifier(None).await;
+    let schema = complex_sd_jwt_vc_credential_schema(&context, &org).await;
+    let claims = vec![
+        claim_data(
+            "required_claim",
+            "required_claim",
+            Some("value"),
+            true,
+            &schema,
+        )
+        .await,
+    ];
+
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_FINAL1",
+            TestingCredentialParams {
+                role: Some(CredentialRole::Holder),
+                claims_data: Some(claims),
+                embedded_disclosure_policy: Some(
+                    serde_json::json!({
+                        "id": "policy-id",
+                        "policy": "allowList",
+                        "options": {
+                           "values": [{
+                               "dn": "CN=test cert"
+                           }]
+                        },
+                        "description": "description",
+                        "url": "https://url",
+                    })
+                    .to_string(),
+                ),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let dcql_query = simple_dcql_query(&schema).await;
+    let proof = proof_for_dcql_query(
+        &context,
+        &org,
+        &identifier,
+        key,
+        &dcql_query,
+        "OPENID4VP_FINAL1",
+        Some(IdentifierDetails::Certificate(CertificateDetails {
+            chain: certificate.chain,
+            fingerprint: certificate.fingerprint,
+            expiry: certificate.expiry_date,
+            subject_common_name: Some("test cert".to_string()),
+        })),
+    )
+    .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .proofs
+        .presentation_definition_v2(proof.id)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let body = resp.json_value().await;
+    let applicable_credentials =
+        &body["credentialQueries"]["test_query_id"]["applicableCredentials"];
+    applicable_credentials[0]["id"].assert_eq(&credential.id);
+    assert!(
+        !applicable_credentials[0]
+            .as_object()
+            .unwrap()
+            .contains_key("embeddedDisclosurePolicyViolation"),
+    );
 }
 
 async fn simple_dcql_query(schema: &CredentialSchema) -> DcqlQuery {

@@ -36,6 +36,7 @@ use crate::proto::bluetooth_low_energy::ble_resource::{Abort, BleWaiter};
 use crate::proto::nfc::NfcError;
 use crate::proto::nfc::hce::NfcHce;
 use crate::proto::trust_information::TrustInformationProvider;
+use crate::proto::wrp_validator::WRPValidator;
 use crate::provider::credential_formatter::mdoc_formatter::util::EmbeddedCbor;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -82,6 +83,7 @@ pub(crate) struct IsoMdl {
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
     trust_information_provider: Arc<dyn TrustInformationProvider>,
+    wrp_validator: Arc<dyn WRPValidator>,
     ble: Option<BleWaiter>,
     nfc_hce: Option<Arc<dyn NfcHce>>,
 }
@@ -98,6 +100,7 @@ impl IsoMdl {
         credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
         credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
         trust_information_provider: Arc<dyn TrustInformationProvider>,
+        wrp_validator: Arc<dyn WRPValidator>,
         ble: Option<BleWaiter>,
         nfc_hce: Option<Arc<dyn NfcHce>>,
     ) -> Self {
@@ -111,6 +114,7 @@ impl IsoMdl {
             credential_schema_repository,
             credential_formatter_provider,
             trust_information_provider,
+            wrp_validator,
             ble,
             nfc_hce,
         }
@@ -508,7 +512,10 @@ impl VerificationProtocol for IsoMdl {
             &*self.credential_schema_repository,
             &*self.credential_formatter_provider,
             &*self.trust_information_provider,
+            &*self.wrp_validator,
             &self.config,
+            None,
+            &[],
         )
         .await
     }

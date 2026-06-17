@@ -164,13 +164,25 @@ pub struct CredentialQueryResponseDTO {
 pub enum ApplicableCredentialOrFailureHintEnum {
     ApplicableCredentials {
         purpose: Option<I18nString>,
-        applicable_credentials:
-            Vec<CredentialDetailResponseDTO<CredentialDetailClaimExtResponseDTO>>,
+        applicable_credentials: Vec<ApplicableCredential>,
     },
     FailureHint {
         // boxed because of large size difference
         failure_hint: Box<CredentialQueryFailureHintResponseDTO>,
     },
+}
+
+#[derive(Clone, Debug)]
+pub struct ApplicableCredential {
+    pub credential: CredentialDetailResponseDTO<CredentialDetailClaimExtResponseDTO>,
+    pub embedded_disclosure_policy_violation: Option<DisclosurePolicyViolation>,
+}
+
+#[derive(Clone, Debug)]
+pub struct DisclosurePolicyViolation {
+    pub id: String,
+    pub description: Option<String>,
+    pub url: Option<String>,
 }
 
 #[derive(Clone, Debug)]
