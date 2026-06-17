@@ -31,6 +31,8 @@ ignore = [
     { id = "RUSTSEC-2026-0173", reason = "`proc-macro-error2` crate unmaintained, indirect dependency of a few libs" },
     { id = "RUSTSEC-2025-0141", reason = "`bincode` crate discontinued" },
     { id = "RUSTSEC-2026-0097", reason = "`rand` unsound with custom logger, v0.8.x as indirect dependency" },
+    { id = "RUSTSEC-2026-0183", reason = "git2 as dependency of shadow-rs, ub when listing remotes when there are none -> not affected" },
+    { id = "RUSTSEC-2026-0184", reason = "git2 as dependency of shadow-rs, ub when using git blame -> not affected" },
 ]
 
 # This section is considered when running `cargo deny check licenses`
