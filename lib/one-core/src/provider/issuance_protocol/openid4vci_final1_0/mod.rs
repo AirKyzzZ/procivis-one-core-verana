@@ -2394,7 +2394,8 @@ async fn fetch_metadata_json_with_fallback<T: DeserializeOwned>(
     Ok(match fetcher.fetch_json(&issuer_metadata_endpoint).await {
         Ok(response) => response,
         Err(err) => {
-            if err.error_code() == ErrorCode::BR_0347 {
+            let error_code = err.error_code();
+            if error_code == ErrorCode::BR_0347 || error_code == ErrorCode::BR_0395 {
                 let fallback_metadata_endpoint = append_well_known(issuer_url, well_known_path)?;
                 tracing::warn!(
                     "Failed to fetch from `{issuer_metadata_endpoint}`, falling back to legacy endpoint `{fallback_metadata_endpoint}`: {err}"
@@ -2419,7 +2420,8 @@ async fn fetch_metadata_jwt_with_fallback<T: DeserializeOwned + Debug>(
     Ok(match fetcher.fetch_jwt(&issuer_metadata_endpoint).await {
         Ok(response) => response,
         Err(err) => {
-            if err.error_code() == ErrorCode::BR_0347 {
+            let error_code = err.error_code();
+            if error_code == ErrorCode::BR_0347 || error_code == ErrorCode::BR_0395 {
                 let fallback_metadata_endpoint = append_well_known(issuer_url, well_known_path)?;
                 tracing::warn!(
                     "Failed to fetch from `{issuer_metadata_endpoint}`, falling back to legacy endpoint `{fallback_metadata_endpoint}`: {err}"
