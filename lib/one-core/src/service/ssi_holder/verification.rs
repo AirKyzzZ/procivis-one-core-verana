@@ -19,8 +19,9 @@ use crate::config::validator::transport::{
     SelectedTransportType, validate_and_select_transport_type,
 };
 use crate::error::{ContextWithErrorCode, ErrorCodeMixin};
+use crate::mapper::NESTED_CLAIM_MARKER;
+use crate::mapper::credential_schema_claim::presented_paths_to_disclosed_keys;
 use crate::mapper::oidc::detect_format_with_crypto_suite;
-use crate::mapper::{NESTED_CLAIM_MARKER, paths_to_leafs};
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::common::SortDirection;
@@ -282,7 +283,9 @@ impl SSIHolderService {
                 let credential_presentation = CredentialPresentation {
                     credential: credential.clone(),
                     token: credential_content,
-                    disclosed_keys: submitted_paths,
+                    disclosed_keys: presented_paths_to_disclosed_keys(&submitted_paths, credential)
+                        .await
+                        .error_while("mapping presented paths to disclosed keys")?,
                 };
                 let (holder_did, key, jwk_key_id) =
                     holder_did_key_jwk_from_credential(credential).await?;
@@ -776,8 +779,9 @@ impl SSIHolderService {
         let credential_presentation = CredentialPresentation {
             credential: credential.clone(),
             token: credential_content,
-            // credential formatters do not use intermediary claims
-            disclosed_keys: paths_to_leafs(presented_paths),
+            disclosed_keys: presented_paths_to_disclosed_keys(presented_paths, &credential)
+                .await
+                .error_while("mapping presented paths to disclosed keys")?,
         };
         let presentation = self
             .prepare_credential_presentation(credential_presentation, &*formatter)

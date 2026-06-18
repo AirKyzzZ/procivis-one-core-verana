@@ -5,9 +5,11 @@ use shared_types::i18n::I18nString;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::mapper::{NESTED_CLAIM_MARKER, NESTED_CLAIM_MARKER_STR};
+use crate::error::ContextWithErrorCode;
+use crate::mapper::{NESTED_CLAIM_MARKER, NESTED_CLAIM_MARKER_STR, paths_to_leafs};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
+use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::localized_text::{LocalizedText, LocalizedTextEntityType, LocalizedTextField};
@@ -17,6 +19,7 @@ use crate::repository::error::DataLayerError;
 use crate::service::credential_schema::dto::{
     CredentialClaimSchemaDTO, CredentialClaimSchemaRequestDTO, CredentialClaimSchemaTranslationsDTO,
 };
+use crate::service::error::ServiceError;
 
 pub(crate) fn claim_schema_from_metadata_claim_schema(
     metadata_claim: MetadataClaimSchema,
@@ -230,4 +233,58 @@ fn map_array_indices<'a>(
         }
         mapped_path.push(curr_path_segment);
     }
+}
+
+/// Maps credential claims (as shown in credential details) to disclosed keys as formatted in the
+/// actual credential.
+pub(crate) async fn presented_paths_to_disclosed_keys(
+    presented_paths: &[String],
+    credential: &Credential,
+) -> Result<Vec<String>, ServiceError> {
+    let credential_schema = credential
+        .schema
+        .as_ref()
+        .ok_or(ServiceError::MappingError(
+            "credential_schema missing".to_string(),
+        ))?;
+    let claims = credential
+        .claims
+        .as_ref()
+        .ok_or(ServiceError::MappingError(
+            "missing credential claims".to_string(),
+        ))?;
+    let formats = credential_schema.formats.as_ref().await?;
+    let format = formats
+        .first()
+        .ok_or(ServiceError::MappingError("formats is empty".to_string()))?;
+    let mappings = format.claim_mappings.as_ref().await?;
+    let mappings_by_schema_id: HashMap<_, _> = mappings
+        .into_iter()
+        .map(|m| (m.claim_schema_id, m))
+        .collect();
+
+    // credential formatters do not use intermediary claims
+    let leafs = paths_to_leafs(presented_paths);
+    let mut disclosed_keys = Vec::with_capacity(leafs.len());
+    for presented_path in leafs {
+        let claim = claims
+            .iter()
+            .find(|c| c.path == presented_path)
+            .ok_or_else(|| {
+                ServiceError::MappingError(format!("no claim found for path `{}`", presented_path))
+            })?;
+        let claim_schema = claim.schema.as_ref().ok_or_else(|| {
+            ServiceError::MappingError(format!("claim `{}` has no schema", claim.id))
+        })?;
+        let mapping = mappings_by_schema_id.get(&claim_schema.id).ok_or_else(|| {
+            ServiceError::MappingError(format!(
+                "claim schema `{}` has no mapping for schema format {}",
+                claim_schema.id, format.id
+            ))
+        })?;
+        let (mapped_path, _) = claim_path_to_formatted_path(claim, claim_schema, mapping)
+            .error_while("mapping claim path")?;
+        disclosed_keys.push(mapped_path);
+    }
+    Ok(disclosed_keys)
 }

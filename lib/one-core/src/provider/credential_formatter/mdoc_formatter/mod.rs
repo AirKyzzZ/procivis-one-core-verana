@@ -48,7 +48,6 @@ use crate::config::core_config::{
     KeyStorageType, RevocationType, VerificationProtocolType,
 };
 use crate::error::ContextWithErrorCode;
-use crate::mapper::credential_schema_claim::claim_path_to_formatted_path;
 use crate::mapper::x509::pem_chain_into_x5c;
 use crate::mapper::{NESTED_CLAIM_MARKER, decode_cbor_base64, encode_cbor_base64};
 use crate::model::claim::Claim;
@@ -311,63 +310,9 @@ impl CredentialFormatter for MdocFormatter {
             .iter()
             .map(|key| key.as_str())
             .collect();
-        let claims =
-            credential
-                .credential
-                .claims
-                .as_ref()
-                .ok_or(FormatterError::CouldNotFormat(
-                    "Missing credential claims".to_string(),
-                ))?;
-        let formats = credential
-            .credential
-            .schema
-            .as_ref()
-            .ok_or(FormatterError::CouldNotFormat(
-                "Missing schema on credential".to_string(),
-            ))?
-            .formats
-            .as_ref()
-            .await?;
-        let mappings = formats
-            .iter()
-            .find(|f| f.format == self.config_id)
-            .ok_or(FormatterError::CouldNotFormat(format!(
-                "Schema has no matching format for formatter {}",
-                self.config_id
-            )))?
-            .claim_mappings
-            .as_ref()
-            .await?;
-
         let mut elements_for_namespace = IndexMap::new();
         for disclosed_key in disclosed_keys {
-            let claim = claims.iter().find(|c| c.path == disclosed_key).ok_or(
-                FormatterError::CouldNotFormat(format!(
-                    "Missing claim for disclosed key {}",
-                    disclosed_key
-                )),
-            )?;
-            let claim_schema =
-                claim
-                    .schema
-                    .as_ref()
-                    .ok_or(FormatterError::CouldNotFormat(format!(
-                        "Missing claim schema for claim {}",
-                        claim.id
-                    )))?;
-            let disclosed_path = if let Some(mapping) = mappings
-                .iter()
-                .find(|m| m.claim_schema_id == claim_schema.id)
-            {
-                let (path, _) = claim_path_to_formatted_path(claim, claim_schema, mapping)
-                    .error_while("mapping claim path")?;
-                path
-            } else {
-                disclosed_key.to_string()
-            };
-
-            match disclosed_path.split_once(NESTED_CLAIM_MARKER) {
+            match disclosed_key.split_once(NESTED_CLAIM_MARKER) {
                 Some((namespace, path)) => {
                     let element = match path.split_once(NESTED_CLAIM_MARKER) {
                         Some((element, _)) => element,
@@ -381,7 +326,7 @@ impl CredentialFormatter for MdocFormatter {
                 }
                 None => {
                     // the entire namespace is requested
-                    elements_for_namespace.insert(disclosed_path, vec![]);
+                    elements_for_namespace.insert(disclosed_key.to_string(), vec![]);
                 }
             }
         }

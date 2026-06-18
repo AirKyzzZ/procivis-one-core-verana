@@ -639,7 +639,6 @@ pub async fn create_credential_schema(
         required: true,
         translations: Default::default(),
     };
-    let claim_schemas = vec![claim_schema];
 
     let params = params.unwrap_or_default();
     let now = one_core::clock::now_utc();
@@ -647,6 +646,16 @@ pub async fn create_credential_schema(
         .id
         .unwrap_or(CredentialSchemaId::from(Uuid::new_v4()));
     let name = unwrap_or_random(params.name);
+    let credential_schema_format_id = Uuid::new_v4().into();
+    let claim_schema_mapping = CredentialSchemaFormatClaimSchema {
+        id: Uuid::new_v4().into(),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        credential_schema_format_id,
+        claim_schema_id: claim_schema.id,
+        technical_key: "firstName".to_string(),
+        namespace: None,
+    };
     let mut credential_schema = CredentialSchema {
         batch_size: None,
         allow_revocation: None,
@@ -659,17 +668,17 @@ pub async fn create_credential_schema(
         organisation: organisation.to_owned().into(),
         deleted_at: params.deleted_at,
         formats: vec![CredentialSchemaFormat {
-            id: Uuid::new_v4().into(),
+            id: credential_schema_format_id,
             created_date: one_core::clock::now_utc(),
             last_modified: one_core::clock::now_utc(),
             credential_schema_id: id,
             format: params.format.unwrap_or("JWT".into()),
             schema_id: params.schema_id.unwrap_or(id.to_string()),
-            claim_mappings: Default::default(),
+            claim_mappings: vec![claim_schema_mapping].into(),
         }]
         .into(),
         revocation_method: params.revocation_method,
-        claim_schemas: claim_schemas.into(),
+        claim_schemas: vec![claim_schema].into(),
         layout_type: params.layout_type.unwrap_or(LayoutType::Card),
         layout_properties: params.layout_properties,
         allow_suspension: true,

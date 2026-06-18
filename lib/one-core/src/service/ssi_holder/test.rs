@@ -21,6 +21,7 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
 use crate::model::credential_schema::{KeyStorageSecurity, LayoutType};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
+use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::history::TrustResolutionResult;
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
@@ -735,37 +736,57 @@ async fn test_submit_proof_repeating_claims() {
             }))
         });
 
+    let mut credential = dummy_credential(None);
+    let mut formats = credential
+        .schema
+        .as_mut()
+        .unwrap()
+        .formats
+        .as_mut()
+        .await
+        .unwrap();
+    let format = formats.first_mut().unwrap();
+    format.claim_mappings = vec![CredentialSchemaFormatClaimSchema {
+        id: Uuid::new_v4().into(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        credential_schema_format_id: format.id,
+        claim_schema_id: claim_id.into(),
+        technical_key: "claim1".to_string(),
+        namespace: None,
+    }]
+    .into();
+    drop(formats);
+    let credential = Credential {
+        id: credential_id,
+        claims: Some(vec![Claim {
+            id: claim_id.into(),
+            credential_id,
+            created_date: crate::clock::now_utc(),
+            last_modified: crate::clock::now_utc(),
+            value: Some("claim value".to_string()),
+            path: "claim1".to_string(),
+            selectively_disclosable: false,
+            schema: Some(ClaimSchema {
+                id: claim_id.into(),
+                key: "claim1".to_string(),
+                data_type: "STRING".to_string(),
+                created_date: crate::clock::now_utc(),
+                last_modified: crate::clock::now_utc(),
+                array: false,
+                metadata: false,
+                required: true,
+                translations: Default::default(),
+            }),
+        }]),
+        holder_identifier: Some(identifier.clone()),
+        key: Some(key.clone()),
+        ..credential
+    };
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository
         .expect_get_credential()
-        .returning(move |_, _| {
-            Ok(Some(Credential {
-                id: credential_id,
-                claims: Some(vec![Claim {
-                    id: claim_id.into(),
-                    credential_id,
-                    created_date: crate::clock::now_utc(),
-                    last_modified: crate::clock::now_utc(),
-                    value: Some("claim value".to_string()),
-                    path: "claim1".to_string(),
-                    selectively_disclosable: false,
-                    schema: Some(ClaimSchema {
-                        id: claim_id.into(),
-                        key: "claim1".to_string(),
-                        data_type: "STRING".to_string(),
-                        created_date: crate::clock::now_utc(),
-                        last_modified: crate::clock::now_utc(),
-                        array: false,
-                        metadata: false,
-                        required: true,
-                        translations: Default::default(),
-                    }),
-                }]),
-                holder_identifier: Some(identifier.clone()),
-                key: Some(key.clone()),
-                ..dummy_credential(None)
-            }))
-        });
+        .returning(move |_, _| Ok(Some(credential.clone())));
 
     let mut formatter = MockCredentialFormatter::new();
     formatter
@@ -1697,6 +1718,18 @@ fn mock_ssi_holder_service() -> SSIHolderService {
 
 fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
     let credential_schema_id = Uuid::new_v4().into();
+    let claim_schema = ClaimSchema {
+        id: Uuid::new_v4().into(),
+        key: "key1".to_string(),
+        data_type: "STRING".to_string(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        array: false,
+        metadata: false,
+        required: true,
+        translations: Default::default(),
+    };
+    let credential_schema_format_id = Uuid::new_v4().into();
     Credential {
         id: Uuid::new_v4().into(),
         created_date: crate::clock::now_utc(),
@@ -1751,28 +1784,26 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
             name: "schema".to_string(),
             key_storage_security: Some(KeyStorageSecurity::Basic),
             formats: vec![CredentialSchemaFormat {
-                id: Uuid::new_v4().into(),
+                id: credential_schema_format_id,
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
                 credential_schema_id,
                 format: "JWT".into(),
                 schema_id: "CredentialSchemaId".to_owned(),
-                claim_mappings: Default::default(),
+                claim_mappings: vec![CredentialSchemaFormatClaimSchema {
+                    id: Uuid::new_v4().into(),
+                    created_date: crate::clock::now_utc(),
+                    last_modified: crate::clock::now_utc(),
+                    credential_schema_format_id,
+                    claim_schema_id: claim_schema.id,
+                    technical_key: "key1".to_string(),
+                    namespace: None,
+                }]
+                .into(),
             }]
             .into(),
             revocation_method: None,
-            claim_schemas: vec![ClaimSchema {
-                id: Uuid::new_v4().into(),
-                key: "key1".to_string(),
-                data_type: "STRING".to_string(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                array: false,
-                metadata: false,
-                required: true,
-                translations: Default::default(),
-            }]
-            .into(),
+            claim_schemas: vec![claim_schema].into(),
             organisation: dummy_organisation(organisation_id).into(),
             deleted_at: None,
             layout_type: LayoutType::Card,
