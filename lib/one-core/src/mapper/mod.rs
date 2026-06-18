@@ -139,6 +139,14 @@ pub(crate) fn value_to_model_claims(
                     .ok_or(ServiceError::MappingError(format!(
                         "missing child claim schema {child_claim_schema_id}",
                     )))?;
+                let Some((_, schema_leaf)) =
+                    child_claim_schema.key.rsplit_once(NESTED_CLAIM_MARKER)
+                else {
+                    return Err(ServiceError::MappingError(format!(
+                        "expected claim schema {child_claim_schema_id} with key `{}` to be nested",
+                        child_claim_schema.key,
+                    )));
+                };
                 model_claims.extend(value_to_model_claims(
                     credential_id,
                     claim_schemas,
@@ -146,7 +154,7 @@ pub(crate) fn value_to_model_claims(
                     value,
                     now,
                     child_claim_schema,
-                    &format!("{claim_path}/{key}"),
+                    &format!("{claim_path}/{schema_leaf}"),
                 )?);
             }
         }
