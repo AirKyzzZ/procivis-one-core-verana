@@ -19,3 +19,4 @@ pub mod m20260609_090000_move_user_nonce_user_sub_to_wallet_instance;
 pub mod m20260611_052438_unique_claim_schema_keys;
 pub mod m20260611_120000_add_nonce_to_holder_wallet_instance;
 pub mod m20260612_120000_add_embedded_disclosure_policy_to_credential_schema;
+pub mod m20260619_120000_add_credential_schema_list_indexes;

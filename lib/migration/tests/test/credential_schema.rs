@@ -49,6 +49,11 @@ async fn test_db_schema_credential_schema() {
             "index-CredentialSchema-CreatedDate",
             false,
             &["created_date"],
+        )
+        .index(
+            "index-CredentialSchema-OrganisationId-DeletedAt-CreatedDate",
+            false,
+            &["organisation_id", "deleted_at", "created_date"],
         );
     credential_schema
         .column("id")
@@ -250,6 +255,11 @@ async fn test_db_schema_credential_schema_format() {
             "index-CredentialSchemaFormat-CredentialSchemaId-SchemaId_Unique",
             true,
             &["credential_schema_id", "schema_id"],
+        )
+        .index(
+            "index-CredentialSchemaFormat-SchemaId-Format-CredentialSchemaId",
+            false,
+            &["schema_id", "format", "credential_schema_id"],
         );
     credential_schema_format
         .column("id")
