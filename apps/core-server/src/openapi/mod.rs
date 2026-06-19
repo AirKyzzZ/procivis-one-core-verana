@@ -157,139 +157,69 @@ pub(crate) fn gen_openapi_documentation(
 }
 
 fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
-    let mut tags = vec![
-        Tag::builder()
-            .name("other")
-            .description(Some(indoc::formatdoc! {"
-                System information and configuration. Use these endpoints to inspect
-                your deployment's available components - credential formats, protocols,
-                key algorithms, and many more - and to retrieve other system-level
-                information.
-            "}))
-            .extensions(Some(
-                Extensions::builder()
-                    .add("x-displayName", "System Information")
-                    .build(),
-            ))
-            .build(),
-    ];
+    let mut tags = vec![create_tag(
+        "other",
+        "System Information",
+        indoc::indoc! {"System information and configuration. Use these endpoints to inspect
+        your deployment's available components - credential formats, protocols,
+        key algorithms, and many more - and to retrieve other system-level
+        information."},
+    )];
 
     if config.enable_management_endpoints {
-        tags.append(&mut vec![
-            Tag::builder()
-                .name("organisation_management")
-                .description(Some(indoc::formatdoc! {"
-                The organization is the fundamental unit in Procivis One. All
-                issuing, holding, and verifying actions are performed by an
+        tags.extend(vec![
+            create_tag("organisation_management", "Organizations",
+                indoc::indoc! {"The organization is the fundamental unit in Procivis One.
+                All issuing, holding, and verifying actions are performed by an
                 organization. Keys, DIDs, credentials, and proofs belong exclusively
-                to the organization that created them.
-            "}))
-                .extensions(Some(
-                    Extensions::builder()
-                        .add("x-displayName", "Organizations")
-                        .build(),
-                ))
-                .build(),
-            Tag::builder()
-                .name("key")
-                .description(Some(indoc::formatdoc! {"
-                Manage cryptographic keys. Keys are the foundation of identifiers — used to
+                to the organization that created them."}
+            ),
+            create_tag("key", "Keys",
+                indoc::indoc! {"Manage cryptographic keys. Keys are the foundation of identifiers — used to
                 create DIDs, certificates, and CAs, or as identifiers directly. Private keys
                 are stored securely and never exposed through the API.
 
-                Related guide: [Keys](https://docs.procivis.ch/keys)
-            "}))
-                .extensions(Some(
-                    Extensions::builder().add("x-displayName", "Keys").build(),
-                ))
-                .build(),
-            Tag::builder()
-                .name("identifier_management")
-                .description(Some(indoc::formatdoc! {"
-                Create and manage identifiers of different types for different identity
-                ecosystems. An identifier is needed to issue, hold, or verify.
-            "}))
-                .extensions(Some(
-                    Extensions::builder()
-                        .add("x-displayName", "Identifiers")
-                        .build(),
-                ))
-                .build(),
-            Tag::builder()
-                .name("certificate_management")
-                .description(Some(indoc::formatdoc! {"
-                Manage certificates in the system. To add a certificate as an identifier,
-                see the Identifiers endpoints.
-            "}))
-                .extensions(Some(
-                    Extensions::builder()
-                        .add("x-displayName", "Certificates")
-                        .build(),
-                ))
-                .build(),
-            Tag::builder()
-                .name("did_management")
-                .description(Some(indoc::formatdoc! {"
-                Use the identifier API to create DIDs. The system assigns an ID to both
+                Related guide: [Keys](https://docs.procivis.ch/keys)"}
+            ),
+            create_tag("identifier_management", "Identifiers",
+                indoc::indoc! {"Create and manage identifiers of different types for different identity
+                ecosystems. An identifier is needed to issue, hold, or verify."}
+            ),
+            create_tag("certificate_management", "Certificates",
+                indoc::indoc! {"Manage certificates in the system. To add a certificate as an identifier,
+                see the Identifiers endpoints."}
+            ),
+            create_tag("did_management", "DIDs",
+                indoc::indoc! {"Use the identifier API to create DIDs. The system assigns an ID to both
                 the identifier and the DID. Use the DID ID returned from the identifier
-                response with this DID API for management operations like deactivation.
-            "}))
-                .extensions(Some(
-                    Extensions::builder().add("x-displayName", "DIDs").build(),
-                ))
-                .build(),
-            Tag::builder()
-                .name("credential_schema_management")
-                .description(Some(indoc::formatdoc! {"
-                A credential schema defines the structure and format of a credential,
+                response with this DID API for management operations like deactivation."}
+            ),
+            create_tag("credential_schema_management", "Credential Schemas",
+                indoc::indoc! {"A credential schema defines the structure and format of a credential,
                 including the attributes that issuers make claims about. Schemas also
                 specify how issued credentials should be presented in digital wallets,
                 whether revocation methods are used, and issuer preferences for wallet
                 storage type.
 
-                The system supports the creation of as many credential schemas as needed.
-            "}))
-                .extensions(Some(
-                    Extensions::builder()
-                        .add("x-displayName", "Credential Schemas")
-                        .build(),
-                ))
-                .build(),
-            Tag::builder()
-                .name("credential_management")
-                .description(Some(indoc::formatdoc! {"
-                Issue credentials and manage the lifecycle of issued credentials, including
+                The system supports the creation of as many credential schemas as needed."}
+            ),
+            create_tag("credential_management", "Credentials",
+                indoc::indoc! {"Issue credentials and manage the lifecycle of issued credentials, including
                 suspension, reactivation, revocation and status check for holders and verifiers.
 
                 Create a credential by specifying a schema and making claims about a subject.
                 Then create a share endpoint URL for the wallet holder to access the offered
-                credential. Suspension and revocation options are determined by the schema.
-            "}))
-                .extensions(Some(
-                    Extensions::builder()
-                        .add("x-displayName", "Credentials")
-                        .build(),
-                ))
-                .build(),
-            Tag::builder()
-                .name("proof_schema_management")
-                .description(Some(indoc::formatdoc! {"
-                Manage proof schemas, which define the claims requested from a holder during
+                credential. Suspension and revocation options are determined by the schema."}
+            ),
+            create_tag("proof_schema_management", "Proof Schemas",
+                indoc::indoc! {"Manage proof schemas, which define the claims requested from a holder during
                 verification. A proof schema can combine claims from any number of credential
                 schemas in your organization.
 
-                Related guide: [Proof schemas](https://docs.procivis.ch/proof-schemas)
-            "}))
-                .extensions(Some(
-                    Extensions::builder()
-                        .add("x-displayName", "Proof Schemas")
-                        .build(),
-                ))
-                .build(),
-            Tag::builder()
-                .name("proof_management")
-                .description(Some(indoc::formatdoc! {"
-                A proof request is a request of one or more claims from a wallet holder.
+                Related guide: [Proof schemas](https://docs.procivis.ch/proof-schemas)"}
+            ),
+            create_tag("proof_management", "Proof Requests",
+                indoc::indoc! {"A proof request is a request of one or more claims from a wallet holder.
 
                 Create a proof request then create a share endpoint URL for the holder
                 to access the request. Any proof shared is verified.
@@ -298,18 +228,10 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                 a filtering function for wallet holders to see what credentials stored in
                 their wallet match a proof request.
 
-                Related guide: [Verify](https://docs.procivis.ch/verify)
-            "}))
-                .extensions(Some(
-                    Extensions::builder()
-                        .add("x-displayName", "Proof Requests")
-                        .build(),
-                ))
-                .build(),
-            Tag::builder()
-                .name("interaction")
-                .description(Some(indoc::formatdoc! {"
-                For wallet agents, handle interactions with issuers and verifiers.
+                Related guide: [Verify](https://docs.procivis.ch/verify)"}
+            ),
+            create_tag("interaction", "Wallet Interaction",
+                indoc::indoc! {"For wallet agents, handle interactions with issuers and verifiers.
 
                 When the holder scans the QR code offered by an issuer or a verifier, the
                 handle invitation endpoint takes the encoded url and returns the interaction
@@ -317,264 +239,94 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
 
                 The holder then makes the choice to accept or reject the exchange.
 
-                Related guide: [Wallets](https://docs.procivis.ch/hold)
-            "}))
-                .extensions(Some(
-                    Extensions::builder()
-                        .add("x-displayName", "Wallet Interaction")
-                        .build(),
-                ))
-                .build(),
-            Tag::builder()
-                .name("history_management")
-                .description(Some(indoc::formatdoc! {"
-                Manage and query the event history log. External services use this API
+                Related guide: [Wallets](https://docs.procivis.ch/hold)"}
+            ),
+            create_tag("history_management", "History",
+                indoc::indoc! {"Manage and query the event history log. External services use this API
                 to submit history entries to Core's centralized history service; all
-                consumers use it to list or retrieve recorded events.
-            "}))
-                .extensions(Some(
-                    Extensions::builder()
-                        .add("x-displayName", "History")
-                        .build(),
-                ))
-                .build(),
-            Tag::builder()
-                .name("wallet_instance")
-                .description(Some(indoc::formatdoc! {"
-                For Wallet Providers, manage wallet instances and attestations issued by the system.
-            "}))
-                .extensions(Some(
-                    Extensions::builder()
-                        .add("x-displayName", "Wallet Instances (Provider)")
-                        .build(),
-                ))
-                .build(),
-            Tag::builder()
-                .name("holder_wallet_instance")
-                .description(Some(indoc::formatdoc! {"
-                For wallet units, register with the Wallet Provider, check status and get trust information.
-            "}))
-                .extensions(Some(
-                    Extensions::builder()
-                        .add("x-displayName", "Wallet Instances (Holder)")
-                        .build(),
-                ))
-                .build(),
-            Tag::builder()
-                .name("verifier_instance")
-                .description(Some(indoc::formatdoc! {"
-                For verifier units, register with the Verifier Provider and get trust information.
-            "}))
-                .extensions(Some(
-                    Extensions::builder()
-                        .add("x-displayName", "Verifier Instances")
-                        .build(),
-                ))
-                .build(),
-            Tag::builder()
-                .name("signature")
-                .description(Some(indoc::formatdoc! {"
-                Create and revoke signatures.
-            "}))
-                .extensions(Some(
-                    Extensions::builder()
-                        .add("x-displayName", "Signatures")
-                        .build(),
-                ))
-                .build(),
-            Tag::builder()
-                .name("qes")
-                .description(Some(indoc::formatdoc! {"
-                Document signing.
-            "}))
-                .extensions(Some(
-                    Extensions::builder()
-                        .add("x-displayName", "Qualified Electronic Signature (QES)")
-                        .build(),
-                ))
-                .build(),
-            Tag::builder()
-                .name("jsonld")
-                .description(Some(indoc::formatdoc! {"
-                Retrieve cached JSON-LD context documents.
-            "}))
-                .extensions(Some(
-                    Extensions::builder()
-                        .add("x-displayName", "JSON-LD")
-                        .build(),
-                ))
-                .build(),
-            Tag::builder()
-                .name("task")
-                .description(Some(indoc::formatdoc! {"
-                Trigger configured maintenance and operational tasks.
+                consumers use it to list or retrieve recorded events."}
+            ),
+            create_tag("wallet_instance", "Wallet Instances (Provider)",
+                "For Wallet Providers, manage wallet instances and attestations issued by the system."
+            ),
+            create_tag("holder_wallet_instance", "Wallet Instances (Holder)",
+                "For wallet units, register with the Wallet Provider, check status and get trust information."
+            ),
+            create_tag("verifier_instance", "Verifier Instances",
+                "For verifier units, register with the Verifier Provider and get trust information."
+            ),
+            create_tag("signature", "Signatures", "Create and revoke signatures."),
+            create_tag("qes", "Qualified Electronic Signature (QES)", "Document signing."),
+            create_tag("jsonld", "JSON-LD", "Retrieve cached JSON-LD context documents."),
+            create_tag("task", "Tasks",
+                indoc::indoc! {"Trigger configured maintenance and operational tasks.
                 Tasks can also be run from the CLI or scheduled as cron
                 jobs. See [Regular Tasks](https://docs.procivis.ch/reference/configuration/core#regular-tasks)
-                for supported task types and their parameters.
-            "}))
-                .extensions(Some(
-                    Extensions::builder().add("x-displayName", "Tasks").build(),
-                ))
-                .build(),
-            Tag::builder()
-                .name("cache")
-                .description(Some(indoc::formatdoc! {"
-                Manage the remote entity cache. See [Caching](https://docs.procivis.ch/configure/caching)
-                for configuration.
-            "}))
-                .extensions(Some(
-                    Extensions::builder().add("x-displayName", "Cache").build(),
-                ))
-                .build(),
-            Tag::builder()
-                .name("trust_list_publication_management")
-                .description(Some(indoc::formatdoc! {"
-                Publish and manage trust lists.        
-            "}))
-                .extensions(Some(
-                    Extensions::builder()
-                        .add("x-displayName", "Trust List Publications")
-                        .build(),
-                ))
-                .build(),
-            Tag::builder()
-                .name("trust_collection_management")
-                .description(Some(indoc::formatdoc! {"
-                Manage collections of trust list subscriptions.
-            "}))
-                .extensions(Some(
-                    Extensions::builder()
-                        .add("x-displayName", "Trust List Collections")
-                        .build(),
-                ))
-                .build(),
-            Tag::builder()
-                .name("statistics")
-                .description(Some(indoc::formatdoc! {"
-                Retrieve organizational and system statistics including issuance and
-                verification counts, and active wallet unit counts. 
-            "}))
-                .extensions(Some(
-                    Extensions::builder()
-                        .add("x-displayName", "Statistics")
-                        .build(),
-                ))
-                .build(),
+                for supported task types and their parameters."}
+            ),
+            create_tag("cache", "Cache",
+                indoc::indoc! {"Manage the remote entity cache. See [Caching](https://docs.procivis.ch/configure/caching)
+                for configuration."}
+            ),
+            create_tag("trust_list_publication_management", "Trust List Publications", "Publish and manage trust lists."),
+            create_tag("trust_collection_management", "Trust List Collections", "Manage collections of trust list subscriptions."),
+            create_tag("statistics", "Statistics",
+                indoc::indoc! {"Retrieve organizational and system statistics including issuance and
+                verification counts, and active wallet unit counts."}
+            ),
         ]);
     }
     if config.enable_external_endpoints {
-        tags.append(&mut vec![
-            Tag::builder()
-                .name("ssi")
-                .description(Some(indoc::formatdoc! {"
-
+        let warning_description = indoc::indoc! {"
             :::warning
 
             These endpoints handle low-level mechanisms in interactions between agents.
             Deep understanding of the involved protocols is recommended.
 
             :::
-
-        "}))
-                .extensions(Some(
-                    Extensions::builder()
-                        .add("x-displayName", "(Advanced) SSI")
-                        .build(),
-                ))
-                .build(),
-            Tag::builder()
-                .name("openid4vci-final1_0")
-                .description(Some(indoc::formatdoc! {"
-
-                :::warning
-
-                These endpoints handle low-level mechanisms in interactions between agents.
-                Deep understanding of the involved protocols is recommended.
-
-                :::
-
-            "}))
-                .extensions(Some(
-                    Extensions::builder()
-                        .add("x-displayName", "(Advanced) OID4VCI Final 1.0")
-                        .build(),
-                ))
-                .build(),
-            Tag::builder()
-                .name("openid4vp-draft20")
-                .description(Some(indoc::formatdoc! {"
-
-                :::warning
-
-                These endpoints handle low-level mechanisms in interactions between agents.
-                Deep understanding of the involved protocols is recommended.
-
-                :::
-
-            "}))
-                .extensions(Some(
-                    Extensions::builder()
-                        .add("x-displayName", "(Advanced) OID4VP Draft 20")
-                        .build(),
-                ))
-                .build(),
-            Tag::builder()
-                .name("openid4vp-final-1.0")
-                .description(Some(indoc::formatdoc! {"
-
-                :::warning
-
-                These endpoints handle low-level mechanisms in interactions between agents.
-                Deep understanding of the involved protocols is recommended.
-
-                :::
-
-            "}))
-                .extensions(Some(
-                    Extensions::builder()
-                        .add("x-displayName", "(Advanced) OID4VP Final 1.0")
-                        .build(),
-                ))
-                .build(),
-            Tag::builder()
-                .name("openid4vci-final1_0-swiyu")
-                .description(Some(indoc::formatdoc! {"
-
-                :::warning
-
-                These endpoints handle low-level mechanisms in interactions between agents.
-                Deep understanding of the involved protocols is recommended.
-
-                :::
-
-            "}))
-                .extensions(Some(
-                    Extensions::builder()
-                        .add("x-displayName", "(Advanced) OID4VCI Final 1.0 - swiyu")
-                        .build(),
-                ))
-                .build(),
-            Tag::builder()
-                .name("openid4vp-draft20-swiyu")
-                .description(Some(indoc::formatdoc! {"
-
-                :::warning
-
-                These endpoints handle low-level mechanisms in interactions between agents.
-                Deep understanding of the involved protocols is recommended.
-
-                :::
-
-            "}))
-                .extensions(Some(
-                    Extensions::builder()
-                        .add("x-displayName", "(Advanced) OID4VP Draft 20 - swiyu")
-                        .build(),
-                ))
-                .build(),
+        "};
+        tags.extend(vec![
+            create_tag("ssi", "(Advanced) SSI", warning_description),
+            create_tag(
+                "openid4vci-final1_0",
+                "(Advanced) OID4VCI Final 1.0",
+                warning_description,
+            ),
+            create_tag(
+                "openid4vp-final-1.0",
+                "(Advanced) OID4VP Final 1.0",
+                warning_description,
+            ),
+            create_tag(
+                "openid4vci-final1_0-swiyu",
+                "(Advanced) OID4VCI Final 1.0 - swiyu",
+                warning_description,
+            ),
+            create_tag(
+                "openid4vp-draft20",
+                "(Advanced) OID4VP Draft 20",
+                warning_description,
+            ),
+            create_tag(
+                "openid4vp-draft20-swiyu",
+                "(Advanced) OID4VP Draft 20 - swiyu",
+                warning_description,
+            ),
         ]);
     }
     tags
+}
+
+fn create_tag(tag_name: &str, display_name: &str, description: &str) -> Tag {
+    Tag::builder()
+        .name(tag_name)
+        .description(Some(description))
+        .extensions(Some(
+            Extensions::builder()
+                .add("x-displayName", display_name)
+                .build(),
+        ))
+        .build()
 }
 
 pub trait CoreConfigModifySchema {
