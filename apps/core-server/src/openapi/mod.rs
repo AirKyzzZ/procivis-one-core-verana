@@ -383,6 +383,17 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                 ))
                 .build(),
             Tag::builder()
+                .name("qes")
+                .description(Some(indoc::formatdoc! {"
+                Document signing.
+            "}))
+                .extensions(Some(
+                    Extensions::builder()
+                        .add("x-displayName", "Qualified Electronic Signature (QES)")
+                        .build(),
+                ))
+                .build(),
+            Tag::builder()
                 .name("jsonld")
                 .description(Some(indoc::formatdoc! {"
                 Retrieve cached JSON-LD context documents.
