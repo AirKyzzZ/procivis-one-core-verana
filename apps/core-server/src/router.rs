@@ -691,11 +691,6 @@ fn get_external_endpoints(
                 get(ssi::verification::draft20::controller::oid4vp_draft20_client_request),
             )
             .route(
-                "/ssi/openid4vp/draft-20-swiyu/response/{id}",
-                post(ssi::verification::draft20_swiyu::controller::oid4vp_draft20_swiyu_direct_post)
-                    .layer(DefaultBodyLimit::max(oid4vp_response_body_limit)),
-            )
-            .route(
                 "/ssi/openid4vp/final-1.0/response",
                 post(ssi::verification::final1_0::controller::oid4vp_final1_0_direct_post)
                     .layer(DefaultBodyLimit::max(oid4vp_response_body_limit)),
@@ -707,6 +702,15 @@ fn get_external_endpoints(
             .route(
                 "/ssi/openid4vp/final-1.0/{id}/client-request",
                 get(ssi::verification::final1_0::controller::oid4vp_final1_0_client_request),
+            )
+            .route(
+                "/ssi/openid4vp/final-1.0-swiyu/{id}/client-request",
+                get(ssi::verification::final1_0_swiyu::controller::oid4vp_final1_0_swiyu_client_request),
+            )
+            .route(
+                "/ssi/openid4vp/final-1.0-swiyu/response/{id}",
+                post(ssi::verification::final1_0_swiyu::controller::oid4vp_final1_0_swiyu_direct_post)
+                    .layer(DefaultBodyLimit::max(oid4vp_response_body_limit)),
             )
             .route(
                 "/ssi/revocation/v1/list/{id}",

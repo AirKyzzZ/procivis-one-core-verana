@@ -1,5 +1,4 @@
 pub mod mapper;
-mod proxy_http_client;
 
 use std::sync::Arc;
 
@@ -39,6 +38,7 @@ use crate::proto::credential_schema::importer::CredentialSchemaImporter;
 use crate::proto::http_client::HttpClient;
 use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::session_provider::SessionProvider;
+use crate::proto::swiyu_http_client;
 use crate::proto::wallet_instance::HolderWalletUnitProto;
 use crate::proto::wrp_validator::WRPValidator;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
@@ -151,7 +151,7 @@ impl OpenID4VCISwiyu {
         let protocol_base_url = base_url
             .as_ref()
             .map(|base_url| format!("{base_url}/ssi/openid4vci/final-1.0-swiyu"));
-        let client = Arc::new(proxy_http_client::ProxySwiyuHttpClient { client });
+        let client = Arc::new(swiyu_http_client::ProxySwiyuHttpClient { client });
         Ok(Self {
             inner: OpenID4VCIFinal1_0::new_with_custom_protocol_base_url(
                 protocol_base_url,

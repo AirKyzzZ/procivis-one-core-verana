@@ -213,12 +213,12 @@ verificationProtocol:
         redirectUri:
           enabled: true
           allowedSchemes: ["https"]
-  OPENID4VP_DRAFT20_SWIYU:
+  OPENID4VP_FINAL1_SWIYU:
     display:
-      en: "OpenID4VP draft 20 (SWIYU)"
-      de: "OpenID4VP draft 20 (SWIYU)"
+      en: "OpenID4VP final 1.0 (SWIYU)"
+      de: "OpenID4VP final 1.0 (SWIYU)"
     order: 3
-    type: "OPENID4VP_DRAFT20_SWIYU"
+    type: "OPENID4VP_FINAL1_SWIYU"
     params:
       public:
         webhookTask: "WEBHOOK_NOTIFY"

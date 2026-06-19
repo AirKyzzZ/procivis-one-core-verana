@@ -308,8 +308,8 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                 warning_description,
             ),
             create_tag(
-                "openid4vp-draft20-swiyu",
-                "(Advanced) OID4VP Draft 20 - swiyu",
+                "openid4vp-final-1.0-swiyu",
+                "(Advanced) OID4VP Final 1.0 - swiyu",
                 warning_description,
             ),
         ]);

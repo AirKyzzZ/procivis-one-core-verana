@@ -1,7 +1,7 @@
 use dcql::DcqlQuery;
 use serde::{Deserialize, Serialize};
 use serde_with::{DurationSeconds, VecSkipError, serde_as, skip_serializing_none};
-use standardized_types::openid4vp::ResponseMode;
+use standardized_types::openid4vp::{ClientMetadata, ResponseMode};
 use time::Duration;
 use url::Url;
 
@@ -18,6 +18,8 @@ pub(crate) struct Params {
     #[serde(default)]
     pub allow_insecure_http_transport: bool,
     #[serde(default)]
+    pub use_legacy_did_client_id_scheme: bool,
+    #[serde(default)]
     pub use_request_uri: bool,
 
     #[serde(default = "default_presentation_url_scheme")]
@@ -26,6 +28,9 @@ pub(crate) struct Params {
     pub holder: HolderParams,
     pub verifier: PresentationVerifierParams,
     pub redirect_uri: OpenID4VCRedirectUriParams,
+    // Required to handle SWIYU verification requests that have invalid client_metadata.
+    // Remove when the SWIYU provider is removed.
+    pub predefined_client_metadata: Option<ClientMetadata>,
 
     #[serde(flatten)]
     pub common: CommonParams,

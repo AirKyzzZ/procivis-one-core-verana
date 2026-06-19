@@ -10,7 +10,7 @@ use super::mapper::parse_interaction_content;
 use super::proof_request::generate_authorization_request_params_draft20;
 use crate::config::core_config::BlobStorageType;
 use crate::config::core_config::VerificationProtocolType::{
-    OpenId4VpDraft20, OpenId4VpDraft20Swiyu,
+    OpenId4VpDraft20, OpenId4VpFinal1_0Swiyu,
 };
 use crate::error::ErrorCode::BR_0000;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
@@ -51,7 +51,7 @@ impl OID4VPDraft20Service {
     ) -> Result<String, OID4VPDraft20ServiceError> {
         validate_verification_protocol_config_exists(
             &self.config,
-            &[OpenId4VpDraft20, OpenId4VpDraft20Swiyu],
+            &[OpenId4VpDraft20, OpenId4VpFinal1_0Swiyu],
         )
         .error_while("checking config")?;
 
@@ -85,7 +85,7 @@ impl OID4VPDraft20Service {
         throw_if_proof_state_not_eq(&proof, ProofStateEnum::Pending)
             .error_while("checking proof state")?;
         validate_verification_protocol_type(
-            &[OpenId4VpDraft20, OpenId4VpDraft20Swiyu],
+            &[OpenId4VpDraft20, OpenId4VpFinal1_0Swiyu],
             &self.config,
             &proof.protocol,
         )
@@ -232,7 +232,7 @@ impl OID4VPDraft20Service {
     ) -> Result<OpenID4VPDirectPostResponseDTO, OID4VPDraft20ServiceError> {
         validate_verification_protocol_config_exists(
             &self.config,
-            &[OpenId4VpDraft20, OpenId4VpDraft20Swiyu],
+            &[OpenId4VpDraft20, OpenId4VpFinal1_0Swiyu],
         )
         .error_while("checking config")?;
 
@@ -377,7 +377,7 @@ impl OID4VPDraft20Service {
     ) -> Result<OpenID4VPPresentationDefinition, OID4VPDraft20ServiceError> {
         validate_verification_protocol_config_exists(
             &self.config,
-            &[OpenId4VpDraft20, OpenId4VpDraft20Swiyu],
+            &[OpenId4VpDraft20, OpenId4VpFinal1_0Swiyu],
         )
         .error_while("checking config")?;
 

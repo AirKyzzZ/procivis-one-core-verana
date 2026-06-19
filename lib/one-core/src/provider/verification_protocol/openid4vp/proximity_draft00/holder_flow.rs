@@ -87,7 +87,7 @@ pub(crate) async fn handle_invitation_with_transport<T: Send + Sync + 'static>(
     .error_while("parsing request JWT")?;
 
     let (did_value, ClientIdScheme::Did) =
-        decode_client_id_with_scheme(&presentation_request.payload.custom.client_id)?
+        decode_client_id_with_scheme(&presentation_request.payload.custom.client_id, false)?
     else {
         return Err(VerificationProtocolError::InvalidRequest(format!(
             "invalid client_id: {}",

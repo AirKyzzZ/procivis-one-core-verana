@@ -85,6 +85,7 @@ use crate::service::oid4vci_final1_0::resolver::initialize_credential_issuer_met
 use crate::service::oid4vci_final1_0_swiyu::OID4VCIFinal1_0SwiyuService;
 use crate::service::oid4vp_draft20::OID4VPDraft20Service;
 use crate::service::oid4vp_final1_0::OID4VPFinal1_0Service;
+use crate::service::oid4vp_final1_0_swiyu::OID4VPFinal1_0SwiyuService;
 use crate::service::organisation::OrganisationService;
 use crate::service::proof::ProofService;
 use crate::service::proof_schema::ProofSchemaService;
@@ -133,6 +134,7 @@ pub struct OneCore {
     pub oid4vci_final1_0_service: OID4VCIFinal1_0Service,
     pub oid4vp_draft20_service: OID4VPDraft20Service,
     pub oid4vp_final1_0_service: OID4VPFinal1_0Service,
+    pub oid4vp_final1_0_swiyu_service: OID4VPFinal1_0SwiyuService,
     pub ssi_issuer_service: SSIIssuerService,
     pub ssi_holder_service: SSIHolderService,
     pub wallet_provider_service: WalletProviderService,
@@ -571,7 +573,6 @@ impl OneCore {
                 key_provider.clone(),
                 key_algorithm_provider.clone(),
             )?;
-
         Ok(OneCore {
             backup_service: BackupService::new(
                 data_provider.get_backup_repository(),
@@ -656,6 +657,21 @@ impl OneCore {
                 openid4vp_proof_validator.clone(),
             ),
             oid4vp_final1_0_service: OID4VPFinal1_0Service::new(
+                data_provider.get_credential_repository(),
+                data_provider.get_proof_repository(),
+                data_provider.get_key_repository(),
+                key_provider.clone(),
+                config.clone(),
+                key_algorithm_provider.clone(),
+                blob_storage_provider.clone(),
+                identifier_creator.clone(),
+                data_provider.get_tx_manager(),
+                openid4vp_proof_validator.clone(),
+                wrp_validator.clone(),
+                data_provider.get_history_repository(),
+                session_provider.clone(),
+            ),
+            oid4vp_final1_0_swiyu_service: OID4VPFinal1_0SwiyuService::new(
                 data_provider.get_credential_repository(),
                 data_provider.get_proof_repository(),
                 data_provider.get_key_repository(),

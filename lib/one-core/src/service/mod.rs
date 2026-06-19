@@ -17,6 +17,7 @@ pub mod oid4vci_final1_0;
 pub mod oid4vci_final1_0_swiyu;
 pub mod oid4vp_draft20;
 pub mod oid4vp_final1_0;
+pub mod oid4vp_final1_0_swiyu;
 pub mod organisation;
 pub mod proof;
 pub mod proof_schema;

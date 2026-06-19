@@ -124,7 +124,7 @@ verificationProtocol:
         allowInsecureHttpTransport: true
         redirectUri:
           allowedSchemes: ["http", "https"]
-  OPENID4VP_DRAFT20_SWIYU:
+  OPENID4VP_FINAL1_SWIYU:
     params:
       public:
         allowInsecureHttpTransport: true

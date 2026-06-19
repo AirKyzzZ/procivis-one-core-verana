@@ -287,7 +287,7 @@ async fn get_request_v2(
 ) -> Result<(String, AuthorizationRequest), VerificationProtocolError> {
     let request = AuthorizationRequest {
         nonce: Some(nonce),
-        client_id: encode_client_id_with_scheme(params.did.to_string(), ClientIdScheme::Did),
+        client_id: encode_client_id_with_scheme(params.did.to_string(), ClientIdScheme::Did, false),
         dcql_query: Some(params.dcql_query.clone()),
         ..Default::default()
     };

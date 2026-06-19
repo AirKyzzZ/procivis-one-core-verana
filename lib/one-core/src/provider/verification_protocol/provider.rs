@@ -7,8 +7,8 @@ use super::VerificationProtocol;
 use super::decorators::CapabilityChecked;
 use super::iso_mdl::IsoMdl;
 use super::openid4vp::draft20::OpenID4VP20HTTP;
-use super::openid4vp::draft20_swiyu::{OpenID4VP20Swiyu, swiyu_to_draft20_params};
 use super::openid4vp::final1_0::OpenID4VPFinal1_0;
+use super::openid4vp::final1_0_swiyu::{OpenID4VPFinalSwiyu, swiyu_to_final_params};
 use super::openid4vp::proximity_draft00::OpenID4VPProximityDraft00;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, Fields, VerificationProtocolType};
@@ -20,6 +20,7 @@ use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::mqtt_client::MqttClient;
 use crate::proto::nfc::hce::NfcHce;
 use crate::proto::session_provider::SessionProvider;
+use crate::proto::swiyu_http_client;
 use crate::proto::trust_information::TrustInformationProvider;
 use crate::proto::wrp_validator::WRPValidator;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
@@ -139,14 +140,17 @@ fn initialize_provider(
             fields.merge_fields(),
             core_config.clone(),
         )?),
-        VerificationProtocolType::OpenId4VpDraft20Swiyu => {
-            let draft20_params = swiyu_to_draft20_params(fields.merge_fields()).map_err(|err| {
+        VerificationProtocolType::OpenId4VpFinal1_0Swiyu => {
+            let final1_params = swiyu_to_final_params(fields.merge_fields()).map_err(|err| {
                 InitializationError::InvalidParams {
                     key: name.to_string(),
                     source: err,
                 }
             })?;
-            let draft20 = initialize_openid4vp_draft20(
+            let client = Arc::new(swiyu_http_client::ProxySwiyuHttpClient {
+                client: client.clone(),
+            });
+            let final1 = OpenID4VPFinal1_0::new(
                 name.to_owned(),
                 core_base_url.clone(),
                 credential_formatter_provider.clone(),
@@ -156,16 +160,20 @@ fn initialize_provider(
                 key_provider.clone(),
                 certificate_validator.clone(),
                 credential_repository.clone(),
+                credential_schema_repository.clone(),
+                history_repository.clone(),
                 interaction_repository.clone(),
+                session_provider.clone(),
+                wrp_validator.clone(),
+                blob_storage_provider.clone(),
+                trust_information_provider.clone(),
                 client.clone(),
-                openid_metadata_cache.clone(),
-                draft20_params,
+                final1_params,
                 core_config.clone(),
             )?;
-
-            Arc::new(OpenID4VP20Swiyu::new(
-                draft20,
-                client.clone(),
+            Arc::new(OpenID4VPFinalSwiyu::new(
+                final1,
+                client,
                 fields.merge_fields(),
             )?)
         }

@@ -63,7 +63,11 @@ pub(crate) async fn create_openid4vp_final1_0_authorization_request(
 ) -> Result<AuthorizationRequestQueryParams, VerificationProtocolError> {
     let params = if openidvc_params.use_request_uri {
         AuthorizationRequestQueryParams {
-            client_id: encode_client_id_with_scheme(client_id_without_prefix, client_id_scheme),
+            client_id: encode_client_id_with_scheme(
+                client_id_without_prefix,
+                client_id_scheme,
+                openidvc_params.use_legacy_did_client_id_scheme,
+            ),
             request_uri: Some(format!(
                 "{base_url}/ssi/openid4vp/final-1.0/{}/client-request",
                 proof.id
@@ -85,6 +89,7 @@ pub(crate) async fn create_openid4vp_final1_0_authorization_request(
                     client_id: encode_client_id_with_scheme(
                         client_id_without_prefix,
                         client_id_scheme,
+                        openidvc_params.use_legacy_did_client_id_scheme,
                     ),
                     request: Some(token),
                     ..Default::default()
@@ -112,6 +117,7 @@ pub(crate) async fn create_openid4vp_final1_0_authorization_request(
                     client_id: encode_client_id_with_scheme(
                         client_id_without_prefix,
                         ClientIdScheme::VerifierAttestation,
+                        openidvc_params.use_legacy_did_client_id_scheme,
                     ),
                     request: Some(token),
                     ..Default::default()
@@ -129,6 +135,7 @@ pub(crate) async fn create_openid4vp_final1_0_authorization_request(
                     client_id: encode_client_id_with_scheme(
                         client_id_without_prefix,
                         ClientIdScheme::Did,
+                        openidvc_params.use_legacy_did_client_id_scheme,
                     ),
                     request: Some(token),
                     ..Default::default()
@@ -176,15 +183,20 @@ fn format_params_for_redirect_uri(
 pub(crate) fn encode_client_id_with_scheme(
     client_id_without_prefix: String,
     client_id_scheme: ClientIdScheme,
+    use_legacy_did_client_id_scheme: bool,
 ) -> String {
     match client_id_scheme {
-        ClientIdScheme::Did => format!("decentralized_identifier:{client_id_without_prefix}"),
+        ClientIdScheme::Did if !use_legacy_did_client_id_scheme => {
+            format!("decentralized_identifier:{client_id_without_prefix}")
+        }
+        ClientIdScheme::Did if use_legacy_did_client_id_scheme => client_id_without_prefix,
         _ => format!("{client_id_scheme}:{client_id_without_prefix}"),
     }
 }
 
 pub(crate) fn decode_client_id_with_scheme(
     client_id: &str,
+    allow_legacy_did_scheme: bool,
 ) -> Result<(String, ClientIdScheme), VerificationProtocolError> {
     let (client_id_scheme, client_id_without_prefix) =
         client_id
@@ -195,6 +207,9 @@ pub(crate) fn decode_client_id_with_scheme(
 
     // In version 1.0, the "did" client_id_scheme was renamed to "decentralized_identifier".
     if client_id_scheme == "did" {
+        if allow_legacy_did_scheme {
+            return Ok((client_id.to_string(), ClientIdScheme::Did));
+        }
         return Err(VerificationProtocolError::InvalidRequest(
             "did is not a valid client_id_scheme".to_string(),
         ));
@@ -247,7 +262,7 @@ impl TryFrom<AuthorizationRequest> for OpenID4VPHolderInteractionData {
 
     fn try_from(value: AuthorizationRequest) -> Result<Self, Self::Error> {
         let (client_id_without_prefix, client_id_scheme) =
-            decode_client_id_with_scheme(&value.client_id)?;
+            decode_client_id_with_scheme(&value.client_id, true)?;
 
         let mut response_uri = value.response_uri;
 
@@ -421,7 +436,7 @@ mod test {
     fn test_decode_client_id_with_decentralized_identifier_scheme() {
         let client_id = "decentralized_identifier:did:example:123";
         let (client_id_without_prefix, client_id_scheme) =
-            decode_client_id_with_scheme(client_id).unwrap();
+            decode_client_id_with_scheme(client_id, false).unwrap();
         assert_eq!(client_id_without_prefix, "did:example:123");
         assert_eq!(client_id_scheme, ClientIdScheme::Did);
     }
@@ -429,8 +444,17 @@ mod test {
     #[test]
     fn test_decode_client_id_with_did_scheme_fails() {
         let client_id = "did:example:123";
-        let result = decode_client_id_with_scheme(client_id);
+        let result = decode_client_id_with_scheme(client_id, false);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_decode_client_id_with_did_scheme_legacy_succeeds() {
+        let client_id = "did:example:123";
+        let (client_id_without_prefix, client_id_scheme) =
+            decode_client_id_with_scheme(client_id, true).unwrap();
+        assert_eq!(client_id_without_prefix, "did:example:123");
+        assert_eq!(client_id_scheme, ClientIdScheme::Did);
     }
 
     #[test]
@@ -439,7 +463,7 @@ mod test {
         let client_id = "did:example:123";
         let client_id_scheme = ClientIdScheme::Did;
         let encoded_client_id =
-            encode_client_id_with_scheme(client_id.to_string(), client_id_scheme);
+            encode_client_id_with_scheme(client_id.to_string(), client_id_scheme, false);
         assert_eq!(expected_client_id, encoded_client_id);
     }
 }

@@ -41,7 +41,10 @@ impl OpenID4VPFinal1_0 {
             .x5c
             .ok_or(VerificationProtocolError::Failed("x5c missing".to_string()))?;
 
-        let (client_id, _) = decode_client_id_with_scheme(&request_token.payload.custom.client_id)?;
+        let (client_id, _) = decode_client_id_with_scheme(
+            &request_token.payload.custom.client_id,
+            self.params.use_legacy_did_client_id_scheme,
+        )?;
 
         let pem_chain = x5c_into_pem_chain(&x5c).error_while("parsing x5c")?;
 
@@ -113,7 +116,10 @@ impl OpenID4VPFinal1_0 {
             .x5c
             .ok_or(VerificationProtocolError::Failed("x5c missing".to_string()))?;
 
-        let (client_id, _) = decode_client_id_with_scheme(&request_token.payload.custom.client_id)?;
+        let (client_id, _) = decode_client_id_with_scheme(
+            &request_token.payload.custom.client_id,
+            self.params.use_legacy_did_client_id_scheme,
+        )?;
 
         let pem_chain = x5c_into_pem_chain(&x5c).error_while("parsing x5c")?;
 
@@ -161,7 +167,10 @@ impl OpenID4VPFinal1_0 {
         &self,
         request_token: DecomposedJwt<AuthorizationRequest>,
     ) -> Result<(AuthorizationRequest, DidValue), VerificationProtocolError> {
-        let (client_id, _) = decode_client_id_with_scheme(&request_token.payload.custom.client_id)?;
+        let (client_id, _) = decode_client_id_with_scheme(
+            &request_token.payload.custom.client_id,
+            self.params.use_legacy_did_client_id_scheme,
+        )?;
 
         let Some(kid) = request_token.header.key_id.clone() else {
             return Err(VerificationProtocolError::Failed(
@@ -303,6 +312,7 @@ impl OpenID4VPFinal1_0 {
                 client_id: encode_client_id_with_scheme(
                     client_id_without_prefix,
                     ClientIdScheme::VerifierAttestation,
+                    self.params.use_legacy_did_client_id_scheme,
                 ),
                 ..request_token.payload.custom
             },
@@ -339,8 +349,10 @@ impl OpenID4VPFinal1_0 {
             tracing::warn!("`aud` claim missing in request JWT payload");
         }
 
-        let (_, client_id_scheme) =
-            decode_client_id_with_scheme(&request_token.payload.custom.client_id)?;
+        let (_, client_id_scheme) = decode_client_id_with_scheme(
+            &request_token.payload.custom.client_id,
+            self.params.use_legacy_did_client_id_scheme,
+        )?;
 
         if !self
             .params

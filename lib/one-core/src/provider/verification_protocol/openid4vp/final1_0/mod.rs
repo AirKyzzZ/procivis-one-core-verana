@@ -300,7 +300,11 @@ impl OpenID4VPFinal1_0 {
                         vec![credentials],
                         auth_fn,
                         &credential_presentation.holder_did.map(|did| did.did),
-                        format_presentation_context(interaction_data, presentation_format)?,
+                        format_presentation_context(
+                            interaction_data,
+                            presentation_format,
+                            self.params.use_legacy_did_client_id_scheme,
+                        )?,
                     )
                     .await
                     .error_while("formatting presentation")?;
@@ -343,6 +347,11 @@ impl OpenID4VPFinal1_0 {
             let mut interaction_data: OpenID4VPHolderInteractionData =
                 authorization_request.try_into()?;
             interaction_data.verifier_details = verifier_details;
+            if let Some(predefined_metadata) = &self.params.predefined_client_metadata {
+                interaction_data.client_metadata = Some(OpenID4VPClientMetadata::Final1_0(
+                    predefined_metadata.clone(),
+                ));
+            }
             interaction_data
         };
 
@@ -643,7 +652,11 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
                 &*self.credential_formatter_provider,
             )
             .await?,
-            encode_client_id_with_scheme(client_id_without_prefix.clone(), client_id_scheme),
+            encode_client_id_with_scheme(
+                client_id_without_prefix.clone(),
+                client_id_scheme,
+                self.params.use_legacy_did_client_id_scheme,
+            ),
             response_uri.clone(),
             &interaction_id,
             client_metadata,
@@ -727,6 +740,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
 fn format_presentation_context(
     interaction_data: &OpenID4VPHolderInteractionData,
     presentation_format: FormatType,
+    use_legacy_did_client_id_scheme: bool,
 ) -> Result<FormatPresentationCtx, VerificationProtocolError> {
     let verifier_nonce =
         interaction_data
@@ -766,6 +780,7 @@ fn format_presentation_context(
                 &encode_client_id_with_scheme(
                     interaction_data.client_id.clone(),
                     interaction_data.client_id_scheme,
+                    use_legacy_did_client_id_scheme,
                 ),
                 response_uri.as_str(),
                 &verifier_nonce,
@@ -779,6 +794,7 @@ fn format_presentation_context(
             audience: Some(encode_client_id_with_scheme(
                 interaction_data.client_id.clone(),
                 interaction_data.client_id_scheme,
+                use_legacy_did_client_id_scheme,
             )),
             ..Default::default()
         }

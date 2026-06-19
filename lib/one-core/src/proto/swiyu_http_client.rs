@@ -8,7 +8,7 @@ const API_VERSION_OID4VCI_1_0: &str = "2";
 const SWIYU_API_VERSION_HTTP_HEADER: &str = "SWIYU-API-Version";
 
 #[derive(Clone)]
-pub(super) struct ProxySwiyuHttpClient {
+pub(crate) struct ProxySwiyuHttpClient {
     pub client: Arc<dyn HttpClient>,
 }
 
