@@ -169,6 +169,7 @@ pub struct HolderWalletUnitResponseBindingDTO {
     #[from(with_fn = convert_inner)]
     pub authentication_key: Option<KeyListItemBindingDTO>,
     pub trusted_rp_required: bool,
+    pub user_nonce: Option<String>,
 }
 
 #[derive(Clone, Debug, uniffi::Enum, From)]
