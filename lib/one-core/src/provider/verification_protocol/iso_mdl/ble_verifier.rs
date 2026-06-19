@@ -591,45 +591,43 @@ async fn proof_input_schema_to_doc_request(
             .ok_or(VerificationProtocolError::Failed(
                 "missing credential_schema".to_string(),
             ))?;
+    let formats = credential_schema.formats.as_ref().await?;
+    let format = formats.first().ok_or(VerificationProtocolError::Failed(
+        "formats is empty".to_string(),
+    ))?;
+    let mappings = format.claim_mappings.as_ref().await?;
+    let mappings_by_schema_id: HashMap<_, _> = mappings
+        .into_iter()
+        .map(|m| (m.claim_schema_id, m))
+        .collect();
 
     let mut name_spaces = HashMap::new();
     for proof_claim_schema in proof_claim_schemas {
-        let key = &proof_claim_schema.schema.key;
-        let claim_keys = if key.contains(NESTED_CLAIM_MARKER) {
-            // defining an element
-            vec![key.to_owned()]
-        } else {
-            // defining a whole namespace
-            credential_schema
-                .claim_schemas
-                .as_ref()
-                .await?
-                .into_iter()
-                .map(|claim_schema| claim_schema.key.to_owned())
-                .filter(|k| k.starts_with(&format!("{key}{NESTED_CLAIM_MARKER}")))
-                .collect()
+        let mapping = mappings_by_schema_id
+            .get(&proof_claim_schema.schema.id)
+            .ok_or_else(|| {
+                VerificationProtocolError::Failed(format!(
+                    "no mapping found for schema {} and format {}",
+                    proof_claim_schema.schema.id, format.id
+                ))
+            })?;
+        let Some(namespace) = &mapping.namespace else {
+            return Err(VerificationProtocolError::Failed(format!(
+                "mapping {} has no namespace",
+                proof_claim_schema.schema.id
+            )));
         };
+        let element_identifier =
+            if let Some((root, _)) = mapping.technical_key.rsplit_once(NESTED_CLAIM_MARKER) {
+                root
+            } else {
+                &mapping.technical_key
+            };
 
-        for claim_key in claim_keys {
-            let path: Vec<_> = claim_key.splitn(3, NESTED_CLAIM_MARKER).collect();
-
-            let namespace = path
-                .first()
-                .ok_or(VerificationProtocolError::Failed(
-                    "Invalid claim path".to_string(),
-                ))?
-                .to_string();
-            let element_identifier = path
-                .get(1)
-                .ok_or(VerificationProtocolError::Failed(
-                    "Invalid claim path".to_string(),
-                ))?
-                .to_string();
-            name_spaces
-                .entry(namespace)
-                .or_insert_with(HashMap::new)
-                .insert(element_identifier, true);
-        }
+        name_spaces
+            .entry(namespace.to_owned())
+            .or_insert_with(HashMap::new)
+            .insert(element_identifier.to_owned(), true);
     }
 
     Ok(DocRequest {
