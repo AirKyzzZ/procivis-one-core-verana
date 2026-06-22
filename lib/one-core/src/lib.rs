@@ -305,6 +305,7 @@ impl OneCore {
 
         let credential_schema_import_parser = Arc::new(CredentialSchemaImportParserImpl::new(
             Arc::new(config.clone()),
+            core_base_url.clone(),
             credential_formatter_provider.clone(),
             revocation_method_provider.clone(),
         ));

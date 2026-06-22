@@ -37,6 +37,7 @@ use crate::service::credential_schema::mapper::schema_translations_from_dto;
 
 pub(crate) struct CredentialSchemaImportParserImpl {
     config: Arc<CoreConfig>,
+    core_base_url: Option<String>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
 }
@@ -158,6 +159,14 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
             self.parse_all_claim_schemas_v2(now, dto.schema.claims, formatters.as_ref())?;
 
         let credential_schema_id = Uuid::new_v4().into();
+        let imported_source_url = if self.config.global_settings.rehost_imported_schemas {
+            let base_url = self.core_base_url.as_ref().ok_or_else(|| {
+                Error::MappingError("Missing core base_url, cannot rehost schema".to_string())
+            })?;
+            format!("{base_url}/ssi/schema/v2/{credential_schema_id}")
+        } else {
+            dto.schema.imported_source_url
+        };
 
         let mut formats = vec![];
         let mut claim_schemas: Vec<_> = claim_schemas_with_raw_mappings
@@ -198,7 +207,7 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
                 &claim_schemas,
                 formatters.as_ref(),
             )?,
-            imported_source_url: dto.schema.imported_source_url,
+            imported_source_url,
             allow_suspension: dto.schema.allow_suspension.unwrap_or(false),
             requires_wallet_instance_attestation: dto
                 .schema
@@ -229,11 +238,13 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
 impl CredentialSchemaImportParserImpl {
     pub(crate) fn new(
         config: Arc<CoreConfig>,
+        core_base_url: Option<String>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     ) -> Self {
         Self {
             config,
+            core_base_url,
             formatter_provider,
             revocation_method_provider,
         }
@@ -853,6 +864,7 @@ mod test {
     ) -> CredentialSchemaImportParserImpl {
         CredentialSchemaImportParserImpl::new(
             Arc::new(config),
+            Some("http://localhost".to_string()),
             Arc::new(formatter_provider),
             Arc::new(revocation_method_provider),
         )

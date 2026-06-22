@@ -37,6 +37,7 @@ fn setup_parser(
 ) -> CredentialSchemaImportParserImpl {
     CredentialSchemaImportParserImpl::new(
         Arc::new(config),
+        Some("http://localhost".to_string()),
         Arc::new(formatter_provider),
         Arc::new(revocation_method_provider),
     )

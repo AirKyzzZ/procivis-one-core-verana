@@ -347,8 +347,20 @@ impl ProofSchemaService {
 
         let input_schemas: Vec<ProofInputSchema> = future::try_join_all(input_schemas).await?;
 
+        let proof_schema_id = Uuid::new_v4().into();
+        let imported_source_url = if self.config.global_settings.rehost_imported_schemas {
+            let base_url = self.base_url.as_deref().ok_or_else(|| {
+                ProofSchemaServiceError::MappingError(
+                    "Missing core base_url, cannot rehost schema".to_string(),
+                )
+            })?;
+            format!("{base_url}/ssi/proof-schema/v1/{proof_schema_id}")
+        } else {
+            schema.imported_source_url
+        };
+
         let proof_schema = ProofSchema {
-            id: Uuid::new_v4().into(),
+            id: proof_schema_id,
             created_date: now,
             last_modified: now,
             deleted_at: None,
@@ -356,7 +368,7 @@ impl ProofSchemaService {
             expire_duration: schema.expire_duration,
             organisation: Some(organisation.clone()),
             input_schemas: Some(input_schemas),
-            imported_source_url: Some(schema.imported_source_url),
+            imported_source_url: Some(imported_source_url),
         };
 
         let success_log = format!(

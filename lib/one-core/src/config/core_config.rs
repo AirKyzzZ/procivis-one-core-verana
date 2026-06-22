@@ -85,6 +85,11 @@ pub struct GlobalSettings {
     pub http_client: HttpClientSecurityConfig,
     #[serde(default = "default_en")]
     pub default_language: String,
+    /// When `true`, the `imported_source_url` of imported credential and proof
+    /// schemas is rewritten to point at this core instance, effectively
+    /// re-hosting the schema locally.
+    #[serde(default)]
+    pub rehost_imported_schemas: bool,
 }
 
 fn default_en() -> String {

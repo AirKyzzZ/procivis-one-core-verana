@@ -62,8 +62,10 @@ fn setup_service(
     let formatter_provider = Arc::new(formatter_provider);
     let credential_schema_repository = Arc::new(credential_schema_repository);
     let revocation_method_provider = Arc::new(revocation_method_provider);
+    let config = Arc::new(config);
     let import_parser = CredentialSchemaImportParserImpl::new(
-        Arc::new(generic_config().core),
+        config.clone(),
+        Some("http://127.0.0.1:4321".to_string()),
         formatter_provider.clone(),
         revocation_method_provider.clone(),
     );
@@ -77,7 +79,7 @@ fn setup_service(
         Arc::new(organisation_repository),
         formatter_provider,
         revocation_method_provider,
-        Arc::new(config),
+        config,
         Arc::new(NoSessionProvider),
         Arc::new(import_parser),
         Arc::new(importer),
@@ -2803,6 +2805,103 @@ async fn test_import_credential_schema_success() {
         .await
         .unwrap();
     assert_ne!(external_schema_id, result);
+}
+
+#[tokio::test]
+async fn test_import_credential_schema_rehosts_source_url_when_enabled() {
+    let mut repository = MockCredentialSchemaRepository::default();
+    let mut organisation_repository = MockOrganisationRepository::default();
+    let mut formatter = MockCredentialFormatter::default();
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+
+    let now = crate::clock::now_utc();
+    let own_organisation_id = Uuid::new_v4();
+    let organisation = dummy_organisation(Some(own_organisation_id.into()));
+    organisation_repository
+        .expect_get_organisation()
+        .return_once(|_| Ok(Some(organisation)));
+
+    formatter
+        .expect_get_capabilities()
+        .returning(|| FormatterCapabilities {
+            revocation_methods: vec![],
+            datatypes: vec!["STRING".into()],
+            ..Default::default()
+        });
+    formatter.expect_get_metadata_claims().returning(Vec::new);
+    let formatter = Arc::new(formatter);
+    formatter_provider
+        .expect_get_credential_formatter()
+        .returning(move |_| Ok(formatter.clone()));
+
+    repository
+        .expect_get_credential_schema_list()
+        .times(1)
+        .returning(move |_| {
+            Ok(GetCredentialSchemaList {
+                values: vec![],
+                total_pages: 0,
+                total_items: 0,
+            })
+        });
+
+    repository
+        .expect_create_credential_schema()
+        .return_once(move |new_schema| {
+            // source url is rewritten to point at this core instance
+            assert_eq!(
+                format!("http://127.0.0.1:4321/ssi/schema/v2/{}", new_schema.id),
+                new_schema.imported_source_url
+            );
+            Ok(new_schema.id)
+        });
+
+    let mut config = generic_config().core;
+    config.global_settings.rehost_imported_schemas = true;
+
+    let service = setup_service(
+        repository,
+        organisation_repository,
+        formatter_provider,
+        MockRevocationMethodProvider::default(),
+        config,
+    );
+
+    let external_schema_id: CredentialSchemaId = Uuid::new_v4().into();
+    service
+        .import_credential_schema(ImportCredentialSchemaRequestDTO {
+            organisation_id: own_organisation_id.into(),
+            schema: ImportCredentialSchemaRequestSchemaDTO {
+                id: external_schema_id.into(),
+                created_date: now,
+                imported_source_url: "https://other-core/ssi/schema/v2/external".to_string(),
+                last_modified: now,
+                name: "external schema".to_string(),
+                format: "JWT".to_string(),
+                revocation_method: None,
+                organisation_id: Uuid::new_v4(),
+                claims: vec![ImportCredentialSchemaClaimSchemaDTO {
+                    id: Uuid::new_v4(),
+                    created_date: now,
+                    last_modified: now,
+                    key: "name".to_string(),
+                    datatype: "STRING".to_string(),
+                    required: true,
+                    array: Some(false),
+                    claims: vec![],
+                    mappings: None,
+                }],
+                key_storage_security: None,
+                schema_id: "http://127.0.0.1/ssi/schema/some_schmea".to_string(),
+                layout_type: None,
+                layout_properties: None,
+                allow_suspension: None,
+                requires_wallet_instance_attestation: Some(true),
+                transaction_code: None,
+            },
+        })
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
