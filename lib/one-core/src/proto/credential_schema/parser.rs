@@ -744,12 +744,6 @@ impl CredentialSchemaImportParserImpl {
         claim_schemas: &[ClaimSchema],
         attribute_name: &str,
     ) -> Result<String, Error> {
-        tracing::debug!(
-            "{:?} {:?} {:?}",
-            &attribute,
-            &claim_schemas,
-            &attribute_name
-        );
         if claim_schemas.iter().any(|c| c.key == attribute) {
             Ok(attribute)
         } else {

@@ -253,16 +253,17 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                 display: verificationEngagement.qrCode
                 order: 1
                 enabled: true
-        certificateValidation:
-            leeway: 60
         signer: {}
         verifierProvider: {}
         documentSignerProvider: {}
         trustListPublisher: {}
         trustListSubscriber: {}
-        httpClient:
-          insecureHttpTransportAllowed: true
-          maxRedirects: 3
+        globalSettings:
+            certificateValidation:
+                leeway: 60
+            httpClient:
+                insecureHttpTransportAllowed: true
+                maxRedirects: 3
         documentSignerProvider: {}
     "};
 

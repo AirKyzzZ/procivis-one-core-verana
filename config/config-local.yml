@@ -309,8 +309,9 @@ verifierProvider:
             link: https//example.com
         featureFlags:
           trustEcosystemsEnabled: true
-httpClient:
-  insecureHttpTransportAllowed: true
+globalSettings:
+  httpClient:
+    insecureHttpTransportAllowed: true
 documentSignerProvider:
   SIGN8:
     enabled: false

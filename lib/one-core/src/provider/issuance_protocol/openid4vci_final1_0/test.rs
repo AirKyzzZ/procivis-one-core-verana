@@ -3605,7 +3605,7 @@ async fn test_holder_accept_credential_stores_all_translations_from_metadata() {
         .returning(|_| Ok(Uuid::new_v4().into()));
 
     let mut config = dummy_config();
-    config.default_language = "en".to_string();
+    config.global_settings.default_language = "en".to_string();
 
     let openid_provider = setup_protocol(TestInputs {
         formatter_provider,
@@ -3828,7 +3828,7 @@ async fn test_holder_accept_credential_uses_default_language_for_display_without
         .returning(|_| Ok(Uuid::new_v4().into()));
 
     let mut config = dummy_config();
-    config.default_language = "fr".to_string(); // custom default language
+    config.global_settings.default_language = "fr".to_string(); // custom default language
 
     let openid_provider = setup_protocol(TestInputs {
         formatter_provider,
@@ -4047,7 +4047,7 @@ async fn test_holder_accept_credential_stores_claim_schema_translations_from_met
         .returning(|_| Ok(Uuid::new_v4().into()));
 
     let mut config = dummy_config();
-    config.default_language = "en".to_string();
+    config.global_settings.default_language = "en".to_string();
 
     let openid_provider = setup_protocol(TestInputs {
         formatter_provider,
@@ -4319,7 +4319,7 @@ async fn test_holder_accept_credential_stores_disclosure_policy() {
         .returning(|_| Ok(Uuid::new_v4().into()));
 
     let mut config = dummy_config();
-    config.default_language = "en".to_string();
+    config.global_settings.default_language = "en".to_string();
 
     let openid_provider = setup_protocol(TestInputs {
         formatter_provider,

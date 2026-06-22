@@ -27,6 +27,19 @@ pub struct HttpClientSecurityConfig {
     pub max_response_size: Option<u64>,
 }
 
+#[cfg(not(any(test, feature = "mock")))]
+impl Default for HttpClientSecurityConfig {
+    fn default() -> Self {
+        Self {
+            insecure_http_transport_allowed: false,
+            timeout: Some(Duration::seconds(30)),
+            max_redirects: 3,
+            denied_hosts: None,
+            max_response_size: Some(10485760), // 10MiB
+        }
+    }
+}
+
 #[cfg(any(test, feature = "mock"))]
 impl Default for HttpClientSecurityConfig {
     fn default() -> Self {

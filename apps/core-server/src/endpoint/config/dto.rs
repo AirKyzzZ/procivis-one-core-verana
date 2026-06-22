@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use one_core::service::config::dto::ConfigDTO;
+use one_core::service::config::dto::{ConfigDTO, GlobalSettingsDTO};
 use serde::Serialize;
 use serde_json::Value;
 use utoipa::ToSchema;
@@ -89,9 +89,24 @@ pub(crate) struct ConfigRestDTO {
     /// deployments and their configuration.
     #[schema(example = json!({}))]
     pub verifier_provider: HashMap<String, Value>,
+    /// Deployment-wide settings that are not tied to a specific config entity.
+    pub global_settings: GlobalSettingsRestDTO,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct GlobalSettingsRestDTO {
     /// Default language tag for the deployment, used where no lanugage
     /// is otherwise specified, for example, in credential schema creation.
     pub default_language: String,
+}
+
+impl From<GlobalSettingsDTO> for GlobalSettingsRestDTO {
+    fn from(global_settings: GlobalSettingsDTO) -> Self {
+        GlobalSettingsRestDTO {
+            default_language: global_settings.default_language,
+        }
+    }
 }
 
 impl From<ConfigDTO> for ConfigRestDTO {
@@ -119,7 +134,7 @@ impl From<ConfigDTO> for ConfigRestDTO {
             trust_list_publisher: config.trust_list_publisher,
             trust_list_subscriber: config.trust_list_subscriber,
             verifier_provider: config.verifier_provider,
-            default_language: config.default_language,
+            global_settings: config.global_settings.into(),
         }
     }
 }

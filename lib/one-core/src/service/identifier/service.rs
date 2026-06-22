@@ -459,7 +459,7 @@ impl IdentifierService {
                         )
                     })?,
                     None,
-                    self.config.certificate_validation.leeway,
+                    self.config.global_settings.certificate_validation.leeway,
                 )
                 .await
                 .error_while("validating registration certificate")?;

@@ -70,11 +70,19 @@ pub struct CoreConfig {
     pub wallet_provider: WalletProviderConfig,
     pub credential_issuer: CredentialIssuerConfig,
     pub verification_engagement: VerificationEngagementConfig,
-    pub certificate_validation: CertificateValidationConfig,
     pub signer: SignerConfig,
     pub verifier_provider: VerifierProviderConfig,
-    pub http_client: HttpClientSecurityConfig,
     pub document_signer_provider: DocumentSignerProviderConfig,
+    pub global_settings: GlobalSettings,
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GlobalSettings {
+    #[serde(default)]
+    pub certificate_validation: CertificateValidationConfig,
+    #[serde(default)]
+    pub http_client: HttpClientSecurityConfig,
     #[serde(default = "default_en")]
     pub default_language: String,
 }

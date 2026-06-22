@@ -273,14 +273,16 @@ impl CredentialSchemaService {
                 .map(|(cs, _)| cs)
                 .collect(),
             imported_source_url,
-            &self.config.default_language,
+            &self.config.global_settings.default_language,
             self.core_base_url.as_ref(),
         )?;
 
-        let credential_schema =
-            backfill_default_translations(credential_schema, &self.config.default_language)
-                .await
-                .error_while("backfilling default translations")?;
+        let credential_schema = backfill_default_translations(
+            credential_schema,
+            &self.config.global_settings.default_language,
+        )
+        .await
+        .error_while("backfilling default translations")?;
 
         let success_log = format!(
             "Created credential schema v2 `{}` ({credential_schema_id}): formats `{:?}`: key storage security {}",

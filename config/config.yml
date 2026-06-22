@@ -15,10 +15,10 @@ blobStorage: {}
 walletProvider: {}
 credentialIssuer: {}
 verificationEngagement: {}
-certificateValidation: {}
 signer: {}
 verifierProvider: {}
 keySecurityLevel: {}
 trustListPublisher: {}
 trustListSubscriber: {}
 documentSignerProvider: {}
+globalSettings: {}

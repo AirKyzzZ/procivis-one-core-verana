@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use one_core::service::config::dto::ConfigDTO;
+use one_core::service::config::dto::{ConfigDTO, GlobalSettingsDTO};
 use one_dto_mapper::From;
 
 use super::OneCore;
@@ -66,6 +66,14 @@ pub struct ConfigBindingDTO {
     pub wallet_provider: HashMap<String, String>,
     #[from(with_fn = serialize_config_entity)]
     pub verifier_provider: HashMap<String, String>,
+    /// Deployment-wide settings that are not tied to a specific config entity.
+    pub global_settings: GlobalSettingsBindingDTO,
+}
+
+#[derive(Clone, Debug, From, uniffi::Record)]
+#[from(GlobalSettingsDTO)]
+#[uniffi(name = "GlobalSettings")]
+pub struct GlobalSettingsBindingDTO {
     pub default_language: String,
 }
 

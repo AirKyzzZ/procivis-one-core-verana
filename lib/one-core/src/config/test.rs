@@ -115,14 +115,14 @@ rusty_fork_test! {
             walletProvider: {}
             credentialIssuer: {}
             verificationEngagement: {}
-            certificateValidation: {}
             signer: {}
             verifierProvider: {}
             trustListPublisher: {}
             trustListSubscriber: {}
-            httpClient:
-              insecureHttpTransportAllowed: true
-              maxRedirects: 3
+            globalSettings:
+              httpClient:
+                insecureHttpTransportAllowed: true
+                maxRedirects: 3
             documentSignerProvider:
               SIGN8:
                 display: 'qes.sign8'

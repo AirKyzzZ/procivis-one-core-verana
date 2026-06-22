@@ -14,5 +14,5 @@ async fn test_default_language_is_present_in_config() {
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
 
-    assert_eq!(resp["defaultLanguage"], "en");
+    assert_eq!(resp["globalSettings"]["defaultLanguage"], "en");
 }

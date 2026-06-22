@@ -215,7 +215,7 @@ pub(crate) async fn schema_to_detail_v1_response_dto(
                             field: LocalizedTextField::Name,
                             created_date: claim_mapping.created_date,
                             last_modified: claim_mapping.last_modified,
-                            lang: config.default_language.to_owned(),
+                            lang: config.global_settings.default_language.to_owned(),
                             value: namespace.to_owned(),
                             entity_type: LocalizedTextEntityType::ClaimSchema,
                         }]

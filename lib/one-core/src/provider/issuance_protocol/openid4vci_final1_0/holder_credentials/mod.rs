@@ -285,7 +285,7 @@ impl OpenID4VCIFinal1_0 {
             &mut schema,
             credential,
             conflicting_format.as_ref().unwrap_or(format),
-            &self.config.default_language,
+            &self.config.global_settings.default_language,
             true,
         )
         .await?;
@@ -509,7 +509,7 @@ impl OpenID4VCIFinal1_0 {
             &mut schema,
             &mut batch_credential.credential,
             &parent_format,
-            &self.config.default_language,
+            &self.config.global_settings.default_language,
             false,
         )
         .await?;
@@ -698,7 +698,7 @@ impl OpenID4VCIFinal1_0 {
         apply_issuer_metadata_to_schema(
             &mut schema,
             interaction_data.credential_metadata.as_ref(),
-            &self.config.default_language,
+            &self.config.global_settings.default_language,
         )
         .await?;
         schema.batch_size = interaction_data.batch_size.map(|size| size as _);

@@ -4,7 +4,7 @@ use std::sync::Arc;
 use time::Duration;
 use x509_parser::certificate::X509Certificate;
 
-use crate::config::core_config::{CacheEntityCacheType, CoreConfig};
+use crate::config::core_config::{CacheEntitiesConfig, CacheEntityCacheType, GlobalSettings};
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, NestedError};
 use crate::proto::clock::{Clock, DefaultClock};
 use crate::proto::http_client::reqwest_client::ReqwestClient;
@@ -245,7 +245,8 @@ impl CertificateValidatorImpl {
 }
 
 pub(crate) fn certificate_validator_from_config(
-    config: &CoreConfig,
+    global_settings: &GlobalSettings,
+    cache_entities: &CacheEntitiesConfig,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     client: Arc<dyn HttpClient>,
     remote_entity_cache_repository: Arc<dyn RemoteEntityCacheRepository>,
@@ -253,11 +254,12 @@ pub(crate) fn certificate_validator_from_config(
     Ok(Arc::new(CertificateValidatorImpl::new(
         key_algorithm_provider.clone(),
         Arc::new(initialize_x509_crl_cache(
-            config,
+            global_settings,
+            cache_entities,
             remote_entity_cache_repository,
         )?),
         Arc::new(DefaultClock),
-        config.certificate_validation.leeway,
+        global_settings.certificate_validation.leeway,
         Arc::new(initialize_android_key_attestation_crl_cache(client)),
     )))
 }
@@ -275,11 +277,11 @@ fn initialize_android_key_attestation_crl_cache(
 }
 
 fn initialize_x509_crl_cache(
-    core_config: &CoreConfig,
+    global_settings: &GlobalSettings,
+    cache_entities: &CacheEntitiesConfig,
     remote_entity_cache_repository: Arc<dyn RemoteEntityCacheRepository>,
 ) -> Result<X509CrlCache, Error> {
-    let config = core_config
-        .cache_entities
+    let config = cache_entities
         .entities
         .get("X509_CRL")
         .cloned()
@@ -294,7 +296,7 @@ fn initialize_x509_crl_cache(
     // CRLs can be hosted on insecure URLs
     let client = ReqwestClient::new(HttpClientSecurityConfig {
         insecure_http_transport_allowed: true,
-        ..core_config.http_client.to_owned()
+        ..global_settings.http_client.to_owned()
     })
     .error_while("creating HTTP client")?;
 

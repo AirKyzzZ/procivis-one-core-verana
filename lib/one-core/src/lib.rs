@@ -190,11 +190,11 @@ impl OneCore {
             _ => None,
         };
 
-        let client = Arc::new(ReqwestClient::new(config.http_client.to_owned()).map_err(
-            |err| {
+        let client = Arc::new(
+            ReqwestClient::new(config.global_settings.http_client.to_owned()).map_err(|err| {
                 OneCoreInitializationError::Config(err.error_while("creating HTTP client").into())
-            },
-        )?);
+            })?,
+        );
 
         let mqtt_client = Arc::new(RumqttcClient::default());
 
@@ -249,7 +249,8 @@ impl OneCore {
         )?;
 
         let certificate_validator = certificate_validator_from_config(
-            &config,
+            &config.global_settings,
+            &config.cache_entities,
             key_algorithm_provider.clone(),
             client.clone(),
             data_provider.get_remote_entity_cache_repository(),
@@ -310,7 +311,7 @@ impl OneCore {
 
         let credential_schema_importer = Arc::new(CredentialSchemaImporterProto::new(
             data_provider.get_credential_schema_repository(),
-            config.default_language.clone(),
+            config.global_settings.default_language.clone(),
         ));
 
         let wallet_provider_metadata_cache = Arc::new(wallet_provider_metadata_cache_from_config(
