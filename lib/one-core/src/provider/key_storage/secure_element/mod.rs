@@ -75,6 +75,7 @@ impl KeyStorage for SecureElementKeyProvider {
         &self,
         key_id: KeyId,
         _key_type: KeyAlgorithmType,
+        _params: serde_json::Value,
     ) -> Result<StorageGeneratedKey, KeyStorageError> {
         let key_alias = format!("{}.{}", self.params.alias_prefix, key_id);
         self.native_storage.generate_key(key_alias).await

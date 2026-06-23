@@ -84,7 +84,7 @@ pub(super) async fn autogenerate_holder_binding(
 
     let key_id = Uuid::new_v4().into();
     let key = key_storage
-        .generate(key_id, key_algorithm)
+        .generate(key_id, key_algorithm, serde_json::json!({}))
         .await
         .map_err(|e| IssuanceProtocolError::BindingAutogenerationFailure(e.to_string()))?;
 

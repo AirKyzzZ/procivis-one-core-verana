@@ -84,7 +84,7 @@ impl KeyService {
         let key_id = Uuid::new_v4().into();
         let key = match jwk {
             None => provider
-                .generate(key_id, key_type)
+                .generate(key_id, key_type, request.storage_params.clone())
                 .await
                 .error_while("generating key")?,
             Some(jwk) => provider

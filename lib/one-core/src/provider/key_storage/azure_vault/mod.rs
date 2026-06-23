@@ -95,6 +95,7 @@ impl KeyStorage for AzureVaultKeyProvider {
         &self,
         key_id: KeyId,
         key_type: KeyAlgorithmType,
+        _params: serde_json::Value,
     ) -> Result<StorageGeneratedKey, KeyStorageError> {
         if !self.get_capabilities().algorithms.contains(&key_type) {
             return Err(KeyStorageError::UnsupportedKeyType {

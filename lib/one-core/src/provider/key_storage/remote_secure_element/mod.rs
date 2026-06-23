@@ -45,6 +45,7 @@ impl KeyStorage for RemoteSecureElementKeyProvider {
         &self,
         key_id: KeyId,
         _key_type: KeyAlgorithmType,
+        _params: serde_json::Value,
     ) -> Result<StorageGeneratedKey, KeyStorageError> {
         self.native_storage.generate_key(key_id.to_string()).await
     }

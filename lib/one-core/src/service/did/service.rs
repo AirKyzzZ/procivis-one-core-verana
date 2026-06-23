@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use serde_json::json;
 use shared_types::{DidId, DidValue, KeyId};
 use uuid::Uuid;
 
@@ -357,7 +358,7 @@ pub(crate) async fn generate_update_key(
 
     let key_id = Uuid::new_v4().into();
     let key = key_storage
-        .generate(key_id, update_key_type)
+        .generate(key_id, update_key_type, json!({}))
         .await
         .error_while("generating key")?;
     let key = Key {

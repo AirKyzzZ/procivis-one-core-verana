@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use mockall::predicate::eq;
+use serde_json::json;
 use similar_asserts::assert_eq;
 use standardized_types::jwk::{PrivateJwk, PrivateJwkEc};
 use uuid::Uuid;
@@ -39,7 +40,7 @@ async fn test_generate_success() {
         SecureElementKeyProvider::new("test", Arc::new(native_storage), get_params()).unwrap();
 
     let result = provider
-        .generate(key_id.into(), KeyAlgorithmType::Ecdsa)
+        .generate(key_id.into(), KeyAlgorithmType::Ecdsa, json!({}))
         .await
         .unwrap();
     assert_eq!(result.public_key, b"public_key");

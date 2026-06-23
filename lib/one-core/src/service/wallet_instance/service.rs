@@ -814,7 +814,7 @@ impl WalletUnitService {
     ) -> Result<Key, HolderWalletInstanceError> {
         let key_id = Uuid::new_v4().into();
         let key = key_storage
-            .generate(key_id, key_type)
+            .generate(key_id, key_type, serde_json::json!({}))
             .await
             .error_while("generating key")?;
         let key =

@@ -100,7 +100,7 @@ async fn test_create_key_success() {
                 ..Default::default()
             });
 
-        key_storage.expect_generate().once().returning(|_, _| {
+        key_storage.expect_generate().once().returning(|_, _, _| {
             Ok(StorageGeneratedKey {
                 public_key: vec![],
                 key_reference: None,

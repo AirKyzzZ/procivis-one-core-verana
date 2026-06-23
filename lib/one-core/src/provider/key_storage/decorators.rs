@@ -40,6 +40,7 @@ impl<T: KeyStorage + Display + ?Sized> KeyStorage for DisabledProvider<T> {
         &self,
         _key_id: KeyId,
         _key_algorithm: KeyAlgorithmType,
+        _params: Value,
     ) -> Result<StorageGeneratedKey, KeyStorageError> {
         self.disabled_error()
     }
@@ -106,13 +107,14 @@ impl KeyStorage for CapabilityCheckedKeyStorage {
         &self,
         _key_id: KeyId,
         key_algorithm: KeyAlgorithmType,
+        params: Value,
     ) -> Result<StorageGeneratedKey, KeyStorageError> {
         if !self.get_capabilities().algorithms.contains(&key_algorithm) {
             return Err(KeyStorageError::UnsupportedKeyType {
                 key_type: key_algorithm.to_string(),
             });
         }
-        self.inner.generate(_key_id, key_algorithm).await
+        self.inner.generate(_key_id, key_algorithm, params).await
     }
 
     async fn import(
@@ -199,7 +201,11 @@ mod test {
         let provider = CapabilityCheckedKeyStorage { inner };
 
         let result = provider
-            .generate(Uuid::new_v4().into(), KeyAlgorithmType::MlDsa)
+            .generate(
+                Uuid::new_v4().into(),
+                KeyAlgorithmType::MlDsa,
+                serde_json::json!({}),
+            )
             .await;
         assert!(matches!(
             result,

@@ -168,11 +168,11 @@ async fn test_azure_vault_generate() {
     )
     .unwrap();
     vault
-        .generate(Uuid::new_v4().into(), KeyAlgorithmType::Ecdsa)
+        .generate(Uuid::new_v4().into(), KeyAlgorithmType::Ecdsa, json!({}))
         .await
         .unwrap();
     vault
-        .generate(Uuid::new_v4().into(), KeyAlgorithmType::Ecdsa)
+        .generate(Uuid::new_v4().into(), KeyAlgorithmType::Ecdsa, json!({}))
         .await
         .unwrap();
 }
@@ -192,11 +192,11 @@ async fn test_azure_vault_generate_expired_key_causes_second_token_request() {
     )
     .unwrap();
     vault
-        .generate(Uuid::new_v4().into(), KeyAlgorithmType::Ecdsa)
+        .generate(Uuid::new_v4().into(), KeyAlgorithmType::Ecdsa, json!({}))
         .await
         .unwrap();
     vault
-        .generate(Uuid::new_v4().into(), KeyAlgorithmType::Ecdsa)
+        .generate(Uuid::new_v4().into(), KeyAlgorithmType::Ecdsa, json!({}))
         .await
         .unwrap();
 }
@@ -211,7 +211,7 @@ async fn test_azure_vault_generate_failed_unsupported_key_type() {
     )
     .unwrap();
     let result = vault
-        .generate(Uuid::new_v4().into(), KeyAlgorithmType::MlDsa)
+        .generate(Uuid::new_v4().into(), KeyAlgorithmType::MlDsa, json!({}))
         .await;
     assert!(matches!(
         result,

@@ -53,7 +53,7 @@ async fn test_internal_generate_with_encryption() {
     .unwrap();
 
     let result = provider
-        .generate(Uuid::new_v4().into(), KeyAlgorithmType::Eddsa)
+        .generate(Uuid::new_v4().into(), KeyAlgorithmType::Eddsa, json!({}))
         .await
         .unwrap();
     assert_eq!(result.key_reference.as_ref().unwrap().len(), 39);
@@ -130,7 +130,7 @@ async fn test_internal_sign_with_encryption() {
     .unwrap();
 
     let generated_key = provider
-        .generate(Uuid::new_v4().into(), KeyAlgorithmType::Eddsa)
+        .generate(Uuid::new_v4().into(), KeyAlgorithmType::Eddsa, json!({}))
         .await
         .unwrap();
 

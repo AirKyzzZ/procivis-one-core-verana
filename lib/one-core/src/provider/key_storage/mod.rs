@@ -33,6 +33,7 @@ pub trait KeyStorage: Provider + Send + Sync {
         &self,
         key_id: KeyId,
         key_algorithm: KeyAlgorithmType,
+        params: serde_json::Value,
     ) -> Result<model::StorageGeneratedKey, error::KeyStorageError>;
 
     async fn import(

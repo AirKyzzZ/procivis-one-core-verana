@@ -77,6 +77,7 @@ impl KeyStorage for InternalKeyProvider {
         &self,
         _key_id: KeyId,
         key_type: KeyAlgorithmType,
+        _params: serde_json::Value,
     ) -> Result<StorageGeneratedKey, KeyStorageError> {
         let key_pair = self
             .key_algorithm_provider
