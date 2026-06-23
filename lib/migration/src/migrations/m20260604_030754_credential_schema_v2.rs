@@ -135,11 +135,11 @@ async fn find_old_schemas(manager: &SchemaManager<'_>) -> Result<Vec<OldSchema>,
     .await
 }
 
-#[derive(FromQueryResult)]
-struct ClaimSchemaEntry {
-    id: String,
-    key: String,
-    metadata: bool,
+#[derive(FromQueryResult, Debug)]
+pub(crate) struct ClaimSchemaEntry {
+    pub id: String,
+    pub key: String,
+    pub metadata: bool,
 }
 
 async fn find_claim_schemas(
@@ -214,7 +214,7 @@ async fn migrate_old_schema(manager: &SchemaManager<'_>, schema: OldSchema) -> R
 }
 
 /// create CredentialSchemaFormatClaimSchema entries directly from claim_schema, copying key to technical_key
-async fn create_claim_mappings_simple(
+pub(crate) async fn create_claim_mappings_simple(
     manager: &SchemaManager<'_>,
     claim_schemas: Vec<ClaimSchemaEntry>,
     format_id: &str,
@@ -252,7 +252,7 @@ async fn create_claim_mappings_simple(
     execute(manager, &query).await
 }
 
-async fn create_claim_mappings_for_mdoc(
+pub(crate) async fn create_claim_mappings_for_mdoc(
     manager: &SchemaManager<'_>,
     claim_schemas: Vec<ClaimSchemaEntry>,
     format_id: &str,
@@ -451,7 +451,7 @@ async fn remove_mdoc_namespace(
     .await
 }
 
-async fn migrate_mdoc_layout_props(
+pub(crate) async fn migrate_mdoc_layout_props(
     manager: &SchemaManager<'_>,
     layout_properties: String,
     credential_schema_id: &str,

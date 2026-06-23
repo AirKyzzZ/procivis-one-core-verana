@@ -284,6 +284,7 @@ impl MigratorTrait for Migrator {
             Box::new(migrations::m20260612_120000_add_embedded_disclosure_policy_to_credential_schema::Migration),
             Box::new(migrations::m20260611_120000_add_nonce_to_holder_wallet_instance::Migration),
             Box::new(migrations::m20260619_120000_add_credential_schema_list_indexes::Migration),
+            Box::new(migrations::m20260623_091633_missing_mappings::Migration),
         ]
     }
 }
