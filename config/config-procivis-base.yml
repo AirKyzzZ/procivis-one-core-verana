@@ -271,23 +271,9 @@ verificationProtocol:
         urlScheme: haip-vp
         verifier:
           interactionExpiresIn: 3600
-          supportedClientIdSchemes:
-            [
-              verifier_attestation,
-              redirect_uri,
-              decentralized_identifier,
-              x509_hash,
-              x509_san_dns,
-            ]
+          supportedClientIdSchemes: [x509_hash]
         holder:
-          supportedClientIdSchemes:
-            [
-              verifier_attestation,
-              redirect_uri,
-              decentralized_identifier,
-              x509_hash,
-              x509_san_dns,
-            ]
+          supportedClientIdSchemes: [x509_hash]
         redirectUri:
           enabled: true
           allowedSchemes: ["https"]

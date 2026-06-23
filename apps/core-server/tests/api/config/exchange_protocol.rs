@@ -23,5 +23,19 @@ async fn test_verification_protocol_capabilities() {
     let mdoc = &resp["verificationProtocol"]["MDOC_OPENID4VP"]["capabilities"];
     assert_eq!(mdoc["features"], json!(["SUPPORTS_WEBHOOKS"]));
     assert_eq!(mdoc["supportedTransports"], json!(["HTTP"]));
-    assert_eq!(mdoc["didMethods"], json!(["KEY", "JWK", "WEB", "WEBVH"]))
+    assert_eq!(mdoc["didMethods"], json!(["KEY", "JWK", "WEB", "WEBVH"]));
+
+    let haip = &resp["verificationProtocol"]["OPENID4VP_FINAL1_HAIP"];
+    assert_eq!(
+        haip["params"]["verifier"]["supportedClientIdSchemes"],
+        json!(["x509_hash"])
+    );
+    assert_eq!(
+        haip["params"]["holder"]["supportedClientIdSchemes"],
+        json!(["x509_hash"])
+    );
+    assert_eq!(
+        haip["capabilities"]["verifierIdentifierTypes"],
+        json!(["CERTIFICATE"])
+    );
 }

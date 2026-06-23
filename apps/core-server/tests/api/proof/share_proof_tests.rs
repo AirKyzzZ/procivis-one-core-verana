@@ -623,6 +623,56 @@ async fn prepare_created_openid4vp_proof(exchange: Option<&str>) -> (TestContext
     (context, proof)
 }
 
+async fn prepare_created_certificate_openid4vp_proof(exchange: &str) -> (TestContext, Proof) {
+    let (context, organisation, identifier, _, key) =
+        TestContext::new_with_certificate_identifier(None).await;
+    let credential_schema =
+        fixtures::create_credential_schema(&context.db.db_conn, &organisation, None).await;
+    let claim_schema = credential_schema
+        .claim_schemas
+        .as_ref()
+        .await
+        .unwrap()
+        .first()
+        .unwrap()
+        .to_owned();
+
+    let proof_schema = fixtures::create_proof_schema(
+        &context.db.db_conn,
+        "test",
+        &organisation,
+        &[CreateProofInputSchema {
+            claims: vec![CreateProofClaim {
+                id: claim_schema.id,
+                key: &claim_schema.key,
+                required: true,
+                data_type: &claim_schema.data_type,
+                array: false,
+            }],
+            credential_schema: &credential_schema,
+        }],
+    )
+    .await;
+
+    let proof = context
+        .db
+        .proofs
+        .create(
+            None,
+            &identifier,
+            Some(&proof_schema),
+            ProofStateEnum::Created,
+            exchange,
+            None,
+            key,
+            None,
+            None,
+        )
+        .await;
+
+    (context, proof)
+}
+
 async fn extract_client_id(response: Response) -> String {
     assert_eq!(response.status(), 201);
     let resp = response.json::<Value>().await;
@@ -748,51 +798,7 @@ async fn test_share_proof_client_id_scheme_did_openid4vp_final1_0() {
 #[tokio::test]
 async fn test_share_proof_client_id_scheme_x509_hash_openid4vp_final1_0() {
     // GIVEN
-    let (context, organisation, identifier, _, key) =
-        TestContext::new_with_certificate_identifier(None).await;
-    let credential_schema =
-        fixtures::create_credential_schema(&context.db.db_conn, &organisation, None).await;
-    let claim_schema = credential_schema
-        .claim_schemas
-        .as_ref()
-        .await
-        .unwrap()
-        .first()
-        .unwrap()
-        .to_owned();
-
-    let proof_schema = fixtures::create_proof_schema(
-        &context.db.db_conn,
-        "test",
-        &organisation,
-        &[CreateProofInputSchema {
-            claims: vec![CreateProofClaim {
-                id: claim_schema.id,
-                key: &claim_schema.key,
-                required: true,
-                data_type: &claim_schema.data_type,
-                array: false,
-            }],
-            credential_schema: &credential_schema,
-        }],
-    )
-    .await;
-
-    let proof = context
-        .db
-        .proofs
-        .create(
-            None,
-            &identifier,
-            Some(&proof_schema),
-            ProofStateEnum::Created,
-            "OPENID4VP_FINAL1",
-            None,
-            key,
-            None,
-            None,
-        )
-        .await;
+    let (context, proof) = prepare_created_certificate_openid4vp_proof("OPENID4VP_FINAL1").await;
 
     // WHEN
     let resp = context
@@ -800,6 +806,22 @@ async fn test_share_proof_client_id_scheme_x509_hash_openid4vp_final1_0() {
         .proofs
         .share(proof.id, Some(ClientIdSchemeRestEnum::X509Hash))
         .await;
+
+    // THEN
+    let client_id = extract_client_id(resp).await;
+    assert_eq!(client_id, format!("x509_hash:__-qqg"));
+
+    assert_history_count(&context, &proof.id.into(), HistoryAction::Shared, 1).await;
+}
+
+#[tokio::test]
+async fn test_share_proof_openid4vp_final1_haip_defaults_to_x509_hash() {
+    // GIVEN
+    let (context, proof) =
+        prepare_created_certificate_openid4vp_proof("OPENID4VP_FINAL1_HAIP").await;
+
+    // WHEN
+    let resp = context.api.proofs.share(proof.id, None).await;
 
     // THEN
     let client_id = extract_client_id(resp).await;
