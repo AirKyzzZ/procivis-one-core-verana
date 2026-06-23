@@ -4,6 +4,7 @@ use std::vec;
 
 use mockall::predicate::*;
 use serde_json::json;
+use serde_yaml;
 use shared_types::{CredentialId, EntityId};
 use similar_asserts::assert_eq;
 use time::Duration;
@@ -5783,4 +5784,131 @@ fn mock_trust_information_provider(
         .with(eq(entity_id))
         .returning(move |_| Ok(trust_information.clone()));
     trust_information_provider
+}
+
+fn config_with_eaa_category() -> CoreConfig {
+    use crate::config::core_config::DatatypeConfig;
+
+    let mut config = generic_config().core;
+    let category_config: DatatypeConfig = serde_yaml::from_str(
+        r#"
+EAA_CATEGORY:
+  display: "datatype.eaaCategory"
+  type: "ENUM"
+  order: 500
+  params:
+    public:
+      values:
+        - value: urn:etsi:esi:eaa:eu:pub
+          display: "datatype.category.public"
+        - value: urn:etsi:esi:eaa:eu:qualified
+          display: "datatype.category.qualified"
+"#,
+    )
+    .unwrap();
+    let category_fields = category_config.get_fields("EAA_CATEGORY").unwrap().clone();
+    config
+        .datatype
+        .insert("EAA_CATEGORY".to_string(), category_fields);
+    config
+}
+
+#[tokio::test]
+async fn test_validate_create_request_valid_enum_value() {
+    let category_claim_id = Uuid::new_v4().into();
+    let now = crate::clock::now_utc();
+
+    let schema = generate_credential_schema_with_claim_schemas(vec![ClaimSchema {
+        array: false,
+        id: category_claim_id,
+        key: "category".to_string(),
+        data_type: "EAA_CATEGORY".to_string(),
+        created_date: now,
+        last_modified: now,
+        metadata: false,
+        required: true,
+        translations: Default::default(),
+    }]);
+
+    validate_create_request(
+        "OPENID4VCI_FINAL1",
+        &mut [CredentialRequestClaimDTO {
+            claim_schema_id: category_claim_id,
+            value: "urn:etsi:esi:eaa:eu:pub".to_string(),
+            path: "category".to_string(),
+        }],
+        &schema,
+        &generic_formatter_capabilities(),
+        &config_with_eaa_category(),
+    )
+    .await
+    .unwrap();
+}
+
+#[tokio::test]
+async fn test_validate_create_request_valid_enum_value_qualified() {
+    let category_claim_id = Uuid::new_v4().into();
+    let now = crate::clock::now_utc();
+
+    let schema = generate_credential_schema_with_claim_schemas(vec![ClaimSchema {
+        array: false,
+        id: category_claim_id,
+        key: "category".to_string(),
+        data_type: "EAA_CATEGORY".to_string(),
+        created_date: now,
+        last_modified: now,
+        metadata: false,
+        required: true,
+        translations: Default::default(),
+    }]);
+
+    validate_create_request(
+        "OPENID4VCI_FINAL1",
+        &mut [CredentialRequestClaimDTO {
+            claim_schema_id: category_claim_id,
+            value: "urn:etsi:esi:eaa:eu:qualified".to_string(),
+            path: "category".to_string(),
+        }],
+        &schema,
+        &generic_formatter_capabilities(),
+        &config_with_eaa_category(),
+    )
+    .await
+    .unwrap();
+}
+
+#[tokio::test]
+async fn test_validate_create_request_invalid_enum_value() {
+    let category_claim_id = Uuid::new_v4().into();
+    let now = crate::clock::now_utc();
+
+    let schema = generate_credential_schema_with_claim_schemas(vec![ClaimSchema {
+        array: false,
+        id: category_claim_id,
+        key: "category".to_string(),
+        data_type: "EAA_CATEGORY".to_string(),
+        created_date: now,
+        last_modified: now,
+        metadata: false,
+        required: true,
+        translations: Default::default(),
+    }]);
+
+    let result = validate_create_request(
+        "OPENID4VCI_FINAL1",
+        &mut [CredentialRequestClaimDTO {
+            claim_schema_id: category_claim_id,
+            value: "invalid_value".to_string(),
+            path: "category".to_string(),
+        }],
+        &schema,
+        &generic_formatter_capabilities(),
+        &config_with_eaa_category(),
+    )
+    .await;
+
+    assert!(matches!(
+        result,
+        Err(CredentialServiceError::InvalidDatatype { .. })
+    ));
 }

@@ -220,6 +220,7 @@ impl CredentialFormatter for JsonLdClassic {
                 "PICTURE".to_string(),
                 "OBJECT".to_string(),
                 "ARRAY".to_string(),
+                "EAA_CATEGORY".to_string(),
             ],
             verification_key_algorithms: vec![KeyAlgorithmType::Eddsa, KeyAlgorithmType::Ecdsa],
             verification_key_storages: vec![

@@ -479,6 +479,9 @@ pub enum DatatypeType {
     #[serde(rename = "BOOLEAN")]
     #[strum(serialize = "BOOLEAN")]
     Boolean,
+    #[serde(rename = "ENUM")]
+    #[strum(serialize = "ENUM")]
+    Enum,
 }
 
 pub type KeyAlgorithmConfig = Dict<KeyAlgorithmType, KeyAlgorithmFields>;

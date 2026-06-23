@@ -121,6 +121,7 @@ pub fn validate_datatype_value(
         DatatypeType::Array => validate_array(value, config.get(datatype)?)?,
         DatatypeType::Boolean => validate_boolean(value, config.get(datatype)?)?,
         DatatypeType::Date => validate_date(value, config.get(datatype)?)?,
+        DatatypeType::Enum => validate_enum(value, config.get(datatype)?)?,
     };
 
     Ok(())
@@ -306,6 +307,23 @@ struct FileParams {
     pub file_size: Option<usize>,
     pub show_as: Option<String>,
     pub encode_as_mdl_portrait: Option<bool>,
+}
+
+#[derive(Deserialize)]
+struct EnumValueParam {
+    value: String,
+}
+
+#[derive(Deserialize)]
+struct EnumParams {
+    values: Vec<EnumValueParam>,
+}
+
+fn validate_enum(value: &str, params: EnumParams) -> Result<(), DatatypeValidationError> {
+    if !params.values.iter().any(|v| v.value == value) {
+        return Err(DatatypeValidationError::EnumInvalidValue(value.to_string()));
+    }
+    Ok(())
 }
 
 pub(crate) fn validate_picture(
@@ -733,5 +751,41 @@ mod tests {
             &datatype_config,
         );
         assert!(valid.is_ok());
+    }
+
+    #[test]
+    fn test_validate_enum_value() {
+        let datatype_config = indoc! {r#"
+        CATEGORY:
+            display: "datatype.category"
+            type: "ENUM"
+            order: 500
+            params:
+                public:
+                    values:
+                        - value: urn:etsi:esi:eaa:eu:pub
+                          display: "datatype.category.public"
+                        - value: urn:etsi:esi:eaa:eu:qualified
+                          display: "datatype.category.qualified"
+        "#};
+
+        let datatype_config: DatatypeConfig = serde_yaml::from_str(datatype_config).unwrap();
+
+        let valid =
+            validate_datatype_value("urn:etsi:esi:eaa:eu:pub", "CATEGORY", &datatype_config);
+        assert!(valid.is_ok());
+
+        let valid = validate_datatype_value(
+            "urn:etsi:esi:eaa:eu:qualified",
+            "CATEGORY",
+            &datatype_config,
+        );
+        assert!(valid.is_ok());
+
+        let invalid = validate_datatype_value("unknown_value", "CATEGORY", &datatype_config);
+        assert!(invalid.is_err_and(|e| matches!(
+            e,
+            ConfigValidationError::DatatypeValidation(DatatypeValidationError::EnumInvalidValue(_))
+        )));
     }
 }

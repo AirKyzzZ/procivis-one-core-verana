@@ -1,3 +1,4 @@
+mod datatype;
 mod did;
 mod exchange_protocol;
 mod formatter;

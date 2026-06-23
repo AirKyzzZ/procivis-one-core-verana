@@ -281,6 +281,7 @@ impl CredentialFormatter for JWTFormatter {
                 "PICTURE".to_string(),
                 "OBJECT".to_string(),
                 "ARRAY".to_string(),
+                "EAA_CATEGORY".to_string(),
             ],
             forbidden_claim_names: vec!["0".to_string(), "id".to_string()],
             issuance_identifier_types: vec![IdentifierType::Did],

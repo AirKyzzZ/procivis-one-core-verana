@@ -367,6 +367,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             "COUNT".to_string(),
             "BIRTH_DATE".to_string(),
             "NUMBER".to_string(),
+            "EAA_CATEGORY".to_string(),
         ];
         let mut issuance_exchange_protocols = vec![];
         let mut issuance_did_methods = vec![DidType::WebVh];

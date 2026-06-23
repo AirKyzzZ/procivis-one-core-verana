@@ -4,6 +4,7 @@ use serde::Deserialize;
 
 mod boolean;
 mod date;
+mod enum_type;
 pub mod error;
 mod mapper;
 pub mod model;

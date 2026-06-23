@@ -203,6 +203,7 @@ impl CredentialFormatter for SDJWTFormatter {
                 "PICTURE".to_string(),
                 "OBJECT".to_string(),
                 "ARRAY".to_string(),
+                "EAA_CATEGORY".to_string(),
             ],
             features: vec![
                 Features::SelectiveDisclosure,

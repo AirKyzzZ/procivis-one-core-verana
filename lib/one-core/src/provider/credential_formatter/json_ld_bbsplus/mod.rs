@@ -342,6 +342,7 @@ impl CredentialFormatter for JsonLdBbsplus {
                 "PICTURE".to_string(),
                 "OBJECT".to_string(),
                 "ARRAY".to_string(),
+                "EAA_CATEGORY".to_string(),
             ],
             issuance_exchange_protocols: vec![IssuanceProtocolType::OpenId4VciFinal1_0],
             proof_exchange_protocols: vec![

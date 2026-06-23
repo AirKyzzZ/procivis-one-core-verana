@@ -539,6 +539,17 @@ datatype:
     type: "ARRAY"
     order: 101
     params: null
+  EAA_CATEGORY:
+    display: "datatype.eaaCategory"
+    type: "ENUM"
+    order: 500
+    params:
+      public:
+        values:
+          - value: urn:etsi:esi:eaa:eu:pub
+            display: "datatype.category.public"
+          - value: urn:etsi:esi:eaa:eu:qualified
+            display: "datatype.category.qualified"
 keyAlgorithm:
   EDDSA:
     display: "keyAlgorithm.eddsa"

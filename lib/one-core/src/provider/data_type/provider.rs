@@ -5,6 +5,7 @@ use serde_json::json;
 
 use super::boolean::BooleanDataType;
 use super::date::DateDataType;
+use super::enum_type::EnumDataType;
 use super::error::{DataTypeError, DataTypeProviderError};
 use super::model::{
     DataTypeProviderInit, ExtractedClaim, ExtractionResult, JsonOrCbor, ValueExtractionConfig,
@@ -14,7 +15,7 @@ use super::number::NumberDataType;
 use super::picture::PictureDataType;
 use super::string::StringDataType;
 use super::swiyu_picture::SwiyuPictureDataType;
-use super::{CommonParams, DataType, date, number, picture, string, swiyu_picture};
+use super::{CommonParams, DataType, date, enum_type, number, picture, string, swiyu_picture};
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, DatatypeType};
 use crate::error::ContextWithErrorCode;
@@ -254,6 +255,15 @@ pub(crate) fn data_type_provider_from_config(
                         source,
                     })?;
                 Arc::new(SwiyuPictureDataType::new(params)?)
+            }
+            DatatypeType::Enum => {
+                let params = fields
+                    .deserialize::<enum_type::Params>()
+                    .map_err(|source| ConfigValidationError::FieldsDeserialization {
+                        key: name.to_owned(),
+                        source,
+                    })?;
+                Arc::new(EnumDataType::new(params))
             }
             DatatypeType::Array | DatatypeType::Object => {
                 // skip Array and Objects until we support data extraction for intermediary claims
