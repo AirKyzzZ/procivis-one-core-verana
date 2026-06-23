@@ -3,45 +3,107 @@
 use std::sync::Arc;
 
 use ct_codecs::{Base64, Base64UrlSafeNoPadding, Decoder, Encoder};
+use one_crypto::HasherError;
 use sha2::{Digest, Sha256, Sha384, Sha512};
-use standardized_types::csc::{HashAlgorithm, OperationMode};
+use standardized_types::csc::{
+    AuthorizeRequestRestDTO, CredentialInfoRequestRestDTO, CredentialInfoResponseRestDTO,
+    HashAlgorithm, OperationMode, SignDocDocumentRestDTO, SignDocRequestRestDTO,
+    SignDocResponseRestDTO, TokenResponseRestDTO,
+};
+use thiserror::Error;
 use url::Url;
 
 use self::model::{
-    Authorization, AuthorizationUrlRequest, AuthorizeRequestRestDTO, CredentialInfo,
-    CredentialInfoRequestRestDTO, CredentialInfoResponseRestDTO, CredentialToken,
-    SignDocDocumentRestDTO, SignDocRequestRestDTO, SignDocResponseRestDTO, SignDocumentRequest,
-    TokenRequest, TokenResponseRestDTO,
+    Authorization, AuthorizationUrlRequest, CredentialInfo, CredentialToken, SignDocumentRequest,
+    TokenRequest,
 };
-use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt, NestedError};
+use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, NestedError};
 use crate::proto::http_client::HttpClient;
 use crate::proto::oauth_client::Pkce;
-use crate::service::error::ServiceError;
 
 pub mod model;
 
 /// SIGN8's gateway rejects requests without a `User-Agent`, reqwest sends none by default.
 const USER_AGENT: &str = "procivis-one-core";
 
-pub(crate) struct CscClient {
+pub(crate) struct CscClientImpl {
     client: Arc<dyn HttpClient>,
 }
 
-impl CscClient {
+#[derive(Debug, Error)]
+pub enum CscClientError {
+    #[error("Base64 encoding error: {0}")]
+    Base64Encoding(#[from] ct_codecs::Error),
+    #[error("URL encoding error: {0}")]
+    UrlEncoding(#[from] serde_urlencoded::ser::Error),
+    #[error("invalid URL: {0}")]
+    InvalidUrl(#[from] url::ParseError),
+    #[error("hashing error: {0}")]
+    HasherError(#[from] HasherError),
+    #[error("CSC API returned no signed document")]
+    EmptySignedDocuments,
+    #[error(transparent)]
+    Nested(#[from] NestedError),
+}
+
+impl ErrorCodeMixin for CscClientError {
+    fn error_code(&self) -> ErrorCode {
+        match self {
+            CscClientError::Nested(err) => err.error_code(),
+            _ => ErrorCode::BR_0456,
+        }
+    }
+}
+
+#[cfg_attr(any(test, feature = "mock"), mockall::automock)]
+#[async_trait::async_trait]
+pub trait CscClient: Send + Sync {
+    async fn authorization_url<'a>(
+        &'a self,
+        request: AuthorizationUrlRequest<'a>,
+    ) -> Result<Authorization, CscClientError>;
+
+    async fn exchange_code<'a>(
+        &'a self,
+        request: TokenRequest<'a>,
+    ) -> Result<CredentialToken, CscClientError>;
+
+    async fn credential_info(
+        &self,
+        api_url: &str,
+        access_token: &str,
+        credential_id: &str,
+    ) -> Result<CredentialInfo, CscClientError>;
+
+    async fn sign_document<'a>(
+        &'a self,
+        request: SignDocumentRequest<'a>,
+    ) -> Result<Vec<u8>, CscClientError>;
+
+    async fn revoke_access_token(
+        &self,
+        oauth_url: &str,
+        access_token: &str,
+        client_id: &str,
+        client_secret: &str,
+    );
+}
+
+impl CscClientImpl {
     pub(crate) fn new(client: Arc<dyn HttpClient>) -> Self {
         Self { client }
     }
+}
 
-    pub(crate) async fn authorization_url(
-        &self,
-        request: AuthorizationUrlRequest<'_>,
-    ) -> Result<Authorization, NestedError> {
+#[async_trait::async_trait]
+impl CscClient for CscClientImpl {
+    async fn authorization_url<'a>(
+        &'a self,
+        request: AuthorizationUrlRequest<'a>,
+    ) -> Result<Authorization, CscClientError> {
         let hash = encode_base64url(request.hash)?;
 
-        let pkce = Pkce::generate()
-            .map_err(|e| ServiceError::MappingError(e.to_string()))
-            .error_while("generating pkce challenge")?;
-
+        let pkce = Pkce::generate()?;
         let query = serde_urlencoded::to_string(AuthorizeRequestRestDTO {
             response_type: "code",
             client_id: request.client_id,
@@ -54,13 +116,9 @@ impl CscClient {
             hashes: &hash,
             hash_algorithm: request.hash_algorithm,
             account_token: request.account_token,
-        })
-        .map_err(|e| ServiceError::MappingError(e.to_string()))
-        .error_while("encoding authorization query")?;
+        })?;
 
-        let mut url = Url::parse(&format!("{}/oauth2/authorize", request.oauth_url))
-            .map_err(|e| ServiceError::MappingError(e.to_string()))
-            .error_while("building authorization URL")?;
+        let mut url = Url::parse(&format!("{}/oauth2/authorize", request.oauth_url))?;
         url.set_query(Some(&query));
 
         Ok(Authorization {
@@ -69,10 +127,10 @@ impl CscClient {
         })
     }
 
-    pub(crate) async fn exchange_code(
-        &self,
-        request: TokenRequest<'_>,
-    ) -> Result<CredentialToken, NestedError> {
+    async fn exchange_code<'a>(
+        &'a self,
+        request: TokenRequest<'a>,
+    ) -> Result<CredentialToken, CscClientError> {
         let token: TokenResponseRestDTO = async {
             self.client
                 .post(&format!("{}/oauth2/token", request.oauth_url))
@@ -98,12 +156,12 @@ impl CscClient {
         })
     }
 
-    pub(crate) async fn credential_info(
+    async fn credential_info(
         &self,
         api_url: &str,
         access_token: &str,
         credential_id: &str,
-    ) -> Result<CredentialInfo, NestedError> {
+    ) -> Result<CredentialInfo, CscClientError> {
         let info: CredentialInfoResponseRestDTO = async {
             self.client
                 .post(&format!("{api_url}/csc/v2/credentials/info"))
@@ -126,13 +184,11 @@ impl CscClient {
         })
     }
 
-    pub(crate) async fn sign_document(
-        &self,
-        request: SignDocumentRequest<'_>,
-    ) -> Result<Vec<u8>, NestedError> {
-        let document = Base64::encode_to_string(request.document)
-            .map_err(|e| ServiceError::MappingError(e.to_string()))
-            .error_while("base64 encoding document")?;
+    async fn sign_document<'a>(
+        &'a self,
+        request: SignDocumentRequest<'a>,
+    ) -> Result<Vec<u8>, CscClientError> {
+        let document = Base64::encode_to_string(request.document)?;
 
         let signed: SignDocResponseRestDTO = async {
             self.client
@@ -163,17 +219,12 @@ impl CscClient {
             .document_with_signatures
             .into_iter()
             .next()
-            .ok_or_else(|| {
-                ServiceError::MappingError("csc returned no signed document".to_string())
-                    .error_while("reading csc signature response")
-            })?;
-        Base64::decode_to_vec(&signed_b64, None)
-            .map_err(|e| ServiceError::MappingError(e.to_string()))
-            .error_while("decoding signed document")
+            .ok_or_else(|| CscClientError::EmptySignedDocuments)?;
+        Base64::decode_to_vec(&signed_b64, None).map_err(Into::into)
     }
 
     /// Best-effort revoke of an access token (cleanup; failures are logged).
-    pub(crate) async fn revoke(
+    async fn revoke_access_token(
         &self,
         oauth_url: &str,
         access_token: &str,
@@ -202,10 +253,8 @@ impl CscClient {
     }
 }
 
-fn encode_base64url(bytes: &[u8]) -> Result<String, NestedError> {
-    Base64UrlSafeNoPadding::encode_to_string(bytes)
-        .map_err(|e| ServiceError::MappingError(e.to_string()))
-        .error_while("base64url encoding")
+fn encode_base64url(bytes: &[u8]) -> Result<String, CscClientError> {
+    Base64UrlSafeNoPadding::encode_to_string(bytes).map_err(Into::into)
 }
 
 pub(crate) fn hash(algorithm: HashAlgorithm, data: &[u8]) -> Vec<u8> {
@@ -248,7 +297,7 @@ mod test {
             .mount(&server)
             .await;
 
-        let csc = CscClient::new(Arc::new(ReqwestClient::new(Default::default()).unwrap()));
+        let csc = CscClientImpl::new(Arc::new(ReqwestClient::new(Default::default()).unwrap()));
 
         let token = csc
             .exchange_code(TokenRequest {
@@ -291,7 +340,7 @@ mod test {
             .mount(&server)
             .await;
 
-        let csc = CscClient::new(Arc::new(ReqwestClient::new(Default::default()).unwrap()));
+        let csc = CscClientImpl::new(Arc::new(ReqwestClient::new(Default::default()).unwrap()));
         let info = csc
             .credential_info(&server.uri(), "atok", "cred-1")
             .await
@@ -318,7 +367,7 @@ mod test {
             .mount(&server)
             .await;
 
-        let csc = CscClient::new(Arc::new(ReqwestClient::new(Default::default()).unwrap()));
+        let csc = CscClientImpl::new(Arc::new(ReqwestClient::new(Default::default()).unwrap()));
         let err = csc
             .exchange_code(TokenRequest {
                 oauth_url: &server.uri(),

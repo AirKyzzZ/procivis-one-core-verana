@@ -6,7 +6,7 @@ use serde::Deserialize;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{ConfigEntryDisplay, CoreConfig, DocumentSignerType, Fields};
 use crate::error::{ContextWithErrorCode, NestedError};
-use crate::proto::http_client::HttpClient;
+use crate::proto::csc::CscClient;
 use crate::provider::document_signer::DocumentSigner;
 use crate::provider::document_signer::sign8::Sign8;
 use crate::provider::provider_directory::{InitializationError, ProviderDirectory};
@@ -69,7 +69,7 @@ impl DocumentSignerProvider
 
 pub(crate) fn document_signer_provider_from_config(
     config: &mut CoreConfig,
-    client: Arc<dyn HttpClient>,
+    client: Arc<dyn CscClient>,
 ) -> Result<Arc<dyn DocumentSignerProvider>, ConfigValidationError> {
     let directory = ProviderDirectory::initialize(
         config.document_signer_provider.iter_mut(),
@@ -101,7 +101,7 @@ mod test {
 
     use super::*;
     use crate::config::core_config::{ConfigEntryDisplay, DocumentSignerProviderConfig, Params};
-    use crate::proto::http_client::MockHttpClient;
+    use crate::proto::csc::MockCscClient;
     use crate::provider::document_signer::MockDocumentSigner;
     use crate::service::test_utilities::generic_config;
 
@@ -195,7 +195,7 @@ mod test {
         );
 
         let provider =
-            document_signer_provider_from_config(&mut config, Arc::new(MockHttpClient::new()))
+            document_signer_provider_from_config(&mut config, Arc::new(MockCscClient::new()))
                 .unwrap();
 
         assert!(provider.get("SIGN8").is_ok());
@@ -232,7 +232,7 @@ mod test {
         );
 
         let provider =
-            document_signer_provider_from_config(&mut config, Arc::new(MockHttpClient::new()))
+            document_signer_provider_from_config(&mut config, Arc::new(MockCscClient::new()))
                 .unwrap();
         let meta = provider.metadata("SIGN8").unwrap();
 
@@ -273,7 +273,7 @@ mod test {
         );
 
         assert!(
-            document_signer_provider_from_config(&mut config, Arc::new(MockHttpClient::new()))
+            document_signer_provider_from_config(&mut config, Arc::new(MockCscClient::new()))
                 .is_err()
         );
     }

@@ -17,6 +17,7 @@ use crate::proto::clock::DefaultClock;
 use crate::proto::credential_schema::importer::CredentialSchemaImporterProto;
 use crate::proto::credential_schema::parser::CredentialSchemaImportParserImpl;
 use crate::proto::credential_validity_manager::CredentialValidityManagerImpl;
+use crate::proto::csc::CscClientImpl;
 use crate::proto::csr_creator::CsrCreatorImpl;
 use crate::proto::history_decorator::decorator::decorate_data_provider as decorate_history;
 use crate::proto::http_client::reqwest_client::ReqwestClient;
@@ -352,8 +353,9 @@ impl OneCore {
 
         let verifier_provider = verifier_provider_from_config(&config)?;
 
+        let csc_client = Arc::new(CscClientImpl::new(client.clone()));
         let document_signer_provider =
-            document_signer_provider_from_config(&mut config, client.clone())?;
+            document_signer_provider_from_config(&mut config, csc_client)?;
 
         let identifier_creator = Arc::new(IdentifierCreatorProto::new(
             did_method_provider.clone(),

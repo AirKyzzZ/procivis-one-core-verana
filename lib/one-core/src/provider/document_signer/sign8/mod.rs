@@ -6,10 +6,9 @@ use standardized_types::csc::{
     ConformanceLevel, HashAlgorithm, SignatureAlgorithm, SignatureFormat, SignatureQualifier,
 };
 
-use crate::error::ErrorCodeMixinExt;
+use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::proto::csc::CscClient;
 use crate::proto::csc::model::{AuthorizationUrlRequest, SignDocumentRequest, TokenRequest};
-use crate::proto::http_client::HttpClient;
 use crate::provider::document_signer::DocumentSigner;
 use crate::provider::document_signer::error::DocumentSignerError;
 use crate::provider::document_signer::model::{
@@ -45,14 +44,14 @@ pub(crate) struct Sign8Params {
 pub(crate) struct Sign8 {
     config_name: String,
     params: Sign8Params,
-    csc: CscClient,
+    csc: Arc<dyn CscClient>,
 }
 
 impl Sign8 {
     pub fn new(
         config_name: String,
         params: serde_json::Value,
-        client: Arc<dyn HttpClient>,
+        csc: Arc<dyn CscClient>,
     ) -> Result<Self, InitializationError> {
         let params: Sign8Params = serde_json::from_value(params).map_err(|source| {
             InitializationError::InvalidParams {
@@ -63,7 +62,7 @@ impl Sign8 {
         let signer = Self {
             config_name,
             params,
-            csc: CscClient::new(client),
+            csc,
         };
         signer.validate_params()?;
         Ok(signer)
@@ -207,7 +206,8 @@ impl DocumentSigner for Sign8 {
                 hash: &hash,
                 hash_algorithm: self.params.hash_algorithm,
             })
-            .await?;
+            .await
+            .error_while("building authorization url")?;
 
         Ok(Authorization {
             authorization_url: authorization.authorization_url,
@@ -233,7 +233,8 @@ impl DocumentSigner for Sign8 {
                 redirect_uri,
                 code_verifier: &request.code_verifier,
             })
-            .await?;
+            .await
+            .error_while("exchanging authorization code")?;
 
         let sign_algo = match self.params.signature_algorithm {
             Some(configured) => configured.oid().to_string(),
@@ -245,7 +246,8 @@ impl DocumentSigner for Sign8 {
                         &token.access_token,
                         &token.credential_id,
                     )
-                    .await?;
+                    .await
+                    .error_while("retrieving credential info")?;
                 let algorithm = info
                     .signing_algorithm(self.params.hash_algorithm)
                     .ok_or_else(|| {
@@ -270,10 +272,11 @@ impl DocumentSigner for Sign8 {
                 signature_format: self.params.signature_format,
                 conformance_level: self.params.conformance_level,
             })
-            .await?;
+            .await
+            .error_while("signing document")?;
 
         self.csc
-            .revoke(
+            .revoke_access_token(
                 &self.params.oauth_url,
                 &token.access_token,
                 &self.params.client_id,
@@ -296,6 +299,7 @@ mod test {
     use url::Url;
 
     use super::*;
+    use crate::proto::csc::{CscClientImpl, MockCscClient};
     use crate::proto::http_client::MockHttpClient;
 
     fn test_params() -> Sign8Params {
@@ -318,7 +322,7 @@ mod test {
         Sign8::new(
             "SIGN8".to_string(),
             serde_json::to_value(params).unwrap(),
-            Arc::new(MockHttpClient::new()),
+            Arc::new(MockCscClient::new()),
         )
     }
 
@@ -466,7 +470,9 @@ mod test {
                 ..test_params()
             })
             .unwrap(),
-            Arc::new(ReqwestClient::new(Default::default()).unwrap()),
+            Arc::new(CscClientImpl::new(Arc::new(
+                ReqwestClient::new(Default::default()).unwrap(),
+            ))),
         )
         .unwrap();
 
@@ -486,7 +492,13 @@ mod test {
     #[tokio::test]
     async fn builds_authorization_url_via_csc() {
         const PDF: &[u8] = b"%PDF-1.7 fake pdf content";
-        let auth = test_signer()
+        let signer = Sign8::new(
+            "SIGN8".to_string(),
+            serde_json::to_value(test_params()).unwrap(),
+            Arc::new(CscClientImpl::new(Arc::new(MockHttpClient::new()))),
+        )
+        .unwrap();
+        let auth = signer
             .get_authorization_request(pdf_request(PDF))
             .await
             .unwrap();
@@ -524,10 +536,13 @@ mod test {
             document: b"%PDF-1.7 doc".to_vec(),
             redirect_uri: Some("https://override.example/cb".to_string()),
         };
-        let auth = test_signer()
-            .get_authorization_request(request)
-            .await
-            .unwrap();
+        let signer = Sign8::new(
+            "SIGN8".to_string(),
+            serde_json::to_value(test_params()).unwrap(),
+            Arc::new(CscClientImpl::new(Arc::new(MockHttpClient::new()))),
+        )
+        .unwrap();
+        let auth = signer.get_authorization_request(request).await.unwrap();
 
         let url = Url::parse(&auth.authorization_url).unwrap();
         let params: HashMap<String, String> = url.query_pairs().into_owned().collect();

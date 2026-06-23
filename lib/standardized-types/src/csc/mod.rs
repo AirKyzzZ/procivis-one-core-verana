@@ -147,6 +147,76 @@ impl<'de> Deserialize<'de> for SignatureAlgorithm {
     }
 }
 
+#[derive(Serialize)]
+pub struct AuthorizeRequestRestDTO<'a> {
+    pub response_type: &'a str,
+    pub client_id: &'a str,
+    pub redirect_uri: &'a str,
+    pub scope: &'a str,
+    pub code_challenge: &'a str,
+    pub code_challenge_method: &'a str,
+    #[serde(rename = "signatureQualifier")]
+    pub signature_qualifier: SignatureQualifier,
+    #[serde(rename = "numSignatures")]
+    pub num_signatures: u32,
+    pub hashes: &'a str,
+    #[serde(rename = "hashAlgorithmOID")]
+    pub hash_algorithm: HashAlgorithm,
+    pub account_token: &'a str,
+}
+
+#[derive(Deserialize)]
+pub struct TokenResponseRestDTO {
+    pub access_token: String,
+    #[serde(rename = "credentialID")]
+    pub credential_id: String,
+}
+
+#[derive(Serialize)]
+pub struct CredentialInfoRequestRestDTO {
+    #[serde(rename = "credentialID")]
+    pub credential_id: String,
+    pub certificates: String,
+    #[serde(rename = "certInfo")]
+    pub cert_info: bool,
+}
+
+#[derive(Deserialize)]
+pub struct CredentialInfoResponseRestDTO {
+    pub key: CredentialKeyRestDTO,
+}
+
+#[derive(Deserialize)]
+pub struct CredentialKeyRestDTO {
+    pub algo: Vec<String>,
+}
+
+#[derive(Serialize)]
+pub struct SignDocRequestRestDTO {
+    #[serde(rename = "credentialID")]
+    pub credential_id: String,
+    #[serde(rename = "operationMode")]
+    pub operation_mode: OperationMode,
+    #[serde(rename = "returnValidationInfo")]
+    pub return_validation_info: bool,
+    pub documents: Vec<SignDocDocumentRestDTO>,
+}
+
+#[derive(Serialize)]
+pub struct SignDocDocumentRestDTO {
+    pub document: String,
+    #[serde(rename = "signAlgo")]
+    pub sign_algo: String,
+    pub signature_format: SignatureFormat,
+    pub conformance_level: ConformanceLevel,
+}
+
+#[derive(Deserialize)]
+pub struct SignDocResponseRestDTO {
+    #[serde(rename = "DocumentWithSignatures", alias = "DocumentWithSignature")]
+    pub document_with_signatures: Vec<String>,
+}
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, Display)]
 pub enum OperationMode {
     #[default]

@@ -1,7 +1,5 @@
-use serde::{Deserialize, Serialize};
 use standardized_types::csc::{
-    ConformanceLevel, HashAlgorithm, OperationMode, SignatureAlgorithm, SignatureFormat,
-    SignatureQualifier,
+    ConformanceLevel, HashAlgorithm, SignatureAlgorithm, SignatureFormat, SignatureQualifier,
 };
 
 pub struct AuthorizationUrlRequest<'a> {
@@ -65,76 +63,6 @@ pub struct SignDocumentRequest<'a> {
     pub sign_algo: &'a str,
     pub signature_format: SignatureFormat,
     pub conformance_level: ConformanceLevel,
-}
-
-#[derive(Serialize)]
-pub(crate) struct AuthorizeRequestRestDTO<'a> {
-    pub response_type: &'a str,
-    pub client_id: &'a str,
-    pub redirect_uri: &'a str,
-    pub scope: &'a str,
-    pub code_challenge: &'a str,
-    pub code_challenge_method: &'a str,
-    #[serde(rename = "signatureQualifier")]
-    pub signature_qualifier: SignatureQualifier,
-    #[serde(rename = "numSignatures")]
-    pub num_signatures: u32,
-    pub hashes: &'a str,
-    #[serde(rename = "hashAlgorithmOID")]
-    pub hash_algorithm: HashAlgorithm,
-    pub account_token: &'a str,
-}
-
-#[derive(Deserialize)]
-pub(crate) struct TokenResponseRestDTO {
-    pub access_token: String,
-    #[serde(rename = "credentialID")]
-    pub credential_id: String,
-}
-
-#[derive(Serialize)]
-pub(crate) struct CredentialInfoRequestRestDTO {
-    #[serde(rename = "credentialID")]
-    pub credential_id: String,
-    pub certificates: String,
-    #[serde(rename = "certInfo")]
-    pub cert_info: bool,
-}
-
-#[derive(Deserialize)]
-pub(crate) struct CredentialInfoResponseRestDTO {
-    pub key: CredentialKeyRestDTO,
-}
-
-#[derive(Deserialize)]
-pub(crate) struct CredentialKeyRestDTO {
-    pub algo: Vec<String>,
-}
-
-#[derive(Serialize)]
-pub(crate) struct SignDocRequestRestDTO {
-    #[serde(rename = "credentialID")]
-    pub credential_id: String,
-    #[serde(rename = "operationMode")]
-    pub operation_mode: OperationMode,
-    #[serde(rename = "returnValidationInfo")]
-    pub return_validation_info: bool,
-    pub documents: Vec<SignDocDocumentRestDTO>,
-}
-
-#[derive(Serialize)]
-pub(crate) struct SignDocDocumentRestDTO {
-    pub document: String,
-    #[serde(rename = "signAlgo")]
-    pub sign_algo: String,
-    pub signature_format: SignatureFormat,
-    pub conformance_level: ConformanceLevel,
-}
-
-#[derive(Deserialize)]
-pub(crate) struct SignDocResponseRestDTO {
-    #[serde(rename = "DocumentWithSignatures", alias = "DocumentWithSignature")]
-    pub document_with_signatures: Vec<String>,
 }
 
 #[cfg(test)]

@@ -945,6 +945,8 @@ pub enum ErrorCode {
 
     #[strum(message = "Wallet unit registration expired, restart registration")]
     BR_0455,
+    #[strum(message = "CSC API client error")]
+    BR_0456,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {
