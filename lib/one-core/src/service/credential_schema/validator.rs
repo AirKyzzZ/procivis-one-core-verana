@@ -2,6 +2,7 @@ use std::collections::HashSet;
 
 use itertools::Itertools;
 use shared_types::OrganisationId;
+use standardized_types::etsi_119_472::disclosure_policy::PolicyType;
 
 use super::dto::{
     CreateCredentialSchemaV2RequestDTO, CredentialClaimSchemaRequestDTO,
@@ -21,6 +22,9 @@ use crate::provider::credential_formatter::model::Features;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::model::Operation;
+use crate::provider::verification_protocol::openid4vp::disclosure_policy::{
+    parse_dn, parse_serial,
+};
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 
 pub(crate) async fn credential_schema_already_exists(
@@ -83,6 +87,10 @@ pub(crate) fn validate_create_v2_request(
         && batch_size < 2
     {
         return Err(CredentialSchemaServiceError::BatchSizeTooSmall);
+    }
+
+    if let Some(embedded_disclosure_policy) = &request.embedded_disclosure_policy {
+        validate_disclosure_policy(&embedded_disclosure_policy.policy)?;
     }
 
     validate_key_lengths(&request.claims, 0)?;
@@ -512,5 +520,30 @@ pub(crate) fn validate_key_storage_security_supported(
         .map_err(|_| {
             CredentialSchemaServiceError::KeyStorageSecurityDisabled(key_storage_security)
         })?;
+    Ok(())
+}
+
+fn validate_disclosure_policy(policy: &PolicyType) -> Result<(), CredentialSchemaServiceError> {
+    match policy {
+        PolicyType::None => {}
+        PolicyType::AllowList { options } => {
+            for option in &options.values {
+                if let Some(dn) = &option.dn {
+                    parse_dn(dn).error_while("parsing disclosure policy")?;
+                }
+            }
+        }
+        PolicyType::RootOfTrust { options } => {
+            for option in &options.values {
+                parse_dn(&option.dn).error_while("parsing disclosure policy DN")?;
+                parse_serial(&option.serial).map_err(|e| {
+                    CredentialSchemaServiceError::MappingError(format!(
+                        "parsing disclosure policy Serial: `{e}`"
+                    ))
+                })?;
+            }
+        }
+    }
+
     Ok(())
 }

@@ -28,7 +28,7 @@ use crate::provider::verification_protocol::openid4vp::model::{
 use crate::repository::credential_repository::CredentialRepository;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 pub(crate) mod dcql;
-mod disclosure_policy;
+pub(crate) mod disclosure_policy;
 pub mod draft20;
 pub mod error;
 pub mod final1_0;

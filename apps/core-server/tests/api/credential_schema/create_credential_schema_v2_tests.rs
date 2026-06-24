@@ -1015,7 +1015,7 @@ async fn test_create_credential_schema_v2_with_dislosure_policy() {
                 "policy": "allowList",
                 "options": {
                    "values": [{
-                       "dn": "DN",
+                       "dn": "C=CH",
                        "entitlement": "entitlement"
                    }]
                 },
@@ -1054,7 +1054,7 @@ async fn test_create_credential_schema_v2_with_dislosure_policy() {
         policy["options"],
         serde_json::json!({
             "values": [{
-                "dn": "DN",
+                "dn": "C=CH",
                 "entitlement": "entitlement"
             }]
         })

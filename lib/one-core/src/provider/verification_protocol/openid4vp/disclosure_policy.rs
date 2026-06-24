@@ -16,13 +16,20 @@ pub(super) fn dn_matches_leaf_only(
     pem_chain: &str,
     dn: &str,
 ) -> Result<bool, VerificationProtocolError> {
+    let dn = match parse_dn(dn) {
+        Ok(dn) => dn,
+        Err(err) => {
+            tracing::warn!(%err, "Invalid DN");
+            return Ok(false);
+        }
+    };
+
     let chain = parse_pem_chain(pem_chain).error_while("parsing PEM chain")?;
     let leaf = chain.first().ok_or(VerificationProtocolError::Failed(
         "Empty cert chain".to_string(),
     ))?;
     let leaf = parse_cert(leaf).error_while("parsing cert")?;
 
-    let dn = parse_dn(dn)?;
     Ok(dn_matches(leaf.subject(), &dn))
 }
 
@@ -31,8 +38,20 @@ pub(super) fn dn_and_serial_matches_any_in_chain(
     dn: &str,
     serial: &str,
 ) -> Result<bool, VerificationProtocolError> {
-    let dn = parse_dn(dn)?;
-    let serial = parse_serial(serial)?;
+    let dn = match parse_dn(dn) {
+        Ok(dn) => dn,
+        Err(err) => {
+            tracing::warn!(%err, "Invalid DN");
+            return Ok(false);
+        }
+    };
+    let serial = match parse_serial(serial) {
+        Ok(serial) => serial,
+        Err(err) => {
+            tracing::warn!(%err, "Invalid serial number");
+            return Ok(false);
+        }
+    };
 
     let chain = parse_pem_chain(pem_chain).error_while("parsing PEM chain")?;
     for pem in chain {
@@ -105,20 +124,20 @@ fn parse_cert<'a>(pem: &'a Pem) -> Result<X509Certificate<'a>, CertificateParsin
     Ok(pem.parse_x509()?)
 }
 
-fn parse_serial(serial: &str) -> Result<Vec<u8>, VerificationProtocolError> {
+pub(crate) fn parse_serial(serial: &str) -> Result<Vec<u8>, hex::FromHexError> {
     let mut serial = serial.to_string();
     serial.retain(|c| c.is_ascii_hexdigit());
-    hex::decode(serial).map_err(|e| VerificationProtocolError::Failed(e.to_string()))
+    hex::decode(serial)
 }
 
-struct DNEntry {
+pub(crate) struct DNEntry {
     oid: Oid<'static>,
     value: String,
 }
 
 const OID_ORG_ID: Oid<'static> = oid!(2.5.4.97);
 
-fn parse_dn(dn: &str) -> Result<Vec<DNEntry>, VerificationProtocolError> {
+pub(crate) fn parse_dn(dn: &str) -> Result<Vec<DNEntry>, VerificationProtocolError> {
     let mut result = vec![];
 
     let dn_iter = ldapdn::parse::dn_from_str(dn);
