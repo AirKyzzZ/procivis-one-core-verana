@@ -1,10 +1,14 @@
 use std::sync::Arc;
 
+use async_trait::async_trait;
+use one_crypto::Hasher;
+use one_crypto::hasher::sha256::SHA256;
 use proc_macros::Provider;
 use reqwest::Identity;
 use secrecy::{ExposeSecret, SecretString};
 use serde::Deserialize;
 use shared_types::KeyId;
+use standardized_types::csc::{HashAlgorithm, SignatureAlgorithm};
 use standardized_types::jwk::PrivateJwk;
 
 use crate::clock::now_utc;
@@ -16,9 +20,12 @@ use crate::proto::certificate_validator::{
     CertificateValidationOptions, CertificateValidator, ParsedCertificate,
 };
 use crate::proto::csc::CscClient;
-use crate::proto::csc::model::TokenRequest;
+use crate::proto::csc::model::{CredentialToken, SignHashRequest, TokenRequest};
 use crate::proto::http_client::HttpClient;
-use crate::provider::key_algorithm::key::KeyHandle;
+use crate::provider::key_algorithm::ecdsa::EcdsaPublicKeyHandle;
+use crate::provider::key_algorithm::key::{
+    KeyHandle, KeyHandleError, SignatureKeyHandle, SignaturePrivateKeyHandle,
+};
 use crate::provider::key_storage::KeyStorage;
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::key_storage::model::{KeyStorageCapabilities, StorageGeneratedKey};
@@ -28,7 +35,7 @@ use crate::util::sign8::{AuthorizeTlsRequest, authorize_tls, build_account_token
 #[cfg(test)]
 mod test;
 
-#[derive(Provider)]
+#[derive(Clone, Provider)]
 pub struct Sign8KeyProvider {
     config_id: String,
     params: Params,
@@ -73,9 +80,85 @@ impl Sign8KeyProvider {
             .error_while("creating HTTP client with mTLS auth")?;
         Ok(mtls_client)
     }
+
+    async fn fetch_access_token(
+        &self,
+        credential_id: &str,
+        hashes: Option<&[&[u8]]>,
+    ) -> Result<CredentialToken, KeyStorageError> {
+        let account_token = build_account_token(
+            &self.params.account_id,
+            &self.params.client_id,
+            &self.params.client_secret,
+            now_utc(),
+        )
+        .await?;
+        let auth = authorize_tls(
+            &*self.mtls_client()?,
+            AuthorizeTlsRequest {
+                oauth_url: &self.params.oauth_url,
+                redirect_url: &self.params.redirect_url,
+                credential_id,
+                client_id: &self.params.client_id,
+                account_token: &account_token,
+                hashes,
+            },
+        )
+        .await?;
+        let token = self
+            .csc_client
+            .exchange_code(TokenRequest {
+                oauth_url: &self.params.oauth_url,
+                code: &auth.code,
+                client_id: &self.params.client_id,
+                client_secret: self.params.client_secret.expose_secret(),
+                redirect_uri: &self.params.redirect_url,
+                code_verifier: &auth.code_verifier,
+            })
+            .await
+            .error_while("exchanging code for token")?;
+        Ok(token)
+    }
+
+    async fn sign(&self, credential_id: &str, message: &[u8]) -> Result<Vec<u8>, KeyStorageError> {
+        let hash = SHA256.hash(message)?;
+        let token = self
+            .fetch_access_token(credential_id, Some(&[&hash]))
+            .await
+            .error_while("fetching access token")?;
+
+        let sign_result = self
+            .csc_client
+            .sign_hash(SignHashRequest {
+                api_url: self.params.csc_base_url.as_str(),
+                access_token: &token.access_token,
+                credential_id,
+                hashes: &[&hash],
+                sign_algo: SignatureAlgorithm::EcdsaSha256,
+                hash_algo: HashAlgorithm::Sha256,
+            })
+            .await
+            .error_while("signing hash");
+
+        self.csc_client
+            .revoke_access_token(
+                &self.params.oauth_url,
+                &token.access_token,
+                &self.params.client_id,
+                self.params.client_secret.expose_secret(),
+            )
+            .await;
+
+        let Some(first) = sign_result?.into_iter().next() else {
+            return Err(KeyStorageError::Failed(
+                "CSC API returned no signature".to_string(),
+            ));
+        };
+        Ok(first)
+    }
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct Params {
     pub csc_base_url: String,
@@ -114,47 +197,16 @@ impl KeyStorage for Sign8KeyProvider {
         params: serde_json::Value,
     ) -> Result<StorageGeneratedKey, KeyStorageError> {
         let params = serde_json::from_value::<GenerateParams>(params)?;
-        let now = now_utc();
-        let account_token = build_account_token(
-            &self.params.account_id,
-            &self.params.client_id,
-            &self.params.client_secret,
-            now,
-        )
-        .await?;
-        let auth = authorize_tls(
-            &*self.mtls_client()?,
-            AuthorizeTlsRequest {
-                oauth_url: &self.params.oauth_url,
-                redirect_url: &self.params.redirect_url,
-                credential_id: &params.credential_id,
-                client_id: &self.params.client_id,
-                account_token: &account_token,
-            },
-        )
-        .await?;
-        let token = self
-            .csc_client
-            .exchange_code(TokenRequest {
-                oauth_url: &self.params.oauth_url,
-                code: &auth.code,
-                client_id: &self.params.client_id,
-                client_secret: self.params.client_secret.expose_secret(),
-                redirect_uri: &self.params.redirect_url,
-                code_verifier: &auth.code_verifier,
-            })
-            .await
-            .error_while("exchanging code for token")?;
+        let token = self.fetch_access_token(&params.credential_id, None).await?;
 
-        let info = self
+        let info_result = self
             .csc_client
             .credential_info(
                 &self.params.csc_base_url,
                 &token.access_token,
                 &params.credential_id,
             )
-            .await
-            .error_while("getting credential info")?;
+            .await;
 
         self.csc_client
             .revoke_access_token(
@@ -165,6 +217,7 @@ impl KeyStorage for Sign8KeyProvider {
             )
             .await;
 
+        let info = info_result.error_while("getting credential info")?;
         let chain = x5c_into_pem_chain(
             &info
                 .certificate
@@ -203,9 +256,20 @@ impl KeyStorage for Sign8KeyProvider {
         ))
     }
 
-    fn key_handle(&self, _key: &Key) -> Result<KeyHandle, KeyStorageError> {
-        Err(KeyStorageError::NotSupported(
-            "Not yet implemented".to_string(),
+    fn key_handle(&self, key: &Key) -> Result<KeyHandle, KeyStorageError> {
+        let key_reference = key
+            .key_reference
+            .as_ref()
+            .ok_or(KeyStorageError::MissingKeyReference)?;
+        let credential_id = String::from_utf8_lossy(key_reference);
+        Ok(KeyHandle::SignatureOnly(
+            SignatureKeyHandle::WithPrivateKey {
+                private: Arc::new(Sign8PrivateKeyHandle {
+                    credential_id: credential_id.to_string(),
+                    provider: self.clone(),
+                }),
+                public: Arc::new(EcdsaPublicKeyHandle::new(key.public_key.clone(), None)),
+            },
         ))
     }
 
@@ -237,5 +301,22 @@ impl KeyStorage for Sign8KeyProvider {
         Err(KeyStorageError::NotSupported(
             "Not supported by Sign8 key storage".to_string(),
         ))
+    }
+}
+
+#[derive(Clone)]
+struct Sign8PrivateKeyHandle {
+    credential_id: String,
+    provider: Sign8KeyProvider,
+}
+
+#[async_trait]
+impl SignaturePrivateKeyHandle for Sign8PrivateKeyHandle {
+    async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, KeyHandleError> {
+        self.provider
+            .sign(&self.credential_id, message)
+            .await
+            .error_while("signing message")
+            .map_err(Into::into)
     }
 }

@@ -164,13 +164,13 @@ impl KeyAlgorithm for Ecdsa {
     }
 }
 
-struct EcdsaPublicKeyHandle {
+pub(crate) struct EcdsaPublicKeyHandle {
     public_key: Vec<u8>,
     r#use: Option<JwkUse>,
 }
 
 impl EcdsaPublicKeyHandle {
-    fn new(public_key: Vec<u8>, r#use: Option<JwkUse>) -> Self {
+    pub(crate) fn new(public_key: Vec<u8>, r#use: Option<JwkUse>) -> Self {
         Self { public_key, r#use }
     }
 }

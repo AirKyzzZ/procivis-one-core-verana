@@ -3,6 +3,7 @@ use one_crypto::utilities::generate_random_bytes;
 use secrecy::{ExposeSecret, SecretSlice, SecretString};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use standardized_types::csc::HashAlgorithm::Sha256 as CscSha256;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -65,6 +66,7 @@ pub(crate) struct AuthorizeTlsRequest<'a> {
     pub credential_id: &'a str,
     pub client_id: &'a str,
     pub account_token: &'a str,
+    pub hashes: Option<&'a [&'a [u8]]>,
 }
 
 pub(crate) async fn authorize_tls(
@@ -74,26 +76,40 @@ pub(crate) async fn authorize_tls(
     let pkce = Pkce::generate()
         .map_err(|e| ServiceError::MappingError(e.to_string()))
         .error_while("creating pkce challenge")?;
-    let random_hash: [u8; 32] = generate_random_bytes();
-    let encoded = Base64UrlSafe::encode_to_string(random_hash)
-        .map_err(|e| ServiceError::MappingError(e.to_string()))
-        .error_while("Base64 encoding hashes challenge")?;
+    let (hashes, num_signatures) = if let Some(hashes) = request.hashes {
+        let encoded = hashes
+            .iter()
+            .map(|hash| {
+                Base64UrlSafe::encode_to_string(hash)
+                    .map_err(|e| ServiceError::MappingError(e.to_string()))
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .error_while("Base64 encoding hashes")?
+            .join(",");
+        (encoded, hashes.len().to_string())
+    } else {
+        let random_hash = Base64UrlSafe::encode_to_string(generate_random_bytes::<32>())
+            .map_err(|e| ServiceError::MappingError(e.to_string()))
+            .error_while("Base64 encoding random hash")?;
+        (random_hash, "1".to_string())
+    };
     let token: CodeResponseRestDTO = async {
+        let x = vec![
+            ("scope", "credential"),
+            ("account_token", request.account_token),
+            ("response_type", "code"),
+            ("client_id", request.client_id),
+            ("redirect_uri", request.redirect_url),
+            ("code_challenge", &pkce.challenge),
+            ("credentialID", request.credential_id),
+            ("numSignatures", &num_signatures),
+            ("hashes", &hashes),
+            ("hashAlgorithmOID", CscSha256.oid()),
+        ];
         client
             .post(&format!("{}/oauth2/authorize_tls", request.oauth_url))
             .header("User-Agent", USER_AGENT)
-            .form([
-                ("scope", "credential"),
-                ("account_token", request.account_token),
-                ("response_type", "code"),
-                ("client_id", request.client_id),
-                ("redirect_uri", request.redirect_url),
-                ("code_challenge", &pkce.challenge),
-                ("credentialID", request.credential_id),
-                ("numSignatures", "1"),
-                ("hashes", &encoded),
-                ("hashAlgorithmOID", "2.16.840.1.101.3.4.2.1"),
-            ])?
+            .form(x)?
             .send()
             .await?
             .error_for_status()?

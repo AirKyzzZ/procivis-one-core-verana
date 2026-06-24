@@ -799,6 +799,9 @@ async fn test_create_certificate_identifier_ca_incorrect_key_usage() {
     assert_eq!(result.error_code().await, "BR_0249");
 }
 
+// TODO ONE-10367: Either delete this test if Sign8 seals definitely don't include DigitalSignature,
+// or re-instate the check and enable the test again if they do.
+#[ignore]
 #[tokio::test]
 async fn test_create_certificate_identifier_missing_digital_signature() {
     let (context, organisation) = TestContext::new_with_organisation(None).await;

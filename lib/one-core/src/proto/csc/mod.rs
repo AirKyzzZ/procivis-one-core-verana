@@ -3,12 +3,13 @@
 use std::sync::Arc;
 
 use ct_codecs::{Base64, Base64UrlSafeNoPadding, Decoder, Encoder};
-use one_crypto::HasherError;
+use one_crypto::utilities::ecdsa_sig_from_der;
+use one_crypto::{HasherError, SignerError};
 use sha2::{Digest, Sha256, Sha384, Sha512};
 use standardized_types::csc::{
     AuthorizeRequestRestDTO, CredentialInfoRequestRestDTO, CredentialInfoResponseRestDTO,
     HashAlgorithm, OperationMode, SignDocDocumentRestDTO, SignDocRequestRestDTO,
-    SignDocResponseRestDTO, TokenResponseRestDTO,
+    SignDocResponseRestDTO, SignHashRequestRestDTO, SignHashResponseRestDTO, TokenResponseRestDTO,
 };
 use thiserror::Error;
 use url::Url;
@@ -16,7 +17,7 @@ use url::Url;
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, NestedError};
 use crate::proto::csc::model::{
     Authorization, AuthorizationUrlRequest, CertificateInfo, CredentialInfo, CredentialToken,
-    SignDocumentRequest, TokenRequest,
+    SignDocumentRequest, SignHashRequest, TokenRequest,
 };
 use crate::proto::http_client::HttpClient;
 use crate::proto::oauth_client::Pkce;
@@ -40,6 +41,8 @@ pub enum CscClientError {
     InvalidUrl(#[from] url::ParseError),
     #[error("hashing error: {0}")]
     HasherError(#[from] HasherError),
+    #[error("signer error: {0}")]
+    SignerError(#[from] SignerError),
     #[error("CSC API returned no signed document")]
     EmptySignedDocuments,
     #[error(transparent)]
@@ -79,6 +82,11 @@ pub trait CscClient: Send + Sync {
         &'a self,
         request: SignDocumentRequest<'a>,
     ) -> Result<Vec<u8>, CscClientError>;
+
+    async fn sign_hash<'a>(
+        &'a self,
+        request: SignHashRequest<'a>,
+    ) -> Result<Vec<Vec<u8>>, CscClientError>;
 
     async fn revoke_access_token(
         &self,
@@ -224,6 +232,48 @@ impl CscClient for CscClientImpl {
             .next()
             .ok_or_else(|| CscClientError::EmptySignedDocuments)?;
         Base64::decode_to_vec(&signed_b64, None).map_err(Into::into)
+    }
+
+    async fn sign_hash<'a>(
+        &'a self,
+        request: SignHashRequest<'a>,
+    ) -> Result<Vec<Vec<u8>>, CscClientError> {
+        let hashes = request
+            .hashes
+            .iter()
+            .map(Base64::encode_to_string)
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let response: SignHashResponseRestDTO = async {
+            self.client
+                .post(&format!("{}/csc/v2/signatures/signHash", request.api_url))
+                .header("User-Agent", USER_AGENT)
+                .bearer_auth(request.access_token)
+                .json(&SignHashRequestRestDTO {
+                    credential_id: request.credential_id.to_string(),
+                    operation_mode: OperationMode::Synchronous,
+                    hashes,
+                    sign_algo: request.sign_algo,
+                    hash_algorithm: request.hash_algo,
+                })?
+                .send()
+                .await?
+                .error_for_status()?
+                .json()
+        }
+        .await
+        .error_while("signHash request")?;
+
+        let encoded_sigs = response
+            .signatures
+            .into_iter()
+            .map(|signature| Base64::decode_to_vec(&signature, None))
+            .collect::<Result<Vec<_>, _>>()?;
+        encoded_sigs
+            .into_iter()
+            .map(|sig| ecdsa_sig_from_der(&sig))
+            .collect::<Result<_, _>>()
+            .map_err(Into::into)
     }
 
     /// Best-effort revoke of an access token (cleanup; failures are logged).

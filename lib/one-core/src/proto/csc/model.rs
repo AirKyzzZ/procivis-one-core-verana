@@ -71,6 +71,15 @@ pub struct SignDocumentRequest<'a> {
     pub conformance_level: ConformanceLevel,
 }
 
+pub struct SignHashRequest<'a> {
+    pub api_url: &'a str,
+    pub access_token: &'a str,
+    pub credential_id: &'a str,
+    pub hashes: &'a [&'a [u8]],
+    pub sign_algo: SignatureAlgorithm,
+    pub hash_algo: HashAlgorithm,
+}
+
 #[cfg(test)]
 mod test {
     use similar_asserts::assert_eq;

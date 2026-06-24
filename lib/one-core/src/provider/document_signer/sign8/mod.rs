@@ -238,44 +238,45 @@ impl DocumentSigner for Sign8 {
             .await
             .error_while("exchanging authorization code")?;
 
-        let sign_algo = match self.params.signature_algorithm {
-            Some(configured) => configured.oid().to_string(),
-            None => {
-                let info = self
-                    .csc
-                    .credential_info(
-                        &self.params.csc_base_url,
-                        &token.access_token,
-                        &token.credential_id,
-                    )
-                    .await
-                    .error_while("retrieving credential info")?;
-                let algorithm = info
-                    .signing_algorithm(self.params.hash_algorithm)
-                    .ok_or_else(|| {
-                        ServiceError::MappingError(format!(
-                            "credential exposes no supported signAlgo (key advertised {:?})",
-                            info.key_algorithms
-                        ))
-                        .error_while("selecting csc signing algorithm")
-                    })?;
-                algorithm.oid().to_string()
-            }
-        };
-
-        let content = self
-            .csc
-            .sign_document(SignDocumentRequest {
-                api_url: &self.params.csc_base_url,
-                access_token: &token.access_token,
-                credential_id: &token.credential_id,
-                document: &request.document,
-                sign_algo: &sign_algo,
-                signature_format: self.params.signature_format,
-                conformance_level: self.params.conformance_level,
-            })
-            .await
-            .error_while("signing document")?;
+        let result = async {
+            let sign_algo = match self.params.signature_algorithm {
+                Some(configured) => configured.oid().to_string(),
+                None => {
+                    let info = self
+                        .csc
+                        .credential_info(
+                            &self.params.csc_base_url,
+                            &token.access_token,
+                            &token.credential_id,
+                        )
+                        .await
+                        .error_while("retrieving credential info")?;
+                    let algorithm = info
+                        .signing_algorithm(self.params.hash_algorithm)
+                        .ok_or_else(|| {
+                            ServiceError::MappingError(format!(
+                                "credential exposes no supported signAlgo (key advertised {:?})",
+                                info.key_algorithms
+                            ))
+                            .error_while("selecting csc signing algorithm")
+                        })?;
+                    algorithm.oid().to_string()
+                }
+            };
+            self.csc
+                .sign_document(SignDocumentRequest {
+                    api_url: &self.params.csc_base_url,
+                    access_token: &token.access_token,
+                    credential_id: &token.credential_id,
+                    document: &request.document,
+                    sign_algo: &sign_algo,
+                    signature_format: self.params.signature_format,
+                    conformance_level: self.params.conformance_level,
+                })
+                .await
+                .error_while("signing document")
+        }
+        .await;
 
         self.csc
             .revoke_access_token(
@@ -286,7 +287,7 @@ impl DocumentSigner for Sign8 {
             )
             .await;
 
-        Ok(SignedDocument { content })
+        Ok(SignedDocument { content: result? })
     }
 }
 

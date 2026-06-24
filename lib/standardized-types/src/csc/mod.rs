@@ -223,6 +223,24 @@ pub struct SignDocResponseRestDTO {
     pub document_with_signatures: Vec<String>,
 }
 
+#[derive(Serialize)]
+pub struct SignHashRequestRestDTO {
+    #[serde(rename = "credentialID")]
+    pub credential_id: String,
+    #[serde(rename = "operationMode")]
+    pub operation_mode: OperationMode,
+    pub hashes: Vec<String>,
+    #[serde(rename = "signAlgo")]
+    pub sign_algo: SignatureAlgorithm,
+    #[serde(rename = "hashAlgorithmOID")]
+    pub hash_algorithm: HashAlgorithm,
+}
+
+#[derive(Deserialize)]
+pub struct SignHashResponseRestDTO {
+    pub signatures: Vec<String>,
+}
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, Display)]
 pub enum OperationMode {
     #[default]

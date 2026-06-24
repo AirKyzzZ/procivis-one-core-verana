@@ -15,7 +15,7 @@ use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::proto::certificate_validator::x509_extension::validate_ca;
 use crate::proto::certificate_validator::{
-    CertificateValidationOptions, CrlMode, EnforceKeyUsage, ParsedCertificate,
+    CertificateValidationOptions, CrlMode, ParsedCertificate,
 };
 use crate::proto::csr_creator::GenerateCsrRequest;
 use crate::provider::key_algorithm::key::KeyHandle;
@@ -442,9 +442,9 @@ impl IdentifierCreatorProto {
                 &chain,
                 CertificateValidationOptions {
                     validity_check: (!generated).then_some(CrlMode::X509),
-                    ..CertificateValidationOptions::signature_and_revocation(Some(vec![
-                        EnforceKeyUsage::DigitalSignature,
-                    ]))
+                    // The requirement for digital signature key usage has been dropped to allow
+                    // creating identifiers for certificates provided by Sign8 (that do not include it).
+                    ..CertificateValidationOptions::signature_and_revocation(None)
                 },
             )
             .await
