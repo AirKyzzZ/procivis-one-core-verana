@@ -11,7 +11,7 @@ async fn test_delete_credential_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
     let credential = context
         .db

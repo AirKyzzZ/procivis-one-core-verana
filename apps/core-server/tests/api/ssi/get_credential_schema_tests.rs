@@ -11,12 +11,7 @@ async fn test_get_credential_schema_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create(
-            "credential-schema",
-            &organisation,
-            Some("BITSTRINGSTATUSLIST".into()),
-            Default::default(),
-        )
+        .create("credential-schema", &organisation, Default::default())
         .await;
 
     // WHEN
@@ -32,7 +27,6 @@ async fn test_get_credential_schema_success() {
 
     resp["id"].assert_eq(&credential_schema.id);
     assert_eq!(resp["claims"].as_array().unwrap().len(), 2);
-    assert_eq!(resp["revocationMethod"], "BITSTRINGSTATUSLIST");
     assert_eq!(resp["organisationId"], organisation.id.to_string());
     assert_eq!(resp["layoutProperties"]["background"]["color"], "#DA2727");
     assert_eq!(resp["layoutProperties"]["primaryAttribute"], "firstName");
@@ -67,7 +61,7 @@ async fn test_get_credential_schema_deleted_returns_not_found() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test schema", &organisation, None, Default::default())
+        .create("test schema", &organisation, Default::default())
         .await;
     context
         .db
@@ -93,7 +87,7 @@ async fn test_get_credential_schema_by_format_mismatch_returns_not_found() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("credential-schema", &organisation, None, Default::default())
+        .create("credential-schema", &organisation, Default::default())
         .await;
 
     // when — schema has JWT format, request uses MDOC

@@ -18,12 +18,7 @@ async fn test_suspend_credential_with_bitstring_status_list_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create(
-            "test",
-            &organisation,
-            Some("BITSTRINGSTATUSLIST".into()),
-            Default::default(),
-        )
+        .create("test", &organisation, Default::default())
         .await;
     let credential = context
         .db
@@ -96,8 +91,11 @@ async fn test_suspend_credential_with_mdoc_mso_suspend_update_success() {
         .create(
             "test",
             &organisation,
-            Some("MDOC_MSO_UPDATE_SUSPENSION".into()),
-            Default::default(),
+            TestingCreateSchemaParams {
+                format: Some("MDOC".into()),
+                allow_suspension: Some(true),
+                ..Default::default()
+            },
         )
         .await;
     let credential = context
@@ -142,7 +140,6 @@ async fn test_suspend_credential_with_none_fails() {
         .create(
             "test",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 allow_suspension: Some(false),
                 ..Default::default()
@@ -166,7 +163,7 @@ async fn test_suspend_credential_with_none_fails() {
 
     // THEN
     assert_eq!(resp.status(), 400);
-    assert_eq!("BR_0098", resp.error_code().await);
+    assert_eq!("BR_0162", resp.error_code().await);
 }
 
 #[tokio::test]
@@ -177,12 +174,7 @@ async fn test_suspend_credential_fails_credential_deleted() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create(
-            "test",
-            &organisation,
-            Some("BITSTRINGSTATUSLIST".into()),
-            Default::default(),
-        )
+        .create("test", &organisation, Default::default())
         .await;
     let credential = context
         .db

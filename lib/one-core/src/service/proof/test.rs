@@ -246,7 +246,7 @@ fn generic_proof_input_schema() -> ProofInputSchema {
         claim_schemas: None,
         credential_schema: Some(CredentialSchema {
             batch_size: None,
-            allow_revocation: None,
+            allow_revocation: false,
             id: credential_schema_id,
             deleted_at: None,
             created_date: now,
@@ -262,7 +262,6 @@ fn generic_proof_input_schema() -> ProofInputSchema {
                 claim_mappings: Default::default(),
             }]
             .into(),
-            revocation_method: None,
             key_storage_security: None,
             imported_source_url: "CORE_URL".to_string(),
             layout_type: LayoutType::Card,
@@ -320,7 +319,7 @@ async fn test_get_presentation_definition_proof_role_verifier() {
                 }]),
                 credential_schema: Some(CredentialSchema {
                     batch_size: None,
-                    allow_revocation: None,
+                    allow_revocation: false,
                     id: credential_schema_id,
                     imported_source_url: "CORE_URL".to_string(),
                     deleted_at: None,
@@ -338,7 +337,6 @@ async fn test_get_presentation_definition_proof_role_verifier() {
                         claim_mappings: Default::default(),
                     }]
                     .into(),
-                    revocation_method: None,
                     claim_schemas: Default::default(),
                     organisation: dummy_organisation(None).into(),
                     layout_type: LayoutType::Card,
@@ -451,7 +449,7 @@ async fn test_get_proof_exists() {
                     backfill_default_translations(
                         CredentialSchema {
                             batch_size: None,
-                            allow_revocation: None,
+                            allow_revocation: false,
                             id: credential_schema_id,
                             deleted_at: None,
                             created_date: crate::clock::now_utc(),
@@ -469,7 +467,6 @@ async fn test_get_proof_exists() {
                                 claim_mappings: Default::default(),
                             }]
                             .into(),
-                            revocation_method: None,
                             claim_schemas: vec![ClaimSchema {
                                 id: Uuid::new_v4().into(),
                                 key: "ClaimKey".to_owned(),
@@ -621,7 +618,7 @@ async fn test_get_proof_with_array_holder() {
     let credential_schema = backfill_default_translations(
         CredentialSchema {
             batch_size: None,
-            allow_revocation: None,
+            allow_revocation: false,
             id: credential_schema_id,
             deleted_at: None,
             imported_source_url: "CORE_URL".to_string(),
@@ -639,7 +636,6 @@ async fn test_get_proof_with_array_holder() {
                 claim_mappings: Default::default(),
             }]
             .into(),
-            revocation_method: None,
             claim_schemas: vec![claim_schema.clone()].into(),
             organisation: organisation.clone().into(),
             layout_type: LayoutType::Card,
@@ -896,7 +892,7 @@ async fn test_get_proof_with_array_in_object_holder() {
     let credential_schema = backfill_default_translations(
         CredentialSchema {
             batch_size: None,
-            allow_revocation: None,
+            allow_revocation: false,
             id: credential_schema_id,
             deleted_at: None,
             imported_source_url: "CORE_URL".to_string(),
@@ -914,7 +910,6 @@ async fn test_get_proof_with_array_in_object_holder() {
                 claim_mappings: Default::default(),
             }]
             .into(),
-            revocation_method: None,
             claim_schemas: claim_schemas.clone().into(),
             organisation: organisation.clone().into(),
             layout_type: LayoutType::Card,
@@ -1186,7 +1181,7 @@ async fn test_get_proof_with_object_array_holder() {
     let credential_schema = backfill_default_translations(
         CredentialSchema {
             batch_size: None,
-            allow_revocation: None,
+            allow_revocation: false,
             id: credential_schema_id,
             deleted_at: None,
             created_date: crate::clock::now_utc(),
@@ -1204,7 +1199,6 @@ async fn test_get_proof_with_object_array_holder() {
                 claim_mappings: Default::default(),
             }]
             .into(),
-            revocation_method: None,
             claim_schemas: claim_schemas.clone().into(),
             organisation: organisation.clone().into(),
             layout_type: LayoutType::Card,
@@ -1481,7 +1475,7 @@ async fn test_get_proof_with_array() {
     let credential_schema = backfill_default_translations(
         CredentialSchema {
             batch_size: None,
-            allow_revocation: None,
+            allow_revocation: false,
             id: credential_schema_id,
             deleted_at: None,
             created_date: crate::clock::now_utc(),
@@ -1499,7 +1493,6 @@ async fn test_get_proof_with_array() {
                 claim_mappings: Default::default(),
             }]
             .into(),
-            revocation_method: None,
             claim_schemas: vec![claim_schema.clone()].into(),
             organisation: organisation.clone().into(),
             layout_type: LayoutType::Card,
@@ -1763,7 +1756,7 @@ async fn test_get_proof_with_array_in_object() {
     let credential_schema = backfill_default_translations(
         CredentialSchema {
             batch_size: None,
-            allow_revocation: None,
+            allow_revocation: false,
             id: credential_schema_id,
             deleted_at: None,
             imported_source_url: "CORE_URL".to_string(),
@@ -1781,7 +1774,6 @@ async fn test_get_proof_with_array_in_object() {
                 claim_mappings: Default::default(),
             }]
             .into(),
-            revocation_method: None,
             claim_schemas: claim_schemas.clone().into(),
             organisation: organisation.clone().into(),
             layout_type: LayoutType::Card,
@@ -2061,7 +2053,7 @@ async fn test_get_proof_with_object_array() {
     let credential_schema = backfill_default_translations(
         CredentialSchema {
             batch_size: None,
-            allow_revocation: None,
+            allow_revocation: false,
             id: credential_schema_id,
             deleted_at: None,
             created_date: crate::clock::now_utc(),
@@ -2079,7 +2071,6 @@ async fn test_get_proof_with_object_array() {
                 claim_mappings: Default::default(),
             }]
             .into(),
-            revocation_method: None,
             claim_schemas: claim_schemas.clone().into(),
             organisation: organisation.clone().into(),
             layout_type: LayoutType::Card,

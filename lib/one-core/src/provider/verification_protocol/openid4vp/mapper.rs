@@ -71,6 +71,7 @@ pub(super) async fn presentation_definition_from_interaction_data(
     credential_groups: Vec<CredentialGroup>,
     config: &CoreConfig,
     credential_repository: &dyn CredentialRepository,
+    formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError> {
     Ok(PresentationDefinitionResponseDTO {
         request_groups: vec![PresentationDefinitionRequestGroupResponseDTO {
@@ -128,6 +129,7 @@ pub(super) async fn presentation_definition_from_interaction_data(
             convert_inner(credentials),
             config,
             credential_repository,
+            formatter_provider,
         )
         .await?,
     })

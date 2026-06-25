@@ -23,7 +23,6 @@ async fn test_import_proof_schema_ok() {
         .create(
             "test-credential-schema",
             &source_organisation,
-            None,
             TestingCreateSchemaParams {
                 id: Some(original_credential_schema_id),
                 imported_source_url: Some(format!(
@@ -55,7 +54,6 @@ async fn test_import_proof_schema_ok() {
               "importedSourceUrl": original_credential_schema.imported_source_url,
               "name": original_credential_schema.name,
               "organisationId": source_organisation.id,
-              "revocationMethod": original_credential_schema.revocation_method,
               "schemaId": original_credential_schema.schema_id().await.unwrap(),
               "keyStorageSecurity": original_credential_schema.key_storage_security,
               "allowSuspension": original_credential_schema.allow_suspension,
@@ -152,12 +150,7 @@ async fn test_import_proof_schema_fails_deactivated_organisation() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create(
-            "test-credential-schema",
-            &organisation,
-            None,
-            Default::default(),
-        )
+        .create("test-credential-schema", &organisation, Default::default())
         .await;
 
     let claim_schemas = credential_schema.claim_schemas.as_ref().await.unwrap();
@@ -220,12 +213,7 @@ async fn test_import_proof_schema_for_existing_credential_schema() {
     let original_credential_schema = context
         .db
         .credential_schemas
-        .create(
-            "test-credential-schema",
-            &organisation,
-            None,
-            Default::default(),
-        )
+        .create("test-credential-schema", &organisation, Default::default())
         .await;
 
     let claim_schemas = original_credential_schema
@@ -339,7 +327,6 @@ async fn test_import_proof_schema_nested_array() {
         .create(
             "test-credential-schema",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 claim_schemas: Some(vec![
                     root_object_array_claim.clone(),

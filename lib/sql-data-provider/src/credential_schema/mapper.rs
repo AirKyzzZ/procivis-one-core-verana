@@ -151,7 +151,6 @@ impl From<CredentialSchema> for credential_schema::ActiveModel {
             last_modified: Set(value.last_modified),
             name: Set(value.name),
             imported_source_url: Set(value.imported_source_url),
-            revocation_method: Set(value.revocation_method),
             organisation_id: Set(value.organisation.id()),
             key_storage_security: Set(convert_inner(value.key_storage_security)),
             layout_type: Set(value.layout_type.into()),
@@ -219,7 +218,6 @@ pub(super) fn credential_schema_from_models(
         name: credential_schema.name,
         key_storage_security: convert_inner(credential_schema.key_storage_security),
         formats: RelatedVec::new(CredentialSchemaFormatsLoader { id, db: db.clone() }),
-        revocation_method: credential_schema.revocation_method,
         claim_schemas: RelatedVec::new(ClaimSchemasLoader { id, db: db.clone() }),
         organisation: Related::new(
             credential_schema.organisation_id,

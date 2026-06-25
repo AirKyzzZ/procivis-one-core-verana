@@ -38,7 +38,6 @@ async fn test_revoke_check_failed_if_not_holder_role() {
         .create(
             "test",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 format: Some("JWT".into()),
                 ..Default::default()
@@ -134,7 +133,6 @@ async fn test_revoke_check_failed_if_only_offered() {
         .create(
             "test",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 format: Some("JWT".into()),
                 ..Default::default()
@@ -169,175 +167,6 @@ async fn test_revoke_check_failed_if_only_offered() {
     resp[0]["credentialId"].assert_eq(&credential.id);
     assert_eq!("OFFERED", resp[0]["status"]);
     assert_eq!(false, resp[0]["success"]);
-}
-
-#[tokio::test]
-async fn test_revoke_check_success_statuslist2021() {
-    // GIVEN
-    let mock_server = MockServer::builder().start().await;
-    let (context, organisation) = TestContext::new_with_organisation(None).await;
-
-    let key_alg = Eddsa;
-    let key_pair = EDDSASigner::generate_key_pair();
-    let issuer_did = format!(
-        "did:key:{}",
-        key_alg
-            .reconstruct_key(&key_pair.public, None, None)
-            .unwrap()
-            .signature()
-            .unwrap()
-            .public()
-            .as_multibase()
-            .unwrap()
-    );
-
-    let header = json!({
-      "alg": "EDDSA",
-      "typ": "JWT"
-    });
-
-    let port = mock_server.address().port();
-    let credential_payload = json!({
-      "iat": 1701259637,
-      "exp": 1764331637,
-      "nbf": 1701259577,
-      "iss": issuer_did,
-      "sub": "dd2ff016-5fbe-43b0-a2ba-3b023ecc54fb",
-      "jti": "3c480b51-24d4-4c79-905b-27148b62cde6",
-      "vc": {
-        "@context": [
-          "https://www.w3.org/2018/credentials/v1",
-          "https://w3id.org/vc/status-list/2021/v1"
-        ],
-        "type": [
-          "VerifiableCredential"
-        ],
-        "credentialSubject": {
-          "string": "string"
-        },
-        "credentialStatus": {
-          "id": format!("http://0.0.0.0:{port}/ssi/revocation/v1/list/8bf6dc8f-228f-415c-83f2-95d851c1927b#0"),
-          "type": "StatusList2021Entry",
-          "statusPurpose": "revocation",
-          "statusListCredential": format!("http://0.0.0.0:{port}/ssi/revocation/v1/list/8bf6dc8f-228f-415c-83f2-95d851c1927b"),
-          "statusListIndex": "0"
-        }
-      }
-    });
-
-    let status_list_payload = json!({
-      "iss": issuer_did,
-      "sub": format!("http://0.0.0.0:{port}/ssi/revocation/v1/list/8bf6dc8f-228f-415c-83f2-95d851c1927b#list"),
-      "jti": format!("http://0.0.0.0:{port}/ssi/revocation/v1/list/8bf6dc8f-228f-415c-83f2-95d851c1927b"),
-      "vc": {
-        "@context": [
-          "https://www.w3.org/2018/credentials/v1",
-          "https://w3id.org/vc/status-list/2021/v1"
-        ],
-        "id": format!("http://0.0.0.0:{port}/ssi/revocation/v1/list/8bf6dc8f-228f-415c-83f2-95d851c1927b"),
-        "type": [
-          "VerifiableCredential",
-          "StatusList2021Credential"
-        ],
-        "issuer": issuer_did,
-        "issued": "2023-11-29T12:07:16Z",
-        "credentialSubject": {
-          "id": format!("http://0.0.0.0:{port}/ssi/revocation/v1/list/8bf6dc8f-228f-415c-83f2-95d851c1927b#list"),
-          "type": "StatusList2021",
-          "statusPurpose": "revocation",
-          "encodedList": "uH4sIAAAAAAAA_-3AMQEAAADCoPVPbQwfKAAAAAAAAAAAAAAAAAAAAOBthtJUqwBAAAA"
-        }
-      }
-    });
-
-    let credential_jwt = sign_jwt_helper(&header, &credential_payload, &key_pair);
-    let status_list_credential_jwt = sign_jwt_helper(&header, &status_list_payload, &key_pair);
-    Mock::given(method(Method::GET))
-        .and(path(
-            "/ssi/revocation/v1/list/8bf6dc8f-228f-415c-83f2-95d851c1927b",
-        ))
-        .respond_with(ResponseTemplate::new(200).set_body_string(status_list_credential_jwt))
-        .expect(1)
-        .mount(&mock_server)
-        .await;
-
-    let issuer_did = context
-        .db
-        .dids
-        .create(
-            Some(organisation.clone()),
-            TestingDidParams {
-                did_method: Some("KEY".into()),
-                did: Some(issuer_did.parse().unwrap()),
-                ..Default::default()
-            },
-        )
-        .await;
-    let identifier = context
-        .db
-        .identifiers
-        .create(
-            &organisation,
-            TestingIdentifierParams {
-                did: Some(issuer_did.clone()),
-                r#type: Some(IdentifierType::Did),
-                is_remote: Some(issuer_did.did_type == DidType::Remote),
-                ..Default::default()
-            },
-        )
-        .await;
-
-    let credential_schema = context
-        .db
-        .credential_schemas
-        .create(
-            "test",
-            &organisation,
-            Some("STATUSLIST2021".into()),
-            Default::default(),
-        )
-        .await;
-    let blob = context
-        .db
-        .blobs
-        .create(TestingBlobParams {
-            value: Some(credential_jwt.as_bytes().to_vec()),
-            ..Default::default()
-        })
-        .await;
-    let credential = context
-        .db
-        .credentials
-        .create(
-            &credential_schema,
-            CredentialStateEnum::Accepted,
-            &identifier,
-            "OPENID4VCI_DRAFT13",
-            TestingCredentialParams {
-                credential_blob_id: Some(blob.id),
-                role: Some(CredentialRole::Holder),
-                ..Default::default()
-            },
-        )
-        .await;
-
-    context.db.revocation_lists.create(identifier, None).await;
-
-    // WHEN
-    let resp = context
-        .api
-        .credentials
-        .revocation_check(credential.id, None)
-        .await;
-
-    // THEN
-    assert_eq!(resp.status(), 200);
-    let resp = resp.json_value().await;
-
-    resp[0]["credentialId"].assert_eq(&credential.id);
-    assert_eq!("ACCEPTED", resp[0]["status"]);
-    assert_eq!(true, resp[0]["success"]);
-    assert!(resp[0]["reason"].is_null());
 }
 
 #[tokio::test]
@@ -544,12 +373,7 @@ async fn setup_bitstring_status_list_success(
     let credential_schema = context
         .db
         .credential_schemas
-        .create(
-            "test",
-            &organisation,
-            Some("BITSTRINGSTATUSLIST".into()),
-            Default::default(),
-        )
+        .create("test", &organisation, Default::default())
         .await;
 
     let blob = context
@@ -662,7 +486,6 @@ async fn test_revoke_check_mdoc_update() {
         .create(
             "test",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 format: Some("MDOC".into()),
                 ..Default::default()
@@ -805,7 +628,6 @@ async fn test_revoke_check_mdoc_update_invalid() {
         .create(
             "test",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 format: Some("MDOC".into()),
                 ..Default::default()
@@ -951,7 +773,6 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
         .create(
             "test",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 format: Some("MDOC".into()),
                 ..Default::default()
@@ -1095,9 +916,9 @@ async fn test_revoke_check_token_update() {
         .create(
             "test",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 format: Some("MDOC".into()),
+                allow_suspension: Some(false),
                 ..Default::default()
             },
         )
@@ -1227,9 +1048,9 @@ async fn test_revoke_check_mdoc_tokens_expired() {
         .create(
             "test",
             &organisation,
-            Some("MDOC_MSO_UPDATE_SUSPENSION".into()),
             TestingCreateSchemaParams {
                 format: Some("MDOC".into()),
+                allow_suspension: Some(true),
                 ..Default::default()
             },
         )
@@ -1362,9 +1183,9 @@ async fn test_revoke_check_mdoc_fail_to_update_token_valid_mso() {
         .create(
             "test",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 format: Some("MDOC".into()),
+                allow_suspension: Some(false),
                 ..Default::default()
             },
         )
@@ -1488,9 +1309,9 @@ async fn test_suspended_to_valid_mdoc() {
         .create(
             "test",
             &organisation,
-            Some("MDOC_MSO_UPDATE_SUSPENSION".into()),
             TestingCreateSchemaParams {
                 format: Some("MDOC".into()),
+                allow_suspension: Some(true),
                 ..Default::default()
             },
         )
@@ -1664,9 +1485,9 @@ async fn test_suspended_to_suspended_update_failed() {
         .create(
             "test",
             &organisation,
-            Some("MDOC_MSO_UPDATE_SUSPENSION".into()),
             TestingCreateSchemaParams {
                 format: Some("MDOC".into()),
+                allow_suspension: Some(true),
                 ..Default::default()
             },
         )
@@ -1797,12 +1618,7 @@ async fn test_revoke_check_failed_deleted_credential() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create(
-            "test",
-            &organisation,
-            Some("BITSTRINGSTATUSLIST".into()),
-            Default::default(),
-        )
+        .create("test", &organisation, Default::default())
         .await;
     let blob = context
         .db

@@ -583,6 +583,7 @@ impl OneCore {
                 data_provider.get_history_repository(),
                 data_provider.get_organisation_repository(),
                 data_provider.get_credential_repository(),
+                credential_formatter_provider.clone(),
                 config.clone(),
             ),
             organisation_service: OrganisationService::new(
@@ -629,6 +630,7 @@ impl OneCore {
                 wallet_unit_proto.clone(),
                 identifier_creator.clone(),
                 credential_issuer_metadata_cache.clone(),
+                credential_formatter_provider.clone(),
             ),
             oid4vci_final1_0_swiyu_service: OID4VCIFinal1_0SwiyuService::new(
                 core_base_url.clone(),
@@ -647,6 +649,7 @@ impl OneCore {
                 blob_storage_provider.clone(),
                 wallet_unit_proto.clone(),
                 credential_issuer_metadata_cache,
+                credential_formatter_provider.clone(),
             ),
             oid4vp_draft20_service: OID4VPDraft20Service::new(
                 data_provider.get_credential_repository(),

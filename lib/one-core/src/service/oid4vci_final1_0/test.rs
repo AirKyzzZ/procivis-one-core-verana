@@ -83,6 +83,7 @@ struct Mocks {
     pub holder_wallet_unit_proto: MockHolderWalletUnitProto,
     pub identifier_creator: MockIdentifierCreator,
     pub credential_issuer_metadata_cache: MockCredentialIssuerMetadataFetcher,
+    pub formatter_provider: MockCredentialFormatterProvider,
 }
 
 fn setup_service(mocks: Mocks) -> OID4VCIFinal1_0Service {
@@ -103,6 +104,7 @@ fn setup_service(mocks: Mocks) -> OID4VCIFinal1_0Service {
         Arc::new(mocks.holder_wallet_unit_proto),
         Arc::new(mocks.identifier_creator),
         Arc::new(mocks.credential_issuer_metadata_cache),
+        Arc::new(mocks.formatter_provider),
     )
 }
 
@@ -219,7 +221,7 @@ fn generic_credential_schema() -> CredentialSchema {
     let format_id = Uuid::new_v4().into();
     CredentialSchema {
         batch_size: None,
-        allow_revocation: None,
+        allow_revocation: false,
         id: credential_schema_id,
         deleted_at: None,
         imported_source_url: "CORE_URL".to_string(),
@@ -249,7 +251,6 @@ fn generic_credential_schema() -> CredentialSchema {
                 .into(),
         }]
         .into(),
-        revocation_method: None,
         claim_schemas: claim_schemas.into(),
         organisation: dummy_organisation(None).into(),
         layout_type: LayoutType::Card,

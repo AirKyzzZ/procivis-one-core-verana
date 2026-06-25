@@ -655,7 +655,7 @@ async fn test_extract_credentials_swiyu() {
     let credential_schema_id = Uuid::new_v4().into();
     let credential_schema = crate::model::credential_schema::CredentialSchema {
         batch_size: None,
-        allow_revocation: None,
+        allow_revocation: false,
         id: credential_schema_id,
         deleted_at: None,
         created_date: now,
@@ -671,7 +671,6 @@ async fn test_extract_credentials_swiyu() {
             claim_mappings: Default::default(),
         }]
         .into(),
-        revocation_method: None,
         key_storage_security: None,
         layout_type: LayoutType::Card,
         layout_properties: None,

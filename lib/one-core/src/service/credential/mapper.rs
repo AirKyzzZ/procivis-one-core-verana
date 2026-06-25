@@ -52,6 +52,7 @@ pub(crate) async fn credential_detail_response_from_model(
     trust_information: Option<TrustInformation>,
     remaining_batch_item_count: Option<u32>,
     credential_repository: &dyn CredentialRepository,
+    formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>, CredentialServiceError> {
     let schema_model = value
         .schema
@@ -61,7 +62,7 @@ pub(crate) async fn credential_detail_response_from_model(
         ))?;
 
     let schema_dto: DetailCredentialSchemaResponseDTO =
-        to_credential_schema_detail_response(schema_model.clone())
+        to_credential_schema_detail_response(schema_model.clone(), formatter_provider)
             .await
             .map_err(|e: NestedError| CredentialServiceError::MappingError(e.to_string()))?;
 
@@ -635,8 +636,9 @@ fn insert_array_parent(
     Ok(current_path)
 }
 
-pub(crate) async fn to_credential_schema_detail_response(
+async fn to_credential_schema_detail_response(
     credential_schema: CredentialSchema,
+    formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<DetailCredentialSchemaResponseDTO, NestedError> {
     let format = credential_schema.format().await?.to_owned();
     let schema_id = credential_schema.schema_id().await?;
@@ -651,6 +653,9 @@ pub(crate) async fn to_credential_schema_detail_response(
         )?,
         description: translations_to_i18n(&raw_translations, LocalizedTextField::Description),
     };
+
+    let formatter = formatter_provider.get_credential_formatter(&format)?;
+
     Ok(DetailCredentialSchemaResponseDTO {
         id: credential_schema.id,
         created_date: credential_schema.created_date,
@@ -659,7 +664,7 @@ pub(crate) async fn to_credential_schema_detail_response(
         imported_source_url: credential_schema.imported_source_url,
         name: credential_schema.name,
         format,
-        revocation_method: credential_schema.revocation_method,
+        revocation_method: formatter.revocation_method_id().cloned(),
         key_storage_security: credential_schema.key_storage_security,
         organisation_id: credential_schema.organisation.id(),
         schema_id,

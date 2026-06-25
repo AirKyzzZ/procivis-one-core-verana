@@ -13,7 +13,7 @@ async fn test_create_proof_schema_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
 
     let claim_schemas = credential_schema.claim_schemas.as_ref().await.unwrap();
@@ -52,7 +52,7 @@ async fn test_create_proof_schema_fails_deactivated_organisation() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
 
     let claim_schemas = credential_schema.claim_schemas.as_ref().await.unwrap();
@@ -83,7 +83,7 @@ async fn test_create_nested_proof_schema_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create_with_nested_claims("test", &organisation, None, Default::default())
+        .create_with_nested_claims("test", &organisation, Default::default())
         .await;
 
     //Get only root element
@@ -126,7 +126,6 @@ async fn test_succeed_to_create_nested_proof_schema_without_object_claim() {
         .create_with_nested_claims(
             "test",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 format: Some("SD_JWT".into()),
                 ..Default::default()
@@ -164,7 +163,7 @@ async fn test_create_proof_schema_with_the_same_name_in_different_organisations(
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
 
     let claim_schemas = credential_schema.claim_schemas.as_ref().await.unwrap();
@@ -186,7 +185,7 @@ async fn test_create_proof_schema_with_the_same_name_in_different_organisations(
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation1, None, Default::default())
+        .create("test", &organisation1, Default::default())
         .await;
 
     let claim_schemas = credential_schema.claim_schemas.as_ref().await.unwrap();
@@ -214,7 +213,7 @@ async fn test_fail_to_create_proof_schema_with_the_same_name_in_organisation() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
 
     let claim_schemas = credential_schema.claim_schemas.as_ref().await.unwrap();
@@ -258,7 +257,7 @@ async fn test_create_proof_schema_with_the_same_name_and_organisation_as_deleted
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
 
     let claim_schemas = credential_schema.claim_schemas.as_ref().await.unwrap();
@@ -311,7 +310,7 @@ async fn test_fail_to_create_proof_schema_from_deleted_credential_schema() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
 
     context
@@ -347,13 +346,13 @@ async fn test_fail_to_create_proof_schema_with_claims_not_related_to_credential_
     let credential_schema1 = context
         .db
         .credential_schemas
-        .create("test1", &organisation, None, Default::default())
+        .create("test1", &organisation, Default::default())
         .await;
 
     let credential_schema2 = context
         .db
         .credential_schemas
-        .create("test2", &organisation, None, Default::default())
+        .create("test2", &organisation, Default::default())
         .await;
 
     let claim_schemas = credential_schema2.claim_schemas.as_ref().await.unwrap();
@@ -388,7 +387,6 @@ async fn test_fail_to_create_proof_schema_with_mixed_combined_presentation_suppo
         .create(
             "swiyu-schema",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 format: Some("SD_JWT_VC_SWIYU".into()),
                 ..Default::default()
@@ -403,7 +401,6 @@ async fn test_fail_to_create_proof_schema_with_mixed_combined_presentation_suppo
         .create(
             "mdoc-schema",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 format: Some("MDOC".into()),
                 schema_id: Some("org.iso.18013.5.1.mDL".to_string()),
@@ -474,7 +471,6 @@ async fn test_create_proof_schema_with_both_schemas_supporting_combined_presenta
         .create(
             "mdoc-schema",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 format: Some("MDOC".into()),
                 schema_id: Some("org.iso.18013.5.1.mDL".to_string()),
@@ -489,7 +485,6 @@ async fn test_create_proof_schema_with_both_schemas_supporting_combined_presenta
         .create(
             "jwt-schema",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 format: Some("JWT".into()),
                 ..Default::default()
@@ -562,7 +557,6 @@ async fn test_create_proof_schema_with_single_schema_without_combined_presentati
         .create(
             "swiyu-schema",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 format: Some("SD_JWT_VC_SWIYU".into()),
                 ..Default::default()

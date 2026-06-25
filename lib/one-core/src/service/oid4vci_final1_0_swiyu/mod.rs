@@ -10,6 +10,7 @@ use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::transaction_manager::TransactionManager;
 use crate::proto::wallet_instance::HolderWalletUnitProto;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::issuance_protocol::openid4vci_final1_0_swiyu::OID4VCI_FINAL1_0_SWIYU_VERSION;
 use crate::provider::issuance_protocol::provider::IssuanceProtocolProvider;
@@ -47,6 +48,7 @@ impl OID4VCIFinal1_0SwiyuService {
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
         holder_wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
         credential_issuer_metadata_cache: Arc<dyn CredentialIssuerMetadataFetcher>,
+        formatter_provider: Arc<dyn CredentialFormatterProvider>,
     ) -> Self {
         let protocol_base_url = core_base_url
             .as_ref()
@@ -71,6 +73,7 @@ impl OID4VCIFinal1_0SwiyuService {
                 blob_storage_provider,
                 holder_wallet_unit_proto,
                 credential_issuer_metadata_cache,
+                formatter_provider,
             ),
             protocol_provider,
         }

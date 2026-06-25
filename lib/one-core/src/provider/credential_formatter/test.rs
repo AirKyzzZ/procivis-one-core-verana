@@ -156,7 +156,7 @@ fn generate_credential_matching_detail(
         }),
         schema: Some(CredentialSchema {
             batch_size: None,
-            allow_revocation: None,
+            allow_revocation: detail.schema.revocation_method.is_some(),
             id: detail.schema.id,
             deleted_at: None,
             created_date: detail.schema.created_date,
@@ -172,7 +172,6 @@ fn generate_credential_matching_detail(
                 claim_mappings: Default::default(),
             }]
             .into(),
-            revocation_method: detail.schema.revocation_method,
             key_storage_security: detail.schema.key_storage_security,
             layout_type: crate::model::credential_schema::LayoutType::Card,
             layout_properties: None,

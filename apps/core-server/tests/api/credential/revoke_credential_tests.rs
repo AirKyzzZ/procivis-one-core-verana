@@ -60,12 +60,7 @@ async fn test_revoke_credential_with_bitstring_status_list_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create(
-            "test",
-            &organisation,
-            Some("BITSTRINGSTATUSLIST".into()),
-            Default::default(),
-        )
+        .create("test", &organisation, Default::default())
         .await;
     let credential = context
         .db
@@ -136,12 +131,7 @@ async fn test_revoke_credential_with_webhook() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create(
-            "test",
-            &organisation,
-            Some("BITSTRINGSTATUSLIST".into()),
-            Default::default(),
-        )
+        .create("test", &organisation, Default::default())
         .await;
 
     let webhook_url = format!("{}/webhook", context.server_mock.uri());
@@ -263,12 +253,7 @@ async fn test_revoke_credential_deleted() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create(
-            "test",
-            &organisation,
-            Some("BITSTRINGSTATUSLIST".into()),
-            Default::default(),
-        )
+        .create("test", &organisation, Default::default())
         .await;
 
     let credential = context

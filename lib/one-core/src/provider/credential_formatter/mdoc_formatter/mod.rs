@@ -517,7 +517,6 @@ impl CredentialFormatter for MdocFormatter {
             created_date: now,
             last_modified: now,
             name: doctype.to_owned(),
-            revocation_method: None,
             key_storage_security: None,
             layout_type: crate::model::credential_schema::LayoutType::Card,
             layout_properties: None,
@@ -538,7 +537,7 @@ impl CredentialFormatter for MdocFormatter {
             }]
             .into(),
             batch_size: None,
-            allow_revocation: None,
+            allow_revocation: false,
             translations: Default::default(),
             embedded_disclosure_policy: None,
         };

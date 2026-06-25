@@ -868,7 +868,7 @@ async fn test_parse_credential() {
     );
 
     let schema = credential.schema.as_ref().unwrap();
-    assert_eq!(schema.revocation_method, Some("BITSTRINGSTATUSLIST".into()));
+    assert_eq!(schema.allow_revocation, true);
     assert_eq!(schema.name, "7543Nested");
     assert_eq!(
         schema.schema_id().await.unwrap(),

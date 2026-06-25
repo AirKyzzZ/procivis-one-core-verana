@@ -56,7 +56,6 @@ async fn test_get_sd_jwt_vc_issuer_metadata_success_with_did() {
         .create(
             "test-schema",
             &organisation,
-            None,
             TestingCreateSchemaParams::default(),
         )
         .await;
@@ -108,7 +107,6 @@ async fn test_get_sd_jwt_vc_issuer_metadata_success_with_key() {
         .create(
             "test-schema",
             &organisation,
-            None,
             TestingCreateSchemaParams::default(),
         )
         .await;
@@ -151,7 +149,6 @@ async fn test_get_sd_jwt_vc_issuer_metadata_success_with_certificate() {
         .create(
             "test-schema",
             &organisation,
-            None,
             TestingCreateSchemaParams::default(),
         )
         .await;

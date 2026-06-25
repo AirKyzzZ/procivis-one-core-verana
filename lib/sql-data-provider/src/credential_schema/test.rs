@@ -17,7 +17,7 @@ use one_core::repository::organisation_repository::{
 };
 use one_core::service::credential_schema::dto::CredentialSchemaFilterValue;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set, Unchanged};
-use shared_types::{CredentialSchemaId, RevocationMethodId};
+use shared_types::CredentialSchemaId;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
@@ -85,7 +85,7 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
         None,
         organisation.id,
         "credential schema",
-        None,
+        false,
         None,
     )
     .await
@@ -120,7 +120,7 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
     TestSetupWithCredentialSchema {
         credential_schema: CredentialSchema {
             batch_size: None,
-            allow_revocation: None,
+            allow_revocation: false,
             id: credential_schema_id,
             deleted_at: None,
             key_storage_security: None,
@@ -138,7 +138,6 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
                 claim_mappings: Default::default(),
             }]
             .into(),
-            revocation_method: None,
             claim_schemas: new_claim_schemas
                 .into_iter()
                 .map(|claim| ClaimSchema {
@@ -207,7 +206,7 @@ async fn test_create_credential_schema_success() {
     let result = repository
         .create_credential_schema(CredentialSchema {
             batch_size: None,
-            allow_revocation: None,
+            allow_revocation: false,
             id: credential_schema_id,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
@@ -225,7 +224,6 @@ async fn test_create_credential_schema_success() {
                 claim_mappings: Default::default(),
             }]
             .into(),
-            revocation_method: None,
             claim_schemas: claim_schemas.into(),
             organisation: organisation.into(),
             layout_type: LayoutType::Card,
@@ -428,7 +426,7 @@ async fn test_delete_credential_schema_not_found() {
     let result = repository
         .delete_credential_schema(&CredentialSchema {
             batch_size: None,
-            allow_revocation: None,
+            allow_revocation: false,
             id: credential_schema_id,
             deleted_at: None,
             created_date: now_utc(),
@@ -444,7 +442,6 @@ async fn test_delete_credential_schema_not_found() {
                 claim_mappings: Default::default(),
             }]
             .into(),
-            revocation_method: None,
             key_storage_security: None,
             layout_type: LayoutType::Document,
             layout_properties: None,
@@ -470,11 +467,9 @@ async fn test_update_credential_schema_success() {
         ..
     } = setup_with_schema(Repositories::default()).await;
 
-    let new_revocation_method: RevocationMethodId = "new-method".into();
     let result = repository
         .update_credential_schema(UpdateCredentialSchemaRequest {
             id: credential_schema.id,
-            revocation_method: Some(Some(new_revocation_method.clone())),
             claim_schemas: None,
             layout_properties: Some(LayoutProperties {
                 background: Some(BackgroundProperties {
@@ -491,7 +486,6 @@ async fn test_update_credential_schema_success() {
 
     let db_schemas = credential_schema::Entity::find().all(&db).await.unwrap();
     assert_eq!(db_schemas.len(), 1);
-    assert_eq!(db_schemas[0].revocation_method, Some(new_revocation_method));
     assert_eq!(db_schemas[0].layout_type, LayoutType::Document.into());
     assert_eq!(
         &db_schemas[0]
@@ -520,7 +514,6 @@ async fn test_update_credential_schema_claims_success() {
     let result = repository
         .update_credential_schema(UpdateCredentialSchemaRequest {
             id: credential_schema.id,
-            revocation_method: None,
             claim_schemas: Some(vec![ClaimSchema {
                 id: claim_schema_id,
                 key: "new claim".to_string(),

@@ -282,10 +282,6 @@ fn get_credential_list_query(query_params: CredentialListQuery) -> Select<creden
         )
         .column_as(credential_schema::Column::Name, "credential_schema_name")
         .column_as(
-            credential_schema::Column::RevocationMethod,
-            "credential_schema_revocation_method",
-        )
-        .column_as(
             credential_schema::Column::KeyStorageSecurity,
             "credential_schema_key_storage_security",
         )

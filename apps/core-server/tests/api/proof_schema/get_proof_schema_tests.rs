@@ -13,7 +13,7 @@ async fn test_get_proof_schema_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
 
     let claim_schema = credential_schema
@@ -71,7 +71,7 @@ async fn test_succeed_to_fetch_claims_just_root_object() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create_with_nested_claims("test", &organisation, None, Default::default())
+        .create_with_nested_claims("test", &organisation, Default::default())
         .await;
 
     let claim_schemas = credential_schema.claim_schemas.as_ref().await.unwrap();
@@ -128,7 +128,7 @@ async fn test_succeed_to_fetch_claims_nested_root_object() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create_with_nested_claims("test", &organisation, None, Default::default())
+        .create_with_nested_claims("test", &organisation, Default::default())
         .await;
 
     let claim_schemas = credential_schema.claim_schemas.as_ref().await.unwrap();

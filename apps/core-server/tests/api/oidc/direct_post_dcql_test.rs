@@ -33,7 +33,7 @@ async fn test_direct_post_dcql_with_claim_sets() {
         &context.db.db_conn,
         "NewCredentialSchema",
         &organisation,
-        None,
+        false,
         &new_claim_schemas,
     )
     .await;
@@ -189,7 +189,7 @@ async fn test_direct_post_dcql_one_credential_missing_required_claim() {
         &context.db.db_conn,
         "NewCredentialSchema",
         &organisation,
-        None,
+        false,
         &new_claim_schemas,
     )
     .await;
@@ -315,7 +315,6 @@ async fn test_direct_post_dcql_sd_jwt_vc_no_holder_binding() {
             &schema_uuid,
             "SdJwtVcSchema",
             &organisation,
-            None,
             &new_claim_schemas,
             "SD_JWT_VC",
             &schema_uuid.to_string(),
@@ -441,7 +440,6 @@ async fn test_direct_post_dcql_json_ld_classic_no_holder_binding() {
             &schema_uuid,
             "JsonLdSchema",
             &organisation,
-            None,
             &new_claim_schemas,
             "JSON_LD_CLASSIC",
             &schema_uuid.to_string(),

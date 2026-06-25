@@ -354,7 +354,7 @@ fn test_proof(proof_id: Uuid, credential_format: CredentialFormat) -> Proof {
                 claim_schemas: None,
                 credential_schema: Some(CredentialSchema {
                     batch_size: None,
-                    allow_revocation: None,
+                    allow_revocation: false,
                     id: credential_schema_id,
                     deleted_at: None,
                     created_date: crate::clock::now_utc(),
@@ -370,7 +370,6 @@ fn test_proof(proof_id: Uuid, credential_format: CredentialFormat) -> Proof {
                         claim_mappings: Default::default(),
                     }]
                     .into(),
-                    revocation_method: None,
                     key_storage_security: None,
                     layout_type: LayoutType::Card,
                     layout_properties: None,

@@ -134,7 +134,6 @@ async fn setup_accepted_credential() -> (TestContext, Credential, CredentialSche
             &Uuid::new_v4(),
             "schema-1",
             &organisation,
-            None,
             &new_claim_schemas,
             "MDOC",
             "schema-id",

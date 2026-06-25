@@ -433,7 +433,7 @@ fn dummy_credential() -> Credential {
         holder_identifier: None,
         schema: Some(CredentialSchema {
             batch_size: None,
-            allow_revocation: None,
+            allow_revocation: true,
             id: credential_schema_id,
             imported_source_url: "CORE_URL".to_string(),
             deleted_at: None,
@@ -451,7 +451,6 @@ fn dummy_credential() -> Credential {
                 claim_mappings: Default::default(),
             }]
             .into(),
-            revocation_method: Some("revocation method".into()),
             claim_schemas: vec![ClaimSchema {
                 id: claim_schema_id,
                 key: "key".to_string(),

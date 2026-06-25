@@ -37,7 +37,7 @@ async fn test_get_proof_trust_detail_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create_with_nested_claims("test", &organisation, None, Default::default())
+        .create_with_nested_claims("test", &organisation, Default::default())
         .await;
 
     // Select a root claim.

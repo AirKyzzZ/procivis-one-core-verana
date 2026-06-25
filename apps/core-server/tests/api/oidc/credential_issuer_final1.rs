@@ -24,7 +24,7 @@ async fn test_get_credential_issuer_metadata_json() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create_with_nested_hell("test_schema", &organisation, None, Default::default())
+        .create_with_nested_hell("test_schema", &organisation, Default::default())
         .await;
 
     // WHEN
@@ -104,7 +104,7 @@ async fn test_get_credential_issuer_metadata_jwt_certificate_identifier_with_tru
     let credential_schema = context
         .db
         .credential_schemas
-        .create_with_nested_hell("test_schema", &organisation, None, Default::default())
+        .create_with_nested_hell("test_schema", &organisation, Default::default())
         .await;
 
     // Attach registration certificate blobs via trust_information
@@ -191,7 +191,7 @@ async fn test_get_credential_issuer_metadata_jwt_with_did_identifier() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create_with_nested_hell("test_schema", &organisation, None, Default::default())
+        .create_with_nested_hell("test_schema", &organisation, Default::default())
         .await;
 
     // WHEN
@@ -227,7 +227,7 @@ async fn test_get_credential_issuer_metadata_fails_with_invalid_accept_header() 
     let credential_schema = context
         .db
         .credential_schemas
-        .create_with_nested_hell("test_schema", &organisation, None, Default::default())
+        .create_with_nested_hell("test_schema", &organisation, Default::default())
         .await;
 
     // WHEN
@@ -264,7 +264,7 @@ async fn test_get_credential_issuer_metadata_fails_with_certificate_invalid_role
     let credential_schema = context
         .db
         .credential_schemas
-        .create_with_nested_hell("test_schema", &organisation, None, Default::default())
+        .create_with_nested_hell("test_schema", &organisation, Default::default())
         .await;
 
     // WHEN
@@ -295,7 +295,6 @@ async fn test_get_credential_issuer_metadata_with_disclosure_policy() {
         .create(
             "test-schema",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 embedded_disclosure_policy: Some(
                     serde_json::json!({

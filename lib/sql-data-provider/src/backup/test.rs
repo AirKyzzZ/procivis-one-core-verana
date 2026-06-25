@@ -337,7 +337,7 @@ async fn add_unexportable_credentials(
         None,
         organisation_id,
         "credential schema 1",
-        None,
+        false,
         None,
     )
     .await
@@ -352,7 +352,7 @@ async fn add_unexportable_credentials(
         None,
         organisation_id,
         "credential schema 2",
-        None,
+        false,
         Some(KeyStorageSecurity::Basic),
     )
     .await

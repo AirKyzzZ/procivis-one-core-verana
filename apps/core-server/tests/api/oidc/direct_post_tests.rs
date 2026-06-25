@@ -35,7 +35,7 @@ async fn test_direct_post_one_credential_correct() {
         &context.db.db_conn,
         "NewCredentialSchema",
         &organisation,
-        None,
+        false,
         &new_claim_schemas,
     )
     .await;
@@ -190,7 +190,7 @@ async fn test_direct_post_dcql_multiple_flag_true_success() {
         &context.db.db_conn,
         "NewCredentialSchema",
         &organisation,
-        None,
+        false,
         &new_claim_schemas,
     )
     .await;
@@ -319,7 +319,7 @@ async fn test_direct_post_dcql_parallel_success() {
         &context.db.db_conn,
         "NewCredentialSchema",
         &organisation,
-        None,
+        false,
         &new_claim_schemas,
     )
     .await;
@@ -439,7 +439,7 @@ async fn test_direct_post_one_credential_missing_required_claim() {
         &db_conn,
         "NewCredentialSchema",
         &organisation,
-        None,
+        false,
         &new_claim_schemas,
     )
     .await;
@@ -608,7 +608,7 @@ async fn test_direct_post_multiple_presentations() {
         &context.db.db_conn,
         "NameSchema",
         &organisation,
-        None,
+        false,
         &credential1_claims,
     )
     .await;
@@ -617,7 +617,7 @@ async fn test_direct_post_multiple_presentations() {
         &context.db.db_conn,
         "PetSchema",
         &organisation,
-        None,
+        false,
         &credential2_claims,
     )
     .await;
@@ -626,7 +626,7 @@ async fn test_direct_post_multiple_presentations() {
         &context.db.db_conn,
         "CatSchema",
         &organisation,
-        None,
+        false,
         &credential3_claims,
     )
     .await;
@@ -881,7 +881,7 @@ async fn test_direct_post_multiple_presentations_missing_inputs() {
         &db_conn,
         "NameSchema",
         &organisation,
-        None,
+        false,
         &credential1_claims,
     )
     .await;
@@ -890,7 +890,7 @@ async fn test_direct_post_multiple_presentations_missing_inputs() {
         &db_conn,
         "PetSchema",
         &organisation,
-        None,
+        false,
         &credential2_claims,
     )
     .await;
@@ -899,7 +899,7 @@ async fn test_direct_post_multiple_presentations_missing_inputs() {
         &db_conn,
         "CatSchema",
         &organisation,
-        None,
+        false,
         &credential3_claims,
     )
     .await;
@@ -1145,7 +1145,7 @@ async fn test_direct_post_wrong_claim_format() {
         &db_conn,
         "NewCredentialSchema",
         &organisation,
-        None,
+        false,
         &new_claim_schemas,
     )
     .await;
@@ -1312,7 +1312,7 @@ async fn test_direct_post_with_profile_verification() {
         &context.db.db_conn,
         "NewCredentialSchema",
         &organisation,
-        None,
+        false,
         &new_claim_schemas,
     )
     .await;

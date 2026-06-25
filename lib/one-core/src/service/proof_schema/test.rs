@@ -382,7 +382,7 @@ async fn test_create_proof_schema_success() {
         .returning(move |_| {
             let schema = CredentialSchema {
                 batch_size: None,
-                allow_revocation: None,
+                allow_revocation: false,
                 id: credential_schema_id,
                 deleted_at: None,
                 created_date: crate::clock::now_utc(),
@@ -399,7 +399,6 @@ async fn test_create_proof_schema_success() {
                     claim_mappings: Default::default(),
                 }]
                 .into(),
-                revocation_method: None,
                 key_storage_security: None,
                 claim_schemas: vec![claim_schema.clone()].into(),
                 organisation: dummy_organisation(None).into(),
@@ -525,7 +524,7 @@ async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
         .returning(move |_| {
             let schema_software = CredentialSchema {
                 batch_size: None,
-                allow_revocation: None,
+                allow_revocation: false,
                 id: credential_schema_software_id,
                 deleted_at: None,
                 created_date: crate::clock::now_utc(),
@@ -542,7 +541,6 @@ async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
                     claim_mappings: Default::default(),
                 }]
                 .into(),
-                revocation_method: None,
                 key_storage_security: Some(KeyStorageSecurity::Basic),
                 claim_schemas: vec![claim_schema_software.clone()].into(),
                 organisation: dummy_organisation(None).into(),
@@ -668,7 +666,7 @@ async fn test_create_proof_schema_fail_unsupported_wallet_storage_type() {
         .returning(move |_| {
             let schema = CredentialSchema {
                 batch_size: None,
-                allow_revocation: None,
+                allow_revocation: false,
                 id: credential_schema_id,
                 deleted_at: None,
                 created_date: crate::clock::now_utc(),
@@ -685,7 +683,6 @@ async fn test_create_proof_schema_fail_unsupported_wallet_storage_type() {
                     claim_mappings: Default::default(),
                 }]
                 .into(),
-                revocation_method: None,
                 key_storage_security: Some(KeyStorageSecurity::EnhancedBasic),
                 claim_schemas: vec![claim_schema.clone()].into(),
                 organisation: dummy_organisation(None).into(),
@@ -825,7 +822,7 @@ async fn test_create_proof_schema_array_object_fail() {
         .returning(move |_| {
             let schema = CredentialSchema {
                 batch_size: None,
-                allow_revocation: None,
+                allow_revocation: false,
                 id: credential_schema_id,
                 imported_source_url: "CORE_URL".to_string(),
                 deleted_at: None,
@@ -842,7 +839,6 @@ async fn test_create_proof_schema_array_object_fail() {
                     claim_mappings: Default::default(),
                 }]
                 .into(),
-                revocation_method: None,
                 key_storage_security: None,
                 claim_schemas: vec![
                     claim_schema_root.clone(),
@@ -994,7 +990,7 @@ async fn test_create_proof_schema_array_success() {
         .returning(move |_| {
             let schema = CredentialSchema {
                 batch_size: None,
-                allow_revocation: None,
+                allow_revocation: false,
                 id: credential_schema_id,
                 deleted_at: None,
                 created_date: crate::clock::now_utc(),
@@ -1011,7 +1007,6 @@ async fn test_create_proof_schema_array_success() {
                     claim_mappings: Default::default(),
                 }]
                 .into(),
-                revocation_method: None,
                 key_storage_security: None,
                 claim_schemas: vec![
                     claim_schema_root.clone(),
@@ -1156,7 +1151,7 @@ async fn test_create_proof_schema_claims_dont_exist() {
         .returning(move |_| {
             let schema = CredentialSchema {
                 batch_size: None,
-                allow_revocation: None,
+                allow_revocation: false,
                 id: credential_schema_id,
                 imported_source_url: "CORE_URL".to_string(),
                 deleted_at: None,
@@ -1173,7 +1168,6 @@ async fn test_create_proof_schema_claims_dont_exist() {
                     claim_mappings: Default::default(),
                 }]
                 .into(),
-                revocation_method: None,
                 key_storage_security: None,
                 claim_schemas: vec![ClaimSchema {
                     id: Uuid::new_v4().into(),
@@ -1943,7 +1937,7 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
         .returning(move |_, _| {
             Ok(Some(CredentialSchema {
                 batch_size: None,
-                allow_revocation: None,
+                allow_revocation: false,
                 id: existing_schema_id,
                 deleted_at: None,
                 created_date: get_dummy_date(),
@@ -1960,7 +1954,6 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
                     claim_mappings: Default::default(),
                 }]
                 .into(),
-                revocation_method: None,
                 key_storage_security: Some(KeyStorageSecurity::Moderate),
                 layout_type: LayoutType::Card,
                 layout_properties: None,
@@ -2124,7 +2117,7 @@ async fn test_import_proof_schema_rehosts_source_url_when_enabled() {
         .returning(move |_, _| {
             Ok(Some(CredentialSchema {
                 batch_size: None,
-                allow_revocation: None,
+                allow_revocation: false,
                 id: existing_schema_id,
                 deleted_at: None,
                 created_date: get_dummy_date(),
@@ -2141,7 +2134,6 @@ async fn test_import_proof_schema_rehosts_source_url_when_enabled() {
                     claim_mappings: Default::default(),
                 }]
                 .into(),
-                revocation_method: None,
                 key_storage_security: Some(KeyStorageSecurity::Moderate),
                 layout_type: LayoutType::Card,
                 layout_properties: None,
@@ -2740,7 +2732,7 @@ async fn credential_schema_with_claims(claims: Vec<ClaimSchema>) -> CredentialSc
     backfill_default_translations(
         CredentialSchema {
             batch_size: None,
-            allow_revocation: None,
+            allow_revocation: false,
             id: credential_schema_id,
             deleted_at: None,
             created_date: now,
@@ -2757,7 +2749,6 @@ async fn credential_schema_with_claims(claims: Vec<ClaimSchema>) -> CredentialSc
             }]
             .into(),
             imported_source_url: "CORE_URL".to_string(),
-            revocation_method: None,
             key_storage_security: None,
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -3002,7 +2993,7 @@ async fn test_create_proof_schema_verify_nested_generic(
         .return_once(move |_| {
             let schema = CredentialSchema {
                 batch_size: None,
-                allow_revocation: None,
+                allow_revocation: false,
                 id: credential_schema_id,
                 deleted_at: None,
                 imported_source_url: "CORE_URL".to_string(),
@@ -3019,7 +3010,6 @@ async fn test_create_proof_schema_verify_nested_generic(
                     claim_mappings: Default::default(),
                 }]
                 .into(),
-                revocation_method: None,
                 key_storage_security: None,
                 claim_schemas: claim_schemas_cloned.into(),
                 organisation: dummy_organisation(None).into(),

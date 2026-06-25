@@ -183,7 +183,7 @@ async fn generic_credential() -> Credential {
             backfill_default_translations(
                 CredentialSchema {
                     batch_size: None,
-                    allow_revocation: None,
+                    allow_revocation: false,
                     id: credential_schema_id,
                     deleted_at: None,
                     imported_source_url: "CORE_URL".to_string(),
@@ -191,7 +191,6 @@ async fn generic_credential() -> Credential {
                     last_modified: now,
                     name: "schema".to_string(),
                     key_storage_security: None,
-                    revocation_method: None,
                     claim_schemas: vec![claim_schema].into(),
                     organisation: organisation.into(),
                     layout_type: LayoutType::Card,
@@ -280,7 +279,7 @@ async fn generic_credential_list_entity() -> Credential {
             backfill_default_translations(
                 CredentialSchema {
                     batch_size: None,
-                    allow_revocation: None,
+                    allow_revocation: false,
                     id: credential_schema_id,
                     deleted_at: None,
                     imported_source_url: "CORE_URL".to_string(),
@@ -298,7 +297,6 @@ async fn generic_credential_list_entity() -> Credential {
                         claim_mappings: Default::default(),
                     }]
                     .into(),
-                    revocation_method: None,
                     claim_schemas: Default::default(),
                     organisation: dummy_organisation(None).into(),
                     layout_type: LayoutType::Card,
@@ -391,7 +389,7 @@ async fn test_delete_credential_incorrect_state() {
     let mut credential_repository = MockCredentialRepository::default();
 
     let mut credential = generic_credential().await;
-    credential.schema.as_mut().unwrap().revocation_method = Some("BITSTRINGSTATUSLIST".into());
+    credential.schema.as_mut().unwrap().allow_revocation = true;
     credential.state = CredentialStateEnum::Accepted;
     credential.role = CredentialRole::Issuer;
 
@@ -531,8 +529,18 @@ async fn test_get_credential_success() {
             .returning(move |_, _| Ok(Some(clone.clone())));
     }
 
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .return_once(|_| {
+            let mut formatter = MockCredentialFormatter::new();
+            formatter.expect_revocation_method_id().return_const(None);
+            Ok(Arc::new(formatter))
+        });
+
     let service = setup_service(Repositories {
         credential_repository,
+        formatter_provider,
         config: generic_config().core,
         trust_information_provider: mock_trust_information_provider(&credential, vec![]),
         ..Default::default()
@@ -565,8 +573,18 @@ async fn test_get_credential_success_suspended_credential_with_end_date() {
             .returning(move |_, _| Ok(Some(clone.clone())));
     }
 
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .return_once(|_| {
+            let mut formatter = MockCredentialFormatter::new();
+            formatter.expect_revocation_method_id().return_const(None);
+            Ok(Arc::new(formatter))
+        });
+
     let service = setup_service(Repositories {
         credential_repository,
+        formatter_provider,
         config: generic_config().core,
         trust_information_provider: mock_trust_information_provider(&credential, vec![]),
         ..Default::default()
@@ -627,8 +645,18 @@ async fn test_get_revoked_credential_success() {
             .returning(move |_, _| Ok(Some(clone.clone())));
     }
 
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .return_once(|_| {
+            let mut formatter = MockCredentialFormatter::new();
+            formatter.expect_revocation_method_id().return_const(None);
+            Ok(Arc::new(formatter))
+        });
+
     let service = setup_service(Repositories {
         credential_repository,
+        formatter_provider,
         config: generic_config().core,
         trust_information_provider: mock_trust_information_provider(&credential, vec![]),
         ..Default::default()
@@ -3004,14 +3032,13 @@ fn generate_credential_schema_with_claim_schemas(
     let credential_schema_id = Uuid::new_v4().into();
     CredentialSchema {
         batch_size: None,
-        allow_revocation: None,
+        allow_revocation: false,
         id: credential_schema_id,
         deleted_at: None,
         imported_source_url: "CORE_URL".to_string(),
         created_date: now,
         last_modified: now,
         name: "nested".to_string(),
-        revocation_method: None,
         key_storage_security: None,
         layout_type: LayoutType::Card,
         layout_properties: None,
@@ -3423,8 +3450,18 @@ async fn test_get_credential_success_with_non_required_nested_object() {
             .returning(move |_, _| Ok(Some(clone.clone())));
     }
 
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .return_once(|_| {
+            let mut formatter = MockCredentialFormatter::new();
+            formatter.expect_revocation_method_id().return_const(None);
+            Ok(Arc::new(formatter))
+        });
+
     let service = setup_service(Repositories {
         credential_repository,
+        formatter_provider,
         config: generic_config().core,
         trust_information_provider: mock_trust_information_provider(&credential, vec![]),
         ..Default::default()
@@ -3595,7 +3632,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
             backfill_default_translations(
                 CredentialSchema {
                     batch_size: None,
-                    allow_revocation: None,
+                    allow_revocation: false,
                     id: credential_schema_id,
                     deleted_at: None,
                     created_date: now,
@@ -3613,7 +3650,6 @@ async fn test_get_credential_success_array_complex_nested_all() {
                         claim_mappings: Default::default(),
                     }]
                     .into(),
-                    revocation_method: None,
                     claim_schemas: claim_schemas.into(),
                     organisation: organisation.into(),
                     layout_type: LayoutType::Card,
@@ -3649,8 +3685,18 @@ async fn test_get_credential_success_array_complex_nested_all() {
             .returning(move |_, _| Ok(Some(clone.clone())));
     }
 
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .return_once(|_| {
+            let mut formatter = MockCredentialFormatter::new();
+            formatter.expect_revocation_method_id().return_const(None);
+            Ok(Arc::new(formatter))
+        });
+
     let service = setup_service(Repositories {
         credential_repository,
+        formatter_provider,
         config: generic_config().core,
         trust_information_provider: mock_trust_information_provider(&credential, vec![]),
         ..Default::default()
@@ -4364,7 +4410,7 @@ async fn test_get_credential_success_array_index_sorting() {
             backfill_default_translations(
                 CredentialSchema {
                     batch_size: None,
-                    allow_revocation: None,
+                    allow_revocation: false,
                     id: credential_schema_id,
                     imported_source_url: "CORE_URL".to_string(),
                     deleted_at: None,
@@ -4382,7 +4428,6 @@ async fn test_get_credential_success_array_index_sorting() {
                         claim_mappings: Default::default(),
                     }]
                     .into(),
-                    revocation_method: None,
                     claim_schemas: claim_schemas.into(),
                     organisation: organisation.into(),
                     layout_type: LayoutType::Card,
@@ -4418,8 +4463,18 @@ async fn test_get_credential_success_array_index_sorting() {
             .returning(move |_, _| Ok(Some(clone.clone())));
     }
 
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .return_once(|_| {
+            let mut formatter = MockCredentialFormatter::new();
+            formatter.expect_revocation_method_id().return_const(None);
+            Ok(Arc::new(formatter))
+        });
+
     let service = setup_service(Repositories {
         credential_repository,
+        formatter_provider,
         config: generic_config().core,
         trust_information_provider: mock_trust_information_provider(&credential, vec![]),
         ..Default::default()
@@ -4770,7 +4825,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
             backfill_default_translations(
                 CredentialSchema {
                     batch_size: None,
-                    allow_revocation: None,
+                    allow_revocation: false,
                     id: credential_schema_id,
                     deleted_at: None,
                     imported_source_url: "CORE_URL".to_string(),
@@ -4788,7 +4843,6 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
                         claim_mappings: Default::default(),
                     }]
                     .into(),
-                    revocation_method: None,
                     claim_schemas: claim_schemas.into(),
                     organisation: organisation.into(),
                     layout_type: LayoutType::Card,
@@ -4835,8 +4889,18 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
             });
     }
 
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .return_once(|_| {
+            let mut formatter = MockCredentialFormatter::new();
+            formatter.expect_revocation_method_id().return_const(None);
+            Ok(Arc::new(formatter))
+        });
+
     let service = setup_service(Repositories {
         credential_repository,
+        formatter_provider,
         config: generic_config().core,
         trust_information_provider: mock_trust_information_provider(&credential, vec![]),
         ..Default::default()
@@ -5031,7 +5095,7 @@ async fn test_get_credential_success_array_single_element() {
             backfill_default_translations(
                 CredentialSchema {
                     batch_size: None,
-                    allow_revocation: None,
+                    allow_revocation: false,
                     id: credential_schema_id,
                     deleted_at: None,
                     created_date: now,
@@ -5049,7 +5113,6 @@ async fn test_get_credential_success_array_single_element() {
                         claim_mappings: Default::default(),
                     }]
                     .into(),
-                    revocation_method: None,
                     claim_schemas: claim_schemas.into(),
                     organisation: organisation.into(),
                     layout_type: LayoutType::Card,
@@ -5085,8 +5148,18 @@ async fn test_get_credential_success_array_single_element() {
             .returning(move |_, _| Ok(Some(clone.clone())));
     }
 
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .return_once(|_| {
+            let mut formatter = MockCredentialFormatter::new();
+            formatter.expect_revocation_method_id().return_const(None);
+            Ok(Arc::new(formatter))
+        });
+
     let service = setup_service(Repositories {
         credential_repository,
+        formatter_provider,
         config: generic_config().core,
         trust_information_provider: mock_trust_information_provider(&credential, vec![]),
         ..Default::default()
@@ -5190,14 +5263,13 @@ async fn test_create_credential_array(
 
     let credential_schema_id = Uuid::new_v4().into();
     let credential_schema = CredentialSchema {
-        allow_revocation: None,
+        allow_revocation: false,
         id: credential_schema_id,
         deleted_at: None,
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         imported_source_url: "CORE_URL".to_string(),
         name: "str array".to_string(),
-        revocation_method: None,
         key_storage_security: None,
         layout_type: LayoutType::Card,
         layout_properties: None,
@@ -5583,7 +5655,7 @@ async fn test_create_credential_invalid_certificate_role() {
     let credential_schema_id = Uuid::new_v4().into();
     let credential_schema = CredentialSchema {
         batch_size: None,
-        allow_revocation: None,
+        allow_revocation: false,
         id: credential_schema_id,
         deleted_at: None,
         created_date: crate::clock::now_utc(),
@@ -5600,7 +5672,6 @@ async fn test_create_credential_invalid_certificate_role() {
             claim_mappings: Default::default(),
         }]
         .into(),
-        revocation_method: None,
         key_storage_security: None,
         layout_type: LayoutType::Card,
         layout_properties: None,

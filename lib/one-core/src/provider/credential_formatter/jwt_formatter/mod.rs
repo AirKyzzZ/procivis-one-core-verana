@@ -396,7 +396,6 @@ impl CredentialFormatter for JWTFormatter {
             created_date: now,
             last_modified: now,
             name: schema_name,
-            revocation_method: revocation_method.map(|v| v.to_string().into()),
             key_storage_security: None,
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -408,7 +407,7 @@ impl CredentialFormatter for JWTFormatter {
             transaction_code: None,
             formats: vec![format].into(),
             batch_size: None,
-            allow_revocation: None,
+            allow_revocation: revocation_method.is_some(),
             translations: Default::default(),
             embedded_disclosure_policy: None,
         };

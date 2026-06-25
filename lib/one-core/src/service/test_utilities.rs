@@ -325,7 +325,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
         holder_identifier: None,
         schema: Some(CredentialSchema {
             batch_size: None,
-            allow_revocation: None,
+            allow_revocation: true,
             id: credential_schema_id,
             deleted_at: None,
             created_date: crate::clock::now_utc(),
@@ -343,7 +343,6 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
             }]
             .into(),
             imported_source_url: "CORE_URL".to_string(),
-            revocation_method: Some("revocation method".into()),
             claim_schemas: vec![ClaimSchema {
                 id: claim_schema_id,
                 key: "key".to_string(),
@@ -550,7 +549,6 @@ pub fn dummy_credential_schema() -> CredentialSchema {
         }]
         .into(),
         batch_size: None,
-        revocation_method: Some("mock".into()),
         claim_schemas: Default::default(),
         organisation: dummy_organisation(None).into(),
         layout_type: LayoutType::Card,
@@ -558,7 +556,7 @@ pub fn dummy_credential_schema() -> CredentialSchema {
         allow_suspension: true,
         requires_wallet_instance_attestation: false,
         transaction_code: None,
-        allow_revocation: None,
+        allow_revocation: true,
         translations: Default::default(),
         embedded_disclosure_policy: None,
     }

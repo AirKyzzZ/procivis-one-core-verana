@@ -177,7 +177,6 @@ impl CredentialFormatter for SDJWTVCFormatter {
             last_modified: now,
             // Will be overridden based on issuer metadata
             name: vct,
-            revocation_method: revocation_method.map(|v| v.to_string().into()),
             key_storage_security: None,
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -189,7 +188,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             transaction_code: None,
             formats: vec![format].into(),
             batch_size: None,
-            allow_revocation: None,
+            allow_revocation: revocation_method.is_some(),
             translations: Default::default(),
             embedded_disclosure_policy: None,
         };

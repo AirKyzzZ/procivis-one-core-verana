@@ -38,7 +38,6 @@ async fn test_vct_metadata_simple() {
         .create(
             schema_name,
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 schema_id: Some(vct.clone()),
                 format: Some("SD_JWT_VC".into()),
@@ -116,7 +115,6 @@ async fn test_vct_metadata_nested_claims() {
         .create_with_array_claims(
             schema_name,
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 schema_id: Some(vct.clone()),
                 format: Some("SD_JWT_VC".into()),

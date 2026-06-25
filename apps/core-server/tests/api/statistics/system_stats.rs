@@ -213,7 +213,7 @@ async fn add_test_entities(
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", org, None, Default::default())
+        .create("test", org, Default::default())
         .await;
     let credential = context
         .db

@@ -54,7 +54,7 @@ async fn setup_empty() -> TestSetup {
         None,
         organisation_id,
         "initial_schema",
-        None,
+        false,
         Some(KeyStorageSecurity::Basic),
     )
     .await
@@ -190,7 +190,7 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
         None,
         organisation.id,
         credential_schema_name,
-        None,
+        false,
         Some(KeyStorageSecurity::Basic),
     )
     .await
@@ -517,7 +517,7 @@ async fn test_get_history_list_schema_joins_credentials() {
         None,
         organisation.id,
         "schema",
-        None,
+        false,
         Some(KeyStorageSecurity::Basic),
     )
     .await
@@ -1469,7 +1469,7 @@ async fn test_issuer_org_history_stats_dummy_data() {
         None,
         org_id,
         "schema2",
-        None,
+        false,
         Some(KeyStorageSecurity::Basic),
     )
     .await

@@ -175,7 +175,6 @@ async fn create_credential_and_proof_schemas(
             &Uuid::new_v4(),
             "test",
             organisation,
-            None,
             claim_schemas,
             "JWT",
             "test-schema-id",

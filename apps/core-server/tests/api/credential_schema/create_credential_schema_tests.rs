@@ -38,7 +38,6 @@ async fn test_create_credential_schema_success() {
     let credential_schema = context.db.credential_schemas.get(&id).await;
 
     assert_eq!(credential_schema.name, "some credential schema");
-    assert_eq!(credential_schema.revocation_method, None);
     assert_eq!(credential_schema.organisation.id(), organisation.id);
     assert_eq!(credential_schema.format().await.unwrap().as_ref(), "JWT");
     let claim_schemas = credential_schema.claim_schemas.as_ref().await.unwrap();
@@ -189,7 +188,7 @@ async fn test_create_credential_schema_with_the_same_name_and_organisation_as_de
     let credential_schema = context
         .db
         .credential_schemas
-        .create(schema_name, &organisation, None, Default::default())
+        .create(schema_name, &organisation, Default::default())
         .await;
 
     context
@@ -348,7 +347,6 @@ async fn test_duplicate_schema() {
         .create_with_result(
             "some credential schema1",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 schema_id: Some("foo".to_string()),
                 ..Default::default()
@@ -363,7 +361,6 @@ async fn test_duplicate_schema() {
         .create_with_result(
             "some credential schema1",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 schema_id: Some("foo".to_string()),
                 ..Default::default()
@@ -576,7 +573,6 @@ async fn test_create_credential_schema_modc_without_schema_id() {
     let credential_schema = context.db.credential_schemas.get(&id).await;
 
     assert_eq!(credential_schema.name, "schema");
-    assert_eq!(credential_schema.revocation_method, None);
     assert_eq!(credential_schema.organisation.id(), organisation.id);
     assert_eq!(credential_schema.format().await.unwrap().as_ref(), "MDOC");
     assert_eq!(credential_schema.schema_id().await.unwrap(), id.to_string());
@@ -627,7 +623,6 @@ async fn test_create_credential_schema_sdjwtvc_with_schema_id() {
     let credential_schema = context.db.credential_schemas.get(&id).await;
 
     assert_eq!(credential_schema.name, "schema");
-    assert_eq!(credential_schema.revocation_method, None);
     assert_eq!(credential_schema.organisation.id(), organisation.id);
     assert_eq!(
         credential_schema.format().await.unwrap().as_ref(),

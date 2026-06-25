@@ -25,6 +25,7 @@ use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::error::DataLayerError;
 use crate::service::credential::dto::{
@@ -90,6 +91,7 @@ pub(crate) async fn credential_model_to_credential_dto(
     credentials: Vec<Credential>,
     config: &CoreConfig,
     credential_repository: &dyn CredentialRepository,
+    formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<
     Vec<CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>>,
     VerificationProtocolError,
@@ -109,6 +111,7 @@ pub(crate) async fn credential_model_to_credential_dto(
                 None,
                 remaining_batch_item_count,
                 credential_repository,
+                formatter_provider,
             )
             .await
             .error_while("converting credential")?,

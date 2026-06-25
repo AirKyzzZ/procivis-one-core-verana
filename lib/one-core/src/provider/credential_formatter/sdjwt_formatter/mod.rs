@@ -361,7 +361,6 @@ impl CredentialFormatter for SDJWTFormatter {
             name: schema_name,
             formats: vec![format].into(),
             batch_size: None,
-            revocation_method: revocation_method.map(|v| v.to_string().into()),
             key_storage_security: None,
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -371,7 +370,7 @@ impl CredentialFormatter for SDJWTFormatter {
             claim_schemas: claim_schemas.into(),
             organisation: organisation.clone().into(),
             transaction_code: None,
-            allow_revocation: None,
+            allow_revocation: revocation_method.is_some(),
             translations: Default::default(),
             embedded_disclosure_policy: None,
         };

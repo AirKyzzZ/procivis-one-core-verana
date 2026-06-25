@@ -243,6 +243,7 @@ pub(super) async fn get_verifier_proof_detail(
             credential_trust_information,
             None,
             credential_repository,
+            formatter_provider,
         )
         .await
         .error_while("creating credential detail")?;
@@ -647,6 +648,7 @@ pub(super) async fn get_holder_proof_detail(
                         None,
                         None,
                         credential_repository,
+                        formatter_provider,
                     )
                     .await
                     .error_while("creating credential detail")?,

@@ -1387,6 +1387,7 @@ impl OpenID4VCIFinal1_0 {
             None,
             None,
             self.credential_repository.as_ref(),
+            self.formatter_provider.as_ref(),
         )
         .await
         .error_while("creating credential detail")?;

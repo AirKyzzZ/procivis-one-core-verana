@@ -104,7 +104,7 @@ async fn test_get_history_list_schema_joins_credentials() {
     let schema = context
         .db
         .credential_schemas
-        .create("schema", &organisation, None, Default::default())
+        .create("schema", &organisation, Default::default())
         .await;
     context
         .db
@@ -520,7 +520,7 @@ async fn test_get_history_search_by_credential_schema_name() {
     let schema = context
         .db
         .credential_schemas
-        .create("UniqueSchemaName", &organisation, None, Default::default())
+        .create("UniqueSchemaName", &organisation, Default::default())
         .await;
 
     let credential = context
@@ -613,7 +613,7 @@ async fn test_get_history_search_defaults_to_all() {
     let schema = context
         .db
         .credential_schemas
-        .create("SearchableSchema", &organisation, None, Default::default())
+        .create("SearchableSchema", &organisation, Default::default())
         .await;
 
     let credential = context

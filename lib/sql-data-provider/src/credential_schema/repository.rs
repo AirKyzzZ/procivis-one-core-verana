@@ -167,11 +167,6 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
     ) -> Result<(), DataLayerError> {
         let id = &request.id;
 
-        let revocation_method = match request.revocation_method {
-            None => Unchanged(None),
-            Some(revocation_method) => Set(revocation_method),
-        };
-
         let layout_type = match request.layout_type {
             None => Unchanged(LayoutType::Card),
             Some(layout_type) => Set(layout_type.into()),
@@ -185,7 +180,6 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
         let update_model = credential_schema::ActiveModel {
             id: Unchanged(*id),
             last_modified: Set(one_core::clock::now_utc()),
-            revocation_method,
             layout_type,
             layout_properties,
             ..Default::default()

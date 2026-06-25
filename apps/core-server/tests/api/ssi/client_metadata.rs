@@ -13,7 +13,7 @@ async fn test_get_client_metadata() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
 
     let claim_schema = &credential_schema.claim_schemas.as_ref().await.unwrap()[0];
@@ -121,7 +121,7 @@ async fn test_fail_to_get_client_metadata_wrong_exchange_protocol() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
 
     let claim_schema = &credential_schema.claim_schemas.as_ref().await.unwrap()[0];
@@ -176,7 +176,7 @@ async fn test_fail_to_get_client_metadata_wrong_proof_state() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
 
     let claim_schema = &credential_schema.claim_schemas.as_ref().await.unwrap()[0];

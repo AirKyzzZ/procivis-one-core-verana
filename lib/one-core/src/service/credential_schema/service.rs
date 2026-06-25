@@ -583,11 +583,11 @@ impl CredentialSchemaService {
             .error_while("parsing schema")?;
 
         let success_log = format!(
-            "Imported credential schema `{}` ({}): format `{}`, revocation method {:?}, key storage security {}",
+            "Imported credential schema `{}` ({}): format `{}`, allow revocation `{}`, key storage security {}",
             credential_schema.name,
             credential_schema.id,
             credential_schema.format().await?,
-            credential_schema.revocation_method,
+            credential_schema.allow_revocation,
             quoted_opt_provider(&credential_schema.key_storage_security)
         );
 

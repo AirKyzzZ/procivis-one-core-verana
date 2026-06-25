@@ -21,7 +21,7 @@ async fn test_delete_proof_claims_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
 
     let claim_schema = credential_schema

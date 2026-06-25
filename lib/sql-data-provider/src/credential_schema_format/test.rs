@@ -20,7 +20,7 @@ async fn test_create_and_get_credential_schema_format() {
 
     let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
     let credential_schema_id =
-        insert_credential_schema_to_database(&db, None, organisation_id, "schema-a", None, None)
+        insert_credential_schema_to_database(&db, None, organisation_id, "schema-a", false, None)
             .await
             .unwrap();
 
@@ -101,7 +101,7 @@ async fn test_unique_credential_schema_id_format() {
 
     let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
     let credential_schema_id =
-        insert_credential_schema_to_database(&db, None, organisation_id, "schema-a", None, None)
+        insert_credential_schema_to_database(&db, None, organisation_id, "schema-a", false, None)
             .await
             .unwrap();
 
@@ -153,7 +153,7 @@ async fn test_unique_format_claim_schema_mapping() {
 
     let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
     let credential_schema_id =
-        insert_credential_schema_to_database(&db, None, organisation_id, "schema-a", None, None)
+        insert_credential_schema_to_database(&db, None, organisation_id, "schema-a", false, None)
             .await
             .unwrap();
 

@@ -26,12 +26,7 @@ async fn test_oidc_issuer_create_token() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create(
-            "test-schema",
-            &org,
-            None,
-            TestingCreateSchemaParams::default(),
-        )
+        .create("test-schema", &org, TestingCreateSchemaParams::default())
         .await;
 
     let interaction = context
@@ -98,12 +93,7 @@ async fn test_oidc_issuer_create_token_parallel_collision() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create(
-            "test-schema",
-            &org,
-            None,
-            TestingCreateSchemaParams::default(),
-        )
+        .create("test-schema", &org, TestingCreateSchemaParams::default())
         .await;
 
     let interaction = context
@@ -168,7 +158,6 @@ async fn test_oidc_issuer_create_token_for_mdoc_creates_refresh_token() {
         .create(
             "test-schema",
             &org,
-            None,
             TestingCreateSchemaParams {
                 format: Some("MDOC".into()),
                 ..Default::default()
@@ -249,7 +238,6 @@ async fn test_oidc_issuer_create_token_for_refresh_token_grant_updates_both_acce
         .create(
             "test-schema",
             &org,
-            None,
             TestingCreateSchemaParams {
                 format: Some("MDOC".into()),
                 ..Default::default()
@@ -331,7 +319,6 @@ async fn test_oidc_issuer_create_token_with_tx_code_success() {
         .create(
             "test-schema",
             &org,
-            None,
             TestingCreateSchemaParams {
                 transaction_code: Some(TransactionCode {
                     r#type: TransactionCodeType::Alphanumeric,
@@ -409,7 +396,6 @@ async fn test_oidc_issuer_create_token_wrong_tx_code() {
         .create(
             "test-schema",
             &org,
-            None,
             TestingCreateSchemaParams {
                 transaction_code: Some(TransactionCode {
                     r#type: TransactionCodeType::Alphanumeric,
@@ -489,7 +475,6 @@ async fn test_oidc_issuer_create_token_tx_code_missing() {
         .create(
             "test-schema",
             &org,
-            None,
             TestingCreateSchemaParams {
                 transaction_code: Some(TransactionCode {
                     r#type: TransactionCodeType::Alphanumeric,

@@ -295,7 +295,6 @@ impl OpenID4VCIFinal1_0 {
                 .update_credential_schema(UpdateCredentialSchemaRequest {
                     id: schema.id,
                     claim_schemas: Some(new_claim_schemas),
-                    revocation_method: None,
                     layout_type: None,
                     layout_properties: None,
                     claim_mappings: Some(new_mappings),

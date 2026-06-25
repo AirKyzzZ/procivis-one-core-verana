@@ -16,6 +16,8 @@ use crate::model::credential_schema::{CredentialSchema, KeyStorageSecurity, Layo
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::organisation::{GetOrganisationList, OrganisationListQuery};
+use crate::provider::credential_formatter::MockCredentialFormatter;
+use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::repository::backup_repository::MockBackupRepository;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::history_repository::MockHistoryRepository;
@@ -30,6 +32,7 @@ struct Repositories {
     pub history_repository: MockHistoryRepository,
     pub organisation_repository: MockOrganisationRepository,
     pub credential_repository: MockCredentialRepository,
+    pub formatter_provider: MockCredentialFormatterProvider,
 }
 
 fn setup_service(repositories: Repositories) -> BackupService {
@@ -38,6 +41,7 @@ fn setup_service(repositories: Repositories) -> BackupService {
         Arc::new(repositories.history_repository),
         Arc::new(repositories.organisation_repository),
         Arc::new(repositories.credential_repository),
+        Arc::new(repositories.formatter_provider),
         Arc::new(generic_config().core),
     )
 }
@@ -88,7 +92,7 @@ async fn dummy_unexportable_entities() -> UnexportableEntities {
                 backfill_default_translations(
                     CredentialSchema {
                         batch_size: None,
-                        allow_revocation: None,
+                        allow_revocation: true,
                         id: credential_schema_id,
                         deleted_at: None,
                         imported_source_url: "CORE_URL".to_string(),
@@ -106,7 +110,6 @@ async fn dummy_unexportable_entities() -> UnexportableEntities {
                             claim_mappings: Default::default(),
                         }]
                         .into(),
-                        revocation_method: Some("revocation_method".into()),
                         claim_schemas: vec![ClaimSchema {
                             id: claim_schema_id,
                             key: "key".into(),
@@ -177,6 +180,15 @@ async fn test_fetch_unexportable() {
         .expect_fetch_unexportable()
         .once()
         .return_once(move |_| Ok(entities));
+
+    repositories
+        .formatter_provider
+        .expect_get_credential_formatter()
+        .return_once(|_| {
+            let mut formatter = MockCredentialFormatter::new();
+            formatter.expect_revocation_method_id().return_const(None);
+            Ok(Arc::new(formatter))
+        });
 
     let service = setup_service(repositories);
     service.backup_info().await.unwrap();
@@ -280,6 +292,15 @@ async fn test_backup_flow() {
             assert_eq!(event.entity_type, HistoryEntityType::Backup);
             assert_eq!(event.organisation_id, Some(organisation.id));
             Ok(history_id)
+        });
+
+    repositories
+        .formatter_provider
+        .expect_get_credential_formatter()
+        .return_once(|_| {
+            let mut formatter = MockCredentialFormatter::new();
+            formatter.expect_revocation_method_id().return_const(None);
+            Ok(Arc::new(formatter))
         });
 
     let service = setup_service(repositories);

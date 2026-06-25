@@ -36,7 +36,7 @@ async fn test_get_credential_trust_detail_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
 
     let ac_blob = context

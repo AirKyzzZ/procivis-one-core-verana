@@ -45,7 +45,6 @@ async fn create_credential_schema_with_claims(
             &Uuid::new_v4(),
             name,
             organisation,
-            None,
             claim_schemas,
             format,
             schema_id,

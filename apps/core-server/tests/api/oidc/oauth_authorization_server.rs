@@ -10,7 +10,7 @@ async fn test_oauth_authorization_server_metadata() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create_with_nested_hell("test_schema", &organisation, None, Default::default())
+        .create_with_nested_hell("test_schema", &organisation, Default::default())
         .await;
 
     // WHEN
@@ -101,7 +101,6 @@ async fn test_oauth_authorization_server_metadata_eudi_compliant() {
         .create_with_nested_hell(
             "test_schema",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 requires_wallet_instance_attestation: true,
                 ..Default::default()

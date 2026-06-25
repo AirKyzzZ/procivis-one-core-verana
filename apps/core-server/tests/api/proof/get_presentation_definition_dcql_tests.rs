@@ -30,7 +30,6 @@ async fn test_get_presentation_definition_dcql_simple() {
         .create(
             "Simple test schema",
             &org,
-            None,
             TestingCreateSchemaParams {
                 schema_id: Some(vct.to_string()),
                 format: Some("SD_JWT_VC".into()),
@@ -133,7 +132,6 @@ async fn test_get_presentation_definition_dcql_nesting() {
             &Uuid::new_v4(),
             "Nested test schema",
             &org,
-            None,
             &[
                 (claim_1, "first", true, "OBJECT", true),
                 (claim_2, "first/second", true, "OBJECT", false),
@@ -255,7 +253,6 @@ async fn test_get_presentation_definition_dcql_nested_with_mandatory_disclosure_
             &Uuid::new_v4(),
             "Nested test schema",
             &org,
-            None,
             &[
                 (claim_1, "first", true, "OBJECT", false),
                 (claim_2, "first/second", true, "OBJECT", false),
@@ -379,7 +376,6 @@ async fn test_get_presentation_definition_dcql_nested_required_with_mandatory_di
             &Uuid::new_v4(),
             "Nested test schema",
             &org,
-            None,
             &[
                 (claim_1, "first", true, "OBJECT", false),
                 (claim_2, "first/second", true, "STRING", false),
@@ -506,7 +502,6 @@ async fn test_get_presentation_definition_dcql_nested_with_array_query() {
             &Uuid::new_v4(),
             "Nested test schema",
             &org,
-            None,
             &[
                 (claim_1, "first", true, "OBJECT", false),
                 (claim_2, "first/second", true, "OBJECT", false),
@@ -649,7 +644,6 @@ async fn test_get_presentation_definition_dcql_array_all_query() {
             &Uuid::new_v4(),
             "Nested test schema",
             &org,
-            None,
             &[
                 (claim_1, "first", true, "OBJECT", true),
                 (claim_2, "first/second", true, "STRING", false),
@@ -786,7 +780,6 @@ async fn test_get_presentation_definition_dcql_array_all_mandatory_query() {
             &Uuid::new_v4(),
             "Nested test schema",
             &org,
-            None,
             &[
                 (claim_1, "first", true, "OBJECT", true),
                 (claim_2, "first/second", true, "STRING", false),
@@ -953,7 +946,6 @@ async fn test_get_presentation_definition_dcql_simple_w3c() {
         .create(
             "Simple test schema",
             &org,
-            None,
             TestingCreateSchemaParams {
                 schema_id: Some(schema_id.to_string()),
                 format: Some("JWT".into()),
@@ -1046,7 +1038,6 @@ async fn test_get_presentation_definition_dcql_no_selective_disclosure_inapplica
         .create(
             "Simple test schema",
             &org,
-            None,
             TestingCreateSchemaParams {
                 schema_id: Some(schema_id.to_string()),
                 format: Some("JWT".into()),
@@ -1134,7 +1125,6 @@ async fn test_get_presentation_definition_dcql_inapplicable_credential() {
             &Uuid::new_v4(),
             "Simple test schema",
             &org,
-            None,
             &[
                 (claim_1, "firstName", true, "STRING", false),
                 (claim_2, "isOver18", false, "BOOLEAN", false),
@@ -1230,7 +1220,6 @@ async fn test_get_presentation_definition_dcql_claim_sets() {
             &Uuid::new_v4(),
             "Simple test schema",
             &org,
-            None,
             &[
                 (claim_1, "firstName", true, "STRING", false),
                 (claim_2, "isOver18", false, "BOOLEAN", false),
@@ -1336,7 +1325,6 @@ async fn test_get_presentation_definition_dcql_claim_sets_disjoint_credentials()
             &Uuid::new_v4(),
             "Simple test schema",
             &org,
-            None,
             &[
                 (claim_1, "first", false, "STRING", false),
                 (claim_2, "second", false, "STRING", false),
@@ -1476,7 +1464,6 @@ async fn test_get_presentation_definition_dcql_metadata_value_matching() {
         .create(
             "Simple test schema",
             &org,
-            None,
             TestingCreateSchemaParams {
                 schema_id: Some(vct.to_owned()),
                 format: Some("SD_JWT_VC".into()),
@@ -1705,7 +1692,6 @@ async fn test_get_presentation_definition_dcql_multiple_applicable_credentials()
         .create(
             "Simple test schema",
             &org,
-            None,
             TestingCreateSchemaParams {
                 schema_id: Some(vct.to_string()),
                 format: Some("SD_JWT_VC".into()),
@@ -1854,7 +1840,6 @@ async fn test_get_presentation_definition_dcql_multiple() {
         .create(
             "Simple sd-jwt-vc schema",
             &org,
-            None,
             TestingCreateSchemaParams {
                 schema_id: Some(vct.to_string()),
                 format: Some("SD_JWT_VC".into()),
@@ -1875,7 +1860,6 @@ async fn test_get_presentation_definition_dcql_multiple() {
             &Uuid::new_v4(),
             "Simple mdoc schema",
             &org,
-            None,
             &[
                 (claim_1, "org.iso.18013.5.1", true, "OBJECT", false),
                 (claim_2, "test_1", true, "STRING", false),
@@ -2006,7 +1990,6 @@ async fn test_get_presentation_definition_dcql_no_claims() {
         .create(
             "Simple test schema",
             &org,
-            None,
             TestingCreateSchemaParams {
                 schema_id: Some(vct.to_string()),
                 format: Some("SD_JWT_VC".into()),
@@ -2085,7 +2068,6 @@ async fn test_get_presentation_definition_dcql_w3c_mixed_selective_disclosure() 
         .create(
             "Schema no SD",
             &org,
-            None,
             TestingCreateSchemaParams {
                 schema_id: Some(schema_id1.to_string()),
                 format: Some("JSON_LD_CLASSIC".into()),
@@ -2101,7 +2083,6 @@ async fn test_get_presentation_definition_dcql_w3c_mixed_selective_disclosure() 
         .create(
             "Schema with SD",
             &org,
-            None,
             TestingCreateSchemaParams {
                 schema_id: Some(schema_id2.to_string()),
                 format: Some("JSON_LD_BBSPLUS".into()),
@@ -2271,7 +2252,6 @@ async fn test_get_presentation_definition_dcql_value_match() {
             &Uuid::new_v4(),
             "Simple test schema",
             &org,
-            None,
             &[
                 (claim_1, "firstName", true, "STRING", false),
                 (claim_2, "isOver18", false, "BOOLEAN", false),
@@ -2409,7 +2389,6 @@ async fn test_get_presentation_definition_dcql_using_multiple_flag() {
             &Uuid::new_v4(),
             "Simple test schema",
             &org,
-            None,
             &[
                 (claim_1, "firstName", true, "STRING", false),
                 (claim_2, "isOver18", false, "BOOLEAN", false),
@@ -2611,7 +2590,6 @@ mod trusted_authorities {
             .create(
                 "Simple test schema",
                 &org,
-                None,
                 TestingCreateSchemaParams {
                     schema_id: Some(vct.to_string()),
                     format: Some("SD_JWT_VC".into()),
@@ -2726,7 +2704,6 @@ mod trusted_authorities {
             .create(
                 "Simple test schema",
                 &org,
-                None,
                 TestingCreateSchemaParams {
                     schema_id: Some(vct.to_string()),
                     format: Some("SD_JWT_VC".into()),
@@ -2838,7 +2815,6 @@ mod trusted_authorities {
             .create(
                 "Simple test schema",
                 &org,
-                None,
                 TestingCreateSchemaParams {
                     schema_id: Some(vct.to_string()),
                     format: Some("SD_JWT_VC".into()),
@@ -2932,7 +2908,6 @@ mod trusted_authorities {
             .create(
                 "Simple test schema",
                 &org,
-                None,
                 TestingCreateSchemaParams {
                     schema_id: Some(vct.to_string()),
                     format: Some("SD_JWT_VC".into()),

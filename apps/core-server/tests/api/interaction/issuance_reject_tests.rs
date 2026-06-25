@@ -14,7 +14,7 @@ async fn test_issuance_reject_openid4vci_notification_not_supported_by_issuer() 
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
 
     let interaction_data = dummy_interaction_data(&context, &credential_schema, Default::default());
@@ -65,7 +65,7 @@ async fn test_issuance_reject_openid4vci_with_notification() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
 
     let interaction_data = dummy_interaction_data(

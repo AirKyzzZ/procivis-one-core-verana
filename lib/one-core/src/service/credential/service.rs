@@ -247,9 +247,7 @@ impl CredentialService {
         }
 
         let is_issuer = credential.role == CredentialRole::Issuer;
-        if is_issuer
-            && (schema.revocation_method.is_some() || schema.allow_revocation == Some(true))
-        {
+        if is_issuer && schema.allow_revocation {
             throw_if_credential_state_eq(&credential, CredentialStateEnum::Accepted)?;
         }
 
@@ -347,6 +345,7 @@ impl CredentialService {
             trust_information,
             remaining_batch_item_count,
             self.credential_repository.as_ref(),
+            self.formatter_provider.as_ref(),
         )
         .await?;
 

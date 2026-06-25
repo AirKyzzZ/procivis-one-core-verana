@@ -34,7 +34,7 @@ async fn test_get_proof_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create_with_nested_claims("test", &organisation, None, Default::default())
+        .create_with_nested_claims("test", &organisation, Default::default())
         .await;
 
     // Select a root claim.
@@ -141,7 +141,7 @@ async fn test_get_proof_detached_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create_with_nested_claims("test", &organisation, None, Default::default())
+        .create_with_nested_claims("test", &organisation, Default::default())
         .await;
 
     //Select 2nd claim - a nested object
@@ -253,7 +253,7 @@ async fn test_get_proof_with_nested_claims() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create_with_nested_claims("test", &organisation, None, Default::default())
+        .create_with_nested_claims("test", &organisation, Default::default())
         .await;
 
     let proof_schema = context
@@ -364,7 +364,7 @@ async fn test_get_proof_with_empty_array() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create_with_array_claims("test", &organisation, None, Default::default())
+        .create_with_array_claims("test", &organisation, Default::default())
         .await;
 
     let proof_schema = context
@@ -471,7 +471,7 @@ async fn test_get_proof_with_array() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create_with_array_claims("test", &organisation, None, Default::default())
+        .create_with_array_claims("test", &organisation, Default::default())
         .await;
 
     let array_claim_id = key_to_claim_schema_id("namespace/root_array", &credential_schema).await;
@@ -686,7 +686,7 @@ async fn test_get_proof_with_nested_claims_and_root_field() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create_with_nested_claims_and_root_field("test", &organisation, None, Default::default())
+        .create_with_nested_claims_and_root_field("test", &organisation, Default::default())
         .await;
 
     let proof_schema = context
@@ -837,7 +837,6 @@ async fn test_get_proof_with_nested_optional_inputs() {
         .create(
             "test",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 claim_schemas: Some(vec![
                     obj_claim.clone(),
@@ -964,7 +963,7 @@ async fn test_get_proof_with_credentials() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
 
     let claim_schema = &credential_schema.claim_schemas.as_ref().await.unwrap()[0];
@@ -1233,7 +1232,7 @@ async fn test_get_proof_with_retain_date() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
 
     let claim_schema = &credential_schema.claim_schemas.as_ref().await.unwrap()[0];
@@ -1305,7 +1304,7 @@ async fn test_get_proof_with_deleted_claims() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
 
     let claim_schema = &credential_schema.claim_schemas.as_ref().await.unwrap()[0];
@@ -1434,7 +1433,7 @@ async fn test_get_proof_with_verifier_and_issuer_certificates() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create_with_nested_claims("test", &organisation, None, Default::default())
+        .create_with_nested_claims("test", &organisation, Default::default())
         .await;
 
     // Select a root claim.
@@ -1539,7 +1538,7 @@ async fn test_get_proof_with_credentials_returns_profiles() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
 
     let claim_schema = &credential_schema.claim_schemas.as_ref().await.unwrap()[0];

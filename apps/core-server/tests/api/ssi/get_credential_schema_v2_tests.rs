@@ -12,12 +12,7 @@ async fn test_ssi_get_credential_schema_v2_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create(
-            "credential-schema",
-            &organisation,
-            Some("BITSTRINGSTATUSLIST".into()),
-            Default::default(),
-        )
+        .create("credential-schema", &organisation, Default::default())
         .await;
 
     // WHEN
@@ -140,7 +135,7 @@ async fn test_ssi_get_credential_schema_v2_deleted_returns_not_found() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test schema", &organisation, None, Default::default())
+        .create("test schema", &organisation, Default::default())
         .await;
     context
         .db
@@ -166,12 +161,7 @@ async fn test_ssi_get_credential_schema_v2_by_format_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create(
-            "credential-schema",
-            &organisation,
-            Some("BITSTRINGSTATUSLIST".into()),
-            Default::default(),
-        )
+        .create("credential-schema", &organisation, Default::default())
         .await;
 
     // when
@@ -271,7 +261,7 @@ async fn test_ssi_get_credential_schema_v2_format_mismatch_returns_not_found() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("credential-schema", &organisation, None, Default::default())
+        .create("credential-schema", &organisation, Default::default())
         .await;
 
     // when — schema has JWT format, request uses MDOC

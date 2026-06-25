@@ -13,12 +13,7 @@ async fn test_reactivate_credential_with_bitstring_status_list_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create(
-            "test",
-            &organisation,
-            Some("BITSTRINGSTATUSLIST".into()),
-            Default::default(),
-        )
+        .create("test", &organisation, Default::default())
         .await;
     let credential = context
         .db

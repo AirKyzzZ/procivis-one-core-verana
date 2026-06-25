@@ -13,12 +13,7 @@ async fn test_import_credential_schema_fails_deactivated_organisation() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create(
-            "some credential schema",
-            &organisation1,
-            None,
-            Default::default(),
-        )
+        .create("some credential schema", &organisation1, Default::default())
         .await;
 
     let credential_schema = {
@@ -60,7 +55,6 @@ async fn test_import_credential_schema_success_with_same_name() {
         .create(
             "some credential schema",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 allow_suspension: Some(false),
                 ..Default::default()
@@ -128,7 +122,6 @@ async fn test_import_credential_schema_fail_tx_code_length_too_short() {
         .create(
             "schema",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 allow_suspension: Some(false),
                 transaction_code: Some(TransactionCode {

@@ -18,7 +18,6 @@ async fn test_get_json_ld_context_success() {
         .create(
             "test schema",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 format: Some(format.clone()),
                 ..Default::default()
@@ -92,7 +91,6 @@ async fn test_get_json_ld_context_with_nested_claims_success() {
         .create_with_nested_claims(
             "test schema",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 format: Some(format.clone()),
                 ..Default::default()
@@ -160,7 +158,6 @@ async fn test_get_json_ld_context_special_chars_success() {
         .create_special_chars(
             "test schema",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 format: Some(format.clone()),
                 ..Default::default()
@@ -203,7 +200,6 @@ async fn test_get_json_ld_context_credential_invalid_format() {
         .create(
             "test schema",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 format: Some("MDOC".into()),
                 ..Default::default()
@@ -234,7 +230,6 @@ async fn test_get_json_ld_context_by_format_success() {
         .create(
             "test schema",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 format: Some("JSON_LD_CLASSIC".into()),
                 ..Default::default()
@@ -297,7 +292,6 @@ async fn test_get_json_ld_context_by_format_mismatch_returns_bad_request() {
         .create(
             "test schema",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 format: Some("JSON_LD_CLASSIC".into()),
                 ..Default::default()
@@ -327,7 +321,6 @@ async fn test_get_json_ld_context_by_format_non_json_ld_format_returns_bad_reque
         .create(
             "test schema",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 format: Some("MDOC".into()),
                 ..Default::default()

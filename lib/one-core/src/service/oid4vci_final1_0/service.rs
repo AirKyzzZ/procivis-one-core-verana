@@ -1395,7 +1395,9 @@ impl OID4VCIFinal1_0Service {
                     "schema is None".to_string(),
                 ))?;
 
-        let revocation_method = match &schema.revocation_method {
+        let format = schema.format().await?;
+        let formatter = self.formatter_provider.get_credential_formatter(&format)?;
+        let revocation_method = match schema.revocation_method_id(formatter.as_ref()) {
             Some(method_id) => Some(
                 self.revocation_method_provider
                     .get_revocation_method(method_id)?,

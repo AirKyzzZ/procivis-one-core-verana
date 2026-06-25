@@ -7,6 +7,7 @@ use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::transaction_manager::TransactionManager;
 use crate::proto::wallet_instance::HolderWalletUnitProto;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::issuance_protocol::openid4vci_final1_0::service::get_protocol_base_url;
 use crate::provider::issuance_protocol::provider::IssuanceProtocolProvider;
@@ -45,6 +46,7 @@ pub struct OID4VCIFinal1_0Service {
     holder_wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
     identifier_creator: Arc<dyn IdentifierCreator>,
     issuer_metadata_cache: Arc<dyn CredentialIssuerMetadataFetcher>,
+    formatter_provider: Arc<dyn CredentialFormatterProvider>,
 }
 
 #[expect(clippy::too_many_arguments)]
@@ -66,6 +68,7 @@ impl OID4VCIFinal1_0Service {
         holder_wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
         identifier_creator: Arc<dyn IdentifierCreator>,
         issuer_metadata_cache: Arc<dyn CredentialIssuerMetadataFetcher>,
+        formatter_provider: Arc<dyn CredentialFormatterProvider>,
     ) -> Self {
         let protocol_base_url = core_base_url.as_ref().map(|url| get_protocol_base_url(url));
         Self {
@@ -87,6 +90,7 @@ impl OID4VCIFinal1_0Service {
             holder_wallet_unit_proto,
             identifier_creator,
             issuer_metadata_cache,
+            formatter_provider,
         }
     }
 
@@ -109,6 +113,7 @@ impl OID4VCIFinal1_0Service {
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
         holder_wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
         issuer_metadata_cache: Arc<dyn CredentialIssuerMetadataFetcher>,
+        formatter_provider: Arc<dyn CredentialFormatterProvider>,
     ) -> Self {
         Self {
             protocol_base_url,
@@ -129,6 +134,7 @@ impl OID4VCIFinal1_0Service {
             blob_storage_provider,
             holder_wallet_unit_proto,
             issuer_metadata_cache,
+            formatter_provider,
         }
     }
 }

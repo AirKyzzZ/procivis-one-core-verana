@@ -23,7 +23,7 @@ async fn test_create_proof_success_without_related_key() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
     let claim_schema = credential_schema
         .claim_schemas
@@ -84,7 +84,7 @@ async fn test_create_proof_wrong_identifier_type() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
     let claim_schema = credential_schema
         .claim_schemas
@@ -138,7 +138,7 @@ async fn test_create_proof_success_with_related_key() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
     let claim_schema = credential_schema
         .claim_schemas
@@ -316,7 +316,6 @@ async fn test_create_proof_mdoc_without_key_agreement_key() {
         .create(
             "test",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 format: Some("MDOC".into()),
                 schema_id: Some("org.iso.18013.5.1.mDL".to_string()),
@@ -417,7 +416,7 @@ async fn test_create_proof_success_without_key_agreement_key() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
     let claim_schema = credential_schema
         .claim_schemas
@@ -500,7 +499,7 @@ async fn test_create_proof_success_with_certificate() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
     let claim_schema = credential_schema
         .claim_schemas
@@ -585,7 +584,7 @@ async fn test_create_proof_certificate_without_authentication_role() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
     let claim_schema = credential_schema
         .claim_schemas
@@ -639,7 +638,7 @@ async fn test_create_proof_success_with_profile() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
     let claim_schema = credential_schema
         .claim_schemas
@@ -707,7 +706,7 @@ async fn test_create_proof_success_with_webhook_url() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
     let claim_schema = credential_schema
         .claim_schemas
@@ -769,7 +768,7 @@ async fn test_create_proof_fails_with_engagement_on_non_iso_mdl_protocol() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
     let claim_schema = credential_schema
         .claim_schemas
@@ -837,7 +836,7 @@ async fn test_create_proof_fails_with_iso_mdl_engagement_and_none_engagement() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
     let claim_schema = credential_schema
         .claim_schemas
@@ -906,7 +905,7 @@ async fn test_create_proof_fails_with_iso_mdl_engagement_and_invalid_engagement(
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
     let claim_schema = credential_schema
         .claim_schemas

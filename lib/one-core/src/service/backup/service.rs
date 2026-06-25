@@ -42,6 +42,7 @@ impl BackupService {
                 .error_while("fetching unexportable")?,
             &self.config,
             self.credential_repository.as_ref(),
+            self.formatter_provider.as_ref(),
         )
         .await?;
         self.backup_repository
@@ -178,6 +179,7 @@ impl BackupService {
                 .error_while("fetching unexportable")?,
             &self.config,
             self.credential_repository.as_ref(),
+            self.formatter_provider.as_ref(),
         )
         .await
     }

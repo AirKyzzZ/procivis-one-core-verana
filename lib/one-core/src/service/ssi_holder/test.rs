@@ -1776,7 +1776,7 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
         holder_identifier: None,
         schema: Some(crate::model::credential_schema::CredentialSchema {
             batch_size: None,
-            allow_revocation: None,
+            allow_revocation: false,
             id: credential_schema_id,
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
@@ -1802,7 +1802,6 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
                 .into(),
             }]
             .into(),
-            revocation_method: None,
             claim_schemas: vec![claim_schema].into(),
             organisation: dummy_organisation(organisation_id).into(),
             deleted_at: None,

@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 use mockall::predicate::eq;
 use serde_json::json;
@@ -70,31 +70,27 @@ async fn test_issuer_submit_succeeds() {
         organisation: dummy_organisation(None).into(),
     };
 
-    let credential = {
-        let mut cred = Credential {
-            state: CredentialStateEnum::Offered,
-            suspend_end_date: None,
-            holder_identifier: Some(Identifier {
-                did: Some(dummy_did()),
-                ..dummy_identifier()
+    let credential = Credential {
+        state: CredentialStateEnum::Offered,
+        suspend_end_date: None,
+        holder_identifier: Some(Identifier {
+            did: Some(dummy_did()),
+            ..dummy_identifier()
+        }),
+        issuer_identifier: Some(Identifier {
+            did: Some(Did {
+                keys: vec![RelatedKey {
+                    role: KeyRole::AssertionMethod,
+                    key: key.to_owned(),
+                    reference: "1".to_string(),
+                }]
+                .into(),
+                ..dummy_did()
             }),
-            issuer_identifier: Some(Identifier {
-                did: Some(Did {
-                    keys: vec![RelatedKey {
-                        role: KeyRole::AssertionMethod,
-                        key: key.to_owned(),
-                        reference: "1".to_string(),
-                    }]
-                    .into(),
-                    ..dummy_did()
-                }),
-                ..dummy_identifier()
-            }),
-            key: Some(key),
-            ..dummy_credential().await
-        };
-        cred.schema.as_mut().unwrap().revocation_method = Some("mock".into());
-        cred
+            ..dummy_identifier()
+        }),
+        key: Some(key),
+        ..dummy_credential().await
     };
 
     let credential_copy = credential.clone();
@@ -136,24 +132,29 @@ async fn test_issuer_submit_succeeds() {
             }])
         });
 
-    let mut revocation_method_provider = MockRevocationMethodProvider::new();
-    revocation_method_provider
-        .expect_get_revocation_method()
-        .with(eq::<RevocationMethodId>("mock".into()))
-        .once()
-        .return_once(move |_| Ok(Arc::new(revocation_method)));
-
     let mut formatter = MockCredentialFormatter::new();
     formatter
         .expect_format_credential()
         .once()
         .returning(|_, _| Ok("token".into()));
 
+    static REVOCATION_METHOD: LazyLock<RevocationMethodId> = LazyLock::new(|| "mock".into());
+    formatter
+        .expect_revocation_method_id()
+        .returning(|| Some(&*REVOCATION_METHOD));
+
+    let mut revocation_method_provider = MockRevocationMethodProvider::new();
+    revocation_method_provider
+        .expect_get_revocation_method()
+        .with(eq((*REVOCATION_METHOD).clone()))
+        .once()
+        .return_once(move |_| Ok(Arc::new(revocation_method)));
+
     let mut formatter_provider = MockCredentialFormatterProvider::new();
+    let formatter = Arc::new(formatter);
     formatter_provider
         .expect_get_credential_formatter()
-        .once()
-        .return_once(move |_| Ok(Arc::new(formatter)));
+        .returning(move |_| Ok(formatter.clone()));
 
     let mut key_provider = MockKeyProvider::new();
     key_provider
@@ -250,7 +251,7 @@ async fn generic_mdoc_credential(state: CredentialStateEnum) -> Credential {
             claim_mappings: Default::default(),
         }]
         .into(),
-        revocation_method: None,
+        allow_revocation: false,
         ..dummy_credential().await.schema.unwrap()
     };
     let credential_schema = backfill_default_translations(credential_schema, "en")
@@ -315,13 +316,14 @@ async fn test_issue_credential_for_mdoc_succeeds() {
         .expect_format_credential()
         .once()
         .returning(|_, _| Ok("token".into()));
+    formatter.expect_revocation_method_id().return_const(None);
 
     let mut formatter_provider = MockCredentialFormatterProvider::new();
+    let formatter = Arc::new(formatter);
     formatter_provider
         .expect_get_credential_formatter()
         .with(eq(CredentialFormat::from("MDOC")))
-        .once()
-        .return_once(move |_| Ok(Arc::new(formatter)));
+        .returning(move |_| Ok(formatter.clone()));
 
     let mut key_provider = MockKeyProvider::new();
     key_provider
@@ -451,13 +453,14 @@ async fn test_issue_credential_for_existing_mdoc_succeeds() {
         .expect_format_credential()
         .once()
         .returning(|_, _| Ok("token".into()));
+    formatter.expect_revocation_method_id().return_const(None);
 
     let mut formatter_provider = MockCredentialFormatterProvider::new();
+    let formatter = Arc::new(formatter);
     formatter_provider
         .expect_get_credential_formatter()
         .with(eq(format))
-        .once()
-        .return_once(move |_| Ok(Arc::new(formatter)));
+        .returning(move |_| Ok(formatter.clone()));
 
     let mut key_provider = MockKeyProvider::new();
     key_provider
@@ -751,7 +754,7 @@ async fn dummy_credential() -> Credential {
             backfill_default_translations(
                 CredentialSchema {
                     batch_size: None,
-                    allow_revocation: None,
+                    allow_revocation: true,
                     id: credential_schema_id,
                     imported_source_url: "CORE_URL".to_string(),
                     deleted_at: None,
@@ -769,7 +772,6 @@ async fn dummy_credential() -> Credential {
                         claim_mappings: Default::default(),
                     }]
                     .into(),
-                    revocation_method: None,
                     claim_schemas: vec![ClaimSchema {
                         id: claim_schema_id,
                         key: "key".to_string(),

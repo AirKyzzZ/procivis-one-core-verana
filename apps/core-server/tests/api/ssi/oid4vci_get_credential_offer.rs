@@ -17,7 +17,7 @@ async fn test_get_credential_offer_success_jwt() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
 
     let interaction = context
@@ -87,7 +87,6 @@ async fn test_get_credential_offer_success_with_tx_code() {
         .create(
             "test",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 transaction_code: Some(TransactionCode {
                     r#type: TransactionCodeType::Numeric,
@@ -171,7 +170,7 @@ async fn test_get_credential_offer_success_certificate_identifier() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
 
     let interaction = context
@@ -241,7 +240,6 @@ async fn test_get_credential_offer_success_mdoc() {
         .create_with_nested_claims(
             "test",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 format: Some("MDOC".into()),
                 ..Default::default()
@@ -331,7 +329,7 @@ async fn test_get_credential_offer_not_found_batch_item() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
 
     let interaction = context

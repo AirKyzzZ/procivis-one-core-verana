@@ -12,7 +12,6 @@ async fn test_db_schema_credential_schema() {
         "last_modified",
         "deleted_at",
         "name",
-        "revocation_method",
         "organisation_id",
         "layout_properties",
         "layout_type",
@@ -81,10 +80,6 @@ async fn test_db_schema_credential_schema() {
         .nullable(false)
         .default(None);
     credential_schema
-        .column("revocation_method")
-        .r#type(ColumnType::String(None))
-        .nullable(true);
-    credential_schema
         .column("organisation_id")
         .r#type(ColumnType::Uuid)
         .nullable(false)
@@ -137,7 +132,8 @@ async fn test_db_schema_credential_schema() {
     credential_schema
         .column("allow_revocation")
         .r#type(ColumnType::Boolean)
-        .nullable(true);
+        .nullable(false)
+        .default(None);
     credential_schema
         .column("embedded_disclosure_policy")
         .r#type(ColumnType::Text)

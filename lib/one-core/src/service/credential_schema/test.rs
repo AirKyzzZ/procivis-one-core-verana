@@ -92,7 +92,7 @@ fn generic_credential_schema() -> CredentialSchema {
     let claim_schema_id = Uuid::new_v4().into();
     CredentialSchema {
         batch_size: None,
-        allow_revocation: None,
+        allow_revocation: false,
         id: credential_schema_id,
         deleted_at: None,
         imported_source_url: "CORE_URL".to_string(),
@@ -110,7 +110,6 @@ fn generic_credential_schema() -> CredentialSchema {
             claim_mappings: Default::default(),
         }]
         .into(),
-        revocation_method: None,
         claim_schemas: vec![ClaimSchema {
             id: claim_schema_id,
             key: "".to_string(),

@@ -163,8 +163,9 @@ impl VerificationProtocol for OpenID4VP20HTTP {
             presentation_definition,
             proof,
             interaction_data.client_metadata,
-            &*self.credential_repository,
+            self.credential_repository.as_ref(),
             &self.config,
+            self.credential_formatter_provider.as_ref(),
         )
         .await
     }

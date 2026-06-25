@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::config::core_config::CoreConfig;
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::repository::backup_repository::BackupRepository;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::history_repository::HistoryRepository;
@@ -18,6 +19,7 @@ pub struct BackupService {
     history_repository: Arc<dyn HistoryRepository>,
     organisation_repository: Arc<dyn OrganisationRepository>,
     credential_repository: Arc<dyn CredentialRepository>,
+    formatter_provider: Arc<dyn CredentialFormatterProvider>,
     config: Arc<CoreConfig>,
 }
 
@@ -27,6 +29,7 @@ impl BackupService {
         history_repository: Arc<dyn HistoryRepository>,
         organisation_repository: Arc<dyn OrganisationRepository>,
         credential_repository: Arc<dyn CredentialRepository>,
+        formatter_provider: Arc<dyn CredentialFormatterProvider>,
         config: Arc<CoreConfig>,
     ) -> Self {
         Self {
@@ -35,6 +38,7 @@ impl BackupService {
             organisation_repository,
             config,
             credential_repository,
+            formatter_provider,
         }
     }
 }

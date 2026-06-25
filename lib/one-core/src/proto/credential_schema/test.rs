@@ -199,7 +199,7 @@ async fn test_importer_import_credential_schema_success() {
     let credential_schema_id = Uuid::new_v4().into();
     let credential_schema = CredentialSchema {
         batch_size: None,
-        allow_revocation: None,
+        allow_revocation: false,
         id: credential_schema_id,
         deleted_at: None,
         imported_source_url: "http://source.com".to_string(),
@@ -217,7 +217,6 @@ async fn test_importer_import_credential_schema_success() {
             claim_mappings: Default::default(),
         }]
         .into(),
-        revocation_method: None,
         claim_schemas: vec![ClaimSchema {
             id: Uuid::new_v4().into(),
             key: "claim1".to_string(),
@@ -272,7 +271,7 @@ async fn test_importer_import_credential_schema_success_duplicate_name() {
     let credential_schema_id = Uuid::new_v4().into();
     let mut existing_schema = CredentialSchema {
         batch_size: None,
-        allow_revocation: None,
+        allow_revocation: false,
         id: credential_schema_id,
         deleted_at: None,
         imported_source_url: "http://source.com".to_string(),
@@ -290,7 +289,6 @@ async fn test_importer_import_credential_schema_success_duplicate_name() {
             claim_mappings: Default::default(),
         }]
         .into(),
-        revocation_method: None,
         claim_schemas: vec![].into(),
         organisation: dummy_organisation(None).into(),
         layout_type: LayoutType::Card,
@@ -347,7 +345,7 @@ async fn test_importer_import_credential_schema_failure_duplicate_schema_id() {
     let credential_schema_id = Uuid::new_v4().into();
     let existing_schema = CredentialSchema {
         batch_size: None,
-        allow_revocation: None,
+        allow_revocation: false,
         id: credential_schema_id,
         deleted_at: None,
         imported_source_url: "http://source.com".to_string(),
@@ -365,7 +363,6 @@ async fn test_importer_import_credential_schema_failure_duplicate_schema_id() {
             claim_mappings: Default::default(),
         }]
         .into(),
-        revocation_method: None,
         claim_schemas: vec![].into(),
         organisation: dummy_organisation(None).into(),
         layout_type: LayoutType::Card,

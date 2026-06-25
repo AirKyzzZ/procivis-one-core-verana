@@ -16,6 +16,7 @@ use crate::model::identifier::{Identifier, IdentifierType};
 use crate::model::key::Key;
 use crate::model::proof::Proof;
 use crate::provider::credential_formatter::model::AuthenticationFn;
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::key_algorithm::KeyAlgorithm;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
@@ -117,6 +118,7 @@ pub(crate) async fn get_presentation_definition_with_local_credentials(
     client_metadata: Option<OpenID4VPClientMetadata>,
     credential_repository: &dyn CredentialRepository,
     config: &CoreConfig,
+    formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError> {
     let mut credential_groups: Vec<CredentialGroup> = vec![];
     let mut group_id_to_schema_id: HashMap<String, String> = HashMap::new();
@@ -209,6 +211,7 @@ pub(crate) async fn get_presentation_definition_with_local_credentials(
         convert_inner(credential_groups),
         config,
         credential_repository,
+        formatter_provider,
     )
     .await
 }

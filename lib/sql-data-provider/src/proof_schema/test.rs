@@ -191,7 +191,7 @@ async fn test_create_proof_schema_already_exists() {
                 }]),
                 credential_schema: Some(CredentialSchema {
                     batch_size: None,
-                    allow_revocation: None,
+                    allow_revocation: false,
                     id: credential_schema_id,
                     deleted_at: None,
                     key_storage_security: Some(KeyStorageSecurity::Basic),
@@ -209,7 +209,6 @@ async fn test_create_proof_schema_already_exists() {
                         claim_mappings: Default::default(),
                     }]
                     .into(),
-                    revocation_method: None,
                     claim_schemas: Default::default(),
                     organisation: dummy_organisation(None).into(),
                     layout_type: LayoutType::Card,
@@ -246,7 +245,7 @@ async fn test_create_proof_schema_success() {
         None,
         organisation_id,
         "cred-schema",
-        None,
+        false,
         Some(KeyStorageSecurity::Basic.into()),
     )
     .await
@@ -306,7 +305,7 @@ async fn test_create_proof_schema_success() {
                 }]),
                 credential_schema: Some(CredentialSchema {
                     batch_size: None,
-                    allow_revocation: None,
+                    allow_revocation: false,
                     id: credential_schema_id,
                     deleted_at: None,
                     key_storage_security: Some(KeyStorageSecurity::Basic),
@@ -324,7 +323,6 @@ async fn test_create_proof_schema_success() {
                         claim_mappings: Default::default(),
                     }]
                     .into(),
-                    revocation_method: None,
                     claim_schemas: Default::default(),
                     organisation: dummy_organisation(None).into(),
                     layout_type: LayoutType::Card,
@@ -529,7 +527,7 @@ async fn test_get_proof_schema_with_relations() {
         .returning(|id| {
             Ok(Some(CredentialSchema {
                 batch_size: None,
-                allow_revocation: None,
+                allow_revocation: false,
                 id: id.to_owned(),
                 deleted_at: None,
                 key_storage_security: Some(KeyStorageSecurity::Basic),
@@ -547,7 +545,6 @@ async fn test_get_proof_schema_with_relations() {
                     claim_mappings: Default::default(),
                 }]
                 .into(),
-                revocation_method: None,
                 claim_schemas: Default::default(),
                 organisation: dummy_organisation(None).into(),
                 layout_type: LayoutType::Card,
@@ -577,7 +574,7 @@ async fn test_get_proof_schema_with_relations() {
         None,
         organisation_id,
         "credential schema",
-        None,
+        false,
         Some(KeyStorageSecurity::Basic.into()),
     )
     .await
@@ -683,7 +680,7 @@ async fn test_get_proof_schema_with_input_proof_relations() {
         .returning(|id| {
             Ok(Some(CredentialSchema {
                 batch_size: None,
-                allow_revocation: None,
+                allow_revocation: false,
                 id: id.to_owned(),
                 deleted_at: None,
                 key_storage_security: Some(KeyStorageSecurity::Basic),
@@ -701,7 +698,6 @@ async fn test_get_proof_schema_with_input_proof_relations() {
                     claim_mappings: Default::default(),
                 }]
                 .into(),
-                revocation_method: None,
                 claim_schemas: Default::default(),
                 organisation: dummy_organisation(None).into(),
                 layout_type: LayoutType::Card,
@@ -731,7 +727,7 @@ async fn test_get_proof_schema_with_input_proof_relations() {
         None,
         organisation_id,
         "credential schema",
-        None,
+        false,
         Some(KeyStorageSecurity::Basic.into()),
     )
     .await
@@ -746,7 +742,7 @@ async fn test_get_proof_schema_with_input_proof_relations() {
         None,
         organisation_id,
         "credential schema2",
-        None,
+        false,
         Some(KeyStorageSecurity::Basic.into()),
     )
     .await
@@ -1159,14 +1155,13 @@ async fn test_get_proof_schema_list_filter_formats() {
     let date_now = one_core::clock::now_utc();
     let cred_schema_jwt_id = crate::entity::credential_schema::ActiveModel {
         batch_size: Set(None),
-        allow_revocation: Set(None),
+        allow_revocation: Set(false),
         id: Set(Uuid::new_v4().into()),
         created_date: Set(date_now),
         last_modified: Set(date_now),
         name: Set("jwt".to_string()),
         organisation_id: Set(organisation_id),
         deleted_at: Set(None),
-        revocation_method: Set(None),
         key_storage_security: Set(None),
         layout_type: Set(LayoutType::Card.into()),
         layout_properties: Set(None),
@@ -1197,14 +1192,13 @@ async fn test_get_proof_schema_list_filter_formats() {
 
     let cred_schema_mdoc_id = crate::entity::credential_schema::ActiveModel {
         batch_size: Set(None),
-        allow_revocation: Set(None),
+        allow_revocation: Set(false),
         id: Set(Uuid::new_v4().into()),
         created_date: Set(date_now),
         last_modified: Set(date_now),
         name: Set("mdoc".to_string()),
         organisation_id: Set(organisation_id),
         deleted_at: Set(None),
-        revocation_method: Set(None),
         key_storage_security: Set(None),
         layout_type: Set(LayoutType::Card.into()),
         layout_properties: Set(None),

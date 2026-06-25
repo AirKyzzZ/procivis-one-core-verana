@@ -199,7 +199,6 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
             created_date: now,
             last_modified: now,
             name: dto.schema.name,
-            revocation_method: None,
             key_storage_security: dto.schema.key_storage_security,
             layout_type: dto.schema.layout_type.unwrap_or(LayoutType::Card),
             layout_properties: self.parse_layout_properties(
@@ -218,7 +217,7 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
             formats: formats.into(),
             transaction_code: convert_inner(dto.schema.transaction_code),
             batch_size: dto.schema.batch_size,
-            allow_revocation: dto.schema.allow_revocation,
+            allow_revocation: dto.schema.allow_revocation.unwrap_or(false),
             translations: match dto.schema.translations {
                 Some(translations) => {
                     schema_translations_from_dto(credential_schema_id, translations, now).into()

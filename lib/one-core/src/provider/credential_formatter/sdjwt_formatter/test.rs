@@ -1291,7 +1291,7 @@ async fn test_parse_credential() {
     assert_eq!(ch_schema_id, ut_schema_id); // Both array elements share same schema ID
 
     // Verify revocation method
-    assert_eq!(schema.revocation_method, Some("BITSTRINGSTATUSLIST".into()));
+    assert_eq!(schema.allow_revocation, true);
 }
 
 #[tokio::test]

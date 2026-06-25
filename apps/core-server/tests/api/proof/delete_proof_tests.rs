@@ -291,7 +291,7 @@ async fn setup_proof_schema(context: &TestContext, organisation: &Organisation) 
     let credential_schema = context
         .db
         .credential_schemas
-        .create_with_nested_claims("test", organisation, None, Default::default())
+        .create_with_nested_claims("test", organisation, Default::default())
         .await;
 
     // Select a root claim.

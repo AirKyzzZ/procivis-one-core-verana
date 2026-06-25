@@ -64,7 +64,7 @@ async fn setup_empty() -> TestSetup {
         None,
         organisation_id,
         "credential schema",
-        None,
+        false,
         Some(KeyStorageSecurity::Basic),
     )
     .await
@@ -97,7 +97,7 @@ async fn setup_empty() -> TestSetup {
 
     let credential_schema = CredentialSchema {
         batch_size: None,
-        allow_revocation: None,
+        allow_revocation: false,
         id: credential_schema_id,
         deleted_at: None,
         imported_source_url: "CORE_URL".to_string(),
@@ -115,7 +115,7 @@ async fn setup_empty() -> TestSetup {
         }]
         .into(),
         key_storage_security: Some(KeyStorageSecurity::Basic.into()),
-        revocation_method: None,
+
         claim_schemas: new_claim_schemas
             .into_iter()
             .map(|schema| ClaimSchema {

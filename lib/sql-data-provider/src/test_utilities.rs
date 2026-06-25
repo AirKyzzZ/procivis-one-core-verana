@@ -155,19 +155,18 @@ pub async fn insert_credential_schema_to_database(
     deleted_at: Option<OffsetDateTime>,
     organisation_id: OrganisationId,
     name: &str,
-    revocation_method: impl Into<Option<RevocationMethodId>>,
+    allow_revocation: bool,
     key_storage_security: Option<KeyStorageSecurity>,
 ) -> Result<CredentialSchemaId, DbErr> {
     let new_id: CredentialSchemaId = Uuid::new_v4().into();
     let schema = credential_schema::ActiveModel {
         batch_size: Set(None),
-        allow_revocation: Set(None),
+        allow_revocation: Set(allow_revocation),
         id: Set(new_id.to_owned()),
         imported_source_url: Set("CORE_URL".to_string()),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         name: Set(name.to_owned()),
-        revocation_method: Set(revocation_method.into()),
         organisation_id: Set(organisation_id),
         key_storage_security: Set(key_storage_security),
         deleted_at: Set(deleted_at),

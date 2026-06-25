@@ -32,7 +32,7 @@ async fn test_get_credential_schema_v2_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test schema", &organisation, None, Default::default())
+        .create("test schema", &organisation, Default::default())
         .await;
 
     // WHEN
@@ -194,7 +194,7 @@ async fn test_get_credential_schema_v2_deleted_returns_not_found() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test schema", &organisation, None, Default::default())
+        .create("test schema", &organisation, Default::default())
         .await;
     context
         .db

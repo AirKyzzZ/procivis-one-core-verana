@@ -161,7 +161,7 @@ async fn test_presentation_reject_ok() {
                 claim_schemas: None,
                 credential_schema: Some(CredentialSchema {
                     batch_size: None,
-                    allow_revocation: None,
+                    allow_revocation: false,
                     id: credential_schema_id,
                     created_date: crate::clock::now_utc(),
                     imported_source_url: "CORE_URL".to_string(),
@@ -178,7 +178,6 @@ async fn test_presentation_reject_ok() {
                         claim_mappings: Default::default(),
                     }]
                     .into(),
-                    revocation_method: None,
                     key_storage_security: None,
                     layout_type: LayoutType::Card,
                     layout_properties: None,
@@ -358,7 +357,7 @@ async fn test_get_presentation_definition_ok() {
     let credential_schema = backfill_default_translations(
         CredentialSchema {
             batch_size: None,
-            allow_revocation: None,
+            allow_revocation: false,
             id: credential_schema_id,
             created_date: crate::clock::now_utc(),
             imported_source_url: "CORE_URL".to_string(),
@@ -374,7 +373,6 @@ async fn test_get_presentation_definition_ok() {
                 claim_mappings: Default::default(),
             }]
             .into(),
-            revocation_method: None,
             layout_type: LayoutType::Card,
             organisation: dummy_organisation(Some(organisation_id)).into(),
             layout_properties: None,
@@ -491,6 +489,15 @@ async fn test_get_presentation_definition_ok() {
         .expect_get_credential()
         .return_once(move |_, _| Ok(Some(credential)));
 
+    let mut formatter = MockCredentialFormatter::default();
+    formatter.expect_revocation_method_id().return_const(None);
+
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    let formatter = Arc::new(formatter);
+    formatter_provider
+        .expect_get_credential_formatter()
+        .returning(move |_| Ok(formatter.clone()));
+
     let service = IsoMdl::new(
         "ISO_MDL".to_string(),
         Arc::new(generic_config().core),
@@ -499,7 +506,7 @@ async fn test_get_presentation_definition_ok() {
         Arc::new(MockKeyProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(MockCredentialSchemaRepository::new()),
-        Arc::new(MockCredentialFormatterProvider::new()),
+        Arc::new(formatter_provider),
         Arc::new(MockTrustInformationProvider::new()),
         Arc::new(MockWRPValidator::new()),
         None,
@@ -752,7 +759,7 @@ async fn test_get_presentation_definition_v2() {
     let credential_schema = backfill_default_translations(
         CredentialSchema {
             batch_size: None,
-            allow_revocation: None,
+            allow_revocation: false,
             id: credential_schema_id,
             created_date: crate::clock::now_utc(),
             imported_source_url: "CORE_URL".to_string(),
@@ -768,7 +775,6 @@ async fn test_get_presentation_definition_v2() {
                 claim_mappings: claim_mappings.into(),
             }]
             .into(),
-            revocation_method: None,
             layout_type: LayoutType::Card,
             organisation: dummy_organisation(Some(organisation_id)).into(),
             layout_properties: None,
@@ -898,10 +904,10 @@ async fn test_get_presentation_definition_v2() {
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     formatter_provider
         .expect_get_credential_formatter()
-        .once()
-        .return_once(|_| {
+        .returning(|_| {
             let mut formatter = MockCredentialFormatter::new();
             formatter.expect_user_claims_path().return_const(vec![]);
+            formatter.expect_revocation_method_id().return_const(None);
 
             Ok(Arc::new(formatter))
         });

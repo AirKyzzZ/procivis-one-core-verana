@@ -14,7 +14,7 @@ async fn test_share_credential_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
     let credential = context
         .db
@@ -52,7 +52,7 @@ async fn test_share_credential_failed_deleted_credential() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
     let credential = context
         .db
@@ -86,7 +86,6 @@ async fn test_share_credential_with_tx_code() {
         .create(
             "test",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 transaction_code: Some(TransactionCode {
                     r#type: TransactionCodeType::Numeric,

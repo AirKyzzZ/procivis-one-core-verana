@@ -1,6 +1,8 @@
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
+use mockall::predicate::eq;
+use shared_types::RevocationMethodId;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
@@ -77,6 +79,11 @@ async fn test_task_holder_check_credential_status_being_revoked() {
             })
         });
 
+    static REVOCATION_METHOD: LazyLock<RevocationMethodId> = LazyLock::new(|| "mock".into());
+    formatter
+        .expect_revocation_method_id()
+        .returning(|| Some(&*REVOCATION_METHOD));
+
     revocation_method
         .expect_check_credential_revocation_status()
         .returning(|_, _, _, _| Ok(RevocationState::Revoked));
@@ -89,6 +96,7 @@ async fn test_task_holder_check_credential_status_being_revoked() {
     let revocation_method = Arc::new(revocation_method);
     revocation_method_provider
         .expect_get_revocation_method()
+        .with(eq((*REVOCATION_METHOD).clone()))
         .returning(move |_| Ok(revocation_method.clone()));
 
     let credential = Credential {
@@ -278,7 +286,7 @@ fn generic_credential() -> Credential {
         holder_identifier: None,
         schema: Some(CredentialSchema {
             batch_size: None,
-            allow_revocation: None,
+            allow_revocation: false,
             id: credential_schema_id,
             deleted_at: None,
             imported_source_url: "CORE_URL".to_string(),
@@ -296,7 +304,6 @@ fn generic_credential() -> Credential {
                 claim_mappings: Default::default(),
             }]
             .into(),
-            revocation_method: None,
             claim_schemas: vec![claim_schema].into(),
             organisation: organisation.into(),
             layout_type: LayoutType::Card,

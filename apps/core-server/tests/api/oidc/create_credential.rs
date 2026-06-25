@@ -82,7 +82,6 @@ async fn test_post_issuer_credential_in_parallel() {
     } = issuer_setup(None).await;
 
     let PostCredentialTestParams {
-        revocation_method,
         use_kid_in_proof,
         credential_format,
         ..
@@ -95,7 +94,6 @@ async fn test_post_issuer_credential_in_parallel() {
         .create(
             "schema-1",
             &organisation,
-            revocation_method.map(|v| v.into()),
             TestingCreateSchemaParams {
                 format: credential_format,
                 schema_id: Some(schema_id.clone()),
@@ -201,7 +199,6 @@ async fn test_post_issuer_credential_fail_expired_access_token() {
 #[tokio::test]
 async fn test_post_issuer_credential_with_bitstring_revocation_method() {
     let params = PostCredentialTestParams {
-        revocation_method: Some("BITSTRINGSTATUSLIST"),
         use_kid_in_proof: true,
         ..Default::default()
     };
@@ -225,7 +222,6 @@ async fn test_post_issuer_credential_with_bitstring_in_parallel() {
         .create(
             "schema-1",
             &organisation,
-            Some("BITSTRINGSTATUSLIST".into()),
             TestingCreateSchemaParams {
                 schema_id: Some(schema_id.clone()),
                 ..Default::default()
@@ -337,7 +333,6 @@ async fn test_post_issuer_credential_with_tokenstatuslist_in_parallel() {
         .create(
             "schema-1",
             &organisation,
-            Some("TOKENSTATUSLIST".into()),
             TestingCreateSchemaParams {
                 format: Some("SD_JWT_VC".into()),
                 schema_id: Some(schema_id.clone()),
@@ -442,7 +437,6 @@ async fn test_post_issuer_credential_with_bitstring_revocation_method_and_existi
 
     let issuer_identifier_id = issuer_setup.issuer_identifier.id;
     let params = PostCredentialTestParams {
-        revocation_method: Some("BITSTRINGSTATUSLIST"),
         use_kid_in_proof: true,
         ..Default::default()
     };
@@ -602,8 +596,7 @@ enum NonceMode {
 }
 
 #[derive(Default)]
-struct PostCredentialTestParams<'a> {
-    revocation_method: Option<&'a str>,
+struct PostCredentialTestParams {
     use_kid_in_proof: bool,
     nonce_mode: NonceMode,
     expect_failure: bool,
@@ -613,7 +606,7 @@ struct PostCredentialTestParams<'a> {
 }
 
 async fn test_post_issuer_credential_with(
-    test_params: PostCredentialTestParams<'_>,
+    test_params: PostCredentialTestParams,
     context: Option<TestIssuerSetup>,
 ) -> (TestContext, CredentialId) {
     let TestIssuerSetup {
@@ -630,7 +623,6 @@ async fn test_post_issuer_credential_with(
     };
 
     let PostCredentialTestParams {
-        revocation_method,
         use_kid_in_proof,
         nonce_mode,
         expect_failure,
@@ -648,7 +640,6 @@ async fn test_post_issuer_credential_with(
                 .create(
                     "schema-1",
                     &organisation,
-                    revocation_method.map(|v| v.into()),
                     TestingCreateSchemaParams {
                         format: credential_format,
                         schema_id: Some(schema_id.clone()),
@@ -842,7 +833,6 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
             &Uuid::new_v4(),
             "schema-1",
             &organisation,
-            None,
             &new_claim_schemas,
             "MDOC",
             "schema-id",
@@ -943,7 +933,6 @@ async fn test_post_issuer_credential_jwt_vc_v2_mapped_claimed() {
         .create(
             "schema-1",
             &context.organisation,
-            None,
             TestingCreateSchemaParams {
                 format: params.credential_format.clone(),
                 claim_mappings: Some(hashmap! {

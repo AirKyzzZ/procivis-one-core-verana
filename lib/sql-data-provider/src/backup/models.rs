@@ -1,9 +1,7 @@
 use one_core::model::credential_schema::CredentialSchemaName;
 use sea_orm::FromQueryResult;
 use serde::Deserialize;
-use shared_types::{
-    BlobId, CredentialId, CredentialSchemaId, IdentifierId, OrganisationId, RevocationMethodId,
-};
+use shared_types::{BlobId, CredentialId, CredentialSchemaId, IdentifierId, OrganisationId};
 use time::OffsetDateTime;
 
 use crate::entity::credential::{CredentialRole, CredentialState, CredentialType};
@@ -33,7 +31,6 @@ pub struct UnexportableCredentialModel {
     pub credential_schema_created_date: OffsetDateTime,
     pub credential_schema_last_modified: OffsetDateTime,
     pub credential_schema_name: CredentialSchemaName,
-    pub credential_schema_revocation_method: Option<RevocationMethodId>,
     pub credential_schema_key_storage_security: Option<KeyStorageSecurity>,
     pub credential_schema_imported_source_url: String,
     pub credential_schema_allow_suspension: bool,
@@ -42,7 +39,7 @@ pub struct UnexportableCredentialModel {
     pub credential_schema_transaction_code_length: Option<i32>,
     pub credential_schema_transaction_code_description: Option<String>,
     pub credential_schema_batch_size: Option<i32>,
-    pub credential_schema_allow_revocation: Option<bool>,
+    pub credential_schema_allow_revocation: bool,
     pub credential_schema_embedded_disclosure_policy: Option<String>,
     pub credential_schema_layout_type: LayoutType,
 

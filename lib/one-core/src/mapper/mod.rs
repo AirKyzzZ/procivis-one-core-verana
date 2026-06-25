@@ -584,7 +584,7 @@ mod tests {
             &mappings,
             CredentialSchema {
                 batch_size: None,
-                allow_revocation: None,
+                allow_revocation: false,
                 id: credential_schema_id,
                 deleted_at: None,
                 created_date: crate::clock::now_utc(),
@@ -600,7 +600,6 @@ mod tests {
                     claim_mappings: Default::default(),
                 }]
                 .into(),
-                revocation_method: None,
                 key_storage_security: Some(KeyStorageSecurity::Basic),
                 layout_type: LayoutType::Card,
                 layout_properties: None,

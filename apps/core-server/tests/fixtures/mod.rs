@@ -52,7 +52,7 @@ use sea_orm::{ConnectionTrait, DatabaseConnection, DbBackend, Statement};
 use secrecy::{SecretSlice, SecretString};
 use shared_types::{
     BlobId, ClaimSchemaId, CredentialFormat, CredentialId, CredentialSchemaId, DidId, DidMethodId,
-    DidValue, EntityId, IdentifierId, InteractionId, KeyId, ProofId, RevocationMethodId,
+    DidValue, EntityId, IdentifierId, InteractionId, KeyId, ProofId,
 };
 use similar_asserts::assert_eq;
 use sql_data_provider::test_utilities::*;
@@ -615,7 +615,7 @@ pub struct TestingCredentialSchemaParams {
     pub name: Option<String>,
     pub format: Option<CredentialFormat>,
     pub key_storage_security: Option<Option<KeyStorageSecurity>>,
-    pub revocation_method: Option<RevocationMethodId>,
+    pub allow_revocation: Option<bool>,
     pub layout_type: Option<LayoutType>,
     pub layout_properties: Option<LayoutProperties>,
     pub schema_id: Option<String>,
@@ -658,7 +658,7 @@ pub async fn create_credential_schema(
     };
     let mut credential_schema = CredentialSchema {
         batch_size: None,
-        allow_revocation: None,
+        allow_revocation: params.allow_revocation.unwrap_or(true),
         id,
         created_date: params.created_date.unwrap_or(now),
         imported_source_url: "CORE_URL".to_string(),
@@ -677,7 +677,6 @@ pub async fn create_credential_schema(
             claim_mappings: vec![claim_schema_mapping].into(),
         }]
         .into(),
-        revocation_method: params.revocation_method,
         claim_schemas: vec![claim_schema].into(),
         layout_type: params.layout_type.unwrap_or(LayoutType::Card),
         layout_properties: params.layout_properties,
@@ -704,7 +703,7 @@ pub async fn create_credential_schema_with_claims(
     db_conn: &DbConn,
     name: &str,
     organisation: &Organisation,
-    revocation_method: impl Into<Option<RevocationMethodId>>,
+    allow_revocation: bool,
     claims: &[(Uuid, &str, bool, &str, bool)],
 ) -> CredentialSchema {
     let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
@@ -727,7 +726,7 @@ pub async fn create_credential_schema_with_claims(
     let format_id = Uuid::new_v4().into();
     let mut credential_schema = CredentialSchema {
         batch_size: None,
-        allow_revocation: None,
+        allow_revocation,
         id: id.into(),
         imported_source_url: "CORE_URL".to_string(),
         created_date: get_dummy_date(),
@@ -758,7 +757,6 @@ pub async fn create_credential_schema_with_claims(
                 .into(),
         }]
         .into(),
-        revocation_method: revocation_method.into(),
         claim_schemas: claim_schemas.into(),
         layout_type: LayoutType::Card,
         layout_properties: None,

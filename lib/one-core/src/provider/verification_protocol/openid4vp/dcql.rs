@@ -239,6 +239,7 @@ pub(crate) async fn get_presentation_definition_v2(
                 None,
                 remaining_batch_item_count,
                 credential_repository,
+                formatter_provider,
             )
             .await
             .error_while("creating credential detail")?;

@@ -42,10 +42,7 @@ pub struct CredentialSchema {
 
     pub embedded_disclosure_policy: Option<String>,
 
-    /// only specified for the v1 credential schemas
-    pub revocation_method: Option<RevocationMethodId>,
-    /// only specified for the v2 credential schemas
-    pub allow_revocation: Option<bool>,
+    pub allow_revocation: bool,
     pub allow_suspension: bool,
 
     pub claim_schemas: RelatedVec<ClaimSchema>,
@@ -114,13 +111,7 @@ impl CredentialSchema {
         &'a self,
         format: &'a dyn CredentialFormatter,
     ) -> Option<&'a RevocationMethodId> {
-        if let Some(revocation_method) = &self.revocation_method {
-            return Some(revocation_method);
-        }
-
-        if let Some(allow_revocation) = self.allow_revocation
-            && (allow_revocation || self.allow_suspension)
-        {
+        if self.allow_revocation || self.allow_suspension {
             return format.revocation_method_id();
         }
 
@@ -254,7 +245,6 @@ pub type CredentialSchemaListQuery = ListQuery<
 #[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct UpdateCredentialSchemaRequest {
     pub id: CredentialSchemaId,
-    pub revocation_method: Option<Option<RevocationMethodId>>,
     pub claim_schemas: Option<Vec<ClaimSchema>>,
     pub claim_mappings: Option<Vec<CredentialSchemaFormatClaimSchema>>,
     pub layout_type: Option<LayoutType>,

@@ -4,7 +4,7 @@ use one_dto_mapper::{From, Into, convert_inner};
 use sea_orm::FromJsonQueryResult;
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
-use shared_types::{CredentialSchemaId, OrganisationId, RevocationMethodId};
+use shared_types::{CredentialSchemaId, OrganisationId};
 use time::OffsetDateTime;
 
 use crate::common::bool_from_int;
@@ -18,7 +18,6 @@ pub struct Model {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub name: String,
-    pub revocation_method: Option<RevocationMethodId>,
     pub key_storage_security: Option<KeyStorageSecurity>,
     pub organisation_id: OrganisationId,
     #[sea_orm(column_type = "Text")]
@@ -34,7 +33,7 @@ pub struct Model {
     pub transaction_code_length: Option<i32>,
     pub transaction_code_description: Option<String>,
     pub batch_size: Option<i32>,
-    pub allow_revocation: Option<bool>,
+    pub allow_revocation: bool,
     #[sea_orm(column_type = "Text")]
     pub embedded_disclosure_policy: Option<String>,
 }

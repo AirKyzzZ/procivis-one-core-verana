@@ -394,7 +394,7 @@ async fn test_identifier_filter_proof_schema_success() {
         &context.db.db_conn,
         "NewCredentialSchema",
         &organisation,
-        None,
+        false,
         &new_claim_schemas,
     )
     .await;
@@ -404,7 +404,7 @@ async fn test_identifier_filter_proof_schema_success() {
         &context.db.db_conn,
         "NewCredentialSchema2",
         &organisation,
-        None,
+        false,
         &new_claim_schemas2,
     )
     .await;

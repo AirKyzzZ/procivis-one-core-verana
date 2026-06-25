@@ -14,7 +14,7 @@ use one_core::model::organisation::Organisation;
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
 use one_core::repository::error::DataLayerError;
 use one_core::service::credential_schema::dto::CredentialSchemaListIncludeEntityTypeEnum;
-use shared_types::{ClaimSchemaId, CredentialFormat, CredentialSchemaId, RevocationMethodId};
+use shared_types::{ClaimSchemaId, CredentialFormat, CredentialSchemaId};
 use sql_data_provider::test_utilities::get_dummy_date;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -26,6 +26,7 @@ pub struct TestingCreateSchemaParams {
     pub format: Option<CredentialFormat>,
     pub key_storage_security: Option<KeyStorageSecurity>,
     pub allow_suspension: Option<bool>,
+    pub allow_revocation: Option<bool>,
     pub imported_source_url: Option<String>,
     pub claim_schemas: Option<Vec<ClaimSchema>>,
     pub requires_wallet_instance_attestation: bool,
@@ -62,7 +63,6 @@ impl CredentialSchemasDB {
         &self,
         name: &str,
         organisation: &Organisation,
-        revocation_method: impl Into<Option<RevocationMethodId>>,
         params: TestingCreateSchemaParams,
     ) -> Result<CredentialSchema, DataLayerError> {
         let credential_schema_format_id = Uuid::new_v4().into();
@@ -128,7 +128,7 @@ impl CredentialSchemasDB {
         let id = params.id.unwrap_or(Uuid::new_v4().into());
         let mut credential_schema = CredentialSchema {
             batch_size: params.batch_size,
-            allow_revocation: None,
+            allow_revocation: params.allow_revocation.unwrap_or(true),
             id,
             imported_source_url: params.imported_source_url.unwrap_or("CORE_URL".to_string()),
             created_date: get_dummy_date(),
@@ -147,7 +147,6 @@ impl CredentialSchemasDB {
                 claim_mappings: claim_mappings.into(),
             }]
             .into(),
-            revocation_method: revocation_method.into(),
             claim_schemas: claim_schemas.into(),
             layout_type: LayoutType::Card,
             layout_properties: Some(LayoutProperties {
@@ -187,10 +186,9 @@ impl CredentialSchemasDB {
         &self,
         name: &str,
         organisation: &Organisation,
-        revocation_method: impl Into<Option<RevocationMethodId>>,
         params: TestingCreateSchemaParams,
     ) -> CredentialSchema {
-        self.create_with_result(name, organisation, revocation_method, params)
+        self.create_with_result(name, organisation, params)
             .await
             .unwrap()
     }
@@ -199,7 +197,6 @@ impl CredentialSchemasDB {
         &self,
         name: &str,
         organisation: &Organisation,
-        revocation_method: impl Into<Option<RevocationMethodId>>,
         params: TestingCreateSchemaParams,
     ) -> CredentialSchema {
         let id = Uuid::new_v4().into();
@@ -219,7 +216,7 @@ impl CredentialSchemasDB {
         let format_id = Uuid::new_v4().into();
         let mut credential_schema = CredentialSchema {
             batch_size: params.batch_size,
-            allow_revocation: None,
+            allow_revocation: params.allow_revocation.unwrap_or(true),
             id,
             imported_source_url: "CORE_URL".to_string(),
             created_date: get_dummy_date(),
@@ -250,11 +247,10 @@ impl CredentialSchemasDB {
                     .into(),
             }]
             .into(),
-            revocation_method: revocation_method.into(),
             claim_schemas: claim_schemas.into(),
             layout_type: LayoutType::Card,
             layout_properties: None,
-            allow_suspension: true,
+            allow_suspension: params.allow_suspension.unwrap_or(true),
             requires_wallet_instance_attestation: false,
             transaction_code: None,
             embedded_disclosure_policy: params.embedded_disclosure_policy,
@@ -277,7 +273,6 @@ impl CredentialSchemasDB {
         &self,
         name: &str,
         organisation: &Organisation,
-        revocation_method: impl Into<Option<RevocationMethodId>>,
         params: TestingCreateSchemaParams,
     ) -> CredentialSchema {
         let claim_schema_root_namespace: ClaimSchema = ClaimSchema {
@@ -347,7 +342,7 @@ impl CredentialSchemasDB {
         let format_id = Uuid::new_v4().into();
         let mut credential_schema = CredentialSchema {
             batch_size: params.batch_size,
-            allow_revocation: None,
+            allow_revocation: params.allow_revocation.unwrap_or(true),
             id,
             imported_source_url: "CORE_URL".to_string(),
             created_date: get_dummy_date(),
@@ -378,11 +373,10 @@ impl CredentialSchemasDB {
                     .into(),
             }]
             .into(),
-            revocation_method: revocation_method.into(),
             claim_schemas: claim_schemas.into(),
             layout_type: LayoutType::Card,
             layout_properties: None,
-            allow_suspension: true,
+            allow_suspension: params.allow_suspension.unwrap_or(true),
             requires_wallet_instance_attestation: false,
             transaction_code: None,
             embedded_disclosure_policy: params.embedded_disclosure_policy,
@@ -405,7 +399,6 @@ impl CredentialSchemasDB {
         &self,
         name: &str,
         organisation: &Organisation,
-        revocation_method: impl Into<Option<RevocationMethodId>>,
         params: TestingCreateSchemaParams,
     ) -> CredentialSchema {
         let claim_schema_address = ClaimSchema {
@@ -475,7 +468,7 @@ impl CredentialSchemasDB {
         let format_id = Uuid::new_v4().into();
         let mut credential_schema = CredentialSchema {
             batch_size: params.batch_size,
-            allow_revocation: None,
+            allow_revocation: params.allow_revocation.unwrap_or(true),
             id,
             imported_source_url: "CORE_URL".to_string(),
             created_date: get_dummy_date(),
@@ -506,11 +499,10 @@ impl CredentialSchemasDB {
                     .into(),
             }]
             .into(),
-            revocation_method: revocation_method.into(),
             claim_schemas: claim_schemas.into(),
             layout_type: LayoutType::Card,
             layout_properties: None,
-            allow_suspension: true,
+            allow_suspension: params.allow_suspension.unwrap_or(true),
             requires_wallet_instance_attestation: false,
             transaction_code: None,
             embedded_disclosure_policy: params.embedded_disclosure_policy,
@@ -533,7 +525,6 @@ impl CredentialSchemasDB {
         &self,
         name: &str,
         organisation: &Organisation,
-        revocation_method: impl Into<Option<RevocationMethodId>>,
         params: TestingCreateSchemaParams,
     ) -> CredentialSchema {
         let claim_schema_name = ClaimSchema {
@@ -615,7 +606,7 @@ impl CredentialSchemasDB {
         let format_id = Uuid::new_v4().into();
         let mut credential_schema = CredentialSchema {
             batch_size: params.batch_size,
-            allow_revocation: None,
+            allow_revocation: params.allow_revocation.unwrap_or(true),
             id,
             imported_source_url: "CORE_URL".to_string(),
             created_date: get_dummy_date(),
@@ -646,11 +637,10 @@ impl CredentialSchemasDB {
                     .into(),
             }]
             .into(),
-            revocation_method: revocation_method.into(),
             claim_schemas: claim_schemas.into(),
             layout_type: LayoutType::Card,
             layout_properties: None,
-            allow_suspension: true,
+            allow_suspension: params.allow_suspension.unwrap_or(true),
             requires_wallet_instance_attestation: false,
             transaction_code: None,
             embedded_disclosure_policy: params.embedded_disclosure_policy,
@@ -673,7 +663,6 @@ impl CredentialSchemasDB {
         &self,
         name: &str,
         organisation: &Organisation,
-        revocation_method: impl Into<Option<RevocationMethodId>>,
         params: TestingCreateSchemaParams,
     ) -> CredentialSchema {
         let claim_schema_name_id: ClaimSchemaId = Uuid::new_v4().into();
@@ -897,7 +886,7 @@ impl CredentialSchemasDB {
         let format_id = Uuid::new_v4().into();
         let mut credential_schema = CredentialSchema {
             batch_size: params.batch_size,
-            allow_revocation: None,
+            allow_revocation: params.allow_revocation.unwrap_or(true),
             id,
             imported_source_url: "CORE_URL".to_string(),
             created_date: get_dummy_date(),
@@ -928,11 +917,10 @@ impl CredentialSchemasDB {
             }]
             .into(),
             deleted_at: None,
-            revocation_method: revocation_method.into(),
             claim_schemas: claim_schemas.into(),
             layout_type: LayoutType::Card,
             layout_properties: None,
-            allow_suspension: true,
+            allow_suspension: params.allow_suspension.unwrap_or(true),
             requires_wallet_instance_attestation: params.requires_wallet_instance_attestation,
             transaction_code: None,
             embedded_disclosure_policy: params.embedded_disclosure_policy,
@@ -973,7 +961,7 @@ impl CredentialSchemasDB {
         let format_id = Uuid::new_v4().into();
         let mut credential_schema = CredentialSchema {
             batch_size: None,
-            allow_revocation: None,
+            allow_revocation: true,
             id,
             imported_source_url: "CORE_URL".to_string(),
             created_date: get_dummy_date(),
@@ -1004,7 +992,6 @@ impl CredentialSchemasDB {
             }]
             .into(),
             deleted_at: None,
-            revocation_method: None,
             claim_schemas: claim_schemas.into(),
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -1027,13 +1014,11 @@ impl CredentialSchemasDB {
         self.get(&id).await
     }
 
-    #[expect(clippy::too_many_arguments)]
     pub async fn create_with_claims(
         &self,
         id: &Uuid,
         name: &str,
         organisation: &Organisation,
-        revocation_method: impl Into<Option<RevocationMethodId>>,
         new_claim_schemas: &[(Uuid, &str, bool, &str, bool)],
         format: &str,
         schema_id: &str,
@@ -1056,7 +1041,7 @@ impl CredentialSchemasDB {
         let format_id = Uuid::new_v4().into();
         let mut credential_schema = CredentialSchema {
             batch_size: None,
-            allow_revocation: None,
+            allow_revocation: true,
             id: id.to_owned().into(),
             imported_source_url: "CORE_URL".to_string(),
             created_date: get_dummy_date(),
@@ -1087,7 +1072,6 @@ impl CredentialSchemasDB {
             }]
             .into(),
             deleted_at: None,
-            revocation_method: revocation_method.into(),
             claim_schemas: claim_schemas.into(),
             layout_type: LayoutType::Card,
             layout_properties: Some(LayoutProperties {
@@ -1157,7 +1141,7 @@ impl CredentialSchemasDB {
         let mdoc_format_id = Uuid::new_v4().into();
         let credential_schema = CredentialSchema {
             batch_size,
-            allow_revocation: None,
+            allow_revocation: false,
             id,
             imported_source_url: "CORE_URL".to_string(),
             created_date: get_dummy_date(),
@@ -1211,7 +1195,6 @@ impl CredentialSchemasDB {
                 },
             ]
             .into(),
-            revocation_method: None,
             claim_schemas: claim_schemas.into(),
             layout_type: LayoutType::Card,
             layout_properties: None,

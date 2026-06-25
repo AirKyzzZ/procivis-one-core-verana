@@ -86,7 +86,6 @@ pub(super) fn credential_from_unexportable_model(
             name: value.credential_schema_name,
             formats,
             key_storage_security: convert_inner(value.credential_schema_key_storage_security),
-            revocation_method: value.credential_schema_revocation_method,
             claim_schemas: claim_schemas.into(),
             organisation: Organisation {
                 id: value.organisation_id,

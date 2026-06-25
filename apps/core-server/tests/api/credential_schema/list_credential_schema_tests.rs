@@ -14,12 +14,7 @@ async fn test_get_list_credential_schema_success() {
         context
             .db
             .credential_schemas
-            .create(
-                &format!("test-{i}"),
-                &organisation,
-                None,
-                Default::default(),
-            )
+            .create(&format!("test-{i}"), &organisation, Default::default())
             .await;
     }
 
@@ -46,7 +41,7 @@ async fn test_get_list_credential_schema_include_layout_properties_success() {
     context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
 
     // WHEN
@@ -96,7 +91,7 @@ async fn test_get_list_credential_schema_include_translations_success() {
     context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
 
     // WHEN
@@ -134,7 +129,6 @@ async fn test_list_filter_wia_credential_schema_success() {
         .create(
             "test-wia",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 requires_wallet_instance_attestation: true,
                 ..Default::default()
@@ -147,7 +141,6 @@ async fn test_list_filter_wia_credential_schema_success() {
         .create(
             "test-no-wia",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 requires_wallet_instance_attestation: false,
                 ..Default::default()
@@ -187,7 +180,6 @@ async fn test_list_filter_key_security_credential_schema_success() {
         .create(
             "test-wua-basic",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 key_storage_security: Some(KeyStorageSecurity::Basic),
                 ..Default::default()
@@ -200,7 +192,6 @@ async fn test_list_filter_key_security_credential_schema_success() {
         .create(
             "test-wua-high",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 key_storage_security: Some(KeyStorageSecurity::High),
                 ..Default::default()
@@ -210,7 +201,7 @@ async fn test_list_filter_key_security_credential_schema_success() {
     context
         .db
         .credential_schemas
-        .create("test-no-wua", &organisation, None, Default::default())
+        .create("test-no-wua", &organisation, Default::default())
         .await;
 
     // WHEN

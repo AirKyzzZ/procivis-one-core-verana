@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::ops::Add;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 use mockall::Sequence;
 use mockall::predicate::{always, eq};
@@ -219,6 +219,11 @@ async fn test_check_revocation_becoming_revoked() {
             })
         });
 
+    static REVOCATION_METHOD: LazyLock<RevocationMethodId> = LazyLock::new(|| "mock".into());
+    formatter
+        .expect_revocation_method_id()
+        .returning(|| Some(&*REVOCATION_METHOD));
+
     revocation_method
         .expect_check_credential_revocation_status()
         .returning(|_, _, _, _| Ok(RevocationState::Revoked));
@@ -231,19 +236,15 @@ async fn test_check_revocation_becoming_revoked() {
     let revocation_method = Arc::new(revocation_method);
     revocation_method_provider
         .expect_get_revocation_method()
-        .with(eq::<RevocationMethodId>("mock".into()))
+        .with(eq((*REVOCATION_METHOD).clone()))
         .returning(move |_| Ok(revocation_method.clone()));
 
     let credential_blob_id = Uuid::new_v4().into();
-    let credential = {
-        let mut cred = Credential {
-            state: CredentialStateEnum::Accepted,
-            suspend_end_date: None,
-            credential_blob_id: Some(credential_blob_id),
-            ..generic_credential()
-        };
-        cred.schema.as_mut().unwrap().revocation_method = Some("mock".into());
-        cred
+    let credential = Credential {
+        state: CredentialStateEnum::Accepted,
+        suspend_end_date: None,
+        credential_blob_id: Some(credential_blob_id),
+        ..generic_credential()
     };
     credential_repository.expect_get_credential().returning({
         let credential = credential.clone();
@@ -331,6 +332,11 @@ async fn test_check_revocation_batch_parent_becoming_revoked() {
             })
         });
 
+    static REVOCATION_METHOD: LazyLock<RevocationMethodId> = LazyLock::new(|| "mock".into());
+    formatter
+        .expect_revocation_method_id()
+        .returning(|| Some(&*REVOCATION_METHOD));
+
     revocation_method
         .expect_check_credential_revocation_status()
         .returning(|_, _, _, _| Ok(RevocationState::Revoked));
@@ -343,20 +349,16 @@ async fn test_check_revocation_batch_parent_becoming_revoked() {
     let revocation_method = Arc::new(revocation_method);
     revocation_method_provider
         .expect_get_revocation_method()
-        .with(eq::<RevocationMethodId>("mock".into()))
+        .with(eq((*REVOCATION_METHOD).clone()))
         .returning(move |_| Ok(revocation_method.clone()));
 
     let credential_blob_id = Uuid::new_v4().into();
     let parent_credential_id = Uuid::new_v4().into();
     let item_credential_id: CredentialId = Uuid::new_v4().into();
-    let credential = {
-        let mut cred = Credential {
-            state: CredentialStateEnum::Accepted,
-            suspend_end_date: None,
-            ..generic_credential()
-        };
-        cred.schema.as_mut().unwrap().revocation_method = Some("mock".into());
-        cred
+    let credential = Credential {
+        state: CredentialStateEnum::Accepted,
+        suspend_end_date: None,
+        ..generic_credential()
     };
     credential_repository
         .expect_get_credential()
@@ -493,6 +495,11 @@ async fn test_check_revocation_batch_item_becoming_revoked() {
             })
         });
 
+    static REVOCATION_METHOD: LazyLock<RevocationMethodId> = LazyLock::new(|| "mock".into());
+    formatter
+        .expect_revocation_method_id()
+        .returning(|| Some(&*REVOCATION_METHOD));
+
     revocation_method
         .expect_check_credential_revocation_status()
         .returning(|_, _, _, _| Ok(RevocationState::Revoked));
@@ -505,20 +512,16 @@ async fn test_check_revocation_batch_item_becoming_revoked() {
     let revocation_method = Arc::new(revocation_method);
     revocation_method_provider
         .expect_get_revocation_method()
-        .with(eq::<RevocationMethodId>("mock".into()))
+        .with(eq((*REVOCATION_METHOD).clone()))
         .returning(move |_| Ok(revocation_method.clone()));
 
     let credential_blob_id = Uuid::new_v4().into();
     let parent_credential_id = Uuid::new_v4().into();
     let item_credential_id = Uuid::new_v4().into();
-    let credential = {
-        let mut cred = Credential {
-            state: CredentialStateEnum::Accepted,
-            suspend_end_date: None,
-            ..generic_credential()
-        };
-        cred.schema.as_mut().unwrap().revocation_method = Some("mock".into());
-        cred
+    let credential = Credential {
+        state: CredentialStateEnum::Accepted,
+        suspend_end_date: None,
+        ..generic_credential()
     };
 
     let item_credential = Credential {
@@ -711,7 +714,6 @@ async fn test_revoke_credential_success_with_accepted_credential() {
     let mut credential = generic_credential();
     credential.role = CredentialRole::Issuer;
     credential.state = CredentialStateEnum::Accepted;
-    credential.schema.as_mut().unwrap().revocation_method = Some("mock".into());
 
     let mut credential_repository = MockCredentialRepository::default();
     let clone = credential.clone();
@@ -739,11 +741,17 @@ async fn test_revoke_credential_success_with_accepted_credential() {
             Ok(())
         });
 
+    let mut formatter = MockCredentialFormatter::default();
+    static REVOCATION_METHOD: LazyLock<RevocationMethodId> = LazyLock::new(|| "mock".into());
+    formatter
+        .expect_revocation_method_id()
+        .returning(|| Some(&*REVOCATION_METHOD));
+
     let mut revocation_method_provider = MockRevocationMethodProvider::default();
     let revocation_method = Arc::new(revocation_method);
     revocation_method_provider
         .expect_get_revocation_method()
-        .with(eq::<RevocationMethodId>("mock".into()))
+        .with(eq((*REVOCATION_METHOD).clone()))
         .times(1)
         .returning(move |_| Ok(revocation_method.clone()));
 
@@ -751,7 +759,7 @@ async fn test_revoke_credential_success_with_accepted_credential() {
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .return_once(|_| Ok(Arc::new(MockCredentialFormatter::new())));
+        .return_once(move |_| Ok(Arc::new(formatter)));
 
     let validity_manager = setup_validity_manager(Repositories {
         credential_repository,
@@ -772,7 +780,6 @@ async fn test_revoke_credential_success_with_suspended_credential() {
     let mut credential = generic_credential();
     credential.role = CredentialRole::Issuer;
     credential.state = CredentialStateEnum::Suspended;
-    credential.schema.as_mut().unwrap().revocation_method = Some("mock".into());
 
     let mut credential_repository = MockCredentialRepository::default();
 
@@ -801,11 +808,17 @@ async fn test_revoke_credential_success_with_suspended_credential() {
         .with(eq(clone.id), always())
         .returning(move |_, _| Ok(Some(clone.clone())));
 
+    let mut formatter = MockCredentialFormatter::default();
+    static REVOCATION_METHOD: LazyLock<RevocationMethodId> = LazyLock::new(|| "mock".into());
+    formatter
+        .expect_revocation_method_id()
+        .returning(|| Some(&*REVOCATION_METHOD));
+
     let mut revocation_method_provider = MockRevocationMethodProvider::default();
     let revocation_method = Arc::new(revocation_method);
     revocation_method_provider
         .expect_get_revocation_method()
-        .with(eq::<RevocationMethodId>("mock".into()))
+        .with(eq((*REVOCATION_METHOD).clone()))
         .times(1)
         .returning(move |_| Ok(revocation_method.clone()));
 
@@ -813,7 +826,7 @@ async fn test_revoke_credential_success_with_suspended_credential() {
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .return_once(|_| Ok(Arc::new(MockCredentialFormatter::new())));
+        .return_once(move |_| Ok(Arc::new(formatter)));
 
     let validity_manager = setup_validity_manager(Repositories {
         credential_repository,
@@ -873,7 +886,6 @@ async fn test_suspend_credential_success() {
     let mut credential = generic_credential();
     credential.role = CredentialRole::Issuer;
     credential.state = CredentialStateEnum::Accepted;
-    credential.schema.as_mut().unwrap().revocation_method = Some("mock".into());
 
     let suspend_end_date = now.add(Duration::days(1));
 
@@ -910,11 +922,17 @@ async fn test_suspend_credential_success() {
             Ok(())
         });
 
+    let mut formatter = MockCredentialFormatter::default();
+    static REVOCATION_METHOD: LazyLock<RevocationMethodId> = LazyLock::new(|| "mock".into());
+    formatter
+        .expect_revocation_method_id()
+        .returning(|| Some(&*REVOCATION_METHOD));
+
     let mut revocation_method_provider = MockRevocationMethodProvider::default();
     let revocation_method = Arc::new(revocation_method);
     revocation_method_provider
         .expect_get_revocation_method()
-        .with(eq::<RevocationMethodId>("mock".into()))
+        .with(eq((*REVOCATION_METHOD).clone()))
         .times(1)
         .returning(move |_| Ok(revocation_method.clone()));
 
@@ -922,7 +940,7 @@ async fn test_suspend_credential_success() {
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .return_once(|_| Ok(Arc::new(MockCredentialFormatter::new())));
+        .return_once(move |_| Ok(Arc::new(formatter)));
 
     let validity_manager = setup_validity_manager(Repositories {
         credential_repository,
@@ -948,7 +966,6 @@ async fn test_reactivate_credential_success() {
     let mut credential = generic_credential();
     credential.role = CredentialRole::Issuer;
     credential.state = CredentialStateEnum::Suspended;
-    credential.schema.as_mut().unwrap().revocation_method = Some("mock".into());
 
     let mut credential_repository = MockCredentialRepository::default();
     let cred_clone = credential.clone();
@@ -956,6 +973,12 @@ async fn test_reactivate_credential_success() {
         .expect_get_credential()
         .times(2)
         .returning(move |_, _| Ok(Some(cred_clone.clone())));
+
+    let mut formatter = MockCredentialFormatter::default();
+    static REVOCATION_METHOD: LazyLock<RevocationMethodId> = LazyLock::new(|| "mock".into());
+    formatter
+        .expect_revocation_method_id()
+        .returning(|| Some(&*REVOCATION_METHOD));
 
     let mut revocation_method = MockRevocationMethod::default();
     revocation_method
@@ -980,7 +1003,7 @@ async fn test_reactivate_credential_success() {
     let revocation_method = Arc::new(revocation_method);
     revocation_method_provider
         .expect_get_revocation_method()
-        .with(eq::<RevocationMethodId>("mock".into()))
+        .with(eq((*REVOCATION_METHOD).clone()))
         .times(1)
         .returning(move |_| Ok(revocation_method.clone()));
 
@@ -988,7 +1011,7 @@ async fn test_reactivate_credential_success() {
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .return_once(|_| Ok(Arc::new(MockCredentialFormatter::new())));
+        .return_once(move |_| Ok(Arc::new(formatter)));
 
     let validity_manager = setup_validity_manager(Repositories {
         credential_repository,
@@ -1066,7 +1089,6 @@ async fn test_revoke_credential_invalid_role() {
 #[tokio::test]
 async fn test_suspend_credential_failed_mdoc_batch_item() {
     let mut credential = generic_credential();
-    credential.schema.as_mut().unwrap().revocation_method = Some("mock".into());
     credential.role = CredentialRole::Issuer;
     credential.state = CredentialStateEnum::Accepted;
     credential.r#type = CredentialType::BatchItem;
@@ -1091,11 +1113,18 @@ async fn test_suspend_credential_failed_mdoc_batch_item() {
     revocation_method
         .expect_get_status_type()
         .return_once(|| "mock".to_string());
+
+    let mut formatter = MockCredentialFormatter::default();
+    static REVOCATION_METHOD: LazyLock<RevocationMethodId> = LazyLock::new(|| "mock".into());
+    formatter
+        .expect_revocation_method_id()
+        .returning(|| Some(&*REVOCATION_METHOD));
+
     let mut revocation_method_provider = MockRevocationMethodProvider::default();
     let revocation_method = Arc::new(revocation_method);
     revocation_method_provider
         .expect_get_revocation_method()
-        .with(eq::<RevocationMethodId>("mock".into()))
+        .with(eq((*REVOCATION_METHOD).clone()))
         .times(1)
         .returning(move |_| Ok(revocation_method.clone()));
 
@@ -1103,7 +1132,7 @@ async fn test_suspend_credential_failed_mdoc_batch_item() {
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .return_once(|_| Ok(Arc::new(MockCredentialFormatter::new())));
+        .return_once(move |_| Ok(Arc::new(formatter)));
 
     let validity_manager = setup_validity_manager(Repositories {
         credential_repository,
@@ -1132,7 +1161,6 @@ async fn test_revoke_credential_batch_parent() {
     parent_credential.role = CredentialRole::Issuer;
     parent_credential.state = CredentialStateEnum::Accepted;
     parent_credential.r#type = CredentialType::BatchParent;
-    parent_credential.schema.as_mut().unwrap().revocation_method = Some("mock".into());
 
     let mut child_credential = generic_credential();
     child_credential.role = CredentialRole::Issuer;
@@ -1204,11 +1232,17 @@ async fn test_revoke_credential_batch_parent() {
             }
         });
 
+    let mut formatter = MockCredentialFormatter::default();
+    static REVOCATION_METHOD: LazyLock<RevocationMethodId> = LazyLock::new(|| "mock".into());
+    formatter
+        .expect_revocation_method_id()
+        .returning(|| Some(&*REVOCATION_METHOD));
+
     let mut revocation_method_provider = MockRevocationMethodProvider::default();
     let revocation_method = Arc::new(revocation_method);
     revocation_method_provider
         .expect_get_revocation_method()
-        .with(eq::<RevocationMethodId>("mock".into()))
+        .with(eq((*REVOCATION_METHOD).clone()))
         .once()
         .returning(move |_| Ok(revocation_method.clone()));
 
@@ -1216,7 +1250,7 @@ async fn test_revoke_credential_batch_parent() {
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .return_once(|_| Ok(Arc::new(MockCredentialFormatter::new())));
+        .return_once(move |_| Ok(Arc::new(formatter)));
 
     let validity_manager = setup_validity_manager(Repositories {
         credential_repository,
@@ -1244,7 +1278,6 @@ async fn test_revoke_credential_batch_item() {
     child_credential.state = CredentialStateEnum::Accepted;
     child_credential.r#type = CredentialType::BatchItem;
     child_credential.parent = Some(parent_credential.clone().into());
-    child_credential.schema.as_mut().unwrap().revocation_method = Some("mock".into());
 
     let mut credential_repository = MockCredentialRepository::default();
 
@@ -1314,11 +1347,17 @@ async fn test_revoke_credential_batch_item() {
             }
         });
 
+    let mut formatter = MockCredentialFormatter::default();
+    static REVOCATION_METHOD: LazyLock<RevocationMethodId> = LazyLock::new(|| "mock".into());
+    formatter
+        .expect_revocation_method_id()
+        .returning(|| Some(&*REVOCATION_METHOD));
+
     let mut revocation_method_provider = MockRevocationMethodProvider::default();
     let revocation_method = Arc::new(revocation_method);
     revocation_method_provider
         .expect_get_revocation_method()
-        .with(eq::<RevocationMethodId>("mock".into()))
+        .with(eq((*REVOCATION_METHOD).clone()))
         .once()
         .returning(move |_| Ok(revocation_method.clone()));
 
@@ -1326,7 +1365,7 @@ async fn test_revoke_credential_batch_item() {
     formatter_provider
         .expect_get_credential_formatter()
         .once()
-        .return_once(|_| Ok(Arc::new(MockCredentialFormatter::new())));
+        .return_once(move |_| Ok(Arc::new(formatter)));
 
     let validity_manager = setup_validity_manager(Repositories {
         credential_repository,
@@ -1459,7 +1498,7 @@ fn generic_credential() -> Credential {
         holder_identifier: None,
         schema: Some(CredentialSchema {
             batch_size: None,
-            allow_revocation: None,
+            allow_revocation: true,
             id: credential_schema_id,
             deleted_at: None,
             imported_source_url: "CORE_URL".to_string(),
@@ -1477,7 +1516,6 @@ fn generic_credential() -> Credential {
                 claim_mappings: Default::default(),
             }]
             .into(),
-            revocation_method: Some("REVOCATION_METHOD".to_string().into()),
             claim_schemas: vec![claim_schema].into(),
             organisation: organisation.into(),
             layout_type: LayoutType::Card,

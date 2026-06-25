@@ -569,7 +569,6 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_m
             &schema_id,
             "MatchedSchema",
             &organisation,
-            None,
             &new_claim_schemas,
             "SD_JWT_VC",
             &format!("{}/ssi/schema/v1/{}", &mock_server.uri(), schema_id),

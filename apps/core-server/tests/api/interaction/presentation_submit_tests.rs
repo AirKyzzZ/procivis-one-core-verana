@@ -573,7 +573,6 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
             &Uuid::new_v4(),
             "Schema1",
             &organisation,
-            None,
             &new_claim_schemas,
             "JWT",
             "Schema1",

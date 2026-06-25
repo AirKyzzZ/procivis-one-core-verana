@@ -406,6 +406,7 @@ impl VerificationProtocol for IsoMdl {
                         None,
                         remaining_batch_item_count,
                         self.credential_repository.as_ref(),
+                        self.credential_formatter_provider.as_ref(),
                     )
                     .await
                     .error_while("creating credential detail")?;

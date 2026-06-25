@@ -108,7 +108,6 @@ async fn test_issuance_accept_openid4vc() {
         .create(
             "test",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 claim_schemas: Some(vec![
                     ClaimSchema {
@@ -307,7 +306,6 @@ async fn test_issuance_accept_schema_name_already_exists() {
         .create(
             "test",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 claim_schemas: Some(vec![
                     ClaimSchema {
@@ -465,7 +463,6 @@ async fn test_issuance_accept_openid4vc_issuer_invalid_signature() {
         .create(
             "test",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 claim_schemas: Some(vec![ClaimSchema {
                     id: schema_id.into(),
@@ -603,7 +600,6 @@ async fn test_issuance_accept_openid4vc_with_key_id() {
         .create(
             "test",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 claim_schemas: Some(vec![ClaimSchema {
                     id: schema_id.into(),
@@ -712,7 +708,7 @@ async fn test_fail_issuance_accept_openid4vc_unknown_did() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
 
     let interaction_data = dummy_interaction_data(
@@ -831,7 +827,7 @@ async fn test_fail_issuance_accept_openid4vc_unknown_key() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
 
     let interaction_data = dummy_interaction_data(
@@ -949,7 +945,7 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_role() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
 
     let interaction_data = dummy_interaction_data(
@@ -1006,7 +1002,6 @@ async fn test_fail_issuance_accept_openid4vc_no_suitable_key_storage() {
         .create(
             "test",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 key_storage_security: Some(KeyStorageSecurity::EnhancedBasic),
                 ..Default::default()
@@ -1109,7 +1104,7 @@ async fn test_fail_issuance_accept_openid4vc_no_key_with_auth_role() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
 
     let interaction_data = dummy_interaction_data(
@@ -1205,7 +1200,6 @@ async fn test_fail_issuance_accept_openid4vc_wallet_storage_type_not_met() {
         .create(
             "test",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 key_storage_security: Some(KeyStorageSecurity::High),
                 ..Default::default()
@@ -1307,7 +1301,6 @@ async fn test_issuance_accept_openid4vc_with_tx_code() {
         .create(
             "test",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 claim_schemas: Some(vec![ClaimSchema {
                     id: schema_id.into(),
@@ -1508,7 +1501,6 @@ async fn test_wia_pop_iss_equals_wia_sub() {
         .create(
             "test_wia_pop",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 claim_schemas: Some(vec![ClaimSchema {
                     id: schema_id.into(),

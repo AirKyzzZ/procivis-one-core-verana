@@ -22,7 +22,7 @@ async fn test_create_credential_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
     let claim_id = credential_schema.claim_schemas.as_ref().await.unwrap()[0].id;
     let claim_id1 = credential_schema.claim_schemas.as_ref().await.unwrap()[1].id;
@@ -72,7 +72,7 @@ async fn test_create_credential_with_array_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create_with_array_claims("test", &organisation, None, Default::default())
+        .create_with_array_claims("test", &organisation, Default::default())
         .await;
 
     let claim_id_root_field = credential_schema
@@ -218,7 +218,7 @@ async fn test_create_credential_success_with_nested_claims() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create_with_nested_claims("test schema", &organisation, None, Default::default())
+        .create_with_nested_claims("test schema", &organisation, Default::default())
         .await;
 
     let claim_schemas = credential_schema.claim_schemas.as_ref().await.unwrap();
@@ -294,7 +294,7 @@ async fn test_create_credential_with_issuer_key() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
 
     let did = context
@@ -384,7 +384,7 @@ async fn test_fail_to_create_credential_invalid_key_role() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
 
     let did = context
@@ -452,7 +452,7 @@ async fn test_fail_to_create_credential_unknown_key_id() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
     let claim_id = credential_schema.claim_schemas.as_ref().await.unwrap()[0].id;
 
@@ -521,7 +521,7 @@ async fn test_create_credential_with_certificate_identifier() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
 
     let claim_id = credential_schema.claim_schemas.as_ref().await.unwrap()[0].id;
@@ -612,7 +612,7 @@ async fn test_create_credential_with_certificate_selection() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
 
     let claim_id = credential_schema.claim_schemas.as_ref().await.unwrap()[0].id;
@@ -685,7 +685,7 @@ async fn test_create_credential_with_invalid_certificate_id() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
 
     let claim_id = credential_schema.claim_schemas.as_ref().await.unwrap()[0].id;
@@ -754,7 +754,7 @@ async fn test_create_credential_fail_with_only_certificate_id() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
 
     let claim_id = credential_schema.claim_schemas.as_ref().await.unwrap()[0].id;
@@ -837,7 +837,7 @@ async fn test_create_credential_failed_specified_object_claim() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create_with_nested_claims("test schema", &organisation, None, Default::default())
+        .create_with_nested_claims("test schema", &organisation, Default::default())
         .await;
 
     let claim_schemas = credential_schema.claim_schemas.as_ref().await.unwrap();
@@ -877,7 +877,7 @@ async fn test_create_credential_boolean_value_wrong() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
     let claim_id = credential_schema.claim_schemas.as_ref().await.unwrap()[0].id;
     let claim_id1 = credential_schema.claim_schemas.as_ref().await.unwrap()[1].id;
@@ -929,7 +929,6 @@ async fn test_fail_create_credential_with_empty_value() {
             &Uuid::new_v4(),
             "schema-1",
             &organisation,
-            None,
             &[new_claim_schema],
             "JWT",
             "schema-id",
@@ -998,7 +997,6 @@ async fn test_fail_create_credential_with_empty_array_value() {
             &Uuid::new_v4(),
             "schema-1",
             &organisation,
-            None,
             &new_claim_schemas,
             "JWT",
             "schema-id",
@@ -1097,7 +1095,6 @@ async fn test_fail_create_credential_with_empty_object_value() {
             &Uuid::new_v4(),
             "schema-1",
             &organisation,
-            None,
             &new_claim_schemas,
             "JWT",
             "schema-id",
@@ -1204,7 +1201,7 @@ async fn test_create_credential_success_with_profile() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
     let claim_id = credential_schema.claim_schemas.as_ref().await.unwrap()[0].id;
     let claim_id1 = credential_schema.claim_schemas.as_ref().await.unwrap()[1].id;
@@ -1258,7 +1255,7 @@ async fn test_create_credential_success_with_webhook_url() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
     let claim_id = credential_schema.claim_schemas.as_ref().await.unwrap()[0].id;
     let claim_id1 = credential_schema.claim_schemas.as_ref().await.unwrap()[1].id;
@@ -1307,7 +1304,7 @@ async fn test_create_credential_parallel_no_deadlock() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
     let claim_id = credential_schema.claim_schemas.as_ref().await.unwrap()[0].id;
     let claim_id1 = credential_schema.claim_schemas.as_ref().await.unwrap()[1].id;

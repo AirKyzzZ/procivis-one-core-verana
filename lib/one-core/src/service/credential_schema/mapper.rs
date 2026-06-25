@@ -355,7 +355,7 @@ pub(crate) async fn schema_to_detail_v2_response_dto(
         layout_type: Some(value.layout_type),
         layout_properties: value.layout_properties.map(|item| item.into()),
         allow_suspension: value.allow_suspension,
-        allow_revocation: value.allow_revocation,
+        allow_revocation: Some(value.allow_revocation),
         batch_size: value.batch_size,
         requires_wallet_instance_attestation: value.requires_wallet_instance_attestation,
         transaction_code: convert_inner(value.transaction_code),
@@ -515,13 +515,12 @@ pub(super) fn from_create_v2_request_with_id(
 
     Ok(CredentialSchema {
         id,
-        allow_revocation: request.allow_revocation,
+        allow_revocation: request.allow_revocation.unwrap_or(false),
         deleted_at: None,
         created_date: now,
         last_modified: now,
         name: request.name.clone(),
         key_storage_security: request.key_storage_security,
-        revocation_method: None,
         claim_schemas: claim_schemas.into(),
         organisation: organisation.into(),
         layout_type: request.layout_type,
@@ -736,7 +735,7 @@ pub(crate) async fn to_credential_schema_list_v2_response(
         layout_type: Some(credential_schema.layout_type),
         layout_properties: credential_schema.layout_properties.map(|item| item.into()),
         allow_suspension: credential_schema.allow_suspension,
-        allow_revocation: credential_schema.allow_revocation,
+        allow_revocation: Some(credential_schema.allow_revocation),
         batch_size: credential_schema.batch_size,
         requires_wallet_instance_attestation: credential_schema
             .requires_wallet_instance_attestation,

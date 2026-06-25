@@ -166,7 +166,7 @@ async fn test_presentation_definition_success() {
                             }]),
                             credential_schema: Some(CredentialSchema {
                                 batch_size: None,
-                                allow_revocation: None,
+                                allow_revocation: false,
                                 id: credential_schema_id,
                                 imported_source_url: "CORE_URL".to_string(),
                                 deleted_at: None,
@@ -183,7 +183,6 @@ async fn test_presentation_definition_success() {
                                     claim_mappings: Default::default(),
                                 }]
                                 .into(),
-                                revocation_method: None,
                                 key_storage_security: None,
                                 claim_schemas: Default::default(),
                                 organisation: dummy_organisation(None).into(),

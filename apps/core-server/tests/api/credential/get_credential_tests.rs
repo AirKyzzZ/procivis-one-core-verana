@@ -24,7 +24,7 @@ async fn test_get_credential_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
 
     let wia_blob_value = serde_json::to_vec(&WalletInstanceAttestationDTO {
@@ -102,7 +102,7 @@ async fn test_get_credential_with_trust_information_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
 
     let credential = context
@@ -173,7 +173,7 @@ async fn test_get_credential_certificate_identifier_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, None, Default::default())
+        .create("test", &organisation, Default::default())
         .await;
     let credential = context
         .db
@@ -221,7 +221,6 @@ async fn test_get_credential_success_metadata() {
         .create(
             "Simple test schema",
             &org,
-            None,
             TestingCreateSchemaParams {
                 schema_id: Some("https://example.org/foo".to_owned()),
                 format: Some("SD_JWT_VC".into()),
@@ -304,7 +303,6 @@ async fn test_get_credential_success_batch() {
         .create(
             "Simple batch schema",
             &org,
-            None,
             TestingCreateSchemaParams {
                 batch_size: Some(2),
                 ..Default::default()

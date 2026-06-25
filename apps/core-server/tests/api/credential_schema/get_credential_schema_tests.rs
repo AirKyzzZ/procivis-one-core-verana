@@ -14,12 +14,7 @@ async fn test_get_credential_schema_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create(
-            "test schema",
-            &organisation,
-            Some("STATUSLIST2021".into()),
-            Default::default(),
-        )
+        .create("test schema", &organisation, Default::default())
         .await;
 
     // WHEN
@@ -39,7 +34,7 @@ async fn test_get_credential_schema_success() {
     resp["requiresWalletInstanceAttestation"]
         .assert_eq(&credential_schema.requires_wallet_instance_attestation);
     assert_eq!(resp["claims"].as_array().unwrap().len(), 2);
-    assert_eq!(resp["revocationMethod"], "STATUSLIST2021");
+    assert_eq!(resp["revocationMethod"], "BITSTRINGSTATUSLIST");
     assert_eq!(resp["layoutType"], "CARD");
     assert_eq!(resp["layoutProperties"]["background"]["color"], "#DA2727");
     assert_eq!(resp["layoutProperties"]["primaryAttribute"], "firstName");
@@ -68,7 +63,6 @@ async fn test_get_credential_schema_with_category_claim() {
         .create(
             "test schema",
             &organisation,
-            None,
             TestingCreateSchemaParams {
                 claim_schemas: Some(vec![ClaimSchema {
                     id: claim_id,

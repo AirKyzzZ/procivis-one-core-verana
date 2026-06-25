@@ -361,7 +361,7 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
         holder_identifier: None,
         schema: Some(CredentialSchema {
             batch_size: None,
-            allow_revocation: None,
+            allow_revocation: false,
             id: credential_schema_id,
             deleted_at: None,
             imported_source_url: "CORE_URL".to_string(),
@@ -379,7 +379,6 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
                 claim_mappings: vec![claim_schema_mapping].into(),
             }]
             .into(),
-            revocation_method: None,
             claim_schemas: vec![claim_schema].into(),
             layout_type: LayoutType::Card,
             layout_properties: None,

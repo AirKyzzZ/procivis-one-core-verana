@@ -588,7 +588,7 @@ async fn test_presentation_submit_endpoint_for_openid4vp_dcql_array_claim() {
         &context.db.db_conn,
         "Schema1",
         &organisation,
-        None,
+        false,
         &new_claim_schemas,
     )
     .await;
