@@ -464,25 +464,26 @@ pub(crate) async fn migrate_mdoc_layout_props(
     let mut modified = false;
     let mut adjust_path = |value: Option<&mut Value>| {
         if let Some(Value::String(value)) = value {
-            let (namespace, path) = value.split_once("/").ok_or(DbErr::Custom(format!(
-                "Invalid layout props attribute path: {value}"
-            )))?;
-
-            *value = format!("{namespace}_{path}");
-            modified = true;
+            match value.split_once("/") {
+                Some((namespace, path)) => {
+                    *value = format!("{namespace}_{path}");
+                    modified = true;
+                }
+                None => {
+                    tracing::warn!("Unexpected layout props attribute path: {value}")
+                }
+            }
         }
-
-        Ok::<_, DbErr>(())
     };
 
-    adjust_path(props.get_mut("primary_attribute"))?;
-    adjust_path(props.get_mut("secondary_attribute"))?;
-    adjust_path(props.get_mut("picture_attribute"))?;
+    adjust_path(props.get_mut("primary_attribute"));
+    adjust_path(props.get_mut("secondary_attribute"));
+    adjust_path(props.get_mut("picture_attribute"));
     adjust_path(
         props
             .get_mut("code")
             .and_then(|code| code.get_mut("attribute")),
-    )?;
+    );
 
     if modified {
         tracing::debug!("Modifying schema({credential_schema_id}) layout properties");
