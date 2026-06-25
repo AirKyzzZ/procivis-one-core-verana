@@ -140,7 +140,7 @@ fn dummy_trust_list_subscription(
             deactivated_at: None,
             r#type: "test type".to_string().into(),
             reference: "http://test.com".to_string(),
-            role: TrustListRoleEnum::Issuer,
+            role: Some(TrustListRoleEnum::Issuer),
             state: TrustListSubscriptionState::Active,
             trust_collection_id,
             trust_collection: Some(trust_collection.clone()),

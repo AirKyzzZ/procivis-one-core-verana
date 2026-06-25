@@ -23,7 +23,7 @@ use crate::repository::trust_list_subscription_repository::MockTrustListSubscrip
 #[tokio::test]
 async fn test_trust_list_subscription_update_active() {
     let validation_result = TrustListValidationSuccess {
-        role: TrustListRoleEnum::PidProvider,
+        role: Some(TrustListRoleEnum::PidProvider),
     };
     let now = crate::clock::now_utc();
     let collection = TrustCollection {
@@ -45,7 +45,7 @@ async fn test_trust_list_subscription_update_active() {
         deactivated_at: None,
         r#type: "test".into(),
         reference: "https://example.com".to_string(),
-        role: TrustListRoleEnum::PidProvider,
+        role: Some(TrustListRoleEnum::PidProvider),
         state: TrustListSubscriptionState::Active,
         trust_collection_id: collection.id,
         trust_collection: Some(collection.clone()),
@@ -97,7 +97,7 @@ async fn test_trust_list_subscription_update_error() {
         deactivated_at: None,
         r#type: "test".into(),
         reference: "https://example.com".to_string(),
-        role: TrustListRoleEnum::PidProvider,
+        role: Some(TrustListRoleEnum::PidProvider),
         state: TrustListSubscriptionState::Error,
         trust_collection_id: collection.id,
         trust_collection: Some(collection.clone()),
@@ -149,7 +149,7 @@ async fn test_trust_list_subscription_update_active_to_error() {
         deactivated_at: None,
         r#type: "test".into(),
         reference: "https://example.com".to_string(),
-        role: TrustListRoleEnum::PidProvider,
+        role: Some(TrustListRoleEnum::PidProvider),
         state: TrustListSubscriptionState::Active,
         trust_collection_id: collection.id,
         trust_collection: Some(collection.clone()),
@@ -190,7 +190,7 @@ async fn test_trust_list_subscription_update_active_to_error() {
 #[tokio::test]
 async fn test_trust_list_subscription_update_error_to_active() {
     let validation_result = TrustListValidationSuccess {
-        role: TrustListRoleEnum::PidProvider,
+        role: Some(TrustListRoleEnum::PidProvider),
     };
     let now = crate::clock::now_utc();
     let collection = TrustCollection {
@@ -212,7 +212,7 @@ async fn test_trust_list_subscription_update_error_to_active() {
         deactivated_at: None,
         r#type: "test".into(),
         reference: "https://example.com".to_string(),
-        role: TrustListRoleEnum::PidProvider,
+        role: Some(TrustListRoleEnum::PidProvider),
         state: TrustListSubscriptionState::Error,
         trust_collection_id: collection.id,
         trust_collection: Some(collection.clone()),

@@ -592,7 +592,8 @@ pub(crate) struct ResolvedTrustEntrySourceResponseRestDTO {
     #[serde(with = "time::serde::rfc3339")]
     pub last_modified: OffsetDateTime,
     pub name: String,
-    pub role: TrustListRoleRestEnum,
+    #[from(with_fn = convert_inner)]
+    pub role: Option<TrustListRoleRestEnum>,
     pub reference: String,
     pub r#type: TrustListSubscriberId,
     pub state: TrustListSubscriptionStateRestEnum,

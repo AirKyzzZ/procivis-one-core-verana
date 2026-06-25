@@ -147,7 +147,10 @@ impl TrustCollectionService {
 
         let trust_list_subscriber = self.fetch_trust_list_subscriber(&request.r#type).await?;
         let role = validate_subscription(&trust_list_subscriber, &request).await?;
-        validate_trust_list_role_capabilities(&role, trust_list_subscriber.get_capabilities())?;
+        validate_trust_list_role_capabilities(
+            role.as_ref(),
+            trust_list_subscriber.get_capabilities(),
+        )?;
 
         let trust_list_subscription_id = self
             .insert_trust_list_subscription(request.clone(), trust_collection.clone(), role)
@@ -280,7 +283,7 @@ impl TrustCollectionService {
         &self,
         request: CreateTrustListSubscriptionRequestDTO,
         trust_collection: TrustCollection,
-        role: TrustListRoleEnum,
+        role: Option<TrustListRoleEnum>,
     ) -> Result<TrustListSubscriptionId, TrustCollectionServiceError> {
         let trust_list_subscription = map_create_trust_list_subscription_request(
             self.clock.as_ref(),
@@ -348,14 +351,25 @@ impl TrustCollectionService {
 }
 
 fn validate_trust_list_role_capabilities(
-    role: &TrustListRoleEnum,
+    role: Option<&TrustListRoleEnum>,
     capabilities: TrustListSubscriberCapabilities,
 ) -> Result<(), TrustCollectionServiceError> {
-    if !capabilities.roles.contains(role) {
-        return Err(TrustCollectionServiceError::InvalidTrustListRole(
-            *role,
-            capabilities.roles,
-        ));
+    match role {
+        Some(role) => {
+            if !capabilities.roles.contains(role) {
+                return Err(TrustCollectionServiceError::InvalidTrustListRole(
+                    *role,
+                    capabilities.roles,
+                ));
+            }
+        }
+        None => {
+            if !capabilities.roles.is_empty() {
+                return Err(TrustCollectionServiceError::MissingTrustListRole(
+                    capabilities.roles,
+                ));
+            }
+        }
     }
     Ok(())
 }
@@ -363,10 +377,76 @@ fn validate_trust_list_role_capabilities(
 async fn validate_subscription(
     trust_list_subscriber: &Arc<dyn TrustListSubscriber>,
     request: &CreateTrustListSubscriptionRequestDTO,
-) -> Result<TrustListRoleEnum, TrustCollectionServiceError> {
+) -> Result<Option<TrustListRoleEnum>, TrustCollectionServiceError> {
     let TrustListValidationSuccess { role } = trust_list_subscriber
         .validate_subscription(&request.reference, request.role)
         .await
         .error_while("validating subscription")?;
     Ok(role)
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::provider::trust_list_subscriber::Feature;
+
+    fn capabilities(roles: Vec<TrustListRoleEnum>) -> TrustListSubscriberCapabilities {
+        TrustListSubscriberCapabilities {
+            roles,
+            resolvable_identifier_types: vec![],
+            features: vec![Feature::SupportsRemoteIdentifiers],
+        }
+    }
+
+    #[test]
+    fn empty_roles_provider_accepts_none_role() {
+        assert!(validate_trust_list_role_capabilities(None, capabilities(vec![])).is_ok());
+    }
+
+    #[test]
+    fn empty_roles_provider_rejects_some_role() {
+        let result = validate_trust_list_role_capabilities(
+            Some(&TrustListRoleEnum::Issuer),
+            capabilities(vec![]),
+        );
+        assert!(matches!(
+            result,
+            Err(TrustCollectionServiceError::InvalidTrustListRole(..))
+        ));
+    }
+
+    #[test]
+    fn non_empty_roles_provider_rejects_none_role() {
+        let result = validate_trust_list_role_capabilities(
+            None,
+            capabilities(vec![TrustListRoleEnum::Issuer]),
+        );
+        assert!(matches!(
+            result,
+            Err(TrustCollectionServiceError::MissingTrustListRole(..))
+        ));
+    }
+
+    #[test]
+    fn non_empty_roles_provider_accepts_matching_role() {
+        assert!(
+            validate_trust_list_role_capabilities(
+                Some(&TrustListRoleEnum::Issuer),
+                capabilities(vec![TrustListRoleEnum::Issuer, TrustListRoleEnum::Verifier]),
+            )
+            .is_ok()
+        );
+    }
+
+    #[test]
+    fn non_empty_roles_provider_rejects_unsupported_role() {
+        let result = validate_trust_list_role_capabilities(
+            Some(&TrustListRoleEnum::Verifier),
+            capabilities(vec![TrustListRoleEnum::Issuer]),
+        );
+        assert!(matches!(
+            result,
+            Err(TrustCollectionServiceError::InvalidTrustListRole(..))
+        ));
+    }
 }

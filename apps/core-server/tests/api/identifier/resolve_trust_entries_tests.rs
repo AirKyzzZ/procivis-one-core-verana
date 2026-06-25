@@ -187,7 +187,7 @@ X2qJiGDrkN4Lr/85kRw7KHlsHq/w1aXLp0/Eg/c5aMur6qSWBjMD
             .trust_list_subscriptions
             .create(
                 &format!("Subscription {}", i),
-                TrustListRoleEnum::Issuer,
+                Some(TrustListRoleEnum::Issuer),
                 subscriber_id.clone(),
                 url,
                 TrustListSubscriptionState::Active,
@@ -398,7 +398,7 @@ trustListSubscriber:
         .trust_list_subscriptions
         .create(
             "Trust list subscription",
-            TrustListRoleEnum::Issuer,
+            Some(TrustListRoleEnum::Issuer),
             subscriber_id.clone(),
             &reference_uri,
             TrustListSubscriptionState::Active,

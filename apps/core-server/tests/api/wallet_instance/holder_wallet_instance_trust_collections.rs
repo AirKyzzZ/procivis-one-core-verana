@@ -53,7 +53,7 @@ async fn test_holder_wallet_unit_trust_collections() {
         .trust_list_subscriptions
         .create(
             "subscr",
-            TrustListRoleEnum::PidProvider,
+            Some(TrustListRoleEnum::PidProvider),
             "type",
             "reference",
             TrustListSubscriptionState::Active,

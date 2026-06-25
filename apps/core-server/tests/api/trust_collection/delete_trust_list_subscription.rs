@@ -19,7 +19,7 @@ async fn test_delete_trust_list_subscription() {
         .trust_list_subscriptions
         .create(
             "subscription",
-            TrustListRoleEnum::PidProvider,
+            Some(TrustListRoleEnum::PidProvider),
             "type",
             "reference",
             TrustListSubscriptionState::Active,

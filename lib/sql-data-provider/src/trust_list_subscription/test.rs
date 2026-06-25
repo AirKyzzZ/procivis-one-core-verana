@@ -55,7 +55,7 @@ fn dummy_trust_list_subscription(trust_collection_id: TrustCollectionId) -> Trus
         deactivated_at: None,
         r#type: "LoTE".into(),
         reference: "https://example.com/trust-list".to_string(),
-        role: TrustListRoleEnum::PidProvider,
+        role: Some(TrustListRoleEnum::PidProvider),
         state: TrustListSubscriptionState::Active,
         trust_collection_id,
         trust_collection: None,
@@ -112,7 +112,7 @@ async fn test_get_trust_list_subscription_success() {
     assert_eq!(found.id, id);
     assert_eq!(found.name, "test-subscription");
     assert_eq!(found.reference, "https://example.com/trust-list");
-    assert_eq!(found.role, TrustListRoleEnum::PidProvider);
+    assert_eq!(found.role, Some(TrustListRoleEnum::PidProvider));
     assert_eq!(found.state, TrustListSubscriptionState::Active);
 }
 
@@ -291,11 +291,21 @@ async fn test_list_trust_list_subscription_with_role_filter() {
         let mut s = dummy_trust_list_subscription(trust_collection_id);
         s.name = "second-subscription".to_string();
         s.reference = "https://other.com/trust-list".to_string();
-        s.role = TrustListRoleEnum::WalletProvider;
+        s.role = Some(TrustListRoleEnum::WalletProvider);
+        s
+    };
+    // A roleless subscription (e.g. ETSI_LOTL) must be persisted with a NULL role
+    // and be returned by role-scoped queries.
+    let subscription3 = {
+        let mut s = dummy_trust_list_subscription(trust_collection_id);
+        s.name = "roleless-subscription".to_string();
+        s.reference = "https://lotl.example.com/trust-list".to_string();
+        s.role = None;
         s
     };
     provider.create(subscription1).await.unwrap();
     provider.create(subscription2).await.unwrap();
+    provider.create(subscription3).await.unwrap();
 
     let result = provider
         .list(TrustListSubscriptionListQuery {
@@ -313,8 +323,10 @@ async fn test_list_trust_list_subscription_with_role_filter() {
 
     assert!(result.is_ok());
     let list = result.unwrap();
+    // A role filter is strict: only the PID-role subscription matches, not the roleless one.
     assert_eq!(list.total_items, 1);
-    assert_eq!(list.values[0].role, TrustListRoleEnum::PidProvider);
+    let roles: Vec<Option<TrustListRoleEnum>> = list.values.iter().map(|v| v.role).collect();
+    assert_eq!(roles, vec![Some(TrustListRoleEnum::PidProvider)]);
 }
 
 #[tokio::test]

@@ -59,7 +59,7 @@ pub struct TrustCollectionPublicResponseDTO {
 pub struct TrustListDTO {
     pub id: TrustListSubscriptionId,
     pub name: String,
-    pub role: TrustListRoleEnum,
+    pub role: Option<TrustListRoleEnum>,
     pub reference: String,
     pub r#type: TrustListSubscriberId,
 }
@@ -74,7 +74,7 @@ pub struct TrustListSubscriptionListItemResponseDTO {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub name: String,
-    pub role: TrustListRoleEnum,
+    pub role: Option<TrustListRoleEnum>,
     pub reference: String,
     pub r#type: TrustListSubscriberId,
     pub state: TrustListSubscriptionState,

@@ -22,7 +22,7 @@ async fn test_get_trust_collection_success() {
         .trust_list_subscriptions
         .create(
             "subscription",
-            TrustListRoleEnum::PidProvider,
+            Some(TrustListRoleEnum::PidProvider),
             "type",
             "reference",
             TrustListSubscriptionState::Active,

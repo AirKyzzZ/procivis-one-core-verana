@@ -22,7 +22,7 @@ impl TrustListSubscriptionDB {
     pub async fn create(
         &self,
         name: &str,
-        role: TrustListRoleEnum,
+        role: Option<TrustListRoleEnum>,
         r#type: impl Into<TrustListSubscriberId>,
         reference: &str,
         state: TrustListSubscriptionState,

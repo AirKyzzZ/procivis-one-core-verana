@@ -469,11 +469,7 @@ async fn test_create_trust_list_subscription_success() {
     let mut trust_list_subscriber = MockTrustListSubscriber::new();
     trust_list_subscriber
         .expect_validate_subscription()
-        .returning(|_, role| {
-            Ok(TrustListValidationSuccess {
-                role: role.unwrap_or(TrustListRoleEnum::Verifier),
-            })
-        });
+        .returning(|_, role| Ok(TrustListValidationSuccess { role }));
     trust_list_subscriber
         .expect_get_capabilities()
         .returning(|| TrustListSubscriberCapabilities {
@@ -657,7 +653,7 @@ async fn test_delete_trust_list_subscription_success() {
         deactivated_at: None,
         r#type: "test".into(),
         reference: "http://test.com".to_string(),
-        role: TrustListRoleEnum::Verifier,
+        role: Some(TrustListRoleEnum::Verifier),
         state: TrustListSubscriptionState::Active,
         trust_collection_id: trust_collection.id,
         trust_collection: Some(trust_collection),

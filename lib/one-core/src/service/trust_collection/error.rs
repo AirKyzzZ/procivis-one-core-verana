@@ -24,6 +24,8 @@ pub enum TrustCollectionServiceError {
     MissingTrustListSubscriber(TrustListSubscriberId),
     #[error("Unsupported trust list subscription role `{0:?}`: expected one of `{1:?}`")]
     InvalidTrustListRole(TrustListRoleEnum, Vec<TrustListRoleEnum>),
+    #[error("Trust list subscription role is required: expected one of `{0:?}`")]
+    MissingTrustListRole(Vec<TrustListRoleEnum>),
     #[error("Trust list subscription already exists")]
     TrustListSubscriptionAlreadyExists,
 }
@@ -38,6 +40,7 @@ impl ErrorCodeMixin for TrustCollectionServiceError {
             Self::TrustCollectionNotFound(_) => ErrorCode::BR_0391,
             Self::MissingTrustListSubscriber(_) => ErrorCode::BR_0400,
             Self::InvalidTrustListRole(_, _) => ErrorCode::BR_0386,
+            Self::MissingTrustListRole(_) => ErrorCode::BR_0457,
             Self::TrustListSubscriptionNotFound(_) => ErrorCode::BR_0402,
             Self::TrustListSubscriptionAlreadyExists => ErrorCode::BR_0403,
         }

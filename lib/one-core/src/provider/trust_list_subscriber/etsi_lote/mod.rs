@@ -115,7 +115,7 @@ impl TrustListSubscriber for EtsiLoteSubscriber {
             .role
             .or(role)
             .ok_or(TrustListSubscriberError::UnknownTrustListRole)?;
-        Ok(TrustListValidationSuccess { role })
+        Ok(TrustListValidationSuccess { role: Some(role) })
     }
 
     async fn resolve_entries(

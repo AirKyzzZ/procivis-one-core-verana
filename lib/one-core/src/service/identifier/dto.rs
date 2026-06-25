@@ -202,7 +202,7 @@ pub struct ResolvedTrustEntrySourceResponseDTO {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub name: String,
-    pub role: TrustListRoleEnum,
+    pub role: Option<TrustListRoleEnum>,
     pub reference: String,
     pub r#type: TrustListSubscriberId,
     pub state: TrustListSubscriptionState,

@@ -17,7 +17,7 @@ pub struct TrustListSubscription {
     pub deactivated_at: Option<OffsetDateTime>,
     pub r#type: TrustListSubscriberId,
     pub reference: String,
-    pub role: TrustListRoleEnum,
+    pub role: Option<TrustListRoleEnum>,
     pub state: TrustListSubscriptionState,
     pub trust_collection_id: TrustCollectionId,
 

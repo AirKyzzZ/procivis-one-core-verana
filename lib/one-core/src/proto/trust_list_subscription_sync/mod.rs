@@ -129,7 +129,7 @@ impl TrustListSubscriptionSync for TrustListSubscriptionSyncImpl {
                             deactivated_at: None,
                             r#type: list.r#type,
                             reference: list.reference,
-                            role: list.role.into(),
+                            role: Some(list.role.into()),
                             state: TrustListSubscriptionState::Active,
                             trust_collection_id: trust_collection.id,
                             trust_collection: Some(trust_collection.clone()),

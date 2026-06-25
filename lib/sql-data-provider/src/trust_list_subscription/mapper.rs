@@ -24,7 +24,7 @@ impl From<trust_list_subscription::Model> for TrustListSubscription {
             deactivated_at: value.deactivated_at,
             r#type: value.r#type,
             reference: value.reference,
-            role: value.role.into(),
+            role: value.role.map(Into::into),
             state: value.state.into(),
             trust_collection_id: value.trust_collection_id,
             trust_collection: None,
@@ -42,7 +42,7 @@ impl From<TrustListSubscription> for trust_list_subscription::ActiveModel {
             deactivated_at: Set(value.deactivated_at),
             r#type: Set(value.r#type),
             reference: Set(value.reference),
-            role: Set(value.role.into()),
+            role: Set(value.role.map(Into::into)),
             state: Set(value.state.into()),
             trust_collection_id: Set(value.trust_collection_id),
         }

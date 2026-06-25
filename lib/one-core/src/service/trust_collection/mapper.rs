@@ -41,7 +41,7 @@ pub(super) fn map_create_trust_list_subscription_request(
     clock: &dyn Clock,
     request: CreateTrustListSubscriptionRequestDTO,
     trust_collection: TrustCollection,
-    role: TrustListRoleEnum,
+    role: Option<TrustListRoleEnum>,
 ) -> Result<TrustListSubscription, TrustCollectionServiceError> {
     let now = clock.now_utc();
     Ok(TrustListSubscription {

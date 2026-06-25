@@ -926,6 +926,7 @@ pub enum ErrorCode {
 
     #[strum(message = "Invalid user ID token")]
     BR_0448,
+
     #[strum(message = "User authentication not configured for wallet provider")]
     BR_0449,
 
@@ -940,13 +941,18 @@ pub enum ErrorCode {
 
     #[strum(message = "User authentication not required")]
     BR_0453,
+
     #[strum(message = "User authentication required")]
     BR_0454,
 
     #[strum(message = "Wallet unit registration expired, restart registration")]
     BR_0455,
+
     #[strum(message = "CSC API client error")]
     BR_0456,
+
+    #[strum(message = "Trust list subscription role is required but missing")]
+    BR_0457,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

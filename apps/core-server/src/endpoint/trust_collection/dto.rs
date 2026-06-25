@@ -187,7 +187,8 @@ pub(crate) struct TrustListSubscriptionListItemResponseRestDTO {
     #[schema(example = "2023-06-09T14:19:57.000Z")]
     #[serde(serialize_with = "front_time")]
     pub last_modified: OffsetDateTime,
-    pub role: TrustListRoleRestEnum,
+    #[from(with_fn = convert_inner)]
+    pub role: Option<TrustListRoleRestEnum>,
     pub reference: String,
     pub r#type: TrustListSubscriberId,
     pub state: TrustListSubscriptionStateRestEnum,

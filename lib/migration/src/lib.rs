@@ -294,6 +294,7 @@ impl MigratorTrait for Migrator {
             Box::new(
                 migrations::m20260629_120000_make_identifier_organisation_id_not_null::Migration,
             ),
+            Box::new(migrations::m20260629_120000_trust_list_subscription_role_nullable::Migration),
         ]
     }
 }

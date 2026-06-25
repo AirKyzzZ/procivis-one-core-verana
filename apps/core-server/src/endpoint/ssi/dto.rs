@@ -262,7 +262,8 @@ pub(crate) struct TrustCollectionResponseRestDTO {
 pub(crate) struct TrustListRestDTO {
     pub name: String,
     pub id: TrustListSubscriptionId,
-    pub role: TrustListRoleRestEnum,
+    #[from(with_fn = convert_inner)]
+    pub role: Option<TrustListRoleRestEnum>,
     pub reference: String,
     pub r#type: TrustListSubscriberId,
 }

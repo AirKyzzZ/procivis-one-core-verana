@@ -174,7 +174,7 @@ impl Task for TrustListSubscriptionUpdateTask {
                     }
                 };
                 let update_result = provider
-                    .validate_subscription(&url, Some(subscription.role))
+                    .validate_subscription(&url, subscription.role)
                     .await;
                 match update_result {
                     Ok(_) => {

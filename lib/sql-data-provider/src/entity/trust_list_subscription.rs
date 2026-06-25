@@ -17,7 +17,7 @@ pub struct Model {
     #[sea_orm(column_name = "type")]
     pub r#type: TrustListSubscriberId,
     pub reference: String,
-    pub role: TrustRoleEnum,
+    pub role: Option<TrustRoleEnum>,
     pub state: TrustListSubscriptionState,
 
     pub trust_collection_id: TrustCollectionId,

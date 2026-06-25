@@ -69,7 +69,10 @@ async fn test_post_trust_list_subscription() {
         .get(&trust_list_subscription_id)
         .await
         .unwrap();
-    assert_eq!(trust_list_subscription.role, TrustListRoleEnum::PidProvider);
+    assert_eq!(
+        trust_list_subscription.role,
+        Some(TrustListRoleEnum::PidProvider)
+    );
 
     let history_entries = context
         .db

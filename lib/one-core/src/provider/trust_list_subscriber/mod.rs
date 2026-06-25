@@ -60,7 +60,7 @@ pub enum Feature {
 
 #[derive(Debug, Clone)]
 pub struct TrustListValidationSuccess {
-    pub role: TrustListRoleEnum,
+    pub role: Option<TrustListRoleEnum>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

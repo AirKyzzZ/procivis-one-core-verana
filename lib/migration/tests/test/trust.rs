@@ -328,7 +328,7 @@ async fn test_db_schema_trust_subscription() {
     trust_entry
         .column("role")
         .r#type(ColumnType::String(None))
-        .nullable(false)
+        .nullable(true)
         .default(None);
     trust_entry
         .column("state")

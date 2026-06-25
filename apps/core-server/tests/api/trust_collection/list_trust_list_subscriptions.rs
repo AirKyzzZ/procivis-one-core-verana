@@ -19,7 +19,7 @@ async fn test_list_trust_list_subscriptions() {
         .trust_list_subscriptions
         .create(
             "subscription 1",
-            TrustListRoleEnum::PidProvider,
+            Some(TrustListRoleEnum::PidProvider),
             "LOTE_SUBSCRIBER",
             "reference1",
             TrustListSubscriptionState::Active,
@@ -31,7 +31,7 @@ async fn test_list_trust_list_subscriptions() {
         .trust_list_subscriptions
         .create(
             "subscription 2",
-            TrustListRoleEnum::PidProvider,
+            Some(TrustListRoleEnum::PidProvider),
             "LOTE_SUBSCRIBER",
             "reference2",
             TrustListSubscriptionState::Active,
