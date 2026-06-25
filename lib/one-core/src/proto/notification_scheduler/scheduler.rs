@@ -133,11 +133,11 @@ pub(crate) fn validate_url(url: &str, params: &WebhookNotifyParams) -> Result<()
     let url = Url::parse(url)?;
 
     match url.scheme() {
-        "https" => {}
-        "http" => {
+        "https" | "mqtts" => {}
+        "http" | "mqtt" => {
             if !params.allow_insecure_http_transport {
                 return Err(Error::InvalidUrlScheme(
-                    "Insecure HTTP not allowed".to_string(),
+                    "Insecure transport not allowed".to_string(),
                 ));
             }
         }
@@ -205,6 +205,28 @@ mod test {
             validate_url(did_url, &PARAMS_ALLOW_ALL),
             Err(Error::InvalidUrlScheme(_))
         ));
+    }
+
+    #[test]
+    fn test_validate_url_scheme_mqtt() {
+        let mqtts_url = "mqtts://broker.example.com/some/topic";
+        validate_url(mqtts_url, &PARAMS_ALL_HTTPS).unwrap();
+        validate_url(mqtts_url, &PARAMS_ALLOW_ALL).unwrap();
+
+        let mqtt_url = "mqtt://broker.example.com/some/topic";
+        validate_url(mqtt_url, &PARAMS_ALLOW_ALL).unwrap();
+        assert!(matches!(
+            validate_url(mqtt_url, &PARAMS_ALL_HTTPS),
+            Err(Error::InvalidUrlScheme(_))
+        ));
+
+        // Topic with multiple path segments is valid
+        let mqtt_nested_topic = "mqtt://broker.example.com/org/events/credential";
+        validate_url(mqtt_nested_topic, &PARAMS_ALLOW_ALL).unwrap();
+
+        // MQTT with credentials in URL
+        let mqtt_with_creds = "mqtt://user:pass@broker.example.com:1883/topic";
+        validate_url(mqtt_with_creds, &PARAMS_ALLOW_ALL).unwrap();
     }
 
     #[test]

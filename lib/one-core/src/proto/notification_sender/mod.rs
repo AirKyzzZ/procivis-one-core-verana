@@ -4,6 +4,7 @@ use futures::FutureExt;
 use num_traits::pow;
 use shared_types::NotificationId;
 use time::{Duration, OffsetDateTime};
+use url::Url;
 use uuid::Uuid;
 
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, NestedError};
@@ -20,6 +21,11 @@ use crate::proto::transaction_manager::{IsolationLevel, TransactionManager};
 use crate::provider::task::webhook_notify::model::{Retries, WebhookNotifyParams};
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::notification_repository::NotificationRepository;
+
+mod mqtt;
+use mqtt::{MqttConnectionKey, MqttConnectionPool, build_mqtt_options};
+
+use crate::proto::notification_sender::mqtt::MqttConnectionError;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
@@ -61,6 +67,7 @@ pub struct NotificationSenderImpl {
     tx_manager: Arc<dyn TransactionManager>,
     client: Arc<dyn HttpClient>,
     session_provider: Arc<dyn SessionProvider>,
+    mqtt_pool: Arc<MqttConnectionPool>,
 }
 
 impl NotificationSenderImpl {
@@ -77,6 +84,7 @@ impl NotificationSenderImpl {
             tx_manager,
             client,
             session_provider,
+            mqtt_pool: Arc::new(MqttConnectionPool::new()),
         }
     }
 
@@ -87,6 +95,28 @@ impl NotificationSenderImpl {
         params: WebhookNotifyParams,
     ) -> Result<(NotificationResult, Option<HistoryMetadata>), Error> {
         validate_url(url, &params).error_while("validating notification URL")?;
+
+        let Ok(parsed_url) = Url::parse(url) else {
+            return Ok((
+                NotificationResult::Failed,
+                Some(HistoryMetadata::ErrorMetadata(HistoryErrorMetadata {
+                    error_code: ErrorCode::BR_0347,
+                    message: "Invalid URL".to_string(),
+                })),
+            ));
+        };
+        match parsed_url.scheme() {
+            "mqtt" | "mqtts" => self.send_mqtt(parsed_url, payload, &params).await,
+            _ => self.send_http(url, payload, params).await,
+        }
+    }
+
+    async fn send_http(
+        &self,
+        url: &str,
+        payload: Vec<u8>,
+        params: WebhookNotifyParams,
+    ) -> Result<(NotificationResult, Option<HistoryMetadata>), Error> {
         let response = async {
             Ok::<_, http_client::Error>(
                 self.client
@@ -130,6 +160,56 @@ impl NotificationSenderImpl {
         };
 
         Ok((result, metadata))
+    }
+
+    async fn send_mqtt(
+        &self,
+        url: Url,
+        payload: Vec<u8>,
+        params: &WebhookNotifyParams,
+    ) -> Result<(NotificationResult, Option<HistoryMetadata>), Error> {
+        let use_tls = url.scheme() == "mqtts";
+        let host = url.host_str().unwrap_or("localhost").to_string();
+        let port = url.port().unwrap_or(if use_tls { 8883 } else { 1883 });
+        let username = if url.username().is_empty() {
+            None
+        } else {
+            Some(url.username().to_string())
+        };
+        let password = url.password().map(|p| p.to_string());
+        let topic = url.path().trim_start_matches('/').to_string();
+
+        let timeout_secs = params.request_timeout.whole_seconds().max(1) as u64;
+        let key = MqttConnectionKey {
+            host,
+            port,
+            username,
+            password,
+            use_tls,
+        };
+        let pool = self.mqtt_pool.clone();
+
+        let opts = build_mqtt_options(&key);
+        let result = tokio::time::timeout(
+            std::time::Duration::from_secs(timeout_secs),
+            pool.publish(key, opts, timeout_secs, &topic, payload),
+        )
+        .await;
+
+        Ok(match result {
+            Ok(Ok(())) => (NotificationResult::Delivered, None),
+            Ok(Err(e)) => {
+                tracing::info!("MQTT notification failure: {e}");
+                (NotificationResult::Rescheduled, Some(e.into()))
+            }
+            Err(_) => {
+                tracing::info!("MQTT notification timed out");
+                (
+                    NotificationResult::Rescheduled,
+                    Some(MqttConnectionError::ConnectionTimeout.into()),
+                )
+            }
+        })
     }
 
     async fn send_internal(
