@@ -7,7 +7,7 @@ use shared_types::{
 use time::OffsetDateTime;
 
 use crate::entity::credential::{CredentialRole, CredentialState, CredentialType};
-use crate::entity::credential_schema::{KeyStorageSecurity, TransactionCodeType};
+use crate::entity::credential_schema::{KeyStorageSecurity, LayoutType, TransactionCodeType};
 use crate::entity::{claim, claim_schema};
 
 #[derive(Debug, FromQueryResult)]
@@ -44,6 +44,7 @@ pub struct UnexportableCredentialModel {
     pub credential_schema_batch_size: Option<i32>,
     pub credential_schema_allow_revocation: Option<bool>,
     pub credential_schema_embedded_disclosure_policy: Option<String>,
+    pub credential_schema_layout_type: LayoutType,
 
     pub organisation_id: OrganisationId,
     pub organisation_created_date: OffsetDateTime,

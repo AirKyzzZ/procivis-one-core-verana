@@ -272,6 +272,10 @@ impl BackupRepository for BackupProvider {
                 credential_schema::Column::EmbeddedDisclosurePolicy,
                 "credential_schema_embedded_disclosure_policy",
             )
+            .column_as(
+                credential_schema::Column::LayoutType,
+                "credential_schema_layout_type",
+            )
             .column_as(organisation::Column::Id, "organisation_id")
             .column_as(
                 organisation::Column::CreatedDate,

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use one_core::model::claim::Claim;
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential::Credential;
-use one_core::model::credential_schema::{CredentialSchema, LayoutType, TransactionCode};
+use one_core::model::credential_schema::{CredentialSchema, TransactionCode};
 use one_core::model::organisation::Organisation;
 use one_core::model::relation::{Related, RelatedVec};
 use one_core::repository::credential_repository::CredentialRepository;
@@ -14,6 +14,7 @@ use one_dto_mapper::convert_inner;
 use super::models::{ClaimWithSchema, UnexportableCredentialModel};
 use crate::claim_schema::mapper::claim_schema_from_model;
 use crate::credential_schema::mapper::CredentialSchemaFormatsLoader;
+use crate::localized_text::LocalizedTextLoader;
 use crate::transaction_context::TransactionManagerImpl;
 
 fn claim_with_schema_to_claim(value: ClaimWithSchema, db: TransactionManagerImpl) -> Claim {
@@ -99,8 +100,7 @@ pub(super) fn credential_from_unexportable_model(
                     .map(|org_id| Related::new(org_id, organisation_repository.to_owned())),
             }
             .into(),
-            // todo: this should be fixed in another ticket
-            layout_type: LayoutType::Card,
+            layout_type: value.credential_schema_layout_type.into(),
             layout_properties: None,
             allow_suspension: value.credential_schema_allow_suspension,
             requires_wallet_instance_attestation: value
@@ -108,7 +108,10 @@ pub(super) fn credential_from_unexportable_model(
             transaction_code,
             batch_size: value.credential_schema_batch_size,
             allow_revocation: value.credential_schema_allow_revocation,
-            translations: Default::default(),
+            translations: RelatedVec::new(LocalizedTextLoader {
+                id: value.credential_schema_id.into(),
+                db: db.to_owned(),
+            }),
             embedded_disclosure_policy: value.credential_schema_embedded_disclosure_policy,
         }),
         interaction: None,
