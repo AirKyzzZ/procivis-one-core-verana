@@ -4,6 +4,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::{ENVELOPED_SIGNATURE, EXC_C14N, Transform, XPATH_FILTER2, XPathFilter2Op};
+use crate::xades::INC_C14N;
 
 #[derive(Serialize, Deserialize)]
 pub(super) struct TransformRaw {
@@ -33,6 +34,7 @@ impl TryFrom<TransformRaw> for Transform {
         match raw.algorithm.as_str() {
             ENVELOPED_SIGNATURE => Ok(Self::EnvelopedSignature),
             EXC_C14N => Ok(Self::ExcC14n),
+            INC_C14N => Ok(Self::InclC14n),
             XPATH_FILTER2 => raw
                 .xpath_filters
                 .into_iter()
@@ -58,6 +60,10 @@ impl From<Transform> for TransformRaw {
             },
             Transform::ExcC14n => Self {
                 algorithm: EXC_C14N.to_string(),
+                xpath_filters: vec![],
+            },
+            Transform::InclC14n => Self {
+                algorithm: INC_C14N.to_string(),
                 xpath_filters: vec![],
             },
             Transform::XPathFilter2(ops) => Self {

@@ -26,7 +26,8 @@ pub fn pem_chain_into_x5c(pem_chain: &str) -> Result<Vec<String>, CertificatePar
 
 pub(crate) fn x5c_into_pem_chain(x5c: &[String]) -> Result<String, CertificateParsingError> {
     let der_chain = x5c.iter().try_fold(Vec::new(), |mut aggr, item| {
-        aggr.push(Base64::decode_to_vec(item, None)?);
+        // base64 cert content may be line-wrapped (XML-DSig X509Certificate); ignore whitespace.
+        aggr.push(Base64::decode_to_vec(item, Some(b"\n\r\t "))?);
         Ok::<_, CertificateParsingError>(aggr)
     })?;
     Ok(der_chain_into_pem_chain(der_chain))

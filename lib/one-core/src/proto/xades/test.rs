@@ -9,6 +9,7 @@ use one_crypto::{CryptoProvider, Signer as _, initialize_crypto_provider};
 use serde::{Deserialize, Serialize};
 use similar_asserts::assert_eq;
 use standardized_types::etsi_119_602::xml::LoTEPayload;
+use standardized_types::etsi_119_612::xml::TrustServiceStatusList;
 use time::OffsetDateTime;
 
 use super::*;
@@ -386,4 +387,46 @@ async fn dss_lote_tampered_document_fails() {
         .expect_err("tampered document should fail verification");
 
     assert!(matches!(err, Error::IncorrectDigest(_)), "{err}");
+}
+
+// Real EU member trusted list, signed by EU DSS with inclusive C14N. Verifying
+// its three `ds:Reference` digests checks our inclusive canonicalizer against
+// real output. Only the ECDSA signature is mocked (cert revocation needs
+// network).
+#[tokio::test]
+async fn real_eudi_inclusive_tsl_verifies_reference_digests() {
+    let xml = include_str!("./fixtures/eudiw_member_tsl.xml");
+
+    let crypto = one_crypto::initialize_crypto_provider();
+    let mut cert_validator = MockCertificateValidator::new();
+    cert_validator.expect_parse_pem_chain().returning(|_, _| {
+        let mut public_key = MockSignaturePublicKeyHandle::default();
+        public_key.expect_verify().returning(|_, _| Ok(()));
+        let now = OffsetDateTime::now_utc();
+        Ok(ParsedCertificate {
+            attributes: CertificateX509AttributesDTO {
+                serial_number: "test".to_string(),
+                not_before: now,
+                not_after: now,
+                issuer: "test".to_string(),
+                subject: "test".to_string(),
+                fingerprint: "test".to_string(),
+                extensions: vec![],
+            },
+            subject_common_name: None,
+            subject_key_identifier: None,
+            public_key: KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(Arc::new(
+                public_key,
+            ))),
+        })
+    });
+
+    let decomposed: XAdESSignedXML<TrustServiceStatusList> =
+        XAdESSignedXML::decompose_document(xml).expect("decompose real EUDI member TSL");
+
+    decomposed
+        .envelope()
+        .verify_signature(&*crypto, &cert_validator)
+        .await
+        .expect("inclusive-C14N reference digests must verify against real EU DSS data");
 }

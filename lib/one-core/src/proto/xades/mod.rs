@@ -10,7 +10,9 @@ use async_trait::async_trait;
 use ct_codecs::{Base64, Decoder};
 use one_crypto::{CryptoProvider, Hasher};
 use serde::de::DeserializeOwned;
-use standardized_types::xades::{self, EXC_C14N, SHA256_DIGEST_URI, SHA512_DIGEST_URI, XMLDSIG_NS};
+use standardized_types::xades::{
+    self, EXC_C14N, INC_C14N, SHA256_DIGEST_URI, SHA512_DIGEST_URI, XMLDSIG_NS,
+};
 use time::OffsetDateTime;
 use xades::Transform::*;
 use xades::XPathFilter2Op;
@@ -21,6 +23,10 @@ use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::x5c_into_pem_chain;
 use crate::proto::certificate_validator::{CertificateValidationOptions, CertificateValidator};
 use crate::provider::credential_formatter::model::SignatureProvider;
+
+/// Whitespace bytes to skip when decoding base64: XML-DSig `base64Binary`
+/// content (X509Certificate, SignatureValue) may be line-wrapped.
+const B64_IGNORE_WS: Option<&[u8]> = Some(b"\n\r\t ");
 
 impl TryFrom<KeyAlgorithmType> for xades::SignatureSuite {
     type Error = Error;
@@ -70,8 +76,24 @@ pub struct XAdESVerified {
     pub signer_chain_pem: String,
     /// `SigningTime` from the signed signature properties.
     pub signing_time: OffsetDateTime,
+    /// `ds:CanonicalizationMethod` algorithm URI applied to `SignedInfo`.
+    /// Callers enforce their own profile policy on it (e.g. TS 119 612 Annex B
+    /// mandates exclusive C14N).
+    #[allow(dead_code)] // read by the ETSI_LOTL subscriber's TSL signature policy
+    pub canonicalization_method: String,
     /// One entry per `ds:Reference` in `SignedInfo`.
     pub references: Vec<VerifiedReference>,
+}
+
+/// Map a canonicalization algorithm URI to the C14N mode the canonicalizer implements.
+fn c14n_mode_from_uri(uri: &str) -> Result<c14n::C14nMode, Error> {
+    match uri {
+        EXC_C14N => Ok(c14n::C14nMode::Exclusive),
+        INC_C14N => Ok(c14n::C14nMode::Inclusive),
+        other => Err(Error::UnsupportedSuite(format!(
+            "unsupported canonicalization algorithm: {other}"
+        ))),
+    }
 }
 
 #[derive(Debug)]
@@ -256,16 +278,16 @@ impl XAdESEnvelopedSignature {
             )));
         }
 
-        if signed_info.canonicalization_method.algorithm != EXC_C14N {
-            return Err(Error::UnsupportedSuite(format!(
-                "unsupported canonicalization algorithm: {}",
-                signed_info.canonicalization_method.algorithm
-            )));
-        }
+        let signed_info_c14n = signed_info.canonicalization_method.algorithm.as_str();
 
         let mut references = Vec::with_capacity(signed_info.references.len());
         for reference in &signed_info.references {
-            self.verify_reference_digest(reference, signature_id, crypto_provider)?;
+            self.verify_reference_digest(
+                reference,
+                signature_id,
+                signed_info_c14n,
+                crypto_provider,
+            )?;
             references.push(VerifiedReference {
                 uri: reference.uri.clone(),
                 r#type: reference.r#type.clone(),
@@ -292,13 +314,14 @@ impl XAdESEnvelopedSignature {
 
         let si_canonical = c14n::canonicalize_signature_subtree(
             &self.unverified_document,
+            c14n_mode_from_uri(signed_info_c14n)?,
             signature_id,
             XMLDSIG_NS,
             "SignedInfo",
         )
         .map_err(Error::from)
         .error_while("canonicalizing SignedInfo")?;
-        let sig_value_bytes = Base64::decode_to_vec(sig.signature_value.value.trim(), None)
+        let sig_value_bytes = Base64::decode_to_vec(&sig.signature_value.value, B64_IGNORE_WS)
             .map_err(Error::from)
             .error_while("decoding signature value")?;
         parsed
@@ -309,6 +332,7 @@ impl XAdESEnvelopedSignature {
         Ok(XAdESVerified {
             signer_chain_pem: pem_chain,
             signing_time: signed_sig_props.signing_time,
+            canonicalization_method: signed_info_c14n.to_string(),
             references,
         })
     }
@@ -317,6 +341,7 @@ impl XAdESEnvelopedSignature {
         &self,
         reference: &xades::Reference,
         signature_id: Option<&str>,
+        signed_info_c14n: &str,
         crypto_provider: &dyn CryptoProvider,
     ) -> Result<(), Error> {
         let transforms = reference
@@ -324,26 +349,24 @@ impl XAdESEnvelopedSignature {
             .as_ref()
             .map(|t| t.transforms.as_slice())
             .unwrap_or(&[]);
-        let exclusion = interpret_ref_transforms(transforms)?;
+        let (exclusion, c14n_mode) = interpret_ref_transforms(transforms, signed_info_c14n)?;
+
+        // Drop the signature before digesting (the enveloped-signature transform).
+        // Applies to both whole-document (`URI=""`) and root-by-id (`URI="#root"`)
+        // references.
+        let skip = exclusion.map(|e| c14n::SkipElement {
+            namespace: XMLDSIG_NS,
+            local_name: "Signature",
+            id: match e {
+                SignatureExclusion::ById => signature_id,
+                SignatureExclusion::All => None,
+            },
+        });
 
         let canonical = if reference.uri.is_empty() {
-            let skip = exclusion.map(|e| c14n::SkipElement {
-                namespace: XMLDSIG_NS,
-                local_name: "Signature",
-                id: match e {
-                    SignatureExclusion::ById => signature_id,
-                    SignatureExclusion::All => None,
-                },
-            });
-            c14n::canonicalize(&self.unverified_document, skip)?
+            c14n::canonicalize(&self.unverified_document, c14n_mode, skip)?
         } else if let Some(id) = reference.uri.strip_prefix('#') {
-            if exclusion.is_some() {
-                return Err(Error::InvalidTransformsInReference(
-                    "enveloped/XPath transform on a same-document fragment reference is not supported"
-                        .to_string(),
-                ));
-            }
-            c14n::canonicalize_by_id(&self.unverified_document, id)?
+            c14n::canonicalize_by_id(&self.unverified_document, c14n_mode, id, skip)?
         } else {
             return Err(Error::InvalidSignature(format!(
                 "unsupported Reference URI: {}",
@@ -403,7 +426,9 @@ impl XAdESEnvelopedSignature {
             Error::InvalidSignature("ds:X509Data entry contains no certificates".to_string())
         })?;
 
-        if cert_hasher.hash_base64(&Base64::decode_to_vec(leaf, None)?)? != *expected_digest {
+        if cert_hasher.hash_base64(&Base64::decode_to_vec(leaf, B64_IGNORE_WS)?)?
+            != *expected_digest
+        {
             return Err(Error::SigningCertificateNotFound(expected_digest.clone()));
         }
 
@@ -419,14 +444,20 @@ enum SignatureExclusion {
     All,
 }
 
-/// Map a reference's transform chain to how the ds:Signature is excluded during
-/// digest computation. Only exclusive-C14N chains are supported.
+/// Map a reference's transform chain to its signature exclusion and
+/// canonicalization algorithm. An empty chain uses the SignedInfo
+/// `CanonicalizationMethod`.
 fn interpret_ref_transforms(
     transforms: &[xades::Transform],
-) -> Result<Option<SignatureExclusion>, Error> {
+    signed_info_c14n: &str,
+) -> Result<(Option<SignatureExclusion>, c14n::C14nMode), Error> {
+    use c14n::C14nMode;
     match transforms {
-        [] | [ExcC14n] => Ok(None),
-        [EnvelopedSignature, ExcC14n] => Ok(Some(SignatureExclusion::ById)),
+        [] => Ok((None, c14n_mode_from_uri(signed_info_c14n)?)),
+        [ExcC14n] => Ok((None, C14nMode::Exclusive)),
+        [InclC14n] => Ok((None, C14nMode::Inclusive)),
+        [EnvelopedSignature, ExcC14n] => Ok((Some(SignatureExclusion::ById), C14nMode::Exclusive)),
+        [EnvelopedSignature, InclC14n] => Ok((Some(SignatureExclusion::ById), C14nMode::Inclusive)),
         [XPathFilter2(ops), ExcC14n] => {
             let subtract = ops
                 .iter()
@@ -442,7 +473,7 @@ fn interpret_ref_transforms(
 
             let xpath = subtract.trim();
             if xpath.ends_with("Signature") && xpath.contains("descendant") {
-                Ok(Some(SignatureExclusion::All))
+                Ok((Some(SignatureExclusion::All), C14nMode::Exclusive))
             } else {
                 Err(Error::InvalidTransformsInReference(format!(
                     "unsupported XPath Filter 2.0 expression: {xpath}"

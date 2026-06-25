@@ -58,8 +58,6 @@ pub(super) fn build_signed_info(
     signed_properties_hash: &str,
 ) -> SignedInfo {
     // TS 119 602 H.4: enveloped-signature then exc-c14n
-    let transforms = vec![Transform::EnvelopedSignature, Transform::ExcC14n];
-
     let digest_method = AlgorithmIdentifier {
         algorithm: xades_suite.hash_alg_uri().to_string(),
     };
@@ -69,7 +67,9 @@ pub(super) fn build_signed_info(
         id: Some(format!("r-id-{nonce}")),
         uri: String::new(),
         r#type: None,
-        transforms: Some(Transforms { transforms }),
+        transforms: Some(Transforms {
+            transforms: vec![Transform::EnvelopedSignature, Transform::ExcC14n],
+        }),
         digest_method: digest_method.clone(),
         digest_value: document_hash.to_string(),
     };
@@ -108,7 +108,11 @@ pub(super) async fn build_signature(
 ) -> Result<Signature, Error> {
     let nonce = uuid::Uuid::new_v4().to_string();
 
-    let document_hash = hasher.hash_base64(&c14n::canonicalize(document, None)?)?;
+    let document_hash = hasher.hash_base64(&c14n::canonicalize(
+        document,
+        c14n::C14nMode::Exclusive,
+        None,
+    )?)?;
     let signing_certificate_hash = {
         let cert_der = Base64::decode_to_vec(signing_cert, None)?;
         hasher.hash_base64(&cert_der)?
@@ -118,7 +122,11 @@ pub(super) async fn build_signature(
 
     let signed_properties_hash = {
         let sp_xml = quick_xml::se::to_string(&signed_properties)?;
-        hasher.hash_base64(&c14n::canonicalize(&sp_xml, None)?)?
+        hasher.hash_base64(&c14n::canonicalize(
+            &sp_xml,
+            c14n::C14nMode::Exclusive,
+            None,
+        )?)?
     };
 
     let signed_info =
@@ -126,7 +134,7 @@ pub(super) async fn build_signature(
 
     let signature = {
         let si_xml = quick_xml::se::to_string(&signed_info)?;
-        let si_canonical = c14n::canonicalize(&si_xml, None)?;
+        let si_canonical = c14n::canonicalize(&si_xml, c14n::C14nMode::Exclusive, None)?;
 
         let signature = signer.sign(&si_canonical).await?;
         Base64::encode_to_string(&signature)?

@@ -1,7 +1,12 @@
+//! XML Canonicalization 1.0 ("without comments"), both exclusive
+//! (`xml-exc-c14n#`) and inclusive (`REC-xml-c14n-20010315`), selected by
+//! `C14nMode`. The two share everything except which namespace declarations
+//! each element renders (see `namespace_decls`).
+
 use std::collections::{BTreeMap, HashSet};
 
 use super::render::{Attr, NsDecl};
-use super::{C14nError, escape};
+use super::{C14nError, C14nMode, escape};
 
 /// Predicate for excluding elements during canonicalization.
 pub(crate) struct SkipElement<'a> {
@@ -12,7 +17,8 @@ pub(crate) struct SkipElement<'a> {
     pub id: Option<&'a str>,
 }
 
-struct ExcC14nContext<'a> {
+struct C14nContext<'a> {
+    mode: C14nMode,
     skip: Option<SkipElement<'a>>,
 }
 
@@ -101,7 +107,7 @@ fn has_following_element(node: roxmltree::Node<'_, '_>) -> bool {
     false
 }
 
-impl<'a> ExcC14nContext<'a> {
+impl<'a> C14nContext<'a> {
     fn process_node(
         &self,
         node: roxmltree::Node<'_, '_>,
@@ -153,6 +159,80 @@ impl<'a> ExcC14nContext<'a> {
         Ok(())
     }
 
+    /// Namespace declarations to render at `node`, per the active C14N mode.
+    ///
+    /// Exclusive (`xml-exc-c14n#`): only namespaces *visibly utilized* by the element's own qualified name / attributes.
+    /// Inclusive (`REC-xml-c14n-20010315`): every in-scope namespace, including those inherited from ancestors.
+    ///
+    /// Both emit a declaration only when it differs from what an output ancestor already rendered.
+    fn namespace_decls(
+        &self,
+        node: roxmltree::Node<'_, '_>,
+        inscope_ns: &BTreeMap<String, String>,
+        rendered_ns: &BTreeMap<String, String>,
+    ) -> Vec<NsDecl> {
+        let mut ns_decls: Vec<NsDecl> = Vec::new();
+
+        match self.mode {
+            C14nMode::Exclusive => {
+                let mut utilized: HashSet<String> = HashSet::new();
+                utilized.insert(element_prefix(node));
+                for attr in node.attributes() {
+                    let pfx = attribute_prefix(node, &attr);
+                    if !pfx.is_empty() {
+                        utilized.insert(pfx);
+                    }
+                }
+                for prefix in &utilized {
+                    if prefix == "xml" {
+                        continue;
+                    }
+                    if let Some(uri) = inscope_ns.get(prefix) {
+                        if rendered_ns.get(prefix) != Some(uri) {
+                            ns_decls.push(NsDecl {
+                                prefix: prefix.clone(),
+                                uri: uri.clone(),
+                            });
+                        }
+                    } else if prefix.is_empty()
+                        && rendered_ns.get("").map(|u| !u.is_empty()).unwrap_or(false)
+                    {
+                        ns_decls.push(NsDecl {
+                            prefix: String::new(),
+                            uri: String::new(),
+                        });
+                    }
+                }
+            }
+            C14nMode::Inclusive => {
+                for (prefix, uri) in inscope_ns {
+                    if prefix == "xml" {
+                        continue;
+                    }
+                    if rendered_ns.get(prefix) != Some(uri) {
+                        ns_decls.push(NsDecl {
+                            prefix: prefix.clone(),
+                            uri: uri.clone(),
+                        });
+                    }
+                }
+                // The element undeclares the default namespace (`xmlns=""`) and an
+                // output ancestor had rendered a non-empty one: emit the undeclaration.
+                if !inscope_ns.contains_key("")
+                    && rendered_ns.get("").map(|u| !u.is_empty()).unwrap_or(false)
+                {
+                    ns_decls.push(NsDecl {
+                        prefix: String::new(),
+                        uri: String::new(),
+                    });
+                }
+            }
+        }
+
+        ns_decls.sort();
+        ns_decls
+    }
+
     fn process_element(
         &self,
         node: roxmltree::Node<'_, '_>,
@@ -170,42 +250,8 @@ impl<'a> ExcC14nContext<'a> {
             }
         }
 
-        // Determine visibly utilized prefixes
-        let mut utilized: HashSet<String> = HashSet::new();
-        utilized.insert(element_prefix(node));
-        for attr in node.attributes() {
-            let pfx = attribute_prefix(node, &attr);
-            if !pfx.is_empty() {
-                utilized.insert(pfx);
-            }
-        }
-
-        // Collect in-scope namespaces
         let inscope_ns = collect_inscope_namespaces(node);
-
-        // Build NsDecl list
-        let mut ns_decls: Vec<NsDecl> = Vec::new();
-        for prefix in &utilized {
-            if prefix == "xml" {
-                continue;
-            }
-            if let Some(uri) = inscope_ns.get(prefix) {
-                if rendered_ns.get(prefix) != Some(uri) {
-                    ns_decls.push(NsDecl {
-                        prefix: prefix.clone(),
-                        uri: uri.clone(),
-                    });
-                }
-            } else if prefix.is_empty()
-                && rendered_ns.get("").map(|u| !u.is_empty()).unwrap_or(false)
-            {
-                ns_decls.push(NsDecl {
-                    prefix: String::new(),
-                    uri: String::new(),
-                });
-            }
-        }
-        ns_decls.sort();
+        let ns_decls = self.namespace_decls(node, &inscope_ns, rendered_ns);
 
         // Build Attr list
         let mut attrs: Vec<Attr> = Vec::new();
@@ -237,10 +283,23 @@ impl<'a> ExcC14nContext<'a> {
         }
         output.extend_from_slice(b">");
 
-        // Build child rendered_ns
+        // Build child rendered_ns: exclusive only propagates what it rendered,
+        // inclusive propagates the full in-scope set (every namespace is rendered
+        // by some ancestor, so children compare against the complete context).
         let mut child_rendered_ns = rendered_ns.clone();
-        for ns in &ns_decls {
-            child_rendered_ns.insert(ns.prefix.clone(), ns.uri.clone());
+        match self.mode {
+            C14nMode::Exclusive => {
+                for ns in &ns_decls {
+                    child_rendered_ns.insert(ns.prefix.clone(), ns.uri.clone());
+                }
+            }
+            C14nMode::Inclusive => {
+                for (prefix, uri) in &inscope_ns {
+                    if prefix != "xml" {
+                        child_rendered_ns.insert(prefix.clone(), uri.clone());
+                    }
+                }
+            }
         }
 
         // Recurse into children
@@ -259,17 +318,22 @@ impl<'a> ExcC14nContext<'a> {
 
 pub(crate) fn canonicalize_doc(
     doc: &roxmltree::Document<'_>,
+    mode: C14nMode,
     skip: Option<SkipElement<'_>>,
 ) -> Result<Vec<u8>, C14nError> {
     let mut output = Vec::new();
-    let ctx = ExcC14nContext { skip };
+    let ctx = C14nContext { mode, skip };
     ctx.process_node(doc.root(), &mut output, &BTreeMap::new())?;
     Ok(output)
 }
 
-pub(crate) fn canonicalize_subtree(node: &roxmltree::Node<'_, '_>) -> Result<Vec<u8>, C14nError> {
+pub(crate) fn canonicalize_subtree(
+    node: &roxmltree::Node<'_, '_>,
+    mode: C14nMode,
+    skip: Option<SkipElement<'_>>,
+) -> Result<Vec<u8>, C14nError> {
     let mut output = Vec::new();
-    let ctx = ExcC14nContext { skip: None };
+    let ctx = C14nContext { mode, skip };
     ctx.process_node(*node, &mut output, &BTreeMap::new())?;
     Ok(output)
 }
@@ -280,11 +344,20 @@ mod tests {
     use similar_asserts::assert_eq;
     use standardized_types::xades::XMLDSIG_NS;
 
-    use super::super::{SkipElement, canonicalize, canonicalize_signature_subtree};
+    use super::super::{C14nMode, SkipElement, canonicalize, canonicalize_signature_subtree};
 
     fn c14n(xml: &str) -> String {
-        String::from_utf8(canonicalize(xml, None).expect("canonicalize failed"))
-            .expect("invalid utf8")
+        String::from_utf8(
+            canonicalize(xml, C14nMode::Exclusive, None).expect("canonicalize failed"),
+        )
+        .expect("invalid utf8")
+    }
+
+    fn inc(xml: &str) -> String {
+        String::from_utf8(
+            canonicalize(xml, C14nMode::Inclusive, None).expect("canonicalize failed"),
+        )
+        .expect("invalid utf8")
     }
 
     fn skip_signature(id: Option<&str>) -> Option<SkipElement<'_>> {
@@ -380,9 +453,10 @@ mod tests {
     #[test]
     fn enveloped_removes_signature() {
         let xml = r#"<root xmlns="http://example.com"><data>hello</data><Signature xmlns="http://www.w3.org/2000/09/xmldsig#" Id="sig1"><SignedInfo><CanonicalizationMethod/></SignedInfo><SignatureValue>abc</SignatureValue></Signature></root>"#;
-        let result =
-            String::from_utf8(canonicalize(xml, skip_signature(None)).expect("c14n failed"))
-                .expect("utf8");
+        let result = String::from_utf8(
+            canonicalize(xml, C14nMode::Exclusive, skip_signature(None)).expect("c14n failed"),
+        )
+        .expect("utf8");
         assert!(!result.contains("Signature"));
         assert!(!result.contains("SignatureValue"));
         assert!(result.contains("<data>hello</data>"));
@@ -392,7 +466,8 @@ mod tests {
     fn enveloped_by_id_skips_matching_only() {
         let xml = r#"<root xmlns:ds="http://www.w3.org/2000/09/xmldsig#"><ds:Signature Id="keep"><ds:SignedInfo/></ds:Signature><ds:Signature Id="remove"><ds:SignedInfo/></ds:Signature></root>"#;
         let result = String::from_utf8(
-            canonicalize(xml, skip_signature(Some("remove"))).expect("c14n failed"),
+            canonicalize(xml, C14nMode::Exclusive, skip_signature(Some("remove")))
+                .expect("c14n failed"),
         )
         .expect("utf8");
         assert!(result.contains("Id=\"keep\""));
@@ -403,8 +478,14 @@ mod tests {
     fn signed_info_extraction() {
         let xml = r#"<root xmlns:ds="http://www.w3.org/2000/09/xmldsig#"><ds:Signature Id="sig1"><ds:SignedInfo><ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/><ds:Reference URI=""/></ds:SignedInfo><ds:SignatureValue>abc</ds:SignatureValue></ds:Signature></root>"#;
         let result = String::from_utf8(
-            canonicalize_signature_subtree(xml, Some("sig1"), XMLDSIG_NS, "SignedInfo")
-                .expect("c14n failed"),
+            canonicalize_signature_subtree(
+                xml,
+                C14nMode::Exclusive,
+                Some("sig1"),
+                XMLDSIG_NS,
+                "SignedInfo",
+            )
+            .expect("c14n failed"),
         )
         .expect("utf8");
         assert!(result.contains("SignedInfo"));
@@ -416,8 +497,14 @@ mod tests {
     fn signed_info_inherits_namespace_from_ancestor() {
         let xml = r#"<root xmlns:ds="http://www.w3.org/2000/09/xmldsig#"><ds:Signature Id="s1"><ds:SignedInfo><ds:Reference URI=""/></ds:SignedInfo></ds:Signature></root>"#;
         let result = String::from_utf8(
-            canonicalize_signature_subtree(xml, Some("s1"), XMLDSIG_NS, "SignedInfo")
-                .expect("c14n failed"),
+            canonicalize_signature_subtree(
+                xml,
+                C14nMode::Exclusive,
+                Some("s1"),
+                XMLDSIG_NS,
+                "SignedInfo",
+            )
+            .expect("c14n failed"),
         )
         .expect("utf8");
         assert!(
@@ -429,7 +516,13 @@ mod tests {
     #[test]
     fn signed_info_not_found_errors() {
         let xml = r#"<root/>"#;
-        let err = canonicalize_signature_subtree(xml, None, XMLDSIG_NS, "SignedInfo");
+        let err = canonicalize_signature_subtree(
+            xml,
+            C14nMode::Exclusive,
+            None,
+            XMLDSIG_NS,
+            "SignedInfo",
+        );
         assert!(err.is_err());
     }
 
@@ -471,5 +564,51 @@ mod tests {
         let first = c14n(input);
         let second = c14n(&first);
         assert_eq!(first, second, "Canonicalization must be idempotent");
+    }
+
+    #[test]
+    fn inclusive_renders_all_inscope_not_just_utilized() {
+        // Exclusive drops the unused xmlns:b and redeclares xmlns:a on the child;
+        // inclusive declares both at the root and the child inherits them.
+        let input = r#"<root xmlns:a="http://a" xmlns:b="http://b"><a:child/></root>"#;
+        assert_eq!(
+            inc(input),
+            r#"<root xmlns:a="http://a" xmlns:b="http://b"><a:child></a:child></root>"#
+        );
+    }
+
+    #[test]
+    fn inclusive_subtree_inherits_all_ancestor_namespaces() {
+        let xml = r#"<root xmlns="http://d" xmlns:ds="http://www.w3.org/2000/09/xmldsig#" xmlns:x="http://x"><ds:Signature Id="s1"><ds:SignedInfo><ds:Reference URI=""/></ds:SignedInfo></ds:Signature></root>"#;
+        let result = String::from_utf8(
+            canonicalize_signature_subtree(
+                xml,
+                C14nMode::Inclusive,
+                Some("s1"),
+                XMLDSIG_NS,
+                "SignedInfo",
+            )
+            .expect("c14n failed"),
+        )
+        .expect("utf8");
+        // The apex must carry every in-scope namespace (default, ds, x), sorted
+        // with the default first.
+        assert!(
+            result.starts_with(
+                "<ds:SignedInfo xmlns=\"http://d\" xmlns:ds=\"http://www.w3.org/2000/09/xmldsig#\" xmlns:x=\"http://x\">"
+            ),
+            "inclusive SignedInfo must declare all inherited namespaces. Got: {result}"
+        );
+    }
+
+    #[test]
+    fn inclusive_does_not_redeclare_inherited_in_descendants() {
+        let input = r#"<r xmlns:p="http://p"><a><p:c/></a></r>"#;
+        // p is declared once at the root; descendants inherit it without
+        // redeclaring (the defining difference from exclusive C14N).
+        assert_eq!(
+            inc(input),
+            r#"<r xmlns:p="http://p"><a><p:c></p:c></a></r>"#
+        );
     }
 }

@@ -1,0 +1,341 @@
+<?xml version='1.0' encoding='utf-8'?>
+<TrustServiceStatusList xmlns="http://uri.etsi.org/02231/v2#" xmlns:ns1="http://uri.etsi.org/02231/v2/additionaltypes#" xmlns:ns2="http://www.w3.org/2000/09/xmldsig#" xmlns:ns3="http://uri.etsi.org/01903/v1.3.2#" TSLTag="http://uri.etsi.org/19612/TSLTag" Id="TrustServiceStatusList">
+    <SchemeInformation>
+        <TSLVersionIdentifier>6</TSLVersionIdentifier>
+        <TSLSequenceNumber>2</TSLSequenceNumber>
+        <TSLType>http://uri.etsi.org/TrstSvc/TrustedList/TSLType/EUgeneric</TSLType>
+        <SchemeOperatorName>
+            <Name xml:lang="en">TSL User</Name>
+        </SchemeOperatorName>
+        <SchemeOperatorAddress>
+            <PostalAddresses>
+                <PostalAddress xml:lang="en">
+                    <StreetAddress>Test</StreetAddress>
+                    <Locality>Test</Locality>
+                    <StateOrProvince>Test</StateOrProvince>
+                    <PostalCode>Test</PostalCode>
+                    <CountryName>UT</CountryName>
+                </PostalAddress>
+            </PostalAddresses>
+            <ElectronicAddress>
+                <URI xml:lang="en">Test</URI>
+            </ElectronicAddress>
+        </SchemeOperatorAddress>
+        <SchemeName>
+            <Name xml:lang="en">EU TL</Name>
+        </SchemeName>
+        <SchemeInformationURI>
+            <URI xml:lang="en">https://trustedlist.serviceproviders.eudiw.dev/TL/EU/01.xml</URI>
+        </SchemeInformationURI>
+        <StatusDeterminationApproach>http://uri.etsi.org/TrstSvc/TrustedList/StatusDetn/EUappropriate</StatusDeterminationApproach>
+        <SchemeTypeCommunityRules>
+            <URI xml:lang="en">http://uri.etsi.org/TrstSvc/TrustedList/schemerules/EUcommon</URI>
+            <URI xml:lang="en">http://uri.etsi.org/TrstSvc/TrustedList/schemerules/EU</URI>
+        </SchemeTypeCommunityRules>
+        <SchemeTerritory>EU</SchemeTerritory>
+        <PolicyOrLegalNotice>
+            <TSLLegalNotice xml:lang="en">test</TSLLegalNotice>
+        </PolicyOrLegalNotice>
+        <HistoricalInformationPeriod>65535</HistoricalInformationPeriod>
+        <PointersToOtherTSL>
+            <OtherTSLPointer>
+                <ServiceDigitalIdentities>
+                    <ServiceDigitalIdentity>
+                        <DigitalId>
+                            <X509Certificate>MIIC3zCCAoWgAwIBAgIUf3lohTmDMAmS/YX/q4hqoRyJB54wCgYIKoZIzj0EAwIwXDEeMBwGA1UEAwwVUElEIElzc3VlciBDQSAtIFVUIDAyMS0wKwYDVQQKDCRFVURJIFdhbGxldCBSZWZlcmVuY2UgSW1wbGVtZW50YXRpb24xCzAJBgNVBAYTAlVUMB4XDTI1MDQxMDE0Mzc1MloXDTI2MDcwNDE0Mzc1MVowUjEUMBIGA1UEAwwLUElEIERTIC0gMDExLTArBgNVBAoMJEVVREkgV2FsbGV0IFJlZmVyZW5jZSBJbXBsZW1lbnRhdGlvbjELMAkGA1UEBhMCVVQwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAS7WAAWqPze0Us3z8pajyVPWBRmrRbCi5X2s9GvlybQytwTumcZnej9BkLfAglloX5tv+NgWfDfgt/06s+5tV4lo4IBLTCCASkwHwYDVR0jBBgwFoAUYseURyi9D6IWIKeawkmURPEB08cwGwYDVR0RBBQwEoIQaXNzdWVyLmV1ZGl3LmRldjAWBgNVHSUBAf8EDDAKBggrgQICAAABAjBDBgNVHR8EPDA6MDigNqA0hjJodHRwczovL3ByZXByb2QucGtpLmV1ZGl3LmRldi9jcmwvcGlkX0NBX1VUXzAyLmNybDAdBgNVHQ4EFgQUql/opxkQlYy0llaToPbDE/myEcEwDgYDVR0PAQH/BAQDAgeAMF0GA1UdEgRWMFSGUmh0dHBzOi8vZ2l0aHViLmNvbS9ldS1kaWdpdGFsLWlkZW50aXR5LXdhbGxldC9hcmNoaXRlY3R1cmUtYW5kLXJlZmVyZW5jZS1mcmFtZXdvcmswCgYIKoZIzj0EAwIDSAAwRQIhANJVSDsqT3IkGcKWWgSeubkDOdi5/UE9b1GF/X5fQRFaAiBp5t6tHh8XwFhPstzOHMopvBD/Gwms0RAUgmSn6ku8Gg==</X509Certificate>
+                        </DigitalId>
+                    </ServiceDigitalIdentity>
+                </ServiceDigitalIdentities>
+                <TSLLocation>https://trustedlist.serviceproviders.eudiw.dev/LOTL/01.xml</TSLLocation>
+                <AdditionalInformation>
+                    <OtherInformation><TSLType>http://uri.etsi.org/TrstSvc/TrustedList/TSLType/EUlistofthelists</TSLType>
+</OtherInformation>
+                    <OtherInformation>
+                        <SchemeOperatorName>
+                            <Name xml:lang="en">EU-LOTL</Name>
+                        </SchemeOperatorName>
+                    </OtherInformation>
+                    <OtherInformation>
+                        <SchemeTerritory>EU</SchemeTerritory>
+                    </OtherInformation>
+                    <OtherInformation><SchemeTypeCommunityRules>
+    <URI xml:lang="en">http://uri.etsi.org/TrstSvc/TrustedList/schemerules/EUlistofthelists</URI>
+</SchemeTypeCommunityRules>
+</OtherInformation>
+                    <OtherInformation><ns1:MimeType>application/vnd.etsi.tsl+xml</ns1:MimeType>
+</OtherInformation>
+                </AdditionalInformation>
+            </OtherTSLPointer>
+        </PointersToOtherTSL>
+        <ListIssueDateTime>2026-04-30T14:28:34</ListIssueDateTime>
+        <NextUpdate>
+            <dateTime>2026-10-27T14:28:34</dateTime>
+        </NextUpdate>
+        <DistributionPoints>
+            <URI>https://trustedlist.serviceproviders.eudiw.dev/TL/EU/01.xml</URI>
+        </DistributionPoints>
+    </SchemeInformation>
+    <TrustServiceProviderList>
+        <TrustServiceProvider>
+            <TSPInformation>
+                <TSPName>
+                    <Name xml:lang="en">EU Services</Name>
+                </TSPName>
+                <TSPTradeName>
+                    <Name xml:lang="en">EU Services</Name>
+                </TSPTradeName>
+                <TSPAddress>
+                    <PostalAddresses>
+                        <PostalAddress xml:lang="en">
+                            <StreetAddress>test</StreetAddress>
+                            <Locality>test</Locality>
+                            <StateOrProvince>test</StateOrProvince>
+                            <PostalCode>1234-56</PostalCode>
+                            <CountryName>{'Portugues': 'pt', 'English': 'en'}</CountryName>
+                        </PostalAddress>
+                    </PostalAddresses>
+                    <ElectronicAddress>
+                        <URI xml:lang="en">test@test.com</URI>
+                    </ElectronicAddress>
+                </TSPAddress>
+                <TSPInformationURI>
+                    <URI xml:lang="en">https://trustedlist.serviceproviders.eudiw.dev/</URI>
+                </TSPInformationURI>
+            </TSPInformation>
+            <TSPServices>
+                <TSPService>
+                    <ServiceInformation>
+                        <ServiceTypeIdentifier>http://uri.etsi.org/TrstSvc/Svctype/EAA</ServiceTypeIdentifier>
+                        <ServiceName>
+                            <Name xml:lang="en">EUDIW Issuer EAA - EU01</Name>
+                        </ServiceName>
+                        <ServiceDigitalIdentity>
+                            <DigitalId>
+                                <X509Certificate>MIIDHDCCAqOgAwIBAgIUCs7o+15JpWtXNl9dQxLIo+8y+zUwCgYIKoZIzj0EAwMwXDEeMBwGA1UEAwwVUElEIElzc3VlciBDQSAtIEVVIDAxMS0wKwYDVQQKDCRFVURJIFdhbGxldCBSZWZlcmVuY2UgSW1wbGVtZW50YXRpb24xCzAJBgNVBAYTAkVVMB4XDTIzMDkwMTE4MzU0MVoXDTMyMTEyNzE4MzU0MFowXDEeMBwGA1UEAwwVUElEIElzc3VlciBDQSAtIEVVIDAxMS0wKwYDVQQKDCRFVURJIFdhbGxldCBSZWZlcmVuY2UgSW1wbGVtZW50YXRpb24xCzAJBgNVBAYTAkVVMHYwEAYHKoZIzj0CAQYFK4EEACIDYgAE1mG0dsjY1fJAEpnKxhcdo/hyZ4aPJWRuEazeBtmyP4vEkeYNK2kjZqM+P65Efc4SVbNpUEomvN05HNx55ZmDm0WHOQH7RShDSBPGXGVP868LATeiDGs658TwYD2gLnIAo4IBJDCCASAwEgYDVR0TAQH/BAgwBgEB/wIBADAfBgNVHSMEGDAWgBRBi2F24YyB3D+yX1Y//myyBoHgETAWBgNVHSUBAf8EDDAKBggrgQICAAABBzBDBgNVHR8EPDA6MDigNqA0hjJodHRwczovL3ByZXByb2QucGtpLmV1ZGl3LmRldi9jcmwvcGlkX0NBX0VVXzAxLmNybDAdBgNVHQ4EFgQUQYthduGMgdw/sl9WP/5ssgaB4BEwDgYDVR0PAQH/BAQDAgEGMF0GA1UdEgRWMFSGUmh0dHBzOi8vZ2l0aHViLmNvbS9ldS1kaWdpdGFsLWlkZW50aXR5LXdhbGxldC9hcmNoaXRlY3R1cmUtYW5kLXJlZmVyZW5jZS1mcmFtZXdvcmswCgYIKoZIzj0EAwMDZwAwZAIwYd4k7REPvWb9s7Gq5+MJcqjHAZ+P6vKP/eZDogfMZzWlvhP1N+Xm8kpQvyLWXBb1AjB0/Zc+mn300PVPYDTCaURu7oDeI92WthjSoTDwinPyoMqO4cZAG3DjB5ZCF/tllQ4=</X509Certificate>
+                            </DigitalId>
+                        </ServiceDigitalIdentity>
+                        <ServiceStatus>http://uri.etsi.org/TrstSvc/TrustedList/Svcstatus/recognisedatnationallevel</ServiceStatus>
+                        <StatusStartingTime>2025-12-03T16:47:36</StatusStartingTime>
+                        <SchemeServiceDefinitionURI>
+                            <URI xml:lang="en">https://trustedlist.serviceproviders.eudiw.dev/</URI>
+                        </SchemeServiceDefinitionURI>
+                    </ServiceInformation>
+                </TSPService>
+                <TSPService>
+                    <ServiceInformation>
+                        <ServiceTypeIdentifier>http://uri.etsi.org/TrstSvc/Svctype/EAA/Pub-EAA</ServiceTypeIdentifier>
+                        <ServiceName>
+                            <Name xml:lang="en">EUDIW Issuer Pub EAA - EU01</Name>
+                        </ServiceName>
+                        <ServiceDigitalIdentity>
+                            <DigitalId>
+                                <X509Certificate>MIIDHDCCAqOgAwIBAgIUCs7o+15JpWtXNl9dQxLIo+8y+zUwCgYIKoZIzj0EAwMwXDEeMBwGA1UEAwwVUElEIElzc3VlciBDQSAtIEVVIDAxMS0wKwYDVQQKDCRFVURJIFdhbGxldCBSZWZlcmVuY2UgSW1wbGVtZW50YXRpb24xCzAJBgNVBAYTAkVVMB4XDTIzMDkwMTE4MzU0MVoXDTMyMTEyNzE4MzU0MFowXDEeMBwGA1UEAwwVUElEIElzc3VlciBDQSAtIEVVIDAxMS0wKwYDVQQKDCRFVURJIFdhbGxldCBSZWZlcmVuY2UgSW1wbGVtZW50YXRpb24xCzAJBgNVBAYTAkVVMHYwEAYHKoZIzj0CAQYFK4EEACIDYgAE1mG0dsjY1fJAEpnKxhcdo/hyZ4aPJWRuEazeBtmyP4vEkeYNK2kjZqM+P65Efc4SVbNpUEomvN05HNx55ZmDm0WHOQH7RShDSBPGXGVP868LATeiDGs658TwYD2gLnIAo4IBJDCCASAwEgYDVR0TAQH/BAgwBgEB/wIBADAfBgNVHSMEGDAWgBRBi2F24YyB3D+yX1Y//myyBoHgETAWBgNVHSUBAf8EDDAKBggrgQICAAABBzBDBgNVHR8EPDA6MDigNqA0hjJodHRwczovL3ByZXByb2QucGtpLmV1ZGl3LmRldi9jcmwvcGlkX0NBX0VVXzAxLmNybDAdBgNVHQ4EFgQUQYthduGMgdw/sl9WP/5ssgaB4BEwDgYDVR0PAQH/BAQDAgEGMF0GA1UdEgRWMFSGUmh0dHBzOi8vZ2l0aHViLmNvbS9ldS1kaWdpdGFsLWlkZW50aXR5LXdhbGxldC9hcmNoaXRlY3R1cmUtYW5kLXJlZmVyZW5jZS1mcmFtZXdvcmswCgYIKoZIzj0EAwMDZwAwZAIwYd4k7REPvWb9s7Gq5+MJcqjHAZ+P6vKP/eZDogfMZzWlvhP1N+Xm8kpQvyLWXBb1AjB0/Zc+mn300PVPYDTCaURu7oDeI92WthjSoTDwinPyoMqO4cZAG3DjB5ZCF/tllQ4=</X509Certificate>
+                            </DigitalId>
+                        </ServiceDigitalIdentity>
+                        <ServiceStatus>http://uri.etsi.org/TrstSvc/TrustedList/Svcstatus/recognisedatnationallevel</ServiceStatus>
+                        <StatusStartingTime>2025-12-03T16:47:36</StatusStartingTime>
+                        <SchemeServiceDefinitionURI>
+                            <URI xml:lang="en">https://trustedlist.serviceproviders.eudiw.dev/</URI>
+                        </SchemeServiceDefinitionURI>
+                    </ServiceInformation>
+                </TSPService>
+                <TSPService>
+                    <ServiceInformation>
+                        <ServiceTypeIdentifier>http://uri.etsi.org/Svc/Svctype/Provider/Wallet</ServiceTypeIdentifier>
+                        <ServiceName>
+                            <Name xml:lang="en">EUDIW Issuer Wallet Provider - EU01</Name>
+                        </ServiceName>
+                        <ServiceDigitalIdentity>
+                            <DigitalId>
+                                <X509Certificate>MIIDHDCCAqOgAwIBAgIUCs7o+15JpWtXNl9dQxLIo+8y+zUwCgYIKoZIzj0EAwMwXDEeMBwGA1UEAwwVUElEIElzc3VlciBDQSAtIEVVIDAxMS0wKwYDVQQKDCRFVURJIFdhbGxldCBSZWZlcmVuY2UgSW1wbGVtZW50YXRpb24xCzAJBgNVBAYTAkVVMB4XDTIzMDkwMTE4MzU0MVoXDTMyMTEyNzE4MzU0MFowXDEeMBwGA1UEAwwVUElEIElzc3VlciBDQSAtIEVVIDAxMS0wKwYDVQQKDCRFVURJIFdhbGxldCBSZWZlcmVuY2UgSW1wbGVtZW50YXRpb24xCzAJBgNVBAYTAkVVMHYwEAYHKoZIzj0CAQYFK4EEACIDYgAE1mG0dsjY1fJAEpnKxhcdo/hyZ4aPJWRuEazeBtmyP4vEkeYNK2kjZqM+P65Efc4SVbNpUEomvN05HNx55ZmDm0WHOQH7RShDSBPGXGVP868LATeiDGs658TwYD2gLnIAo4IBJDCCASAwEgYDVR0TAQH/BAgwBgEB/wIBADAfBgNVHSMEGDAWgBRBi2F24YyB3D+yX1Y//myyBoHgETAWBgNVHSUBAf8EDDAKBggrgQICAAABBzBDBgNVHR8EPDA6MDigNqA0hjJodHRwczovL3ByZXByb2QucGtpLmV1ZGl3LmRldi9jcmwvcGlkX0NBX0VVXzAxLmNybDAdBgNVHQ4EFgQUQYthduGMgdw/sl9WP/5ssgaB4BEwDgYDVR0PAQH/BAQDAgEGMF0GA1UdEgRWMFSGUmh0dHBzOi8vZ2l0aHViLmNvbS9ldS1kaWdpdGFsLWlkZW50aXR5LXdhbGxldC9hcmNoaXRlY3R1cmUtYW5kLXJlZmVyZW5jZS1mcmFtZXdvcmswCgYIKoZIzj0EAwMDZwAwZAIwYd4k7REPvWb9s7Gq5+MJcqjHAZ+P6vKP/eZDogfMZzWlvhP1N+Xm8kpQvyLWXBb1AjB0/Zc+mn300PVPYDTCaURu7oDeI92WthjSoTDwinPyoMqO4cZAG3DjB5ZCF/tllQ4=</X509Certificate>
+                            </DigitalId>
+                        </ServiceDigitalIdentity>
+                        <ServiceStatus>http://uri.etsi.org/TrstSvc/TrustedList/Svcstatus/recognisedatnationallevel</ServiceStatus>
+                        <StatusStartingTime>2025-12-03T16:47:36</StatusStartingTime>
+                        <SchemeServiceDefinitionURI>
+                            <URI xml:lang="en">https://trustedlist.serviceproviders.eudiw.dev/</URI>
+                        </SchemeServiceDefinitionURI>
+                    </ServiceInformation>
+                </TSPService>
+                <TSPService>
+                    <ServiceInformation>
+                        <ServiceTypeIdentifier>http://uri.etsi.org/Svc/Svctype/Provider/PID</ServiceTypeIdentifier>
+                        <ServiceName>
+                            <Name xml:lang="en">EUDIW Issuer PID Provider - EU01</Name>
+                        </ServiceName>
+                        <ServiceDigitalIdentity>
+                            <DigitalId>
+                                <X509Certificate>MIIDHDCCAqOgAwIBAgIUCs7o+15JpWtXNl9dQxLIo+8y+zUwCgYIKoZIzj0EAwMwXDEeMBwGA1UEAwwVUElEIElzc3VlciBDQSAtIEVVIDAxMS0wKwYDVQQKDCRFVURJIFdhbGxldCBSZWZlcmVuY2UgSW1wbGVtZW50YXRpb24xCzAJBgNVBAYTAkVVMB4XDTIzMDkwMTE4MzU0MVoXDTMyMTEyNzE4MzU0MFowXDEeMBwGA1UEAwwVUElEIElzc3VlciBDQSAtIEVVIDAxMS0wKwYDVQQKDCRFVURJIFdhbGxldCBSZWZlcmVuY2UgSW1wbGVtZW50YXRpb24xCzAJBgNVBAYTAkVVMHYwEAYHKoZIzj0CAQYFK4EEACIDYgAE1mG0dsjY1fJAEpnKxhcdo/hyZ4aPJWRuEazeBtmyP4vEkeYNK2kjZqM+P65Efc4SVbNpUEomvN05HNx55ZmDm0WHOQH7RShDSBPGXGVP868LATeiDGs658TwYD2gLnIAo4IBJDCCASAwEgYDVR0TAQH/BAgwBgEB/wIBADAfBgNVHSMEGDAWgBRBi2F24YyB3D+yX1Y//myyBoHgETAWBgNVHSUBAf8EDDAKBggrgQICAAABBzBDBgNVHR8EPDA6MDigNqA0hjJodHRwczovL3ByZXByb2QucGtpLmV1ZGl3LmRldi9jcmwvcGlkX0NBX0VVXzAxLmNybDAdBgNVHQ4EFgQUQYthduGMgdw/sl9WP/5ssgaB4BEwDgYDVR0PAQH/BAQDAgEGMF0GA1UdEgRWMFSGUmh0dHBzOi8vZ2l0aHViLmNvbS9ldS1kaWdpdGFsLWlkZW50aXR5LXdhbGxldC9hcmNoaXRlY3R1cmUtYW5kLXJlZmVyZW5jZS1mcmFtZXdvcmswCgYIKoZIzj0EAwMDZwAwZAIwYd4k7REPvWb9s7Gq5+MJcqjHAZ+P6vKP/eZDogfMZzWlvhP1N+Xm8kpQvyLWXBb1AjB0/Zc+mn300PVPYDTCaURu7oDeI92WthjSoTDwinPyoMqO4cZAG3DjB5ZCF/tllQ4=</X509Certificate>
+                            </DigitalId>
+                        </ServiceDigitalIdentity>
+                        <ServiceStatus>http://uri.etsi.org/TrstSvc/TrustedList/Svcstatus/recognisedatnationallevel</ServiceStatus>
+                        <StatusStartingTime>2025-12-03T16:47:36</StatusStartingTime>
+                        <SchemeServiceDefinitionURI>
+                            <URI xml:lang="en">https://trustedlist.serviceproviders.eudiw.dev/</URI>
+                        </SchemeServiceDefinitionURI>
+                    </ServiceInformation>
+                </TSPService>
+                <TSPService>
+                    <ServiceInformation>
+                        <ServiceTypeIdentifier>http://uri.etsi.org/Svc/Svctype/CA/RPaccess</ServiceTypeIdentifier>
+                        <ServiceName>
+                            <Name xml:lang="en">EUDIW Issuer Access Certificate Authority - EU01</Name>
+                        </ServiceName>
+                        <ServiceDigitalIdentity>
+                            <DigitalId>
+                                <X509Certificate>MIIDHDCCAqOgAwIBAgIUCs7o+15JpWtXNl9dQxLIo+8y+zUwCgYIKoZIzj0EAwMwXDEeMBwGA1UEAwwVUElEIElzc3VlciBDQSAtIEVVIDAxMS0wKwYDVQQKDCRFVURJIFdhbGxldCBSZWZlcmVuY2UgSW1wbGVtZW50YXRpb24xCzAJBgNVBAYTAkVVMB4XDTIzMDkwMTE4MzU0MVoXDTMyMTEyNzE4MzU0MFowXDEeMBwGA1UEAwwVUElEIElzc3VlciBDQSAtIEVVIDAxMS0wKwYDVQQKDCRFVURJIFdhbGxldCBSZWZlcmVuY2UgSW1wbGVtZW50YXRpb24xCzAJBgNVBAYTAkVVMHYwEAYHKoZIzj0CAQYFK4EEACIDYgAE1mG0dsjY1fJAEpnKxhcdo/hyZ4aPJWRuEazeBtmyP4vEkeYNK2kjZqM+P65Efc4SVbNpUEomvN05HNx55ZmDm0WHOQH7RShDSBPGXGVP868LATeiDGs658TwYD2gLnIAo4IBJDCCASAwEgYDVR0TAQH/BAgwBgEB/wIBADAfBgNVHSMEGDAWgBRBi2F24YyB3D+yX1Y//myyBoHgETAWBgNVHSUBAf8EDDAKBggrgQICAAABBzBDBgNVHR8EPDA6MDigNqA0hjJodHRwczovL3ByZXByb2QucGtpLmV1ZGl3LmRldi9jcmwvcGlkX0NBX0VVXzAxLmNybDAdBgNVHQ4EFgQUQYthduGMgdw/sl9WP/5ssgaB4BEwDgYDVR0PAQH/BAQDAgEGMF0GA1UdEgRWMFSGUmh0dHBzOi8vZ2l0aHViLmNvbS9ldS1kaWdpdGFsLWlkZW50aXR5LXdhbGxldC9hcmNoaXRlY3R1cmUtYW5kLXJlZmVyZW5jZS1mcmFtZXdvcmswCgYIKoZIzj0EAwMDZwAwZAIwYd4k7REPvWb9s7Gq5+MJcqjHAZ+P6vKP/eZDogfMZzWlvhP1N+Xm8kpQvyLWXBb1AjB0/Zc+mn300PVPYDTCaURu7oDeI92WthjSoTDwinPyoMqO4cZAG3DjB5ZCF/tllQ4=</X509Certificate>
+                            </DigitalId>
+                        </ServiceDigitalIdentity>
+                        <ServiceStatus>http://uri.etsi.org/TrstSvc/TrustedList/Svcstatus/recognisedatnationallevel</ServiceStatus>
+                        <StatusStartingTime>2025-12-03T16:47:36</StatusStartingTime>
+                        <SchemeServiceDefinitionURI>
+                            <URI xml:lang="en">https://trustedlist.serviceproviders.eudiw.dev/</URI>
+                        </SchemeServiceDefinitionURI>
+                    </ServiceInformation>
+                </TSPService>
+                <TSPService>
+                    <ServiceInformation>
+                        <ServiceTypeIdentifier>http://uri.etsi.org/TrstSvc/Svctype/EAA/Q</ServiceTypeIdentifier>
+                        <ServiceName>
+                            <Name xml:lang="en">EUDIW Issuer QEAA - EU01</Name>
+                        </ServiceName>
+                        <ServiceDigitalIdentity>
+                            <DigitalId>
+                                <X509Certificate>MIIDHDCCAqOgAwIBAgIUCs7o+15JpWtXNl9dQxLIo+8y+zUwCgYIKoZIzj0EAwMwXDEeMBwGA1UEAwwVUElEIElzc3VlciBDQSAtIEVVIDAxMS0wKwYDVQQKDCRFVURJIFdhbGxldCBSZWZlcmVuY2UgSW1wbGVtZW50YXRpb24xCzAJBgNVBAYTAkVVMB4XDTIzMDkwMTE4MzU0MVoXDTMyMTEyNzE4MzU0MFowXDEeMBwGA1UEAwwVUElEIElzc3VlciBDQSAtIEVVIDAxMS0wKwYDVQQKDCRFVURJIFdhbGxldCBSZWZlcmVuY2UgSW1wbGVtZW50YXRpb24xCzAJBgNVBAYTAkVVMHYwEAYHKoZIzj0CAQYFK4EEACIDYgAE1mG0dsjY1fJAEpnKxhcdo/hyZ4aPJWRuEazeBtmyP4vEkeYNK2kjZqM+P65Efc4SVbNpUEomvN05HNx55ZmDm0WHOQH7RShDSBPGXGVP868LATeiDGs658TwYD2gLnIAo4IBJDCCASAwEgYDVR0TAQH/BAgwBgEB/wIBADAfBgNVHSMEGDAWgBRBi2F24YyB3D+yX1Y//myyBoHgETAWBgNVHSUBAf8EDDAKBggrgQICAAABBzBDBgNVHR8EPDA6MDigNqA0hjJodHRwczovL3ByZXByb2QucGtpLmV1ZGl3LmRldi9jcmwvcGlkX0NBX0VVXzAxLmNybDAdBgNVHQ4EFgQUQYthduGMgdw/sl9WP/5ssgaB4BEwDgYDVR0PAQH/BAQDAgEGMF0GA1UdEgRWMFSGUmh0dHBzOi8vZ2l0aHViLmNvbS9ldS1kaWdpdGFsLWlkZW50aXR5LXdhbGxldC9hcmNoaXRlY3R1cmUtYW5kLXJlZmVyZW5jZS1mcmFtZXdvcmswCgYIKoZIzj0EAwMDZwAwZAIwYd4k7REPvWb9s7Gq5+MJcqjHAZ+P6vKP/eZDogfMZzWlvhP1N+Xm8kpQvyLWXBb1AjB0/Zc+mn300PVPYDTCaURu7oDeI92WthjSoTDwinPyoMqO4cZAG3DjB5ZCF/tllQ4=</X509Certificate>
+                            </DigitalId>
+                        </ServiceDigitalIdentity>
+                        <ServiceStatus>http://uri.etsi.org/TrstSvc/TrustedList/Svcstatus/granted</ServiceStatus>
+                        <StatusStartingTime>2025-12-03T16:47:36</StatusStartingTime>
+                        <SchemeServiceDefinitionURI>
+                            <URI xml:lang="en">https://trustedlist.serviceproviders.eudiw.dev/</URI>
+                        </SchemeServiceDefinitionURI>
+                    </ServiceInformation>
+                </TSPService>
+                <TSPService>
+                    <ServiceInformation>
+                        <ServiceTypeIdentifier>http://uri.etsi.org/TrstSvc/Svctype/EAA</ServiceTypeIdentifier>
+                        <ServiceName>
+                            <Name xml:lang="en">EUDIW Issuer EAA - EU02</Name>
+                        </ServiceName>
+                        <ServiceDigitalIdentity>
+                            <DigitalId>
+                                <X509Certificate>MIIC0zCCAnmgAwIBAgIUXRXxkLbUM6+njr/XT0IIw/HA/uowCgYIKoZIzj0EAwMwVzEZMBcGA1UEAwwQUElEIElzc3VlciBDQSAwMjEtMCsGA1UECgwkRVVESSBXYWxsZXQgUmVmZXJlbmNlIEltcGxlbWVudGF0aW9uMQswCQYDVQQGEwJFVTAeFw0yNTA0MDkwMDAzMzBaFw0zNDA3MDYwMDAzMjlaMFcxGTAXBgNVBAMMEFBJRCBJc3N1ZXIgQ0EgMDIxLTArBgNVBAoMJEVVREkgV2FsbGV0IFJlZmVyZW5jZSBJbXBsZW1lbnRhdGlvbjELMAkGA1UEBhMCRVUwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARkqdLmwIlv+SSWr00tAIrt7EAMztgd3w9qA6qEm16yVfsLcyx2f4oIWuH45wa37J9GoNWpdeo27VoSoNMCzxOYo4IBITCCAR0wEgYDVR0TAQH/BAgwBgEB/wIBADAfBgNVHSMEGDAWgBRCUFC+ELgQ8J1EXI2/qxAI7ifcSTATBgNVHSUEDDAKBggrgQICAAABBzBDBgNVHR8EPDA6MDigNqA0hjJodHRwczovL3ByZXByb2QucGtpLmV1ZGl3LmRldi9jcmwvcGlkX0NBX0VVXzAyLmNybDAdBgNVHQ4EFgQUQlBQvhC4EPCdRFyNv6sQCO4n3EkwDgYDVR0PAQH/BAQDAgEGMF0GA1UdEgRWMFSGUmh0dHBzOi8vZ2l0aHViLmNvbS9ldS1kaWdpdGFsLWlkZW50aXR5LXdhbGxldC9hcmNoaXRlY3R1cmUtYW5kLXJlZmVyZW5jZS1mcmFtZXdvcmswCgYIKoZIzj0EAwMDSAAwRQIhAIavYfC5o0VVLKfgTKkzzWgc09hzDMsCl3O2le2sQfG7AiA2soqAN5gtUOLQKWK00DUz22EW79rvaV+VJPvfdQeokA==</X509Certificate>
+                            </DigitalId>
+                        </ServiceDigitalIdentity>
+                        <ServiceStatus>http://uri.etsi.org/TrstSvc/TrustedList/Svcstatus/recognisedatnationallevel</ServiceStatus>
+                        <StatusStartingTime>2025-12-03T16:48:19</StatusStartingTime>
+                        <SchemeServiceDefinitionURI>
+                            <URI xml:lang="en">https://trustedlist.serviceproviders.eudiw.dev/</URI>
+                        </SchemeServiceDefinitionURI>
+                    </ServiceInformation>
+                </TSPService>
+                <TSPService>
+                    <ServiceInformation>
+                        <ServiceTypeIdentifier>http://uri.etsi.org/TrstSvc/Svctype/EAA/Pub-EAA</ServiceTypeIdentifier>
+                        <ServiceName>
+                            <Name xml:lang="en">EUDIW Issuer Pub EAA - EU02</Name>
+                        </ServiceName>
+                        <ServiceDigitalIdentity>
+                            <DigitalId>
+                                <X509Certificate>MIIC0zCCAnmgAwIBAgIUXRXxkLbUM6+njr/XT0IIw/HA/uowCgYIKoZIzj0EAwMwVzEZMBcGA1UEAwwQUElEIElzc3VlciBDQSAwMjEtMCsGA1UECgwkRVVESSBXYWxsZXQgUmVmZXJlbmNlIEltcGxlbWVudGF0aW9uMQswCQYDVQQGEwJFVTAeFw0yNTA0MDkwMDAzMzBaFw0zNDA3MDYwMDAzMjlaMFcxGTAXBgNVBAMMEFBJRCBJc3N1ZXIgQ0EgMDIxLTArBgNVBAoMJEVVREkgV2FsbGV0IFJlZmVyZW5jZSBJbXBsZW1lbnRhdGlvbjELMAkGA1UEBhMCRVUwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARkqdLmwIlv+SSWr00tAIrt7EAMztgd3w9qA6qEm16yVfsLcyx2f4oIWuH45wa37J9GoNWpdeo27VoSoNMCzxOYo4IBITCCAR0wEgYDVR0TAQH/BAgwBgEB/wIBADAfBgNVHSMEGDAWgBRCUFC+ELgQ8J1EXI2/qxAI7ifcSTATBgNVHSUEDDAKBggrgQICAAABBzBDBgNVHR8EPDA6MDigNqA0hjJodHRwczovL3ByZXByb2QucGtpLmV1ZGl3LmRldi9jcmwvcGlkX0NBX0VVXzAyLmNybDAdBgNVHQ4EFgQUQlBQvhC4EPCdRFyNv6sQCO4n3EkwDgYDVR0PAQH/BAQDAgEGMF0GA1UdEgRWMFSGUmh0dHBzOi8vZ2l0aHViLmNvbS9ldS1kaWdpdGFsLWlkZW50aXR5LXdhbGxldC9hcmNoaXRlY3R1cmUtYW5kLXJlZmVyZW5jZS1mcmFtZXdvcmswCgYIKoZIzj0EAwMDSAAwRQIhAIavYfC5o0VVLKfgTKkzzWgc09hzDMsCl3O2le2sQfG7AiA2soqAN5gtUOLQKWK00DUz22EW79rvaV+VJPvfdQeokA==</X509Certificate>
+                            </DigitalId>
+                        </ServiceDigitalIdentity>
+                        <ServiceStatus>http://uri.etsi.org/TrstSvc/TrustedList/Svcstatus/recognisedatnationallevel</ServiceStatus>
+                        <StatusStartingTime>2025-12-03T16:48:19</StatusStartingTime>
+                        <SchemeServiceDefinitionURI>
+                            <URI xml:lang="en">https://trustedlist.serviceproviders.eudiw.dev/</URI>
+                        </SchemeServiceDefinitionURI>
+                    </ServiceInformation>
+                </TSPService>
+                <TSPService>
+                    <ServiceInformation>
+                        <ServiceTypeIdentifier>http://uri.etsi.org/Svc/Svctype/Provider/Wallet</ServiceTypeIdentifier>
+                        <ServiceName>
+                            <Name xml:lang="en">EUDIW Issuer Wallet Provider - EU02</Name>
+                        </ServiceName>
+                        <ServiceDigitalIdentity>
+                            <DigitalId>
+                                <X509Certificate>MIIC0zCCAnmgAwIBAgIUXRXxkLbUM6+njr/XT0IIw/HA/uowCgYIKoZIzj0EAwMwVzEZMBcGA1UEAwwQUElEIElzc3VlciBDQSAwMjEtMCsGA1UECgwkRVVESSBXYWxsZXQgUmVmZXJlbmNlIEltcGxlbWVudGF0aW9uMQswCQYDVQQGEwJFVTAeFw0yNTA0MDkwMDAzMzBaFw0zNDA3MDYwMDAzMjlaMFcxGTAXBgNVBAMMEFBJRCBJc3N1ZXIgQ0EgMDIxLTArBgNVBAoMJEVVREkgV2FsbGV0IFJlZmVyZW5jZSBJbXBsZW1lbnRhdGlvbjELMAkGA1UEBhMCRVUwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARkqdLmwIlv+SSWr00tAIrt7EAMztgd3w9qA6qEm16yVfsLcyx2f4oIWuH45wa37J9GoNWpdeo27VoSoNMCzxOYo4IBITCCAR0wEgYDVR0TAQH/BAgwBgEB/wIBADAfBgNVHSMEGDAWgBRCUFC+ELgQ8J1EXI2/qxAI7ifcSTATBgNVHSUEDDAKBggrgQICAAABBzBDBgNVHR8EPDA6MDigNqA0hjJodHRwczovL3ByZXByb2QucGtpLmV1ZGl3LmRldi9jcmwvcGlkX0NBX0VVXzAyLmNybDAdBgNVHQ4EFgQUQlBQvhC4EPCdRFyNv6sQCO4n3EkwDgYDVR0PAQH/BAQDAgEGMF0GA1UdEgRWMFSGUmh0dHBzOi8vZ2l0aHViLmNvbS9ldS1kaWdpdGFsLWlkZW50aXR5LXdhbGxldC9hcmNoaXRlY3R1cmUtYW5kLXJlZmVyZW5jZS1mcmFtZXdvcmswCgYIKoZIzj0EAwMDSAAwRQIhAIavYfC5o0VVLKfgTKkzzWgc09hzDMsCl3O2le2sQfG7AiA2soqAN5gtUOLQKWK00DUz22EW79rvaV+VJPvfdQeokA==</X509Certificate>
+                            </DigitalId>
+                        </ServiceDigitalIdentity>
+                        <ServiceStatus>http://uri.etsi.org/TrstSvc/TrustedList/Svcstatus/recognisedatnationallevel</ServiceStatus>
+                        <StatusStartingTime>2025-12-03T16:48:19</StatusStartingTime>
+                        <SchemeServiceDefinitionURI>
+                            <URI xml:lang="en">https://trustedlist.serviceproviders.eudiw.dev/</URI>
+                        </SchemeServiceDefinitionURI>
+                    </ServiceInformation>
+                </TSPService>
+                <TSPService>
+                    <ServiceInformation>
+                        <ServiceTypeIdentifier>http://uri.etsi.org/Svc/Svctype/Provider/PID</ServiceTypeIdentifier>
+                        <ServiceName>
+                            <Name xml:lang="en">EUDIW Issuer PID Provider - EU02</Name>
+                        </ServiceName>
+                        <ServiceDigitalIdentity>
+                            <DigitalId>
+                                <X509Certificate>MIIC0zCCAnmgAwIBAgIUXRXxkLbUM6+njr/XT0IIw/HA/uowCgYIKoZIzj0EAwMwVzEZMBcGA1UEAwwQUElEIElzc3VlciBDQSAwMjEtMCsGA1UECgwkRVVESSBXYWxsZXQgUmVmZXJlbmNlIEltcGxlbWVudGF0aW9uMQswCQYDVQQGEwJFVTAeFw0yNTA0MDkwMDAzMzBaFw0zNDA3MDYwMDAzMjlaMFcxGTAXBgNVBAMMEFBJRCBJc3N1ZXIgQ0EgMDIxLTArBgNVBAoMJEVVREkgV2FsbGV0IFJlZmVyZW5jZSBJbXBsZW1lbnRhdGlvbjELMAkGA1UEBhMCRVUwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARkqdLmwIlv+SSWr00tAIrt7EAMztgd3w9qA6qEm16yVfsLcyx2f4oIWuH45wa37J9GoNWpdeo27VoSoNMCzxOYo4IBITCCAR0wEgYDVR0TAQH/BAgwBgEB/wIBADAfBgNVHSMEGDAWgBRCUFC+ELgQ8J1EXI2/qxAI7ifcSTATBgNVHSUEDDAKBggrgQICAAABBzBDBgNVHR8EPDA6MDigNqA0hjJodHRwczovL3ByZXByb2QucGtpLmV1ZGl3LmRldi9jcmwvcGlkX0NBX0VVXzAyLmNybDAdBgNVHQ4EFgQUQlBQvhC4EPCdRFyNv6sQCO4n3EkwDgYDVR0PAQH/BAQDAgEGMF0GA1UdEgRWMFSGUmh0dHBzOi8vZ2l0aHViLmNvbS9ldS1kaWdpdGFsLWlkZW50aXR5LXdhbGxldC9hcmNoaXRlY3R1cmUtYW5kLXJlZmVyZW5jZS1mcmFtZXdvcmswCgYIKoZIzj0EAwMDSAAwRQIhAIavYfC5o0VVLKfgTKkzzWgc09hzDMsCl3O2le2sQfG7AiA2soqAN5gtUOLQKWK00DUz22EW79rvaV+VJPvfdQeokA==</X509Certificate>
+                            </DigitalId>
+                        </ServiceDigitalIdentity>
+                        <ServiceStatus>http://uri.etsi.org/TrstSvc/TrustedList/Svcstatus/recognisedatnationallevel</ServiceStatus>
+                        <StatusStartingTime>2025-12-03T16:48:19</StatusStartingTime>
+                        <SchemeServiceDefinitionURI>
+                            <URI xml:lang="en">https://trustedlist.serviceproviders.eudiw.dev/</URI>
+                        </SchemeServiceDefinitionURI>
+                    </ServiceInformation>
+                </TSPService>
+                <TSPService>
+                    <ServiceInformation>
+                        <ServiceTypeIdentifier>http://uri.etsi.org/Svc/Svctype/CA/RPaccess</ServiceTypeIdentifier>
+                        <ServiceName>
+                            <Name xml:lang="en">EUDIW Issuer Access Certificate Authority - EU02</Name>
+                        </ServiceName>
+                        <ServiceDigitalIdentity>
+                            <DigitalId>
+                                <X509Certificate>MIIC0zCCAnmgAwIBAgIUXRXxkLbUM6+njr/XT0IIw/HA/uowCgYIKoZIzj0EAwMwVzEZMBcGA1UEAwwQUElEIElzc3VlciBDQSAwMjEtMCsGA1UECgwkRVVESSBXYWxsZXQgUmVmZXJlbmNlIEltcGxlbWVudGF0aW9uMQswCQYDVQQGEwJFVTAeFw0yNTA0MDkwMDAzMzBaFw0zNDA3MDYwMDAzMjlaMFcxGTAXBgNVBAMMEFBJRCBJc3N1ZXIgQ0EgMDIxLTArBgNVBAoMJEVVREkgV2FsbGV0IFJlZmVyZW5jZSBJbXBsZW1lbnRhdGlvbjELMAkGA1UEBhMCRVUwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARkqdLmwIlv+SSWr00tAIrt7EAMztgd3w9qA6qEm16yVfsLcyx2f4oIWuH45wa37J9GoNWpdeo27VoSoNMCzxOYo4IBITCCAR0wEgYDVR0TAQH/BAgwBgEB/wIBADAfBgNVHSMEGDAWgBRCUFC+ELgQ8J1EXI2/qxAI7ifcSTATBgNVHSUEDDAKBggrgQICAAABBzBDBgNVHR8EPDA6MDigNqA0hjJodHRwczovL3ByZXByb2QucGtpLmV1ZGl3LmRldi9jcmwvcGlkX0NBX0VVXzAyLmNybDAdBgNVHQ4EFgQUQlBQvhC4EPCdRFyNv6sQCO4n3EkwDgYDVR0PAQH/BAQDAgEGMF0GA1UdEgRWMFSGUmh0dHBzOi8vZ2l0aHViLmNvbS9ldS1kaWdpdGFsLWlkZW50aXR5LXdhbGxldC9hcmNoaXRlY3R1cmUtYW5kLXJlZmVyZW5jZS1mcmFtZXdvcmswCgYIKoZIzj0EAwMDSAAwRQIhAIavYfC5o0VVLKfgTKkzzWgc09hzDMsCl3O2le2sQfG7AiA2soqAN5gtUOLQKWK00DUz22EW79rvaV+VJPvfdQeokA==</X509Certificate>
+                            </DigitalId>
+                        </ServiceDigitalIdentity>
+                        <ServiceStatus>http://uri.etsi.org/TrstSvc/TrustedList/Svcstatus/recognisedatnationallevel</ServiceStatus>
+                        <StatusStartingTime>2025-12-03T16:48:19</StatusStartingTime>
+                        <SchemeServiceDefinitionURI>
+                            <URI xml:lang="en">https://trustedlist.serviceproviders.eudiw.dev/</URI>
+                        </SchemeServiceDefinitionURI>
+                    </ServiceInformation>
+                </TSPService>
+                <TSPService>
+                    <ServiceInformation>
+                        <ServiceTypeIdentifier>http://uri.etsi.org/TrstSvc/Svctype/EAA/Q</ServiceTypeIdentifier>
+                        <ServiceName>
+                            <Name xml:lang="en">EUDIW Issuer QEAA - EU02</Name>
+                        </ServiceName>
+                        <ServiceDigitalIdentity>
+                            <DigitalId>
+                                <X509Certificate>MIIC0zCCAnmgAwIBAgIUXRXxkLbUM6+njr/XT0IIw/HA/uowCgYIKoZIzj0EAwMwVzEZMBcGA1UEAwwQUElEIElzc3VlciBDQSAwMjEtMCsGA1UECgwkRVVESSBXYWxsZXQgUmVmZXJlbmNlIEltcGxlbWVudGF0aW9uMQswCQYDVQQGEwJFVTAeFw0yNTA0MDkwMDAzMzBaFw0zNDA3MDYwMDAzMjlaMFcxGTAXBgNVBAMMEFBJRCBJc3N1ZXIgQ0EgMDIxLTArBgNVBAoMJEVVREkgV2FsbGV0IFJlZmVyZW5jZSBJbXBsZW1lbnRhdGlvbjELMAkGA1UEBhMCRVUwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARkqdLmwIlv+SSWr00tAIrt7EAMztgd3w9qA6qEm16yVfsLcyx2f4oIWuH45wa37J9GoNWpdeo27VoSoNMCzxOYo4IBITCCAR0wEgYDVR0TAQH/BAgwBgEB/wIBADAfBgNVHSMEGDAWgBRCUFC+ELgQ8J1EXI2/qxAI7ifcSTATBgNVHSUEDDAKBggrgQICAAABBzBDBgNVHR8EPDA6MDigNqA0hjJodHRwczovL3ByZXByb2QucGtpLmV1ZGl3LmRldi9jcmwvcGlkX0NBX0VVXzAyLmNybDAdBgNVHQ4EFgQUQlBQvhC4EPCdRFyNv6sQCO4n3EkwDgYDVR0PAQH/BAQDAgEGMF0GA1UdEgRWMFSGUmh0dHBzOi8vZ2l0aHViLmNvbS9ldS1kaWdpdGFsLWlkZW50aXR5LXdhbGxldC9hcmNoaXRlY3R1cmUtYW5kLXJlZmVyZW5jZS1mcmFtZXdvcmswCgYIKoZIzj0EAwMDSAAwRQIhAIavYfC5o0VVLKfgTKkzzWgc09hzDMsCl3O2le2sQfG7AiA2soqAN5gtUOLQKWK00DUz22EW79rvaV+VJPvfdQeokA==</X509Certificate>
+                            </DigitalId>
+                        </ServiceDigitalIdentity>
+                        <ServiceStatus>http://uri.etsi.org/TrstSvc/TrustedList/Svcstatus/granted</ServiceStatus>
+                        <StatusStartingTime>2025-12-03T16:48:19</StatusStartingTime>
+                        <SchemeServiceDefinitionURI>
+                            <URI xml:lang="en">https://trustedlist.serviceproviders.eudiw.dev/</URI>
+                        </SchemeServiceDefinitionURI>
+                    </ServiceInformation>
+                </TSPService>
+            </TSPServices>
+        </TrustServiceProvider>
+    </TrustServiceProviderList>
+<ns2:Signature Id="SignXMLSignature111AB69C"><ds:SignedInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#" xmlns:xades="http://uri.etsi.org/01903/v1.3.2#"><ds:CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/><ds:SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha256"/><ds:Reference URI="#TrustServiceStatusList" Id="SignXMLReference4AF45F55"><ds:Transforms><ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/><ds:Transform Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/></ds:Transforms><ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/><ds:DigestValue>RSHa40E/dn8245LluCNlY3tnUiFtvd+BjmAZ3w1lnL4=</ds:DigestValue></ds:Reference><ds:Reference URI="#SignXMLSignature111AB69C-SignedProperties9CAD6533" Type="http://uri.etsi.org/01903#SignedProperties"><ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/><ds:DigestValue>luT69dqrckGvSm6aImUwuxE25bjbCIt2lUm1JUxIjuo=</ds:DigestValue></ds:Reference><ds:Reference URI="#SignXMLCertificate6A06F37D"><ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/><ds:DigestValue>t9UmcINuts+dbxEZyLnySsVOflpFyUyIioLwwc5kJqk=</ds:DigestValue></ds:Reference></ds:SignedInfo><ns2:SignatureValue>StZ7dY3qcMCOOKFFCtmebaqDFaNdz+NyH13nZPFI7yZAqNk85oQ4PH6ndnik4PxMk2AxQtui4PtyRQLuhMBUOg==</ns2:SignatureValue><ns2:KeyInfo Id="SignXMLCertificate6A06F37D"><ns2:KeyValue><dsig11:ECKeyValue xmlns:dsig11="http://www.w3.org/2009/xmldsig11#"><dsig11:NamedCurve URI="urn:oid:1.2.840.10045.3.1.7"/><dsig11:PublicKey>BLtYABao/N7RSzfPylqPJU9YFGatFsKLlfaz0a+XJtDK3BO6Zxmd6P0GQt8CCWWhfm2/42BZ8N+C3/Tqz7m1XiU=</dsig11:PublicKey></dsig11:ECKeyValue></ns2:KeyValue><ns2:X509Data><ns2:X509Certificate>MIIC3zCCAoWgAwIBAgIUf3lohTmDMAmS/YX/q4hqoRyJB54wCgYIKoZIzj0EAwIw
+XDEeMBwGA1UEAwwVUElEIElzc3VlciBDQSAtIFVUIDAyMS0wKwYDVQQKDCRFVURJ
+IFdhbGxldCBSZWZlcmVuY2UgSW1wbGVtZW50YXRpb24xCzAJBgNVBAYTAlVUMB4X
+DTI1MDQxMDE0Mzc1MloXDTI2MDcwNDE0Mzc1MVowUjEUMBIGA1UEAwwLUElEIERT
+IC0gMDExLTArBgNVBAoMJEVVREkgV2FsbGV0IFJlZmVyZW5jZSBJbXBsZW1lbnRh
+dGlvbjELMAkGA1UEBhMCVVQwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAS7WAAW
+qPze0Us3z8pajyVPWBRmrRbCi5X2s9GvlybQytwTumcZnej9BkLfAglloX5tv+Ng
+WfDfgt/06s+5tV4lo4IBLTCCASkwHwYDVR0jBBgwFoAUYseURyi9D6IWIKeawkmU
+RPEB08cwGwYDVR0RBBQwEoIQaXNzdWVyLmV1ZGl3LmRldjAWBgNVHSUBAf8EDDAK
+BggrgQICAAABAjBDBgNVHR8EPDA6MDigNqA0hjJodHRwczovL3ByZXByb2QucGtp
+LmV1ZGl3LmRldi9jcmwvcGlkX0NBX1VUXzAyLmNybDAdBgNVHQ4EFgQUql/opxkQ
+lYy0llaToPbDE/myEcEwDgYDVR0PAQH/BAQDAgeAMF0GA1UdEgRWMFSGUmh0dHBz
+Oi8vZ2l0aHViLmNvbS9ldS1kaWdpdGFsLWlkZW50aXR5LXdhbGxldC9hcmNoaXRl
+Y3R1cmUtYW5kLXJlZmVyZW5jZS1mcmFtZXdvcmswCgYIKoZIzj0EAwIDSAAwRQIh
+ANJVSDsqT3IkGcKWWgSeubkDOdi5/UE9b1GF/X5fQRFaAiBp5t6tHh8XwFhPstzO
+HMopvBD/Gwms0RAUgmSn6ku8Gg==
+</ns2:X509Certificate></ns2:X509Data></ns2:KeyInfo><ns2:Object><xades:QualifyingProperties xmlns:ds="http://www.w3.org/2000/09/xmldsig#" xmlns:xades="http://uri.etsi.org/01903/v1.3.2#" Target="#SignXMLSignature111AB69C"><xades:SignedProperties Id="SignXMLSignature111AB69C-SignedProperties9CAD6533"><xades:SignedSignatureProperties><xades:SigningTime>2026-04-30T15:23:14+00:00</xades:SigningTime><xades:SigningCertificateV2><xades:Cert><xades:CertDigest><ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/><ds:DigestValue>swkuSHkzw19noZkXiCaCbBkuOoKMi9yIu4euCBTMAmY=</ds:DigestValue></xades:CertDigest></xades:Cert></xades:SigningCertificateV2><xades:SignerRole><xades:ClaimedRoles><xades:ClaimedRole>signer</xades:ClaimedRole></xades:ClaimedRoles></xades:SignerRole></xades:SignedSignatureProperties><xades:SignedDataObjectProperties><xades:DataObjectFormat ObjectReference="#SignXMLReference4AF45F55"><xades:Description>TSL signature</xades:Description><xades:MimeType>text/xml</xades:MimeType></xades:DataObjectFormat></xades:SignedDataObjectProperties></xades:SignedProperties></xades:QualifyingProperties></ns2:Object></ns2:Signature></TrustServiceStatusList>

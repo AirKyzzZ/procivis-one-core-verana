@@ -9,6 +9,8 @@ use super::serde_bridge;
 pub const XMLDSIG_NS: &str = "http://www.w3.org/2000/09/xmldsig#";
 pub const ENVELOPED_SIGNATURE: &str = "http://www.w3.org/2000/09/xmldsig#enveloped-signature";
 pub const EXC_C14N: &str = "http://www.w3.org/2001/10/xml-exc-c14n#";
+/// Inclusive XML Canonicalization 1.0 (W3C REC-xml-c14n-20010315).
+pub const INC_C14N: &str = "http://www.w3.org/TR/2001/REC-xml-c14n-20010315";
 pub const XPATH_FILTER2: &str = "http://www.w3.org/2002/06/xmldsig-filter2";
 pub const SHA256_DIGEST_URI: &str = "http://www.w3.org/2001/04/xmlenc#sha256";
 pub const SHA512_DIGEST_URI: &str = "http://www.w3.org/2001/04/xmlenc#sha512";
@@ -115,6 +117,7 @@ pub struct Transforms {
 pub enum Transform {
     EnvelopedSignature,
     ExcC14n,
+    InclC14n,
     XPathFilter2(Vec<XPathFilter2Op>),
 }
 
