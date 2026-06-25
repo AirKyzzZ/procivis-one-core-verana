@@ -570,6 +570,48 @@ pub(crate) async fn ssi_get_certificate_authority(
 #[endpoint(
     permissions = [],
     get,
+    path = "/ssi/certificate/{id}",
+    params(
+        ("id" = CertificateId, Path, description = "Certificate id")
+    ),
+    responses(
+        (status = 200, description = "OK", content_type = "application/x-pem-file"),
+        (status = 404, description = "Certificate not found"),
+        (status = 500, description = "Server error"),
+    ),
+    tag = "ssi",
+    summary = "Certificate - retrieve certificate",
+    description = indoc::formatdoc! {"
+        Retrieve a certificate in PEM format by its UUID.
+    "},
+)]
+pub(crate) async fn ssi_get_certificate(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<CertificateId>, ErrorResponseRestDTO>,
+) -> Response {
+    let result = state.core.certificate_service.get_certificate_pem(id).await;
+
+    match result {
+        Ok(result) => (
+            StatusCode::OK,
+            [(header::CONTENT_TYPE, "application/x-pem-file")],
+            result,
+        )
+            .into_response(),
+        Err(CertificateServiceError::NotFound(_)) => {
+            tracing::warn!("Missing certificate");
+            StatusCode::NOT_FOUND.into_response()
+        }
+        Err(e) => {
+            tracing::error!("Error: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
+}
+
+#[endpoint(
+    permissions = [],
+    get,
     path = "/ssi/trust-list/v1/{id}",
     params(
         ("id" = TrustListPublicationId, Path, description = "Trust list publication id")

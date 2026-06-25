@@ -72,4 +72,33 @@ impl CertificateService {
         Base64::decode_to_vec(base64_encoded, None)
             .map_err(|e| CertificateServiceError::MappingError(e.to_string()))
     }
+
+    pub async fn get_certificate_pem(
+        &self,
+        id: CertificateId,
+    ) -> Result<String, CertificateServiceError> {
+        let certificate = self
+            .certificate_repository
+            .get(id)
+            .await
+            .error_while("getting certificate")?
+            .filter(|c| c.deleted_at.is_none())
+            .ok_or(CertificateServiceError::NotFound(id))?;
+
+        let identifier = self
+            .identifier_repository
+            .get(certificate.identifier_id, &Default::default())
+            .await
+            .error_while("getting identifier")?
+            .ok_or(CertificateServiceError::MappingError(format!(
+                "Identifier {} missing",
+                certificate.identifier_id
+            )))?;
+
+        if identifier.r#type != IdentifierType::Certificate {
+            tracing::info!("Invalid identifier type: {}", identifier.r#type);
+            return Err(CertificateServiceError::NotFound(id));
+        }
+        Ok(certificate.chain)
+    }
 }

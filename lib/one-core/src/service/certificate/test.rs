@@ -83,3 +83,95 @@ async fn test_get_certificate_authority_invalid_identifier() {
     let result = service.get_certificate_authority(id).await;
     assert!(matches!(result, Err(CertificateServiceError::NotFound(_))));
 }
+
+const TEST_CERTIFICATE_PEM: &str = "-----BEGIN CERTIFICATE-----
+MIIBODCB66ADAgECAhQjDWW20goQ5ZYZHnUYjgEAtpYAxjAFBgMrZXAwEjEQMA4G
+A1UEAwwHQ0EgY2VydDAeFw0yMzA3MjgxMzA5MDhaFw0zNTAxMjYxMzA5MDhaMBIx
+EDAOBgNVBAMMB0NBIGNlcnQwKjAFBgMrZXADIQBKBEnJk+6LyU8tcMSYIw8mvo06
+E2W4JVTSZRP1JavvX6NTMFEwHwYDVR0jBBgwFoAUYSDrfq7B9LW8JqFf8Goypix1
+9fswHQYDVR0OBBYEFGEg636uwfS1vCahX/BqMqYsdfX7MA8GA1UdEwEB/wQFMAMB
+Af8wBQYDK2VwA0EAia2OnNqDv08Y8X6r1e7iBsgYsEa6V2Df65WDMKd/8LHCuhvL
+GsPNAYTwQu1egNMnoBk0k0cwNJCBJmS3zEGaDw==
+-----END CERTIFICATE-----";
+
+#[tokio::test]
+async fn test_get_certificate_pem_success() {
+    let id = Uuid::new_v4().into();
+
+    let mut certificate_repository = MockCertificateRepository::new();
+    certificate_repository.expect_get().returning(|id| {
+        Ok(Some(Certificate {
+            id,
+            identifier_id: Uuid::new_v4().into(),
+            organisation: Some(dummy_organisation(None).into()),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            expiry_date: get_dummy_date(),
+            deleted_at: None,
+            name: "".to_string(),
+            chain: TEST_CERTIFICATE_PEM.to_string(),
+            fingerprint: "".to_string(),
+            state: CertificateState::Active,
+            roles: vec![],
+            key: None,
+        }))
+    });
+
+    let mut identifier_repository = MockIdentifierRepository::new();
+    identifier_repository.expect_get().returning(|_, _| {
+        Ok(Some(Identifier {
+            r#type: IdentifierType::Certificate,
+            ..dummy_identifier()
+        }))
+    });
+
+    let service = CertificateService {
+        certificate_repository: Arc::new(certificate_repository),
+        identifier_repository: Arc::new(identifier_repository),
+        session_provider: Arc::new(StaticSessionProvider::new_random()),
+    };
+
+    let result = service.get_certificate_pem(id).await.unwrap();
+    assert_eq!(result, TEST_CERTIFICATE_PEM);
+}
+
+#[tokio::test]
+async fn test_get_certificate_pem_invalid_identifier() {
+    let id = Uuid::new_v4().into();
+
+    let mut certificate_repository = MockCertificateRepository::new();
+    certificate_repository.expect_get().returning(|id| {
+        Ok(Some(Certificate {
+            id,
+            identifier_id: Uuid::new_v4().into(),
+            organisation: Some(dummy_organisation(None).into()),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            expiry_date: get_dummy_date(),
+            deleted_at: None,
+            name: "".to_string(),
+            chain: TEST_CERTIFICATE_PEM.to_string(),
+            fingerprint: "".to_string(),
+            state: CertificateState::Active,
+            roles: vec![],
+            key: None,
+        }))
+    });
+
+    let mut identifier_repository = MockIdentifierRepository::new();
+    identifier_repository.expect_get().returning(|_, _| {
+        Ok(Some(Identifier {
+            r#type: IdentifierType::CertificateAuthority,
+            ..dummy_identifier()
+        }))
+    });
+
+    let service = CertificateService {
+        certificate_repository: Arc::new(certificate_repository),
+        identifier_repository: Arc::new(identifier_repository),
+        session_provider: Arc::new(StaticSessionProvider::new_random()),
+    };
+
+    let result = service.get_certificate_pem(id).await;
+    assert!(matches!(result, Err(CertificateServiceError::NotFound(_))));
+}

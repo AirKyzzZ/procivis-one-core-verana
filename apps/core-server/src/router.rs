@@ -765,6 +765,10 @@ fn get_external_endpoints(
                 get(ssi::controller::ssi_get_certificate_authority),
             )
             .route(
+                "/ssi/certificate/{id}",
+                get(ssi::controller::ssi_get_certificate),
+            )
+            .route(
                 "/ssi/verifier-provider/v1/{verifierProvider}",
                 get(ssi::verifier_provider::controller::get_verification_provider)
             )

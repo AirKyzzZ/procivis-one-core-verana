@@ -2,6 +2,7 @@ mod activate_wallet_unit;
 mod client_metadata;
 mod client_request;
 mod get_ca_tests;
+mod get_certificate_tests;
 mod get_credential_schema_tests;
 mod get_credential_schema_v2_tests;
 mod get_did_web_document_tests;
