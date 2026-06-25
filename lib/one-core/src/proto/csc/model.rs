@@ -36,6 +36,12 @@ pub struct CredentialToken {
 #[derive(Clone, Debug, Default)]
 pub struct CredentialInfo {
     pub key_algorithms: Vec<String>,
+    pub certificate: Option<CertificateInfo>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct CertificateInfo {
+    pub x5c: Vec<String>,
 }
 
 impl CredentialInfo {
@@ -75,6 +81,7 @@ mod test {
     fn info_with_algos(algos: &[&str]) -> CredentialInfo {
         CredentialInfo {
             key_algorithms: algos.iter().map(|s| s.to_string()).collect(),
+            certificate: None,
         }
     }
 

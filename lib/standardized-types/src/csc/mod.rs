@@ -184,11 +184,17 @@ pub struct CredentialInfoRequestRestDTO {
 #[derive(Deserialize)]
 pub struct CredentialInfoResponseRestDTO {
     pub key: CredentialKeyRestDTO,
+    pub cert: Option<CredentialCertificateRestDTO>,
 }
 
 #[derive(Deserialize)]
 pub struct CredentialKeyRestDTO {
     pub algo: Vec<String>,
+}
+
+#[derive(Deserialize)]
+pub struct CredentialCertificateRestDTO {
+    pub certificates: Vec<String>,
 }
 
 #[derive(Serialize)]

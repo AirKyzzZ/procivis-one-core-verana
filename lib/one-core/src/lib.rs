@@ -230,25 +230,6 @@ impl OneCore {
         );
 
         let key_algorithm_provider = key_algorithm_provider_from_config(&mut config)?;
-
-        let key_provider = key_provider_from_config(
-            &mut config,
-            key_algorithm_provider.clone(),
-            crypto.clone(),
-            client.clone(),
-            native_secure_element,
-            remote_secure_element,
-        )?;
-
-        let did_method_provider = did_method_provider_from_config(
-            &mut config,
-            core_base_url.clone(),
-            key_algorithm_provider.clone(),
-            key_provider.clone(),
-            client.clone(),
-            data_provider.get_remote_entity_cache_repository(),
-        )?;
-
         let certificate_validator = certificate_validator_from_config(
             &config.global_settings,
             &config.cache_entities,
@@ -261,6 +242,26 @@ impl OneCore {
                 err.error_while("creating certificate validator").into(),
             )
         })?;
+        let csc_client = Arc::new(CscClientImpl::new(client.clone()));
+        let key_provider = key_provider_from_config(
+            &mut config,
+            key_algorithm_provider.clone(),
+            crypto.clone(),
+            client.clone(),
+            csc_client.clone(),
+            certificate_validator.clone(),
+            native_secure_element,
+            remote_secure_element,
+        )?;
+
+        let did_method_provider = did_method_provider_from_config(
+            &mut config,
+            core_base_url.clone(),
+            key_algorithm_provider.clone(),
+            key_provider.clone(),
+            client.clone(),
+            data_provider.get_remote_entity_cache_repository(),
+        )?;
 
         let json_ld_cache = initialize_jsonld_cache_from_config(
             &config,
@@ -353,7 +354,6 @@ impl OneCore {
 
         let verifier_provider = verifier_provider_from_config(&config)?;
 
-        let csc_client = Arc::new(CscClientImpl::new(client.clone()));
         let document_signer_provider =
             document_signer_provider_from_config(&mut config, csc_client)?;
 

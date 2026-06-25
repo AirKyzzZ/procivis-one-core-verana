@@ -5,6 +5,7 @@ use std::fmt::Display;
 use std::sync::Arc;
 
 use itertools::Itertools;
+use reqwest::Identity;
 use reqwest::header::{InvalidHeaderName, InvalidHeaderValue, ToStrError};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -56,6 +57,7 @@ impl Default for HttpClientSecurityConfig {
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
 pub trait HttpClient: Send + Sync {
+    fn with_identity(&self, identity: Identity) -> Result<Arc<dyn HttpClient>, Error>;
     fn get(&self, url: &str) -> RequestBuilder;
     fn post(&self, url: &str) -> RequestBuilder;
     fn put(&self, url: &str) -> RequestBuilder;

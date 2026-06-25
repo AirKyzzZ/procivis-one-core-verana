@@ -569,6 +569,9 @@ pub enum KeyStorageType {
     #[serde(rename = "REMOTE_SECURE_ELEMENT")]
     #[strum(serialize = "REMOTE_SECURE_ELEMENT")]
     RemoteSecureElement,
+    #[serde(rename = "SIGN8")]
+    #[strum(serialize = "SIGN8")]
+    Sign8,
 }
 
 pub type KeySecurityLevelConfig = Dict<KeySecurityLevelType, KeySecurityLevelFields>;

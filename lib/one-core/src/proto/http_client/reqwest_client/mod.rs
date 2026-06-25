@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use futures_util::StreamExt;
 use reqwest::header::{CONTENT_LENGTH, HeaderMap, HeaderName, HeaderValue};
-use reqwest::redirect;
+use reqwest::{ClientBuilder, Identity, redirect};
 use time::{Duration, OffsetDateTime};
 use url::{Host, Url};
 
@@ -24,29 +24,48 @@ pub struct ReqwestClient {
     denied_hosts: Option<Vec<String>>,
     max_response_size: Option<u64>,
     timeout: Option<Duration>,
+    params: HttpClientSecurityConfig,
+}
+
+fn builder_from_params(params: &HttpClientSecurityConfig) -> Result<ClientBuilder, Error> {
+    let mut client_builder = reqwest::Client::builder()
+        .https_only(!params.insecure_http_transport_allowed)
+        .redirect(redirect::Policy::limited(params.max_redirects));
+
+    if let Some(timeout) = params.timeout {
+        client_builder = client_builder.timeout(timeout.try_into()?);
+    }
+    Ok(client_builder)
 }
 
 impl ReqwestClient {
     pub fn new(params: HttpClientSecurityConfig) -> Result<Self, Error> {
-        let mut client_builder = reqwest::Client::builder()
-            .https_only(!params.insecure_http_transport_allowed)
-            .redirect(redirect::Policy::limited(params.max_redirects));
-
-        if let Some(timeout) = params.timeout {
-            client_builder = client_builder.timeout(timeout.try_into()?);
-        }
+        let client_builder = builder_from_params(&params)?;
 
         Ok(Self {
             client: client_builder.build()?,
-            denied_hosts: params.denied_hosts,
+            denied_hosts: params.denied_hosts.clone(),
             max_response_size: params.max_response_size,
             timeout: params.timeout,
+            params,
         })
     }
 }
 
 #[async_trait::async_trait]
 impl HttpClient for ReqwestClient {
+    fn with_identity(&self, identity: Identity) -> Result<Arc<dyn HttpClient>, Error> {
+        let mut client_builder = builder_from_params(&self.params)?;
+        client_builder = client_builder.identity(identity);
+        Ok(Arc::new(Self {
+            client: client_builder.build()?,
+            denied_hosts: self.denied_hosts.clone(),
+            max_response_size: self.max_response_size,
+            timeout: self.timeout,
+            params: self.params.clone(),
+        }))
+    }
+
     fn get(&self, url: &str) -> RequestBuilder {
         RequestBuilder::new(Arc::new(self.clone()), Method::Get, url)
     }

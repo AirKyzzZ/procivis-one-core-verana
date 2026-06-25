@@ -1,10 +1,12 @@
 use std::sync::Arc;
 
 use proc_macros::Provider;
+use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
 use standardized_types::csc::{
     ConformanceLevel, HashAlgorithm, SignatureAlgorithm, SignatureFormat, SignatureQualifier,
 };
+use standardized_types::mapper::secret_string;
 
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::proto::csc::CscClient;
@@ -16,14 +18,14 @@ use crate::provider::document_signer::model::{
 };
 use crate::provider::provider_directory::InitializationError;
 use crate::service::error::ServiceError;
-
-mod account_token;
+use crate::util::sign8;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct Sign8Params {
     pub client_id: String,
-    pub client_secret: String,
+    #[serde(with = "secret_string")]
+    pub client_secret: SecretString,
     pub account_id: String,
     pub csc_base_url: String,
     pub oauth_url: String,
@@ -182,7 +184,7 @@ impl DocumentSigner for Sign8 {
     ) -> Result<Authorization, DocumentSignerError> {
         let hash = self.document_hash(&request.document)?;
 
-        let account_token = account_token::build_account_token(
+        let account_token = sign8::build_account_token(
             &self.params.account_id,
             &self.params.client_id,
             &self.params.client_secret,
@@ -229,7 +231,7 @@ impl DocumentSigner for Sign8 {
                 oauth_url: &self.params.oauth_url,
                 code: &request.code,
                 client_id: &self.params.client_id,
-                client_secret: &self.params.client_secret,
+                client_secret: self.params.client_secret.expose_secret(),
                 redirect_uri,
                 code_verifier: &request.code_verifier,
             })
@@ -280,7 +282,7 @@ impl DocumentSigner for Sign8 {
                 &self.params.oauth_url,
                 &token.access_token,
                 &self.params.client_id,
-                &self.params.client_secret,
+                self.params.client_secret.expose_secret(),
             )
             .await;
 
@@ -305,7 +307,7 @@ mod test {
     fn test_params() -> Sign8Params {
         Sign8Params {
             client_id: "client-123".to_string(),
-            client_secret: "super-secret".to_string(),
+            client_secret: "super-secret".to_string().into(),
             account_id: "account-456".to_string(),
             csc_base_url: "https://csc.example".to_string(),
             oauth_url: "https://oauth.example".to_string(),

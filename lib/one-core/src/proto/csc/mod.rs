@@ -13,11 +13,11 @@ use standardized_types::csc::{
 use thiserror::Error;
 use url::Url;
 
-use self::model::{
-    Authorization, AuthorizationUrlRequest, CredentialInfo, CredentialToken, SignDocumentRequest,
-    TokenRequest,
-};
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, NestedError};
+use crate::proto::csc::model::{
+    Authorization, AuthorizationUrlRequest, CertificateInfo, CredentialInfo, CredentialToken,
+    SignDocumentRequest, TokenRequest,
+};
 use crate::proto::http_client::HttpClient;
 use crate::proto::oauth_client::Pkce;
 
@@ -181,6 +181,9 @@ impl CscClient for CscClientImpl {
         .error_while("credential info request")?;
         Ok(CredentialInfo {
             key_algorithms: info.key.algo,
+            certificate: info.cert.map(|cert| CertificateInfo {
+                x5c: cert.certificates,
+            }),
         })
     }
 

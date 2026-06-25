@@ -69,6 +69,7 @@ pub trait KeyStorage: Provider + Send + Sync {
 }
 
 pub mod secure_element;
+mod sign8;
 
 impl Display for dyn KeyStorage {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {

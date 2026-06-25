@@ -1,7 +1,7 @@
 //! Enumerates errors related to key storage provider.
 
-use one_crypto::SignerError;
 use one_crypto::encryption::EncryptionError;
+use one_crypto::{HasherError, SignerError};
 use thiserror::Error;
 
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
@@ -31,6 +31,8 @@ pub enum KeyStorageError {
     Failed(String),
     #[error("Invalid key algorithm `{0}`")]
     InvalidKeyAlgorithm(String),
+    #[error("Invalid params: `{0}`")]
+    InvalidParams(#[from] serde_json::Error),
     #[error("Not supported for type: `{0}`")]
     NotSupported(String),
     #[error("Unsupported key type: {key_type}")]
@@ -44,6 +46,10 @@ pub enum KeyStorageError {
     Encryption(#[from] EncryptionError),
     #[error("Signer error: `{0}`")]
     SignerError(#[from] SignerError),
+    #[error("Hasher error: `{0}`")]
+    HasherError(#[from] HasherError),
+    #[error("Http client error: `{0}`")]
+    ReqwestError(#[from] reqwest::Error),
 
     #[error(transparent)]
     Nested(#[from] NestedError),

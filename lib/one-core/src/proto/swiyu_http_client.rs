@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use reqwest::Identity;
 use time::Duration;
 
 use crate::proto::http_client::{Error, Headers, HttpClient, Method, RequestBuilder, Response};
@@ -14,6 +15,10 @@ pub(crate) struct ProxySwiyuHttpClient {
 
 #[async_trait::async_trait]
 impl HttpClient for ProxySwiyuHttpClient {
+    fn with_identity(&self, identity: Identity) -> Result<Arc<dyn HttpClient>, Error> {
+        self.client.with_identity(identity)
+    }
+
     fn get(&self, url: &str) -> RequestBuilder {
         RequestBuilder::new(Arc::new(self.clone()), Method::Get, url)
     }

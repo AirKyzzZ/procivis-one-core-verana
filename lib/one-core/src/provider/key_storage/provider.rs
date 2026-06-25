@@ -14,11 +14,14 @@ use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, Fields, KeyAlgorithmType, KeyStorageType};
 use crate::error::{ContextWithErrorCode, NestedError};
 use crate::model::key::Key;
+use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::csc::CscClient;
 use crate::proto::http_client::HttpClient;
 use crate::provider::credential_formatter::model::{AuthenticationFn, SignatureProvider};
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::key_storage::sign8::Sign8KeyProvider;
 use crate::provider::provider_directory::{InitializationError, ProviderDirectory};
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
@@ -148,11 +151,14 @@ impl SignatureProvider for AttestationSignatureProvider {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn key_provider_from_config(
     config: &mut CoreConfig,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     crypto: Arc<dyn CryptoProvider>,
     client: Arc<dyn HttpClient>,
+    csc_client: Arc<dyn CscClient>,
+    certificate_validator: Arc<dyn CertificateValidator>,
     native_secure_element: Option<Arc<dyn NativeKeyStorage>>,
     remote_secure_element: Option<Arc<dyn NativeKeyStorage>>,
 ) -> Result<Arc<dyn KeyProvider>, ConfigValidationError> {
@@ -163,6 +169,8 @@ pub(crate) fn key_provider_from_config(
             key_algorithm_provider.clone(),
             crypto.clone(),
             client.clone(),
+            csc_client.clone(),
+            certificate_validator.clone(),
             native_secure_element.clone(),
             remote_secure_element.clone(),
         )
@@ -172,34 +180,34 @@ pub(crate) fn key_provider_from_config(
     Ok(Arc::new(directory))
 }
 
+#[allow(clippy::too_many_arguments)]
 fn initialize_provider(
     name: &str,
     field: &Fields<KeyStorageType>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     crypto: Arc<dyn CryptoProvider>,
     client: Arc<dyn HttpClient>,
+    csc_client: Arc<dyn CscClient>,
+    certificate_validator: Arc<dyn CertificateValidator>,
     native_secure_element: Option<Arc<dyn NativeKeyStorage>>,
     remote_secure_element: Option<Arc<dyn NativeKeyStorage>>,
 ) -> Result<Arc<dyn KeyStorage>, InitializationError> {
     let provider: Arc<dyn KeyStorage> = match field.r#type {
         KeyStorageType::Internal => Arc::new(InternalKeyProvider::new(
             name,
-            key_algorithm_provider.clone(),
+            key_algorithm_provider,
             field.merge_fields(),
         )?),
         KeyStorageType::AzureVault => Arc::new(AzureVaultKeyProvider::new(
             name,
             field.merge_fields(),
-            crypto.clone(),
-            client.clone(),
+            crypto,
+            client,
         )?),
         KeyStorageType::SecureElement => {
-            let native_storage =
-                native_secure_element
-                    .clone()
-                    .ok_or(InitializationError::MissingDependency(
-                        "native key provider".to_string(),
-                    ))?;
+            let native_storage = native_secure_element.ok_or(
+                InitializationError::MissingDependency("native key provider".to_string()),
+            )?;
             Arc::new(SecureElementKeyProvider::new(
                 name,
                 native_storage,
@@ -207,14 +215,18 @@ fn initialize_provider(
             )?)
         }
         KeyStorageType::RemoteSecureElement => {
-            let native_storage =
-                remote_secure_element
-                    .clone()
-                    .ok_or(InitializationError::MissingDependency(
-                        "native remote key provider".to_string(),
-                    ))?;
+            let native_storage = remote_secure_element.ok_or(
+                InitializationError::MissingDependency("native remote key provider".to_string()),
+            )?;
             Arc::new(RemoteSecureElementKeyProvider::new(name, native_storage))
         }
+        KeyStorageType::Sign8 => Arc::new(Sign8KeyProvider::new(
+            name.to_string(),
+            csc_client,
+            client,
+            certificate_validator,
+            field.merge_fields(),
+        )?),
     };
     Ok(Arc::new(CapabilityCheckedKeyStorage { inner: provider }))
 }
