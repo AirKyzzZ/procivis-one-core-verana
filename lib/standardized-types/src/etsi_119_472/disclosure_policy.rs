@@ -27,6 +27,10 @@ pub enum PolicyType {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub struct AllowListOptions {
+    /// A list of entries defining the permitted relying parties.
+    /// Each entry is either a `dn` (the relying party's X.509
+    /// Distinguished Name in RFC 2253 format) or an `entitlement`
+    /// (an ETSI URI identifying a category of service providers).
     pub values: Vec<AllowListOption>,
 }
 
@@ -42,6 +46,9 @@ pub struct AllowListOption {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub struct RootOfTrustOptions {
+    /// A list of entries defining the permitted relying parties.
+    /// Each entry must include both the `dn` and `serial` of the
+    /// CA. Use the subject DN as it appears in the CA's own certificate.
     pub values: Vec<RootOfTrustOption>,
 }
 

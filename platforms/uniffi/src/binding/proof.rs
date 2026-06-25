@@ -661,7 +661,11 @@ pub struct PresentationDefinitionV2CredentialDetailBindingDTO {
     pub mdoc_mso_validity: Option<MdocMsoValidityResponseBindingDTO>,
     pub protocol: String,
     pub profile: Option<String>,
-    /// if violated, issuer's disclosure policy information
+    /// Present when the relying party's certificates do not satisfy
+    /// the embedded disclosure policy attached to the requested
+    /// credential. The wallet should surface this to the user as a
+    /// warning before they proceed with disclosure. See
+    /// [Handling Trust Information](https://docs.procivis.ch/wallet/handling-trust).
     pub embedded_disclosure_policy_violation: Option<DisclosurePolicyViolationBindingDTO>,
 }
 

@@ -33,7 +33,7 @@ pub(crate) struct QesAuthorizeRequestRestDTO {
     /// When omitted, the configured default is used.
     #[try_into(infallible)]
     pub redirect_uri: Option<String>,
-    /// Organisation context. Optional when resolvable from STS auth.
+    /// Organization context. Optional when resolvable from STS auth.
     #[try_into(infallible)]
     pub organisation_id: Option<OrganisationId>,
 }
@@ -69,7 +69,7 @@ pub(crate) struct QesSignRequestRestDTO {
     /// When omitted, the configured default is used.
     #[try_into(infallible)]
     pub redirect_uri: Option<String>,
-    /// Organisation context. Optional when resolvable from STS auth.
+    /// Organization context. Optional when resolvable from STS auth.
     #[try_into(infallible)]
     pub organisation_id: Option<OrganisationId>,
 }

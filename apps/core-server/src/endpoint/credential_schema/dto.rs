@@ -748,6 +748,11 @@ pub(crate) struct CreateCredentialSchemaV2RequestRestDTO {
     #[serde(default)]
     #[try_into(infallible, with_fn = convert_inner)]
     pub translations: Option<CredentialSchemaTranslationsRestDTO>,
+    /// An optional disclosure policy embedded in the credential schema.
+    /// When present, the policy is transmitted to the wallet as part of
+    /// credential metadata. Wallets evaluate this policy against incoming
+    /// verifier requests and warn the holder if a violation is detected. See
+    /// [Embedded Disclosure Policy](https://docs.procivis.ch/issue/embedded-disclosure-policy).
     #[serde(default)]
     #[try_into(infallible, with_fn = convert_inner)]
     pub embedded_disclosure_policy: Option<DisclosurePolicyCreateRequestRestDTO>,
@@ -758,9 +763,17 @@ pub(crate) struct CreateCredentialSchemaV2RequestRestDTO {
 #[from(DisclosurePolicyCreateRequest)]
 #[into(DisclosurePolicyCreateRequest)]
 pub(crate) struct DisclosurePolicyCreateRequestRestDTO {
+    /// The policy type. `none` permits disclosure to any relying party.
+    /// `allowList` restricts disclosure to relying parties specified in
+    /// `options.values`. `rootOfTrust` permits disclosure to any relying
+    /// whose certificate was issued under the CA specified in `options.values`.
     #[serde(flatten)]
     pub policy: standardized_types::etsi_119_472::disclosure_policy::PolicyType,
+    /// A human-readable description of the policy, intended to help the
+    /// wallet user understand why the restriction exists.
     pub description: Option<String>,
+    /// A URL pointing to further information about the policy, such as
+    /// your disclosure terms as an issuer.
     pub url: Option<String>,
 }
 
@@ -839,6 +852,11 @@ pub(crate) struct CredentialSchemaV2ResponseRestDTO {
     #[from(with_fn = convert_inner)]
     pub transaction_code: Option<CredentialSchemaTransactionCodeRestDTO>,
     pub translations: CredentialSchemaTranslationsRestDTO,
+    /// An optional disclosure policy embedded in the credential schema.
+    /// When present, the policy is transmitted to the wallet as part of
+    /// credential metadata. Wallets evaluate this policy against incoming
+    /// verifier requests and warn the holder if a violation is detected. See
+    /// [Embedded Disclosure Policy](https://docs.procivis.ch/issue/embedded-disclosure-policy).
     pub embedded_disclosure_policy: Option<DisclosurePolicy>,
 }
 
@@ -940,7 +958,11 @@ pub(crate) struct ImportCredentialSchemaV2RequestSchemaRestDTO {
     #[serde(default)]
     #[try_into(with_fn = convert_inner, infallible)]
     pub translations: Option<CredentialSchemaTranslationsRestDTO>,
-
+    /// An optional disclosure policy embedded in the credential schema.
+    /// When present, the policy is transmitted to the wallet as part of
+    /// credential metadata. Wallets evaluate this policy against incoming
+    /// verifier requests and warn the holder if a violation is detected. See
+    /// [Embedded Disclosure Policy](https://docs.procivis.ch/issue/embedded-disclosure-policy).
     #[serde(default)]
     #[try_into(infallible)]
     pub embedded_disclosure_policy: Option<DisclosurePolicy>,
