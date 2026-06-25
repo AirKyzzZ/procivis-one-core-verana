@@ -20,6 +20,8 @@ pub enum Features {
     Importable,
     #[strum(serialize = "ATTESTATION")]
     Attestation,
+    #[strum(serialize = "REQUIRES_CREDENTIAL_ID")]
+    RequiresCredentialId,
 }
 
 pub struct StorageGeneratedKey {

@@ -28,7 +28,7 @@ use crate::provider::key_algorithm::key::{
 };
 use crate::provider::key_storage::KeyStorage;
 use crate::provider::key_storage::error::KeyStorageError;
-use crate::provider::key_storage::model::{KeyStorageCapabilities, StorageGeneratedKey};
+use crate::provider::key_storage::model::{Features, KeyStorageCapabilities, StorageGeneratedKey};
 use crate::provider::provider_directory::InitializationError;
 use crate::util::sign8::{AuthorizeTlsRequest, authorize_tls, build_account_token};
 
@@ -97,7 +97,7 @@ impl Sign8KeyProvider {
             &*self.mtls_client()?,
             AuthorizeTlsRequest {
                 oauth_url: &self.params.oauth_url,
-                redirect_url: &self.params.redirect_url,
+                redirect_url: Some(&self.params.redirect_url),
                 credential_id,
                 client_id: &self.params.client_id,
                 account_token: &account_token,
@@ -181,7 +181,7 @@ struct GenerateParams {
 impl KeyStorage for Sign8KeyProvider {
     fn get_capabilities(&self) -> KeyStorageCapabilities {
         KeyStorageCapabilities {
-            features: vec![],
+            features: vec![Features::RequiresCredentialId],
             algorithms: vec![KeyAlgorithmType::Ecdsa],
         }
     }

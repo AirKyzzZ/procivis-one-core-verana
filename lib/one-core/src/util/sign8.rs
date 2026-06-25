@@ -62,7 +62,7 @@ pub(crate) struct CodeResponseRestDTO {
 
 pub(crate) struct AuthorizeTlsRequest<'a> {
     pub oauth_url: &'a str,
-    pub redirect_url: &'a str,
+    pub redirect_url: Option<&'a str>,
     pub credential_id: &'a str,
     pub client_id: &'a str,
     pub account_token: &'a str,
@@ -93,23 +93,25 @@ pub(crate) async fn authorize_tls(
             .error_while("Base64 encoding random hash")?;
         (random_hash, "1".to_string())
     };
+    let mut params = vec![
+        ("scope", "credential"),
+        ("account_token", request.account_token),
+        ("response_type", "code"),
+        ("client_id", request.client_id),
+        ("code_challenge", &pkce.challenge),
+        ("credentialID", request.credential_id),
+        ("numSignatures", &num_signatures),
+        ("hashes", &hashes),
+        ("hashAlgorithmOID", CscSha256.oid()),
+    ];
+    if let Some(redirect_url) = request.redirect_url {
+        params.push(("redirect_uri", redirect_url));
+    }
     let token: CodeResponseRestDTO = async {
-        let x = vec![
-            ("scope", "credential"),
-            ("account_token", request.account_token),
-            ("response_type", "code"),
-            ("client_id", request.client_id),
-            ("redirect_uri", request.redirect_url),
-            ("code_challenge", &pkce.challenge),
-            ("credentialID", request.credential_id),
-            ("numSignatures", &num_signatures),
-            ("hashes", &hashes),
-            ("hashAlgorithmOID", CscSha256.oid()),
-        ];
         client
             .post(&format!("{}/oauth2/authorize_tls", request.oauth_url))
             .header("User-Agent", USER_AGENT)
-            .form(x)?
+            .form(params)?
             .send()
             .await?
             .error_for_status()?
