@@ -799,47 +799,6 @@ async fn test_create_certificate_identifier_ca_incorrect_key_usage() {
     assert_eq!(result.error_code().await, "BR_0249");
 }
 
-// TODO ONE-10367: Either delete this test if Sign8 seals definitely don't include DigitalSignature,
-// or re-instate the check and enable the test again if they do.
-#[ignore]
-#[tokio::test]
-async fn test_create_certificate_identifier_missing_digital_signature() {
-    let (context, organisation) = TestContext::new_with_organisation(None).await;
-
-    let key = context
-        .db
-        .keys
-        .create(&organisation, ecdsa_testing_params())
-        .await;
-
-    // CA with proper key usage
-    let mut ca_params = CertificateParams::default();
-    ca_params.key_usages = vec![KeyUsagePurpose::KeyCertSign, KeyUsagePurpose::CrlSign];
-    let (ca_cert, ca_issuer) = create_ca_cert(&mut ca_params, &eddsa::Key);
-
-    // End-entity certificate missing DigitalSignature
-    let mut cert_params = CertificateParams::default();
-    cert_params.key_usages = vec![KeyUsagePurpose::KeyEncipherment]; // Missing DigitalSignature
-    let cert = create_cert(&mut cert_params, ecdsa::Key, &ca_issuer, &ca_params);
-
-    let chain = format!("{}{}", cert.pem(), ca_cert.pem());
-
-    let result = context
-        .api
-        .identifiers
-        .create_certificate_identifier(
-            "test-identifier",
-            key.id,
-            organisation.id,
-            &chain,
-            &["ASSERTION_METHOD"],
-        )
-        .await;
-
-    assert_eq!(result.status(), 400);
-    assert_eq!(result.error_code().await, "BR_0249"); // Key usage violation
-}
-
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_create_certificate_authority_self_signed_and_certificate_mdl_profile() {
     let (context, organisation) = TestContext::new_with_organisation(None).await;

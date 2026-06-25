@@ -442,8 +442,6 @@ impl IdentifierCreatorProto {
                 &chain,
                 CertificateValidationOptions {
                     validity_check: (!generated).then_some(CrlMode::X509),
-                    // The requirement for digital signature key usage has been dropped to allow
-                    // creating identifiers for certificates provided by Sign8 (that do not include it).
                     ..CertificateValidationOptions::signature_and_revocation(None)
                 },
             )
