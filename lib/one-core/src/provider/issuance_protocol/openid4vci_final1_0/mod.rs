@@ -299,7 +299,8 @@ impl OpenID4VCIFinal1_0 {
         supports_batch_issuance: bool,
     ) -> Result<(), IssuanceProtocolError> {
         match (latest_state, format_type) {
-            (CredentialStateEnum::Accepted, FormatType::Mdoc) => {
+            (CredentialStateEnum::Accepted, FormatType::Mdoc) if !supports_batch_issuance => {
+                // mdoc MSO refresh -> rate-limiting by mso_minimum_refresh_time
                 let credential = self
                     .credential_repository
                     .get_credential(credential_id, &Default::default())
@@ -321,8 +322,12 @@ impl OpenID4VCIFinal1_0 {
             (CredentialStateEnum::Suspended, FormatType::Mdoc) => {
                 return Err(IssuanceProtocolError::Suspended);
             }
-            (CredentialStateEnum::Offered, _) => {}
-            (CredentialStateEnum::Accepted, _) if supports_batch_issuance => {}
+            (CredentialStateEnum::Offered, _) => {
+                // initial issuance -> OK
+            }
+            (CredentialStateEnum::Accepted, _) if supports_batch_issuance => {
+                // batch re-issuance -> OK
+            }
             _ => {
                 return Err(IssuanceProtocolError::InvalidRequest(
                     "invalid state".to_string(),
