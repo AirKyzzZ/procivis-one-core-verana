@@ -69,7 +69,7 @@ pub(super) fn build_signed_info(
         id: Some(format!("r-id-{nonce}")),
         uri: String::new(),
         r#type: None,
-        transforms: Transforms { transforms },
+        transforms: Some(Transforms { transforms }),
         digest_method: digest_method.clone(),
         digest_value: document_hash.to_string(),
     };
@@ -79,9 +79,9 @@ pub(super) fn build_signed_info(
         id: None,
         uri: format!("#xades-id-{nonce}"),
         r#type: Some(SIGNED_PROPERTIES_TYPE.to_string()),
-        transforms: Transforms {
+        transforms: Some(Transforms {
             transforms: vec![Transform::ExcC14n],
-        },
+        }),
         digest_method,
         digest_value: signed_properties_hash.to_string(),
     };

@@ -91,8 +91,8 @@ pub struct Reference {
     pub uri: String,
     #[serde(rename = "@Type")]
     pub r#type: Option<String>,
-    #[serde(rename = "ds:Transforms", alias = "Transforms")]
-    pub transforms: Transforms,
+    #[serde(rename = "ds:Transforms", alias = "Transforms", default)]
+    pub transforms: Option<Transforms>,
     #[serde(rename = "ds:DigestMethod", alias = "DigestMethod")]
     pub digest_method: AlgorithmIdentifier,
     #[serde(rename = "ds:DigestValue", alias = "DigestValue")]

@@ -168,7 +168,7 @@ async fn sign_and_verify_roundtrip() {
     );
 
     xades
-        .verify_enveloped_signature(decomposed.envelope(), Duration::minutes(1))
+        .verify_enveloped_signature(decomposed.envelope())
         .await
         .expect("verification should succeed");
 }
@@ -198,7 +198,7 @@ async fn tampered_document_fails() {
         .expect("decompose should succeed");
 
     let err = xades
-        .verify_enveloped_signature(decomposed.envelope(), Duration::minutes(1))
+        .verify_enveloped_signature(decomposed.envelope())
         .await
         .expect_err("verification should fail on tampered document");
 
@@ -275,12 +275,49 @@ async fn decompose_ignores_non_xmldsig_signature_elements() {
 
     // Signature verification works as expected
     xades
-        .verify_enveloped_signature(decomposed.envelope(), Duration::minutes(1))
+        .verify_enveloped_signature(decomposed.envelope())
         .await
         .expect("verification should succeed");
 
     // No data was lost in the process
     assert_eq!(decomposed.content, payload);
+}
+
+#[tokio::test]
+async fn verify_returns_signer_chain() {
+    let TestFixtures {
+        signer,
+        cert_validator,
+        crypto,
+        x5c,
+    } = make_xades_test_fixtures();
+    let unsigned_xml = "<Root xmlns=\"http://test\"><Data>hello</Data></Root>";
+
+    let xades = XAdES {
+        crypto_provider: crypto.clone(),
+        certificate_validator: Arc::new(cert_validator),
+    };
+
+    let signed_xml = xades
+        .create_enveloped_signature(unsigned_xml, &signer, x5c)
+        .await
+        .expect("signing should succeed");
+
+    let decomposed: XAdESSignedXML<serde_json::Value> =
+        XAdESSignedXML::decompose_document(&signed_xml).expect("decompose should succeed");
+
+    let verified = xades
+        .verify_enveloped_signature(decomposed.envelope())
+        .await
+        .expect("verification should succeed");
+
+    assert!(
+        verified
+            .signer_chain_pem
+            .starts_with("-----BEGIN CERTIFICATE-----"),
+        "expected PEM chain, got: {}",
+        verified.signer_chain_pem
+    );
 }
 
 // DSS LoTE test vector (RSA-SHA256 signed).
@@ -326,7 +363,7 @@ async fn dss_lote_verify_digests() {
 
     decomposed
         .envelope()
-        .verify_signature(&*crypto, &cert_validator, Duration::minutes(1))
+        .verify_signature(&*crypto, &cert_validator)
         .await
         .expect("digest verification should succeed");
 }
@@ -344,7 +381,7 @@ async fn dss_lote_tampered_document_fails() {
 
     let err = decomposed
         .envelope()
-        .verify_signature(&*crypto, &cert_validator, Duration::minutes(1))
+        .verify_signature(&*crypto, &cert_validator)
         .await
         .expect_err("tampered document should fail verification");
 

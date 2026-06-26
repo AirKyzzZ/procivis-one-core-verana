@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use standardized_types::etsi_119_602::{json, xml};
+use standardized_types::xades::SIGNED_PROPERTIES_TYPE;
 use time::OffsetDateTime;
 
 use super::LoteContentType;
@@ -12,11 +13,39 @@ use crate::proto::clock::Clock;
 use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::Jwt;
 use crate::proto::key_verification::KeyVerification;
-use crate::proto::xades::{XAdESProto, XAdESSignedXML};
+use crate::proto::xades::{XAdESProto, XAdESSignedXML, XAdESVerified};
 use crate::provider::caching_loader::{ResolveResult, Resolver, ResolverError};
 use crate::provider::credential_formatter::model::PublicKeySource;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+
+fn assert_lote_signature_policy(
+    verified: &XAdESVerified,
+    leeway: time::Duration,
+    now: OffsetDateTime,
+) -> Result<(), ResolverError> {
+    if verified.signing_time > now + leeway {
+        return Err(ResolverError::InvalidResponse(
+            "LoTE signing time is in the future".to_string(),
+        ));
+    }
+    let doc_ok = verified.references.iter().any(|r| r.uri.is_empty());
+    if !doc_ok {
+        return Err(ResolverError::InvalidResponse(
+            "LoTE signature does not cover the document".to_string(),
+        ));
+    }
+    let sp_ok = verified
+        .references
+        .iter()
+        .any(|r| r.r#type.as_deref() == Some(SIGNED_PROPERTIES_TYPE));
+    if !sp_ok {
+        return Err(ResolverError::InvalidResponse(
+            "LoTE signature does not cover the SignedProperties".to_string(),
+        ));
+    }
+    Ok(())
+}
 
 pub struct EtsiLoteResolver {
     clock: Arc<dyn Clock>,
@@ -116,10 +145,13 @@ impl Resolver for EtsiLoteResolver {
                     )
                     .error_while("parsing ETSI LoTE XML")?;
 
-                    self.xades_proto
-                        .verify_enveloped_signature(signed_xml.envelope(), self.leeway)
+                    let verified = self
+                        .xades_proto
+                        .verify_enveloped_signature(signed_xml.envelope())
                         .await
                         .error_while("verifying ETSI LoTE XML signature")?;
+
+                    assert_lote_signature_policy(&verified, self.leeway, self.clock.now_utc())?;
 
                     signed_xml.content.into()
                 }

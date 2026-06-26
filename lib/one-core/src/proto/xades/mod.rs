@@ -10,11 +10,10 @@ use async_trait::async_trait;
 use ct_codecs::{Base64, Decoder};
 use one_crypto::{CryptoProvider, Hasher};
 use serde::de::DeserializeOwned;
-use standardized_types::xades::{
-    self, EXC_C14N, SHA256_DIGEST_URI, SHA512_DIGEST_URI, SIGNED_PROPERTIES_TYPE, XADES_NS,
-    XMLDSIG_NS,
-};
-use time::Duration;
+use standardized_types::xades::{self, EXC_C14N, SHA256_DIGEST_URI, SHA512_DIGEST_URI, XMLDSIG_NS};
+use time::OffsetDateTime;
+use xades::Transform::*;
+use xades::XPathFilter2Op;
 
 use self::error::Error;
 use crate::config::core_config::KeyAlgorithmType;
@@ -45,11 +44,34 @@ pub trait XAdESProto: Send + Sync {
         x5c: Vec<String>,
     ) -> Result<String, Error>;
 
+    /// Profile checks (which references must exist, signing-time freshness, ...)
+    /// are left to the caller.
     async fn verify_enveloped_signature(
         &self,
         signed: &XAdESEnvelopedSignature,
-        clock_leeway: Duration,
-    ) -> Result<(), Error>;
+    ) -> Result<XAdESVerified, Error>;
+}
+
+#[derive(Debug, Clone)]
+pub struct VerifiedReference {
+    /// Raw `URI` attribute (`""` for the whole document, `#id` for a fragment).
+    pub uri: String,
+    /// `Type` attribute (e.g. the SignedProperties type URI), if present.
+    pub r#type: Option<String>,
+    /// Declared transform chain.
+    #[allow(dead_code)] // read by the ETSI_LOTL subscriber to locate the document reference
+    pub transforms: Vec<xades::Transform>,
+}
+
+#[derive(Debug, Clone)]
+pub struct XAdESVerified {
+    /// Signer certificate PEM chain (leaf-first), bound via SigningCertificateV2.
+    #[allow(dead_code)] // read by the ETSI_LOTL subscriber for signer pinning
+    pub signer_chain_pem: String,
+    /// `SigningTime` from the signed signature properties.
+    pub signing_time: OffsetDateTime,
+    /// One entry per `ds:Reference` in `SignedInfo`.
+    pub references: Vec<VerifiedReference>,
 }
 
 #[derive(Debug)]
@@ -142,14 +164,9 @@ impl XAdESProto for XAdES {
     async fn verify_enveloped_signature(
         &self,
         signed: &XAdESEnvelopedSignature,
-        clock_leeway: Duration,
-    ) -> Result<(), Error> {
+    ) -> Result<XAdESVerified, Error> {
         signed
-            .verify_signature(
-                &*self.crypto_provider,
-                &*self.certificate_validator,
-                clock_leeway,
-            )
+            .verify_signature(&*self.crypto_provider, &*self.certificate_validator)
             .await
     }
 }
@@ -209,8 +226,7 @@ impl XAdESEnvelopedSignature {
         &self,
         crypto_provider: &dyn CryptoProvider,
         certificate_validator: &dyn CertificateValidator,
-        clock_leeway: Duration,
-    ) -> Result<(), Error> {
+    ) -> Result<XAdESVerified, Error> {
         let sig = &self.signature;
         let signature_id = sig.id.as_deref();
         let signed_info = &sig.signed_info;
@@ -231,19 +247,6 @@ impl XAdESEnvelopedSignature {
             )));
         }
 
-        // EN 319 132-1 §5.2.1
-        let now = crate::clock::now_utc();
-        if signed_sig_props.signing_time > now + clock_leeway {
-            return Err(Error::SigningTimeInFuture);
-        }
-
-        if signed_info.canonicalization_method.algorithm != EXC_C14N {
-            return Err(Error::InvalidSignature(format!(
-                "Unsupported canonicalization algorithm {}, expected {EXC_C14N}",
-                signed_info.canonicalization_method.algorithm
-            )));
-        }
-
         if xades::SignatureSuite::try_from_sig_uri(&signed_info.signature_method.algorithm)
             .is_none()
         {
@@ -253,112 +256,32 @@ impl XAdESEnvelopedSignature {
             )));
         }
 
-        let references = &signed_info.references;
-
-        // EN 319 132-1 §6.3 (b)
-        if references.len() < 2 {
-            return Err(Error::InvalidSignature(format!(
-                "Expected at least two ds:Reference entries, got {}",
-                references.len(),
+        if signed_info.canonicalization_method.algorithm != EXC_C14N {
+            return Err(Error::UnsupportedSuite(format!(
+                "unsupported canonicalization algorithm: {}",
+                signed_info.canonicalization_method.algorithm
             )));
         }
 
-        // TS 119 602 H.4: document reference with URI=""
-        let doc_ref = references
-            .iter()
-            .find(|r| r.uri.is_empty())
-            .ok_or(Error::MissingReference("root document".to_string()))?;
-
-        let sp_ref = references
-            .iter()
-            .find(|r| r.r#type.as_deref() == Some(SIGNED_PROPERTIES_TYPE))
-            .ok_or(Error::MissingReference("SignedProperties".to_string()))?;
-
-        // EN 319 132-1 §4.4.2
-        let sp_id = &qualifying_props.signed_properties.id;
-        let expected_sp_uri = format!("#{sp_id}");
-        if sp_ref.uri != expected_sp_uri {
-            return Err(Error::InvalidSignature(format!(
-                "SignedProperties reference URI mismatch: expected {expected_sp_uri}, got {}",
-                sp_ref.uri,
-            )));
+        let mut references = Vec::with_capacity(signed_info.references.len());
+        for reference in &signed_info.references {
+            self.verify_reference_digest(reference, signature_id, crypto_provider)?;
+            references.push(VerifiedReference {
+                uri: reference.uri.clone(),
+                r#type: reference.r#type.clone(),
+                transforms: reference
+                    .transforms
+                    .as_ref()
+                    .map(|t| t.transforms.clone())
+                    .unwrap_or_default(),
+            });
         }
 
-        // EN 319 132-1 §5.2.6
-        let data_obj_fmt = &qualifying_props
-            .signed_properties
-            .signed_data_object_properties
-            .data_object_format;
-        let doc_ref_uri = doc_ref
-            .id
-            .as_ref()
-            .map(|id| format!("#{id}"))
-            .unwrap_or_default();
-        if data_obj_fmt.object_reference != doc_ref_uri {
-            return Err(Error::InvalidSignature(format!(
-                "DataObjectFormat ObjectReference mismatch: expected {doc_ref_uri}, got {}",
-                data_obj_fmt.object_reference,
-            )));
-        }
-        if data_obj_fmt.mime_type.is_empty() {
-            return Err(Error::InvalidSignature(
-                "DataObjectFormat MimeType is empty".to_string(),
-            ));
-        }
-
-        // EN 319 132-1 §6.3 (f,g)
-        let sig_exclusion = apply_document_transforms(&doc_ref.transforms.transforms)
-            .error_while("validating document reference transforms")?;
-
-        if sp_ref.transforms.transforms != [xades::Transform::ExcC14n] {
-            return Err(Error::InvalidTransformsInReference(format!(
-                "expected [ExcC14n] for SignedProperties, got {:?}",
-                sp_ref.transforms.transforms,
-            )));
-        }
-
-        let doc_hasher = resolve_hasher(crypto_provider, &doc_ref.digest_method.algorithm)
-            .error_while("resolving document digest algorithm")?;
-        let skip_id = match sig_exclusion {
-            SignatureExclusion::ById => signature_id,
-            SignatureExclusion::All => None,
-        };
-        let doc_canonical = c14n::canonicalize(
-            &self.unverified_document,
-            Some(c14n::SkipElement {
-                namespace: XMLDSIG_NS,
-                local_name: "Signature",
-                id: skip_id,
-            }),
-        )
-        .map_err(Error::from)
-        .error_while("canonicalizing document")?;
-        if doc_hasher.hash_base64(&doc_canonical)? != doc_ref.digest_value {
-            return Err(Error::IncorrectDigest("Root document".to_string()));
-        }
-
-        let sp_hasher = resolve_hasher(crypto_provider, &sp_ref.digest_method.algorithm)
-            .error_while("resolving SignedProperties digest algorithm")?;
-        let sp_canonical = c14n::canonicalize_signature_subtree(
-            &self.unverified_document,
-            signature_id,
-            XADES_NS,
-            "SignedProperties",
-        )
-        .map_err(Error::from)
-        .error_while("canonicalizing SignedProperties")?;
-        if sp_hasher.hash_base64(&sp_canonical)? != sp_ref.digest_value {
-            return Err(Error::IncorrectDigest("SignedProperties".to_string()));
-        }
-
-        // EN 319 132-1 §5.2.2: match SigningCertificateV2 digest against KeyInfo
+        // EN 319 132-1 §5.2.2
         let signing_chain = self
             .find_signing_certificate_chain(crypto_provider)
             .error_while("matching signing certificate")?;
-
-        // Chain is leaf-first within X509Data (EN 319 132-1 §6.3 (b,c))
         let pem_chain = x5c_into_pem_chain(signing_chain).error_while("parsing signer X509Data")?;
-
         let parsed = certificate_validator
             .parse_pem_chain(
                 &pem_chain,
@@ -366,10 +289,6 @@ impl XAdESEnvelopedSignature {
             )
             .await
             .error_while("validating signer certificate chain")?;
-
-        let sig_value_bytes = Base64::decode_to_vec(sig.signature_value.value.trim(), None)
-            .map_err(Error::from)
-            .error_while("decoding signature value")?;
 
         let si_canonical = c14n::canonicalize_signature_subtree(
             &self.unverified_document,
@@ -379,12 +298,68 @@ impl XAdESEnvelopedSignature {
         )
         .map_err(Error::from)
         .error_while("canonicalizing SignedInfo")?;
-
+        let sig_value_bytes = Base64::decode_to_vec(sig.signature_value.value.trim(), None)
+            .map_err(Error::from)
+            .error_while("decoding signature value")?;
         parsed
             .public_key
             .verify(&si_canonical, &sig_value_bytes)
             .error_while("verifying document signature")?;
 
+        Ok(XAdESVerified {
+            signer_chain_pem: pem_chain,
+            signing_time: signed_sig_props.signing_time,
+            references,
+        })
+    }
+
+    fn verify_reference_digest(
+        &self,
+        reference: &xades::Reference,
+        signature_id: Option<&str>,
+        crypto_provider: &dyn CryptoProvider,
+    ) -> Result<(), Error> {
+        let transforms = reference
+            .transforms
+            .as_ref()
+            .map(|t| t.transforms.as_slice())
+            .unwrap_or(&[]);
+        let exclusion = interpret_ref_transforms(transforms)?;
+
+        let canonical = if reference.uri.is_empty() {
+            let skip = exclusion.map(|e| c14n::SkipElement {
+                namespace: XMLDSIG_NS,
+                local_name: "Signature",
+                id: match e {
+                    SignatureExclusion::ById => signature_id,
+                    SignatureExclusion::All => None,
+                },
+            });
+            c14n::canonicalize(&self.unverified_document, skip)?
+        } else if let Some(id) = reference.uri.strip_prefix('#') {
+            if exclusion.is_some() {
+                return Err(Error::InvalidTransformsInReference(
+                    "enveloped/XPath transform on a same-document fragment reference is not supported"
+                        .to_string(),
+                ));
+            }
+            c14n::canonicalize_by_id(&self.unverified_document, id)?
+        } else {
+            return Err(Error::InvalidSignature(format!(
+                "unsupported Reference URI: {}",
+                reference.uri
+            )));
+        };
+
+        let hasher = resolve_hasher(crypto_provider, &reference.digest_method.algorithm)
+            .error_while("resolving reference digest algorithm")?;
+        if hasher.hash_base64(&canonical)? != reference.digest_value {
+            return Err(Error::IncorrectDigest(if reference.uri.is_empty() {
+                "document reference".to_string()
+            } else {
+                format!("reference {}", reference.uri)
+            }));
+        }
         Ok(())
     }
 
@@ -444,13 +419,14 @@ enum SignatureExclusion {
     All,
 }
 
-/// Interpret the document reference transform chain.
-fn apply_document_transforms(transforms: &[xades::Transform]) -> Result<SignatureExclusion, Error> {
-    use xades::Transform::*;
-    use xades::XPathFilter2Op;
+/// Map a reference's transform chain to how the ds:Signature is excluded during
+/// digest computation. Only exclusive-C14N chains are supported.
+fn interpret_ref_transforms(
+    transforms: &[xades::Transform],
+) -> Result<Option<SignatureExclusion>, Error> {
     match transforms {
-        [EnvelopedSignature, ExcC14n] => Ok(SignatureExclusion::ById),
-
+        [] | [ExcC14n] => Ok(None),
+        [EnvelopedSignature, ExcC14n] => Ok(Some(SignatureExclusion::ById)),
         [XPathFilter2(ops), ExcC14n] => {
             let subtract = ops
                 .iter()
@@ -466,14 +442,13 @@ fn apply_document_transforms(transforms: &[xades::Transform]) -> Result<Signatur
 
             let xpath = subtract.trim();
             if xpath.ends_with("Signature") && xpath.contains("descendant") {
-                Ok(SignatureExclusion::All)
+                Ok(Some(SignatureExclusion::All))
             } else {
                 Err(Error::InvalidTransformsInReference(format!(
                     "unsupported XPath Filter 2.0 expression: {xpath}"
                 )))
             }
         }
-
         other => Err(Error::InvalidTransformsInReference(format!(
             "unsupported transform chain: {other:?}"
         ))),

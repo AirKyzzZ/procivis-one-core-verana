@@ -21,6 +21,18 @@ pub(crate) fn canonicalize(xml: &str, skip: Option<SkipElement<'_>>) -> Result<V
     exclusive::canonicalize_doc(&doc, skip)
 }
 
+/// Exclusive C14N (without comments) of the element whose `Id` attribute equals
+/// `id` (same-document `URI="#id"` reference). The subtree is canonicalized with
+/// its in-scope ancestor namespaces, as the existing subtree canonicalizer does.
+pub(crate) fn canonicalize_by_id(xml: &str, id: &str) -> Result<Vec<u8>, C14nError> {
+    let doc = roxmltree::Document::parse(xml)?;
+    let target = doc
+        .descendants()
+        .find(|n| n.is_element() && n.attribute("Id") == Some(id))
+        .ok_or_else(|| C14nError::ElementNotFound(format!("element with Id={id}")))?;
+    exclusive::canonicalize_subtree(&target)
+}
+
 /// Canonicalize a subtree identified by namespace, local name, and optional Id,
 /// searching within the ds:Signature element identified by `signature_id`.
 pub(crate) fn canonicalize_signature_subtree(
