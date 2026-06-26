@@ -30,7 +30,7 @@ pub struct EtsiLoteResolver {
 }
 
 impl EtsiLoteResolver {
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub fn new(
         clock: Arc<dyn Clock>,
         client: Arc<dyn HttpClient>,

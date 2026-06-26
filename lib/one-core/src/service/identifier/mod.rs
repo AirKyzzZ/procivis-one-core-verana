@@ -47,7 +47,7 @@ pub struct IdentifierService {
 }
 
 impl IdentifierService {
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub(crate) fn new(
         identifier_repository: Arc<dyn IdentifierRepository>,
         certificate_repository: Arc<dyn CertificateRepository>,

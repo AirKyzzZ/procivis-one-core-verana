@@ -740,7 +740,7 @@ impl WalletUnitService {
         Ok((key, response))
     }
 
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     async fn activate_with_integrity_check(
         &self,
         provider_info: &WalletProviderInfo,
@@ -823,7 +823,7 @@ impl WalletUnitService {
         Ok(key)
     }
 
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     async fn build_attestation_proofs(
         &self,
         attestation_key: Key,

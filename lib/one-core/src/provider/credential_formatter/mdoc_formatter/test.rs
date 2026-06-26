@@ -255,13 +255,14 @@ async fn test_credential_formatting_ok_for_ecdsa() {
         }),
         ..dummy_identifier()
     };
+    let cert_id = Uuid::new_v4();
     let credential_data = CredentialData {
         vcdm,
         claims,
         holder_identifier: Some(holder_identifier),
         holder_key_id: None,
         issuer_certificate: Some(Certificate {
-            id: Uuid::new_v4().into(),
+            id: cert_id.into(),
             identifier_id: Uuid::new_v4().into(),
             organisation: None,
             created_date: crate::clock::now_utc(),
@@ -292,7 +293,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
 -----END CERTIFICATE-----
 "#
             .to_string(),
-            fingerprint: "fingerprint".to_string(),
+            fingerprint: hex::encode("testfoo"),
             state: CertificateState::Active,
             roles: vec![],
             key: None,
@@ -362,6 +363,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
     let config = generic_config().core;
 
     let formatter = MdocFormatter::new(
+        Some("testUrl".into()),
         "MDOC".into(),
         params,
         Arc::new(MockCertificateValidator::new()),
@@ -398,9 +400,9 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
     assert_eq!(0, signed_item.digest_id);
     assert_eq!("b", &signed_item.element_identifier);
     assert_eq!(
-        Value::Map(vec![(
-            Value::Text("c".to_string()),
-            Value::Text("15".to_string())
+        ciborium::Value::Map(vec![(
+            ciborium::Value::Text("c".to_string()),
+            ciborium::Value::Text("15".to_string())
         )]),
         signed_item.element_value
     );
@@ -417,7 +419,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         .iter()
         .find_map(|(label, value)| {
             (label == &Label::Int(iana::HeaderParameter::X5Chain.to_i64()))
-                .then_some(value.as_bytes().unwrap())
+                .then(|| value.as_bytes().unwrap())
         })
         .unwrap();
 
@@ -425,6 +427,34 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
     let expected_certificate =
         Base64UrlSafeNoPadding::decode_to_vec(EXPECTED_CERTIFICATE_VALUE, None).unwrap();
     assert_eq!(&expected_certificate, x5chain);
+
+    let x5u = cose_sign1
+        .unprotected
+        .rest
+        .iter()
+        .find_map(|(label, value)| {
+            (label == &Label::Int(iana::HeaderParameter::X5U.to_i64()))
+                .then(|| value.as_text().unwrap())
+        })
+        .unwrap();
+    assert_eq!(x5u, format!("testUrl/ssi/certificate/{cert_id}"));
+
+    let x5t = cose_sign1
+        .protected
+        .header
+        .rest
+        .iter()
+        .find_map(|(label, value)| {
+            (label == &Label::Int(iana::HeaderParameter::X5T.to_i64()))
+                .then(|| value.as_array().unwrap())
+        })
+        .unwrap();
+    assert_eq!(2, x5t.len());
+    assert_eq!(
+        iana::Algorithm::SHA_256.to_i64() as i128,
+        x5t[0].as_integer().unwrap().into()
+    );
+    assert_eq!(b"testfoo", x5t[1].as_bytes().unwrap().as_slice());
 
     // check MSO
     let mso: EmbeddedCbor<MobileSecurityObject> =
@@ -527,7 +557,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
 -----END CERTIFICATE-----
 "#
             .to_string(),
-            fingerprint: "fingerprint".to_string(),
+            fingerprint: hex::encode("testfoo"),
             state: CertificateState::Active,
             roles: vec![],
             key: None,
@@ -594,7 +624,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
                     not_after: expiry,
                     issuer: "Some issuer".to_string(),
                     subject: "Some subject".to_string(),
-                    fingerprint: "fingerprint".to_string(),
+                    fingerprint: hex::encode("testfoo"),
                     extensions: vec![],
                 },
                 subject_common_name: Some("common name".to_string()),
@@ -625,6 +655,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
     let config = generic_config().core;
 
     let formatter = MdocFormatter::new(
+        Some("testUrl".into()),
         "MDOC".into(),
         params,
         Arc::new(certificate_validator),
@@ -678,7 +709,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
 -----END CERTIFICATE-----
 "#
             .to_string(),
-            fingerprint: "fingerprint".to_string(),
+            fingerprint: hex::encode("testfoo"),
             expiry,
             subject_common_name: Some("common name".to_string())
         }),
@@ -815,7 +846,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
 -----END CERTIFICATE-----
 "#
             .to_string(),
-            fingerprint: "fingerprint".to_string(),
+            fingerprint: hex::encode("testfoo"),
             state: CertificateState::Active,
             roles: vec![],
             key: None,
@@ -881,7 +912,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
                     not_after: crate::clock::now_utc() + Duration::days(1),
                     issuer: "Some issuer".to_string(),
                     subject: "Some subject".to_string(),
-                    fingerprint: "fingerprint".to_string(),
+                    fingerprint: hex::encode("testfoo"),
                     extensions: vec![],
                 },
                 subject_common_name: Some("common name".to_string()),
@@ -912,6 +943,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
     let config = generic_config().core;
 
     let formatter = MdocFormatter::new(
+        Some("testUrl".into()),
         "MDOC".into(),
         params,
         Arc::new(certificate_validator),
@@ -954,6 +986,7 @@ fn test_credential_schema_id() {
         "leeway": 60
     });
     let formatter = MdocFormatter::new(
+        Some("testUrl".into()),
         "MDOC".into(),
         params,
         Arc::new(MockCertificateValidator::new()),
@@ -1014,7 +1047,7 @@ async fn test_parse_credential() {
                     not_after: crate::clock::now_utc() + Duration::days(1),
                     issuer: "Some issuer".to_string(),
                     subject: "Some subject".to_string(),
-                    fingerprint: "fingerprint".to_string(),
+                    fingerprint: hex::encode("testfoo"),
                     extensions: vec![],
                 },
                 subject_common_name: Some("common name".to_string()),
@@ -1030,7 +1063,7 @@ async fn test_parse_credential() {
         .expect_extract_cbor_claim()
         .times(5)
         .returning(|value| {
-            if matches!(value, Value::Array(_)) {
+            if matches!(value, ciborium::Value::Array(_)) {
                 return Err(DataTypeProviderError::UnableToExtract(JsonOrCbor::Cbor(
                     value.to_owned(),
                 )));
@@ -1058,6 +1091,7 @@ async fn test_parse_credential() {
         });
 
     let formatter = MdocFormatter::new(
+        Some("testUrl".into()),
         "MDOC".into(),
         params,
         Arc::new(certificate_validator),

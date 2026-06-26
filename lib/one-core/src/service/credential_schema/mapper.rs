@@ -482,7 +482,7 @@ pub(super) fn create_unique_name_check_request(
     })
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub(super) fn from_create_v2_request_with_id(
     id: CredentialSchemaId,
     request: CreateCredentialSchemaV2RequestDTO,

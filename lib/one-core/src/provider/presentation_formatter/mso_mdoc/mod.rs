@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use coset::{RegisteredLabelWithPrivate, SignatureContext, iana};
+use coset::{HeaderBuilder, ProtectedHeader, RegisteredLabelWithPrivate, SignatureContext, iana};
 use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
 use shared_types::DidValue;
@@ -26,8 +26,9 @@ use crate::proto::cose::{CoseSign1, CoseSign1Builder};
 use crate::proto::jwt::TokenError;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::mdoc_formatter::util::{
-    EmbeddedCbor, IssuerSigned, extract_certificate_from_x5chain_header,
-    try_build_algorithm_header, try_extract_holder_public_key, try_extract_mobile_security_object,
+    EmbeddedCbor, IssuerSigned, build_algorithm_header_value,
+    extract_certificate_from_x5chain_header, try_extract_holder_public_key,
+    try_extract_mobile_security_object,
 };
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, IdentifierDetails, PublicKeySource, SignatureProvider, TokenVerifier,
@@ -455,9 +456,15 @@ async fn try_build_device_signed(
     };
     let device_auth_bytes = EmbeddedCbor::new(device_auth)?.into_bytes();
 
-    let algorithm_header = try_build_algorithm_header(algorithm)?;
+    let protected_headers = HeaderBuilder::new()
+        .algorithm(build_algorithm_header_value(algorithm)?)
+        .build();
+
     let cose_sign1 = CoseSign1Builder::new()
-        .protected(algorithm_header)
+        .protected(ProtectedHeader {
+            original_data: None,
+            header: protected_headers,
+        })
         .try_create_detached_signature_with_provider(&device_auth_bytes, &[], auth_fn)
         .await
         .error_while("creating signature")?

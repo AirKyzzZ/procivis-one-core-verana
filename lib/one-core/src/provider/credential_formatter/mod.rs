@@ -48,7 +48,7 @@ pub struct MetadataClaimSchema {
 }
 
 /// Format credentials for sharing and parse credentials which have been shared.
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 #[provider_mock]
 #[async_trait]
 pub trait CredentialFormatter: Provider + Send + Sync {

@@ -223,7 +223,7 @@ impl CredentialsDB {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub async fn create_batch(
         &self,
         credential_schema: &CredentialSchema,

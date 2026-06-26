@@ -1,7 +1,7 @@
 use ciborium::Value;
 use ciborium::tag::Required;
 use coset::iana::EnumI64;
-use coset::{AsCborValue, Label, ProtectedHeader, RegisteredLabelWithPrivate, iana};
+use coset::{AsCborValue, Label, RegisteredLabelWithPrivate, iana};
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use indexmap::IndexMap;
 use pem::{EncodeConfig, LineEnding, Pem, encode_many_config};
@@ -368,9 +368,9 @@ pub(crate) fn extract_algorithm_from_header(
     }
 }
 
-pub(crate) fn try_build_algorithm_header(
+pub(crate) fn build_algorithm_header_value(
     algorithm: KeyAlgorithmType,
-) -> Result<ProtectedHeader, FormatterError> {
+) -> Result<iana::Algorithm, FormatterError> {
     let algorithm = match algorithm {
         KeyAlgorithmType::Ecdsa => iana::Algorithm::ES256,
         KeyAlgorithmType::Eddsa => iana::Algorithm::EdDSA,
@@ -380,12 +380,7 @@ pub(crate) fn try_build_algorithm_header(
             )));
         }
     };
-    let algorithm_header = coset::HeaderBuilder::new().algorithm(algorithm).build();
-
-    Ok(ProtectedHeader {
-        original_data: None,
-        header: algorithm_header,
-    })
+    Ok(algorithm)
 }
 
 pub(crate) fn try_extract_mobile_security_object(

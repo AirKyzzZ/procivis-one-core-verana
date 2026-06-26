@@ -151,7 +151,7 @@ impl SignatureProvider for AttestationSignatureProvider {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub(crate) fn key_provider_from_config(
     config: &mut CoreConfig,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -180,7 +180,7 @@ pub(crate) fn key_provider_from_config(
     Ok(Arc::new(directory))
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 fn initialize_provider(
     name: &str,
     field: &Fields<KeyStorageType>,

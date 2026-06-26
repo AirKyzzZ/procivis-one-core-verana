@@ -1,6 +1,7 @@
 use std::ops::Add;
 use std::str::FromStr;
 
+use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use futures::future::join_all;
 use maplit::hashmap;
 use one_core::model::certificate::{Certificate, CertificateState};
@@ -754,6 +755,8 @@ async fn test_post_issuer_credential_mdoc() {
     let identifier_id = Uuid::new_v4().into();
     let now = one_core::clock::now_utc();
 
+    let fingerprint =
+        "b97935d875d0f9adff52f4a547db4ffc533ecc6372cba6cbe657ff53ad65248d".to_string();
     let certificate_model = Certificate {
         id: Uuid::new_v4().into(),
         identifier_id,
@@ -785,7 +788,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
 -----END CERTIFICATE-----
 "#
         .to_string(),
-        fingerprint: "fingerprint".to_string(),
+        fingerprint: fingerprint.clone(),
         state: CertificateState::Active,
         roles: vec![],
         key: Some(key.clone().into()),
@@ -915,6 +918,18 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         .await;
 
     assert_eq!(200, resp.status());
+
+    // Validate that x5t thumbprint matches SHA-256 of x5c DER certificate
+    let json_response = resp.json_value().await;
+    let credential_b64 = json_response["credentials"][0]["credential"]
+        .as_str()
+        .unwrap();
+    let credential_bytes = Base64UrlSafeNoPadding::decode_to_vec(credential_b64, None).unwrap();
+
+    let headers = MdocIssuerAuthHeaders::from_credential_bytes(&credential_bytes);
+    let sha256_bytes = SHA256.hash(&headers.x5c_der).unwrap();
+    assert_eq!(sha256_bytes, headers.x5t_thumbprint);
+    assert_eq!(hex::decode(&fingerprint).unwrap(), headers.x5t_thumbprint);
 }
 
 #[tokio::test]
@@ -962,4 +977,53 @@ async fn test_post_issuer_credential_jwt_vc_v2_mapped_claimed() {
     parsed_credential.payload.custom["vc"]["credentialSubject"]["firstName_Mapped"]
         .assert_eq(&"test".to_string());
     parsed_credential.payload.custom["vc"]["credentialSubject"]["isOver18_Mapped"].assert_eq(&true);
+}
+
+struct MdocIssuerAuthHeaders {
+    x5t_thumbprint: Vec<u8>,
+    x5c_der: Vec<u8>,
+}
+
+impl MdocIssuerAuthHeaders {
+    fn from_credential_bytes(credential_bytes: &[u8]) -> Self {
+        let issuer_signed: ciborium::Value = ciborium::from_reader(credential_bytes).unwrap();
+
+        // issuerAuth is a COSE_Sign1 array: [protected_bstr, unprotected_map, payload, sig]
+        let cose_sign1 = issuer_signed
+            .as_map()
+            .unwrap()
+            .iter()
+            .find_map(|(k, v)| (k.as_text() == Some("issuerAuth")).then(|| v.as_array().unwrap()))
+            .unwrap();
+
+        // Protected header: bstr containing a CBOR-serialized map (COSE label 34 = x5t)
+        let protected_bytes = cose_sign1[0].as_bytes().unwrap();
+        let protected_map: ciborium::Value =
+            ciborium::from_reader(protected_bytes.as_slice()).unwrap();
+        let x5t = protected_map
+            .as_map()
+            .unwrap()
+            .iter()
+            .find_map(|(k, v)| {
+                (*k == ciborium::Value::Integer(34i64.into())).then(|| v.as_array().unwrap())
+            })
+            .unwrap();
+        let x5t_thumbprint = x5t[1].as_bytes().unwrap().to_owned();
+
+        // Unprotected header: CBOR map (COSE label 33 = x5chain)
+        let x5c_der = cose_sign1[1]
+            .as_map()
+            .unwrap()
+            .iter()
+            .find_map(|(k, v)| {
+                (*k == ciborium::Value::Integer(33i64.into()))
+                    .then(|| v.as_bytes().unwrap().clone())
+            })
+            .unwrap();
+
+        Self {
+            x5t_thumbprint,
+            x5c_der,
+        }
+    }
 }

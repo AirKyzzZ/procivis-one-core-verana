@@ -81,6 +81,7 @@ shadow-rs.workspace  = true
 asn1-rs.workspace          = true
 assert2.workspace          = true
 async-trait.workspace      = true
+ciborium.workspace         = true
 dcql.workspace             = true
 hex.workspace              = true
 hex-literal.workspace      = true

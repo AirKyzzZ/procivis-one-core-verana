@@ -26,7 +26,6 @@ impl VerifierProvider for VerifierProviderImpl {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 pub(crate) fn verifier_provider_from_config(
     config: &CoreConfig,
 ) -> Result<Arc<dyn VerifierProvider>, ConfigValidationError> {

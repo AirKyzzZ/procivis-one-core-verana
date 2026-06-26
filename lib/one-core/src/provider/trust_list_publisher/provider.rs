@@ -31,7 +31,7 @@ impl TrustListPublisherProvider for TrustListPublisherProviderImpl {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub(crate) fn trust_list_publisher_provider_from_config(
     config: &mut CoreConfig,
     clock: Arc<dyn Clock>,

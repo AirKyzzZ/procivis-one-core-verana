@@ -77,6 +77,7 @@ pub async fn format_mdoc_credential(
     let mut config = generic_config().core;
     let datatype_provider = data_type_provider_from_config(&mut config).unwrap();
     let formatter = MdocFormatter::new(
+        Some("test".into()),
         "MDOC".into(),
         params,
         Arc::new(CertificateValidatorImpl::new(

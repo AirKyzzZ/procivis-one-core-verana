@@ -135,6 +135,7 @@ fn initialize_provider(
             client.clone(),
         )?),
         FormatType::Mdoc => Arc::new(MdocFormatter::new(
+            base_url,
             name.clone(),
             fields.merge_fields(),
             certificate_validator.clone(),

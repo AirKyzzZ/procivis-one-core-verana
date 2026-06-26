@@ -6,9 +6,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use ciborium::Value;
-use coset::iana::EnumI64;
-use coset::{Header, HeaderBuilder, SignatureContext};
+use coset::iana::{EnumI64, HeaderParameter};
+use coset::{HeaderBuilder, ProtectedHeader, SignatureContext};
 use ct_codecs::{Base64, Decoder, Encoder};
 use indexmap::{IndexMap, IndexSet};
 use one_crypto::utilities::generate_random_bytes;
@@ -31,8 +30,9 @@ use self::util::{
     Bstr, DataElementValue, DateTime, DeviceKey, DeviceKeyInfo, DigestAlgorithm, DigestIDs,
     EmbeddedCbor, IssuerSigned, IssuerSignedItem, MobileSecurityObject,
     MobileSecurityObjectVersion, Namespace, Namespaces, ValidityInfo, ValueDigests,
-    extract_algorithm_from_header, extract_certificate_from_x5chain_header,
-    try_build_algorithm_header, try_extract_holder_public_key, try_extract_mobile_security_object,
+    build_algorithm_header_value, extract_algorithm_from_header,
+    extract_certificate_from_x5chain_header, try_extract_holder_public_key,
+    try_extract_mobile_security_object,
 };
 use super::error::FormatterError;
 use super::json_claims::prepare_identifier;
@@ -47,9 +47,10 @@ use crate::config::core_config::{
     DatatypeConfig, DatatypeType, DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType,
     KeyStorageType, RevocationType, VerificationProtocolType,
 };
-use crate::error::ContextWithErrorCode;
+use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::x509::pem_chain_into_x5c;
 use crate::mapper::{NESTED_CLAIM_MARKER, decode_cbor_base64, encode_cbor_base64};
+use crate::model::certificate::Certificate;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
@@ -83,6 +84,7 @@ pub struct MdocFormatter {
     datatype_config: DatatypeConfig,
     datatype_provider: Arc<dyn DataTypeProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    base_url: Option<Arc<str>>,
 }
 
 #[serde_as]
@@ -105,7 +107,9 @@ pub(crate) struct Params {
 }
 
 impl MdocFormatter {
+    #[expect(clippy::too_many_arguments)]
     pub(crate) fn new(
+        base_url: Option<Arc<str>>,
         config_id: CredentialFormat,
         params: serde_json::Value,
         certificate_validator: Arc<dyn CertificateValidator>,
@@ -121,6 +125,7 @@ impl MdocFormatter {
             })?;
 
         Ok(Self {
+            base_url,
             config_id,
             certificate_validator,
             params,
@@ -139,6 +144,13 @@ impl CredentialFormatter for MdocFormatter {
         credential_data: CredentialData,
         auth_fn: AuthenticationFn,
     ) -> Result<SerializedCredential, FormatterError> {
+        let Some(base_url) = self.base_url.as_ref() else {
+            return Err(
+                InitializationError::MissingDependency("base_url".to_string())
+                    .error_while("missing base_url")
+                    .into(),
+            );
+        };
         let vcdm = credential_data.vcdm;
         let credential_schema = vcdm
             .credential_schema
@@ -232,20 +244,37 @@ impl CredentialFormatter for MdocFormatter {
             .get_key_algorithm()
             .map_err(|key_type| FormatterError::CouldNotFormat(format!("Failed mapping algorithm `{key_type}` to name compatible with allowed COSE Algorithms")))?;
 
-        let algorithm_header = try_build_algorithm_header(key_algorithm)?;
-
-        let x5c = if let Some(certificate) = credential_data.issuer_certificate {
-            pem_chain_into_x5c(&certificate.chain).error_while("parsing PEM chain")?
-        } else {
+        let Some(certificate) = credential_data.issuer_certificate else {
             return Err(FormatterError::CouldNotFormat(
                 "Missing issuer certificate".to_string(),
             ));
         };
-        let x5chain_header = build_x5chain_header(&x5c)?;
+
+        let unprotected_headers = HeaderBuilder::new()
+            .add_header(
+                HeaderParameter::X5Chain,
+                build_x5chain_header_value(&certificate)?,
+            )
+            .add_header(
+                HeaderParameter::X5U,
+                build_x5url_header(&certificate, base_url),
+            )
+            .build();
+
+        let protected_headers = HeaderBuilder::new()
+            .algorithm(build_algorithm_header_value(key_algorithm)?)
+            .add_header(
+                HeaderParameter::X5T,
+                build_x5thumbprint_header(&certificate)?,
+            )
+            .build();
 
         let cose_sign1 = CoseSign1Builder::new()
-            .protected(algorithm_header)
-            .unprotected(x5chain_header)
+            .protected(ProtectedHeader {
+                original_data: None,
+                header: protected_headers,
+            })
+            .unprotected(unprotected_headers)
             .payload(mso)
             .try_create_signature_with_provider(&[], &*auth_fn)
             .await
@@ -821,7 +850,7 @@ pub(crate) const TDATE_TAG: u64 = 0;
 fn map_to_ciborium_value(
     claim: &PublishedClaim,
     datatype_config: &DatatypeConfig,
-) -> Result<Value, FormatterError> {
+) -> Result<ciborium::Value, FormatterError> {
     let data_type = claim
         .datatype
         .as_ref()
@@ -900,8 +929,10 @@ fn map_to_ciborium_value(
     })
 }
 
-fn build_x5chain_header(x5c: &[String]) -> Result<Header, FormatterError> {
-    let x5chain_label = coset::iana::HeaderParameter::X5Chain.to_i64();
+fn build_x5chain_header_value(
+    certificate: &Certificate,
+) -> Result<ciborium::Value, FormatterError> {
+    let x5c = pem_chain_into_x5c(&certificate.chain).error_while("parsing PEM chain")?;
 
     let mut chain = vec![];
     for cert in x5c {
@@ -914,9 +945,30 @@ fn build_x5chain_header(x5c: &[String]) -> Result<Header, FormatterError> {
     } else {
         ciborium::Value::Array(chain)
     };
-    Ok(HeaderBuilder::new()
-        .value(x5chain_label, x5chain_value)
-        .build())
+    Ok(x5chain_value)
+}
+
+fn build_x5url_header(certificate: &Certificate, base_url: &str) -> ciborium::Value {
+    let url = format!("{base_url}/ssi/certificate/{}", certificate.id);
+    ciborium::Value::Text(url)
+}
+
+fn build_x5thumbprint_header(certificate: &Certificate) -> Result<ciborium::Value, FormatterError> {
+    let der_thumbprint = hex::decode(&certificate.fingerprint)?;
+    Ok(ciborium::Value::Array(vec![
+        ciborium::Value::Integer(coset::iana::Algorithm::SHA_256.to_i64().into()),
+        ciborium::Value::Bytes(der_thumbprint),
+    ]))
+}
+
+trait HeaderBuilderExt {
+    fn add_header(self, name: HeaderParameter, value: ciborium::Value) -> Self;
+}
+
+impl HeaderBuilderExt for HeaderBuilder {
+    fn add_header(self, name: HeaderParameter, value: ciborium::Value) -> Self {
+        self.value(name.to_i64(), value)
+    }
 }
 
 fn try_build_value_digests(
@@ -969,17 +1021,17 @@ async fn try_extract_did(
 
 fn build_json_value(value: DataElementValue) -> Result<serde_json::Value, FormatterError> {
     match value {
-        Value::Text(text) => Ok(serde_json::Value::String(text)),
-        Value::Bool(bool_value) => Ok(serde_json::Value::String(if bool_value {
+        ciborium::Value::Text(text) => Ok(serde_json::Value::String(text)),
+        ciborium::Value::Bool(bool_value) => Ok(serde_json::Value::String(if bool_value {
             "true".to_string()
         } else {
             "false".to_string()
         })),
-        Value::Integer(number) => {
+        ciborium::Value::Integer(number) => {
             let number_value: i128 = number.into();
             Ok(serde_json::Value::String(number_value.to_string()))
         }
-        Value::Tag(tag, tag_value) => match tag {
+        ciborium::Value::Tag(tag, tag_value) => match tag {
             TDATE_TAG => {
                 let datetime = tag_value.into_text().map_err(|v| {
                     FormatterError::CouldNotExtractCredentials(format!(
@@ -1012,9 +1064,9 @@ fn build_json_value(value: DataElementValue) -> Result<serde_json::Value, Format
                 "Unexpected CBOR tag: {tag}"
             ))),
         },
-        Value::Bytes(bytes) => handle_bytes(&bytes),
-        Value::Array(array) => handle_array(array),
-        Value::Map(map) => {
+        ciborium::Value::Bytes(bytes) => handle_bytes(&bytes),
+        ciborium::Value::Array(array) => handle_array(array),
+        ciborium::Value::Map(map) => {
             let mut map_content = serde_json::Map::new();
             for (key, value) in map {
                 let key = key
@@ -1026,14 +1078,14 @@ fn build_json_value(value: DataElementValue) -> Result<serde_json::Value, Format
             }
             Ok(serde_json::Value::Object(map_content))
         }
-        Value::Null => Ok(serde_json::Value::Null),
+        ciborium::Value::Null => Ok(serde_json::Value::Null),
         _ => Err(FormatterError::CouldNotExtractCredentials(format!(
             "Unexpected element value. Got: {value:#?}"
         ))),
     }
 }
 
-fn handle_array(array: Vec<Value>) -> Result<serde_json::Value, FormatterError> {
+fn handle_array(array: Vec<ciborium::Value>) -> Result<serde_json::Value, FormatterError> {
     // Check if array has all elements with the same type
     let Some(first) = array.first() else {
         return Ok(serde_json::Value::Array(vec![]));
@@ -1080,7 +1132,7 @@ fn handle_array(array: Vec<Value>) -> Result<serde_json::Value, FormatterError> 
     ))
 }
 
-fn is_same_type(a: &Value, b: &Value) -> bool {
+fn is_same_type(a: &ciborium::Value, b: &ciborium::Value) -> bool {
     a.is_array() && b.is_array()
         || a.is_map() && b.is_map()
         || a.is_text() && b.is_text()
@@ -1275,7 +1327,7 @@ impl Paths {
 
 fn parse_claim(
     paths: Paths,
-    value: Value,
+    value: ciborium::Value,
     datatype_provider: &dyn DataTypeProvider,
     credential_id: CredentialId,
     credential_schema_format_id: CredentialSchemaFormatId,
@@ -1283,7 +1335,7 @@ fn parse_claim(
     let now = crate::clock::now_utc();
 
     // specific case of encoding picture claim as array
-    if matches!(value, Value::Array(_))
+    if matches!(value, ciborium::Value::Array(_))
         && let Ok(ExtractedClaim { data_type, value }) =
             datatype_provider.extract_cbor_claim(&value)
     {
@@ -1293,7 +1345,7 @@ fn parse_claim(
     }
 
     Ok(match value {
-        Value::Array(values) => {
+        ciborium::Value::Array(values) => {
             // Check if array has all elements with the same type
             let Some(first) = values.first() else {
                 return Ok((vec![], vec![]));
@@ -1341,7 +1393,7 @@ fn parse_claim(
             mappings.push(mapping);
             (claims, mappings)
         }
-        Value::Map(map) => {
+        ciborium::Value::Map(map) => {
             let mut claims = vec![];
             let mut mappings = vec![];
             for (key, value) in map {

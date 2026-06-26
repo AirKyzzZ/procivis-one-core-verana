@@ -434,7 +434,7 @@ impl CredentialFormatter for SDJWTFormatter {
 }
 
 impl SDJWTFormatter {
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub fn new(
         base_url: Option<Arc<str>>,
         config_id: CredentialFormat,
