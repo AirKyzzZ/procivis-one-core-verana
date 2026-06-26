@@ -39,6 +39,19 @@ keyStorage:
         adTenantId: "0e235e47-054b-41b2-9c63-6aa0c115ce5b"
         clientId: "de515d45-53da-4b82-a34a-0e6b513db700"
         clientSecret: ""
+  SIGN8:
+    type: SIGN8
+    display: "keyStorage.sign8"
+    params:
+      private:
+        cscBaseUrl: "https://api.uat.sign8.eu"
+        oauthUrl: "https://auth.uat.sign8.eu"
+        accountId: ""
+        clientId: ""
+        clientSecret: ""
+        redirectUrl: ""
+        certificate: ""
+        privateKey: ""
 keySecurityLevel:
   HIGH:
     params:

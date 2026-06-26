@@ -96,16 +96,6 @@ pub fn create_config(
                             resolverUrl: {mock_url}
         "}
     });
-    let allow_insecure_http = Some(
-        indoc::indoc! {"
-        verificationProtocol:
-            OPENID4VP_DRAFT20:
-                params:
-                    public:
-                        allowInsecureHttpTransport: true
-    "}
-        .to_string(),
-    );
 
     let root = std::env!("CARGO_MANIFEST_DIR");
 
@@ -116,8 +106,7 @@ pub fn create_config(
     ]
     .into_iter()
     .chain(ion_config.map(InputFormat::yaml_str))
-    .chain(params.additional_config.map(InputFormat::yaml_str))
-    .chain(allow_insecure_http.map(InputFormat::yaml_str));
+    .chain(params.additional_config.map(InputFormat::yaml_str));
 
     let mut app_config: AppConfig<ServerConfig> = core_config::AppConfig::parse(configs).unwrap();
 

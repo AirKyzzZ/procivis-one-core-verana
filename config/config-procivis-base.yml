@@ -175,26 +175,8 @@ issuanceProtocol:
           enabled: true
           allowedSchemes: ["https"]
 verificationProtocol:
-  OPENID4VP_DRAFT20:
-    display: "exchange.openid4vp20"
-    order: 1
-    type: "OPENID4VP_DRAFT20"
-    params:
-      public:
-        webhookTask: "WEBHOOK_NOTIFY"
-        useRequestUri: true
-        urlScheme: openid4vp-draft20
-        verifier:
-          interactionExpiresIn: 3600
-          supportedClientIdSchemes:
-            [verifier_attestation, redirect_uri, did, x509_san_dns]
-        holder:
-          supportedClientIdSchemes:
-            [verifier_attestation, redirect_uri, did, x509_san_dns]
-        redirectUri:
-          enabled: true
-          allowedSchemes: ["https"]
   MDOC_OPENID4VP:
+    enabled: false
     display:
       en: "OpenID4VP (ISO 18013-7 Annex B)"
       de: "OpenID4VP (ISO 18013-7 Annex B)"
