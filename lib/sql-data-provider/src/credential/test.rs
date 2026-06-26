@@ -153,6 +153,7 @@ async fn setup_empty() -> TestSetup {
     .unwrap();
 
     let did = Did {
+        deleted_at: None,
         id: did_id,
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),

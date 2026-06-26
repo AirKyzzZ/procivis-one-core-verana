@@ -111,6 +111,7 @@ fn generate_credential_matching_detail(
             deleted_at: None,
             organisation: None,
             did: Some(Did {
+                deleted_at: None,
                 id: Uuid::new_v4().into(),
                 created_date: detail.created_date,
                 last_modified: detail.last_modified,
@@ -139,6 +140,7 @@ fn generate_credential_matching_detail(
             deleted_at: None,
             organisation: None,
             did: Some(Did {
+                deleted_at: None,
                 id: Uuid::new_v4().into(),
                 created_date: detail.created_date,
                 last_modified: detail.last_modified,

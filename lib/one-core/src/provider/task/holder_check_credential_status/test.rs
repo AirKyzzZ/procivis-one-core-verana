@@ -215,6 +215,7 @@ fn generic_credential() -> Credential {
 
     let credential_id = Uuid::new_v4().into();
     let issuer_did = Did {
+        deleted_at: None,
         id: Uuid::new_v4().into(),
         created_date: now,
         last_modified: now,

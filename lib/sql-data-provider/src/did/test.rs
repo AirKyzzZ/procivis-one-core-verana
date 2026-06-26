@@ -133,6 +133,7 @@ async fn test_create_did() {
     let id = Uuid::new_v4().into();
     let result = provider
         .create_did(Did {
+            deleted_at: None,
             id,
             name: "Name".to_string(),
             organisation: Some(organisation.into()),
@@ -183,6 +184,7 @@ async fn test_create_did_invalid_organisation() {
 
     let result = provider
         .create_did(Did {
+            deleted_at: None,
             id: Uuid::new_v4().into(),
             name: "Name".to_string(),
             organisation: Some(non_existing_organisation.into()),

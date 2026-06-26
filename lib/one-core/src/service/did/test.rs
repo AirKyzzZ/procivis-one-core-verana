@@ -59,6 +59,7 @@ async fn test_get_did_exists() {
     let mut repository = MockDidRepository::default();
 
     let did = Did {
+        deleted_at: None,
         id: Uuid::new_v4().into(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
@@ -137,6 +138,7 @@ async fn test_get_did_missing() {
 async fn test_get_did_list() {
     let organisation_id = Uuid::new_v4().into();
     let did = Did {
+        deleted_at: None,
         id: Uuid::new_v4().into(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
@@ -254,6 +256,7 @@ async fn test_create_did_success() {
 #[tokio::test]
 async fn test_update_did() {
     let did = Did {
+        deleted_at: None,
         id: Uuid::new_v4().into(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
@@ -323,6 +326,7 @@ async fn test_update_did() {
 #[tokio::test]
 async fn test_update_did_fail_reactivation() {
     let did = Did {
+        deleted_at: None,
         id: Uuid::new_v4().into(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
@@ -413,6 +417,7 @@ async fn test_list_did_fail_session_org_mismatch() {
 #[tokio::test]
 async fn test_did_ops_session_org_mismatch() {
     let did = Did {
+        deleted_at: None,
         id: Uuid::new_v4().into(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),

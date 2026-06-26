@@ -444,6 +444,7 @@ pub async fn create_did(
 
     let did_id = params.id.unwrap_or(DidId::from(Uuid::new_v4()));
     let did = Did {
+        deleted_at: None,
         id: did_id.to_owned(),
         created_date: params.created_date.unwrap_or(now),
         last_modified: params.last_modified.unwrap_or(now),

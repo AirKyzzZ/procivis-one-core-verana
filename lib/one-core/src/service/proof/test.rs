@@ -209,6 +209,7 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
         claims: None,
         verifier_identifier: Some(Identifier {
             did: Some(Did {
+                deleted_at: None,
                 id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
@@ -353,6 +354,7 @@ async fn test_get_presentation_definition_proof_role_verifier() {
         claims: Some(vec![]),
         verifier_identifier: Some(Identifier {
             did: Some(Did {
+                deleted_at: None,
                 id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
@@ -500,6 +502,7 @@ async fn test_get_proof_exists() {
         claims: Some(vec![]),
         verifier_identifier: Some(Identifier {
             did: Some(Did {
+                deleted_at: None,
                 id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
@@ -740,6 +743,7 @@ async fn test_get_proof_with_array_holder() {
         ),
         verifier_identifier: Some(Identifier {
             did: Some(Did {
+                deleted_at: None,
                 id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
@@ -1027,6 +1031,7 @@ async fn test_get_proof_with_array_in_object_holder() {
         ),
         verifier_identifier: Some(Identifier {
             did: Some(Did {
+                deleted_at: None,
                 id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
@@ -1329,6 +1334,7 @@ async fn test_get_proof_with_object_array_holder() {
         ),
         verifier_identifier: Some(Identifier {
             did: Some(Did {
+                deleted_at: None,
                 id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
@@ -1623,6 +1629,7 @@ async fn test_get_proof_with_array() {
         ),
         verifier_identifier: Some(Identifier {
             did: Some(Did {
+                deleted_at: None,
                 id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
@@ -1917,6 +1924,7 @@ async fn test_get_proof_with_array_in_object() {
         ),
         verifier_identifier: Some(Identifier {
             did: Some(Did {
+                deleted_at: None,
                 id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
@@ -2227,6 +2235,7 @@ async fn test_get_proof_with_object_array() {
         ),
         verifier_identifier: Some(Identifier {
             did: Some(Did {
+                deleted_at: None,
                 id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
@@ -2401,6 +2410,7 @@ async fn test_get_proof_list_success() {
         claims: None,
         verifier_identifier: Some(Identifier {
             did: Some(Did {
+                deleted_at: None,
                 id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
@@ -2628,6 +2638,7 @@ async fn test_create_proof_using_invalid_did_method() {
 
     let request_clone = request.clone();
     let verifier_did = Did {
+        deleted_at: None,
         id: request_clone.verifier_did_id.unwrap(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
@@ -2752,6 +2763,7 @@ async fn test_create_proof_using_identifier() {
         });
 
     let verifier_did = Did {
+        deleted_at: None,
         id: Uuid::new_v4().into(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
@@ -2890,6 +2902,7 @@ async fn test_create_proof_without_related_key() {
     let request_clone = request.clone();
 
     let verifier_did = Did {
+        deleted_at: None,
         id: request_clone.verifier_did_id.unwrap(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
@@ -3026,6 +3039,7 @@ async fn test_create_proof_with_related_key() {
 
     let request_clone = request.clone();
     let verifier_did = Did {
+        deleted_at: None,
         id: request_clone.verifier_did_id.unwrap(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
@@ -3167,6 +3181,7 @@ async fn test_create_proof_fail_unsupported_wallet_storage_type() {
         });
 
     let verifier_did = Did {
+        deleted_at: None,
         id: request.verifier_did_id.to_owned().unwrap(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
@@ -3293,6 +3308,7 @@ async fn test_create_proof_failed_no_key_with_authentication_method_role() {
 
     let request_clone = request.clone();
     let verifier_did = Did {
+        deleted_at: None,
         id: request_clone.verifier_did_id.unwrap(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
@@ -3463,6 +3479,7 @@ async fn test_create_proof_did_deactivated_error() {
 
     let request_clone = request.clone();
     let verifier_did = Did {
+        deleted_at: None,
         id: request_clone.verifier_did_id.unwrap(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
@@ -3620,6 +3637,7 @@ async fn test_create_proof_failed_incompatible_verification_key_storage() {
 
     let request_clone = request.clone();
     let verifier_did = Did {
+        deleted_at: None,
         id: request_clone.verifier_did_id.unwrap(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),

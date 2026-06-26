@@ -469,7 +469,13 @@ async fn test_delete_did_identifier_also_deletes_did() {
     let delete_resp = context.api.identifiers.delete(&identifier.id).await;
 
     assert_eq!(delete_resp.status(), 204);
-    assert!(context.db.dids.get_optional(&did.id).await.is_none());
+    assert!(context.db.dids.get(&did.id).await.deleted_at.is_some());
+
+    let identifier_resp = context.api.identifiers.get(&identifier.id).await;
+    assert_eq!(identifier_resp.status(), 404);
+
+    let did_resp = context.api.dids.get(&did.id).await;
+    assert_eq!(did_resp.status(), 404);
 }
 
 #[tokio::test]

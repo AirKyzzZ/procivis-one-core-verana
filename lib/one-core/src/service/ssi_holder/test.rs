@@ -1756,6 +1756,7 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
             deleted_at: None,
             organisation: None,
             did: Some(Did {
+                deleted_at: None,
                 id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),

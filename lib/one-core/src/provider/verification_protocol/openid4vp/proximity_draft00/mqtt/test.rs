@@ -161,6 +161,7 @@ async fn test_handle_invitation_success() {
                     trust_information: None,
                 },
                 RemoteIdentifierRelation::Did(Did {
+                    deleted_at: None,
                     id: Uuid::new_v4().into(),
                     created_date: crate::clock::now_utc(),
                     last_modified: crate::clock::now_utc(),

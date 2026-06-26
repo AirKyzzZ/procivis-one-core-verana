@@ -387,6 +387,7 @@ fn test_proof(proof_id: Uuid, credential_format: CredentialFormat) -> Proof {
         claims: None,
         verifier_identifier: Some(Identifier {
             did: Some(Did {
+                deleted_at: None,
                 id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),

@@ -823,6 +823,7 @@ async fn dummy_credential() -> Credential {
 
 fn dummy_did() -> Did {
     Did {
+        deleted_at: None,
         id: Uuid::new_v4().into(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),

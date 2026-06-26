@@ -43,7 +43,8 @@ impl DidService {
             .did_repository
             .get_did(id)
             .await
-            .error_while("getting did")?;
+            .error_while("getting did")?
+            .filter(|d| d.deleted_at.is_none());
 
         let Some(did) = did else {
             return Err(DidServiceError::NotFound(*id));
@@ -101,7 +102,8 @@ impl DidService {
             .did_repository
             .get_did(id)
             .await
-            .error_while("getting did")?;
+            .error_while("getting did")?
+            .filter(|d| d.deleted_at.is_none());
 
         let Some(did) = did else {
             return Err(DidServiceError::NotFound(*id));
@@ -125,7 +127,8 @@ impl DidService {
             .did_repository
             .get_did(id)
             .await
-            .error_while("getting did")?;
+            .error_while("getting did")?
+            .filter(|d| d.deleted_at.is_none());
         let Some(did) = did else {
             return Err(DidServiceError::NotFound(*id));
         };

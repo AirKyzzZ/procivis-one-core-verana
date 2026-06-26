@@ -712,6 +712,7 @@ async fn test_get_client_metadata_success() {
         claims: None,
         verifier_identifier: Some(Identifier {
             did: Some(Did {
+                deleted_at: None,
                 id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb966")
                     .unwrap()
                     .into(),

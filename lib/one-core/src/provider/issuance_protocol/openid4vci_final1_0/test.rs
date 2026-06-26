@@ -176,6 +176,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCIFinal1_0 {
 fn generic_credential_did() -> Credential {
     let now = crate::clock::now_utc();
     let issuer_did = Did {
+        deleted_at: None,
         id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
             .unwrap()
             .into(),

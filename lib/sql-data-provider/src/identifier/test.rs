@@ -63,6 +63,7 @@ async fn setup() -> TestSetup {
     .unwrap();
 
     let did = Did {
+        deleted_at: None,
         id: did_id,
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
@@ -212,6 +213,7 @@ async fn test_get_identifier_list() {
     .unwrap();
 
     let did2 = Did {
+        deleted_at: None,
         id: did2_id,
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),

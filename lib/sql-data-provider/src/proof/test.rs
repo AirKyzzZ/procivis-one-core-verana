@@ -355,6 +355,7 @@ async fn test_create_proof_success() {
             deleted_at: None,
             organisation: None,
             did: Some(Did {
+                deleted_at: None,
                 id: did_id,
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
@@ -531,6 +532,7 @@ async fn test_get_proof_with_relations() {
                 deleted_at: None,
                 organisation: None,
                 did: Some(Did {
+                    deleted_at: None,
                     id: Uuid::new_v4().into(),
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),

@@ -43,6 +43,7 @@ impl IdentifierCreatorProto {
                     .get_did_method_id(did_value)
                     .error_while("getting did method")?;
                 let did = Did {
+                    deleted_at: None,
                     id: DidId::from(id),
                     created_date: now,
                     last_modified: now,

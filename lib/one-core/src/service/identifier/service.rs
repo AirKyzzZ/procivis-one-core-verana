@@ -79,6 +79,7 @@ impl IdentifierService {
             )
             .await
             .error_while("getting identifier")?
+            .filter(|i| i.deleted_at.is_none())
             .ok_or(IdentifierServiceError::NotFound(*id))?;
 
         throw_if_org_not_matching_session(

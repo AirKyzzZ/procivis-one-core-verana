@@ -122,6 +122,7 @@ pub(crate) fn did_from_did_request(
         id: did_id,
         created_date: now,
         last_modified: now,
+        deleted_at: None,
         name: request.name,
         organisation: Some(organisation.into()),
         did: did_create.did,

@@ -1727,6 +1727,7 @@ async fn minimal_mdoc_credential(params: serde_json::Value) -> SerializedCredent
             deleted_at: None,
             organisation: None,
             did: Some(Did {
+                deleted_at: None,
                 id: Uuid::new_v4().into(),
                 created_date: one_core::clock::now_utc(),
                 last_modified: one_core::clock::now_utc(),

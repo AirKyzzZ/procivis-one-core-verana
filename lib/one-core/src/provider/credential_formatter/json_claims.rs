@@ -265,6 +265,7 @@ pub fn prepare_identifier(
                 .error_while("getting did method")?;
 
             let did_model = crate::model::did::Did {
+                deleted_at: None,
                 id: Uuid::new_v4().into(),
                 created_date: now,
                 last_modified: now,

@@ -48,6 +48,7 @@ pub struct Did {
     pub id: DidId,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
+    pub deleted_at: Option<OffsetDateTime>,
     pub name: String,
     pub did: DidValue,
     pub did_type: DidType,

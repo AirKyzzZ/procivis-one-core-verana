@@ -21,7 +21,6 @@ use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 impl DidRepository for DidProvider {
     async fn get_did(&self, id: &DidId) -> Result<Option<Did>, DataLayerError> {
         let did = did::Entity::find_by_id(id)
-            .filter(did::Column::DeletedAt.is_null())
             .one(&self.db)
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;

@@ -110,6 +110,7 @@ async fn generic_credential() -> Credential {
 
     let credential_id = Uuid::new_v4().into();
     let issuer_did = Did {
+        deleted_at: None,
         id: Uuid::new_v4().into(),
         created_date: now,
         last_modified: now,
@@ -260,6 +261,7 @@ async fn generic_credential_list_entity() -> Credential {
             deleted_at: None,
             organisation: None,
             did: Some(Did {
+                deleted_at: None,
                 id: Uuid::new_v4().into(),
                 created_date: now,
                 last_modified: now,
@@ -1360,6 +1362,7 @@ async fn test_create_credential_fails_if_did_is_deactivated() {
 
     let did_id = Uuid::new_v4();
     let issuer_did = Did {
+        deleted_at: None,
         id: did_id.into(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
@@ -3619,6 +3622,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
             deleted_at: None,
             organisation: None,
             did: Some(Did {
+                deleted_at: None,
                 id: Uuid::new_v4().into(),
                 created_date: now,
                 last_modified: now,
@@ -4399,6 +4403,7 @@ async fn test_get_credential_success_array_index_sorting() {
             deleted_at: None,
             organisation: None,
             did: Some(Did {
+                deleted_at: None,
                 id: Uuid::new_v4().into(),
                 created_date: now,
                 last_modified: now,
@@ -4816,6 +4821,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
             deleted_at: None,
             organisation: None,
             did: Some(Did {
+                deleted_at: None,
                 id: Uuid::new_v4().into(),
                 created_date: now,
                 last_modified: now,
@@ -5088,6 +5094,7 @@ async fn test_get_credential_success_array_single_element() {
             deleted_at: None,
             organisation: None,
             did: Some(Did {
+                deleted_at: None,
                 id: Uuid::new_v4().into(),
                 created_date: now,
                 last_modified: now,

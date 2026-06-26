@@ -8,7 +8,7 @@ use one_core::model::relation::{AsyncVecLoader, Related, RelatedVec};
 use one_core::repository::error::DataLayerError;
 use one_core::repository::key_repository::KeyRepository;
 use one_core::repository::organisation_repository::OrganisationRepository;
-use sea_orm::ActiveValue::{NotSet, Set};
+use sea_orm::ActiveValue::Set;
 use sea_orm::sea_query::{IntoCondition, SimpleExpr};
 use sea_orm::{ColumnTrait, EntityTrait, IntoSimpleExpr, JoinType, QueryFilter, RelationTrait};
 use shared_types::{DidId, KeyId};
@@ -112,7 +112,7 @@ impl From<Did> for did::ActiveModel {
             method: Set(value.did_method),
             organisation_id: Set(organisation_id),
             deactivated: Set(value.deactivated),
-            deleted_at: NotSet,
+            deleted_at: Set(value.deleted_at),
             log: Set(value.log),
         }
     }
@@ -133,6 +133,7 @@ pub(crate) fn did_from_model(
         id,
         created_date: model.created_date,
         last_modified: model.last_modified,
+        deleted_at: model.deleted_at,
         name: model.name,
         did: model.did,
         did_type: model.type_field.into(),
