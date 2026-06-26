@@ -153,4 +153,21 @@ impl DidRepository for DidProvider {
 
         Ok(())
     }
+
+    async fn delete_did(&self, did: &Did) -> Result<(), DataLayerError> {
+        let now = one_core::clock::now_utc();
+
+        let update_model = did::ActiveModel {
+            id: Unchanged(did.id),
+            deleted_at: Set(Some(now)),
+            ..Default::default()
+        };
+
+        did::Entity::update(update_model)
+            .filter(did::Column::DeletedAt.is_null())
+            .exec(&self.db)
+            .await
+            .map(|_| ())
+            .map_err(to_update_data_layer_error)
+    }
 }

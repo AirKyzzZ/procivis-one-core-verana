@@ -39,6 +39,7 @@ use crate::provider::trust_list_subscriber::{
 };
 use crate::repository::certificate_repository::MockCertificateRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
+use crate::repository::did_repository::MockDidRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::identifier_trust_information_repository::MockIdentifierTrustInformationRepository;
 use crate::repository::key_repository::MockKeyRepository;
@@ -64,6 +65,7 @@ use crate::service::test_utilities::{
 struct Mocks {
     identifier_repository: MockIdentifierRepository,
     certificate_repository: MockCertificateRepository,
+    did_repository: MockDidRepository,
     key_repository: MockKeyRepository,
     organisation_repository: MockOrganisationRepository,
     credential_schema_repository: MockCredentialSchemaRepository,
@@ -82,6 +84,7 @@ fn setup_service(mocks: Mocks) -> IdentifierService {
     IdentifierService {
         identifier_repository: Arc::new(mocks.identifier_repository),
         certificate_repository: Arc::new(mocks.certificate_repository),
+        did_repository: Arc::new(mocks.did_repository),
         key_repository: Arc::new(mocks.key_repository),
         organisation_repository: Arc::new(mocks.organisation_repository),
         credential_schema_repository: Arc::new(mocks.credential_schema_repository),

@@ -829,6 +829,7 @@ impl OneCore {
             identifier_service: IdentifierService::new(
                 data_provider.get_identifier_repository(),
                 data_provider.get_certificate_repository(),
+                data_provider.get_did_repository(),
                 data_provider.get_key_repository(),
                 data_provider.get_organisation_repository(),
                 data_provider.get_credential_schema_repository(),

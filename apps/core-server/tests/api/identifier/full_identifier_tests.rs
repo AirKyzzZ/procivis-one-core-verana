@@ -463,6 +463,16 @@ async fn test_identifier_filter_proof_schema_success() {
 }
 
 #[tokio::test]
+async fn test_delete_did_identifier_also_deletes_did() {
+    let (context, _, did, identifier, _) = TestContext::new_with_did(None).await;
+
+    let delete_resp = context.api.identifiers.delete(&identifier.id).await;
+
+    assert_eq!(delete_resp.status(), 204);
+    assert!(context.db.dids.get_optional(&did.id).await.is_none());
+}
+
+#[tokio::test]
 async fn test_certificate_identifier_redelete_returns_not_found() {
     let (context, organisation) = TestContext::new_with_organisation(None).await;
 

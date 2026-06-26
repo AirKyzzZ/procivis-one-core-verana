@@ -553,6 +553,7 @@ impl IdentifierService {
                 &IdentifierRelations {
                     organisation: Some(Default::default()),
                     certificates: Some(Default::default()),
+                    did: Some(Default::default()),
                     ..Default::default()
                 },
             )
@@ -582,6 +583,13 @@ impl IdentifierService {
                         .error_while("cascading certificate delete")?;
 
                     tracing::info!("Deleted certificate `{}` ({})`", cert.name, cert.id);
+                }
+                if let Some(did) = &identifier.did {
+                    self.did_repository
+                        .delete_did(did)
+                        .await
+                        .error_while("deleting DID")?;
+                    tracing::info!("Deleted DID `{}` ({})", did.name, did.id);
                 }
 
                 self.identifier_repository

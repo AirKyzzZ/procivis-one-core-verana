@@ -287,6 +287,9 @@ impl MigratorTrait for Migrator {
             Box::new(migrations::m20260623_091633_missing_mappings::Migration),
             Box::new(migrations::m20260615_062437_revocation_v2::Migration),
             Box::new(migrations::m20260625_120000_add_subscriber_information_to_credential_and_proof::Migration),
+            Box::new(
+                migrations::m20260626_120000_add_deleted_at_to_did_unique_index::Migration,
+            ),
         ]
     }
 }

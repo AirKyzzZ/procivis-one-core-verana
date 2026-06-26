@@ -110,4 +110,16 @@ impl DidRepository for DidHistoryDecorator {
 
         Ok(())
     }
+
+    async fn delete_did(&self, did: &Did) -> Result<(), DataLayerError> {
+        self.inner.delete_did(did).await?;
+        self.create_history(
+            did.id,
+            did.name.clone(),
+            HistoryAction::Deleted,
+            did.organisation.as_ref(),
+        )
+        .await;
+        Ok(())
+    }
 }

@@ -48,6 +48,10 @@ impl DidsDB {
     }
 
     pub async fn get(&self, did_id: &DidId) -> Did {
-        self.repository.get_did(did_id).await.unwrap().unwrap()
+        self.get_optional(did_id).await.unwrap()
+    }
+
+    pub async fn get_optional(&self, did_id: &DidId) -> Option<Did> {
+        self.repository.get_did(did_id).await.unwrap()
     }
 }

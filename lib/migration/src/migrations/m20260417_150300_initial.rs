@@ -57,7 +57,7 @@ const FK_DID_ORGANISATION: &str = "fk-Did-OrganisationId";
 
 const INDEX_UNIQUE_DID_NAME_ORGANISATION_DELETED_AT: &str =
     "index_Did_Name-OrganisationId-DeletedAt_Unique";
-const INDEX_UNIQUE_DID_DID_ORGANISATION: &str = "index-Did-Did-OrganisationId-Unique";
+pub(crate) const INDEX_UNIQUE_DID_DID_ORGANISATION: &str = "index-Did-Did-OrganisationId-Unique";
 const INDEX_DID_CREATED_DATE: &str = "index-Did-CreatedDate";
 const INDEX_DID_DID: &str = "index-Did-Did";
 

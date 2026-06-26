@@ -23,3 +23,4 @@ pub mod m20260615_062437_revocation_v2;
 pub mod m20260619_120000_add_credential_schema_list_indexes;
 pub mod m20260623_091633_missing_mappings;
 pub mod m20260625_120000_add_subscriber_information_to_credential_and_proof;
+pub mod m20260626_120000_add_deleted_at_to_did_unique_index;
