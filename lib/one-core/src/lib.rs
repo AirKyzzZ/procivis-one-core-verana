@@ -279,6 +279,7 @@ impl OneCore {
 
         let credential_formatter_provider = credential_formatter_provider_from_config(
             &mut config,
+            core_base_url.clone().map(Into::into),
             key_algorithm_provider.clone(),
             client.clone(),
             data_type_provider.clone(),

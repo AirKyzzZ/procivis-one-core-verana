@@ -757,6 +757,8 @@ mod tests {
                 jwt: None,
                 key_attestation: None,
                 x5c,
+                x5u: None,
+                x5t_s256: None,
             },
             payload: JWTPayload {
                 issued_at: None,

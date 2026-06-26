@@ -16,10 +16,11 @@ use uuid::Uuid;
 
 use super::SDJWTFormatter;
 use crate::config::core_config::KeyAlgorithmType;
+use crate::model::certificate::{Certificate, CertificateRole, CertificateState};
 use crate::model::did::Did;
 use crate::model::identifier::Identifier;
 use crate::proto::http_client::MockHttpClient;
-use crate::proto::jwt::model::{JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey};
+use crate::proto::jwt::model::{JWTHeader, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey};
 #[cfg(test)]
 use crate::provider::credential_formatter::common::MockAuth;
 use crate::provider::credential_formatter::model::{
@@ -115,6 +116,7 @@ async fn test_format_credential() {
 
     let expiration_time = Duration::days(1);
     let sd_formatter = SDJWTFormatter {
+        base_url: Some("testUrl".into()),
         config_id: "SD_JWT".into(),
         crypto: Arc::new(crypto),
         did_method_provider: Arc::new(did_method_provider),
@@ -296,6 +298,7 @@ async fn test_format_credential_with_array() {
         .return_once(move |_| Ok(did_document));
 
     let sd_formatter = SDJWTFormatter {
+        base_url: Some("testUrl".into()),
         config_id: "SD_JWT".into(),
         crypto: Arc::new(crypto),
         did_method_provider: Arc::new(did_method_provider),
@@ -427,6 +430,7 @@ async fn test_format_credential_with_array_sd() {
         .return_once(move |_| Ok(did_document));
 
     let sd_formatter = SDJWTFormatter {
+        base_url: Some("testUrl".into()),
         config_id: "SD_JWT".into(),
         crypto: Arc::new(crypto),
         did_method_provider: Arc::new(did_method_provider),
@@ -559,6 +563,7 @@ async fn test_extract_credentials() {
     let leeway = Duration::seconds(45);
 
     let sd_formatter = SDJWTFormatter {
+        base_url: Some("testUrl".into()),
         config_id: "SD_JWT".into(),
         crypto: Arc::new(crypto),
         did_method_provider: Arc::new(MockDidMethodProvider::new()),
@@ -732,6 +737,7 @@ async fn test_extract_credentials_with_array() {
     let leeway = Duration::seconds(45);
 
     let sd_formatter = SDJWTFormatter {
+        base_url: Some("testUrl".into()),
         config_id: "SD_JWT".into(),
         crypto: Arc::new(crypto),
         did_method_provider: Arc::new(MockDidMethodProvider::new()),
@@ -854,6 +860,7 @@ async fn test_extract_credentials_with_array_stripped() {
     let leeway = Duration::seconds(45);
 
     let sd_formatter = SDJWTFormatter {
+        base_url: Some("testUrl".into()),
         config_id: "SD_JWT".into(),
         crypto: Arc::new(crypto),
         did_method_provider: Arc::new(MockDidMethodProvider::new()),
@@ -995,6 +1002,7 @@ async fn test_extract_credentials_with_array_stripped() {
 #[test]
 fn test_get_capabilities() {
     let sd_formatter = SDJWTFormatter {
+        base_url: Some("testUrl".into()),
         config_id: "SD_JWT".into(),
         crypto: Arc::new(MockCryptoProvider::default()),
         did_method_provider: Arc::new(MockDidMethodProvider::new()),
@@ -1138,6 +1146,7 @@ async fn test_parse_credential() {
         .returning(|name| Ok((name.into(), Arc::new(MockDidMethod::new()))));
 
     let formatter = SDJWTFormatter::new(
+        Some("testUrl".into()),
         "SD_JWT".into(),
         params,
         crypto,
@@ -1352,6 +1361,7 @@ async fn test_parse_credential_cnf() {
     });
 
     let formatter = SDJWTFormatter::new(
+        Some("testUrl".into()),
         "SD_JWT".into(),
         params,
         crypto,
@@ -1393,4 +1403,203 @@ async fn test_parse_credential_cnf() {
     let holder = result.holder_identifier.as_ref().unwrap();
     assert!(holder.key.is_some());
     assert_eq!(holder.key.as_ref().unwrap().public_key, vec![0x0, 0x1]);
+}
+
+const TEST_PEM_CERT: &str = "-----BEGIN CERTIFICATE-----\n\
+MIIDhzCCAyygAwIBAgIUahQKX8KQ86zDl0g9Wy3kW6oxFOQwCgYIKoZIzj0EAwIw\n\
+YjELMAkGA1UEBhMCQ0gxDzANBgNVBAcMBlp1cmljaDERMA8GA1UECgwIUHJvY2l2\n\
+aXMxETAPBgNVBAsMCFByb2NpdmlzMRwwGgYDVQQDDBNjYS5kZXYubWRsLXBsdXMu\n\
+Y29tMB4XDTI0MDUxNDA5MDAwMFoXDTI4MDIyOTAwMDAwMFowVTELMAkGA1UEBhMC\n\
+Q0gxDzANBgNVBAcMBlp1cmljaDEUMBIGA1UECgwLUHJvY2l2aXMgQUcxHzAdBgNV\n\
+BAMMFnRlc3QuZXMyNTYucHJvY2l2aXMuY2gwOTATBgcqhkjOPQIBBggqhkjOPQMB\n\
+BwMiAAJx38tO0JCdq3ZecMSW6a+BAAzllydQxVOQ+KDjnwLXJ6OCAeswggHnMA4G\n\
+A1UdDwEB/wQEAwIHgDAVBgNVHSUBAf8ECzAJBgcogYxdBQECMAwGA1UdEwEB/wQC\n\
+MAAwHwYDVR0jBBgwFoAU7RqwneJgRVAAO9paNDIamL4tt8UwWgYDVR0fBFMwUTBP\n\
+oE2gS4ZJaHR0cHM6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2NybC80MENEMjI1NDdG\n\
+MzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LzCByAYIKwYBBQUHAQEEgbsw\n\
+gbgwWgYIKwYBBQUHMAKGTmh0dHA6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2lzc3Vl\n\
+ci80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LmRlcjBa\n\
+BggrBgEFBQcwAYZOaHR0cDovL2NhLmRldi5tZGwtcGx1cy5jb20vb2NzcC80MENE\n\
+MjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4L2NlcnQvMCYGA1Ud\n\
+EgQfMB2GG2h0dHBzOi8vY2EuZGV2Lm1kbC1wbHVzLmNvbTAhBgNVHREEGjAYghZ0\n\
+ZXN0LmVzMjU2LnByb2NpdmlzLmNoMB0GA1UdDgQWBBTGxO0mgPbDCn3/AoQxNFem\n\
+Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI\n\
+1V1b4KfIsl0CIQCHu0eIGECUJIffrjmSc7P6YnQfxgocBUko7nra5E0Lhg==\n\
+-----END CERTIFICATE-----";
+
+fn make_issuer_certificate(cert_id: uuid::Uuid) -> Certificate {
+    // fingerprint is stored as hex-encoded DER SHA-256 digest; use 32 zero bytes for test
+    let fingerprint = hex::encode([0u8; 32]);
+    Certificate {
+        id: cert_id.into(),
+        identifier_id: Uuid::new_v4().into(),
+        created_date: crate::clock::now_utc(),
+        last_modified: crate::clock::now_utc(),
+        deleted_at: None,
+        expiry_date: crate::clock::now_utc(),
+        name: "test".to_string(),
+        chain: TEST_PEM_CERT.to_string(),
+        fingerprint,
+        state: CertificateState::Active,
+        roles: vec![CertificateRole::AssertionMethod],
+        key: None,
+        organisation: None,
+    }
+}
+
+#[tokio::test]
+async fn test_format_credential_sets_x5c_and_x5u_headers() {
+    let mut hasher = MockHasher::default();
+    hasher
+        .expect_hash_base64_url()
+        .returning(|_| Ok(String::from("YWJjMTIz")));
+    let hasher = Arc::new(hasher);
+
+    let mut crypto = MockCryptoProvider::default();
+    crypto
+        .expect_get_hasher()
+        .with(eq("sha-256"))
+        .returning(move |_| Ok(hasher.clone()));
+
+    let base_url = "http://base_url";
+    let cert_id = Uuid::new_v4();
+
+    let mut credential_data = get_credential_data(
+        CredentialStatus {
+            id: Some("did:status:id".parse().unwrap()),
+            r#type: "TYPE".to_string(),
+            status_purpose: Some("PURPOSE".to_string()),
+            additional_fields: HashMap::new(),
+        },
+        base_url,
+    );
+    credential_data.issuer_certificate = Some(make_issuer_certificate(cert_id));
+
+    let mut did_method_provider = MockDidMethodProvider::new();
+    let holder_did = credential_data
+        .holder_identifier
+        .as_ref()
+        .and_then(|id| id.did.as_ref().map(|d| d.did.clone()))
+        .unwrap();
+    did_method_provider
+        .expect_resolve()
+        .return_once(move |_| Ok(dummy_did_document(&holder_did)));
+
+    let sd_formatter = SDJWTFormatter {
+        base_url: Some(base_url.into()),
+        config_id: "SD_JWT".into(),
+        crypto: Arc::new(crypto),
+        did_method_provider: Arc::new(did_method_provider),
+        key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
+        data_type_provider: Arc::new(MockDataTypeProvider::new()),
+        params: Params {
+            leeway: Duration::seconds(45),
+            embed_layout_properties: false,
+            sd_array_elements: true,
+            expiration_time: Duration::days(1),
+            revocation_method: None,
+        },
+        client: Arc::new(MockHttpClient::new()),
+    };
+
+    let auth_fn = MockAuth(|_| vec![65u8, 66, 67]);
+    let token = sd_formatter
+        .format_credential(credential_data, Box::new(auth_fn))
+        .await
+        .unwrap();
+
+    let jwt_part = token.as_ref().split('~').next().unwrap();
+    let header_b64 = jwt_part.split('.').next().unwrap();
+    let header_bytes = Base64UrlSafeNoPadding::decode_to_vec(header_b64, None).unwrap();
+    let header: JWTHeader = serde_json::from_slice(&header_bytes).unwrap();
+
+    // x5c must be present and contain the DER-encoded certificate chain
+    assert!(header.x5c.is_some(), "x5c header must be set");
+    let x5c = header.x5c.as_ref().unwrap();
+    assert_eq!(x5c.len(), 1, "one certificate in chain");
+
+    // x5u must point to the certificate endpoint
+    let expected_x5u = format!("{base_url}/ssi/certificate/{cert_id}");
+    assert_eq!(header.x5u.as_deref(), Some(expected_x5u.as_str()));
+
+    // x5t#S256 must be the base64url-encoded DER fingerprint
+    let expected_x5t = Base64UrlSafeNoPadding::encode_to_string([0u8; 32]).unwrap();
+    assert_eq!(header.x5t_s256.as_deref(), Some(expected_x5t.as_str()));
+}
+
+#[tokio::test]
+async fn test_format_credential_without_certificate_has_no_x5_headers() {
+    let mut hasher = MockHasher::default();
+    hasher
+        .expect_hash_base64_url()
+        .returning(|_| Ok(String::from("YWJjMTIz")));
+    let hasher = Arc::new(hasher);
+
+    let mut crypto = MockCryptoProvider::default();
+    crypto
+        .expect_get_hasher()
+        .with(eq("sha-256"))
+        .returning(move |_| Ok(hasher.clone()));
+
+    let credential_data = get_credential_data(
+        CredentialStatus {
+            id: Some("did:status:id".parse().unwrap()),
+            r#type: "TYPE".to_string(),
+            status_purpose: None,
+            additional_fields: HashMap::new(),
+        },
+        "http://base_url",
+    );
+    // issuer_certificate is None (default from get_credential_data)
+
+    let mut did_method_provider = MockDidMethodProvider::new();
+    let holder_did = credential_data
+        .holder_identifier
+        .as_ref()
+        .and_then(|id| id.did.as_ref().map(|d| d.did.clone()))
+        .unwrap();
+    did_method_provider
+        .expect_resolve()
+        .return_once(move |_| Ok(dummy_did_document(&holder_did)));
+
+    let sd_formatter = SDJWTFormatter {
+        base_url: Some("http://base_url".into()),
+        config_id: "SD_JWT".into(),
+        crypto: Arc::new(crypto),
+        did_method_provider: Arc::new(did_method_provider),
+        key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
+        data_type_provider: Arc::new(MockDataTypeProvider::new()),
+        params: Params {
+            leeway: Duration::seconds(45),
+            embed_layout_properties: false,
+            sd_array_elements: true,
+            expiration_time: Duration::days(1),
+            revocation_method: None,
+        },
+        client: Arc::new(MockHttpClient::new()),
+    };
+
+    let auth_fn = MockAuth(|_| vec![65u8, 66, 67]);
+    let token = sd_formatter
+        .format_credential(credential_data, Box::new(auth_fn))
+        .await
+        .unwrap();
+
+    let jwt_part = token.as_ref().split('~').next().unwrap();
+    let header_b64 = jwt_part.split('.').next().unwrap();
+    let header_bytes = Base64UrlSafeNoPadding::decode_to_vec(header_b64, None).unwrap();
+    let header: JWTHeader = serde_json::from_slice(&header_bytes).unwrap();
+
+    assert!(
+        header.x5c.is_none(),
+        "x5c must not be set without a certificate"
+    );
+    assert!(
+        header.x5u.is_none(),
+        "x5u must not be set without a certificate"
+    );
+    assert!(
+        header.x5t_s256.is_none(),
+        "x5t#S256 must not be set without a certificate"
+    );
 }

@@ -66,6 +66,8 @@ pub enum FormatterError {
     ExpandError(#[from] json_ld::ExpandError),
     #[error("Canonization error: `{0}`")]
     CanonizationError(#[from] CanonizationError),
+    #[error("Hex decode error: `{0}`")]
+    HexError(#[from] hex::FromHexError),
 
     #[error(transparent)]
     Nested(#[from] NestedError),
@@ -101,7 +103,8 @@ impl ErrorCodeMixin for FormatterError {
             | Self::CanonizationError(_)
             | Self::HasherError(_)
             | Self::UnsupportedIdentifierType(_)
-            | Self::FloatValueIsNaN => ErrorCode::BR_0057,
+            | Self::FloatValueIsNaN
+            | Self::HexError(_) => ErrorCode::BR_0057,
             Self::Nested(nested) => nested.error_code(),
         }
     }

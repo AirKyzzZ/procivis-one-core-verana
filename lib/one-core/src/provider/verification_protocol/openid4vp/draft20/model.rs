@@ -124,7 +124,9 @@ impl OpenID4VP20AuthorizationRequest {
                 jwk: None,
                 jwt: None,
                 x5c: None,
+                x5u: None,
                 key_attestation: None,
+                x5t_s256: None,
             },
             payload: JWTPayload {
                 issued_at: None,

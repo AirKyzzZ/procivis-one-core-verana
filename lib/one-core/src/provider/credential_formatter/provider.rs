@@ -81,6 +81,7 @@ fn initialize_provider(
     vct_type_metadata_cache: &Arc<dyn VctTypeMetadataFetcher>,
     certificate_validator: &Arc<dyn CertificateValidator>,
     datatype_config: &DatatypeConfig,
+    base_url: Option<Arc<str>>,
 ) -> Result<Arc<dyn CredentialFormatter>, InitializationError> {
     let provider: Arc<dyn CredentialFormatter> = match fields.r#type {
         FormatType::Jwt => Arc::new(JWTFormatter::new(
@@ -91,6 +92,7 @@ fn initialize_provider(
             data_type_provider.clone(),
         )?),
         FormatType::SdJwt => Arc::new(SDJWTFormatter::new(
+            base_url,
             name.clone(),
             fields.merge_fields(),
             crypto.clone(),
@@ -100,6 +102,7 @@ fn initialize_provider(
             client.clone(),
         )?),
         FormatType::SdJwtVc => Arc::new(SDJWTVCFormatter::new(
+            base_url,
             name.clone(),
             fields.merge_fields(),
             crypto.clone(),
@@ -147,6 +150,7 @@ fn initialize_provider(
 #[expect(clippy::too_many_arguments)]
 pub(crate) fn credential_formatter_provider_from_config(
     config: &mut CoreConfig,
+    base_url: Option<Arc<str>>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     client: Arc<dyn HttpClient>,
     data_type_provider: Arc<dyn DataTypeProvider>,
@@ -172,6 +176,7 @@ pub(crate) fn credential_formatter_provider_from_config(
                 &vct_type_metadata_cache,
                 &certificate_validator,
                 datatype_config,
+                base_url.clone(),
             )?;
 
             let provider: Arc<dyn CredentialFormatter> = Arc::new(CapabilityChecked(provider));
@@ -273,6 +278,7 @@ mod test {
 
         let provider = credential_formatter_provider_from_config(
             &mut generic_config.core,
+            Some("testUrl".into()),
             Arc::new(MockKeyAlgorithmProvider::new()),
             Arc::new(MockHttpClient::new()),
             Arc::new(MockDataTypeProvider::new()),

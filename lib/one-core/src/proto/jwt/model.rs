@@ -36,6 +36,14 @@ pub struct JWTHeader {
     // https://www.rfc-editor.org/rfc/rfc7515.html#section-4.1.6
     #[serde(rename = "x5c", default)]
     pub x5c: Option<Vec<String>>,
+
+    // https://datatracker.ietf.org/doc/html/rfc7515#section-4.1.5
+    #[serde(rename = "x5u", default)]
+    pub x5u: Option<String>,
+
+    // https://datatracker.ietf.org/doc/html/rfc7515#section-4.1.8
+    #[serde(rename = "x5t#S256", default)]
+    pub x5t_s256: Option<String>,
 }
 
 /// <https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1>

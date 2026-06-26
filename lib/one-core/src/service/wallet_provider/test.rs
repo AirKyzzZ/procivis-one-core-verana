@@ -456,6 +456,8 @@ async fn create_proof() -> (String, KeyHandle) {
             jwt: None,
             key_attestation: None,
             x5c: None,
+            x5u: None,
+            x5t_s256: None,
         },
         payload: JWTPayload {
             issued_at: Some(now.sub(Duration::minutes(30))),
@@ -552,6 +554,8 @@ async fn make_user_id_token(
             jwt: None,
             key_attestation: None,
             x5c: None,
+            x5u: None,
+            x5t_s256: None,
         },
         payload: JWTPayload {
             issued_at: None,

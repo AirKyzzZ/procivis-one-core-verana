@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::str::FromStr;
 
+use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use disclosures::recursively_expand_disclosures;
 use model::{DecomposedToken as DecomposedTokenWithDisclosures, Disclosure};
 use one_crypto::{CryptoProvider, Hasher};
@@ -15,7 +16,8 @@ use super::model::{
     PublicKeySource, SettableClaims, SignatureProvider, VerificationFn,
 };
 use crate::error::ContextWithErrorCode;
-use crate::mapper::x509::{pem_chain_into_x5c, x5c_into_pem_chain};
+use crate::mapper::x509::{CertificateParsingError, pem_chain_into_x5c, x5c_into_pem_chain};
+use crate::model::certificate::Certificate;
 use crate::model::did::KeyRole;
 use crate::model::identifier::{Identifier, IdentifierType};
 use crate::model::organisation::Organisation;
@@ -65,6 +67,7 @@ pub(crate) async fn format_credential<T: Serialize>(
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
     digests_to_payload: impl FnOnce(Vec<String>) -> Result<T, FormatterError>,
     sd_array_elements: bool,
+    base_url: &str,
 ) -> Result<SerializedCredential, FormatterError> {
     let issuer = credential.issuer.as_url().to_string();
     let id = credential.id.clone();
@@ -146,10 +149,9 @@ pub(crate) async fn format_credential<T: Serialize>(
         key_id,
         additional_inputs
             .issuer_certificate
-            .map(|issuer_certificate| pem_chain_into_x5c(&issuer_certificate.chain))
+            .map(|issuer_certificate| certificate_into_x5c_and_x5u(base_url, &issuer_certificate))
             .transpose()
-            .error_while("parsing PEM chain")?
-            .map(JwtPublicKeyInfo::X5c),
+            .error_while("parsing PEM chain")?,
         payload,
     );
 
@@ -159,6 +161,23 @@ pub(crate) async fn format_credential<T: Serialize>(
         .error_while("creating SD-JWT token")?;
     append_disclosures(&mut token, disclosures);
     Ok(token.into())
+}
+
+fn certificate_into_x5c_and_x5u(
+    base_url: &str,
+    certificate: &Certificate,
+) -> Result<JwtPublicKeyInfo, FormatterError> {
+    let chain = pem_chain_into_x5c(&certificate.chain).error_while("parsing PEM chain")?;
+    let url = format!("{base_url}/ssi/certificate/{}", certificate.id);
+    let der_fingerprint = hex::decode(&certificate.fingerprint)?;
+    let fingerprint = Base64UrlSafeNoPadding::encode_to_string(&der_fingerprint)
+        .map_err(CertificateParsingError::from)
+        .error_while("encoding chain as base64url")?;
+    Ok(JwtPublicKeyInfo::X5cAndU {
+        chain,
+        url,
+        fingerprint,
+    })
 }
 
 fn format_hashed_credential<T>(

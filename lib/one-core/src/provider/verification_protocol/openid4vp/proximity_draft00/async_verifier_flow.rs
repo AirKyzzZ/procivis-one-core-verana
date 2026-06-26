@@ -341,6 +341,8 @@ pub(super) async fn request_as_signed_jwt(
             jwt: None,
             key_attestation: None,
             x5c: None,
+            x5u: None,
+            x5t_s256: None,
         },
         payload: JWTPayload {
             issued_at: None,

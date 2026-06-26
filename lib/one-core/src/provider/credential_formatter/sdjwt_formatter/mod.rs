@@ -33,7 +33,7 @@ use crate::config::core_config::{
     DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType,
     RevocationType, VerificationProtocolType,
 };
-use crate::error::ContextWithErrorCode;
+use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
 use crate::model::credential_schema::{CredentialSchema, LayoutType};
 use crate::model::organisation::Organisation;
@@ -54,6 +54,7 @@ mod test;
 
 #[derive(Provider)]
 pub struct SDJWTFormatter {
+    base_url: Option<Arc<str>>,
     config_id: CredentialFormat,
     crypto: Arc<dyn CryptoProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
@@ -89,6 +90,13 @@ impl CredentialFormatter for SDJWTFormatter {
         credential_data: CredentialData,
         auth_fn: AuthenticationFn,
     ) -> Result<SerializedCredential, FormatterError> {
+        let Some(base_url) = self.base_url.as_ref() else {
+            return Err(
+                InitializationError::MissingDependency("base_url".to_string())
+                    .error_while("missing base_url")
+                    .into(),
+            );
+        };
         const HASH_ALG: &str = "sha-256";
         let mut vcdm = credential_data.vcdm;
 
@@ -109,7 +117,7 @@ impl CredentialFormatter for SDJWTFormatter {
             holder_key_id: credential_data.holder_key_id,
             leeway: self.params.leeway,
             token_type: "SD_JWT".to_string(),
-            issuer_certificate: None,
+            issuer_certificate: credential_data.issuer_certificate,
         };
 
         let cred = vcdm.clone();
@@ -126,6 +134,7 @@ impl CredentialFormatter for SDJWTFormatter {
             &*self.key_algorithm_provider,
             payload_from_digests,
             self.params.sd_array_elements,
+            base_url,
         )
         .await
     }
@@ -425,7 +434,9 @@ impl CredentialFormatter for SDJWTFormatter {
 }
 
 impl SDJWTFormatter {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
+        base_url: Option<Arc<str>>,
         config_id: CredentialFormat,
         params: serde_json::Value,
         crypto: Arc<dyn CryptoProvider>,
@@ -439,6 +450,7 @@ impl SDJWTFormatter {
                 key: config_id.to_string(),
                 source: err,
             })?;
+
         Ok(Self {
             config_id,
             params,
@@ -447,6 +459,7 @@ impl SDJWTFormatter {
             key_algorithm_provider,
             data_type_provider,
             client,
+            base_url,
         })
     }
 }

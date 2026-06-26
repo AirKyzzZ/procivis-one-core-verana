@@ -131,6 +131,7 @@ async fn test_format_credential() {
     let expiration_time = Duration::days(1);
 
     let sd_formatter = SDJWTVCFormatter::new(
+        Some("testUrl".into()),
         "SD_JWT_VC".into(),
         json!({
             "leeway": 45,
@@ -320,6 +321,7 @@ async fn test_format_credential_swiyu() {
         });
 
     let sd_formatter = SDJWTVCFormatter::new(
+        Some("testUrl".into()),
         "SD_JWT_VC".into(),
         json!({
             "leeway": leeway.whole_seconds(),
@@ -459,6 +461,7 @@ async fn test_extract_credentials() {
     let leeway = Duration::seconds(45);
 
     let sd_formatter = SDJWTVCFormatter::new(
+        Some("testUrl".into()),
         "SD_JWT_VC".into(),
         json!({
             "leeway": leeway.whole_seconds(),
@@ -605,6 +608,7 @@ async fn test_extract_credentials_swiyu() {
     let leeway = Duration::seconds(45);
 
     let sd_formatter = SDJWTVCFormatter::new(
+        Some("testUrl".into()),
         "SD_JWT_VC".into(),
         json!({
             "leeway": leeway.whole_seconds(),
@@ -816,6 +820,7 @@ async fn test_extract_credentials_with_cnf_no_subject() {
         });
 
     let sd_formatter = SDJWTVCFormatter::new(
+        Some("testUrl".into()),
         "SD_JWT_VC".into(),
         json!({
             "leeway": 45,
@@ -934,6 +939,7 @@ async fn test_extract_credentials_example_b1() {
         });
 
     let sd_formatter = SDJWTVCFormatter::new(
+        Some("testUrl".into()),
         "SD_JWT_VC".into(),
         json!({
             "leeway": 45,
@@ -1081,6 +1087,7 @@ async fn test_extract_credentials_example_b1() {
 #[test]
 fn test_schema_id() {
     let formatter = SDJWTVCFormatter::new(
+        Some("testUrl".into()),
         "SD_JWT_VC".into(),
         json!({
             "leeway": 45,
@@ -1635,6 +1642,7 @@ fn formatter_for_params(
             }))
         });
     let formatter = SDJWTVCFormatter::new(
+        Some("testUrl".into()),
         "SD_JWT_VC".into(),
         params,
         crypto,
@@ -1737,6 +1745,7 @@ async fn test_parse_credential_eudi() {
         });
 
     let formatter = SDJWTVCFormatter::new(
+        Some("testUrl".into()),
         "SD_JWT_VC".into(),
         params,
         crypto,
@@ -2023,6 +2032,7 @@ async fn test_parse_credential() {
     });
 
     let formatter = SDJWTVCFormatter::new(
+        Some("testUrl".into()),
         "SD_JWT_VC".into(),
         params,
         crypto,
@@ -2180,6 +2190,7 @@ async fn test_format_presentation_mixed_sd_array_claim() {
     };
     let crypto = Arc::new(CryptoProviderImpl::new(hashers));
     let formatter = SDJWTVCFormatter::new(
+        Some("testUrl".into()),
         "SD_JWT_VC".into(),
         params,
         crypto,
@@ -2231,6 +2242,7 @@ async fn test_format_presentation_complex_test_vector_sd_array_element() {
     };
     let crypto = Arc::new(CryptoProviderImpl::new(hashers));
     let formatter = SDJWTVCFormatter::new(
+        Some("testUrl".into()),
         "SD_JWT_VC".into(),
         params,
         crypto,

@@ -64,6 +64,11 @@ pub struct Jwt<CustomPayload> {
 pub enum JwtPublicKeyInfo {
     Jwk(PublicJwk),
     X5c(Vec<String>),
+    X5cAndU {
+        chain: Vec<String>,
+        url: String,
+        fingerprint: String,
+    },
 }
 
 impl<CustomPayload> Jwt<CustomPayload> {
@@ -85,10 +90,15 @@ impl<CustomPayload> Jwt<CustomPayload> {
         attestation_jwt: Option<String>,
         payload: JWTPayload<CustomPayload>,
     ) -> Jwt<CustomPayload> {
-        let (jwk, x5c) = match public_key_info {
-            None => (None, None),
-            Some(JwtPublicKeyInfo::Jwk(jwk)) => (Some(jwk), None),
-            Some(JwtPublicKeyInfo::X5c(vec)) => (None, Some(vec)),
+        let (jwk, x5c, x5u, x5t_s256) = match public_key_info {
+            None => (None, None, None, None),
+            Some(JwtPublicKeyInfo::Jwk(jwk)) => (Some(jwk), None, None, None),
+            Some(JwtPublicKeyInfo::X5c(x5c)) => (None, Some(x5c), None, None),
+            Some(JwtPublicKeyInfo::X5cAndU {
+                chain,
+                fingerprint,
+                url,
+            }) => (None, Some(chain), Some(url), Some(fingerprint)),
         };
 
         let header = JWTHeader {
@@ -99,6 +109,8 @@ impl<CustomPayload> Jwt<CustomPayload> {
             jwt: None,
             key_attestation: attestation_jwt,
             x5c,
+            x5u,
+            x5t_s256,
         };
 
         Jwt { header, payload }

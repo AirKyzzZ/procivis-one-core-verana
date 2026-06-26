@@ -42,7 +42,7 @@ use crate::config::core_config::{
     DatatypeConfig, DatatypeType, DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType,
     KeyStorageType, RevocationType, VerificationProtocolType,
 };
-use crate::error::ContextWithErrorCode;
+use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
 use crate::model::credential_schema::{CredentialSchema, LayoutType};
@@ -65,6 +65,7 @@ const PNG_DATA_URI_PREFIX: &str = "data:image/png;base64,";
 
 #[derive(Provider)]
 pub struct SDJWTVCFormatter {
+    base_url: Option<Arc<str>>,
     config_id: CredentialFormat,
     crypto: Arc<dyn CryptoProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
@@ -238,6 +239,13 @@ impl CredentialFormatter for SDJWTVCFormatter {
         credential_data: CredentialData,
         auth_fn: AuthenticationFn,
     ) -> Result<SerializedCredential, FormatterError> {
+        let Some(base_url) = self.base_url.as_deref() else {
+            return Err(
+                InitializationError::MissingDependency("base_url".to_string())
+                    .error_while("missing base_url")
+                    .into(),
+            );
+        };
         const HASH_ALG: &str = "sha-256";
         // todo: here we need sdjwt-vc specific data model instead of using vcdm
         let mut vcdm = credential_data.vcdm;
@@ -294,6 +302,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             &*self.key_algorithm_provider,
             payload_from_digests,
             self.params.sd_array_elements,
+            base_url,
         )
         .await
     }
@@ -491,6 +500,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
 impl SDJWTVCFormatter {
     #[expect(clippy::too_many_arguments)]
     pub(crate) fn new(
+        base_url: Option<Arc<str>>,
         config_id: CredentialFormat,
         params: serde_json::Value,
         crypto: Arc<dyn CryptoProvider>,
@@ -507,8 +517,8 @@ impl SDJWTVCFormatter {
                 key: config_id.to_string(),
                 source: err,
             })?;
-
         Ok(Self {
+            base_url,
             config_id,
             params,
             crypto,
