@@ -228,6 +228,131 @@ async fn test_issuance_accept_openid4vc() {
 }
 
 #[tokio::test]
+async fn test_issuance_accept_with_new_nested_optional_claims() {
+    // GIVEN
+    let (context, organisation, holder_did, ..) = TestContext::new_with_did(None).await;
+    let issuer_key = Ecdsa.generate_key().unwrap();
+    let multibase = issuer_key.key.public_key_as_multibase().unwrap();
+    let issuer_did = context
+        .db
+        .dids
+        .create(
+            Some(organisation.clone()),
+            TestingDidParams {
+                did_type: Some(DidType::Remote),
+                did: Some(format!("did:key:{multibase}").parse().unwrap()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test",
+            &organisation,
+            TestingCreateSchemaParams {
+                schema_id: Some("VerifiableCredential".to_string()),
+                claim_schemas: Some(vec![ClaimSchema {
+                    id: Uuid::new_v4().into(),
+                    key: "string".to_string(),
+                    data_type: "STRING".to_string(),
+                    created_date: datetime!(2024-10-20 12:00 +1),
+                    last_modified: datetime!(2024-10-20 12:00 +1),
+                    array: false,
+                    metadata: false,
+                    required: true,
+                    translations: Default::default(),
+                }]),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let interaction_data = dummy_interaction_data(
+        &context,
+        &credential_schema,
+        InteractionDataParams::default(),
+    );
+    let interaction = context
+        .db
+        .interactions
+        .create(
+            None,
+            &interaction_data,
+            &organisation,
+            InteractionType::Issuance,
+            None,
+        )
+        .await;
+
+    let jwt_credential = w3c_jwt_vc(
+        &issuer_key,
+        "ES256",
+        issuer_did.did.clone(),
+        holder_did.did.clone(),
+        json!({
+            "string": "string",
+            "address": { "city": "Zurich" }
+        }),
+    )
+    .await;
+
+    context
+        .server_mock
+        .ssi_credential_endpoint(credential_schema.id, "123", &[jwt_credential], 1, None)
+        .await;
+    context
+        .server_mock
+        .ssi_nonce_endpoint("OPENID4VCI_FINAL1", "test-nonce", 1)
+        .await;
+    context
+        .server_mock
+        .token_endpoint(credential_schema.id, "123")
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .interactions
+        .issuance_accept(interaction.id, holder_did.id, None, None, None)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    let credential = context.db.credentials.get(&resp["id"].parse()).await;
+    assert_eq!(CredentialStateEnum::Accepted, credential.state);
+
+    let claims = credential.claims.unwrap();
+
+    // new nested optional claim (schemas)
+    let city_claim = claims
+        .iter()
+        .find(|claim| claim.path == "address/city")
+        .unwrap();
+    assert_eq!(city_claim.value.as_ref().unwrap(), "Zurich");
+    assert_eq!(city_claim.schema.as_ref().unwrap().key, "address/city");
+    let updated_schema = context
+        .db
+        .credential_schemas
+        .get(&credential_schema.id)
+        .await;
+    let claim_schema_keys: HashSet<String> = updated_schema
+        .claim_schemas
+        .as_ref()
+        .await
+        .unwrap()
+        .iter()
+        .map(|claim_schema| claim_schema.key.clone())
+        .collect();
+    assert!(claim_schema_keys.contains("address"));
+    assert!(claim_schema_keys.contains("address/city"));
+}
+
+#[tokio::test]
 async fn test_issuance_accept_schema_name_already_exists() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;

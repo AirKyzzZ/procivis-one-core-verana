@@ -908,6 +908,13 @@ async fn validate_existing_and_find_new_claim_schemas(
                     &parsed_claim_schema,
                     &mut claim_path_translations,
                 )?;
+            } else {
+                // This is a new root claim, no parent path translations / relinking. Store the key
+                // translation for potential child claims of this new root claim.
+                key_translations.insert(
+                    parsed_claim_schema.key.clone(),
+                    parsed_claim_schema.key.clone(),
+                );
             }
             let mut new_mapping = parsed_mapping.clone();
             new_mapping.credential_schema_format_id = stored_format.id;
