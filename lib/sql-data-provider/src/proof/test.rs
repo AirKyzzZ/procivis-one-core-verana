@@ -376,6 +376,7 @@ async fn test_create_proof_success() {
         proof_blob_id: None,
         engagement: None,
         webhook_url: None,
+        subscriber_information: None,
     };
 
     let result = repository.create_proof(proof).await.unwrap();
@@ -600,6 +601,7 @@ async fn test_get_proof_with_relations() {
                 wallet_instance_attestation_blob_id: None,
                 webhook_url: None,
                 embedded_disclosure_policy: None,
+                subscriber_information: None,
                 parent: None,
             }))
         });

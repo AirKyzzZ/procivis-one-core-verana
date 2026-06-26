@@ -898,6 +898,7 @@ impl ProofService {
                 proof_blob_id: None,
                 engagement: None,
                 webhook_url: None,
+                subscriber_information: None,
             })
             .await
             .error_while("creating proof")?;

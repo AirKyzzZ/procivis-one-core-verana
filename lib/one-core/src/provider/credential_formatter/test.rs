@@ -78,6 +78,7 @@ fn generate_credential_detail_response(
         trust_information: None,
         remaining_batch_item_count: None,
         parent_id: None,
+        subscriber_information: None,
     }
 }
 
@@ -193,6 +194,8 @@ fn generate_credential_matching_detail(
         webhook_url: None,
         parent: None,
         embedded_disclosure_policy: None,
+
+        subscriber_information: None,
     }
 }
 

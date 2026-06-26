@@ -33,6 +33,7 @@ pub struct CreateProofRequestDTO {
     pub profile: Option<String>,
     pub engagement: Option<String>,
     pub webhook_destination_url: Option<String>,
+    pub subscriber_information: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -63,6 +64,7 @@ pub struct ProofDetailResponseDTO {
     pub profile: Option<String>,
     pub webhook_destination_url: Option<String>,
     pub trust_information: Option<TrustInformation>,
+    pub subscriber_information: Option<String>,
 }
 
 #[derive(Clone, Debug)]

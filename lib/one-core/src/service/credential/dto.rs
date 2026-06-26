@@ -78,6 +78,7 @@ pub struct CredentialDetailResponseDTO<T> {
     pub webhook_destination_url: Option<String>,
     pub trust_information: Option<TrustInformation>,
     pub parent_id: Option<CredentialId>,
+    pub subscriber_information: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -243,6 +244,7 @@ pub struct CreateCredentialRequestDTO {
     pub redirect_uri: Option<String>,
     pub profile: Option<String>,
     pub webhook_destination_url: Option<String>,
+    pub subscriber_information: Option<String>,
 }
 
 #[derive(Clone, Debug)]

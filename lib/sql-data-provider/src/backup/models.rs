@@ -25,6 +25,7 @@ pub struct UnexportableCredentialModel {
     pub profile: Option<String>,
     pub webhook_url: Option<String>,
     pub embedded_disclosure_policy: Option<String>,
+    pub subscriber_information: Option<String>,
 
     pub credential_schema_id: CredentialSchemaId,
     pub credential_schema_deleted_at: Option<OffsetDateTime>,

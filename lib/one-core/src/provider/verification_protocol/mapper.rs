@@ -84,6 +84,7 @@ pub(crate) fn proof_from_handle_invitation(
         proof_blob_id: None,
         engagement: None,
         webhook_url: None,
+        subscriber_information: None,
     }
 }
 

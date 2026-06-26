@@ -433,6 +433,7 @@ fn test_proof(proof_id: Uuid, credential_format: CredentialFormat) -> Proof {
         proof_blob_id: None,
         engagement: None,
         webhook_url: None,
+        subscriber_information: None,
     }
 }
 

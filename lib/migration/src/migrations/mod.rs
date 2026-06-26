@@ -22,3 +22,4 @@ pub mod m20260612_120000_add_embedded_disclosure_policy_to_credential_schema;
 pub mod m20260615_062437_revocation_v2;
 pub mod m20260619_120000_add_credential_schema_list_indexes;
 pub mod m20260623_091633_missing_mappings;
+pub mod m20260625_120000_add_subscriber_information_to_credential_and_proof;

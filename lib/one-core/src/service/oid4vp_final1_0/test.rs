@@ -747,6 +747,7 @@ async fn test_get_client_metadata_success() {
         proof_blob_id: None,
         engagement: None,
         webhook_url: None,
+        subscriber_information: None,
     };
     {
         proof_repository

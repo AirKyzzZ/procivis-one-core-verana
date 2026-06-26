@@ -27,6 +27,7 @@ pub(super) struct CredentialListEntityModel {
     pub wallet_instance_attestation_blob_id: Option<BlobId>,
     pub webhook_url: Option<String>,
     pub embedded_disclosure_policy: Option<String>,
+    pub subscriber_information: Option<String>,
 
     pub credential_schema_deleted_at: Option<OffsetDateTime>,
     pub credential_schema_created_date: OffsetDateTime,

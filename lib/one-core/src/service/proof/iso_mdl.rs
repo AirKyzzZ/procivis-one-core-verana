@@ -85,6 +85,7 @@ impl ProofService {
             verifier_certificate: None,
             interaction: None,
             webhook_url: None,
+            subscriber_information: None,
         };
 
         let proof_id = self

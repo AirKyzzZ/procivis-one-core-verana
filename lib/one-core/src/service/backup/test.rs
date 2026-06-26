@@ -144,6 +144,7 @@ async fn dummy_unexportable_entities() -> UnexportableEntities {
             webhook_url: None,
             parent: None,
             embedded_disclosure_policy: None,
+            subscriber_information: None,
         }],
         keys: vec![dummy_key()],
         dids: vec![dummy_did()],

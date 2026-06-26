@@ -368,6 +368,7 @@ async fn test_create_credential_success() {
             wallet_instance_attestation_blob_id: None,
             webhook_url: None,
             embedded_disclosure_policy: None,
+            subscriber_information: None,
             parent: None,
         })
         .await;
@@ -424,6 +425,7 @@ async fn test_create_credential_empty_claims() {
             wallet_instance_attestation_blob_id: None,
             webhook_url: None,
             embedded_disclosure_policy: None,
+            subscriber_information: None,
             parent: None,
         })
         .await;
@@ -492,6 +494,7 @@ async fn test_create_credential_already_exists() {
             wallet_instance_attestation_blob_id: None,
             webhook_url: None,
             embedded_disclosure_policy: None,
+            subscriber_information: None,
             parent: None,
         })
         .await;

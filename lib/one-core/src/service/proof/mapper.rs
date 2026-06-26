@@ -425,6 +425,7 @@ pub(super) async fn get_verifier_proof_detail(
     }
 
     let redirect_uri = proof.redirect_uri.to_owned();
+    let subscriber_information = proof.subscriber_information.to_owned();
 
     let verifier_certificate = match &proof.verifier_certificate {
         None => None,
@@ -459,6 +460,7 @@ pub(super) async fn get_verifier_proof_detail(
         profile: list_item_response.profile,
         webhook_destination_url: list_item_response.webhook_destination_url,
         trust_information: None,
+        subscriber_information,
     })
 }
 
@@ -606,6 +608,7 @@ pub(super) async fn get_holder_proof_detail(
     .id;
 
     let redirect_uri = proof.redirect_uri.to_owned();
+    let subscriber_information = proof.subscriber_information.to_owned();
 
     let mut submitted_credentials: HashMap<
         CredentialId,
@@ -710,6 +713,7 @@ pub(super) async fn get_holder_proof_detail(
         profile: list_item_response.profile,
         webhook_destination_url: list_item_response.webhook_destination_url,
         trust_information: trust_information.into_iter().next(),
+        subscriber_information,
     })
 }
 
@@ -745,6 +749,7 @@ pub(super) fn proof_from_create_request(
         proof_blob_id: None,
         engagement: request.engagement,
         webhook_url: request.webhook_destination_url,
+        subscriber_information: request.subscriber_information,
     }
 }
 

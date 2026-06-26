@@ -179,6 +179,8 @@ pub(crate) struct GetCredentialResponseRestDTO<TClaim> {
     pub webhook_destination_url: Option<String>,
     /// Trust information of the issuer, if any received.
     pub trust_information: Option<TrustInformationRestDTO>,
+    /// Optional subscriber information associated with this credential.
+    pub subscriber_information: Option<String>,
 }
 
 #[derive(Debug, Serialize, ToSchema, From)]
@@ -500,6 +502,8 @@ pub(crate) struct CreateCredentialRequestRestDTO {
     pub profile: Option<String>,
     /// If set, notifications about state changes of the credential will be posted on this webhook URL
     pub webhook_destination_url: Option<String>,
+    /// Optional subscriber information associated with this credential
+    pub subscriber_information: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]

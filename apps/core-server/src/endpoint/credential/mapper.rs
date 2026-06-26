@@ -39,6 +39,7 @@ impl<IN, OUT: From<IN>> TryFrom<CredentialDetailResponseDTO<IN>>
             webhook_destination_url: value.webhook_destination_url,
             trust_information: value.trust_information.map(Into::into),
             parent_id: value.parent_id,
+            subscriber_information: value.subscriber_information,
         })
     }
 }

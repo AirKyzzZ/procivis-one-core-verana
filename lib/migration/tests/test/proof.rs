@@ -26,6 +26,7 @@ async fn test_db_schema_proof() {
             "proof_blob_id",
             "engagement",
             "webhook_url",
+            "subscriber_information",
         ])
         .index("index-Proof-CreatedDate", false, &["created_date"]);
     proof
@@ -116,6 +117,10 @@ async fn test_db_schema_proof() {
         .nullable(true);
     proof
         .column("webhook_url")
+        .r#type(ColumnType::Text)
+        .nullable(true);
+    proof
+        .column("subscriber_information")
         .r#type(ColumnType::Text)
         .nullable(true);
 }

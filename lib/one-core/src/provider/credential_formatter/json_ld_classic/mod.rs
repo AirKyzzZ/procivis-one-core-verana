@@ -408,6 +408,7 @@ impl CredentialFormatter for JsonLdClassic {
             webhook_url: None,
             parent: None,
             embedded_disclosure_policy: None,
+            subscriber_information: None,
         })
     }
 

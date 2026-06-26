@@ -615,5 +615,6 @@ fn credential(parsed_schema: CredentialSchema, claims: Vec<Claim>) -> Credential
         interaction: None,
         key: None,
         parent: None,
+        subscriber_information: None,
     }
 }

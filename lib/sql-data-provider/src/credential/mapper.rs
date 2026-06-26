@@ -205,6 +205,7 @@ pub(crate) fn model_to_credential(
         wallet_instance_attestation_blob_id: credential.wallet_instance_attestation_blob_id,
         webhook_url: credential.webhook_url,
         embedded_disclosure_policy: credential.embedded_disclosure_policy,
+        subscriber_information: credential.subscriber_information,
         parent: credential
             .parent_id
             .map(|id| Related::new(id, credential_repository.clone())),
@@ -249,6 +250,7 @@ pub(super) fn request_to_active_model(
         wallet_instance_attestation_blob_id: Set(wallet_instance_attestation_blob_id),
         webhook_url: Set(request.webhook_url.to_owned()),
         embedded_disclosure_policy: Set(request.embedded_disclosure_policy.clone()),
+        subscriber_information: Set(request.subscriber_information.clone()),
         r#type: Set(request.r#type.into()),
     }
 }
@@ -370,6 +372,7 @@ pub(super) fn credential_list_model_to_repository_model(
         wallet_instance_attestation_blob_id: credential.wallet_instance_attestation_blob_id,
         webhook_url: credential.webhook_url,
         embedded_disclosure_policy: credential.embedded_disclosure_policy,
+        subscriber_information: credential.subscriber_information,
         parent: credential
             .parent_id
             .map(|id| Related::new(id, credential_repository.clone())),

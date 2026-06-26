@@ -545,6 +545,7 @@ pub(crate) fn extracted_credential_to_model(
             r#type: CredentialType::Single,
             parent: None,
             embedded_disclosure_policy: None,
+            subscriber_information: None,
         },
         issuer_details,
         holder_details,

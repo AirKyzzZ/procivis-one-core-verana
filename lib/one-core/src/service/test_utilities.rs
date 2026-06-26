@@ -381,6 +381,8 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
         webhook_url: None,
         parent: None,
         embedded_disclosure_policy: None,
+
+        subscriber_information: None,
     }
 }
 
@@ -485,6 +487,7 @@ pub fn dummy_proof_with_protocol(protocol: &str) -> Proof {
         proof_blob_id: None,
         engagement: None,
         webhook_url: None,
+        subscriber_information: None,
     }
 }
 

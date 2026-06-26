@@ -136,6 +136,8 @@ pub(crate) struct CreateProofRequestRestDTO {
     pub engagement: Option<String>,
     /// If set, notifications about state changes of the proof will be posted on this webhook URL
     pub webhook_destination_url: Option<String>,
+    /// Optional subscriber information associated with this proof request
+    pub subscriber_information: Option<String>,
 }
 
 // list endpoint
@@ -454,6 +456,8 @@ pub(crate) struct ProofDetailResponseRestDTO {
     /// Trust information of the verifier, if any.
     #[try_from(with_fn = convert_inner, infallible)]
     pub trust_information: Option<TrustInformationRestDTO>,
+    #[try_from(infallible)]
+    pub subscriber_information: Option<String>,
 }
 
 #[options_not_nullable]

@@ -217,6 +217,7 @@ impl CredentialsDB {
             wallet_instance_attestation_blob_id: params.wallet_instance_attestation_blob_id,
             webhook_url: params.webhook_url,
             embedded_disclosure_policy: params.embedded_disclosure_policy,
+            subscriber_information: None,
             parent: params
                 .parent_id
                 .map(|id| Related::new(id, self.repository.clone())),

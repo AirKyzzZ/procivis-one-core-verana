@@ -206,6 +206,7 @@ pub(crate) async fn credential_detail_response_from_model(
         trust_information,
         remaining_batch_item_count,
         parent_id: value.parent.map(|parent| parent.id()),
+        subscriber_information: value.subscriber_information,
     })
 }
 
@@ -531,6 +532,7 @@ pub(super) fn from_create_request(
         r#type,
         parent: None,
         embedded_disclosure_policy: None,
+        subscriber_information: request.subscriber_information,
     }
 }
 

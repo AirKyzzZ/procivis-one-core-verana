@@ -419,6 +419,7 @@ impl TryFrom<CreateProofRequestBindingDTO> for CreateProofRequestDTO {
             profile: value.profile,
             engagement: value.engagement,
             webhook_destination_url: None,
+            subscriber_information: None,
         })
     }
 }

@@ -234,6 +234,7 @@ fn test_verifier_proof(format: CredentialFormat, verifier_key: Option<RelatedKey
         proof_blob_id: None,
         engagement: None,
         webhook_url: None,
+        subscriber_information: None,
     }
 }
 
@@ -317,6 +318,7 @@ fn test_holder_proof(
         proof_blob_id: None,
         engagement: None,
         webhook_url: None,
+        subscriber_information: None,
     }
 }
 

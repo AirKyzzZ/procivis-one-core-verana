@@ -377,6 +377,7 @@ fn map_to_filtered_dto(
         trust_information: full_dto.trust_information,
         remaining_batch_item_count: full_dto.remaining_batch_item_count,
         parent_id: full_dto.parent_id,
+        subscriber_information: full_dto.subscriber_information,
     }
 }
 

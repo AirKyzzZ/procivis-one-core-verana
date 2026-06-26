@@ -200,6 +200,7 @@ async fn generic_credential() -> Credential {
                     transaction_code: None,
                     translations: Default::default(),
                     embedded_disclosure_policy: None,
+
                     formats: vec![CredentialSchemaFormat {
                         id: Uuid::new_v4().into(),
                         created_date: crate::clock::now_utc(),
@@ -225,6 +226,8 @@ async fn generic_credential() -> Credential {
         webhook_url: None,
         parent: None,
         embedded_disclosure_policy: None,
+
+        subscriber_information: None,
     }
 }
 
@@ -321,6 +324,8 @@ async fn generic_credential_list_entity() -> Credential {
         webhook_url: None,
         parent: None,
         embedded_disclosure_policy: None,
+
+        subscriber_information: None,
     }
 }
 
@@ -948,6 +953,7 @@ async fn test_create_credential_based_on_issuer_did_success() {
             redirect_uri: None,
             profile: None,
             webhook_destination_url: None,
+            subscriber_information: None,
         })
         .await;
 
@@ -1045,6 +1051,7 @@ async fn test_create_credential_based_on_issuer_identifier_success() {
             redirect_uri: None,
             profile: None,
             webhook_destination_url: None,
+            subscriber_information: None,
         })
         .await;
 
@@ -1105,6 +1112,7 @@ async fn test_create_credential_failed_unsupported_wallet_storage_type() {
             redirect_uri: None,
             profile: None,
             webhook_destination_url: None,
+            subscriber_information: None,
         })
         .await;
 
@@ -1218,6 +1226,7 @@ async fn test_create_credential_failed_formatter_doesnt_support_did_identifiers(
             redirect_uri: None,
             profile: None,
             webhook_destination_url: None,
+            subscriber_information: None,
         })
         .await;
 
@@ -1334,6 +1343,7 @@ async fn test_create_credential_failed_issuance_did_method_incompatible() {
             redirect_uri: None,
             profile: None,
             webhook_destination_url: None,
+            subscriber_information: None,
         })
         .await;
 
@@ -1429,6 +1439,7 @@ async fn test_create_credential_fails_if_did_is_deactivated() {
             redirect_uri: None,
             profile: None,
             webhook_destination_url: None,
+            subscriber_information: None,
         })
         .await;
 
@@ -1555,6 +1566,7 @@ async fn test_create_credential_one_required_claim_missing_success() {
         redirect_uri: None,
         profile: None,
         webhook_destination_url: None,
+        subscriber_information: None,
     };
 
     // create a credential with required claims only succeeds
@@ -1685,6 +1697,7 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
         redirect_uri: None,
         profile: None,
         webhook_destination_url: None,
+        subscriber_information: None,
     };
 
     // create a credential with only an optional claim fails
@@ -1840,6 +1853,7 @@ async fn test_create_credential_namespace_optional() {
         redirect_uri: None,
         profile: None,
         webhook_destination_url: None,
+        subscriber_information: None,
     };
 
     // not mentioning namespace
@@ -1979,6 +1993,7 @@ async fn test_create_credential_schema_deleted() {
             redirect_uri: None,
             profile: None,
             webhook_destination_url: None,
+            subscriber_information: None,
         })
         .await;
 
@@ -2100,6 +2115,7 @@ async fn test_create_credential_key_with_issuer_key() {
             redirect_uri: None,
             profile: None,
             webhook_destination_url: None,
+            subscriber_information: None,
         })
         .await;
 
@@ -2247,6 +2263,7 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
             redirect_uri: None,
             profile: None,
             webhook_destination_url: None,
+            subscriber_information: None,
         })
         .await;
 
@@ -2367,6 +2384,7 @@ async fn test_fail_to_create_credential_no_assertion_key() {
             redirect_uri: None,
             profile: None,
             webhook_destination_url: None,
+            subscriber_information: None,
         })
         .await;
 
@@ -2475,6 +2493,7 @@ async fn test_fail_to_create_credential_unknown_key_id() {
             redirect_uri: None,
             profile: None,
             webhook_destination_url: None,
+            subscriber_information: None,
         })
         .await;
 
@@ -2595,6 +2614,7 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
             redirect_uri: None,
             profile: None,
             webhook_destination_url: None,
+            subscriber_information: None,
         })
         .await;
 
@@ -2715,6 +2735,7 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
             redirect_uri: None,
             profile: None,
             webhook_destination_url: None,
+            subscriber_information: None,
         })
         .await;
 
@@ -2820,6 +2841,7 @@ async fn test_create_credential_fail_incompatible_format_and_tranposrt_protocol(
             redirect_uri: None,
             profile: None,
             webhook_destination_url: None,
+            subscriber_information: None,
         })
         .await;
 
@@ -2925,6 +2947,7 @@ async fn test_create_credential_fail_invalid_redirect_uri() {
             redirect_uri: Some("invalid://domain.com".to_string()),
             profile: None,
             webhook_destination_url: None,
+            subscriber_information: None,
         })
         .await;
 
@@ -3017,6 +3040,7 @@ async fn test_create_credential_fail_webhook_not_allowed() {
             redirect_uri: None,
             profile: None,
             webhook_destination_url: Some("http://webhook.url".to_string()),
+            subscriber_information: None,
         })
         .await;
 
@@ -3674,6 +3698,8 @@ async fn test_get_credential_success_array_complex_nested_all() {
         webhook_url: None,
         parent: None,
         embedded_disclosure_policy: None,
+
+        subscriber_information: None,
     };
 
     {
@@ -4452,6 +4478,8 @@ async fn test_get_credential_success_array_index_sorting() {
         webhook_url: None,
         parent: None,
         embedded_disclosure_policy: None,
+
+        subscriber_information: None,
     };
 
     {
@@ -4867,6 +4895,8 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
         webhook_url: None,
         parent: None,
         embedded_disclosure_policy: None,
+
+        subscriber_information: None,
     };
 
     {
@@ -5137,6 +5167,8 @@ async fn test_get_credential_success_array_single_element() {
         webhook_url: None,
         parent: None,
         embedded_disclosure_policy: None,
+
+        subscriber_information: None,
     };
 
     {
@@ -5375,6 +5407,7 @@ async fn test_create_credential_array(
             redirect_uri: None,
             profile: None,
             webhook_destination_url: None,
+            subscriber_information: None,
         })
         .await
 }
@@ -5635,6 +5668,7 @@ async fn test_create_credential_session_org_mismatch() {
             redirect_uri: None,
             profile: None,
             webhook_destination_url: None,
+            subscriber_information: None,
         })
         .await;
 
@@ -5766,6 +5800,7 @@ async fn test_create_credential_invalid_certificate_role() {
             redirect_uri: None,
             profile: None,
             webhook_destination_url: None,
+            subscriber_information: None,
         })
         .await;
 

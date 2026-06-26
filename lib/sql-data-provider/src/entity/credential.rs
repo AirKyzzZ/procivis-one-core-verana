@@ -54,6 +54,7 @@ pub struct Model {
     pub webhook_url: Option<String>,
     #[sea_orm(column_type = "Text")]
     pub embedded_disclosure_policy: Option<String>,
+    pub subscriber_information: Option<String>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}
