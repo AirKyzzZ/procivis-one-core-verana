@@ -24,10 +24,9 @@ use crate::router::AppState;
     ),
     summary = "Authorize a document signature",
     description = indoc::formatdoc! {"
-    Builds the authorization URL for signing a document with a configured
-    document signer. The wallet opens the returned `authorizationUrl` to
-    identify and authorize, then calls `/api/qes/v1/sign` with the resulting
-    code and the `codeVerifier` returned here.
+    Initiates the QES signing flow for a document with a configured QES provider.
+    Returns an `authorizationUrl` for the user to authenticate with the provider,
+    and a `codeVerifier` to be passed to `/api/qes/v1/sign` on return.
 "},
 )]
 pub(crate) async fn authorize(
@@ -53,7 +52,9 @@ pub(crate) async fn authorize(
     ),
     summary = "Sign a document",
     description = indoc::formatdoc! {"
-    Exchanges the authorization code for a signed document.
+    Completes the QES signing flow. Exchanges the authorization `code` received
+    from the provider redirect and the `codeVerifier` from `/api/qes/v1/authorize`
+    for a signed document.
 "},
 )]
 pub(crate) async fn sign(

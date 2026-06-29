@@ -23,17 +23,18 @@ fn encode_base64(value: Vec<u8>) -> Result<String, ServiceError> {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[try_into(T = QesAuthorizeRequestDTO, Error = ServiceError)]
 pub(crate) struct QesAuthorizeRequestRestDTO {
-    /// Configured document signer name (e.g. `SIGN8`).
+    /// Configured document signer name (for example, `SIGN8`).
     #[try_into(infallible)]
     pub provider: String,
-    /// Base64-encoded document to be signed (e.g. a PDF with PAdES).
+    /// Base64-encoded document to be signed.
     #[try_into(with_fn = decode_base64)]
     pub document: String,
-    /// Wallet deep link the document signer redirects to with the `code`.
-    /// When omitted, the configured default is used.
+    /// Wallet deep link to which the provider redirects after authorization,
+    /// appending the authorization `code`. When omitted, the configured
+    /// default is used.
     #[try_into(infallible)]
     pub redirect_uri: Option<String>,
-    /// Organization context. Optional when resolvable from STS auth.
+    /// Organizational context. Optional when resolvable from STS auth.
     #[try_into(infallible)]
     pub organisation_id: Option<OrganisationId>,
 }
@@ -53,7 +54,7 @@ pub(crate) struct QesAuthorizeResponseRestDTO {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[try_into(T = QesSignRequestDTO, Error = ServiceError)]
 pub(crate) struct QesSignRequestRestDTO {
-    /// Configured document signer name (e.g. `SIGN8`).
+    /// Configured document signer name (for example, `SIGN8`).
     #[try_into(infallible)]
     pub provider: String,
     /// Authorization code from the document signer redirect.
@@ -62,14 +63,16 @@ pub(crate) struct QesSignRequestRestDTO {
     /// `codeVerifier` returned from `/api/qes/v1/authorize`.
     #[try_into(infallible)]
     pub code_verifier: String,
-    /// Base64-encoded document to be signed (the same one authorized).
+    /// Base64-encoded document to be signed. Must be identical to the
+    /// document provided to `/api/qes/v1/authorize`.
     #[try_into(with_fn = decode_base64)]
     pub document: String,
-    /// Wallet deep link; must match the one used at `/api/qes/v1/authorize`.
-    /// When omitted, the configured default is used.
+    /// Wallet deep link. Must be identical to the one used at
+    /// `/api/qes/v1/authorize`. When omitted, the configured default
+    /// is used.
     #[try_into(infallible)]
     pub redirect_uri: Option<String>,
-    /// Organization context. Optional when resolvable from STS auth.
+    /// Organizational context. Optional when resolvable from STS auth.
     #[try_into(infallible)]
     pub organisation_id: Option<OrganisationId>,
 }
@@ -78,7 +81,7 @@ pub(crate) struct QesSignRequestRestDTO {
 #[try_from(T = QesSignResponseDTO, Error = ServiceError)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct QesSignResponseRestDTO {
-    /// Base64-encoded signed document (e.g. a PAdES PDF).
+    /// Base64-encoded signed document returned by the QES provider.
     #[try_from(with_fn = encode_base64)]
     pub signed_document: String,
 }
