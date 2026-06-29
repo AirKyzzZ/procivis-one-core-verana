@@ -18,6 +18,7 @@
 pub mod csc;
 pub mod etsi_119_472;
 pub mod etsi_119_602;
+pub mod etsi_119_612;
 pub mod jades;
 pub mod jwa;
 pub mod jwk;

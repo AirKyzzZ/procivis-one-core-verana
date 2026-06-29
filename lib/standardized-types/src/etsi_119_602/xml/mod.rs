@@ -377,7 +377,7 @@ pub struct ServiceInformation {
 
     pub service_status: Option<String>,
 
-    #[serde(default, with = "serde_wrappers::xml_rfc3339_option")]
+    #[serde(default, with = "crate::mapper::xml_datetime::option")]
     pub status_starting_time: Option<OffsetDateTime>,
 
     #[serde(rename = "SchemeServiceDefinitionURI")]

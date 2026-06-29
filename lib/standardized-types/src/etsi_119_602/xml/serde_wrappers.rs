@@ -166,27 +166,3 @@ impl From<xml::AdditionalInformation> for RawAdditionalInformation {
         Self { items }
     }
 }
-
-/// quick-xml deserializes `<Foo>text</Foo>` as a map `{$text: "..."}` rather
-/// than a plain string, which breaks `time::serde::rfc3339::option`. This
-/// module bridges the two by going through an intermediate `$text` wrapper.
-pub(crate) mod xml_rfc3339_option {
-    use serde::{Deserialize, Deserializer, Serializer};
-    use time::OffsetDateTime;
-
-    #[derive(Deserialize)]
-    struct Wrapper {
-        #[serde(rename = "$text", with = "time::serde::rfc3339")]
-        value: OffsetDateTime,
-    }
-
-    pub fn deserialize<'de, D: Deserializer<'de>>(
-        d: D,
-    ) -> Result<Option<OffsetDateTime>, D::Error> {
-        Option::<Wrapper>::deserialize(d).map(|w| w.map(|w| w.value))
-    }
-
-    pub fn serialize<S: Serializer>(dt: &Option<OffsetDateTime>, s: S) -> Result<S::Ok, S::Error> {
-        time::serde::rfc3339::option::serialize(dt, s)
-    }
-}
