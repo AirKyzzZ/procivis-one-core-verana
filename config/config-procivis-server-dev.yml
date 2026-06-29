@@ -39,6 +39,7 @@ walletProvider:
               signingCertificateFingerprints:
                 [
                   "95:2B:22:AB:F0:7B:C3:58:D0:42:9F:59:A2:3F:47:5A:F6:1E:80:65:29:C1:F1:B6:6E:B6:1F:15:AB:AF:D9:75", # local
+                  "3C:54:08:A0:AB:59:9A:5B:51:72:3F:DA:58:8E:81:DB:4F:A0:65:41:0E:7D:C2:65:4D:F1:A5:67:5B:47:13:52", # bitrise
                 ]
               trustedAttestationCAs:
                 [
