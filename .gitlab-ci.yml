@@ -84,7 +84,7 @@ stages:
     --tmpfs /var/lib/mysql
     --network=$NETWORK_NAME
     -p 3306:3306
-    mariadb:10.9
+    mariadb:10.11.3
   - |
     for i in $(seq 1 15); do
       STATUS=$(docker exec "$DB_CONTAINER_NAME" mysqladmin ping -p"$MYSQL_ROOT_PASSWORD" 2>/dev/null || true)
@@ -179,7 +179,7 @@ before_script:
     WAIT_ON_TIMEOUT: 10m
   trigger:
     project: procivis/one/one-tests
-    branch: v1.80.2
+    branch: v1.80.3
     strategy: depend
     forward:
       pipeline_variables: true

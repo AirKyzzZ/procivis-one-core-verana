@@ -16,7 +16,6 @@ use crate::list_query_generic::{
 
 impl From<Identifier> for ActiveModel {
     fn from(identifier: Identifier) -> Self {
-        let organisation_id = identifier.organisation.map(|org| org.id);
         let did_id = identifier.did.map(|did| did.id);
         let key_id = identifier.key.map(|key| key.id);
 
@@ -28,7 +27,7 @@ impl From<Identifier> for ActiveModel {
             r#type: Set(identifier.r#type.into()),
             is_remote: Set(identifier.is_remote),
             state: Set(identifier.state.into()),
-            organisation_id: Set(organisation_id),
+            organisation_id: Set(identifier.organisation_id),
             did_id: Set(did_id),
             key_id: Set(key_id),
             deleted_at: Set(identifier.deleted_at),
@@ -47,8 +46,9 @@ impl From<identifier::Model> for Identifier {
             is_remote: value.is_remote,
             state: value.state.into(),
             deleted_at: value.deleted_at,
-            organisation: value.organisation_id.map(|id| Organisation {
-                id,
+            organisation_id: value.organisation_id,
+            organisation: Some(Organisation {
+                id: value.organisation_id,
                 created_date: one_core::clock::now_utc(),
                 last_modified: one_core::clock::now_utc(),
                 deactivated_at: None,

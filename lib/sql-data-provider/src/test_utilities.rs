@@ -572,7 +572,7 @@ pub async fn insert_identifier(
         created_date: Set(now),
         last_modified: Set(now),
         name: Set(name.to_owned()),
-        organisation_id: Set(Some(organisation_id)),
+        organisation_id: Set(organisation_id),
         deleted_at: NotSet,
         r#type: Set(identifier::IdentifierType::Did),
         is_remote: Set(remote.into()),

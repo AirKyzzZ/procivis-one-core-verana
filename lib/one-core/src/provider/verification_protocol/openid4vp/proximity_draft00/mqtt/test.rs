@@ -146,6 +146,7 @@ async fn test_handle_invitation_success() {
         .returning(|_, did, _| {
             Ok((
                 Identifier {
+                    organisation_id: uuid::Uuid::new_v4().into(),
                     id: Uuid::new_v4().into(),
                     created_date: crate::clock::now_utc(),
                     last_modified: crate::clock::now_utc(),

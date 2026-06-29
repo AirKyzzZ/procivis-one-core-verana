@@ -318,6 +318,7 @@ pub fn prepare_identifier(
         is_remote: true,
         state: IdentifierState::Active,
         deleted_at: None,
+        organisation_id: organisation.id,
         organisation: Some(organisation),
         did: identifier_did,
         key: identifier_key,

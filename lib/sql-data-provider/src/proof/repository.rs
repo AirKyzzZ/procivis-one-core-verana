@@ -267,6 +267,10 @@ fn get_proof_list_query(query_params: &ProofListQuery) -> Select<crate::entity::
             "verifier_identifier_is_remote",
         )
         .column_as(identifier::Column::State, "verifier_identifier_state")
+        .column_as(
+            identifier::Column::OrganisationId,
+            "verifier_identifier_organisation_id",
+        )
         // add related proof schema
         .join(
             sea_orm::JoinType::LeftJoin,

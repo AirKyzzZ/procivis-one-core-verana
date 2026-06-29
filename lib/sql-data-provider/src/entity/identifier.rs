@@ -16,7 +16,7 @@ pub struct Model {
     pub r#type: IdentifierType,
     pub is_remote: bool,
     pub state: IdentifierState,
-    pub organisation_id: Option<OrganisationId>,
+    pub organisation_id: OrganisationId,
     pub did_id: Option<DidId>,
     pub key_id: Option<KeyId>,
     pub deleted_at: Option<OffsetDateTime>,

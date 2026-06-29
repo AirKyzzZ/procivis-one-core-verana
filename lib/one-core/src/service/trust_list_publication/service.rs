@@ -549,6 +549,7 @@ mod tests {
             is_remote: false,
             state: IdentifierState::Active,
             deleted_at: None,
+            organisation_id: organisation.id,
             organisation: Some(organisation.clone()),
             did: None,
             key: None,
@@ -1025,6 +1026,7 @@ mod tests {
     fn create_test_key_identifier(key_type: &str) -> Identifier {
         let now = crate::clock::now_utc();
         Identifier {
+            organisation_id: uuid::Uuid::new_v4().into(),
             id: Uuid::new_v4().into(),
             created_date: now,
             last_modified: now,
@@ -1044,6 +1046,7 @@ mod tests {
     fn create_test_did_identifier() -> Identifier {
         let now = crate::clock::now_utc();
         Identifier {
+            organisation_id: uuid::Uuid::new_v4().into(),
             id: Uuid::new_v4().into(),
             created_date: now,
             last_modified: now,
@@ -1096,6 +1099,7 @@ mod tests {
         };
 
         Identifier {
+            organisation_id: uuid::Uuid::new_v4().into(),
             id: identifier_id,
             created_date: now,
             last_modified: now,

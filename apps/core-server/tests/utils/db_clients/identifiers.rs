@@ -32,6 +32,7 @@ impl IdentifiersDB {
             created_date: params.created_date.unwrap_or(now),
             last_modified: params.last_modified.unwrap_or(now),
             name: unwrap_or_random(params.name),
+            organisation_id: organisation.id,
             organisation: Some(organisation.clone()),
             did: params.did,
             key: params.key,

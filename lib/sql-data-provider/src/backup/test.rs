@@ -242,7 +242,7 @@ async fn insert_identifier_to_database(
         r#type: Set(r#type),
         is_remote: Set(false),
         state: Set(IdentifierState::Active),
-        organisation_id: Set(Some(organisation_id)),
+        organisation_id: Set(organisation_id),
         did_id: Set(did_id),
         deleted_at: if deleted {
             Set(Some(get_dummy_date()))

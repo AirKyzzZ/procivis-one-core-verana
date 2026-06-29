@@ -4,6 +4,7 @@ use sea_orm_migration::prelude::*;
 use crate::legacy_migrations::*;
 
 pub(crate) mod datatype;
+pub(crate) mod foreign_key;
 pub(crate) mod index_helper;
 mod legacy_migrations;
 mod migrations;
@@ -289,6 +290,9 @@ impl MigratorTrait for Migrator {
             Box::new(migrations::m20260625_120000_add_subscriber_information_to_credential_and_proof::Migration),
             Box::new(
                 migrations::m20260626_120000_add_deleted_at_to_did_unique_index::Migration,
+            ),
+            Box::new(
+                migrations::m20260629_120000_make_identifier_organisation_id_not_null::Migration,
             ),
         ]
     }

@@ -342,6 +342,10 @@ fn get_credential_list_query(query_params: CredentialListQuery) -> Select<creden
         .column_as(identifier::Column::Type, "issuer_identifier_type")
         .column_as(identifier::Column::IsRemote, "issuer_identifier_is_remote")
         .column_as(identifier::Column::State, "issuer_identifier_state")
+        .column_as(
+            identifier::Column::OrganisationId,
+            "issuer_identifier_organisation_id",
+        )
         .filter(credential::Column::DeletedAt.is_null())
         // list query
         .with_filter_join(&query_params)

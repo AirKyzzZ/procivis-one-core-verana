@@ -141,6 +141,7 @@ async fn resolve_untrusted_identifier() {
     let identifier_id = Uuid::new_v4().into();
     let now = crate::clock::now_utc();
     let identifier = Identifier {
+        organisation_id: uuid::Uuid::new_v4().into(),
         id: identifier_id,
         created_date: now,
         last_modified: now,
@@ -187,6 +188,7 @@ async fn resolve_trusted_identifier() {
     let identifier_id = Uuid::new_v4().into();
     let now = crate::clock::now_utc();
     let identifier = Identifier {
+        organisation_id: uuid::Uuid::new_v4().into(),
         id: identifier_id,
         created_date: now,
         last_modified: now,
@@ -471,6 +473,7 @@ async fn resolve_trusted_identifier_xml() {
     let identifier_id = Uuid::new_v4().into();
     let now = OffsetDateTime::now_utc();
     let identifier = Identifier {
+        organisation_id: uuid::Uuid::new_v4().into(),
         id: identifier_id,
         created_date: now,
         last_modified: now,
@@ -518,6 +521,7 @@ async fn resolve_untrusted_identifier_xml() {
     let identifier_id = Uuid::new_v4().into();
     let now = OffsetDateTime::now_utc();
     let identifier = Identifier {
+        organisation_id: uuid::Uuid::new_v4().into(),
         id: identifier_id,
         created_date: now,
         last_modified: now,

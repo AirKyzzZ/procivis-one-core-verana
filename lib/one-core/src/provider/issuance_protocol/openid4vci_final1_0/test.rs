@@ -192,6 +192,7 @@ fn generic_credential_did() -> Credential {
         log: None,
     };
     let issuer_identifier = Identifier {
+        organisation_id: uuid::Uuid::new_v4().into(),
         id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
             .unwrap()
             .into(),
@@ -215,6 +216,7 @@ fn generic_credential_did_with_holder_identifier() -> Credential {
     let now = crate::clock::now_utc();
     let mut credential = generic_credential_did();
     credential.holder_identifier = Some(Identifier {
+        organisation_id: uuid::Uuid::new_v4().into(),
         id: Uuid::from_str("a322aa7f-9803-410d-b891-939b279fb965")
             .unwrap()
             .into(),
@@ -256,6 +258,7 @@ fn generic_credential_key() -> Credential {
         key_type: "ECDSA".to_string(),
     };
     let issuer_identifier = Identifier {
+        organisation_id: uuid::Uuid::new_v4().into(),
         id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
             .unwrap()
             .into(),
@@ -274,6 +277,7 @@ fn generic_credential_key() -> Credential {
     };
     let mut credential = generic_credential(issuer_identifier);
     let holder_identifier = Identifier {
+        organisation_id: uuid::Uuid::new_v4().into(),
         id: Uuid::from_str("a322aa7f-9803-410d-b891-939b279fb965")
             .unwrap()
             .into(),

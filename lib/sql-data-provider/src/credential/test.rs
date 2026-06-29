@@ -187,6 +187,7 @@ async fn setup_empty() -> TestSetup {
         is_remote: false,
         state: IdentifierState::Active,
         deleted_at: None,
+        organisation_id,
         organisation: Some(dummy_organisation(Some(organisation_id))),
         did: Some(did.clone()),
         key: None,

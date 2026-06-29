@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Context;
-use shared_types::{DidId, IdentifierId};
+use shared_types::{DidId, IdentifierId, OrganisationId};
 use uuid::Uuid;
 
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
@@ -9,7 +9,6 @@ use crate::model::identifier::{
     GetIdentifierList, Identifier, IdentifierListQuery, IdentifierRelations, IdentifierState,
     UpdateIdentifierRequest,
 };
-use crate::model::organisation::Organisation;
 use crate::proto::session_provider::{SessionExt, SessionProvider};
 use crate::repository::error::DataLayerError;
 use crate::repository::history_repository::HistoryRepository;
@@ -27,13 +26,8 @@ impl IdentifierHistoryDecorator {
         id: IdentifierId,
         name: String,
         action: HistoryAction,
-        organisation: Option<Organisation>,
+        organisation_id: OrganisationId,
     ) {
-        let Some(organisation_id) = organisation.map(|o| o.id) else {
-            tracing::warn!("identifier (id: {id}) missing organisation");
-            return;
-        };
-
         let result = self
             .history_repository
             .create_history(History {
@@ -83,10 +77,10 @@ impl IdentifierRepository for IdentifierHistoryDecorator {
 
     async fn create(&self, request: Identifier) -> Result<IdentifierId, DataLayerError> {
         let name = request.name.clone();
-        let organisation = request.organisation.to_owned();
+        let organisation_id = request.organisation_id;
         let identifier_id = self.inner.create(request).await?;
 
-        self.create_history(identifier_id, name, HistoryAction::Created, organisation)
+        self.create_history(identifier_id, name, HistoryAction::Created, organisation_id)
             .await;
 
         Ok(identifier_id)
@@ -120,7 +114,7 @@ impl IdentifierRepository for IdentifierHistoryDecorator {
                 } else {
                     HistoryAction::Reactivated
                 },
-                identifier.organisation,
+                identifier.organisation_id,
             )
             .await;
         }
@@ -148,7 +142,7 @@ impl IdentifierRepository for IdentifierHistoryDecorator {
             identifier.id,
             identifier.name,
             HistoryAction::Deleted,
-            identifier.organisation,
+            identifier.organisation_id,
         )
         .await;
 

@@ -1725,6 +1725,7 @@ async fn minimal_mdoc_credential(params: serde_json::Value) -> SerializedCredent
             is_remote: true,
             state: IdentifierState::Active,
             deleted_at: None,
+            organisation_id: Uuid::new_v4().into(),
             organisation: None,
             did: Some(Did {
                 deleted_at: None,

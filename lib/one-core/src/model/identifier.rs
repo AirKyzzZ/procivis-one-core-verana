@@ -28,6 +28,7 @@ pub struct Identifier {
     pub is_remote: bool,
     pub state: IdentifierState,
     pub deleted_at: Option<OffsetDateTime>,
+    pub organisation_id: OrganisationId,
 
     // Relations:
     pub organisation: Option<Organisation>,

@@ -47,6 +47,7 @@ impl From<TrustEntryWithIdentifier> for TrustEntry {
                 is_remote: value.identifier_is_remote,
                 state: value.identifier_state.into(),
                 deleted_at: value.identifier_deleted_at,
+                organisation_id: value.identifier_organisation_id,
                 organisation: None,
                 did: None,
                 key: None,

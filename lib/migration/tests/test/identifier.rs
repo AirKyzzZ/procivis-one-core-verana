@@ -73,7 +73,8 @@ async fn test_db_schema_identifier() {
     identifier
         .column("organisation_id")
         .r#type(ColumnType::Uuid)
-        .nullable(true)
+        .nullable(false)
+        .default(None)
         .foreign_key("fk_identifier_organisation", "organisation", "id");
     identifier
         .column("did_id")

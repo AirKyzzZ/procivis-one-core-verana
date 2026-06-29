@@ -164,6 +164,7 @@ async fn generic_credential() -> Credential {
             schema: Some(claim_schema.clone()),
         }]),
         issuer_identifier: Some(Identifier {
+            organisation_id: uuid::Uuid::new_v4().into(),
             id: Uuid::new_v4().into(),
             created_date: now,
             last_modified: now,
@@ -251,6 +252,7 @@ async fn generic_credential_list_entity() -> Credential {
         suspend_end_date: None,
         claims: None,
         issuer_identifier: Some(Identifier {
+            organisation_id: uuid::Uuid::new_v4().into(),
             id: Uuid::new_v4().into(),
             created_date: now,
             last_modified: now,
@@ -3612,6 +3614,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
         suspend_end_date: None,
         claims: Some(claims.to_owned()),
         issuer_identifier: Some(Identifier {
+            organisation_id: uuid::Uuid::new_v4().into(),
             id: Uuid::new_v4().into(),
             created_date: now,
             last_modified: now,
@@ -4393,6 +4396,7 @@ async fn test_get_credential_success_array_index_sorting() {
         suspend_end_date: None,
         claims: Some(claims.to_owned()),
         issuer_identifier: Some(Identifier {
+            organisation_id: uuid::Uuid::new_v4().into(),
             id: Uuid::new_v4().into(),
             created_date: now,
             last_modified: now,
@@ -4811,6 +4815,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
         suspend_end_date: None,
         claims: Some(claims.to_owned()),
         issuer_identifier: Some(Identifier {
+            organisation_id: uuid::Uuid::new_v4().into(),
             id: Uuid::new_v4().into(),
             created_date: now,
             last_modified: now,
@@ -5084,6 +5089,7 @@ async fn test_get_credential_success_array_single_element() {
         suspend_end_date: None,
         claims: Some(claims.to_owned()),
         issuer_identifier: Some(Identifier {
+            organisation_id: uuid::Uuid::new_v4().into(),
             id: Uuid::new_v4().into(),
             created_date: now,
             last_modified: now,

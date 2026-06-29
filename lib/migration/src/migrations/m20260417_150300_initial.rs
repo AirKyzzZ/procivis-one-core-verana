@@ -11,6 +11,7 @@ use crate::datatype::{
     large_blob, large_blob_null, timestamp, timestamp_null, timestamp_seconds, uuid_char,
     uuid_char_null,
 };
+use crate::foreign_key::disable_foreign_key_checks;
 use crate::index_helper::table_with_indexes;
 use crate::nullable_unique_idx::{NullableIdxOpts, add_nullable_unique_idx};
 
@@ -328,27 +329,6 @@ impl MigrationTrait for Migration {
         }
         Ok(())
     }
-}
-
-async fn disable_foreign_key_checks(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
-    match manager.get_database_backend() {
-        DbBackend::MySql => {
-            manager
-                .get_connection()
-                .execute_unprepared("SET FOREIGN_KEY_CHECKS=0;")
-                .await?;
-        }
-        DbBackend::Postgres => {
-            // No-op because Postgres doesn't support disabling foreign key constraints globally.
-        }
-        DbBackend::Sqlite => {
-            manager
-                .get_connection()
-                .execute_unprepared("PRAGMA defer_foreign_keys = ON;")
-                .await?;
-        }
-    }
-    Ok(())
 }
 
 async fn foreign_key_postprocessing(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
@@ -2281,7 +2261,7 @@ pub enum HolderWalletInstance {
     Status,
 }
 
-#[derive(DeriveIden)]
+#[derive(Clone, DeriveIden)]
 pub enum Identifier {
     Table,
     Id,

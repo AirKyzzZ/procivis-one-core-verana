@@ -176,6 +176,7 @@ async fn test_register_wallet_unit() {
         .expect_get()
         .return_once(move |id, _| {
             Ok(Some(Identifier {
+                organisation_id: uuid::Uuid::new_v4().into(),
                 id,
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
@@ -289,6 +290,7 @@ async fn test_register_wallet_unit_integrity_check() {
         .expect_get()
         .return_once(move |id, _| {
             Ok(Some(Identifier {
+                organisation_id: uuid::Uuid::new_v4().into(),
                 id,
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),

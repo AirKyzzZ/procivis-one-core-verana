@@ -250,6 +250,7 @@ impl IdentifierCreator for IdentifierCreatorProto {
                         is_remote: true,
                         state: IdentifierState::Active,
                         deleted_at: None,
+                        organisation_id: organisation.id,
                         organisation: Some(organisation),
                         did: None,
                         key: None,

@@ -353,6 +353,7 @@ async fn test_create_proof_success() {
             is_remote: false,
             state: IdentifierState::Active,
             deleted_at: None,
+            organisation_id: uuid::Uuid::new_v4().into(),
             organisation: None,
             did: Some(Did {
                 deleted_at: None,
@@ -530,6 +531,7 @@ async fn test_get_proof_with_relations() {
                 is_remote: false,
                 state: IdentifierState::Active,
                 deleted_at: None,
+                organisation_id: uuid::Uuid::new_v4().into(),
                 organisation: None,
                 did: Some(Did {
                     deleted_at: None,

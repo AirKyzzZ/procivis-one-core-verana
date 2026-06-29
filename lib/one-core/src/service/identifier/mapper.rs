@@ -38,7 +38,7 @@ pub(super) async fn identifier_to_response_dto(
     value: Identifier,
     blob_storage_provider: &dyn BlobStorageProvider,
 ) -> Result<GetIdentifierResponseDTO, IdentifierServiceError> {
-    let organisation_id = value.organisation.map(|org| org.id);
+    let organisation_id = Some(value.organisation_id);
 
     let mut certificates = None;
     let mut certificate_authorities = None;
@@ -184,7 +184,7 @@ impl From<Identifier> for GetIdentifierListItemResponseDTO {
             r#type: value.r#type,
             is_remote: value.is_remote,
             state: value.state,
-            organisation_id: value.organisation.map(|org| org.id),
+            organisation_id: Some(value.organisation_id),
         }
     }
 }

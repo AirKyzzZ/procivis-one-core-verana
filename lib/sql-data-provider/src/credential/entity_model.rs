@@ -54,4 +54,5 @@ pub(super) struct CredentialListEntityModel {
     pub issuer_identifier_type: Option<IdentifierType>,
     pub issuer_identifier_is_remote: Option<bool>,
     pub issuer_identifier_state: Option<IdentifierState>,
+    pub issuer_identifier_organisation_id: Option<OrganisationId>,
 }

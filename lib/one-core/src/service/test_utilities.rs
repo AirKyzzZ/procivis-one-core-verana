@@ -423,6 +423,7 @@ pub fn dummy_identifier() -> Identifier {
         is_remote: false,
         state: IdentifierState::Active,
         deleted_at: None,
+        organisation_id: Uuid::new_v4().into(),
         organisation: None,
         did: None,
         key: None,

@@ -80,6 +80,10 @@ impl IdentifierCreatorProto {
         {
             Some(identifier) => identifier,
             None => {
+                let organisation_id = organisation
+                    .as_ref()
+                    .ok_or(Error::MappingError("missing organisation".to_string()))?
+                    .id;
                 let identifier = Identifier {
                     id: Uuid::new_v4().into(),
                     created_date: now,
@@ -89,6 +93,7 @@ impl IdentifierCreatorProto {
                     is_remote: did.did_type == DidType::Remote,
                     state: IdentifierState::Active,
                     deleted_at: None,
+                    organisation_id,
                     organisation: organisation.to_owned(),
                     did: Some(did.to_owned()),
                     key: None,
@@ -164,6 +169,10 @@ impl IdentifierCreatorProto {
         let identifier_id = Uuid::new_v4().into();
         let display_name = name.for_id(identifier_id);
 
+        let organisation_id = organisation
+            .as_ref()
+            .ok_or(Error::MappingError("missing organisation".to_string()))?
+            .id;
         let mut identifier = Identifier {
             id: identifier_id,
             created_date: now,
@@ -173,6 +182,7 @@ impl IdentifierCreatorProto {
             is_remote: true,
             state: IdentifierState::Active,
             deleted_at: None,
+            organisation_id,
             organisation: organisation.to_owned(),
             did: None,
             key: None,
@@ -295,6 +305,8 @@ impl IdentifierCreatorProto {
             is_remote: true,
             state: IdentifierState::Active,
             deleted_at: None,
+            organisation_id: organisation_id
+                .ok_or(Error::MappingError("missing organisation".to_string()))?,
             organisation: organisation.cloned(),
             did: None,
             key: Some(key.clone()),
