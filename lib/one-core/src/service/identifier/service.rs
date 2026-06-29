@@ -253,7 +253,7 @@ impl IdentifierService {
         let (identifier, _) = self
             .identifier_creator
             .get_or_create_remote_identifier(
-                &Some(organisation),
+                &organisation,
                 &details,
                 IdentifierName::Name(name.clone()),
             )

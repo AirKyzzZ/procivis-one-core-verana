@@ -637,7 +637,7 @@ impl OID4VCIFinal1_0Service {
                 let (identifier, _) = self
                     .identifier_creator
                     .get_or_create_remote_identifier(
-                        &Some(organisation),
+                        &organisation,
                         &IdentifierDetails::Did(did),
                         IdentifierName::PrefixForId(IdentifierRole::Holder.to_string()),
                     )
@@ -649,7 +649,7 @@ impl OID4VCIFinal1_0Service {
                 let (identifier, RemoteIdentifierRelation::Key(key)) = self
                     .identifier_creator
                     .get_or_create_remote_identifier(
-                        &Some(organisation),
+                        &organisation,
                         &IdentifierDetails::Key(jwk),
                         IdentifierName::PrefixForId(IdentifierRole::Holder.to_string()),
                     )

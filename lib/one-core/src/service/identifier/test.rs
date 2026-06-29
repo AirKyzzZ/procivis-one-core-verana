@@ -1107,7 +1107,7 @@ async fn test_create_remote_did_identifier_success() {
     identifier_creator
         .expect_get_or_create_remote_identifier()
         .withf(move |org, details, name| {
-            org.as_ref().map(|o| o.id) == Some(organisation_id)
+            org.id == organisation_id
                 && matches!(details, IdentifierDetails::Did(d) if *d == expected_did)
                 && matches!(name, IdentifierName::Name(n) if n == "my-did")
         })
@@ -1200,7 +1200,7 @@ async fn test_create_remote_key_identifier_success_forwards_jwk_and_name() {
     identifier_creator
         .expect_get_or_create_remote_identifier()
         .withf(move |org, details, name| {
-            org.as_ref().map(|o| o.id) == Some(organisation_id)
+            org.id == organisation_id
                 && matches!(details, IdentifierDetails::Key(k) if *k == expected_jwk)
                 && matches!(name, IdentifierName::Name(n) if n == "my-key")
         })

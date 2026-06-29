@@ -293,6 +293,12 @@ pub(crate) async fn accept_proof(
     let proof_schema = proof.schema.as_ref().ok_or(ServiceError::MappingError(
         "proof schema is None".to_string(),
     ))?;
+    let organisation = proof_schema
+        .organisation
+        .as_ref()
+        .ok_or(ServiceError::MappingError(
+            "proof schema organisation is None".to_string(),
+        ))?;
 
     let mut credential_schemas = HashMap::new();
     for proof_input in proof_schema
@@ -321,7 +327,7 @@ pub(crate) async fn accept_proof(
     {
         let (issuer_identifier, issuer_identifier_relation) = identifier_creator
             .get_or_create_remote_identifier(
-                &proof_schema.organisation,
+                organisation,
                 &credential.issuer,
                 IdentifierName::PrefixForId(IdentifierRole::Issuer.to_string()),
             )

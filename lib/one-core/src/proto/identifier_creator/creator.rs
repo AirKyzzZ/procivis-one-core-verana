@@ -86,7 +86,7 @@ impl IdentifierCreator for IdentifierCreatorProto {
     #[tracing::instrument(level = "debug", skip_all, err(level = "warn"))]
     async fn get_or_create_remote_identifier(
         &self,
-        organisation: &Option<Organisation>,
+        organisation: &Organisation,
         details: &IdentifierDetails,
         name: IdentifierName,
     ) -> Result<(Identifier, RemoteIdentifierRelation), Error> {
@@ -122,11 +122,7 @@ impl IdentifierCreator for IdentifierCreatorProto {
                         }
                         IdentifierDetails::Key(public_key_jwk) => {
                             let (key, identifier) = self
-                                .get_or_create_key_identifier(
-                                    organisation.as_ref(),
-                                    public_key_jwk,
-                                    name,
-                                )
+                                .get_or_create_key_identifier(organisation, public_key_jwk, name)
                                 .await?;
                             (identifier, RemoteIdentifierRelation::Key(key))
                         }

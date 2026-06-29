@@ -617,10 +617,17 @@ impl SSIHolderService {
             if let Ok(data) = deserialized
                 && let Some(details) = data.verifier_details
             {
+                let organisation =
+                    interaction
+                        .organisation
+                        .as_ref()
+                        .ok_or(HolderServiceError::MappingError(
+                            "missing organisation".into(),
+                        ))?;
                 let (identifier, verifier_identifier_relation) = self
                     .identifier_creator
                     .get_or_create_remote_identifier(
-                        &interaction.organisation,
+                        organisation,
                         &details,
                         IdentifierName::PrefixForId(IdentifierRole::Verifier.to_string()),
                     )

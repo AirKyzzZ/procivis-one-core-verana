@@ -73,7 +73,7 @@ pub(crate) enum CreateLocalIdentifierRequest {
 pub(crate) trait IdentifierCreator: Send + Sync {
     async fn get_or_create_remote_identifier(
         &self,
-        organisation: &Option<Organisation>,
+        organisation: &Organisation,
         details: &IdentifierDetails,
         name: IdentifierName,
     ) -> Result<(Identifier, RemoteIdentifierRelation), Error>;

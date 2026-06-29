@@ -658,7 +658,7 @@ impl OpenID4VCIFinal1_0 {
         let (issuer_identifier, issuer_identifier_relation) = self
             .identifier_creator
             .get_or_create_remote_identifier(
-                &Some(organisation.to_owned()),
+                organisation,
                 &identifier_details,
                 IdentifierName::PrefixForId(IdentifierRole::Issuer.to_string()),
             )

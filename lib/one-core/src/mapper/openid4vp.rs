@@ -17,7 +17,7 @@ pub(crate) async fn credential_from_proved(
 ) -> Result<Credential, ServiceError> {
     let (issuer_identifier, issuer_relation) = identifier_creator
         .get_or_create_remote_identifier(
-            &Some(organisation.to_owned()),
+            organisation,
             &proved_credential.issuer_details,
             IdentifierName::PrefixForId(IdentifierRole::Issuer.to_string()),
         )
@@ -33,7 +33,7 @@ pub(crate) async fn credential_from_proved(
 
     let (holder_identifier, ..) = identifier_creator
         .get_or_create_remote_identifier(
-            &Some(organisation.to_owned()),
+            organisation,
             &proved_credential.holder_details,
             IdentifierName::PrefixForId(IdentifierRole::Holder.to_string()),
         )

@@ -100,7 +100,7 @@ pub(crate) async fn handle_invitation_with_transport<T: Send + Sync + 'static>(
 
     let (verifier_identifier, ..) = identifier_creator
         .get_or_create_remote_identifier(
-            &Some(organisation),
+            &organisation,
             &IdentifierDetails::Did(did_value),
             IdentifierName::PrefixForId(IdentifierRole::Verifier.to_string()),
         )

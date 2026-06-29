@@ -23,7 +23,7 @@ use crate::provider::credential_formatter::model::IdentifierDetails;
 impl IdentifierCreatorProto {
     pub(super) async fn get_or_create_did_and_identifier(
         &self,
-        organisation: &Option<Organisation>,
+        organisation: &Organisation,
         did_value: &DidValue,
         name: IdentifierName,
     ) -> Result<(Did, Identifier), Error> {
@@ -31,7 +31,7 @@ impl IdentifierCreatorProto {
 
         let did = match self
             .did_repository
-            .get_did_by_value(did_value, organisation.as_ref().map(|org| Some(org.id)))
+            .get_did_by_value(did_value, Some(Some(organisation.id)))
             .await
             .error_while("getting did")?
         {
@@ -48,7 +48,7 @@ impl IdentifierCreatorProto {
                     created_date: now,
                     last_modified: now,
                     name: name.for_id(id),
-                    organisation: organisation.to_owned().map(Into::into),
+                    organisation: Some(organisation.to_owned().into()),
                     did: did_value.to_owned(),
                     did_method,
                     did_type: DidType::Remote,
@@ -80,9 +80,6 @@ impl IdentifierCreatorProto {
         {
             Some(identifier) => identifier,
             None => {
-                let organisation = organisation
-                    .as_ref()
-                    .ok_or(Error::MappingError("missing organisation".to_string()))?;
                 let identifier = Identifier {
                     id: Uuid::new_v4().into(),
                     created_date: now,
@@ -111,21 +108,17 @@ impl IdentifierCreatorProto {
 
     pub(super) async fn get_or_create_certificate_identifier(
         &self,
-        organisation: &Option<Organisation>,
+        organisation: &Organisation,
         chain: String,
         fingerprint: String,
         name: IdentifierName,
     ) -> Result<(Certificate, Identifier), Error> {
-        let organisation_id = organisation
-            .as_ref()
-            .map(|org| CertificateFilterValue::OrganisationId(org.id));
-
         let list = self
             .certificate_repository
             .list(CertificateListQuery {
                 filtering: Some(
                     CertificateFilterValue::Fingerprint(fingerprint.to_owned()).condition()
-                        & organisation_id,
+                        & CertificateFilterValue::OrganisationId(organisation.id),
                 ),
                 ..Default::default()
             })
@@ -167,9 +160,6 @@ impl IdentifierCreatorProto {
         let identifier_id = Uuid::new_v4().into();
         let display_name = name.for_id(identifier_id);
 
-        let organisation = organisation
-            .as_ref()
-            .ok_or(Error::MappingError("missing organisation".to_string()))?;
         let mut identifier = Identifier {
             id: identifier_id,
             created_date: now,
@@ -218,7 +208,7 @@ impl IdentifierCreatorProto {
 
     pub(super) async fn get_or_create_key_identifier(
         &self,
-        organisation: Option<&Organisation>,
+        organisation: &Organisation,
         public_key: &PublicJwk,
         name: IdentifierName,
     ) -> Result<(Key, Identifier), Error> {
@@ -226,7 +216,7 @@ impl IdentifierCreatorProto {
             .key_algorithm_provider
             .parse_jwk(public_key)
             .error_while("parsing JWK")?;
-        let organisation_id = organisation.as_ref().map(|org| org.id);
+        let organisation_id = organisation.id;
         let now = crate::clock::now_utc();
 
         let list = self
@@ -235,7 +225,7 @@ impl IdentifierCreatorProto {
                 filtering: Some(
                     KeyFilterValue::RawPublicKey(parsed_key.key.public_key_as_raw()).condition()
                         & KeyFilterValue::KeyTypes(vec![parsed_key.algorithm_type.to_string()])
-                        & organisation_id.map(KeyFilterValue::OrganisationId),
+                        & KeyFilterValue::OrganisationId(organisation_id),
                 ),
                 ..Default::default()
             })
@@ -249,7 +239,7 @@ impl IdentifierCreatorProto {
                     filtering: Some(
                         IdentifierFilterValue::KeyIds(vec![key.id]).condition()
                             & IdentifierFilterValue::Types(vec![IdentifierType::Key])
-                            & organisation_id.map(IdentifierFilterValue::OrganisationId),
+                            & IdentifierFilterValue::OrganisationId(organisation_id),
                     ),
                     ..Default::default()
                 })
@@ -273,10 +263,7 @@ impl IdentifierCreatorProto {
                 created_date: now,
                 last_modified: now,
                 name: name.for_id(key_id),
-                organisation: organisation
-                    .ok_or(Error::MappingError("missing organisation".to_string()))?
-                    .to_owned()
-                    .into(),
+                organisation: organisation.to_owned().into(),
                 public_key: parsed_key.key.public_key_as_raw(),
                 key_reference: None,
                 storage_type: "INTERNAL".to_string(),
@@ -300,10 +287,7 @@ impl IdentifierCreatorProto {
             is_remote: true,
             state: IdentifierState::Active,
             deleted_at: None,
-            organisation: organisation
-                .ok_or(Error::MappingError("missing organisation".to_string()))?
-                .to_owned()
-                .into(),
+            organisation: organisation.to_owned().into(),
             did: None,
             key: Some(key.clone()),
             certificates: None,
@@ -320,14 +304,14 @@ impl IdentifierCreatorProto {
     #[tracing::instrument(level = "debug", skip_all, err(level = "warn"))]
     pub(super) async fn find_identifier(
         &self,
-        organisation: &Option<Organisation>,
+        organisation: &Organisation,
         details: &IdentifierDetails,
     ) -> Result<Option<(Identifier, RemoteIdentifierRelation)>, Error> {
         match details {
             IdentifierDetails::Did(did_value) => {
                 let Some(did) = self
                     .did_repository
-                    .get_did_by_value(did_value, organisation.as_ref().map(|org| Some(org.id)))
+                    .get_did_by_value(did_value, Some(Some(organisation.id)))
                     .await
                     .error_while("getting did")?
                 else {
@@ -352,10 +336,6 @@ impl IdentifierCreatorProto {
                 Ok(Some((identifier, RemoteIdentifierRelation::Did(did))))
             }
             IdentifierDetails::Certificate(certificate_details) => {
-                let organisation_id = organisation
-                    .as_ref()
-                    .map(|org| CertificateFilterValue::OrganisationId(org.id));
-
                 let list = self
                     .certificate_repository
                     .list(CertificateListQuery {
@@ -364,7 +344,7 @@ impl IdentifierCreatorProto {
                                 certificate_details.fingerprint.to_owned(),
                             )
                             .condition()
-                                & organisation_id,
+                                & CertificateFilterValue::OrganisationId(organisation.id),
                         ),
                         ..Default::default()
                     })
@@ -396,7 +376,7 @@ impl IdentifierCreatorProto {
                     .key_algorithm_provider
                     .parse_jwk(public_jwk)
                     .error_while("parsing JWK")?;
-                let organisation_id = organisation.as_ref().map(|org| org.id);
+                let organisation_id = organisation.id;
 
                 let list = self
                     .key_repository
@@ -407,7 +387,7 @@ impl IdentifierCreatorProto {
                                 & KeyFilterValue::KeyTypes(vec![
                                     parsed_key.algorithm_type.to_string(),
                                 ])
-                                & organisation_id.map(KeyFilterValue::OrganisationId),
+                                & KeyFilterValue::OrganisationId(organisation_id),
                         ),
                         ..Default::default()
                     })
@@ -424,7 +404,7 @@ impl IdentifierCreatorProto {
                         filtering: Some(
                             IdentifierFilterValue::KeyIds(vec![key.id]).condition()
                                 & IdentifierFilterValue::Types(vec![IdentifierType::Key])
-                                & organisation_id.map(IdentifierFilterValue::OrganisationId),
+                                & IdentifierFilterValue::OrganisationId(organisation_id),
                         ),
                         ..Default::default()
                     })

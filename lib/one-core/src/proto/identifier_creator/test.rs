@@ -131,7 +131,7 @@ async fn test_get_or_create_remote_identifier_certificate_new() {
 
     let (identifier, relation) = creator
         .get_or_create_remote_identifier(
-            &Some(dummy_organisation(None)),
+            &dummy_organisation(None),
             &IdentifierDetails::Certificate(CertificateDetails {
                 chain: "chain".to_string(),
                 fingerprint: "fingerprint".to_string(),
@@ -205,7 +205,7 @@ async fn test_get_or_create_remote_identifier_certificate_existing() {
 
     let (identifier, relation) = creator
         .get_or_create_remote_identifier(
-            &Some(organisation),
+            &organisation,
             &IdentifierDetails::Certificate(CertificateDetails {
                 chain: "chain".to_string(),
                 fingerprint: "fingerprint".to_string(),
@@ -286,7 +286,7 @@ async fn test_get_or_create_remote_identifier_key_existing() {
 
     let (identifier, relation) = creator
         .get_or_create_remote_identifier(
-            &Some(dummy_organisation(None)),
+            &dummy_organisation(None),
             &IdentifierDetails::Key(PublicJwk::Okp(PublicJwkEc {
                 alg: None,
                 r#use: None,
@@ -379,7 +379,7 @@ async fn test_get_or_create_remote_identifier_key_created_in_parallel() {
 
     let (identifier, relation) = creator
         .get_or_create_remote_identifier(
-            &Some(dummy_organisation(None)),
+            &dummy_organisation(None),
             &IdentifierDetails::Key(PublicJwk::Okp(PublicJwkEc {
                 alg: None,
                 r#use: None,
