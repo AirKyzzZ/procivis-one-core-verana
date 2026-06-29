@@ -87,7 +87,6 @@ pub enum Permission {
     VerifierInstanceRegister,
     VerifierInstanceDetail,
     VerifierInstanceEdit,
-    X509CertificateCreate,
     X509CertificateRevoke,
     X509CertificateSign,
     QesDocumentSign,
