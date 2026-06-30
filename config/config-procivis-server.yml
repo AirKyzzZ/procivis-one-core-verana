@@ -42,6 +42,7 @@ keyStorage:
   SIGN8:
     type: SIGN8
     display: "keyStorage.sign8"
+    enabled: false
     params:
       private:
         cscBaseUrl: "https://api.uat.sign8.eu"
