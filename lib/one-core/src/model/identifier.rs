@@ -10,7 +10,8 @@ use super::did::{Did, DidRelations, KeyRole};
 use super::key::{Key, KeyRelations};
 use super::list_filter::{ListFilterValue, StringMatch};
 use super::list_query::ListQuery;
-use super::organisation::{Organisation, OrganisationRelations};
+use super::organisation::Organisation;
+use super::relation::Related;
 use crate::config;
 use crate::model::identifier_trust_information::{
     IdentifierTrustInformation, IdentifierTrustInformationRelations, SchemaFormat,
@@ -28,10 +29,10 @@ pub struct Identifier {
     pub is_remote: bool,
     pub state: IdentifierState,
     pub deleted_at: Option<OffsetDateTime>,
-    pub organisation_id: OrganisationId,
+
+    pub organisation: Related<Organisation>,
 
     // Relations:
-    pub organisation: Option<Organisation>,
     pub did: Option<Did>,
     pub key: Option<Key>,
     pub certificates: Option<Vec<Certificate>>,
@@ -85,7 +86,6 @@ pub enum IdentifierState {
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct IdentifierRelations {
-    pub organisation: Option<OrganisationRelations>,
     pub did: Option<DidRelations>,
     pub key: Option<KeyRelations>,
     pub certificates: Option<CertificateRelations>,

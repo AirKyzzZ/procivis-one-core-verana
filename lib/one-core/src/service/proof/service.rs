@@ -116,7 +116,6 @@ impl ProofService {
                         }),
                     }),
                     verifier_identifier: Some(IdentifierRelations {
-                        organisation: Some(Default::default()),
                         ..Default::default()
                     }),
                     verifier_certificate: Some(Default::default()),

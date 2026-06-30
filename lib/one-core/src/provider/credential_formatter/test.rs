@@ -101,7 +101,6 @@ fn generate_credential_matching_detail(
         suspend_end_date: detail.suspend_end_date,
         claims: None,
         issuer_identifier: Some(Identifier {
-            organisation_id: uuid::Uuid::new_v4().into(),
             id: Uuid::new_v4().into(),
             created_date: detail.created_date,
             last_modified: detail.last_modified,
@@ -110,7 +109,7 @@ fn generate_credential_matching_detail(
             is_remote: true,
             state: crate::model::identifier::IdentifierState::Active,
             deleted_at: None,
-            organisation: None,
+            organisation: dummy_organisation(Some(uuid::Uuid::new_v4().into())).into(),
             did: Some(Did {
                 deleted_at: None,
                 id: Uuid::new_v4().into(),
@@ -131,7 +130,6 @@ fn generate_credential_matching_detail(
         }),
         issuer_certificate: None,
         holder_identifier: Some(Identifier {
-            organisation_id: uuid::Uuid::new_v4().into(),
             id: Uuid::new_v4().into(),
             created_date: detail.created_date,
             last_modified: detail.last_modified,
@@ -140,7 +138,7 @@ fn generate_credential_matching_detail(
             is_remote: true,
             state: crate::model::identifier::IdentifierState::Active,
             deleted_at: None,
-            organisation: None,
+            organisation: dummy_organisation(Some(uuid::Uuid::new_v4().into())).into(),
             did: Some(Did {
                 deleted_at: None,
                 id: Uuid::new_v4().into(),

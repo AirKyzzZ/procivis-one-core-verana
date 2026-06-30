@@ -210,7 +210,7 @@ async fn test_create_identifier_session_org_mismatch() {
 #[tokio::test]
 async fn test_identifier_ops_session_org_mismatch() {
     let mut identifier = dummy_identifier();
-    identifier.organisation = Some(dummy_organisation(None));
+    identifier.organisation = dummy_organisation(None).into();
     let service = setup_service_simple(Some(identifier));
 
     let result = service.get_identifier(&Uuid::new_v4().into()).await;
@@ -653,7 +653,7 @@ async fn test_create_identifier_with_trust_information() {
     let mut identifier = dummy_identifier();
     identifier.certificates = Some(vec![dummy_certificate(identifier_id)]);
     identifier.id = identifier_id;
-    identifier.organisation = Some(dummy_organisation(Some(organisation_id)));
+    identifier.organisation = dummy_organisation(Some(organisation_id)).into();
 
     identifier_creator
         .expect_create_local_identifier()
@@ -746,7 +746,7 @@ async fn test_create_identifier_with_inconsistent_reg_certs_fails() {
     let mut identifier = dummy_identifier();
     identifier.certificates = Some(vec![dummy_certificate(identifier_id)]);
     identifier.id = identifier_id;
-    identifier.organisation = Some(dummy_organisation(Some(organisation_id)));
+    identifier.organisation = dummy_organisation(Some(organisation_id)).into();
 
     identifier_creator
         .expect_create_local_identifier()
@@ -882,16 +882,14 @@ async fn test_delete_identifier_cascades_to_certificates() {
 
     let mut identifier = dummy_identifier();
     identifier.id = identifier_id;
-    identifier.organisation = Some(organisation.clone());
+    identifier.organisation = organisation.clone().into();
     identifier.certificates = Some(vec![cert_a.clone(), cert_b.clone()]);
 
     let mut identifier_repository = MockIdentifierRepository::default();
     let returned_identifier = identifier.clone();
     identifier_repository
         .expect_get()
-        .withf(move |_, relations: &IdentifierRelations| {
-            relations.certificates.is_some() && relations.organisation.is_some()
-        })
+        .withf(move |_, relations: &IdentifierRelations| relations.certificates.is_some())
         .returning(move |_, _| Ok(Some(returned_identifier.clone())));
     identifier_repository
         .expect_delete()

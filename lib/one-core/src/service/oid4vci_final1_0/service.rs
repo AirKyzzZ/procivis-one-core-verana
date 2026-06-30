@@ -124,7 +124,6 @@ impl OID4VCIFinal1_0Service {
                     key: Some(Default::default()),
                     certificates: Some(Default::default()),
                     trust_information: Some(Default::default()),
-                    ..Default::default()
                 },
             )
             .await

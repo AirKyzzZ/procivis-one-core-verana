@@ -36,7 +36,7 @@ use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::{ListPagination, ListSorting};
-use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofRelations, ProofStateEnum, UpdateProofRequest};
 use crate::proto::identifier_creator::{IdentifierName, IdentifierRole, RemoteIdentifierRelation};
 use crate::provider::credential_formatter::CredentialFormatter;
@@ -67,7 +67,6 @@ impl SSIHolderService {
                 &ProofRelations {
                     interaction: Some(InteractionRelations::default()),
                     verifier_identifier: Some(IdentifierRelations {
-                        organisation: Some(OrganisationRelations::default()),
                         did: Some(Default::default()),
                         ..Default::default()
                     }),

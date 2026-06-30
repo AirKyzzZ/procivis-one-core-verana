@@ -6,6 +6,7 @@ use one_core::repository::credential_repository::CredentialRepository;
 use one_core::repository::identifier_repository::IdentifierRepository;
 use one_core::repository::interaction_repository::InteractionRepository;
 use one_core::repository::key_repository::KeyRepository;
+use one_core::repository::organisation_repository::OrganisationRepository;
 use one_core::repository::proof_schema_repository::ProofSchemaRepository;
 
 use crate::transaction_context::TransactionManagerImpl;
@@ -23,6 +24,7 @@ pub(crate) struct ProofProvider {
     pub interaction_repository: Arc<dyn InteractionRepository>,
     pub credential_repository: Arc<dyn CredentialRepository>,
     pub key_repository: Arc<dyn KeyRepository>,
+    pub organisation_repository: Arc<dyn OrganisationRepository>,
 }
 
 #[cfg(test)]

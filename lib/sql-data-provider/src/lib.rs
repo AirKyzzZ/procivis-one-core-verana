@@ -244,6 +244,7 @@ impl DataLayer {
             db: transaction_manager.clone(),
             trust_list_publication_repository: trust_list_publication_repository.clone(),
             identifier_repository: identifier_repository.clone(),
+            organisation_repository: organisation_repository.clone(),
         });
 
         let trust_list_subscription_repository = Arc::new(TrustListSubscriptionProvider {
@@ -271,6 +272,7 @@ impl DataLayer {
             certificate_repository: certificate_repository.clone(),
             interaction_repository: interaction_repository.clone(),
             key_repository: key_repository.clone(),
+            organisation_repository: organisation_repository.clone(),
         });
 
         let backup_repository = Arc::new(BackupProvider::new(

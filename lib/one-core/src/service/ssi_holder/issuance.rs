@@ -61,7 +61,6 @@ impl SSIHolderService {
                     .get_from_did_id(
                         did_id,
                         &IdentifierRelations {
-                            organisation: Some(OrganisationRelations::default()),
                             did: Some(Default::default()),
                             key: Some(Default::default()),
                             ..Default::default()
@@ -76,7 +75,6 @@ impl SSIHolderService {
                     .get(
                         identifier_id,
                         &IdentifierRelations {
-                            organisation: Some(OrganisationRelations::default()),
                             did: Some(Default::default()),
                             key: Some(Default::default()),
                             ..Default::default()
@@ -95,8 +93,8 @@ impl SSIHolderService {
         };
 
         let holder_binding_input = if let Some(identifier) = identifier {
-            throw_if_org_not_matching_session(
-                identifier.organisation.as_ref(),
+            throw_if_org_id_not_matching_session(
+                &identifier.organisation.id(),
                 &*self.session_provider,
             )
             .error_while("checking session")?;

@@ -8,6 +8,7 @@ use one_core::provider::credential_formatter::model::{CredentialData, Issuer};
 use one_core::provider::credential_formatter::vcdm::VcdmCredential;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::eddsa::Eddsa;
+use one_core::service::test_utilities::dummy_organisation;
 use one_crypto::Signer;
 use one_crypto::signer::eddsa::{EDDSASigner, KeyPair};
 use serde_json::{Value, json};
@@ -1725,8 +1726,7 @@ async fn minimal_mdoc_credential(params: serde_json::Value) -> SerializedCredent
             is_remote: true,
             state: IdentifierState::Active,
             deleted_at: None,
-            organisation_id: Uuid::new_v4().into(),
-            organisation: None,
+            organisation: dummy_organisation(Some(Uuid::new_v4().into())).into(),
             did: Some(Did {
                 deleted_at: None,
                 id: Uuid::new_v4().into(),

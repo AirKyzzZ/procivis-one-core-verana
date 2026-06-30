@@ -109,8 +109,7 @@ async fn test_create_and_delete_identifier() {
         r#type: IdentifierType::Did,
         is_remote: false,
         state: IdentifierState::Active,
-        organisation_id: setup.organisation.id,
-        organisation: Some(setup.organisation),
+        organisation: setup.organisation.into(),
         did: Some(setup.did),
         key: None,
         certificates: None,
@@ -141,8 +140,7 @@ async fn test_get_identifier() {
         r#type: IdentifierType::Did,
         is_remote: false,
         state: IdentifierState::Active,
-        organisation_id: setup.organisation.id,
-        organisation: Some(setup.organisation.clone()),
+        organisation: setup.organisation.clone().into(),
         did: Some(setup.did.clone()),
         key: None,
         certificates: None,
@@ -173,10 +171,7 @@ async fn test_get_identifier() {
     assert_eq!(retrieved.r#type, identifier.r#type);
     assert_eq!(retrieved.state, identifier.state);
     assert_eq!(retrieved.is_remote, identifier.is_remote);
-    assert_eq!(
-        retrieved.organisation.unwrap().id,
-        identifier.organisation.unwrap().id
-    );
+    assert_eq!(retrieved.organisation.id(), identifier.organisation.id());
     assert!(retrieved.did.is_none());
     assert!(retrieved.key.is_none());
 }
@@ -195,8 +190,7 @@ async fn test_get_identifier_list() {
         r#type: IdentifierType::Did,
         is_remote: false,
         state: IdentifierState::Active,
-        organisation_id: setup.organisation.id,
-        organisation: Some(setup.organisation.clone()),
+        organisation: setup.organisation.clone().into(),
         did: Some(setup.did.clone()),
         key: None,
         certificates: None,
@@ -238,8 +232,7 @@ async fn test_get_identifier_list() {
         r#type: IdentifierType::Did,
         is_remote: true,
         state: IdentifierState::Active,
-        organisation_id: setup.organisation.id,
-        organisation: Some(setup.organisation.clone()),
+        organisation: setup.organisation.clone().into(),
         did: Some(did2),
         key: None,
         certificates: None,
@@ -305,8 +298,7 @@ async fn test_get_identifier_with_trust_info() {
         r#type: IdentifierType::Did,
         is_remote: false,
         state: IdentifierState::Active,
-        organisation_id: setup.organisation.id,
-        organisation: Some(setup.organisation.clone()),
+        organisation: setup.organisation.clone().into(),
         did: Some(setup.did.clone()),
         key: None,
         certificates: None,
@@ -404,8 +396,7 @@ async fn test_list_identifier_filter_trust_info() {
         r#type: IdentifierType::Did,
         is_remote: false,
         state: IdentifierState::Active,
-        organisation_id: setup.organisation.id,
-        organisation: Some(setup.organisation.clone()),
+        organisation: setup.organisation.clone().into(),
         did: Some(setup.did.clone()),
         key: None,
         certificates: None,
@@ -538,8 +529,7 @@ async fn test_list_identifier_filter_certificate_role() {
         r#type: IdentifierType::Certificate,
         is_remote: false,
         state: IdentifierState::Active,
-        organisation_id: setup.organisation.id,
-        organisation: Some(setup.organisation.clone()),
+        organisation: setup.organisation.clone().into(),
         did: Some(setup.did.clone()),
         key: None,
         certificates: None,
@@ -607,8 +597,7 @@ async fn test_get_returns_soft_deleted_certificates_in_relation() {
         r#type: IdentifierType::Certificate,
         is_remote: false,
         state: IdentifierState::Active,
-        organisation_id: setup.organisation.id,
-        organisation: Some(setup.organisation.clone()),
+        organisation: setup.organisation.clone().into(),
         did: None,
         key: None,
         certificates: None,

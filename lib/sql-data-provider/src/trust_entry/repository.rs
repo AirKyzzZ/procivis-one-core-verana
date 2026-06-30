@@ -5,7 +5,6 @@ use one_core::model::trust_entry::{
 };
 use one_core::repository::error::DataLayerError;
 use one_core::repository::trust_entry_repository::TrustEntryRepository;
-use one_dto_mapper::convert_inner;
 use sea_orm::ActiveValue::{Set, Unchanged};
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
@@ -18,7 +17,7 @@ use crate::common::calculate_pages_count;
 use crate::entity::{identifier, trust_entry};
 use crate::list_query_generic::SelectWithListQuery;
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
-use crate::trust_entry::entities::TrustEntryWithIdentifier;
+use crate::trust_entry::entities::{TrustEntryWithIdentifier, trust_entry_from_model};
 
 #[autometrics]
 #[async_trait::async_trait]
@@ -126,7 +125,12 @@ impl TrustEntryRepository for TrustEntryProvider {
         let trust_entries = trust_entries.map_err(to_data_layer_error)?;
 
         Ok(GetTrustEntryList {
-            values: convert_inner(trust_entries),
+            values: trust_entries
+                .into_iter()
+                .map(|trust_entry| {
+                    trust_entry_from_model(trust_entry, &self.organisation_repository)
+                })
+                .collect(),
             total_pages: calculate_pages_count(items_count, limit.unwrap_or(0)),
             total_items: items_count,
         })

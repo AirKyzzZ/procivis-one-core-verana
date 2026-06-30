@@ -53,8 +53,7 @@ async fn setup() -> TestSetup {
         is_remote: false,
         state: IdentifierState::Active,
         deleted_at: None,
-        organisation_id,
-        organisation: Some(dummy_organisation(Some(organisation_id))),
+        organisation: dummy_organisation(Some(organisation_id)).into(),
         did: None,
         key: None,
         certificates: None,
@@ -355,13 +354,13 @@ async fn create_dummy_credential(
     db: &sea_orm::DatabaseConnection,
     identifier: Identifier,
 ) -> CredentialId {
-    let organisation = identifier.organisation.to_owned().unwrap();
+    let organisation_id = identifier.organisation.id();
 
     let credential_schema_name = "schema";
     let credential_schema_id = insert_credential_schema_to_database(
         db,
         None,
-        organisation.id,
+        organisation_id,
         credential_schema_name,
         true,
         Some(KeyStorageSecurity::Basic),

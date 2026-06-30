@@ -12,6 +12,7 @@ use one_core::model::trust_list_publication::{
 use one_core::model::trust_list_role::TrustListRoleEnum;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::identifier_repository::MockIdentifierRepository;
+use one_core::repository::organisation_repository::MockOrganisationRepository;
 use one_core::repository::trust_entry_repository::TrustEntryRepository;
 use one_core::repository::trust_list_publication_repository::MockTrustListPublicationRepository;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, Set};
@@ -81,6 +82,7 @@ async fn setup() -> TestSetup {
                 MockTrustListPublicationRepository::default(),
             ),
             identifier_repository: Arc::new(MockIdentifierRepository::default()),
+            organisation_repository: Arc::new(MockOrganisationRepository::default()),
         },
         db,
         trust_list_publication_id,
@@ -537,6 +539,7 @@ async fn test_get_trust_entry_with_publication_relation() {
         db: TransactionManagerImpl::new(db.clone()),
         trust_list_publication_repository: Arc::new(mock_pub_repo),
         identifier_repository: Arc::new(MockIdentifierRepository::default()),
+        organisation_repository: Arc::new(MockOrganisationRepository::default()),
     };
 
     let entry = dummy_trust_entry(trust_list_publication_id, identifier_id);

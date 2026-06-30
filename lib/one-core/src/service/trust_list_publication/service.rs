@@ -343,7 +343,6 @@ impl TrustListPublicationService {
                 &IdentifierRelations {
                     certificates: Some(Default::default()),
                     key: Some(KeyRelations::default()),
-                    organisation: Some(OrganisationRelations::default()),
                     ..Default::default()
                 },
             )
@@ -386,13 +385,7 @@ fn validate_organisation_matches(
     identifier: &Identifier,
     organisation_id: OrganisationId,
 ) -> Result<(), TrustListPublicationServiceError> {
-    let identifier_organisation_id = identifier
-        .organisation
-        .as_ref()
-        .ok_or(TrustListPublicationServiceError::MappingError(
-            "organisation is None".to_string(),
-        ))?
-        .id;
+    let identifier_organisation_id = identifier.organisation.id();
 
     if identifier_organisation_id != organisation_id {
         return Err(TrustListPublicationServiceError::OrganisationIdMismatch);
@@ -549,8 +542,7 @@ mod tests {
             is_remote: false,
             state: IdentifierState::Active,
             deleted_at: None,
-            organisation_id: organisation.id,
-            organisation: Some(organisation.clone()),
+            organisation: organisation.clone().into(),
             did: None,
             key: None,
             certificates: Some(vec![Certificate {
@@ -1026,7 +1018,6 @@ mod tests {
     fn create_test_key_identifier(key_type: &str) -> Identifier {
         let now = crate::clock::now_utc();
         Identifier {
-            organisation_id: uuid::Uuid::new_v4().into(),
             id: Uuid::new_v4().into(),
             created_date: now,
             last_modified: now,
@@ -1035,7 +1026,7 @@ mod tests {
             is_remote: false,
             state: IdentifierState::Active,
             deleted_at: None,
-            organisation: None,
+            organisation: dummy_organisation(Some(uuid::Uuid::new_v4().into())).into(),
             did: None,
             key: Some(create_test_key(key_type)),
             certificates: None,
@@ -1046,7 +1037,6 @@ mod tests {
     fn create_test_did_identifier() -> Identifier {
         let now = crate::clock::now_utc();
         Identifier {
-            organisation_id: uuid::Uuid::new_v4().into(),
             id: Uuid::new_v4().into(),
             created_date: now,
             last_modified: now,
@@ -1055,7 +1045,7 @@ mod tests {
             is_remote: false,
             state: IdentifierState::Active,
             deleted_at: None,
-            organisation: None,
+            organisation: dummy_organisation(Some(uuid::Uuid::new_v4().into())).into(),
             did: None,
             key: None,
             certificates: None,
@@ -1099,7 +1089,6 @@ mod tests {
         };
 
         Identifier {
-            organisation_id: uuid::Uuid::new_v4().into(),
             id: identifier_id,
             created_date: now,
             last_modified: now,
@@ -1108,7 +1097,7 @@ mod tests {
             is_remote: false,
             state: IdentifierState::Active,
             deleted_at: None,
-            organisation: None,
+            organisation: dummy_organisation(Some(uuid::Uuid::new_v4().into())).into(),
             did: None,
             key: None,
             certificates: Some(vec![certificate]),

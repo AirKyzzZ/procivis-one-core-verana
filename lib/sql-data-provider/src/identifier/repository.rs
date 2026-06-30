@@ -12,7 +12,8 @@ use sea_orm::{
 use shared_types::{CertificateId, DidId, IdentifierId};
 
 use super::IdentifierProvider;
-use crate::common::list_query_with_base_model;
+use super::mapper::identifier_from_model;
+use crate::common::list_query_with_custom_model;
 use crate::entity::{certificate, identifier};
 use crate::list_query_generic::{SelectWithFilterJoin, SelectWithListQuery};
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
@@ -23,20 +24,7 @@ impl IdentifierProvider {
         model: identifier::Model,
         relations: &IdentifierRelations,
     ) -> Result<Identifier, DataLayerError> {
-        let mut result: Identifier = model.clone().into();
-
-        if let Some(_organisation_relations) = &relations.organisation {
-            let organisation_id = &model.organisation_id;
-            result.organisation = Some(
-                self.organisation_repository
-                    .get_organisation(organisation_id)
-                    .await?
-                    .ok_or(DataLayerError::MissingRequiredRelation {
-                        relation: "identifier-organisation",
-                        id: organisation_id.to_string(),
-                    })?,
-            );
-        }
+        let mut result = identifier_from_model(model.clone(), &self.organisation_repository);
 
         if let Some(_trust_relations) = &relations.trust_information {
             result.trust_information = Some(
@@ -197,7 +185,10 @@ impl IdentifierRepository for IdentifierProvider {
     ) -> Result<GetIdentifierList, DataLayerError> {
         let query = get_identifier_list_query(&query_params);
 
-        list_query_with_base_model(query, query_params, &self.db).await
+        list_query_with_custom_model(query, query_params, &self.db, |model| {
+            Ok(identifier_from_model(model, &self.organisation_repository))
+        })
+        .await
     }
 }
 

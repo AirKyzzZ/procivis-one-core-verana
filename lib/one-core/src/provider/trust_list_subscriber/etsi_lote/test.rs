@@ -33,7 +33,7 @@ use crate::provider::trust_list_subscriber::error::TrustListSubscriberError;
 use crate::provider::trust_list_subscriber::etsi_lote::resolver::EtsiLoteResolver;
 use crate::provider::trust_list_subscriber::etsi_lote::{EtsiLoteSubscriber, LoteContentType};
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
-use crate::service::test_utilities::{dummy_identifier, dummy_key};
+use crate::service::test_utilities::{dummy_identifier, dummy_key, dummy_organisation};
 use crate::util::test_utilities::mock_http_get_request;
 
 const SPRIND_LOTE_JWS: &str = "eyJhbGciOiJFUzI1NiIsImlhdCI6MTc3MjQ5MzA2NywieDVjIjpbIk1JSUNGekNDQWIyZ0F3SUJBZ0lVUUF4ZXY4eDJCbzRZNWhWbkdoT285VlNkQWNJd0NnWUlLb1pJemowRUF3SXdZVEVMTUFrR0ExVUVCaE1DUkVVeER6QU5CZ05WQkFnTUJrSmxjbXhwYmpFUE1BMEdBMVVFQnd3R1FtVnliR2x1TVJRd0VnWURWUVFLREF0VWNuVnpkQ0JNYVhOMGN6RWFNQmdHQTFVRUF3d1JWSEoxYzNRZ1RHbHpkQ0JUYVdkdVpYSXdIaGNOTWpZd01qQTJNVFF5TWpFNVdoY05Nell3TWpBME1UUXlNakU1V2pCaE1Rc3dDUVlEVlFRR0V3SkVSVEVQTUEwR0ExVUVDQXdHUW1WeWJHbHVNUTh3RFFZRFZRUUhEQVpDWlhKc2FXNHhGREFTQmdOVkJBb01DMVJ5ZFhOMElFeHBjM1J6TVJvd0dBWURWUVFEREJGVWNuVnpkQ0JNYVhOMElGTnBaMjVsY2pCWk1CTUdCeXFHU000OUFnRUdDQ3FHU000OUF3RUhBMElBQk5GRHc5a0VaeHp3ZWxsVzRiNmlUYXhxYThlSEJaTUVzTzg0Q1Y1T0piZEI5ZG1OaUdiNTM5dnh3V2JpbTZ3WHorYzNuNUNVbnN1Z2VvbStubjBHQWxTalV6QlJNQjBHQTFVZERnUVdCQlMxdVhqODF4VHovUHhYWWpsaEtrWkhzNmREVVRBZkJnTlZIU01FR0RBV2dCUzF1WGo4MXhUei9QeFhZamxoS2taSHM2ZERVVEFQQmdOVkhSTUJBZjhFQlRBREFRSC9NQW9HQ0NxR1NNNDlCQU1DQTBnQU1FVUNJUUNFSnAvWlJ3eFBlZTJFUUpIZFZXQ3RiUjdiWFBwYzJIcjFsdEorL1U0SnNRSWdRWnFJWkFCMzhtNzl6VHhWR2lYUmF1ZzJTaml1NlAxRGJWYldSZVMwazBjPSJdfQ.eyJMaXN0QW5kU2NoZW1lSW5mb3JtYXRpb24iOnsiTG9URVZlcnNpb25JZGVudGlmaWVyIjoxLCJMb1RFU2VxdWVuY2VOdW1iZXIiOjEsIkxvVEVUeXBlIjoiaHR0cDovL3VyaS5ldHNpLm9yZy8xOTYwMi9Mb1RFVHlwZS9SZWdpc3RyYXJzQW5kUmVnaXN0ZXJzTGlzdFByb3ZpZGVyc0xpc3QiLCJTY2hlbWVJbmZvcm1hdGlvblVSSSI6W3sibGFuZyI6ImRlLURFIiwidXJpVmFsdWUiOiJodHRwczovL2V4YW1wbGUuY29tL3ByZXZpb3VzLWxpc3RzIn1dLCJTdGF0dXNEZXRlcm1pbmF0aW9uQXBwcm9hY2giOiJodHRwOi8vdXJpLmV0c2kub3JnLzE5NjAyL1JlZ2lzdHJhcnNBbmRSZWdpc3RlcnNMaXN0UHJvdmlkZXJzTGlzdC9TdGF0dXNEZXRuL0VVLiIsIlNjaGVtZVR5cGVDb21tdW5pdHlSdWxlcyI6W3sibGFuZyI6ImRlLURFIiwidXJpVmFsdWUiOiJodHRwOi8vdXJpLmV0c2kub3JnLzE5NjAyL1JlZ2lzdHJhcnNBbmRSZWdpc3RlcnNMaXN0UHJvdmlkZXJzTGlzdC9zY2hlbWVydWxlcy9FVSJ9XSwiU2NoZW1lVGVycml0b3J5IjoiRVUiLCJOZXh0VXBkYXRlIjoiMjAyNi0wMy0wM1QyMzoxMTowNy4xMzNaIiwiU2NoZW1lT3BlcmF0b3JOYW1lIjpbeyJsYW5nIjoiZGUtREUiLCJ2YWx1ZSI6IlNQUklORCBHbWJIIn1dLCJMaXN0SXNzdWVEYXRlVGltZSI6IjIwMjYtMDMtMDJUMjM6MTE6MDcuMTMzWiJ9LCJUcnVzdGVkRW50aXRpZXNMaXN0IjpbeyJUcnVzdGVkRW50aXR5SW5mb3JtYXRpb24iOnsiVEVJbmZvcm1hdGlvblVSSSI6W3sibGFuZyI6ImRlLURFIiwidXJpVmFsdWUiOiJodHRwczovL3d3dy5zcHJpbmQub3JnIn1dLCJURU5hbWUiOlt7ImxhbmciOiJkZS1ERSIsInZhbHVlIjoiU1BSSU5EIEdtYkgifV0sIlRFQWRkcmVzcyI6eyJURUVsZWN0cm9uaWNBZGRyZXNzIjpbeyJsYW5nIjoiZGUtREUiLCJ1cmlWYWx1ZSI6Imh0dHBzOi8vc3ByaW5kLm9yZy9jb250YWN0In1dLCJURVBvc3RhbEFkZHJlc3MiOlt7IkNvdW50cnkiOiJERSIsImxhbmciOiJkZSIsIkxvY2FsaXR5IjoiTGVpcHppZyIsIlBvc3RhbENvZGUiOiIwNDEwMyIsIlN0cmVldEFkZHJlc3MiOiJMYWdlcmhvZnN0cmHDn2UgNCJ9XX19LCJUcnVzdGVkRW50aXR5U2VydmljZXMiOlt7IlNlcnZpY2VJbmZvcm1hdGlvbiI6eyJTZXJ2aWNlVHlwZUlkZW50aWZpZXIiOiJodHRwOi8vdXJpLmV0c2kub3JnLzE5NjAyL1N2Y1R5cGUvUmVnaXN0cmFyc0FuZFJlZ2lzdGVyc0xpc3RTb2x1dGlvbi9Jc3N1YW5jZSIsIlNlcnZpY2VOYW1lIjpbeyJsYW5nIjoiZGUtREUiLCJ2YWx1ZSI6IkFjY2VzcyBDZXJ0aWZpY2F0ZSBBdXNzdGVsbHVuZ3NkaWVuc3QgZGVyIFNQUklORCBHbWJIIn1dLCJTZXJ2aWNlRGlnaXRhbElkZW50aXR5Ijp7Ilg1MDlDZXJ0aWZpY2F0ZXMiOlt7InZhbCI6Ik1JSUNMekNDQWRTZ0F3SUJBZ0lVSHlSakU0NjZZQTd0Yzg4OGswM091MlFvZEY0d0NnWUlLb1pJemowRUF3SXdLREVMTUFrR0ExVUVCaE1DUkVVeEdUQVhCZ05WQkFNTUVFZGxjbTFoYmlCU1pXZHBjM1J5WVhJd0hoY05Nall3TVRFMk1URXhOVFUwV2hjTk1qZ3dNVEUyTVRFeE5UVTBXakFvTVFzd0NRWURWUVFHRXdKRVJURVpNQmNHQTFVRUF3d1FSMlZ5YldGdUlGSmxaMmx6ZEhKaGNqQlpNQk1HQnlxR1NNNDlBZ0VHQ0NxR1NNNDlBd0VIQTBJQUJNZWZZMlg0aXhmUmtXRXZwOWdyRjJpMjF6NlBLWnNyOHp6QmFKLytHbm90Q2VIMmNKNkd0TGh4WGhIZkpqckVUc01OSUdoVmFKb0hvSGNaVEJISnJmeWpnZHN3Z2Rnd0hRWURWUjBPQkJZRUZLbkNvOW92YmF4VTdzNjVUdWdzeVN3QWc0QXpNQjhHQTFVZEl3UVlNQmFBRktuQ285b3ZiYXhVN3M2NVR1Z3N5U3dBZzRBek1CSUdBMVVkRXdFQi93UUlNQVlCQWY4Q0FRQXdEZ1lEVlIwUEFRSC9CQVFEQWdFR01Db0dBMVVkRWdRak1DR0dIMmgwZEhCek9pOHZjMkZ1WkdKdmVDNWxkV1JwTFhkaGJHeGxkQzV2Y21jd1JnWURWUjBmQkQ4d1BUQTdvRG1nTjRZMWFIUjBjSE02THk5ellXNWtZbTk0TG1WMVpHa3RkMkZzYkdWMExtOXlaeTl6ZEdGMGRYTXRiV0Z1WVdkbGJXVnVkQzlqY213d0NnWUlLb1pJemowRUF3SURTUUF3UmdJaEFJWTdFUnBSckRSbDBscjVINXV4ako4M0pSNHF1YTJzZlBLeFgrcGw0UXcrQWlFQTJxTDZMWFZPUkEycjJWWmpTRWtuZmNpd0lHN2xhQTEya2pueUdBRDNWL0E9In1dfX19LHsiU2VydmljZUluZm9ybWF0aW9uIjp7IlNlcnZpY2VOYW1lIjpbeyJsYW5nIjoiZGUtREUiLCJ2YWx1ZSI6IkFjY2VzcyBDZXJ0aWZpY2F0ZS1SZXZva2F0aW9uc2RpZW5zdCBkZXIgU1BSSU5EIEdtYkgifV0sIlNlcnZpY2VUeXBlSWRlbnRpZmllciI6Imh0dHA6Ly91cmkuZXRzaS5vcmcvMTk2MDIvU3ZjVHlwZS9SZWdpc3RyYXJzQW5kUmVnaXN0ZXJzTGlzdFNvbHV0aW9uL1Jldm9jYXRpb24iLCJTZXJ2aWNlRGlnaXRhbElkZW50aXR5Ijp7Ilg1MDlDZXJ0aWZpY2F0ZXMiOlt7InZhbCI6Ik1JSUNMekNDQWRTZ0F3SUJBZ0lVSHlSakU0NjZZQTd0Yzg4OGswM091MlFvZEY0d0NnWUlLb1pJemowRUF3SXdLREVMTUFrR0ExVUVCaE1DUkVVeEdUQVhCZ05WQkFNTUVFZGxjbTFoYmlCU1pXZHBjM1J5WVhJd0hoY05Nall3TVRFMk1URXhOVFUwV2hjTk1qZ3dNVEUyTVRFeE5UVTBXakFvTVFzd0NRWURWUVFHRXdKRVJURVpNQmNHQTFVRUF3d1FSMlZ5YldGdUlGSmxaMmx6ZEhKaGNqQlpNQk1HQnlxR1NNNDlBZ0VHQ0NxR1NNNDlBd0VIQTBJQUJNZWZZMlg0aXhmUmtXRXZwOWdyRjJpMjF6NlBLWnNyOHp6QmFKLytHbm90Q2VIMmNKNkd0TGh4WGhIZkpqckVUc01OSUdoVmFKb0hvSGNaVEJISnJmeWpnZHN3Z2Rnd0hRWURWUjBPQkJZRUZLbkNvOW92YmF4VTdzNjVUdWdzeVN3QWc0QXpNQjhHQTFVZEl3UVlNQmFBRktuQ285b3ZiYXhVN3M2NVR1Z3N5U3dBZzRBek1CSUdBMVVkRXdFQi93UUlNQVlCQWY4Q0FRQXdEZ1lEVlIwUEFRSC9CQVFEQWdFR01Db0dBMVVkRWdRak1DR0dIMmgwZEhCek9pOHZjMkZ1WkdKdmVDNWxkV1JwTFhkaGJHeGxkQzV2Y21jd1JnWURWUjBmQkQ4d1BUQTdvRG1nTjRZMWFIUjBjSE02THk5ellXNWtZbTk0TG1WMVpHa3RkMkZzYkdWMExtOXlaeTl6ZEdGMGRYTXRiV0Z1WVdkbGJXVnVkQzlqY213d0NnWUlLb1pJemowRUF3SURTUUF3UmdJaEFJWTdFUnBSckRSbDBscjVINXV4ako4M0pSNHF1YTJzZlBLeFgrcGw0UXcrQWlFQTJxTDZMWFZPUkEycjJWWmpTRWtuZmNpd0lHN2xhQTEya2pueUdBRDNWL0E9In1dfX19XX1dfQ.IzpFGp0TchXMvizip3HffMnmP40WkNsvLRBRUGsu1pKAd5PeMs2klbuEWb22FpQ1UyTUvRobi2xyHewySS6mpA";
@@ -141,7 +141,6 @@ async fn resolve_untrusted_identifier() {
     let identifier_id = Uuid::new_v4().into();
     let now = crate::clock::now_utc();
     let identifier = Identifier {
-        organisation_id: uuid::Uuid::new_v4().into(),
         id: identifier_id,
         created_date: now,
         last_modified: now,
@@ -150,7 +149,7 @@ async fn resolve_untrusted_identifier() {
         is_remote: false,
         state: IdentifierState::Active,
         deleted_at: None,
-        organisation: None,
+        organisation: dummy_organisation(Some(uuid::Uuid::new_v4().into())).into(),
         did: None,
         key: None,
         certificates: Some(vec![Certificate {
@@ -188,7 +187,6 @@ async fn resolve_trusted_identifier() {
     let identifier_id = Uuid::new_v4().into();
     let now = crate::clock::now_utc();
     let identifier = Identifier {
-        organisation_id: uuid::Uuid::new_v4().into(),
         id: identifier_id,
         created_date: now,
         last_modified: now,
@@ -197,7 +195,7 @@ async fn resolve_trusted_identifier() {
         is_remote: false,
         state: IdentifierState::Active,
         deleted_at: None,
-        organisation: None,
+        organisation: dummy_organisation(Some(uuid::Uuid::new_v4().into())).into(),
         did: None,
         key: None,
         certificates: Some(vec![Certificate {
@@ -473,7 +471,6 @@ async fn resolve_trusted_identifier_xml() {
     let identifier_id = Uuid::new_v4().into();
     let now = OffsetDateTime::now_utc();
     let identifier = Identifier {
-        organisation_id: uuid::Uuid::new_v4().into(),
         id: identifier_id,
         created_date: now,
         last_modified: now,
@@ -482,7 +479,7 @@ async fn resolve_trusted_identifier_xml() {
         is_remote: false,
         state: IdentifierState::Active,
         deleted_at: None,
-        organisation: None,
+        organisation: dummy_organisation(Some(uuid::Uuid::new_v4().into())).into(),
         did: None,
         key: None,
         certificates: Some(vec![Certificate {
@@ -521,7 +518,6 @@ async fn resolve_untrusted_identifier_xml() {
     let identifier_id = Uuid::new_v4().into();
     let now = OffsetDateTime::now_utc();
     let identifier = Identifier {
-        organisation_id: uuid::Uuid::new_v4().into(),
         id: identifier_id,
         created_date: now,
         last_modified: now,
@@ -530,7 +526,7 @@ async fn resolve_untrusted_identifier_xml() {
         is_remote: false,
         state: IdentifierState::Active,
         deleted_at: None,
-        organisation: None,
+        organisation: dummy_organisation(Some(uuid::Uuid::new_v4().into())).into(),
         did: None,
         key: None,
         certificates: Some(vec![Certificate {

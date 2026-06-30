@@ -164,7 +164,6 @@ async fn generic_credential() -> Credential {
             schema: Some(claim_schema.clone()),
         }]),
         issuer_identifier: Some(Identifier {
-            organisation_id: uuid::Uuid::new_v4().into(),
             id: Uuid::new_v4().into(),
             created_date: now,
             last_modified: now,
@@ -173,7 +172,7 @@ async fn generic_credential() -> Credential {
             is_remote: false,
             state: IdentifierState::Active,
             deleted_at: None,
-            organisation: None,
+            organisation: dummy_organisation(Some(uuid::Uuid::new_v4().into())).into(),
             did: Some(issuer_did),
             key: None,
             certificates: None,
@@ -252,7 +251,6 @@ async fn generic_credential_list_entity() -> Credential {
         suspend_end_date: None,
         claims: None,
         issuer_identifier: Some(Identifier {
-            organisation_id: uuid::Uuid::new_v4().into(),
             id: Uuid::new_v4().into(),
             created_date: now,
             last_modified: now,
@@ -261,7 +259,7 @@ async fn generic_credential_list_entity() -> Credential {
             is_remote: false,
             state: IdentifierState::Active,
             deleted_at: None,
-            organisation: None,
+            organisation: dummy_organisation(Some(uuid::Uuid::new_v4().into())).into(),
             did: Some(Did {
                 deleted_at: None,
                 id: Uuid::new_v4().into(),
@@ -3614,7 +3612,6 @@ async fn test_get_credential_success_array_complex_nested_all() {
         suspend_end_date: None,
         claims: Some(claims.to_owned()),
         issuer_identifier: Some(Identifier {
-            organisation_id: uuid::Uuid::new_v4().into(),
             id: Uuid::new_v4().into(),
             created_date: now,
             last_modified: now,
@@ -3623,7 +3620,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
             is_remote: false,
             state: IdentifierState::Active,
             deleted_at: None,
-            organisation: None,
+            organisation: dummy_organisation(Some(uuid::Uuid::new_v4().into())).into(),
             did: Some(Did {
                 deleted_at: None,
                 id: Uuid::new_v4().into(),
@@ -4396,7 +4393,6 @@ async fn test_get_credential_success_array_index_sorting() {
         suspend_end_date: None,
         claims: Some(claims.to_owned()),
         issuer_identifier: Some(Identifier {
-            organisation_id: uuid::Uuid::new_v4().into(),
             id: Uuid::new_v4().into(),
             created_date: now,
             last_modified: now,
@@ -4405,7 +4401,7 @@ async fn test_get_credential_success_array_index_sorting() {
             is_remote: false,
             state: IdentifierState::Active,
             deleted_at: None,
-            organisation: None,
+            organisation: dummy_organisation(Some(uuid::Uuid::new_v4().into())).into(),
             did: Some(Did {
                 deleted_at: None,
                 id: Uuid::new_v4().into(),
@@ -4815,7 +4811,6 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
         suspend_end_date: None,
         claims: Some(claims.to_owned()),
         issuer_identifier: Some(Identifier {
-            organisation_id: uuid::Uuid::new_v4().into(),
             id: Uuid::new_v4().into(),
             created_date: now,
             last_modified: now,
@@ -4824,7 +4819,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
             is_remote: false,
             state: IdentifierState::Active,
             deleted_at: None,
-            organisation: None,
+            organisation: dummy_organisation(Some(uuid::Uuid::new_v4().into())).into(),
             did: Some(Did {
                 deleted_at: None,
                 id: Uuid::new_v4().into(),
@@ -5089,7 +5084,6 @@ async fn test_get_credential_success_array_single_element() {
         suspend_end_date: None,
         claims: Some(claims.to_owned()),
         issuer_identifier: Some(Identifier {
-            organisation_id: uuid::Uuid::new_v4().into(),
             id: Uuid::new_v4().into(),
             created_date: now,
             last_modified: now,
@@ -5098,7 +5092,7 @@ async fn test_get_credential_success_array_single_element() {
             is_remote: false,
             state: IdentifierState::Active,
             deleted_at: None,
-            organisation: None,
+            organisation: dummy_organisation(Some(uuid::Uuid::new_v4().into())).into(),
             did: Some(Did {
                 deleted_at: None,
                 id: Uuid::new_v4().into(),

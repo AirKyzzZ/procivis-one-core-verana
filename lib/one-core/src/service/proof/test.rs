@@ -563,7 +563,6 @@ async fn test_get_proof_exists() {
                         }),
                     }),
                     verifier_identifier: Some(IdentifierRelations {
-                        organisation: Some(Default::default()),
                         ..Default::default()
                     }),
                     verifier_certificate: Some(CertificateRelations::default()),
@@ -756,7 +755,7 @@ async fn test_get_proof_with_array_holder() {
                 deactivated: false,
                 log: None,
             }),
-            organisation: Some(organisation.clone()),
+            organisation: organisation.clone().into(),
             ..dummy_identifier()
         }),
         verifier_key: None,
@@ -814,7 +813,6 @@ async fn test_get_proof_with_array_holder() {
                         }),
                     }),
                     verifier_identifier: Some(IdentifierRelations {
-                        organisation: Some(Default::default()),
                         ..Default::default()
                     }),
                     verifier_certificate: Some(CertificateRelations::default()),
@@ -1044,7 +1042,7 @@ async fn test_get_proof_with_array_in_object_holder() {
                 deactivated: false,
                 log: None,
             }),
-            organisation: Some(organisation.clone()),
+            organisation: organisation.clone().into(),
             ..dummy_identifier()
         }),
         verifier_key: None,
@@ -1102,7 +1100,6 @@ async fn test_get_proof_with_array_in_object_holder() {
                         }),
                     }),
                     verifier_identifier: Some(IdentifierRelations {
-                        organisation: Some(Default::default()),
                         ..Default::default()
                     }),
                     verifier_certificate: Some(CertificateRelations::default()),
@@ -1347,7 +1344,7 @@ async fn test_get_proof_with_object_array_holder() {
                 deactivated: false,
                 log: None,
             }),
-            organisation: Some(organisation),
+            organisation: organisation.into(),
             ..dummy_identifier()
         }),
         verifier_key: None,
@@ -1405,7 +1402,6 @@ async fn test_get_proof_with_object_array_holder() {
                         }),
                     }),
                     verifier_identifier: Some(IdentifierRelations {
-                        organisation: Some(Default::default()),
                         ..Default::default()
                     }),
                     verifier_certificate: Some(CertificateRelations::default()),
@@ -1690,7 +1686,6 @@ async fn test_get_proof_with_array() {
                         }),
                     }),
                     verifier_identifier: Some(IdentifierRelations {
-                        organisation: Some(Default::default()),
                         ..Default::default()
                     }),
                     verifier_certificate: Some(CertificateRelations::default()),
@@ -1985,7 +1980,6 @@ async fn test_get_proof_with_array_in_object() {
                         }),
                     }),
                     verifier_identifier: Some(IdentifierRelations {
-                        organisation: Some(Default::default()),
                         ..Default::default()
                     }),
                     verifier_certificate: Some(CertificateRelations::default()),
@@ -2296,7 +2290,6 @@ async fn test_get_proof_with_object_array() {
                         }),
                     }),
                     verifier_identifier: Some(IdentifierRelations {
-                        organisation: Some(Default::default()),
                         ..Default::default()
                     }),
                     verifier_certificate: Some(CertificateRelations::default()),

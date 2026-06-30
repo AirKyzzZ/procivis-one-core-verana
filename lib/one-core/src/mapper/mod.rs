@@ -623,7 +623,6 @@ mod tests {
                 },
             }],
             Identifier {
-                organisation_id: uuid::Uuid::new_v4().into(),
                 id: Uuid::new_v4().into(),
                 created_date: crate::clock::now_utc(),
                 last_modified: crate::clock::now_utc(),
@@ -632,7 +631,7 @@ mod tests {
                 is_remote: true,
                 state: IdentifierState::Active,
                 deleted_at: None,
-                organisation: None,
+                organisation: dummy_organisation(Some(uuid::Uuid::new_v4().into())).into(),
                 did: Some(did.clone()),
                 key: None,
                 certificates: None,

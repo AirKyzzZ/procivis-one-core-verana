@@ -53,7 +53,7 @@ use crate::provider::trust_list_subscriber::{
 use crate::repository::error::DataLayerError;
 use crate::service::common_dto::ListQueryDTO;
 use crate::service::identifier::dto::CreateRemoteIdentifierRequestDTO;
-use crate::validator::{throw_if_org_id_not_matching_session, throw_if_org_not_matching_session};
+use crate::validator::throw_if_org_id_not_matching_session;
 
 impl IdentifierService {
     /// Returns details of an identifier
@@ -73,7 +73,6 @@ impl IdentifierService {
                     did: Some(Default::default()),
                     key: Some(Default::default()),
                     certificates: Some(Default::default()),
-                    organisation: Some(Default::default()),
                     trust_information: Some(IdentifierTrustInformationRelations::default()),
                 },
             )
@@ -82,8 +81,8 @@ impl IdentifierService {
             .filter(|i| i.deleted_at.is_none())
             .ok_or(IdentifierServiceError::NotFound(*id))?;
 
-        throw_if_org_not_matching_session(
-            identifier.organisation.as_ref(),
+        throw_if_org_id_not_matching_session(
+            &identifier.organisation.id(),
             &*self.session_provider,
         )
         .error_while("checking session")?;
@@ -552,7 +551,6 @@ impl IdentifierService {
             .get(
                 *id,
                 &IdentifierRelations {
-                    organisation: Some(Default::default()),
                     certificates: Some(Default::default()),
                     did: Some(Default::default()),
                     ..Default::default()
@@ -563,8 +561,8 @@ impl IdentifierService {
         let Some(identifier) = identifier else {
             return Err(IdentifierServiceError::NotFound(*id));
         };
-        throw_if_org_not_matching_session(
-            identifier.organisation.as_ref(),
+        throw_if_org_id_not_matching_session(
+            &identifier.organisation.id(),
             &*self.session_provider,
         )
         .error_while("checking session")?;
@@ -713,7 +711,6 @@ impl IdentifierService {
                     // TODO: This is really a bad solution, fix once a lazy loading is implemented
                     identifier_id,
                     &IdentifierRelations {
-                        organisation: None,
                         did: None,
                         key: Some(Default::default()),
                         certificates: Some(Default::default()),

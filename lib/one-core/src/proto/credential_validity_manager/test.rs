@@ -1481,7 +1481,6 @@ fn generic_credential() -> Credential {
             schema: Some(claim_schema.clone()),
         }]),
         issuer_identifier: Some(Identifier {
-            organisation_id: uuid::Uuid::new_v4().into(),
             id: Uuid::new_v4().into(),
             created_date: now,
             last_modified: now,
@@ -1490,7 +1489,7 @@ fn generic_credential() -> Credential {
             is_remote: false,
             state: IdentifierState::Active,
             deleted_at: None,
-            organisation: None,
+            organisation: dummy_organisation(Some(uuid::Uuid::new_v4().into())).into(),
             did: Some(issuer_did),
             key: None,
             certificates: None,

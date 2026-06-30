@@ -33,13 +33,11 @@ impl CertificateHistoryDecorator {
             .get(
                 identifier_id,
                 &IdentifierRelations {
-                    organisation: Some(Default::default()),
                     ..Default::default()
                 },
             )
             .await?
-            .and_then(|identifier| identifier.organisation)
-            .map(|organisation| organisation.id))
+            .map(|identifier| identifier.organisation.id()))
     }
 
     async fn create_history(

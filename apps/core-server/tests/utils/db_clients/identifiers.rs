@@ -32,8 +32,7 @@ impl IdentifiersDB {
             created_date: params.created_date.unwrap_or(now),
             last_modified: params.last_modified.unwrap_or(now),
             name: unwrap_or_random(params.name),
-            organisation_id: organisation.id,
-            organisation: Some(organisation.clone()),
+            organisation: organisation.clone().into(),
             did: params.did,
             key: params.key,
             certificates: params.certificates,
@@ -55,7 +54,6 @@ impl IdentifiersDB {
                 identifier_id,
                 &IdentifierRelations {
                     key: Some(Default::default()),
-                    organisation: Some(Default::default()),
                     did: Some(Default::default()),
                     certificates: Some(Default::default()),
                     trust_information: Some(Default::default()),

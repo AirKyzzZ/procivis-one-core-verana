@@ -26,7 +26,6 @@ pub(super) async fn validate_wallet_provider_issuer(
         .get(
             issuer_id,
             &IdentifierRelations {
-                organisation: Default::default(),
                 did: Some(Default::default()),
                 key: Some(KeyRelations::default()),
                 certificates: Some(Default::default()),
@@ -39,11 +38,7 @@ pub(super) async fn validate_wallet_provider_issuer(
         return Err(OrganisationServiceError::IdentifierNotFound(issuer_id));
     };
 
-    if !identifier
-        .organisation
-        .as_ref()
-        .is_some_and(|org| &org.id == id)
-    {
+    if &identifier.organisation.id() != id {
         return Err(OrganisationServiceError::IdentifierOrganisationMismatch);
     };
 

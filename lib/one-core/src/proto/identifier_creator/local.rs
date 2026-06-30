@@ -46,8 +46,7 @@ impl IdentifierCreatorProto {
             created_date: now,
             last_modified: now,
             name,
-            organisation_id: organisation.id,
-            organisation: Some(organisation),
+            organisation: organisation.into(),
             r#type: IdentifierType::Did,
             is_remote: false,
             state: IdentifierState::Active,
@@ -85,8 +84,7 @@ impl IdentifierCreatorProto {
             created_date: now,
             last_modified: now,
             name,
-            organisation_id: organisation.id,
-            organisation: Some(organisation),
+            organisation: organisation.into(),
             r#type: IdentifierType::Key,
             is_remote: false,
             state: IdentifierState::Active,
@@ -127,8 +125,7 @@ impl IdentifierCreatorProto {
             created_date: now,
             last_modified: now,
             name,
-            organisation_id: organisation.id,
-            organisation: Some(organisation),
+            organisation: organisation.into(),
             r#type: IdentifierType::Certificate,
             is_remote: false,
             state: IdentifierState::Active,
@@ -179,8 +176,7 @@ impl IdentifierCreatorProto {
             created_date: now,
             last_modified: now,
             name,
-            organisation_id: organisation.id,
-            organisation: Some(organisation),
+            organisation: organisation.into(),
             r#type: IdentifierType::CertificateAuthority,
             is_remote: false,
             state: IdentifierState::Active,
@@ -369,7 +365,6 @@ impl IdentifierCreatorProto {
                     .get(
                         content.certificate_authority.identifier_id,
                         &IdentifierRelations {
-                            organisation: Some(Default::default()),
                             certificates: Some(Default::default()),
                             ..Default::default()
                         },
@@ -384,12 +379,9 @@ impl IdentifierCreatorProto {
                     return Err(Error::InvalidIdentifierType(identifier.r#type));
                 }
 
-                match &identifier.organisation {
-                    Some(identifier_org) if organisation.id == identifier_org.id => {}
-                    _ => {
-                        return Err(Error::OrganisationMismatch);
-                    }
-                };
+                if organisation.id != identifier.organisation.id() {
+                    return Err(Error::OrganisationMismatch);
+                }
 
                 if content.profile == KeyGenerateCSRRequestProfile::Ca {
                     return Err(Error::InvalidCSRProfile);

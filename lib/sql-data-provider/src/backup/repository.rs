@@ -10,7 +10,7 @@ use one_core::repository::credential_repository::CredentialRepository;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::key_repository::KeyRepository;
 use one_core::repository::organisation_repository::OrganisationRepository;
-use one_dto_mapper::{Into, convert_inner, try_convert_inner};
+use one_dto_mapper::{Into, try_convert_inner};
 use sea_orm::prelude::Expr;
 use sea_orm::sea_query::{Alias, Func, Query, SelectStatement, SimpleExpr};
 use sea_orm::{
@@ -31,6 +31,7 @@ use crate::entity::{
     certificate, claim, claim_schema, credential, credential_schema, did, history,
     holder_wallet_instance, identifier, key, key_did, organisation, wallet_instance_attestation,
 };
+use crate::identifier::mapper::identifier_from_model;
 use crate::key::mapper::key_from_model;
 use crate::mapper::to_data_layer_error;
 use crate::transaction_context::TransactionManagerImpl;
@@ -451,7 +452,10 @@ impl BackupRepository for BackupProvider {
                     )
                 })
                 .collect(),
-            identifiers: convert_inner(identifiers),
+            identifiers: identifiers
+                .into_iter()
+                .map(|identifier| identifier_from_model(identifier, &self.organisation_repository))
+                .collect(),
             histories: try_convert_inner(histories)?,
             total_credentials,
             total_keys,

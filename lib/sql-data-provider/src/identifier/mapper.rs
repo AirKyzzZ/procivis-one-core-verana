@@ -1,7 +1,10 @@
+use std::sync::Arc;
+
 use one_core::model::identifier::{Identifier, IdentifierFilterValue, SortableIdentifierColumn};
 use one_core::model::identifier_trust_information::SchemaFormat;
 use one_core::model::list_filter::{ListFilterCondition, StringMatch, StringMatchType};
-use one_core::model::organisation::Organisation;
+use one_core::model::relation::Related;
+use one_core::repository::organisation_repository::OrganisationRepository;
 use sea_orm::sea_query::{Alias, ColumnRef, ExprTrait, IntoCondition, IntoIden, SimpleExpr};
 use sea_orm::{ColumnTrait, Condition, IntoSimpleExpr, JoinType, RelationTrait, Set};
 use time::OffsetDateTime;
@@ -27,7 +30,7 @@ impl From<Identifier> for ActiveModel {
             r#type: Set(identifier.r#type.into()),
             is_remote: Set(identifier.is_remote),
             state: Set(identifier.state.into()),
-            organisation_id: Set(identifier.organisation_id),
+            organisation_id: Set(identifier.organisation.id()),
             did_id: Set(did_id),
             key_id: Set(key_id),
             deleted_at: Set(identifier.deleted_at),
@@ -35,32 +38,24 @@ impl From<Identifier> for ActiveModel {
     }
 }
 
-impl From<identifier::Model> for Identifier {
-    fn from(value: identifier::Model) -> Self {
-        Self {
-            id: value.id,
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-            name: value.name,
-            r#type: value.r#type.into(),
-            is_remote: value.is_remote,
-            state: value.state.into(),
-            deleted_at: value.deleted_at,
-            organisation_id: value.organisation_id,
-            organisation: Some(Organisation {
-                id: value.organisation_id,
-                created_date: one_core::clock::now_utc(),
-                last_modified: one_core::clock::now_utc(),
-                deactivated_at: None,
-                wallet_provider: None,
-                wallet_provider_issuer: None,
-                parent_organisation: None,
-            }),
-            did: None,
-            key: None,
-            certificates: None,
-            trust_information: None,
-        }
+pub(crate) fn identifier_from_model(
+    value: identifier::Model,
+    organisation_repository: &Arc<dyn OrganisationRepository>,
+) -> Identifier {
+    Identifier {
+        id: value.id,
+        created_date: value.created_date,
+        last_modified: value.last_modified,
+        name: value.name,
+        r#type: value.r#type.into(),
+        is_remote: value.is_remote,
+        state: value.state.into(),
+        deleted_at: value.deleted_at,
+        organisation: Related::new(value.organisation_id, organisation_repository.to_owned()),
+        did: None,
+        key: None,
+        certificates: None,
+        trust_information: None,
     }
 }
 

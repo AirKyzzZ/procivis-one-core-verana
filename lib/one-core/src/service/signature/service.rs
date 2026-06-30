@@ -10,14 +10,13 @@ use crate::error::ContextWithErrorCode;
 use crate::model::blob::{Blob, BlobType};
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::identifier::IdentifierRelations;
-use crate::model::organisation::OrganisationRelations;
 use crate::model::revocation_list::{RevocationListEntityInfo, RevocationListRelations};
 use crate::proto::session_provider::SessionExt;
 use crate::provider::signer::dto::{CreateSignatureResponseDTO, Issuer};
 use crate::service::signature::dto::{CreateSignatureRequestDTO, SignatureStatusInfo};
 use crate::service::signature::error::SignatureServiceError;
 use crate::validator::permissions::RequiredPermissions;
-use crate::validator::{throw_if_org_id_not_matching_session, throw_if_org_not_matching_session};
+use crate::validator::throw_if_org_id_not_matching_session;
 
 impl SignatureService {
     pub async fn sign(
@@ -31,7 +30,6 @@ impl SignatureService {
             .get(
                 request.issuer,
                 &IdentifierRelations {
-                    organisation: Some(OrganisationRelations::default()),
                     did: Some(Default::default()),
                     key: Some(Default::default()),
                     certificates: Some(Default::default()),
@@ -41,13 +39,7 @@ impl SignatureService {
             .await
             .error_while("Loading issuer identifier")?
             .ok_or(SignatureServiceError::IdentifierNotFound(request.issuer))?;
-        let organisation_id = issuer
-            .organisation
-            .as_ref()
-            .ok_or(SignatureServiceError::MappingError(
-                "organisation is None".to_string(),
-            ))?
-            .id;
+        let organisation_id = issuer.organisation.id();
         throw_if_org_id_not_matching_session(&organisation_id, &*self.session_provider)
             .error_while("validating organisation")?;
 
@@ -110,7 +102,6 @@ impl SignatureService {
                 id.into(),
                 &RevocationListRelations {
                     issuer_identifier: Some(IdentifierRelations {
-                        organisation: Some(Default::default()),
                         ..Default::default()
                     }),
                     ..Default::default()
@@ -125,7 +116,7 @@ impl SignatureService {
             .ok_or(SignatureServiceError::MappingError(
                 "Missing revocation list issuer".to_string(),
             ))?;
-        throw_if_org_not_matching_session(issuer.organisation.as_ref(), &*self.session_provider)
+        throw_if_org_id_not_matching_session(&issuer.organisation.id(), &*self.session_provider)
             .error_while("validating organisation")?;
 
         revocation_method

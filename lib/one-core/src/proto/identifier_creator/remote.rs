@@ -80,10 +80,9 @@ impl IdentifierCreatorProto {
         {
             Some(identifier) => identifier,
             None => {
-                let organisation_id = organisation
+                let organisation = organisation
                     .as_ref()
-                    .ok_or(Error::MappingError("missing organisation".to_string()))?
-                    .id;
+                    .ok_or(Error::MappingError("missing organisation".to_string()))?;
                 let identifier = Identifier {
                     id: Uuid::new_v4().into(),
                     created_date: now,
@@ -93,8 +92,7 @@ impl IdentifierCreatorProto {
                     is_remote: did.did_type == DidType::Remote,
                     state: IdentifierState::Active,
                     deleted_at: None,
-                    organisation_id,
-                    organisation: organisation.to_owned(),
+                    organisation: organisation.to_owned().into(),
                     did: Some(did.to_owned()),
                     key: None,
                     certificates: None,
@@ -169,10 +167,9 @@ impl IdentifierCreatorProto {
         let identifier_id = Uuid::new_v4().into();
         let display_name = name.for_id(identifier_id);
 
-        let organisation_id = organisation
+        let organisation = organisation
             .as_ref()
-            .ok_or(Error::MappingError("missing organisation".to_string()))?
-            .id;
+            .ok_or(Error::MappingError("missing organisation".to_string()))?;
         let mut identifier = Identifier {
             id: identifier_id,
             created_date: now,
@@ -182,8 +179,7 @@ impl IdentifierCreatorProto {
             is_remote: true,
             state: IdentifierState::Active,
             deleted_at: None,
-            organisation_id,
-            organisation: organisation.to_owned(),
+            organisation: organisation.to_owned().into(),
             did: None,
             key: None,
             certificates: None,
@@ -197,7 +193,7 @@ impl IdentifierCreatorProto {
         let certificate = Certificate {
             id: Uuid::new_v4().into(),
             identifier_id,
-            organisation: organisation.to_owned().map(Into::into),
+            organisation: Some(organisation.to_owned().into()),
             created_date: now,
             last_modified: now,
             deleted_at: None,
@@ -266,7 +262,6 @@ impl IdentifierCreatorProto {
             if let Some(mut identifier) = identifier {
                 // Back-fill relations
                 identifier.key = Some(key.clone());
-                identifier.organisation = organisation.cloned();
                 return Ok((key, identifier));
             };
 
@@ -305,9 +300,10 @@ impl IdentifierCreatorProto {
             is_remote: true,
             state: IdentifierState::Active,
             deleted_at: None,
-            organisation_id: organisation_id
-                .ok_or(Error::MappingError("missing organisation".to_string()))?,
-            organisation: organisation.cloned(),
+            organisation: organisation
+                .ok_or(Error::MappingError("missing organisation".to_string()))?
+                .to_owned()
+                .into(),
             did: None,
             key: Some(key.clone()),
             certificates: None,

@@ -176,7 +176,6 @@ async fn test_register_wallet_unit() {
         .expect_get()
         .return_once(move |id, _| {
             Ok(Some(Identifier {
-                organisation_id: uuid::Uuid::new_v4().into(),
                 id,
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
@@ -185,7 +184,7 @@ async fn test_register_wallet_unit() {
                 is_remote: false,
                 state: IdentifierState::Active,
                 deleted_at: None,
-                organisation: None,
+                organisation: dummy_organisation(Some(uuid::Uuid::new_v4().into())).into(),
                 did: None,
                 key: Some(Key {
                     id: Uuid::new_v4().into(),
@@ -290,7 +289,6 @@ async fn test_register_wallet_unit_integrity_check() {
         .expect_get()
         .return_once(move |id, _| {
             Ok(Some(Identifier {
-                organisation_id: uuid::Uuid::new_v4().into(),
                 id,
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
@@ -299,7 +297,7 @@ async fn test_register_wallet_unit_integrity_check() {
                 is_remote: false,
                 state: IdentifierState::Active,
                 deleted_at: None,
-                organisation: None,
+                organisation: dummy_organisation(Some(uuid::Uuid::new_v4().into())).into(),
                 did: None,
                 key: Some(Key {
                     id: Uuid::new_v4().into(),

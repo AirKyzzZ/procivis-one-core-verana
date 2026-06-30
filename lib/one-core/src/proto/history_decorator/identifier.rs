@@ -77,7 +77,7 @@ impl IdentifierRepository for IdentifierHistoryDecorator {
 
     async fn create(&self, request: Identifier) -> Result<IdentifierId, DataLayerError> {
         let name = request.name.clone();
-        let organisation_id = request.organisation_id;
+        let organisation_id = request.organisation.id();
         let identifier_id = self.inner.create(request).await?;
 
         self.create_history(identifier_id, name, HistoryAction::Created, organisation_id)
@@ -99,7 +99,6 @@ impl IdentifierRepository for IdentifierHistoryDecorator {
                 .get(
                     *id,
                     &IdentifierRelations {
-                        organisation: Some(Default::default()),
                         ..Default::default()
                     },
                 )
@@ -114,7 +113,7 @@ impl IdentifierRepository for IdentifierHistoryDecorator {
                 } else {
                     HistoryAction::Reactivated
                 },
-                identifier.organisation_id,
+                identifier.organisation.id(),
             )
             .await;
         }
@@ -128,7 +127,6 @@ impl IdentifierRepository for IdentifierHistoryDecorator {
             .get(
                 *id,
                 &IdentifierRelations {
-                    organisation: Some(Default::default()),
                     ..Default::default()
                 },
             )
@@ -142,7 +140,7 @@ impl IdentifierRepository for IdentifierHistoryDecorator {
             identifier.id,
             identifier.name,
             HistoryAction::Deleted,
-            identifier.organisation_id,
+            identifier.organisation.id(),
         )
         .await;
 

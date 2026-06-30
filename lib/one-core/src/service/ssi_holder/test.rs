@@ -962,7 +962,7 @@ async fn test_accept_credential() {
                 did_method: "KEY".into(),
                 ..dummy_did()
             }),
-            organisation: Some(dummy_organisation(None)),
+            organisation: dummy_organisation(None).into(),
             ..dummy_identifier()
         }))
     });
@@ -1094,7 +1094,7 @@ async fn test_accept_credential_with_did() {
                     did_method: "KEY".into(),
                     ..dummy_did()
                 }),
-                organisation: Some(dummy_organisation(None)),
+                organisation: dummy_organisation(None).into(),
                 ..dummy_identifier()
             }))
         });
@@ -1330,7 +1330,7 @@ async fn test_accept_credential_wrong_tx_code() {
                     did_method: "KEY".into(),
                     ..dummy_did()
                 }),
-                organisation: Some(dummy_organisation(None)),
+                organisation: dummy_organisation(None).into(),
                 ..dummy_identifier()
             }))
         });
@@ -1746,7 +1746,6 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
         claims: None,
         profile: None,
         issuer_identifier: Some(Identifier {
-            organisation_id: uuid::Uuid::new_v4().into(),
             id: Uuid::new_v4().into(),
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
@@ -1755,7 +1754,7 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
             is_remote: true,
             state: IdentifierState::Active,
             deleted_at: None,
-            organisation: None,
+            organisation: dummy_organisation(Some(uuid::Uuid::new_v4().into())).into(),
             did: Some(Did {
                 deleted_at: None,
                 id: Uuid::new_v4().into(),
@@ -1879,7 +1878,7 @@ async fn test_accept_credential_identifier_org_mismatch() {
                 did_method: "KEY".into(),
                 ..dummy_did()
             }),
-            organisation: Some(dummy_organisation(Some(organisation_id))),
+            organisation: dummy_organisation(Some(organisation_id)).into(),
             ..dummy_identifier()
         }))
     });
@@ -1920,7 +1919,7 @@ async fn test_accept_interaction_credential_org_mismatch() {
                 did_method: "KEY".into(),
                 ..dummy_did()
             }),
-            organisation: Some(dummy_organisation(Some(session_organisation_id))),
+            organisation: dummy_organisation(Some(session_organisation_id)).into(),
             ..dummy_identifier()
         }))
     });
@@ -1981,7 +1980,7 @@ async fn test_reject_credential_credential_org_mismatch() {
                 did_method: "KEY".into(),
                 ..dummy_did()
             }),
-            organisation: Some(dummy_organisation(Some(session_organisation_id))),
+            organisation: dummy_organisation(Some(session_organisation_id)).into(),
             ..dummy_identifier()
         }))
     });

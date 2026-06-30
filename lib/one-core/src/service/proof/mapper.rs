@@ -593,19 +593,19 @@ pub(super) async fn get_holder_proof_detail(
         proof
             .verifier_identifier
             .as_ref()
-            .and_then(|identifier| identifier.organisation.as_ref()),
+            .map(|identifier| identifier.organisation.id()),
         proof
             .interaction
             .as_ref()
-            .and_then(|identifier| identifier.organisation.as_ref()),
+            .and_then(|interaction| interaction.organisation.as_ref())
+            .map(|organisation| organisation.id),
     ]
     .into_iter()
-    .find(|org| org.is_some())
     .flatten()
+    .next()
     .ok_or(ProofServiceError::MappingError(
         "Missing organisation".to_string(),
-    ))?
-    .id;
+    ))?;
 
     let redirect_uri = proof.redirect_uri.to_owned();
     let subscriber_information = proof.subscriber_information.to_owned();

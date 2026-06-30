@@ -329,10 +329,12 @@ pub(super) fn credential_list_model_to_repository_model(
             did: None,
             key: None,
             certificates: None,
-            organisation_id: credential
-                .issuer_identifier_organisation_id
-                .ok_or(DataLayerError::MappingError)?,
-            organisation: None,
+            organisation: Related::new(
+                credential
+                    .issuer_identifier_organisation_id
+                    .ok_or(DataLayerError::MappingError)?,
+                organisation_repository.to_owned(),
+            ),
             r#type: credential
                 .issuer_identifier_type
                 .ok_or(DataLayerError::MappingError)?

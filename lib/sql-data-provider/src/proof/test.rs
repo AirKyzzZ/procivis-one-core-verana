@@ -27,6 +27,7 @@ use one_core::repository::interaction_repository::{
     InteractionRepository, MockInteractionRepository,
 };
 use one_core::repository::key_repository::{KeyRepository, MockKeyRepository};
+use one_core::repository::organisation_repository::MockOrganisationRepository;
 use one_core::repository::proof_repository::ProofRepository;
 use one_core::repository::proof_schema_repository::{
     MockProofSchemaRepository, ProofSchemaRepository,
@@ -179,6 +180,7 @@ async fn setup(
             interaction_repository,
             key_repository,
             certificate_repository,
+            organisation_repository: Arc::new(MockOrganisationRepository::default()),
         }),
         db,
         organisation_id,
@@ -353,8 +355,7 @@ async fn test_create_proof_success() {
             is_remote: false,
             state: IdentifierState::Active,
             deleted_at: None,
-            organisation_id: uuid::Uuid::new_v4().into(),
-            organisation: None,
+            organisation: dummy_organisation(Some(uuid::Uuid::new_v4().into())).into(),
             did: Some(Did {
                 deleted_at: None,
                 id: did_id,
@@ -531,8 +532,7 @@ async fn test_get_proof_with_relations() {
                 is_remote: false,
                 state: IdentifierState::Active,
                 deleted_at: None,
-                organisation_id: uuid::Uuid::new_v4().into(),
-                organisation: None,
+                organisation: dummy_organisation(Some(uuid::Uuid::new_v4().into())).into(),
                 did: Some(Did {
                     deleted_at: None,
                     id: Uuid::new_v4().into(),
