@@ -58,17 +58,14 @@ use crate::provider::presentation_formatter::provider::PresentationFormatterProv
 use crate::provider::provider_directory::InitializationError;
 use crate::provider::verification_protocol::dto::{
     Feature, FormattedCredentialPresentation, InvitationResponseDTO,
-    PresentationDefinitionResponseDTO, PresentationDefinitionV2ResponseDTO,
-    PresentationDefinitionVersion, PresentationReference, ShareResponse, UpdateResponse,
-    VerificationProtocolCapabilities,
+    PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion, PresentationReference,
+    ShareResponse, UpdateResponse, VerificationProtocolCapabilities,
 };
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::mapper::proof_from_handle_invitation;
 use crate::provider::verification_protocol::model::CommonParams;
-use crate::provider::verification_protocol::openid4vp::mapper::create_open_id_for_vp_presentation_definition;
-use crate::provider::verification_protocol::openid4vp::model::OpenID4VPPresentationDefinition;
 use crate::provider::verification_protocol::{
-    FormatMapper, TypeToDescriptorMapper, VerificationProtocol, serialize_interaction_data,
+    FormatMapper, VerificationProtocol, serialize_interaction_data,
 };
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
@@ -382,19 +379,11 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
             )),
         }
     }
-    async fn holder_get_presentation_definition(
-        &self,
-        _proof: &Proof,
-        _context: serde_json::Value,
-    ) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError> {
-        Err(VerificationProtocolError::OperationNotSupported)
-    }
 
     async fn verifier_share_proof(
         &self,
         proof: &Proof,
         format_to_type_mapper: FormatMapper,
-        type_to_descriptor: TypeToDescriptorMapper,
         on_submission_callback: Option<BoxFuture<'static, ()>>,
         _params: Option<ShareProofRequestParamsDTO>,
     ) -> Result<ShareResponse, VerificationProtocolError> {
@@ -408,13 +397,11 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
         let interaction_id = Uuid::new_v4().into();
         let key_agreement = KeyAgreementKey::new_random();
 
-        let (presentation_definition, dcql_query, verifier_did, auth_fn_ble, auth_fn_mqtt) =
+        let (dcql_query, verifier_did, auth_fn_ble, auth_fn_mqtt) =
             prepare_proof_share(ProofShareParams {
                 proof,
-                interaction_id,
                 key_id,
                 format_to_type_mapper,
-                type_to_descriptor,
                 formatter_provider: &*self.credential_formatter_provider,
                 key_provider: &*self.key_provider,
                 key_algorithm_provider: self.key_algorithm_provider.clone(),
@@ -424,7 +411,6 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
         let params = AsyncVerifierFlowParams {
             proof_id: proof.id,
             dcql_query,
-            presentation_definition,
             did: verifier_did.did,
             interaction_id,
             proof_repository: self.proof_repository.clone(),
@@ -798,12 +784,7 @@ pub(super) async fn create_presentation(
             .error_while("formatting presentation")?;
         let PresentationReference::Dcql {
             credential_query_id,
-        } = credential_presentation.reference.to_owned()
-        else {
-            return Err(VerificationProtocolError::Failed(
-                "Incompatible presentation reference".to_string(),
-            ));
-        };
+        } = credential_presentation.reference.to_owned();
         vp_token
             .entry(credential_query_id)
             .and_modify(|presentations: &mut Vec<String>| {
@@ -817,11 +798,9 @@ pub(super) async fn create_presentation(
 
 pub(super) struct ProofShareParams<'a> {
     proof: &'a Proof,
-    interaction_id: InteractionId,
     key_id: KeyId,
 
     format_to_type_mapper: FormatMapper,
-    type_to_descriptor: TypeToDescriptorMapper,
 
     formatter_provider: &'a dyn CredentialFormatterProvider,
     key_provider: &'a dyn KeyProvider,
@@ -830,16 +809,7 @@ pub(super) struct ProofShareParams<'a> {
 
 pub(super) async fn prepare_proof_share(
     params: ProofShareParams<'_>,
-) -> Result<
-    (
-        OpenID4VPPresentationDefinition,
-        DcqlQuery,
-        Did,
-        AuthenticationFn,
-        AuthenticationFn,
-    ),
-    VerificationProtocolError,
-> {
+) -> Result<(DcqlQuery, Did, AuthenticationFn, AuthenticationFn), VerificationProtocolError> {
     let proof_schema = params
         .proof
         .schema
@@ -851,15 +821,6 @@ pub(super) async fn prepare_proof_share(
     let dcql_query = create_dcql_query(
         proof_schema,
         &params.format_to_type_mapper,
-        params.formatter_provider,
-    )
-    .await?;
-
-    let presentation_definition = create_open_id_for_vp_presentation_definition(
-        params.interaction_id,
-        proof_schema.clone(),
-        params.type_to_descriptor,
-        params.format_to_type_mapper,
         params.formatter_provider,
     )
     .await?;
@@ -904,7 +865,6 @@ pub(super) async fn prepare_proof_share(
     )?;
 
     Ok((
-        presentation_definition,
         dcql_query,
         verifier_did.to_owned(),
         auth_fn_ble,

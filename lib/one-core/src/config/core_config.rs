@@ -378,9 +378,6 @@ pub type VerificationProtocolConfig = ConfigBlock<String, VerificationProtocolTy
     AsRefStr,
 )]
 pub enum VerificationProtocolType {
-    #[serde(rename = "OPENID4VP_DRAFT20")]
-    #[strum(serialize = "OPENID4VP_DRAFT20")]
-    OpenId4VpDraft20,
     #[serde(rename = "OPENID4VP_FINAL1_SWIYU")]
     #[strum(serialize = "OPENID4VP_FINAL1_SWIYU")]
     OpenId4VpFinal1_0Swiyu,

@@ -59,7 +59,7 @@ async fn test_create_proof_success_without_related_key() {
         .proofs
         .create(CreateProofTestParams {
             proof_schema_id: proof_schema.id.to_string().into(),
-            protocol: "OPENID4VP_DRAFT20".into(),
+            protocol: "OPENID4VP_FINAL1".into(),
             verifier_did: did.id.to_string().into(),
             ..Default::default()
         })
@@ -72,7 +72,7 @@ async fn test_create_proof_success_without_related_key() {
     assert!(resp.get("id").is_some());
 
     let proof = context.db.proofs.get(&resp["id"].parse()).await;
-    assert_eq!(proof.protocol, "OPENID4VP_DRAFT20");
+    assert_eq!(proof.protocol, "OPENID4VP_FINAL1");
     assert_eq!(proof.transport, "HTTP");
     assert_history_count(&context, &proof.id.into(), HistoryAction::Created, 1).await;
 }
@@ -120,7 +120,7 @@ async fn test_create_proof_wrong_identifier_type() {
         .proofs
         .create(CreateProofTestParams {
             proof_schema_id: proof_schema.id.to_string().into(),
-            protocol: "MDOC_OPENID4VP".into(),
+            protocol: "OPENID4VP_FINAL1_HAIP".into(),
             verifier_did: did.id.to_string().into(),
             ..Default::default()
         })
@@ -174,7 +174,7 @@ async fn test_create_proof_success_with_related_key() {
         .proofs
         .create(CreateProofTestParams {
             proof_schema_id: proof_schema.id.to_string().into(),
-            protocol: "OPENID4VP_DRAFT20".into(),
+            protocol: "OPENID4VP_FINAL1".into(),
             verifier_did: did.id.to_string().into(),
             verifier_key: Some(key.id.to_string().into()),
             ..Default::default()
@@ -188,7 +188,7 @@ async fn test_create_proof_success_with_related_key() {
     assert!(resp.get("id").is_some());
 
     let proof = context.db.proofs.get(&resp["id"].parse()).await;
-    assert_eq!(proof.protocol, "OPENID4VP_DRAFT20");
+    assert_eq!(proof.protocol, "OPENID4VP_FINAL1");
 }
 
 #[tokio::test]
@@ -254,7 +254,7 @@ async fn test_create_proof_for_deactivated_did_returns_400() {
         .bearer_auth("test")
         .json(&json!({
           "proofSchemaId": proof_schema.id,
-          "verificationProtocol": "OPENID4VP_DRAFT20",
+          "verificationProtocol": "OPENID4VP_FINAL1",
           "verifierDid": did.id,
         }))
         .send()
@@ -357,7 +357,7 @@ async fn test_create_proof_mdoc_without_key_agreement_key() {
         .proofs
         .create(CreateProofTestParams {
             proof_schema_id: proof_schema.id.to_string().into(),
-            protocol: "OPENID4VP_DRAFT20".into(),
+            protocol: "OPENID4VP_FINAL1".into(),
             verifier_did: did.id.to_string().into(),
             ..Default::default()
         })
@@ -452,7 +452,7 @@ async fn test_create_proof_success_without_key_agreement_key() {
         .proofs
         .create(CreateProofTestParams {
             proof_schema_id: proof_schema.id.to_string().into(),
-            protocol: "OPENID4VP_DRAFT20".into(),
+            protocol: "OPENID4VP_FINAL1".into(),
             verifier_did: did.id.to_string().into(),
             ..Default::default()
         })
@@ -536,7 +536,7 @@ async fn test_create_proof_success_with_certificate() {
         .proofs
         .create_with_identifier(
             &proof_schema.id.to_string(),
-            "MDOC_OPENID4VP",
+            "OPENID4VP_FINAL1",
             &identifier.id,
             None,
         )
@@ -678,7 +678,7 @@ async fn test_create_proof_success_with_profile() {
         .proofs
         .create(CreateProofTestParams {
             proof_schema_id: proof_schema.id.to_string().into(),
-            protocol: "OPENID4VP_DRAFT20".into(),
+            protocol: "OPENID4VP_FINAL1".into(),
             verifier_did: did.id.to_string().into(),
             profile: Some(test_profile),
             ..Default::default()
@@ -692,7 +692,7 @@ async fn test_create_proof_success_with_profile() {
     assert!(resp.get("id").is_some());
 
     let proof = context.db.proofs.get(&resp["id"].parse()).await;
-    assert_eq!(proof.protocol, "OPENID4VP_DRAFT20");
+    assert_eq!(proof.protocol, "OPENID4VP_FINAL1");
     assert_eq!(proof.transport, "HTTP");
 
     // Verify the profile is correctly stored
@@ -746,7 +746,7 @@ async fn test_create_proof_success_with_webhook_url() {
         .proofs
         .create(CreateProofTestParams {
             proof_schema_id: proof_schema.id.to_string().into(),
-            protocol: "OPENID4VP_DRAFT20".into(),
+            protocol: "OPENID4VP_FINAL1".into(),
             verifier_did: did.id.to_string().into(),
             webhook_destination_url: Some(webhook_url),
             ..Default::default()
@@ -806,7 +806,7 @@ async fn test_create_proof_fails_with_engagement_on_non_iso_mdl_protocol() {
         .proofs
         .create(CreateProofTestParams {
             proof_schema_id: proof_schema.id.to_string().into(),
-            protocol: "OPENID4VP_DRAFT20".into(),
+            protocol: "OPENID4VP_FINAL1".into(),
             verifier_did: did.id.to_string().into(),
             engagement: Some("QR_CODE"),
             ..Default::default()

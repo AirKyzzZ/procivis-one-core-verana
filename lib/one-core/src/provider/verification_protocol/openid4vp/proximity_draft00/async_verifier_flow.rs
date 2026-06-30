@@ -20,12 +20,9 @@ use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::{JWTHeader, JWTPayload};
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
-use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;
 use crate::provider::verification_protocol::openid4vp::final1_0::mappers::encode_client_id_with_scheme;
 use crate::provider::verification_protocol::openid4vp::final1_0::model::AuthorizationRequest;
-use crate::provider::verification_protocol::openid4vp::model::{
-    ClientIdScheme, DcqlSubmission, OpenID4VPPresentationDefinition, PexSubmission,
-};
+use crate::provider::verification_protocol::openid4vp::model::{ClientIdScheme, DcqlSubmission};
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::dto::{
     ProtocolVersion, WithProtocolVersion,
 };
@@ -73,16 +70,10 @@ pub(super) enum HolderResponse {
 }
 
 pub(super) enum HolderSubmission {
-    V1(PexSubmission),
     V2(DcqlSubmission),
 }
 
 pub(super) enum SubmissionData {
-    V1 {
-        request: OpenID4VP20AuthorizationRequest,
-        submission: PexSubmission,
-        presentation_definition: OpenID4VPPresentationDefinition,
-    },
     V2 {
         request: AuthorizationRequest,
         submission: DcqlSubmission,
@@ -94,7 +85,6 @@ pub(super) enum SubmissionData {
 pub(super) struct AsyncVerifierFlowParams {
     pub proof_id: ProofId,
     pub dcql_query: DcqlQuery,
-    pub presentation_definition: OpenID4VPPresentationDefinition,
     pub did: DidValue,
     pub interaction_id: InteractionId,
     pub proof_repository: Arc<dyn ProofRepository>,
@@ -158,7 +148,6 @@ pub(super) async fn verifier_flow<C: WithProtocolVersion>(
 }
 
 enum Request {
-    V1(OpenID4VP20AuthorizationRequest),
     V2(AuthorizationRequest),
 }
 
@@ -195,11 +184,6 @@ async fn verifier_flow_internal<C: WithProtocolVersion>(
     let nonce = utilities::generate_alphanumeric(32);
 
     let (signed_request, request) = match context.protocol_version() {
-        ProtocolVersion::V1 => {
-            let (signed_request, request) =
-                get_request_v1(nonce.to_owned(), &params, auth_fn).await?;
-            (signed_request, Request::V1(request))
-        }
         ProtocolVersion::V2 => {
             let (signed_request, request) =
                 get_request_v2(nonce.to_owned(), &params, auth_fn).await?;
@@ -226,21 +210,11 @@ async fn verifier_flow_internal<C: WithProtocolVersion>(
     };
 
     let submission_data = match (holder_submission, request) {
-        (HolderSubmission::V1(submission), Request::V1(request)) => SubmissionData::V1 {
-            request,
-            submission,
-            presentation_definition: params.presentation_definition,
-        },
         (HolderSubmission::V2(submission), Request::V2(request)) => SubmissionData::V2 {
             request,
             submission,
             dcql_query: params.dcql_query,
         },
-        _ => {
-            return Err(VerificationProtocolError::Failed(
-                "Mismatch request/response".to_string(),
-            ));
-        }
     };
 
     let interaction_data =
@@ -258,26 +232,6 @@ async fn verifier_flow_internal<C: WithProtocolVersion>(
         .error_while("updating interaction")?;
     tracing::info!("{transport_type} verifier flow: finished, received proof submission");
     Ok(FlowState::Finished)
-}
-
-async fn get_request_v1(
-    nonce: String,
-    params: &AsyncVerifierFlowParams,
-    auth_fn: AuthenticationFn,
-) -> Result<(String, OpenID4VP20AuthorizationRequest), VerificationProtocolError> {
-    let request = OpenID4VP20AuthorizationRequest {
-        nonce: Some(nonce),
-        presentation_definition: Some(params.presentation_definition.clone()),
-        client_id: params.did.to_string(),
-        client_id_scheme: Some(ClientIdScheme::Did),
-        ..Default::default()
-    };
-    let signed_request = request
-        .clone()
-        .as_signed_jwt(&params.did, auth_fn)
-        .await
-        .error_while("creating signed request")?;
-    Ok((signed_request, request))
 }
 
 async fn get_request_v2(

@@ -5,12 +5,9 @@ use one_dto_mapper::{convert_inner, try_convert_inner};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use shared_types::{ClaimSchemaId, CredentialId};
-use standardized_types::jwk::{JwkUse, PublicJwk};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::config::core_config::{CoreConfig, KeyStorageType};
-use crate::error::ContextWithErrorCode;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::common::GetListResponse;
@@ -20,15 +17,11 @@ use crate::model::credential_schema::{
     CredentialSchemaClaimsNestedTypeView, CredentialSchemaClaimsNestedView,
 };
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
-use crate::model::did::KeyRole;
-use crate::model::identifier::{Identifier, IdentifierType};
-use crate::model::proof::Proof;
+use crate::model::identifier::Identifier;
 use crate::proto::identifier_creator::RemoteIdentifierRelation;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{CredentialClaim, CredentialClaimValue};
-use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::service::error::{BusinessLogicError, ServiceError};
-use crate::util::key_selection::KeyFilter;
 
 pub(crate) mod credential_schema_claim;
 pub(crate) mod etsi_lote;
@@ -249,91 +242,6 @@ pub(crate) fn extracted_credential_to_model(
     })
 }
 
-pub(crate) async fn get_encryption_key_jwk_from_proof(
-    proof: &Proof,
-    key_algorithm_provider: &dyn KeyAlgorithmProvider,
-    config: &CoreConfig,
-) -> Result<Option<PublicJwk>, ServiceError> {
-    let verifier_identifier =
-        proof
-            .verifier_identifier
-            .as_ref()
-            .ok_or(ServiceError::MappingError(
-                "verifier_identifier is None".to_string(),
-            ))?;
-
-    let verifier_key = proof
-        .verifier_key
-        .as_ref()
-        .ok_or(ServiceError::MappingError(
-            "verifier_key is None".to_string(),
-        ))?;
-
-    let encryption_key = match verifier_identifier.r#type {
-        IdentifierType::Key => verifier_key.to_owned(),
-        IdentifierType::Certificate => verifier_key.to_owned(),
-        IdentifierType::Did => {
-            let verifier_did =
-                verifier_identifier
-                    .did
-                    .as_ref()
-                    .ok_or(ServiceError::MappingError(
-                        "verifier_did is None".to_string(),
-                    ))?;
-
-            let key_filter = KeyFilter::did_role(KeyRole::KeyAgreement);
-            let encryption_key = verifier_did.find_key(&verifier_key.id, &key_filter).await;
-
-            let encryption_key = match encryption_key {
-                Ok(key) => Some(key),
-                Err(_) => verifier_did
-                    .find_first_matching_key(&key_filter)
-                    .await
-                    .error_while("finding matching key")?,
-            };
-
-            let Some(encryption_key) = encryption_key else {
-                return Ok(None);
-            };
-
-            encryption_key.key
-        }
-        IdentifierType::CertificateAuthority => {
-            return Err(ServiceError::MappingError(
-                "Invalid verifier identifier type CertificateAuthority".to_string(),
-            ));
-        }
-    };
-
-    let key_algorithm = key_algorithm_provider
-        .key_algorithm_from_key(&encryption_key)
-        .error_while("getting key algorithm")?;
-
-    /*
-     * TODO(ONE-5428): Azure vault doesn't work directly with encrypted JWE params
-     * This needs more investigation and a refactor to support creating shared secret
-     * through key storage
-     */
-    let r#use = if config
-        .key_storage
-        .get_type(&encryption_key.storage_type)
-        .error_while("getting key storage type")?
-        != KeyStorageType::AzureVault
-    {
-        Some(JwkUse::Encryption)
-    } else {
-        return Ok(None);
-    };
-
-    let mut jwk = key_algorithm
-        .reconstruct_key(&encryption_key.public_key, None, r#use)
-        .error_while("reconstructing encryption key")?
-        .public_key_as_jwk()
-        .error_while("creating JWK")?;
-    jwk.set_kid(encryption_key.id.to_string());
-    Ok(Some(jwk))
-}
-
 pub(crate) fn encode_cbor_base64<T: Serialize>(t: T) -> Result<String, FormatterError> {
     let mut bytes = vec![];
     ciborium::ser::into_writer(&t, &mut bytes)?;
@@ -534,7 +442,7 @@ mod tests {
     use crate::model::credential_schema::{KeyStorageSecurity, LayoutType};
     use crate::model::credential_schema_format::CredentialSchemaFormat;
     use crate::model::did::{Did, DidType};
-    use crate::model::identifier::IdentifierState;
+    use crate::model::identifier::{IdentifierState, IdentifierType};
     use crate::service::test_utilities::dummy_organisation;
 
     #[test]

@@ -442,7 +442,7 @@ impl OID4VPFinal1_0Service {
     ) -> Result<SubmissionRequestData, OID4VPFinal1_0ServiceError> {
         match request {
             OpenID4VPDirectPostRequestDTO {
-                submission_data: VpSubmissionData::Dcql(_) | VpSubmissionData::Pex(_),
+                submission_data: VpSubmissionData::Dcql(_),
                 state: Some(state),
             } => Ok(SubmissionRequestData {
                 submission_data: request.submission_data,

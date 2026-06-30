@@ -67,10 +67,10 @@ rusty_fork_test! {
                             preAuthorizedCodeExpiresIn: 300
                             tokenExpiresIn: 86400
             verificationProtocol:
-                OPENID4VP_DRAFT20:
+                OPENID4VP_FINAL1:
                     display: 'display'
                     order: 1
-                    type: 'OPENID4VP_DRAFT20'
+                    type: 'OPENID4VP_FINAL1'
                     params:
                         public:
                             useRequestUri: true

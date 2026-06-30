@@ -3,10 +3,9 @@ use std::collections::HashMap;
 use anyhow::Context;
 use dcql::DcqlQuery;
 use serde::{Deserialize, Serialize};
-use serde_with::{OneOrMany, serde_as, skip_serializing_none};
+use serde_with::skip_serializing_none;
 use shared_types::{ClaimSchemaId, InteractionId, KeyId};
-use standardized_types::jwa::{EncryptionAlgorithm, EncryptionKeyManagementAlgorithm};
-use standardized_types::jwk::{Jwks, PublicJwk};
+use standardized_types::jwk::PublicJwk;
 use standardized_types::openid4vp::{ClientMetadata, PresentationFormat, ResponseMode};
 use strum::{Display, EnumString};
 use time::OffsetDateTime;
@@ -51,14 +50,6 @@ pub struct DcqlSubmissionEudi {
     pub vp_token: HashMap<String, String>,
 }
 
-#[serde_as]
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct PexSubmission {
-    #[serde_as(as = "OneOrMany<_>")]
-    pub vp_token: Vec<String>,
-    pub presentation_submission: PresentationSubmissionMappingDTO,
-}
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ResponseSubmission {
     pub response: String,
@@ -69,14 +60,7 @@ pub struct ResponseSubmission {
 pub enum VpSubmissionData {
     Dcql(DcqlSubmission),
     DcqlEudi(DcqlSubmissionEudi),
-    Pex(PexSubmission),
     EncryptedResponse(ResponseSubmission),
-}
-
-#[derive(Debug)]
-pub(crate) struct EncryptionInfo {
-    pub verifier_key: PublicJwk,
-    pub alg: EncryptionAlgorithm,
 }
 
 #[skip_serializing_none]
@@ -87,59 +71,10 @@ pub struct OpenID4VPDirectPostRequestDTO {
     pub state: Option<InteractionId>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct PresentationSubmissionMappingDTO {
-    pub id: String,
-    pub definition_id: String,
-    pub descriptor_map: Vec<PresentationSubmissionDescriptorDTO>,
-}
-
-#[skip_serializing_none]
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct PresentationSubmissionDescriptorDTO {
-    pub id: String,
-    pub format: String,
-    pub path: String,
-    pub path_nested: Option<NestedPresentationSubmissionDescriptorDTO>,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct NestedPresentationSubmissionDescriptorDTO {
-    pub format: String,
-    pub path: String,
-}
-
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct OpenID4VPDirectPostResponseDTO {
     pub redirect_uri: Option<String>,
-}
-
-#[skip_serializing_none]
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Default)]
-pub struct OpenID4VPDraftClientMetadata {
-    #[serde(default)]
-    pub jwks: Option<Jwks>,
-    #[serde(default)]
-    pub jwks_uri: Option<String>,
-    pub vp_formats: HashMap<String, PresentationFormat>,
-    #[serde(default)]
-    pub authorization_encrypted_response_alg: Option<EncryptionKeyManagementAlgorithm>,
-    #[serde(default)]
-    pub authorization_encrypted_response_enc: Option<EncryptionAlgorithm>,
-    #[serde(default)]
-    pub id_token_encrypted_response_enc: Option<String>,
-    #[serde(default)]
-    pub id_token_encrypted_response_alg: Option<String>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub subject_syntax_types_supported: Vec<String>,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
-#[serde(untagged)]
-pub(crate) enum OpenID4VPClientMetadata {
-    Draft(OpenID4VPDraftClientMetadata),
-    Final1_0(ClientMetadata),
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, Default, PartialEq)]
@@ -157,9 +92,6 @@ pub struct OpenID4VPClientMetadataJwks {
 #[derive(Clone, Deserialize, Serialize, Debug)]
 pub(crate) struct OpenID4VPVerifierInteractionContent {
     pub nonce: String,
-    #[serde(default)]
-    #[serde(deserialize_with = "deserialize_with_serde_json")]
-    pub presentation_definition: Option<OpenID4VPPresentationDefinition>,
     #[serde(default)]
     #[serde(deserialize_with = "deserialize_with_serde_json")]
     pub dcql_query: Option<DcqlQuery>,
@@ -248,7 +180,7 @@ pub(crate) struct OpenID4VPHolderInteractionData {
     pub client_id: String,
     #[serde(default)]
     #[serde(deserialize_with = "deserialize_with_serde_json")]
-    pub client_metadata: Option<OpenID4VPClientMetadata>,
+    pub client_metadata: Option<ClientMetadata>,
     pub client_metadata_uri: Option<Url>,
     pub response_mode: Option<ResponseMode>,
     pub response_uri: Option<Url>,
@@ -272,12 +204,6 @@ pub(crate) struct OpenID4VPHolderInteractionData {
 // Apparently the indirection via functions is required: https://github.com/serde-rs/serde/issues/368
 pub(crate) fn default_presentation_url_scheme() -> String {
     "openid4vp".to_string()
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct OpenID4VCPresentationHolderParams {
-    pub supported_client_id_schemes: Vec<ClientIdScheme>,
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize, Serialize, Display, EnumString)]

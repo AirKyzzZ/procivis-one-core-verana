@@ -3,13 +3,13 @@ use std::sync::Arc;
 
 use futures_util::FutureExt;
 use itertools::Itertools;
-use shared_types::{ClaimId, CredentialId, InteractionId, ProofId, SerializedCredential};
+use shared_types::{CredentialId, InteractionId, ProofId, SerializedCredential};
 use url::Url;
 
 use super::SSIHolderService;
 use super::dto::{
-    HandleInvitationResultDTO, PresentationSubmitRequestDTO,
-    PresentationSubmitV2CredentialRequestDTO, PresentationSubmitV2RequestDTO,
+    HandleInvitationResultDTO, PresentationSubmitV2CredentialRequestDTO,
+    PresentationSubmitV2RequestDTO,
 };
 use super::error::HolderServiceError;
 use super::mapper::holder_did_key_jwk_from_credential;
@@ -19,17 +19,15 @@ use crate::config::validator::transport::{
     SelectedTransportType, validate_and_select_transport_type,
 };
 use crate::error::{ContextWithErrorCode, ErrorCodeMixin};
-use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::mapper::credential_schema_claim::presented_paths_to_disclosed_keys;
 use crate::mapper::oidc::detect_format_with_crypto_suite;
 use crate::model::claim::{Claim, ClaimRelations};
-use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::common::SortDirection;
 use crate::model::credential::{
-    Clearable, Credential, CredentialFilterValue, CredentialListQuery, CredentialRelations,
+    Clearable, CredentialFilterValue, CredentialListQuery, CredentialRelations,
     CredentialStateEnum, CredentialType, SortableCredentialColumn, UpdateCredentialRequest,
 };
-use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
+use crate::model::credential_schema::CredentialSchema;
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::identifier::IdentifierRelations;
 use crate::model::interaction::InteractionRelations;
@@ -112,208 +110,6 @@ impl SSIHolderService {
             .error_while("updating proof")?;
 
         tracing::info!("Rejected proof request {}", proof.id);
-        Ok(())
-    }
-
-    pub async fn submit_proof(
-        &self,
-        submission: PresentationSubmitRequestDTO,
-    ) -> Result<(), HolderServiceError> {
-        if submission.submit_credentials.is_empty() {
-            return Err(HolderServiceError::EmptyPresentationSubmission);
-        }
-
-        let Some(proof) = self
-            .proof_repository
-            .get_proof_by_interaction_id(
-                &submission.interaction_id,
-                &ProofRelations {
-                    interaction: Some(InteractionRelations {
-                        organisation: Some(Default::default()),
-                    }),
-                    ..Default::default()
-                },
-            )
-            .await
-            .error_while("getting proof")?
-        else {
-            return Err(HolderServiceError::MissingProofForInteraction(
-                submission.interaction_id,
-            ));
-        };
-
-        let mut credentials = HashMap::new();
-        for submitted_credentials in submission.submit_credentials.values() {
-            for submitted_credential in submitted_credentials {
-                let credential = self
-                    .credential_repository
-                    .get_credential(
-                        &submitted_credential.credential_id,
-                        &CredentialRelations {
-                            claims: Some(ClaimRelations {
-                                schema: Some(ClaimSchemaRelations::default()),
-                            }),
-                            holder_identifier: Some(IdentifierRelations {
-                                did: Some(Default::default()),
-                                key: Some(KeyRelations::default()),
-                                ..Default::default()
-                            }),
-                            key: Some(KeyRelations::default()),
-                            schema: Some(CredentialSchemaRelations::default()),
-                            ..Default::default()
-                        },
-                    )
-                    .await
-                    .error_while("getting credential")?
-                    .ok_or(HolderServiceError::MissingCredential(
-                        submitted_credential.credential_id,
-                    ))?;
-                credentials.insert(credential.id, credential);
-            }
-        }
-
-        let verification_protocol = self
-            .verification_protocol_provider
-            .get_protocol(&proof.protocol)?;
-
-        throw_if_endpoint_version_incompatible(
-            &*verification_protocol,
-            &PresentationDefinitionVersion::V1,
-        )
-        .error_while("checking endpoint version")?;
-        throw_if_proof_state_not_eq(&proof, ProofStateEnum::Requested)
-            .error_while("checking proof state")?;
-
-        let interaction_data: serde_json::Value = proof
-            .interaction
-            .as_ref()
-            .and_then(|interaction| interaction.data.as_ref())
-            .map(|interaction| serde_json::from_slice(interaction))
-            .ok_or_else(|| HolderServiceError::MappingError("missing interaction".into()))?
-            .map_err(|err| HolderServiceError::MappingError(err.to_string()))?;
-
-        let presentation_definition = verification_protocol
-            .holder_get_presentation_definition(&proof, interaction_data.clone())
-            .await
-            .error_while("getting presentation definition")?;
-
-        let requested_credentials: Vec<_> = presentation_definition
-            .request_groups
-            .into_iter()
-            .flat_map(|group| group.requested_credentials)
-            .collect();
-
-        let mut disclosed_claims = HashMap::<ClaimId, Claim>::new();
-        let mut credential_presentations: Vec<FormattedCredentialPresentation> = vec![];
-
-        for (requested_credential_id, submitted_credentials) in submission.submit_credentials {
-            let requested_credential = requested_credentials
-                .iter()
-                .find(|credential| credential.id == requested_credential_id)
-                .ok_or(HolderServiceError::MappingError(format!(
-                    "requested credential `{requested_credential_id}` not found"
-                )))?;
-
-            if requested_credential.multiple.unwrap_or(false) && submitted_credentials.len() > 1 {
-                return Err(HolderServiceError::MappingError(format!(
-                    "multiple credentials not supported for requested credential `{requested_credential_id}`"
-                )));
-            }
-
-            for submitted_credential in submitted_credentials {
-                let submitted_paths = requested_credential
-                    .fields
-                    .iter()
-                    .filter(|field| submitted_credential.submit_claims.contains(&field.id))
-                    .map(|field| {
-                        Ok(field
-                            .key_map
-                            .get(&submitted_credential.credential_id)
-                            .ok_or(HolderServiceError::MappingError(format!(
-                                "no matching key for credential_id `{}`",
-                                submitted_credential.credential_id
-                            )))?
-                            .to_owned())
-                    })
-                    .collect::<Result<Vec<String>, HolderServiceError>>()?;
-
-                let credential = credentials.get(&submitted_credential.credential_id).ok_or(
-                    HolderServiceError::MissingCredential(submitted_credential.credential_id),
-                )?;
-
-                let credential_blob_id = credential.credential_blob_id.ok_or(
-                    HolderServiceError::MissingCredentialData {
-                        credential_id: submitted_credential.credential_id,
-                    },
-                )?;
-
-                let db_blob_storage = self
-                    .blob_storage_provider
-                    .get_blob_storage(BlobStorageType::Db)?;
-                let credential_blob = db_blob_storage
-                    .get(&credential_blob_id)
-                    .await
-                    .error_while("getting credential blob")?
-                    .ok_or(HolderServiceError::MissingCredentialData {
-                        credential_id: submitted_credential.credential_id,
-                    })?;
-
-                let credential_data = credential_blob.value.as_slice();
-                let credential_content = std::str::from_utf8(credential_data)
-                    .map_err(|e| HolderServiceError::MappingError(e.to_string()))?
-                    .into();
-
-                let credential_schema =
-                    credential
-                        .schema
-                        .as_ref()
-                        .ok_or(HolderServiceError::MappingError(
-                            "credential_schema missing".to_string(),
-                        ))?;
-
-                disclosed_claims.extend(disclosed_claims_for_credential(
-                    credential,
-                    &submitted_paths,
-                )?);
-
-                let formatter = self
-                    .formatter_for_blob_and_schema(&credential_content, credential_schema)
-                    .await?;
-                let credential_presentation = CredentialPresentation {
-                    credential: credential.clone(),
-                    token: credential_content,
-                    disclosed_keys: presented_paths_to_disclosed_keys(&submitted_paths, credential)
-                        .await
-                        .error_while("mapping presented paths to disclosed keys")?,
-                };
-                let (holder_did, key, jwk_key_id) =
-                    holder_did_key_jwk_from_credential(credential).await?;
-                let presentation = self
-                    .prepare_credential_presentation(credential_presentation, &*formatter)
-                    .await?;
-
-                let presented_credential = FormattedCredentialPresentation {
-                    presentation,
-                    credential_schema: credential_schema.clone(),
-                    reference: PresentationReference::PresentationExchange(
-                        requested_credential.to_owned(),
-                    ),
-                    holder_did,
-                    key,
-                    jwk_key_id,
-                };
-                credential_presentations.push(presented_credential);
-            }
-        }
-
-        self.submit_and_update_proof(
-            &proof,
-            &*verification_protocol,
-            credential_presentations,
-            disclosed_claims.into_values().collect(),
-        )
-        .await?;
-        tracing::info!("Submitted presentation V1 for proof request {}", proof.id);
         Ok(())
     }
 
@@ -966,60 +762,4 @@ fn is_selected_claim(
             || claim.path.starts_with(&format!("{}/", &selected_path))
     });
     Ok(claim.required || is_selected || is_child_or_parent_of_selected)
-}
-
-fn disclosed_claims_for_credential(
-    credential: &Credential,
-    submitted_paths: &[String],
-) -> Result<HashMap<ClaimId, Claim>, HolderServiceError> {
-    let claims = credential
-        .claims
-        .as_ref()
-        .ok_or(HolderServiceError::MappingError(
-            "claims missing".to_string(),
-        ))?
-        .iter()
-        .filter(|claim| claim.schema.as_ref().is_some_and(|schema| !schema.metadata))
-        // parents before children
-        .sorted_by_key(|claim| &claim.path);
-
-    let mut result = HashMap::<ClaimId, Claim>::new();
-    for claim in claims {
-        let claim_path = &claim.path;
-        let mut disclosed = false;
-        for submitted_path in submitted_paths {
-            // explicitly submitted
-            if claim_path == submitted_path ||
-            // parent claims of submitted (all levels transitively)
-            submitted_path.starts_with(&format!("{claim_path}{NESTED_CLAIM_MARKER}")) ||
-            // child claims of submitted (all levels transitively)
-            claim_path.starts_with(&format!("{submitted_path}{NESTED_CLAIM_MARKER}"))
-            {
-                disclosed = true;
-                break;
-            }
-        }
-
-        // non-selectively-disclosable (direct) children of disclosed claims
-        // or non-selectively-disclosable root claims
-        if !disclosed
-            && !claim.selectively_disclosable
-            && claim_path
-                .rsplit_once(NESTED_CLAIM_MARKER)
-                .is_none_or(|(parent_path, _)| {
-                    result
-                        .values()
-                        .map(|claim| claim.path.as_str())
-                        .contains(&parent_path)
-                })
-        {
-            disclosed = true;
-        }
-
-        if disclosed {
-            result.insert(claim.id, claim.to_owned());
-        }
-    }
-
-    Ok(result)
 }

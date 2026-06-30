@@ -8,18 +8,6 @@ use crate::model::interaction::InteractionType;
 use crate::provider::issuance_protocol::model::OpenID4VCITxCode;
 
 #[derive(Clone, Debug)]
-pub struct PresentationSubmitRequestDTO {
-    pub interaction_id: InteractionId,
-    pub submit_credentials: HashMap<String, Vec<PresentationSubmitCredentialRequestDTO>>,
-}
-
-#[derive(Clone, Debug)]
-pub struct PresentationSubmitCredentialRequestDTO {
-    pub credential_id: CredentialId,
-    pub submit_claims: Vec<String>,
-}
-
-#[derive(Clone, Debug)]
 pub struct PresentationSubmitV2RequestDTO {
     pub interaction_id: InteractionId,
     pub submission: HashMap<String, Vec<PresentationSubmitV2CredentialRequestDTO>>,

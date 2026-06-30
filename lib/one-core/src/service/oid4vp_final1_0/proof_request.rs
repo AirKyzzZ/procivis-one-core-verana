@@ -33,7 +33,7 @@ pub(crate) fn generate_authorization_request_params_final1_0(
         response_type: Some("vp_token".to_string()),
         response_mode: Some(determine_response_mode_final1_0(&client_metadata)),
         client_id,
-        client_metadata: Some(client_metadata.into()),
+        client_metadata: Some(client_metadata),
         response_uri: Some(
             Url::parse(&response_uri)
                 .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?,

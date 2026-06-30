@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use anyhow::Context;
 use futures::FutureExt;
 use futures::future::BoxFuture;
@@ -84,13 +82,6 @@ impl ProofService {
                         .context("BLE interaction data deserialization")?;
 
                 let (state, submission_data) = match interaction_data.protocol_data {
-                    BLEVerifierProtocolData::V1 {
-                        submission: Some(submission),
-                        ..
-                    } => (
-                        Uuid::from_str(&submission.presentation_submission.definition_id)?.into(),
-                        VpSubmissionData::Pex(submission),
-                    ),
                     BLEVerifierProtocolData::V2 {
                         submission: Some(submission),
                         ..
@@ -118,10 +109,6 @@ impl ProofService {
                     .context("MQTT interaction data deserialization")?;
 
                 let (state, submission_data) = match interaction_data.protocol_data {
-                    MQTTVerifierProtocolData::V1 { submission, .. } => (
-                        Uuid::from_str(&submission.presentation_submission.definition_id)?.into(),
-                        VpSubmissionData::Pex(submission),
-                    ),
                     MQTTVerifierProtocolData::V2 { submission, .. } => {
                         (Uuid::new_v4().into(), VpSubmissionData::Dcql(submission))
                     }

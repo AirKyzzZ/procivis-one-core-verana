@@ -8,8 +8,7 @@ use url::Url;
 use crate::provider::verification_protocol::model::CommonParams;
 use crate::provider::verification_protocol::openid4vp::mapper::deserialize_with_serde_json;
 use crate::provider::verification_protocol::openid4vp::model::{
-    ClientIdScheme, OpenID4VCRedirectUriParams, OpenID4VPClientMetadata,
-    default_presentation_url_scheme,
+    ClientIdScheme, OpenID4VCRedirectUriParams, default_presentation_url_scheme,
 };
 
 #[derive(Debug, Clone, Deserialize)]
@@ -97,7 +96,7 @@ pub(crate) struct AuthorizationRequest {
     pub response_uri: Option<Url>,
 
     #[serde(default, deserialize_with = "deserialize_with_serde_json")]
-    pub client_metadata: Option<OpenID4VPClientMetadata>,
+    pub client_metadata: Option<ClientMetadata>,
 
     #[serde(default)]
     pub dcql_query: Option<DcqlQuery>,

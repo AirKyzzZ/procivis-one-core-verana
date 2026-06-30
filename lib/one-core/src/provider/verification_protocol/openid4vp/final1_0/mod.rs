@@ -44,9 +44,8 @@ use crate::provider::presentation_formatter::provider::PresentationFormatterProv
 use crate::provider::provider_directory::InitializationError;
 use crate::provider::verification_protocol::dto::{
     Feature, FormattedCredentialPresentation, InvitationResponseDTO,
-    PresentationDefinitionResponseDTO, PresentationDefinitionV2ResponseDTO,
-    PresentationDefinitionVersion, PresentationReference, ShareResponse, UpdateResponse,
-    VerificationProtocolCapabilities,
+    PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion, PresentationReference,
+    ShareResponse, UpdateResponse, VerificationProtocolCapabilities,
 };
 use crate::provider::verification_protocol::mapper::{
     interaction_from_handle_invitation, proof_from_handle_invitation,
@@ -54,12 +53,11 @@ use crate::provider::verification_protocol::mapper::{
 use crate::provider::verification_protocol::openid4vp::dcql::get_presentation_definition_v2;
 use crate::provider::verification_protocol::openid4vp::final1_0::mappers::create_open_id_for_vp_client_metadata_final1_0;
 use crate::provider::verification_protocol::openid4vp::model::{
-    ClientIdScheme, DcqlSubmission, JwePayload, OpenID4VPClientMetadata,
-    OpenID4VPDirectPostResponseDTO, OpenID4VPHolderInteractionData,
-    OpenID4VPVerifierInteractionContent, VpSubmissionData,
+    ClientIdScheme, DcqlSubmission, JwePayload, OpenID4VPDirectPostResponseDTO,
+    OpenID4VPHolderInteractionData, OpenID4VPVerifierInteractionContent, VpSubmissionData,
 };
 use crate::provider::verification_protocol::openid4vp::{
-    FormatMapper, TypeToDescriptorMapper, VerificationProtocolError, get_client_id_scheme,
+    FormatMapper, VerificationProtocolError, get_client_id_scheme,
 };
 use crate::provider::verification_protocol::{
     VerificationProtocol, deserialize_interaction_data, serialize_interaction_data,
@@ -171,9 +169,7 @@ impl OpenID4VPFinal1_0 {
         &self,
         interaction_data: &OpenID4VPHolderInteractionData,
     ) -> Result<Option<EncryptionInfo>, VerificationProtocolError> {
-        let Some(OpenID4VPClientMetadata::Final1_0(mut client_metadata)) =
-            interaction_data.client_metadata.clone()
-        else {
+        let Some(mut client_metadata) = interaction_data.client_metadata.clone() else {
             return Err(VerificationProtocolError::InvalidRequest(
                 "failed to parse interaction_data".to_string(),
             ));
@@ -201,10 +197,9 @@ impl OpenID4VPFinal1_0 {
 
             client_metadata.jwks = jwks.json().error_while("parsing JWKs")?;
         }
-        let Some(verifier_key) = encryption_key_from_metadata(
-            client_metadata.into(),
-            self.key_algorithm_provider.as_ref(),
-        ) else {
+        let Some(verifier_key) =
+            encryption_key_from_metadata(client_metadata, self.key_algorithm_provider.as_ref())
+        else {
             return Ok(None);
         };
         Ok(Some(EncryptionInfo {
@@ -245,12 +240,7 @@ impl OpenID4VPFinal1_0 {
         for credential_presentation in credential_presentations {
             let PresentationReference::Dcql {
                 credential_query_id,
-            } = credential_presentation.reference.clone()
-            else {
-                return Err(VerificationProtocolError::Failed(
-                    "Incompatible presentation reference".to_string(),
-                ));
-            };
+            } = credential_presentation.reference.clone();
 
             // Look up the credential query to check require_cryptographic_holder_binding
             let require_holder_binding = interaction_data
@@ -348,9 +338,7 @@ impl OpenID4VPFinal1_0 {
                 authorization_request.try_into()?;
             interaction_data.verifier_details = verifier_details;
             if let Some(predefined_metadata) = &self.params.predefined_client_metadata {
-                interaction_data.client_metadata = Some(OpenID4VPClientMetadata::Final1_0(
-                    predefined_metadata.clone(),
-                ));
+                interaction_data.client_metadata = Some(predefined_metadata.clone());
             }
             interaction_data
         };
@@ -406,14 +394,6 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
                 || query_has_key(DCQL_QUERY_VALUE_QUERY_PARAM_KEY)
                 || query_has_key(REQUEST_URI_QUERY_PARAM_KEY)
                 || query_has_key(REQUEST_QUERY_PARAM_KEY))
-    }
-
-    async fn holder_get_presentation_definition(
-        &self,
-        _proof: &Proof,
-        _context: Value,
-    ) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError> {
-        Err(VerificationProtocolError::OperationNotSupported)
     }
 
     fn get_capabilities(&self) -> VerificationProtocolCapabilities {
@@ -548,7 +528,6 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
         &self,
         proof: &Proof,
         format_to_type_mapper: FormatMapper,
-        _type_to_descriptor: TypeToDescriptorMapper,
         _callback: Option<BoxFuture<'static, ()>>,
         params: Option<ShareProofRequestParamsDTO>,
     ) -> Result<ShareResponse, VerificationProtocolError> {
@@ -665,7 +644,6 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
 
         let interaction_content = OpenID4VPVerifierInteractionContent {
             nonce,
-            presentation_definition: None,
             client_id: authorization_request.client_id.clone(),
             dcql_query: authorization_request.dcql_query.clone(),
             encryption_key,
@@ -757,8 +735,7 @@ fn format_presentation_context(
                 "response_uri is None".to_string(),
             ))?;
     let ctx = if presentation_format == FormatType::Mdoc {
-        let Some(OpenID4VPClientMetadata::Final1_0(metadata)) = &interaction_data.client_metadata
-        else {
+        let Some(metadata) = &interaction_data.client_metadata else {
             return Err(VerificationProtocolError::Failed(
                 "missing or invalid client_metadata".to_string(),
             ));

@@ -6,7 +6,6 @@ use url::Url;
 use super::VerificationProtocol;
 use super::decorators::CapabilityChecked;
 use super::iso_mdl::IsoMdl;
-use super::openid4vp::draft20::OpenID4VP20HTTP;
 use super::openid4vp::final1_0::OpenID4VPFinal1_0;
 use super::openid4vp::final1_0_swiyu::{OpenID4VPFinalSwiyu, swiyu_to_final_params};
 use super::openid4vp::proximity_draft00::OpenID4VPProximityDraft00;
@@ -24,7 +23,6 @@ use crate::proto::swiyu_http_client;
 use crate::proto::trust_information::TrustInformationProvider;
 use crate::proto::wrp_validator::WRPValidator;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
-use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -93,7 +91,6 @@ fn initialize_provider(
     identifier_creator: &Arc<dyn IdentifierCreator>,
     ble: &Option<BleWaiter>,
     client: &Arc<dyn HttpClient>,
-    openid_metadata_cache: &Arc<dyn OpenIDMetadataFetcher>,
     mqtt_client: &Option<Arc<dyn MqttClient>>,
     nfc_hce: &Option<Arc<dyn NfcHce>>,
     history_repository: &Arc<dyn HistoryRepository>,
@@ -121,22 +118,6 @@ fn initialize_provider(
             blob_storage_provider.clone(),
             trust_information_provider.clone(),
             client.clone(),
-            fields.merge_fields(),
-            core_config.clone(),
-        )?),
-        VerificationProtocolType::OpenId4VpDraft20 => Arc::new(initialize_openid4vp_draft20(
-            name.to_owned(),
-            core_base_url.clone(),
-            credential_formatter_provider.clone(),
-            presentation_formatter_provider.clone(),
-            did_method_provider.clone(),
-            key_algorithm_provider.clone(),
-            key_provider.clone(),
-            certificate_validator.clone(),
-            credential_repository.clone(),
-            interaction_repository.clone(),
-            client.clone(),
-            openid_metadata_cache.clone(),
             fields.merge_fields(),
             core_config.clone(),
         )?),
@@ -234,7 +215,6 @@ pub(crate) fn verification_protocol_provider_from_config(
     identifier_creator: Arc<dyn IdentifierCreator>,
     ble: Option<BleWaiter>,
     client: Arc<dyn HttpClient>,
-    openid_metadata_cache: Arc<dyn OpenIDMetadataFetcher>,
     mqtt_client: Option<Arc<dyn MqttClient>>,
     nfc_hce: Option<Arc<dyn NfcHce>>,
     history_repository: Arc<dyn HistoryRepository>,
@@ -266,7 +246,6 @@ pub(crate) fn verification_protocol_provider_from_config(
                 &identifier_creator,
                 &ble,
                 &client,
-                &openid_metadata_cache,
                 &mqtt_client,
                 &nfc_hce,
                 &history_repository,
@@ -287,39 +266,4 @@ pub(crate) fn verification_protocol_provider_from_config(
     .error_while("initializing verification protocol providers")?;
 
     Ok(Arc::new(directory))
-}
-
-#[expect(clippy::too_many_arguments)]
-fn initialize_openid4vp_draft20(
-    config_id: String,
-    core_base_url: Option<String>,
-    credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
-    presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
-    did_method_provider: Arc<dyn DidMethodProvider>,
-    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-    key_provider: Arc<dyn KeyProvider>,
-    certificate_validator: Arc<dyn CertificateValidator>,
-    credential_repository: Arc<dyn CredentialRepository>,
-    interaction_repository: Arc<dyn InteractionRepository>,
-    client: Arc<dyn HttpClient>,
-    openid_metadata_cache: Arc<dyn OpenIDMetadataFetcher>,
-    params: serde_json::Value,
-    config: Arc<CoreConfig>,
-) -> Result<OpenID4VP20HTTP, InitializationError> {
-    OpenID4VP20HTTP::new(
-        config_id,
-        core_base_url,
-        credential_formatter_provider,
-        presentation_formatter_provider,
-        did_method_provider,
-        key_algorithm_provider,
-        key_provider,
-        certificate_validator,
-        credential_repository,
-        interaction_repository,
-        client,
-        openid_metadata_cache,
-        params,
-        config,
-    )
 }

@@ -9,7 +9,7 @@ use serde_json::json;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
-use crate::fixtures::presentation::dummy_presentations;
+use crate::fixtures::presentation::{dummy_presentations, dummy_single_credential_presentations};
 use crate::fixtures::{
     self, TestingDidParams, TestingIdentifierParams, create_credential_schema_with_claims,
     create_proof, create_proof_schema, get_blob, get_proof,
@@ -53,35 +53,24 @@ async fn test_direct_post_one_credential_correct() {
 
     let interaction_data = json!({
         "nonce": nonce,
-        "presentation_definition": {
-            "id": "75fcc8e1-a14c-4509-9831-993c5fb37e26",
-            "input_descriptors": [{
-                "format": {
-                    "jwt_vc_json": {
-                        "alg": ["EdDSA", "ES256"]
+        "dcql_query": {
+            "credentials": [{
+                "claims": [
+                    {
+                        "id": new_claim_schemas[0].0,
+                        "path": ["credentialSubject", "cat1"],
+                        "required": true
+                    },
+                    {
+                        "id": new_claim_schemas[1].0,
+                        "path": ["credentialSubject", "cat2"],
+                        "required": false
                     }
-                },
-                "id": "input_0",
-                "constraints": {
-                    "fields": [
-                        {
-                            "path": ["$.credentialSchema.id"],
-                            "filter": {
-                                "type": "string",
-                                "const": credential_schema.schema_id().await.unwrap()
-                            }
-                        },
-                        {
-                            "id": new_claim_schemas[0].0,
-                            "path": ["$.vc.credentialSubject.cat1"],
-                            "optional": false
-                        },
-                        {
-                            "id": new_claim_schemas[1].0,
-                            "path": ["$.vc.credentialSubject.cat2"],
-                            "optional": true
-                        }
-                    ]
+                ],
+                "id": credential_schema.schema_id().await.unwrap(),
+                "format": "jwt_vc_json",
+                "meta": {
+                    "type_values": [["https://www.w3.org/2018/credentials#VerifiableCredential"]],
                 }
             }]
         },
@@ -104,7 +93,7 @@ async fn test_direct_post_one_credential_correct() {
         Some(&proof_schema),
         ProofStateEnum::Pending,
         ProofRole::Verifier,
-        "OPENID4VP_DRAFT20",
+        "OPENID4VP_FINAL1",
         Some(&interaction),
         Some(&verifier_key),
         None,
@@ -112,35 +101,18 @@ async fn test_direct_post_one_credential_correct() {
     )
     .await;
 
-    let presentation_submission = json!({
-        "definition_id": interaction.id,
-        "descriptor_map": [
-            {
-                "format": "jwt_vp_json",
-                "id": "input_0",
-                "path": "$",
-                "path_nested": {
-                        "format": "jwt_vc_json",
-                        "path": "$.verifiableCredential[0]"
-                    }
-            },
-        ],
-        "id": "318ea550-dbb6-4d6a-9cf2-575bad15c6da"
-    });
-
     let (_, token2) = dummy_presentations().await;
+    let vp_token = json!({
+        credential_schema.schema_id().await.unwrap(): [token2]
+    });
     let params = [
-        (
-            "presentation_submission",
-            presentation_submission.to_string(),
-        ),
-        ("vp_token", token2),
+        ("vp_token", vp_token.to_string()),
         ("state", interaction.id.to_string()),
     ];
 
     // WHEN
     let url = format!(
-        "{}/ssi/openid4vp/draft-20/response",
+        "{}/ssi/openid4vp/final-1.0/response",
         context.config.app.core_base_url
     );
     let resp = utils::client()
@@ -483,28 +455,24 @@ async fn test_direct_post_one_credential_missing_required_claim() {
     let base_url = format!("http://{}", listener.local_addr().unwrap());
     let interaction_data = json!({
         "nonce": nonce,
-        "presentation_definition": {
-            "id": "75fcc8e1-a14c-4509-9831-993c5fb37e26",
-            "input_descriptors": [{
-                "format": {
-                    "jwt_vc_json": {
-                        "alg": ["EdDSA", "ES256"]
+        "dcql_query": {
+            "credentials": [{
+                "claims": [
+                    {
+                        "id": new_claim_schemas[0].0,
+                        "path": ["credentialSubject", "cat1"],
+                        "required": true
+                    },
+                    {
+                        "id": new_claim_schemas[1].0,
+                        "path": ["credentialSubject", "cat2"],
+                        "required": true
                     }
-                },
-                "id": "input_0",
-                "constraints": {
-                    "fields": [
-                        {
-                            "id": new_claim_schemas[0].0,
-                            "path": ["$.vc.credentialSubject.cat1"],
-                            "optional": false
-                        },
-                        {
-                            "id": new_claim_schemas[1].0,
-                            "path": ["$.vc.credentialSubject.cat2"],
-                            "optional": false
-                        }
-                    ]
+                ],
+                "id": credential_schema.schema_id().await.unwrap(),
+                "format": "jwt_vc_json",
+                "meta": {
+                    "type_values": [["https://www.w3.org/2018/credentials#VerifiableCredential"]],
                 }
             }]
         },
@@ -527,7 +495,7 @@ async fn test_direct_post_one_credential_missing_required_claim() {
         Some(&proof_schema),
         ProofStateEnum::Pending,
         ProofRole::Verifier,
-        "OPENID4VP_DRAFT20",
+        "OPENID4VP_FINAL1",
         Some(&interaction),
         Some(&verifier_key),
         None,
@@ -535,36 +503,19 @@ async fn test_direct_post_one_credential_missing_required_claim() {
     )
     .await;
 
-    let presentation_submission = json!({
-        "definition_id": interaction.id,
-        "descriptor_map": [
-            {
-                "format": "jwt_vp_json",
-                "id": "input_0",
-                "path": "$",
-                "path_nested": {
-                        "format": "jwt_vc_json",
-                        "path": "$.verifiableCredential[0]"
-                    }
-            },
-        ],
-        "id": "318ea550-dbb6-4d6a-9cf2-575bad15c6da"
-    });
-
     let (_, token2) = dummy_presentations().await;
+    let vp_token = json!({
+        credential_schema.schema_id().await.unwrap(): [token2]
+    });
     let params = [
-        (
-            "presentation_submission",
-            presentation_submission.to_string(),
-        ),
-        ("vp_token", token2),
+        ("vp_token", vp_token.to_string()),
         ("state", interaction.id.to_string()),
     ];
 
     // WHEN
     let _handle = run_server(listener, config, &db_conn).await;
 
-    let url = format!("{base_url}/ssi/openid4vp/draft-20/response");
+    let url = format!("{base_url}/ssi/openid4vp/final-1.0/response");
 
     let resp = utils::client()
         .post(url)
@@ -663,84 +614,49 @@ async fn test_direct_post_multiple_presentations() {
 
     let interaction_data = json!({
         "nonce": nonce,
-        "presentation_definition": {
-            "id": "75fcc8e1-a14c-4509-9831-993c5fb37e26",
-            "input_descriptors": [
+        "dcql_query": {
+            "credentials": [
             {
-                "format": {
-                    "jwt_vc_json": {
-                        "alg": ["EdDSA", "ES256"]
-                    }
-                },
-                "id": "input_0",
-                "constraints": {
-                    "fields": [
-                        {
-                            "path": ["$.credentialSchema.id"],
-                            "filter": {
-                                "type": "string",
-                                "const": credential_schema1.schema_id().await.unwrap()
-                            }
-                        },
-                        {
-                            "id": credential1_claims[0].0,
-                            "path": ["$.vc.credentialSubject.name1"],
-                            "optional": false
-                        },
-                    ]
+                "claims": [{
+                    "id": credential1_claims[0].0,
+                    "path": ["credentialSubject", "name1"],
+                    "required": true
+                }],
+                "id": credential_schema1.schema_id().await.unwrap(),
+                "format": "jwt_vc_json",
+                "meta": {
+                    "type_values": [["https://www.w3.org/2018/credentials#VerifiableCredential"]],
                 }
             },
             {
-                "format": {
-                    "jwt_vc_json": {
-                        "alg": ["EdDSA", "ES256"]
-                    }
-                },
-                "id": "input_1",
-                "constraints": {
-                    "fields": [
-                        {
-                            "path": ["$.credentialSchema.id"],
-                            "filter": {
-                                "type": "string",
-                                "const": credential_schema2.schema_id().await.unwrap()
-                            }
-                        },
-                        {
-                            "id": credential2_claims[0].0,
-                            "path": ["$.vc.credentialSubject.pet1"],
-                            "optional": false
-                        },
-                    ]
+                "claims": [{
+                    "id": credential2_claims[0].0,
+                    "path": ["credentialSubject", "pet1"],
+                    "required": true
+                }],
+                "id": credential_schema2.schema_id().await.unwrap(),
+                "format": "jwt_vc_json",
+                "meta": {
+                    "type_values": [["https://www.w3.org/2018/credentials#VerifiableCredential"]],
                 }
             },
             {
-                "format": {
-                    "jwt_vc_json": {
-                        "alg": ["EdDSA", "ES256"]
+                "claims": [
+                    {
+                        "id": credential3_claims[0].0,
+                        "path": ["credentialSubject", "cat1"],
+                        "required": true
+                    },
+                    {
+                        "id": credential3_claims[1].0,
+                        "path": ["credentialSubject", "cat2"],
+                        "required": false
                     }
-                },
-                "id": "input_2",
-                "constraints": {
-                    "fields": [
-                        {
-                            "path": ["$.credentialSchema.id"],
-                            "filter": {
-                                "type": "string",
-                                "const": credential_schema3.schema_id().await.unwrap()
-                            }
-                        },
-                        {
-                            "id": credential3_claims[0].0,
-                            "path": ["$.vc.credentialSubject.cat1"],
-                            "optional": false
-                        },
-                        {
-                            "id": credential3_claims[1].0,
-                            "path": ["$.vc.credentialSubject.cat2"],
-                            "optional": true
-                        },
-                    ]
+                ],
+                "id": credential_schema3.schema_id().await.unwrap(),
+                "format": "jwt_vc_json",
+                "meta": {
+                    "type_values": [["https://www.w3.org/2018/credentials#VerifiableCredential"]],
                 }
             }]
         },
@@ -763,7 +679,7 @@ async fn test_direct_post_multiple_presentations() {
         Some(&proof_schema),
         ProofStateEnum::Pending,
         ProofRole::Verifier,
-        "OPENID4VP_DRAFT20",
+        "OPENID4VP_FINAL1",
         Some(&interaction),
         Some(&verifier_key),
         None,
@@ -771,53 +687,21 @@ async fn test_direct_post_multiple_presentations() {
     )
     .await;
 
-    let presentation_submission = json!({
-        "definition_id": interaction.id,
-        "descriptor_map": [
-            {
-                "format": "jwt_vp_json",
-                "id": "input_0",
-                "path": "$[0]",
-                "path_nested": {
-                        "format": "jwt_vc_json",
-                        "path": "$[0].verifiableCredential[1]"
-                    }
-            },
-            {
-                "format": "jwt_vp_json",
-                "id": "input_1",
-                "path": "$[0]",
-                "path_nested": {
-                        "format": "jwt_vc_json",
-                        "path": "$[0].verifiableCredential[0]"
-                    }
-            },
-            {
-                "format": "jwt_vp_json",
-                "id": "input_2",
-                "path": "$[1]",
-                "path_nested": {
-                        "format": "jwt_vc_json",
-                        "path": "$[1].verifiableCredential[0]"
-                    }
-            }
-        ],
-        "id": "318ea550-dbb6-4d6a-9cf2-575bad15c6da"
+    let (name_presentation, pet_presentation, cat_presentation) =
+        dummy_single_credential_presentations().await;
+    let vp_token = json!({
+        credential_schema1.schema_id().await.unwrap(): [name_presentation],
+        credential_schema2.schema_id().await.unwrap(): [pet_presentation],
+        credential_schema3.schema_id().await.unwrap(): [cat_presentation],
     });
-
-    let (token1, token2) = dummy_presentations().await;
     let params = [
-        (
-            "presentation_submission",
-            presentation_submission.to_string(),
-        ),
-        ("vp_token", json!([token1, token2]).to_string()),
+        ("vp_token", vp_token.to_string()),
         ("state", interaction.id.to_string()),
     ];
 
     // WHEN
     let url = format!(
-        "{}/ssi/openid4vp/draft-20/response",
+        "{}/ssi/openid4vp/final-1.0/response",
         context.config.app.core_base_url
     );
 
@@ -955,84 +839,49 @@ async fn test_direct_post_multiple_presentations_missing_inputs() {
 
     let interaction_data = json!({
         "nonce": nonce,
-        "presentation_definition": {
-            "id": "75fcc8e1-a14c-4509-9831-993c5fb37e26",
-            "input_descriptors": [
+        "dcql_query": {
+            "credentials": [
             {
-                "format": {
-                    "jwt_vc_json": {
-                        "alg": ["EdDSA", "ES256"]
-                    }
-                },
-                "id": "input_0",
-                "constraints": {
-                    "fields": [
-                        {
-                            "path": ["$.credentialSchema.id"],
-                            "filter": {
-                                "type": "string",
-                                "const": credential_schema1.schema_id().await.unwrap()
-                            }
-                        },
-                        {
-                            "id": credential1_claims[0].0,
-                            "path": ["$.vc.credentialSubject.name1"],
-                            "optional": false
-                        },
-                    ]
+                "claims": [{
+                    "id": credential1_claims[0].0,
+                    "path": ["credentialSubject", "name1"],
+                    "required": true
+                }],
+                "id": credential_schema1.schema_id().await.unwrap(),
+                "format": "jwt_vc_json",
+                "meta": {
+                    "type_values": [["https://www.w3.org/2018/credentials#VerifiableCredential"]],
                 }
             },
             {
-                "format": {
-                    "jwt_vc_json": {
-                        "alg": ["EdDSA", "ES256"]
-                    }
-                },
-                "id": "input_1",
-                "constraints": {
-                    "fields": [
-                        {
-                            "path": ["$.credentialSchema.id"],
-                            "filter": {
-                                "type": "string",
-                                "const": credential_schema2.schema_id().await.unwrap()
-                            }
-                        },
-                        {
-                            "id": credential2_claims[0].0,
-                            "path": ["$.vc.credentialSubject.pet1"],
-                            "optional": false
-                        },
-                    ]
+                "claims": [{
+                    "id": credential2_claims[0].0,
+                    "path": ["credentialSubject", "pet1"],
+                    "required": true
+                }],
+                "id": credential_schema2.schema_id().await.unwrap(),
+                "format": "jwt_vc_json",
+                "meta": {
+                    "type_values": [["https://www.w3.org/2018/credentials#VerifiableCredential"]],
                 }
             },
             {
-                "format": {
-                    "jwt_vc_json": {
-                        "alg": ["EdDSA", "ES256"]
+                "claims": [
+                    {
+                        "id": credential3_claims[0].0,
+                        "path": ["credentialSubject", "cat1"],
+                        "required": true
+                    },
+                    {
+                        "id": credential3_claims[1].0,
+                        "path": ["credentialSubject", "cat2"],
+                        "required": false
                     }
-                },
-                "id": "input_2",
-                "constraints": {
-                    "fields": [
-                        {
-                            "path": ["$.credentialSchema.id"],
-                            "filter": {
-                                "type": "string",
-                                "const": credential_schema3.schema_id().await.unwrap()
-                            }
-                        },
-                        {
-                            "id": credential3_claims[0].0,
-                            "path": ["$.vc.credentialSubject.cat1"],
-                            "optional": false
-                        },
-                        {
-                            "id": credential3_claims[1].0,
-                            "path": ["$.vc.credentialSubject.cat2"],
-                            "optional": true
-                        },
-                    ]
+                ],
+                "id": credential_schema3.schema_id().await.unwrap(),
+                "format": "jwt_vc_json",
+                "meta": {
+                    "type_values": [["https://www.w3.org/2018/credentials#VerifiableCredential"]],
                 }
             }]
         },
@@ -1055,7 +904,7 @@ async fn test_direct_post_multiple_presentations_missing_inputs() {
         Some(&proof_schema),
         ProofStateEnum::Pending,
         ProofRole::Verifier,
-        "OPENID4VP_DRAFT20",
+        "OPENID4VP_FINAL1",
         Some(&interaction),
         Some(&verifier_key),
         None,
@@ -1063,54 +912,20 @@ async fn test_direct_post_multiple_presentations_missing_inputs() {
     )
     .await;
 
-    let presentation_submission = json!({
-        "definition_id": interaction.id,
-        "descriptor_map": [
-            {
-                "format": "jwt_vp_json",
-                "id": "input_2",
-                "path": "$[0]",
-                "path_nested": {
-                        "format": "jwt_vc_json",
-                        "path": "$[0].verifiableCredential[0]"
-                    }
-            },
-            {
-                "format": "jwt_vp_json",
-                "id": "input_2",
-                "path": "$[0]",
-                "path_nested": {
-                        "format": "jwt_vc_json",
-                        "path": "$[0].verifiableCredential[0]"
-                    }
-            },
-            {
-                "format": "jwt_vp_json",
-                "id": "input_2",
-                "path": "$[0]",
-                "path_nested": {
-                        "format": "jwt_vc_json",
-                        "path": "$[0].verifiableCredential[0]"
-                    }
-            }
-        ],
-        "id": "318ea550-dbb6-4d6a-9cf2-575bad15c6da"
-    });
-
+    // only the cat credential is presented; the required name and pet credentials are missing
     let (_, token2) = dummy_presentations().await;
+    let vp_token = json!({
+        credential_schema3.schema_id().await.unwrap(): [token2]
+    });
     let params = [
-        (
-            "presentation_submission",
-            presentation_submission.to_string(),
-        ),
-        ("vp_token", json!([token2]).to_string()),
+        ("vp_token", vp_token.to_string()),
         ("state", interaction.id.to_string()),
     ];
 
     // WHEN
     let _handle = run_server(listener, config, &db_conn).await;
 
-    let url = format!("{base_url}/ssi/openid4vp/draft-20/response");
+    let url = format!("{base_url}/ssi/openid4vp/final-1.0/response");
 
     let resp = utils::client()
         .post(url)
@@ -1124,175 +939,6 @@ async fn test_direct_post_multiple_presentations_missing_inputs() {
 
     let proof = get_proof(&db_conn, &proof.id).await;
     assert_eq!(proof.state, ProofStateEnum::Error);
-}
-
-#[tokio::test]
-async fn test_direct_post_wrong_claim_format() {
-    // GIVEN
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let base_url = format!("http://{}", listener.local_addr().unwrap());
-    let config = fixtures::create_config(&base_url, None);
-    let db_conn = fixtures::create_db(&config).await;
-    let organisation = fixtures::create_organisation(&db_conn).await;
-    let nonce = "nonce123";
-
-    let new_claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![
-        (Uuid::new_v4(), "cat1", true, "STRING", false), // Presentation 2 token 1
-        (Uuid::new_v4(), "cat2", false, "STRING", false), // Optional - not provided
-    ];
-
-    let credential_schema = create_credential_schema_with_claims(
-        &db_conn,
-        "NewCredentialSchema",
-        &organisation,
-        false,
-        &new_claim_schemas,
-    )
-    .await;
-
-    let proof_schema = create_proof_schema(
-        &db_conn,
-        "Schema1",
-        &organisation,
-        &[CreateProofInputSchema::from((
-            &new_claim_schemas[..],
-            &credential_schema,
-        ))],
-    )
-    .await;
-
-    let verifier_key = fixtures::create_key(&db_conn, &organisation, None).await;
-    let verifier_did = fixtures::create_did(
-        &db_conn,
-        &organisation,
-        Some(TestingDidParams {
-            keys: Some(vec![RelatedKey {
-                role: KeyRole::Authentication,
-                key: verifier_key.clone(),
-                reference: "1".to_string(),
-            }]),
-            ..Default::default()
-        }),
-    )
-    .await;
-    let verifier_identifier = fixtures::create_identifier(
-        &db_conn,
-        &organisation,
-        Some(TestingIdentifierParams {
-            did: Some(verifier_did),
-            ..Default::default()
-        }),
-    )
-    .await;
-
-    let interaction_data = json!({
-        "nonce": nonce,
-        "presentation_definition": {
-            "id": "75fcc8e1-a14c-4509-9831-993c5fb37e26",
-            "input_descriptors": [{
-                "format": {
-                    "vc+sd-jwt": {
-                        "kb-jwt_alg_values": ["EdDSA", "ES256"],
-                        "sd-jwt_alg_values": ["EdDSA", "ES256"]
-                    }
-                },
-                "id": "input_0",
-                "constraints": {
-                    "fields": [
-                        {
-                            "path": ["$.credentialSchema.id"],
-                            "filter": {
-                                "type": "string",
-                                "const": credential_schema.schema_id().await.unwrap()
-                            }
-                        },
-                        {
-                            "id": new_claim_schemas[0].0,
-                            "path": ["$.vc.credentialSubject.cat1"],
-                            "optional": false
-                        },
-                        {
-                            "id": new_claim_schemas[1].0,
-                            "path": ["$.vc.credentialSubject.cat2"],
-                            "optional": true
-                        }
-                    ]
-                }
-            }]
-        },
-        "client_id": "client_id",
-        "client_id_scheme": "redirect_uri",
-        "response_uri": "response_uri"
-    });
-
-    let interaction = fixtures::create_interaction(
-        &db_conn,
-        interaction_data.to_string().as_bytes(),
-        &organisation,
-        InteractionType::Verification,
-    )
-    .await;
-
-    let proof = create_proof(
-        &db_conn,
-        &verifier_identifier,
-        Some(&proof_schema),
-        ProofStateEnum::Pending,
-        ProofRole::Verifier,
-        "OPENID4VP_DRAFT20",
-        Some(&interaction),
-        Some(&verifier_key),
-        None,
-        None,
-    )
-    .await;
-
-    let presentation_submission = json!({
-        "definition_id": interaction.id,
-        "descriptor_map": [
-            {
-                "format": "jwt_vp_json",
-                "id": "input_0",
-                "path": "$",
-                "path_nested": {
-                        "format": "jwt_vc_json",
-                        "path": "$.verifiableCredential[0]"
-                    }
-            },
-        ],
-        "id": "318ea550-dbb6-4d6a-9cf2-575bad15c6da"
-    });
-
-    let (_, token2) = dummy_presentations().await;
-    let params = [
-        (
-            "presentation_submission",
-            presentation_submission.to_string(),
-        ),
-        ("vp_token", token2.to_owned()),
-        ("state", interaction.id.to_string()),
-    ];
-
-    // WHEN
-    let _handle = run_server(listener, config, &db_conn).await;
-
-    let url = format!("{base_url}/ssi/openid4vp/draft-20/response");
-
-    let resp = utils::client()
-        .post(url)
-        .form(&params)
-        .send()
-        .await
-        .unwrap();
-
-    // THEN
-    let status_code = resp.status();
-    assert_eq!(status_code, 400);
-
-    let proof = get_proof(&db_conn, &proof.id).await;
-    assert_eq!(proof.state, ProofStateEnum::Error);
-    let claims = proof.claims.unwrap();
-    assert!(claims.is_empty());
 }
 
 #[tokio::test]
@@ -1330,35 +976,24 @@ async fn test_direct_post_with_profile_verification() {
 
     let interaction_data = json!({
         "nonce": nonce,
-        "presentation_definition": {
-            "id": "75fcc8e1-a14c-4509-9831-993c5fb37e26",
-            "input_descriptors": [{
-                "format": {
-                    "jwt_vc_json": {
-                        "alg": ["EdDSA", "ES256"]
+        "dcql_query": {
+            "credentials": [{
+                "claims": [
+                    {
+                        "id": new_claim_schemas[0].0,
+                        "path": ["credentialSubject", "cat1"],
+                        "required": true
+                    },
+                    {
+                        "id": new_claim_schemas[1].0,
+                        "path": ["credentialSubject", "cat2"],
+                        "required": false
                     }
-                },
-                "id": "input_0",
-                "constraints": {
-                    "fields": [
-                        {
-                            "path": ["$.credentialSchema.id"],
-                            "filter": {
-                                "type": "string",
-                                "const": credential_schema.schema_id().await.unwrap()
-                            }
-                        },
-                        {
-                            "id": new_claim_schemas[0].0,
-                            "path": ["$.vc.credentialSubject.cat1"],
-                            "optional": false
-                        },
-                        {
-                            "id": new_claim_schemas[1].0,
-                            "path": ["$.vc.credentialSubject.cat2"],
-                            "optional": true
-                        }
-                    ]
+                ],
+                "id": credential_schema.schema_id().await.unwrap(),
+                "format": "jwt_vc_json",
+                "meta": {
+                    "type_values": [["https://www.w3.org/2018/credentials#VerifiableCredential"]],
                 }
             }]
         },
@@ -1391,34 +1026,17 @@ async fn test_direct_post_with_profile_verification() {
     )
     .await;
 
-    let presentation_submission = json!({
-        "definition_id": proof.interaction.as_ref().unwrap().id,
-        "descriptor_map": [
-            {
-                "format": "jwt_vp_json",
-                "id": "input_0",
-                "path": "$",
-                "path_nested": {
-                        "format": "jwt_vc_json",
-                        "path": "$.verifiableCredential[0]"
-                    }
-            },
-        ],
-        "id": "318ea550-dbb6-4d6a-9cf2-575bad15c6da"
-    });
-
     let (_, token2) = dummy_presentations().await;
+    let vp_token = json!({
+        credential_schema.schema_id().await.unwrap(): [token2]
+    });
     let params = [
-        (
-            "presentation_submission",
-            presentation_submission.to_string(),
-        ),
-        ("vp_token", token2),
+        ("vp_token", vp_token.to_string()),
         ("state", proof.interaction.as_ref().unwrap().id.to_string()),
     ];
 
     // WHEN
-    let url = format!("{base_url}/ssi/openid4vp/draft-20/response");
+    let url = format!("{base_url}/ssi/openid4vp/final-1.0/response");
     let resp = utils::client()
         .post(url)
         .form(&params)
@@ -1469,10 +1087,7 @@ async fn test_direct_post_oversized_body_returns_413() {
     let oversized_token = "x".repeat(2048);
     let params = [("vp_token", oversized_token)];
 
-    for path in [
-        "/ssi/openid4vp/draft-20/response",
-        "/ssi/openid4vp/final-1.0/response",
-    ] {
+    for path in ["/ssi/openid4vp/final-1.0/response"] {
         let url = format!("{}{path}", context.config.app.core_base_url);
         let resp = utils::client()
             .post(url)

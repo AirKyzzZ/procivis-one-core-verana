@@ -9,8 +9,7 @@ use one_core::model::proof::SortableProofColumn;
 use one_core::model::proof_schema::SortableProofSchemaColumn;
 use one_core::proto::bluetooth_low_energy::low_level::dto::DeviceInfo;
 use one_core::provider::verification_protocol::dto::{
-    ApplicableCredential, ApplicableCredentialOrFailureHintEnum, PresentationDefinitionFieldDTO,
-    PresentationDefinitionRequestedCredentialResponseDTO,
+    ApplicableCredential, ApplicableCredentialOrFailureHintEnum,
 };
 use one_core::service::common_dto::ListQueryDTO;
 use one_core::service::credential::dto::{
@@ -79,7 +78,6 @@ use super::organisation::{
 };
 use super::proof::{
     ApplicableCredentialOrFailureHintBindingEnum, CreateProofRequestBindingDTO,
-    PresentationDefinitionFieldBindingDTO, PresentationDefinitionRequestedCredentialBindingDTO,
     PresentationDefinitionV2ClaimBindingDTO, PresentationDefinitionV2ClaimValueBindingDTO,
     PresentationDefinitionV2CredentialDetailBindingDTO, ProofListQueryBindingDTO,
     ProofRequestClaimValueBindingDTO, ProofResponseBindingDTO,
@@ -626,46 +624,6 @@ impl TryFrom<CreateIdentifierDidRequestBindingDTO> for CreateIdentifierDidReques
             keys: value.keys.try_into()?,
             params: Some(json!(value.params)),
         })
-    }
-}
-
-impl From<PresentationDefinitionRequestedCredentialResponseDTO>
-    for PresentationDefinitionRequestedCredentialBindingDTO
-{
-    fn from(value: PresentationDefinitionRequestedCredentialResponseDTO) -> Self {
-        Self {
-            id: value.id,
-            name: value.name,
-            purpose: value.purpose,
-            multiple: value.multiple,
-            fields: convert_inner(value.fields),
-            applicable_credentials: value
-                .applicable_credentials
-                .iter()
-                .map(|item| item.to_string())
-                .collect(),
-            inapplicable_credentials: value
-                .inapplicable_credentials
-                .iter()
-                .map(|item| item.to_string())
-                .collect(),
-        }
-    }
-}
-
-impl From<PresentationDefinitionFieldDTO> for PresentationDefinitionFieldBindingDTO {
-    fn from(value: PresentationDefinitionFieldDTO) -> Self {
-        Self {
-            id: value.id,
-            name: value.name,
-            purpose: value.purpose,
-            required: value.required.unwrap_or(true),
-            key_map: value
-                .key_map
-                .into_iter()
-                .map(|(key, value)| (key.to_string(), value))
-                .collect(),
-        }
     }
 }
 

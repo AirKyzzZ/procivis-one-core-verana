@@ -10,8 +10,7 @@ use super::dto::{
     ContinueIssuanceRequestRestDTO, ContinueIssuanceResponseRestDTO,
     HandleInvitationRequestRestDTO, HandleInvitationResponseRestDTO, IssuanceAcceptRequestRestDTO,
     IssuanceRefreshResponseRestDTO, IssuanceRejectRequestRestDTO, PresentationRejectRequestRestDTO,
-    PresentationSubmitRequestRestDTO, PresentationSubmitV2RequestRestDTO,
-    ProposeProofRequestRestDTO,
+    PresentationSubmitV2RequestRestDTO, ProposeProofRequestRestDTO,
 };
 use crate::dto::common::EntityResponseRestDTO;
 use crate::dto::error::ErrorResponseRestDTO;
@@ -187,41 +186,6 @@ pub(crate) async fn presentation_reject(
         .reject_proof_request(&request.interaction_id)
         .await;
     EmptyOrErrorResponse::from_result(result, state, "rejecting proof request")
-}
-
-#[endpoint(
-    permissions = [Permission::InteractionProof],
-    post,
-    path = "/api/interaction/v1/presentation-submit",
-    request_body = PresentationSubmitRequestRestDTO,
-    responses(EmptyOrErrorResponse),
-    tag = "interaction",
-    security(
-        ("bearer" = [])
-    ),
-    summary = "Submit presentation",
-    description = indoc::formatdoc! {"
-        Submits a presentation in response to a request. Choose the
-        identifier used to accept the credentials. This endpoint uses
-          Presentation Exchange as the query language and should be used
-          after \"Presentation Definition (V1)\".
-
-        `didId` is deprecated.
-    "},
-)]
-pub(crate) async fn presentation_submit(
-    state: State<AppState>,
-    WithRejection(Json(request), _): WithRejection<
-        Json<PresentationSubmitRequestRestDTO>,
-        ErrorResponseRestDTO,
-    >,
-) -> EmptyOrErrorResponse {
-    let result = state
-        .core
-        .ssi_holder_service
-        .submit_proof(request.into())
-        .await;
-    EmptyOrErrorResponse::from_result(result, state, "submitting proof")
 }
 
 #[endpoint(

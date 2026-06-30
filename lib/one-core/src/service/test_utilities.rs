@@ -130,19 +130,6 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                             expiration: 300
                             leeway: 0
         verificationProtocol:
-            OPENID4VP_DRAFT20:
-                display: 'display'
-                order: 1
-                type: 'OPENID4VP_DRAFT20'
-                params:
-                    public:
-                        verifier:
-                            supportedClientIdSchemes: [ verifier_attestation, redirect_uri, did ]
-                        holder:
-                            supportedClientIdSchemes: [ redirect_uri, verifier_attestation, did ]
-                        redirectUri:
-                            enabled: true
-                            allowedSchemes: [ https ]
             OPENID4VP_FINAL1:
                 display: 'display'
                 order: 3
@@ -598,10 +585,7 @@ pub fn generic_formatter_capabilities() -> FormatterCapabilities {
             crate::config::core_config::DidType::WebVh,
         ],
         issuance_exchange_protocols: vec![IssuanceProtocolType::OpenId4VciFinal1_0],
-        proof_exchange_protocols: vec![
-            VerificationProtocolType::OpenId4VpDraft20,
-            VerificationProtocolType::OpenId4VpFinal1_0,
-        ],
+        proof_exchange_protocols: vec![VerificationProtocolType::OpenId4VpFinal1_0],
         revocation_methods: vec![RevocationType::BitstringStatusList],
         verification_key_algorithms: vec![KeyAlgorithmType::Eddsa],
         verification_key_storages: vec![KeyStorageType::Internal],

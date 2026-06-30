@@ -407,10 +407,8 @@ impl CredentialFormatter for SDJWTVCFormatter {
             issuance_did_methods.extend_from_slice(&[DidType::Key, DidType::Web, DidType::Jwk]);
             issuance_exchange_protocols.push(IssuanceProtocolType::OpenId4VciFinal1_0);
             issuance_identifier_types.push(IdentifierType::Certificate);
-            proof_exchange_protocols.extend_from_slice(&[
-                VerificationProtocolType::OpenId4VpDraft20,
-                VerificationProtocolType::OpenId4VpFinal1_0,
-            ]);
+            proof_exchange_protocols
+                .extend_from_slice(&[VerificationProtocolType::OpenId4VpFinal1_0]);
             verification_identifier_types.push(IdentifierType::Certificate);
             signing_algorithms
                 .extend_from_slice(&[KeyAlgorithmType::Eddsa, KeyAlgorithmType::MlDsa]);

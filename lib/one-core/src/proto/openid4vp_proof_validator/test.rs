@@ -7,7 +7,6 @@ use one_dto_mapper::try_convert_inner;
 use serde_json::json;
 use shared_types::{DidValue, ProofId};
 use similar_asserts::assert_eq;
-use standardized_types::openid4vp::{GenericAlgs, PresentationFormat};
 use time::Duration;
 use uuid::Uuid;
 
@@ -40,12 +39,7 @@ use crate::provider::revocation::model::RevocationState;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::model::{
-    DcqlSubmission, NestedPresentationSubmissionDescriptorDTO, OpenID4VPPresentationDefinition,
-    OpenID4VPPresentationDefinitionConstraint, OpenID4VPPresentationDefinitionConstraintField,
-    OpenID4VPPresentationDefinitionConstraintFieldFilter,
-    OpenID4VPPresentationDefinitionInputDescriptor, OpenID4VPVerifierInteractionContent,
-    PexSubmission, PresentationSubmissionDescriptorDTO, PresentationSubmissionMappingDTO,
-    SubmissionRequestData, VpSubmissionData,
+    DcqlSubmission, OpenID4VPVerifierInteractionContent, SubmissionRequestData, VpSubmissionData,
 };
 use crate::service::test_utilities::{
     dummy_claim_schema, dummy_credential_schema, dummy_did, dummy_identifier, dummy_organisation,
@@ -89,64 +83,9 @@ fn setup_proto(mocks: Mocks) -> OpenId4VpProofValidatorProto {
     )
 }
 
-fn jwt_format_map() -> HashMap<String, PresentationFormat> {
-    HashMap::from([(
-        "jwt_vc_json".to_string(),
-        PresentationFormat::GenericAlgList(GenericAlgs {
-            alg: vec!["EdDSA".to_string(), "ES256".to_string()],
-        }),
-    )])
-}
-
-#[tokio::test]
-async fn test_validate_submission_success_pex() {
-    let test_data = test_data(Some(dummy_presentation_definition()), None);
-    let mocks = mocks_with_test_data(test_data.mock_data);
-    let proto = setup_proto(mocks);
-
-    let submission_data = SubmissionRequestData {
-        submission_data: VpSubmissionData::Pex(PexSubmission {
-            vp_token: vec!["vp_token".to_string()],
-            presentation_submission: PresentationSubmissionMappingDTO {
-                id: "25f5a42c-6850-49a0-b842-c7b2411021a5".to_string(),
-                definition_id: Uuid::parse_str("a83dabc3-1601-4642-84ec-7a5ad8a70d36")
-                    .unwrap()
-                    .to_string(),
-                descriptor_map: vec![PresentationSubmissionDescriptorDTO {
-                    id: "input_0".to_string(),
-                    format: "jwt_vp_json".to_string(),
-                    path: "$".to_string(),
-                    path_nested: Some(NestedPresentationSubmissionDescriptorDTO {
-                        format: "jwt_vc_json".to_string(),
-                        path: "$.vp.verifiableCredential[0]".to_string(),
-                    }),
-                }],
-            },
-        }),
-        state: "a83dabc3-1601-4642-84ec-7a5ad8a70d36".parse().unwrap(),
-        mdoc_generated_nonce: None,
-        encryption_key: None,
-    };
-    let result = proto
-        .validate_submission(
-            submission_data,
-            test_data.proof,
-            test_data.interaction_data,
-            VerificationProtocolType::OpenId4VpDraft20,
-        )
-        .await
-        .unwrap();
-    assert_eq!(result.0.proved_claims.len(), 1);
-    assert_eq!(result.0.proved_credentials.len(), 1);
-    assert_eq!(
-        result.0.proved_credentials.first().unwrap().issuer_details,
-        IdentifierDetails::Did(test_data.issuer_did.to_owned())
-    );
-}
-
 #[tokio::test]
 async fn test_validate_submission_success_dcql() {
-    let test_data = test_data(None, Some(dummy_dcql_query(true)));
+    let test_data = test_data(Some(dummy_dcql_query(true)));
     let mocks = mocks_with_test_data(test_data.mock_data);
     let proto = setup_proto(mocks);
 
@@ -176,51 +115,8 @@ async fn test_validate_submission_success_dcql() {
 }
 
 #[tokio::test]
-async fn test_validate_submission_suspended() {
-    let mut test_data = test_data(Some(dummy_presentation_definition()), None);
-    test_data.mock_data.revocation_check = Some(Ok(RevocationState::Suspended {
-        suspend_end_date: None,
-    }));
-    let mocks = mocks_with_test_data(test_data.mock_data);
-    let proto = setup_proto(mocks);
-
-    let submission_data = SubmissionRequestData {
-        submission_data: VpSubmissionData::Pex(PexSubmission {
-            vp_token: vec!["vp_token".to_string()],
-            presentation_submission: PresentationSubmissionMappingDTO {
-                id: "25f5a42c-6850-49a0-b842-c7b2411021a5".to_string(),
-                definition_id: Uuid::parse_str("a83dabc3-1601-4642-84ec-7a5ad8a70d36")
-                    .unwrap()
-                    .to_string(),
-                descriptor_map: vec![PresentationSubmissionDescriptorDTO {
-                    id: "input_0".to_string(),
-                    format: "jwt_vp_json".to_string(),
-                    path: "$".to_string(),
-                    path_nested: Some(NestedPresentationSubmissionDescriptorDTO {
-                        format: "jwt_vc_json".to_string(),
-                        path: "$.vp.verifiableCredential[0]".to_string(),
-                    }),
-                }],
-            },
-        }),
-        state: "a83dabc3-1601-4642-84ec-7a5ad8a70d36".parse().unwrap(),
-        mdoc_generated_nonce: None,
-        encryption_key: None,
-    };
-    let result = proto
-        .validate_submission(
-            submission_data,
-            test_data.proof,
-            test_data.interaction_data,
-            VerificationProtocolType::OpenId4VpDraft20,
-        )
-        .await;
-    assert!(result.is_err())
-}
-
-#[tokio::test]
 async fn test_validate_submission_suspended_dcql() {
-    let mut test_data = test_data(None, Some(dummy_dcql_query(true)));
+    let mut test_data = test_data(Some(dummy_dcql_query(true)));
     test_data.mock_data.revocation_check = Some(Ok(RevocationState::Suspended {
         suspend_end_date: None,
     }));
@@ -248,7 +144,7 @@ async fn test_validate_submission_suspended_dcql() {
 
 #[tokio::test]
 async fn test_validate_submission_incompatible_did_method() {
-    let mut test_data = test_data(None, Some(dummy_dcql_query(true)));
+    let mut test_data = test_data(Some(dummy_dcql_query(true)));
     test_data
         .mock_data
         .presentation_extraction_unverified
@@ -388,44 +284,6 @@ fn mocks_with_test_data(mock_data: MockData) -> Mocks {
     )
 }
 
-fn dummy_presentation_definition() -> OpenID4VPPresentationDefinition {
-    OpenID4VPPresentationDefinition {
-        id: "a83dabc3-1601-4642-84ec-7a5ad8a70d36".to_string(),
-        input_descriptors: vec![OpenID4VPPresentationDefinitionInputDescriptor {
-            id: "input_0".to_string(),
-            name: None,
-            purpose: None,
-            format: jwt_format_map(),
-            constraints: OpenID4VPPresentationDefinitionConstraint {
-                fields: vec![
-                    OpenID4VPPresentationDefinitionConstraintField {
-                        id: Some(Uuid::new_v4().into()),
-                        name: None,
-                        purpose: None,
-                        path: vec!["$.credentialSchema.id".to_string()],
-                        optional: None,
-                        filter: Some(OpenID4VPPresentationDefinitionConstraintFieldFilter {
-                            r#type: "string".to_string(),
-                            r#const: "CredentialSchemaId".to_owned(),
-                        }),
-                        intent_to_retain: None,
-                    },
-                    OpenID4VPPresentationDefinitionConstraintField {
-                        id: Some(Uuid::new_v4().into()),
-                        name: None,
-                        purpose: None,
-                        path: vec!["$.vc.credentialSubject.string".to_string()],
-                        optional: Some(false),
-                        filter: None,
-                        intent_to_retain: None,
-                    },
-                ],
-                limit_disclosure: None,
-            },
-        }],
-    }
-}
-
 fn dummy_dcql_query(require_cryptographic_holder_binding: bool) -> DcqlQuery {
     DcqlQuery {
         credentials: vec![CredentialQuery {
@@ -443,10 +301,7 @@ fn dummy_dcql_query(require_cryptographic_holder_binding: bool) -> DcqlQuery {
     }
 }
 
-fn test_data(
-    presentation_definition: Option<OpenID4VPPresentationDefinition>,
-    dcql_query: Option<DcqlQuery>,
-) -> TestData {
+fn test_data(dcql_query: Option<DcqlQuery>) -> TestData {
     let issuer_did: DidValue = "did:issuer:123".parse().unwrap();
     let holder_did: DidValue = "did:holder:123".parse().unwrap();
     let verifier_did: DidValue = "did:verifier:123".parse().unwrap();
@@ -458,7 +313,6 @@ fn test_data(
         nonce: nonce.to_owned(),
         encryption_key: None,
         dcql_query,
-        presentation_definition,
         client_id: "client_id".to_string(),
         client_id_scheme: None,
         response_uri: None,
@@ -598,7 +452,7 @@ fn test_data(
 
 #[tokio::test]
 async fn test_validate_submission_dcql_no_holder_binding() {
-    let mut test_data = test_data(None, Some(dummy_dcql_query(false)));
+    let mut test_data = test_data(Some(dummy_dcql_query(false)));
     // No VP extraction for bare credentials
     test_data.mock_data.presentation_extraction = None;
     test_data.mock_data.presentation_extraction_unverified = None;

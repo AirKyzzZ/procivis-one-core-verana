@@ -280,135 +280,6 @@ fn generic_proof_input_schema() -> ProofInputSchema {
 }
 
 #[tokio::test]
-async fn test_get_presentation_definition_proof_role_verifier() {
-    let mut proof_repository = MockProofRepository::default();
-
-    let credential_schema_id = Uuid::new_v4().into();
-    let proof = Proof {
-        id: Uuid::new_v4().into(),
-        created_date: crate::clock::now_utc(),
-        last_modified: crate::clock::now_utc(),
-        protocol: "OPENID4VP_DRAFT20".to_string(),
-        transport: "HTTP".to_string(),
-        state: ProofStateEnum::Pending,
-        redirect_uri: None,
-        requested_date: Some(crate::clock::now_utc()),
-        completed_date: None,
-        schema: Some(ProofSchema {
-            id: Uuid::new_v4().into(),
-            deleted_at: None,
-            imported_source_url: Some("CORE_URL".to_string()),
-            created_date: crate::clock::now_utc(),
-            last_modified: crate::clock::now_utc(),
-            name: "proof schema".to_string(),
-            expire_duration: 0,
-            organisation: Some(dummy_organisation(None)),
-            input_schemas: Some(vec![ProofInputSchema {
-                claim_schemas: Some(vec![ProofInputClaimSchema {
-                    schema: ClaimSchema {
-                        id: Uuid::new_v4().into(),
-                        key: "key_123".to_string(),
-                        data_type: "STRING".to_string(),
-                        created_date: crate::clock::now_utc(),
-                        last_modified: crate::clock::now_utc(),
-                        array: false,
-                        metadata: false,
-                        required: true,
-                        translations: Default::default(),
-                    },
-                    required: true,
-                    order: 0,
-                }]),
-                credential_schema: Some(CredentialSchema {
-                    batch_size: None,
-                    allow_revocation: false,
-                    id: credential_schema_id,
-                    imported_source_url: "CORE_URL".to_string(),
-                    deleted_at: None,
-                    created_date: crate::clock::now_utc(),
-                    key_storage_security: Some(KeyStorageSecurity::Basic),
-                    last_modified: crate::clock::now_utc(),
-                    name: "credential schema".to_string(),
-                    formats: vec![CredentialSchemaFormat {
-                        id: Uuid::new_v4().into(),
-                        created_date: crate::clock::now_utc(),
-                        last_modified: crate::clock::now_utc(),
-                        credential_schema_id,
-                        format: "JWT".into(),
-                        schema_id: "CredentialSchemaId".to_owned(),
-                        claim_mappings: Default::default(),
-                    }]
-                    .into(),
-                    claim_schemas: Default::default(),
-                    organisation: dummy_organisation(None).into(),
-                    layout_type: LayoutType::Card,
-                    layout_properties: None,
-                    allow_suspension: true,
-                    requires_wallet_instance_attestation: false,
-                    transaction_code: None,
-                    translations: Default::default(),
-                    embedded_disclosure_policy: None,
-                }),
-            }]),
-        }),
-        claims: Some(vec![]),
-        verifier_identifier: Some(Identifier {
-            did: Some(Did {
-                deleted_at: None,
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                name: "did".to_string(),
-                did: "did:example:123".parse().unwrap(),
-                did_type: DidType::Local,
-                did_method: "KEY".into(),
-                organisation: dummy_organisation(None).into(),
-                keys: Default::default(),
-                deactivated: false,
-                log: None,
-            }),
-            is_remote: false,
-            ..dummy_identifier()
-        }),
-        verifier_key: None,
-        verifier_certificate: None,
-        interaction: None,
-        role: ProofRole::Verifier,
-        profile: None,
-        proof_blob_id: None,
-        engagement: None,
-        webhook_url: None,
-        subscriber_information: None,
-    };
-
-    {
-        let res_clone = proof.clone();
-        let proof_id = proof.id;
-        proof_repository
-            .expect_get_proof()
-            .once()
-            .withf(move |id, _, _| id == &proof_id)
-            .returning(move |_, _, _| Ok(Some(res_clone.clone())));
-    }
-
-    let mut protocol_provider = MockVerificationProtocolProvider::default();
-    protocol_provider
-        .expect_get_protocol()
-        .returning(|_| Ok(Arc::new(MockVerificationProtocol::default())));
-
-    let service = setup_service(Repositories {
-        proof_repository,
-        protocol_provider,
-        config: generic_config().core,
-        ..Default::default()
-    });
-
-    let result = service.get_proof_presentation_definition(&proof.id).await;
-
-    assert!(result.is_err_and(|e| matches!(e, ProofServiceError::InvalidRole(_))));
-}
-
-#[tokio::test]
 async fn test_get_proof_exists() {
     let mut proof_repository = MockProofRepository::default();
     let mut history_repository = MockHistoryRepository::default();
@@ -2497,7 +2368,7 @@ async fn test_get_proof_list_success() {
 
 #[tokio::test]
 async fn test_create_proof_using_formatter_doesnt_support_did_identifiers() {
-    let exchange_type = VerificationProtocolType::OpenId4VpDraft20;
+    let exchange_type = VerificationProtocolType::OpenId4VpFinal1_0;
     let request = CreateProofRequestDTO {
         proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: Some(Uuid::new_v4().into()),
@@ -2591,7 +2462,7 @@ async fn test_create_proof_using_formatter_doesnt_support_did_identifiers() {
 
 #[tokio::test]
 async fn test_create_proof_using_invalid_did_method() {
-    let exchange_type = VerificationProtocolType::OpenId4VpDraft20;
+    let exchange_type = VerificationProtocolType::OpenId4VpFinal1_0;
     let request = CreateProofRequestDTO {
         proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: Some(Uuid::new_v4().into()),
@@ -2719,7 +2590,7 @@ async fn test_create_proof_using_invalid_did_method() {
 
 #[tokio::test]
 async fn test_create_proof_using_identifier() {
-    let exchange_type = VerificationProtocolType::OpenId4VpDraft20;
+    let exchange_type = VerificationProtocolType::OpenId4VpFinal1_0;
     let request = CreateProofRequestDTO {
         proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: None,
@@ -2854,7 +2725,7 @@ async fn test_create_proof_using_identifier() {
 
 #[tokio::test]
 async fn test_create_proof_without_related_key() {
-    let exchange_type = VerificationProtocolType::OpenId4VpDraft20;
+    let exchange_type = VerificationProtocolType::OpenId4VpFinal1_0;
     let request = CreateProofRequestDTO {
         proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: Some(Uuid::new_v4().into()),
@@ -2993,7 +2864,7 @@ async fn test_create_proof_without_related_key() {
 
 #[tokio::test]
 async fn test_create_proof_with_related_key() {
-    let exchange_type = VerificationProtocolType::OpenId4VpDraft20;
+    let exchange_type = VerificationProtocolType::OpenId4VpFinal1_0;
     let verifier_key_id = Uuid::new_v4().into();
     let request = CreateProofRequestDTO {
         proof_schema_id: Uuid::new_v4().into(),
@@ -3130,7 +3001,7 @@ async fn test_create_proof_with_related_key() {
 
 #[tokio::test]
 async fn test_create_proof_fail_unsupported_wallet_storage_type() {
-    let exchange_type = VerificationProtocolType::OpenId4VpDraft20;
+    let exchange_type = VerificationProtocolType::OpenId4VpFinal1_0;
     let request = CreateProofRequestDTO {
         proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: Some(Uuid::new_v4().into()),
@@ -3263,7 +3134,7 @@ async fn test_create_proof_fail_unsupported_wallet_storage_type() {
 
 #[tokio::test]
 async fn test_create_proof_failed_no_key_with_authentication_method_role() {
-    let exchange_type = VerificationProtocolType::OpenId4VpDraft20;
+    let exchange_type = VerificationProtocolType::OpenId4VpFinal1_0;
     let request = CreateProofRequestDTO {
         proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: Some(Uuid::new_v4().into()),
@@ -3371,7 +3242,7 @@ async fn test_create_proof_failed_no_key_with_authentication_method_role() {
 
 #[tokio::test]
 async fn test_create_proof_failed_incompatible_exchange() {
-    let exchange = "OPENID4VP_DRAFT20".to_string();
+    let exchange = "OPENID4VP_FINAL1".to_string();
     let request = CreateProofRequestDTO {
         proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: Some(Uuid::new_v4().into()),
@@ -3434,7 +3305,7 @@ async fn test_create_proof_failed_incompatible_exchange() {
 
 #[tokio::test]
 async fn test_create_proof_did_deactivated_error() {
-    let exchange_type = VerificationProtocolType::OpenId4VpDraft20;
+    let exchange_type = VerificationProtocolType::OpenId4VpFinal1_0;
     let request = CreateProofRequestDTO {
         proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: Some(Uuid::new_v4().into()),
@@ -3571,7 +3442,7 @@ async fn test_create_proof_schema_deleted() {
             proof_schema_id: Uuid::new_v4().into(),
             verifier_did_id: Some(Uuid::new_v4().into()),
             verifier_identifier_id: None,
-            protocol: "OPENID4VP_DRAFT20".to_string(),
+            protocol: "OPENID4VP_FINAL1".to_string(),
             redirect_uri: None,
             verifier_key: None,
             verifier_certificate: None,
@@ -3590,7 +3461,7 @@ async fn test_create_proof_schema_deleted() {
 
 #[tokio::test]
 async fn test_create_proof_failed_incompatible_verification_key_storage() {
-    let exchange_type = VerificationProtocolType::OpenId4VpDraft20;
+    let exchange_type = VerificationProtocolType::OpenId4VpFinal1_0;
     let request = CreateProofRequestDTO {
         proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: Some(Uuid::new_v4().into()),
@@ -3730,7 +3601,7 @@ async fn test_create_proof_failed_invalid_redirect_uri() {
             proof_schema_id: Uuid::new_v4().into(),
             verifier_did_id: Some(Uuid::new_v4().into()),
             verifier_identifier_id: None,
-            protocol: "OPENID4VP_DRAFT20".to_string(),
+            protocol: "OPENID4VP_FINAL1".to_string(),
             redirect_uri: Some("invalid://domain.com".to_string()),
             verifier_key: None,
             verifier_certificate: None,
@@ -3750,7 +3621,7 @@ async fn test_create_proof_failed_invalid_redirect_uri() {
 
 #[tokio::test]
 async fn test_create_proof_fail_webhook_not_allowed() {
-    let exchange_type = VerificationProtocolType::OpenId4VpDraft20;
+    let exchange_type = VerificationProtocolType::OpenId4VpFinal1_0;
     let request = CreateProofRequestDTO {
         proof_schema_id: Uuid::new_v4().into(),
         verifier_did_id: None,
@@ -3829,7 +3700,7 @@ async fn test_share_proof_created_success() {
     protocol
         .expect_verifier_share_proof()
         .once()
-        .returning(move |_, _, _, _, _| {
+        .returning(move |_, _, _, _| {
             Ok(ShareResponse {
                 url: expected_url.to_owned(),
                 interaction_id,
@@ -3935,7 +3806,7 @@ async fn test_share_proof_pending_success() {
     protocol
         .expect_verifier_share_proof()
         .once()
-        .returning(move |_, _, _, _, _| {
+        .returning(move |_, _, _, _| {
             Ok(ShareResponse {
                 url: expected_url.to_owned(),
                 interaction_id,
@@ -4047,7 +3918,7 @@ async fn test_share_proof_interaction_expired_success() {
     protocol
         .expect_verifier_share_proof()
         .once()
-        .returning(move |_, _, _, _, _| {
+        .returning(move |_, _, _, _| {
             Ok(ShareResponse {
                 url: expected_url.to_owned(),
                 interaction_id,
@@ -4640,7 +4511,7 @@ async fn test_create_proof_session_org_mismatch() {
             proof_schema_id: Uuid::new_v4().into(),
             verifier_did_id: Some(Uuid::new_v4().into()),
             verifier_identifier_id: None,
-            protocol: "OPENID4VP_DRAFT20".to_string(),
+            protocol: "OPENID4VP_FINAL1".to_string(),
             redirect_uri: None,
             verifier_key: None,
             verifier_certificate: None,
@@ -4725,9 +4596,6 @@ async fn test_proof_ops_session_org_mismatch() {
     assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 
     let result = service.delete_proof_claims(proof_id).await;
-    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
-
-    let result = service.get_proof_presentation_definition(&proof_id).await;
     assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);
 
     let result = service

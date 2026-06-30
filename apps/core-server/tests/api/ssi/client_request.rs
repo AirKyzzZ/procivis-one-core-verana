@@ -4,9 +4,8 @@ use core_server::endpoint::proof::dto::ClientIdSchemeRestEnum;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use one_core::model::blob::BlobType;
 use one_core::model::identifier_trust_information::SchemaFormat;
-use one_core::model::interaction::InteractionType;
 use one_core::model::proof::{ProofRole, ProofStateEnum};
-use serde_json::{Value, json};
+use serde_json::Value;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
@@ -33,131 +32,6 @@ fn decode_jwt(jwt: &str) -> (Value, Value) {
         .unwrap();
 
     (header, payload)
-}
-
-#[tokio::test]
-async fn test_get_client_request() {
-    // GIVEN
-    let (context, organisation, _, identifier, key) = TestContext::new_with_did(None).await;
-
-    let nonce = "nonce123";
-    let new_claim_schemas: Vec<(Uuid, &'static str, bool, &'static str, bool)> = vec![
-        (Uuid::new_v4(), "cat1", true, "STRING", false),
-        (Uuid::new_v4(), "cat2", true, "STRING", false),
-    ];
-    let interaction_data = json!({
-        "nonce": nonce,
-        "presentation_definition": {
-            "id": "75fcc8e1-a14c-4509-9831-993c5fb37e26",
-            "input_descriptors": [{
-                "format": {
-                    "jwt_vc_json": {
-                        "alg": ["EdDSA", "ES256"]
-                    }
-                },
-                "id": "input_0",
-                "constraints": {
-                    "fields": [
-                        {
-                            "id": new_claim_schemas[0].0,
-                            "path": ["$.vc.credentialSubject.cat1"],
-                            "optional": false
-                        },
-                        {
-                            "id": new_claim_schemas[1].0,
-                            "path": ["$.vc.credentialSubject.cat2"],
-                            "optional": false
-                        }
-                    ]
-                }
-            }]
-        },
-        "client_id": "client_id",
-        "client_id_scheme": "redirect_uri",
-        "response_uri": "https://response.uri/",
-    });
-
-    let (_credential_schema, proof_schema) =
-        create_credential_and_proof_schemas(&context, &organisation, &new_claim_schemas).await;
-
-    let interaction = context
-        .db
-        .interactions
-        .create(
-            None,
-            interaction_data.to_string().as_bytes(),
-            &organisation,
-            InteractionType::Verification,
-            None,
-        )
-        .await;
-
-    let proof = context
-        .db
-        .proofs
-        .create(
-            None,
-            &identifier,
-            Some(&proof_schema),
-            ProofStateEnum::Pending,
-            "OPENID4VP_DRAFT20",
-            Some(&interaction),
-            key.to_owned(),
-            None,
-            None,
-        )
-        .await;
-
-    // WHEN
-    let resp = context.api.ssi.get_client_request(proof.id).await;
-
-    // THEN
-    assert_eq!(resp.status(), 200);
-    let resp = resp.text().await;
-
-    let (header, payload) = decode_jwt(&resp);
-
-    assert_eq!(
-        json!({ "alg": "none", "typ": "oauth-authz-req+jwt"}),
-        header
-    );
-
-    assert_eq!(
-        json!({
-            "id": "75fcc8e1-a14c-4509-9831-993c5fb37e26",
-            "input_descriptors": [{
-                "format": {
-                    "jwt_vc_json": {
-                        "alg": ["EdDSA", "ES256"]
-                    }
-                },
-                "id": "input_0",
-                "constraints": {
-                    "fields": [
-                        {
-                            "id": new_claim_schemas[0].0,
-                            "path": ["$.vc.credentialSubject.cat1"],
-                            "optional": false
-                        },
-                        {
-                            "id": new_claim_schemas[1].0,
-                            "path": ["$.vc.credentialSubject.cat2"],
-                            "optional": false
-                        }
-                    ]
-                }
-            }]
-        }),
-        payload["presentation_definition"],
-    );
-    assert_eq!(nonce, payload["nonce"]);
-    assert_eq!("direct_post", payload["response_mode"]);
-    assert_eq!("vp_token", payload["response_type"]);
-    assert_eq!("client_id", payload["client_id"]);
-    assert_eq!("https://self-issued.me/v2", payload["aud"]);
-    assert_eq!("https://response.uri/", payload["response_uri"]);
-    assert_eq!(interaction.id.to_string(), payload["state"]);
-    assert!(payload["client_metadata"].is_object());
 }
 
 async fn create_credential_and_proof_schemas(
@@ -268,7 +142,7 @@ async fn test_get_client_request_final1_x509_hash_includes_verifier_info() {
     let (context, proof_id, _credential_schema_id) =
         setup_final1_certificate_proof(&[cert_data], Some(ClientIdSchemeRestEnum::X509Hash)).await;
 
-    let resp = context.api.ssi.get_client_request_final1(proof_id).await;
+    let resp = context.api.ssi.get_client_request(proof_id).await;
 
     assert_eq!(resp.status(), 200);
     let (_header, payload) = decode_jwt(&resp.text().await);
@@ -289,7 +163,7 @@ async fn test_get_client_request_final1_no_registration_certs_no_verifier_info()
     )
     .await;
 
-    let resp = context.api.ssi.get_client_request_final1(proof_id).await;
+    let resp = context.api.ssi.get_client_request(proof_id).await;
 
     assert_eq!(resp.status(), 200);
     let (_header, payload) = decode_jwt(&resp.text().await);
@@ -359,7 +233,7 @@ async fn test_get_client_request_final1_did_scheme_no_verifier_info() {
         )
         .await;
 
-    let resp = context.api.ssi.get_client_request_final1(proof.id).await;
+    let resp = context.api.ssi.get_client_request(proof.id).await;
 
     assert_eq!(resp.status(), 200);
     let (_header, payload) = decode_jwt(&resp.text().await);
@@ -376,7 +250,7 @@ async fn test_get_client_request_final1_x5c_header_with_access_certificate() {
         setup_final1_certificate_proof(&["reg-cert-data"], Some(ClientIdSchemeRestEnum::X509Hash))
             .await;
 
-    let resp = context.api.ssi.get_client_request_final1(proof_id).await;
+    let resp = context.api.ssi.get_client_request(proof_id).await;
 
     assert_eq!(resp.status(), 200);
     let (header, _payload) = decode_jwt(&resp.text().await);
@@ -401,7 +275,7 @@ async fn test_get_client_request_final1_verifier_info_has_no_credential_ids() {
         setup_final1_certificate_proof(&["reg-cert-data"], Some(ClientIdSchemeRestEnum::X509Hash))
             .await;
 
-    let resp = context.api.ssi.get_client_request_final1(proof_id).await;
+    let resp = context.api.ssi.get_client_request(proof_id).await;
 
     assert_eq!(resp.status(), 200);
     let (_header, payload) = decode_jwt(&resp.text().await);
@@ -426,7 +300,7 @@ async fn test_get_client_request_final1_multiple_registration_certs() {
     )
     .await;
 
-    let resp = context.api.ssi.get_client_request_final1(proof_id).await;
+    let resp = context.api.ssi.get_client_request(proof_id).await;
 
     assert_eq!(resp.status(), 200);
     let (_header, payload) = decode_jwt(&resp.text().await);

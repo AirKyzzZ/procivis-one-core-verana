@@ -22,8 +22,7 @@ use crate::provider::credential_formatter::model::{
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::verification_protocol::openid4vp::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::model::{
-    ClientIdScheme, OpenID4VCVerifierAttestationPayload, OpenID4VPClientMetadata,
-    OpenID4VPHolderInteractionData,
+    ClientIdScheme, OpenID4VCVerifierAttestationPayload, OpenID4VPHolderInteractionData,
 };
 use crate::provider::verification_protocol::openid4vp::validator::{
     validate_against_redirect_uris, validate_san_dns_matching_client_id,
@@ -518,9 +517,7 @@ pub(super) fn validate_interaction_data(
             "response_mode is None".to_string(),
         ))?;
 
-    let Some(OpenID4VPClientMetadata::Final1_0(client_metadata)) =
-        interaction_data.client_metadata.as_ref()
-    else {
+    let Some(client_metadata) = interaction_data.client_metadata.as_ref() else {
         return Err(VerificationProtocolError::Failed(
             "client_metadata is None".to_string(),
         ));

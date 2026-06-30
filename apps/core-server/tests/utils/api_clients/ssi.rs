@@ -1,5 +1,3 @@
-use std::fmt::Display;
-
 use axum::http::HeaderMap;
 use core_server::extractor::Accept;
 use headers::HeaderMapExt;
@@ -56,28 +54,7 @@ impl SSIApi {
         self.client.get(&url).await
     }
 
-    pub async fn get_oidc_verifier_presentation_definition(
-        &self,
-        proof_id: impl Display,
-    ) -> Response {
-        let url = format!("/ssi/openid4vp/draft-20/{proof_id}/presentation-definition");
-        self.client.get(&url).await
-    }
-
-    pub async fn get_client_metadata(&self, proof_id: impl Into<Uuid>) -> Response {
-        let url = format!(
-            "/ssi/openid4vp/draft-20/{}/client-metadata",
-            proof_id.into()
-        );
-        self.client.get(&url).await
-    }
-
     pub async fn get_client_request(&self, proof_id: impl Into<Uuid>) -> Response {
-        let url = format!("/ssi/openid4vp/draft-20/{}/client-request", proof_id.into());
-        self.client.get(&url).await
-    }
-
-    pub async fn get_client_request_final1(&self, proof_id: impl Into<Uuid>) -> Response {
         let url = format!(
             "/ssi/openid4vp/final-1.0/{}/client-request",
             proof_id.into()

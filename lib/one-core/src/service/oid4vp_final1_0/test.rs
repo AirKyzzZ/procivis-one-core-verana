@@ -2,12 +2,13 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
 
+use maplit::hashmap;
 use shared_types::{InteractionId, ProofId};
 use similar_asserts::assert_eq;
 use standardized_types::jwa::EncryptionAlgorithm;
 use standardized_types::jwk::{JwkUse, Jwks, PublicJwk, PublicJwkEc};
 use standardized_types::openid4vp::{
-    ClientMetadata, GenericAlgs, MdocAlgs, PresentationFormat, SdJwtVcAlgs, W3CJwtAlgs, W3CLdpAlgs,
+    ClientMetadata, MdocAlgs, PresentationFormat, SdJwtVcAlgs, W3CJwtAlgs, W3CLdpAlgs,
 };
 use uuid::Uuid;
 
@@ -85,193 +86,6 @@ fn setup_service(mocks: Mocks) -> OID4VPFinal1_0Service {
     )
 }
 
-fn jwt_format_map() -> HashMap<String, PresentationFormat> {
-    HashMap::from([(
-        "jwt_vc_json".to_string(),
-        PresentationFormat::GenericAlgList(GenericAlgs {
-            alg: vec!["EdDSA".to_string(), "ES256".to_string()],
-        }),
-    )])
-}
-
-#[tokio::test]
-async fn test_submit_proof_failed_credential_suspended() {
-    let proof_id: ProofId = Uuid::new_v4().into();
-    let verifier_did = "did:verifier:123".parse().unwrap();
-    let mut proof_repository = MockProofRepository::new();
-    let interaction_id: InteractionId = Uuid::parse_str("a83dabc3-1601-4642-84ec-7a5ad8a70d36")
-        .unwrap()
-        .into();
-    let nonce = "7QqBfOcEcydceH6ZrXtu9fhDCvXjtLBv".to_string();
-    let claim_id = Uuid::new_v4().into();
-    let credential_schema = dummy_credential_schema();
-    let interaction_data = OpenID4VPVerifierInteractionContent {
-        nonce: nonce.to_owned(),
-        encryption_key: None,
-        dcql_query: None,
-        presentation_definition: Some(OpenID4VPPresentationDefinition {
-            id: interaction_id.to_string(),
-            input_descriptors: vec![OpenID4VPPresentationDefinitionInputDescriptor {
-                id: "input_0".to_string(),
-                name: None,
-                purpose: None,
-                format: jwt_format_map(),
-                constraints: OpenID4VPPresentationDefinitionConstraint {
-                    fields: vec![
-                        OpenID4VPPresentationDefinitionConstraintField {
-                            id: None,
-                            name: None,
-                            purpose: None,
-                            path: vec!["$.credentialSchema.id".to_string()],
-                            optional: None,
-                            filter: Some(OpenID4VPPresentationDefinitionConstraintFieldFilter {
-                                r#type: "string".to_string(),
-                                r#const: credential_schema.schema_id().await.unwrap(),
-                            }),
-                            intent_to_retain: None,
-                        },
-                        OpenID4VPPresentationDefinitionConstraintField {
-                            id: Some(claim_id),
-                            name: None,
-                            purpose: None,
-                            path: vec!["$.vc.credentialSubject.string".to_string()],
-                            optional: Some(false),
-                            filter: None,
-                            intent_to_retain: None,
-                        },
-                    ],
-                    limit_disclosure: None,
-                },
-            }],
-        }),
-        client_id: "client_id".to_string(),
-        client_id_scheme: Some(ClientIdScheme::RedirectUri),
-        response_uri: None,
-    };
-    let interaction_data_serialized = serde_json::to_vec(&interaction_data).unwrap();
-    let now = crate::clock::now_utc();
-    let interaction = Interaction {
-        id: interaction_id,
-        created_date: now,
-        last_modified: now,
-        data: Some(interaction_data_serialized),
-        organisation: None,
-        nonce_id: None,
-        interaction_type: InteractionType::Verification,
-        expires_at: None,
-    };
-
-    let interaction_id_copy = interaction_id.to_owned();
-    proof_repository
-        .expect_get_proof_by_interaction_id()
-        .withf(move |_interaction_id, _| {
-            assert_eq!(*_interaction_id, interaction_id_copy);
-            true
-        })
-        .once()
-        .return_once(move |_, _| {
-            Ok(Some(Proof {
-                id: proof_id,
-                verifier_identifier: Some(Identifier {
-                    did: Some(Did {
-                        did: verifier_did,
-                        ..dummy_did()
-                    }),
-                    ..dummy_identifier()
-                }),
-                state: ProofStateEnum::Pending,
-                schema: Some(ProofSchema {
-                    input_schemas: Some(vec![ProofInputSchema {
-                        claim_schemas: Some(vec![
-                            ProofInputClaimSchema {
-                                schema: ClaimSchema {
-                                    id: shared_types::ClaimSchemaId::from(Into::<Uuid>::into(
-                                        claim_id,
-                                    )),
-                                    key: "required_key".to_string(),
-                                    ..dummy_claim_schema()
-                                },
-                                required: true,
-                                order: 0,
-                            },
-                            ProofInputClaimSchema {
-                                schema: ClaimSchema {
-                                    key: "optional_key".to_string(),
-                                    ..dummy_claim_schema()
-                                },
-                                required: false,
-                                order: 1,
-                            },
-                        ]),
-                        credential_schema: Some(credential_schema),
-                    }]),
-                    organisation: Some(dummy_organisation(None)),
-                    ..dummy_proof_schema()
-                }),
-                interaction: Some(interaction),
-                ..dummy_proof_with_protocol("OPENID4VP_FINAL1")
-            }))
-        });
-
-    proof_repository
-        .expect_update_proof()
-        .withf(move |_proof_id, _, _| {
-            assert_eq!(_proof_id, &proof_id);
-            true
-        })
-        .once()
-        .returning(|_, _, _| Ok(()));
-
-    let mut blob_storage = MockBlobStorage::new();
-    blob_storage.expect_create().returning(|_| Ok(()));
-
-    let blob_storage = Arc::new(blob_storage);
-    let mut blob_storage_provider = MockBlobStorageProvider::new();
-    blob_storage_provider
-        .expect_get_blob_storage()
-        .returning(move |_| Ok(blob_storage.clone()));
-
-    let mut proof_validator = MockOpenId4VpProofValidator::new();
-    proof_validator
-        .expect_validate_submission()
-        .returning(|_, _, _, _| Err(OpenID4VCError::CredentialIsRevokedOrSuspended));
-    let service = setup_service(Mocks {
-        proof_repository,
-        blob_storage_provider,
-        proof_validator,
-        config: generic_config().core,
-        ..Default::default()
-    });
-
-    let err = service
-        .direct_post(OpenID4VPDirectPostRequestDTO {
-            submission_data: VpSubmissionData::Pex(PexSubmission {
-                vp_token: vec!["vp_token".to_string()],
-                presentation_submission: PresentationSubmissionMappingDTO {
-                    id: "25f5a42c-6850-49a0-b842-c7b2411021a5".to_string(),
-                    definition_id: interaction_id.to_string(),
-                    descriptor_map: vec![PresentationSubmissionDescriptorDTO {
-                        id: "input_0".to_string(),
-                        format: "jwt_vp_json".to_string(),
-                        path: "$".to_string(),
-                        path_nested: Some(NestedPresentationSubmissionDescriptorDTO {
-                            format: "jwt_vc_json".to_string(),
-                            path: "$.vp.verifiableCredential[0]".to_string(),
-                        }),
-                    }],
-                },
-            }),
-            state: Some("a83dabc3-1601-4642-84ec-7a5ad8a70d36".parse().unwrap()),
-        })
-        .await
-        .unwrap_err();
-
-    assert!(matches!(
-        err,
-        OID4VPFinal1_0ServiceError::OpenID4VCError(OpenID4VCError::CredentialIsRevokedOrSuspended)
-    ));
-}
-
 #[tokio::test]
 async fn test_submit_proof_failed_on_validator_failure() {
     let proof_id: ProofId = Uuid::new_v4().into();
@@ -282,47 +96,12 @@ async fn test_submit_proof_failed_on_validator_failure() {
         .into();
     let nonce = "7QqBfOcEcydceH6ZrXtu9fhDCvXjtLBv".to_string();
 
-    let claim_id = Uuid::new_v4().into();
+    let claim_id = Uuid::new_v4();
     let credential_schema = dummy_credential_schema();
     let interaction_data = OpenID4VPVerifierInteractionContent {
         nonce: nonce.to_owned(),
         encryption_key: None,
         dcql_query: None,
-        presentation_definition: Some(OpenID4VPPresentationDefinition {
-            id: interaction_id.to_string(),
-            input_descriptors: vec![OpenID4VPPresentationDefinitionInputDescriptor {
-                id: "input_0".to_string(),
-                name: None,
-                purpose: None,
-                format: jwt_format_map(),
-                constraints: OpenID4VPPresentationDefinitionConstraint {
-                    fields: vec![
-                        OpenID4VPPresentationDefinitionConstraintField {
-                            id: None,
-                            name: None,
-                            purpose: None,
-                            path: vec!["$.credentialSchema.id".to_string()],
-                            optional: None,
-                            filter: Some(OpenID4VPPresentationDefinitionConstraintFieldFilter {
-                                r#type: "string".to_string(),
-                                r#const: credential_schema.schema_id().await.unwrap(),
-                            }),
-                            intent_to_retain: None,
-                        },
-                        OpenID4VPPresentationDefinitionConstraintField {
-                            id: Some(claim_id),
-                            name: None,
-                            purpose: None,
-                            path: vec!["$.vc.credentialSubject.string".to_string()],
-                            optional: Some(false),
-                            filter: None,
-                            intent_to_retain: None,
-                        },
-                    ],
-                    limit_disclosure: None,
-                },
-            }],
-        }),
         client_id: "client_id".to_string(),
         client_id_scheme: Some(ClientIdScheme::RedirectUri),
         response_uri: None,
@@ -425,21 +204,8 @@ async fn test_submit_proof_failed_on_validator_failure() {
 
     let err = service
         .direct_post(OpenID4VPDirectPostRequestDTO {
-            submission_data: VpSubmissionData::Pex(PexSubmission {
-                vp_token: vec!["vp_token".to_string()],
-                presentation_submission: PresentationSubmissionMappingDTO {
-                    id: "25f5a42c-6850-49a0-b842-c7b2411021a5".to_string(),
-                    definition_id: interaction_id.to_string(),
-                    descriptor_map: vec![PresentationSubmissionDescriptorDTO {
-                        id: "input_0".to_string(),
-                        format: "jwt_vp_json".to_string(),
-                        path: "$".to_string(),
-                        path_nested: Some(NestedPresentationSubmissionDescriptorDTO {
-                            format: "jwt_vc_json".to_string(),
-                            path: "$.vp.verifiableCredential[0]".to_string(),
-                        }),
-                    }],
-                },
+            submission_data: VpSubmissionData::Dcql(DcqlSubmission {
+                vp_token: hashmap! { "credential_id".to_string() => vec!["vp_token".to_string()] },
             }),
             state: Some("a83dabc3-1601-4642-84ec-7a5ad8a70d36".parse().unwrap()),
         })
@@ -462,48 +228,12 @@ async fn test_submit_proof_failed_on_trust_failure() {
         .into();
     let nonce = "7QqBfOcEcydceH6ZrXtu9fhDCvXjtLBv".to_string();
 
-    let claim_id = Uuid::new_v4().into();
+    let claim_id = Uuid::new_v4();
     let credential_schema = dummy_credential_schema();
-    let credential_schema_schema_id = credential_schema.schema_id().await.unwrap();
     let interaction_data = OpenID4VPVerifierInteractionContent {
         nonce: nonce.to_owned(),
         encryption_key: None,
         dcql_query: None,
-        presentation_definition: Some(OpenID4VPPresentationDefinition {
-            id: interaction_id.to_string(),
-            input_descriptors: vec![OpenID4VPPresentationDefinitionInputDescriptor {
-                id: "input_0".to_string(),
-                name: None,
-                purpose: None,
-                format: jwt_format_map(),
-                constraints: OpenID4VPPresentationDefinitionConstraint {
-                    fields: vec![
-                        OpenID4VPPresentationDefinitionConstraintField {
-                            id: None,
-                            name: None,
-                            purpose: None,
-                            path: vec!["$.credentialSchema.id".to_string()],
-                            optional: None,
-                            filter: Some(OpenID4VPPresentationDefinitionConstraintFieldFilter {
-                                r#type: "string".to_string(),
-                                r#const: credential_schema_schema_id,
-                            }),
-                            intent_to_retain: None,
-                        },
-                        OpenID4VPPresentationDefinitionConstraintField {
-                            id: Some(claim_id),
-                            name: None,
-                            purpose: None,
-                            path: vec!["$.vc.credentialSubject.string".to_string()],
-                            optional: Some(false),
-                            filter: None,
-                            intent_to_retain: None,
-                        },
-                    ],
-                    limit_disclosure: None,
-                },
-            }],
-        }),
         client_id: "client_id".to_string(),
         client_id_scheme: Some(ClientIdScheme::RedirectUri),
         response_uri: None,
@@ -653,21 +383,8 @@ async fn test_submit_proof_failed_on_trust_failure() {
 
     let err = service
         .direct_post(OpenID4VPDirectPostRequestDTO {
-            submission_data: VpSubmissionData::Pex(PexSubmission {
-                vp_token: vec!["vp_token".to_string()],
-                presentation_submission: PresentationSubmissionMappingDTO {
-                    id: "25f5a42c-6850-49a0-b842-c7b2411021a5".to_string(),
-                    definition_id: interaction_id.to_string(),
-                    descriptor_map: vec![PresentationSubmissionDescriptorDTO {
-                        id: "input_0".to_string(),
-                        format: "jwt_vp_json".to_string(),
-                        path: "$".to_string(),
-                        path_nested: Some(NestedPresentationSubmissionDescriptorDTO {
-                            format: "jwt_vc_json".to_string(),
-                            path: "$.vp.verifiableCredential[0]".to_string(),
-                        }),
-                    }],
-                },
+            submission_data: VpSubmissionData::Dcql(DcqlSubmission {
+                vp_token: hashmap! { "credential_id".to_string() => vec!["vp_token".to_string()] },
             }),
             state: Some("a83dabc3-1601-4642-84ec-7a5ad8a70d36".parse().unwrap()),
         })

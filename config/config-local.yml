@@ -118,34 +118,7 @@ issuanceProtocol:
         nonce:
           signingKey: "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e"
 verificationProtocol:
-  OPENID4VP_DRAFT20:
-    display: "exchange.openid4vp20"
-    order: 1
-    type: "OPENID4VP_DRAFT20"
-    params:
-      public:
-        allowInsecureHttpTransport: true
-        webhookTask: "WEBHOOK_NOTIFY"
-        useRequestUri: true
-        urlScheme: openid4vp-draft20
-        verifier:
-          interactionExpiresIn: 3600
-          supportedClientIdSchemes:
-            [verifier_attestation, redirect_uri, did, x509_san_dns]
-        holder:
-          supportedClientIdSchemes:
-            [verifier_attestation, redirect_uri, did, x509_san_dns]
-        redirectUri:
-          enabled: true
-          allowedSchemes: ["http", "https"]
   OPENID4VP_FINAL1_SWIYU:
-    params:
-      public:
-        allowInsecureHttpTransport: true
-        redirectUri:
-          allowedSchemes: ["http", "https"]
-  MDOC_OPENID4VP:
-    enabled: true
     params:
       public:
         allowInsecureHttpTransport: true

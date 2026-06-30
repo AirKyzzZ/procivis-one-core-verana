@@ -89,8 +89,6 @@ pub(super) struct IdentityRequest {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum ProtocolVersion {
-    /// legacy version using Presentation Exchange and Draft20 structures
-    V1,
     /// using final-1 structures and DCQL query
     V2,
 }
@@ -102,7 +100,6 @@ pub(super) trait WithProtocolVersion {
 impl From<ProtocolVersion> for u8 {
     fn from(value: ProtocolVersion) -> Self {
         match value {
-            ProtocolVersion::V1 => 1,
             ProtocolVersion::V2 => 2,
         }
     }
@@ -113,15 +110,12 @@ impl IdentityRequest {
         let mut result = vec![];
         result.extend(&self.key);
         result.extend(&self.nonce);
-        if self.version != ProtocolVersion::V1 {
-            result.push(self.version.into());
-        }
+        result.push(self.version.into());
         result
     }
 
     pub(crate) fn parse(data: Vec<u8>) -> anyhow::Result<Self> {
         let version = match data.len() {
-            44 => ProtocolVersion::V1,
             45 => ProtocolVersion::V2,
             len => return Err(anyhow::anyhow!("Invalid identity request size: {len}")),
         };
@@ -148,23 +142,6 @@ mod tests {
     use similar_asserts::assert_eq;
 
     use super::*;
-
-    #[test]
-    fn test_identity_request_v1_parsing() {
-        let original = IdentityRequest {
-            key: [1; 32],
-            nonce: [2; 12],
-            version: ProtocolVersion::V1,
-        };
-
-        let serialized = original.to_owned().encode();
-        assert_eq!(serialized.len(), 44);
-
-        let decoded = IdentityRequest::parse(serialized).unwrap();
-        assert_eq!(decoded.key, original.key);
-        assert_eq!(decoded.nonce, original.nonce);
-        assert_eq!(decoded.version, ProtocolVersion::V1);
-    }
 
     #[test]
     fn test_identity_request_v2_parsing() {

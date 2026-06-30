@@ -154,3 +154,54 @@ pub(crate) async fn dummy_presentations() -> (String, String) {
     .await;
     (pres1, pres2)
 }
+
+async fn single_credential_presentation(credential_subject: serde_json::Value) -> String {
+    let alg = "ES256";
+    let holder_key_pair = Ecdsa.generate_key().unwrap();
+    let multibase = holder_key_pair.key.public_key_as_multibase().unwrap();
+    let holder_did = DidValue::from_did_url(format!("did:key:{multibase}").as_str()).unwrap();
+
+    let issuer_key_pair = Ecdsa.generate_key().unwrap();
+    let issuer_multibase = issuer_key_pair.key.public_key_as_multibase().unwrap();
+    let issuer_did =
+        DidValue::from_did_url(format!("did:key:{issuer_multibase}").as_str()).unwrap();
+
+    let token = w3c_jwt_vc(
+        &issuer_key_pair,
+        alg,
+        issuer_did,
+        holder_did.clone(),
+        credential_subject,
+    )
+    .await;
+
+    w3c_jwt_enveloped_presentation(
+        &holder_key_pair,
+        alg,
+        vec![token],
+        holder_did.clone(),
+        holder_did,
+        Some("nonce123".to_string()),
+    )
+    .await
+}
+
+/// Returns three separate single-credential presentations (name, pet, cat), one credential each,
+/// as required by the DCQL flow where each credential query maps to its own presentation.
+pub(crate) async fn dummy_single_credential_presentations() -> (String, String, String) {
+    let name_presentation = single_credential_presentation(json!({
+      "name1": "NAME1",
+      "name2": "NAME2"
+    }))
+    .await;
+    let pet_presentation = single_credential_presentation(json!({
+      "pet1": "PET1",
+      "pet2": "PET2"
+    }))
+    .await;
+    let cat_presentation = single_credential_presentation(json!({
+      "cat1": "CAT1"
+    }))
+    .await;
+    (name_presentation, pet_presentation, cat_presentation)
+}

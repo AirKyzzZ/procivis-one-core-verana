@@ -1,7 +1,6 @@
 //! Implementation of ISO mDL (ISO/IEC 18013-5:2021).
 //! https://www.iso.org/standard/69084.html
 
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::Context;
@@ -16,21 +15,15 @@ use serde_json::Value;
 use url::Url;
 
 use super::dto::{
-    FormattedCredentialPresentation, InvitationResponseDTO, PresentationDefinitionFieldDTO,
-    PresentationDefinitionRequestGroupResponseDTO,
-    PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
-    PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
-    PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion, ShareResponse,
-    UpdateResponse, VerificationProtocolCapabilities,
+    FormattedCredentialPresentation, InvitationResponseDTO, PresentationDefinitionV2ResponseDTO,
+    PresentationDefinitionVersion, ShareResponse, UpdateResponse, VerificationProtocolCapabilities,
 };
-use super::{
-    FormatMapper, TypeToDescriptorMapper, VerificationProtocol, VerificationProtocolError,
-};
+use super::{FormatMapper, VerificationProtocol, VerificationProtocolError};
 use crate::config::core_config::{
     CoreConfig, DidType, IdentifierType, TransportType, VerificationEngagement,
 };
 use crate::error::ContextWithErrorCode;
-use crate::mapper::{NESTED_CLAIM_MARKER, decode_cbor_base64};
+use crate::mapper::decode_cbor_base64;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::proto::bluetooth_low_energy::ble_resource::{Abort, BleWaiter};
@@ -55,10 +48,6 @@ use crate::provider::verification_protocol::openid4vp::dcql::get_presentation_de
 use crate::provider::verification_protocol::openid4vp::mapper::format_to_type;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
-use crate::service::credential::dto::CredentialAttestationBlobs;
-use crate::service::credential::mapper::{
-    credential_detail_response_from_model, get_remaining_batch_item_count,
-};
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 
 mod ble;
@@ -301,149 +290,10 @@ impl VerificationProtocol for IsoMdl {
         &self,
         _proof: &Proof,
         _format_to_type_mapper: FormatMapper,
-        _type_to_descriptor: TypeToDescriptorMapper,
         _callback: Option<BoxFuture<'static, ()>>,
         _params: Option<ShareProofRequestParamsDTO>,
     ) -> Result<ShareResponse, VerificationProtocolError> {
         unimplemented!()
-    }
-
-    async fn holder_get_presentation_definition(
-        &self,
-        proof: &Proof,
-        interaction_data: serde_json::Value,
-    ) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError> {
-        let interaction_data: MdocBleHolderInteractionData =
-            serde_json::from_value(interaction_data)?;
-
-        let device_request_bytes = interaction_data
-            .session
-            .ok_or_else(|| VerificationProtocolError::Failed("Missing device_request".to_string()))?
-            .device_request_bytes;
-
-        let device_request: DeviceRequest = ciborium::from_reader(device_request_bytes.as_slice())
-            .context("device request deserialization error")
-            .map_err(VerificationProtocolError::Other)?;
-
-        let mut relevant_credentials = vec![];
-        let mut requested_credentials = vec![];
-
-        let organisation_id = interaction_data.organisation_id;
-
-        for doc_request in device_request.doc_requests {
-            let items_request = doc_request.items_request.into_inner();
-            let schema_id = items_request.doc_type;
-            let namespaces = items_request.name_spaces;
-
-            let credentials: Vec<_> = super::mapper::get_presentation_credentials_by_schema_id(
-                self.credential_repository.as_ref(),
-                schema_id.to_owned(),
-                organisation_id,
-            )
-            .await
-            .error_while("getting presentation credentials")?;
-
-            let mut fields: Vec<PresentationDefinitionFieldDTO> = namespaces
-                .into_iter()
-                .flat_map(|(namespace, data_elements)| {
-                    data_elements.into_keys().map(move |element| {
-                        let name = format!("{namespace}{NESTED_CLAIM_MARKER}{element}");
-
-                        PresentationDefinitionFieldDTO {
-                            id: name.clone(),
-                            name: Some(name),
-                            purpose: None,
-                            required: Some(false),
-                            key_map: HashMap::new(),
-                        }
-                    })
-                })
-                .collect();
-
-            let mut applicable_credentials = vec![];
-
-            for credential in credentials {
-                let claims = credential.claims.as_ref().ok_or_else(|| {
-                    VerificationProtocolError::Failed("Claims missing for credential".to_string())
-                })?;
-
-                let mut credential_claim_requested = false;
-                for claim in claims {
-                    let claim_schema = claim.schema.as_ref().ok_or_else(|| {
-                        VerificationProtocolError::Failed(
-                            "Claim is missing claim schema".to_string(),
-                        )
-                    })?;
-                    let key = &claim_schema.key;
-
-                    // iso-mdl only permits sharing of 2nd-level attributes
-                    if let Some(field_description) = fields.iter_mut().find(|field| {
-                        &field.id == key
-                            || key.starts_with(&format!("{}{NESTED_CLAIM_MARKER}", field.id))
-                    }) {
-                        field_description
-                            .key_map
-                            .insert(credential.id, field_description.id.to_owned());
-
-                        credential_claim_requested = true;
-                    }
-                }
-
-                if credential_claim_requested {
-                    applicable_credentials.push(credential.id);
-
-                    let remaining_batch_item_count = get_remaining_batch_item_count(
-                        &credential,
-                        self.credential_repository.as_ref(),
-                    )
-                    .await
-                    .error_while("getting remaining batch items")?;
-
-                    let credential = credential_detail_response_from_model(
-                        credential,
-                        &self.config,
-                        CredentialAttestationBlobs::default(),
-                        None,
-                        remaining_batch_item_count,
-                        self.credential_repository.as_ref(),
-                        self.credential_formatter_provider.as_ref(),
-                    )
-                    .await
-                    .error_while("creating credential detail")?;
-                    relevant_credentials.push(credential);
-                }
-            }
-
-            let credential_response = PresentationDefinitionRequestedCredentialResponseDTO {
-                id: schema_id,
-                name: None,
-                purpose: None,
-                multiple: None,
-                fields,
-                applicable_credentials,
-                inapplicable_credentials: vec![],
-            };
-
-            requested_credentials.push(credential_response);
-        }
-
-        let request_group = PresentationDefinitionRequestGroupResponseDTO {
-            id: proof.id.to_string(),
-            name: None,
-            purpose: None,
-            rule: PresentationDefinitionRuleDTO {
-                r#type: PresentationDefinitionRuleTypeEnum::All,
-                min: None,
-                max: None,
-                count: None,
-            },
-            requested_credentials,
-        };
-
-        Ok(PresentationDefinitionResponseDTO {
-            request_groups: vec![request_group],
-            credentials: relevant_credentials,
-        })
     }
 
     async fn holder_get_presentation_definition_v2(
@@ -526,10 +376,7 @@ impl VerificationProtocol for IsoMdl {
             supported_transports: vec![TransportType::Ble],
             did_methods: vec![DidType::Key, DidType::Jwk, DidType::Web],
             verifier_identifier_types: vec![IdentifierType::Did],
-            supported_presentation_definition: vec![
-                PresentationDefinitionVersion::V1,
-                PresentationDefinitionVersion::V2,
-            ],
+            supported_presentation_definition: vec![PresentationDefinitionVersion::V2],
         }
     }
 

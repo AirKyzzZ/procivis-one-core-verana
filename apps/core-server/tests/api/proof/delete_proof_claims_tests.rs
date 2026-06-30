@@ -103,7 +103,7 @@ async fn test_delete_proof_claims_success() {
             &identifier,
             Some(&proof_schema),
             ProofStateEnum::Pending,
-            "OPENID4VP_DRAFT20",
+            "OPENID4VP_FINAL1",
             Some(&interaction),
             verifier_key,
             Some(blob.id),

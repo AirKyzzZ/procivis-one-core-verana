@@ -1,36 +1,21 @@
 //! Implementation of OpenID4VP.
 //! https://openid.net/specs/openid-4-verifiable-presentations-1_0.html
 
-use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use mapper::{get_claim_name_by_json_path, presentation_definition_from_interaction_data};
-use one_dto_mapper::convert_inner;
-
-use super::dto::{CredentialGroup, CredentialGroupItem, PresentationDefinitionResponseDTO};
-use super::{FormatMapper, TypeToDescriptorMapper, VerificationProtocolError};
-use crate::config::core_config::CoreConfig;
+use super::{FormatMapper, VerificationProtocolError};
 use crate::error::ContextWithErrorCode;
-use crate::mapper::oidc::map_from_openid4vp_format;
 use crate::model::identifier::{Identifier, IdentifierType};
 use crate::model::key::Key;
 use crate::model::proof::Proof;
 use crate::provider::credential_formatter::model::AuthenticationFn;
-use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::key_algorithm::KeyAlgorithm;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
-use crate::provider::verification_protocol::mapper::{
-    gather_object_datatypes_from_config, get_relevant_credentials_to_credential_schemas,
-};
-use crate::provider::verification_protocol::openid4vp::model::{
-    ClientIdScheme, OpenID4VPClientMetadata, OpenID4VPPresentationDefinition,
-};
-use crate::repository::credential_repository::CredentialRepository;
+use crate::provider::verification_protocol::openid4vp::model::ClientIdScheme;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 pub(crate) mod dcql;
 pub(crate) mod disclosure_policy;
-pub mod draft20;
 pub mod error;
 pub mod final1_0;
 pub mod final1_0_swiyu;
@@ -38,9 +23,7 @@ pub(crate) mod jwe_presentation;
 pub(crate) mod mapper;
 pub(crate) mod mdoc;
 pub mod model;
-mod presentation_exchange;
 pub mod proximity_draft00;
-pub mod service;
 pub mod validator;
 
 fn get_client_id_scheme(
@@ -83,137 +66,6 @@ fn get_supported_client_id_scheme_for_identifier(
         IdentifierType::Certificate => vec![ClientIdScheme::X509SanDns, ClientIdScheme::X509Hash],
         IdentifierType::CertificateAuthority => vec![],
     }
-}
-
-fn extract_common_formats(
-    allowed_schema_input_descriptor_formats: HashSet<String>,
-    client_metadata: &Option<OpenID4VPClientMetadata>,
-) -> Result<HashSet<String>, VerificationProtocolError> {
-    if let Some(client_metadata) = client_metadata {
-        let vp_formats_supported = match client_metadata {
-            OpenID4VPClientMetadata::Draft(metadata) => &metadata.vp_formats,
-            OpenID4VPClientMetadata::Final1_0(metadata) => &metadata.vp_formats_supported,
-        };
-
-        let schema_formats: HashSet<String> = vp_formats_supported
-            .keys()
-            .map(|oidc_format| {
-                map_from_openid4vp_format(oidc_format)
-                    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))
-            })
-            .collect::<Result<_, _>>()?;
-
-        Ok(allowed_schema_input_descriptor_formats
-            .intersection(&schema_formats)
-            .cloned()
-            .collect())
-    } else {
-        Ok(allowed_schema_input_descriptor_formats)
-    }
-}
-
-pub(crate) async fn get_presentation_definition_with_local_credentials(
-    verifier_presentation_definition: OpenID4VPPresentationDefinition,
-    proof: &Proof,
-    client_metadata: Option<OpenID4VPClientMetadata>,
-    credential_repository: &dyn CredentialRepository,
-    config: &CoreConfig,
-    formatter_provider: &dyn CredentialFormatterProvider,
-) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError> {
-    let mut credential_groups: Vec<CredentialGroup> = vec![];
-    let mut group_id_to_schema_id: HashMap<String, String> = HashMap::new();
-
-    let mut allowed_oidc_input_descriptor_formats = HashSet::new();
-
-    for input_descriptor in verifier_presentation_definition.input_descriptors {
-        input_descriptor.format.keys().for_each(|key| {
-            allowed_oidc_input_descriptor_formats.insert(key.to_owned());
-        });
-
-        let mut fields = input_descriptor.constraints.fields;
-
-        let target_schema_id = if input_descriptor.format.contains_key("mso_mdoc") {
-            input_descriptor.id.to_owned()
-        } else {
-            let schema_id_filter_index = fields
-                .iter()
-                .position(|field| {
-                    field.filter.is_some()
-                        && field.path.contains(&"$.credentialSchema.id".to_string())
-                        || field.path.contains(&"$.vct".to_string())
-                })
-                .ok_or(VerificationProtocolError::Failed(
-                    "schema_id filter not found".to_string(),
-                ))?;
-
-            let schema_id_filter = fields.remove(schema_id_filter_index).filter.ok_or(
-                VerificationProtocolError::Failed("schema_id filter not found".to_string()),
-            )?;
-
-            schema_id_filter.r#const
-        };
-
-        group_id_to_schema_id.insert(input_descriptor.id.clone(), target_schema_id);
-        credential_groups.push(CredentialGroup {
-            id: input_descriptor.id,
-            name: input_descriptor.name,
-            purpose: input_descriptor.purpose,
-            claims: fields
-                .iter()
-                .map(|requested_claim| {
-                    Ok(CredentialGroupItem {
-                        id: requested_claim
-                            .id
-                            .map(|id| id.to_string())
-                            .unwrap_or(requested_claim.path.join(".")),
-                        key: get_claim_name_by_json_path(&requested_claim.path)?,
-                        required: !requested_claim.optional.is_some_and(|optional| optional),
-                    })
-                })
-                .collect::<anyhow::Result<Vec<_>, VerificationProtocolError>>()?,
-            applicable_credentials: vec![],
-            inapplicable_credentials: vec![],
-        });
-    }
-
-    let allowed_schema_input_descriptor_formats: HashSet<_> = allowed_oidc_input_descriptor_formats
-        .iter()
-        .map(|oidc_format| {
-            map_from_openid4vp_format(oidc_format)
-                .map_err(|e| VerificationProtocolError::Failed(e.to_string()))
-        })
-        .collect::<Result<_, _>>()?;
-
-    let allowed_schema_formats =
-        extract_common_formats(allowed_schema_input_descriptor_formats, &client_metadata)?;
-
-    let organisation = proof
-        .interaction
-        .as_ref()
-        .and_then(|interaction| interaction.organisation.as_ref())
-        .ok_or(VerificationProtocolError::Failed(
-            "proof organisation missing".to_string(),
-        ))?;
-
-    let (credentials, credential_groups) = get_relevant_credentials_to_credential_schemas(
-        credential_repository,
-        credential_groups,
-        group_id_to_schema_id,
-        &allowed_schema_formats,
-        &gather_object_datatypes_from_config(&config.datatype),
-        organisation.id,
-    )
-    .await?;
-
-    presentation_definition_from_interaction_data(
-        proof.id,
-        convert_inner(credentials),
-        convert_inner(credential_groups),
-        config,
-        credential_repository,
-        formatter_provider,
-    )
-    .await
 }
 
 struct JWTSigner<'a> {

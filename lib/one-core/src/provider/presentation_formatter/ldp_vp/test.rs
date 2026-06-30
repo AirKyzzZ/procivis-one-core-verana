@@ -355,7 +355,7 @@ async fn test_parse_presentation_multi_tokens() {
             PRESENTATION_TOKEN,
             Box::new(token_verifier),
             ExtractPresentationCtx {
-                verification_protocol_type: VerificationProtocolType::OpenId4VpDraft20,
+                verification_protocol_type: VerificationProtocolType::OpenId4VpFinal1_0,
                 nonce: None,
                 format_nonce: None,
                 issuance_date: None,

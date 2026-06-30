@@ -350,10 +350,6 @@ fn get_management_endpoints(
                 get(proof::controller::get_proof_details).delete(proof::controller::delete_proof),
             )
             .route(
-                "/api/proof-request/v1/{id}/presentation-definition",
-                get(proof::controller::get_proof_presentation_definition),
-            )
-            .route(
                 "/api/proof-request/v2/{id}/presentation-definition",
                 get(proof::controller::get_proof_presentation_definition_v2),
             )
@@ -420,10 +416,6 @@ fn get_management_endpoints(
             .route(
                 "/api/interaction/v1/{id}/issuance-refresh",
                 post(interaction::controller::issuance_refresh),
-            )
-            .route(
-                "/api/interaction/v1/presentation-submit",
-                post(interaction::controller::presentation_submit),
             )
             .route(
                 "/api/interaction/v2/presentation-submit",
@@ -677,23 +669,6 @@ fn get_external_endpoints(
             .route(
                 "/ssi/openid4vci/final-1.0-swiyu/{id}/notification",
                 post(ssi::issuance::final1_0_swiyu::controller::oid4vci_final1_0_credential_notification),
-            )
-            .route(
-                "/ssi/openid4vp/draft-20/response",
-                post(ssi::verification::draft20::controller::oid4vp_draft20_direct_post)
-                    .layer(DefaultBodyLimit::max(large_external_request_body_limit)),
-            )
-            .route(
-                "/ssi/openid4vp/draft-20/{id}/presentation-definition",
-                get(ssi::verification::draft20::controller::oid4vp_draft20_presentation_definition),
-            )
-            .route(
-                "/ssi/openid4vp/draft-20/{id}/client-metadata",
-                get(ssi::verification::draft20::controller::oid4vp_draft20_client_metadata),
-            )
-            .route(
-                "/ssi/openid4vp/draft-20/{id}/client-request",
-                get(ssi::verification::draft20::controller::oid4vp_draft20_client_request),
             )
             .route(
                 "/ssi/openid4vp/final-1.0/response",

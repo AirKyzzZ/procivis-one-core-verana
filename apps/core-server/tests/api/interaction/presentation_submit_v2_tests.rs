@@ -20,7 +20,6 @@ use crate::fixtures::{
     ClaimData, TestingCredentialParams, TestingCredentialSchemaParams, TestingDidParams,
     TestingIdentifierParams, TestingKeyParams, create_credential_schema_with_claims,
 };
-use crate::utils::api_clients::Response;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::blobs::TestingBlobParams;
 use crate::{fixtures, utils};
@@ -122,42 +121,6 @@ async fn test_presentation_submit_endpoint_user_selection_duplicate_claim() {
     // THEN
     assert_eq!(resp.status(), 400);
     assert_eq!(resp.error_code().await, "BR_0291")
-}
-
-#[tokio::test]
-async fn test_presentation_submit_incompatible_version() {
-    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
-
-    let (_, _, credential, interaction, _) =
-        setup_submittable_presentation_dcql(&context, &organisation, &identifier, None).await;
-
-    // WHEN
-    let url = format!(
-        "{}/api/interaction/v1/presentation-submit",
-        context.config.app.core_base_url
-    );
-
-    let resp = utils::client()
-        .post(url)
-        .bearer_auth("test")
-        .json(&json!({
-          "interactionId": interaction.id,
-          "submitCredentials": {
-            "input_0": {
-              "credentialId": credential.id,
-              "submitClaims": [
-                credential.claims.unwrap().first().unwrap().id
-              ]
-            }
-          }
-        }))
-        .send()
-        .await
-        .unwrap();
-
-    // THEN
-    assert_eq!(resp.status(), 400);
-    assert_eq!(Response::from(resp).error_code().await, "BR_0292")
 }
 
 #[tokio::test]
@@ -348,7 +311,7 @@ async fn setup_submittable_presentation_dcql(
                 "use": "enc"
             }]
         },
-        "vp_formats":
+        "vp_formats_supported":
         {
             "jwt_vp_json":
             {
@@ -752,7 +715,7 @@ async fn test_presentation_submit_endpoint_for_openid4vp_dcql_array_claim() {
                         "use": "enc"
                     }]
                 },
-                "vp_formats": {
+                "vp_formats_supported": {
                     "jwt_vp_json": { "alg": ["EdDSA"] },
                     "jwt_vc_json": { "alg": ["EdDSA"] },
                     "ldp_vp": { "proof_type": ["DataIntegrityProof"] },

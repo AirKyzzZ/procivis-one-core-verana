@@ -1,5 +1,4 @@
 mod activate_wallet_unit;
-mod client_metadata;
 mod client_request;
 mod get_ca_tests;
 mod get_certificate_tests;
@@ -19,5 +18,4 @@ mod get_wallet_provider_metadata;
 mod issue_wallet_attestations;
 mod oid4vci_get_credential_offer;
 mod oid4vci_nonce;
-mod oid4vci_presentation_definition;
 mod register_wallet_unit;

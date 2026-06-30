@@ -18,8 +18,8 @@ use crate::proto::jwt::model::DecomposedJwt;
 use crate::provider::provider_directory::InitializationError;
 use crate::provider::verification_protocol::dto::{
     Feature, FormattedCredentialPresentation, InvitationResponseDTO,
-    PresentationDefinitionResponseDTO, PresentationDefinitionV2ResponseDTO,
-    PresentationDefinitionVersion, ShareResponse, UpdateResponse, VerificationProtocolCapabilities,
+    PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion, ShareResponse,
+    UpdateResponse, VerificationProtocolCapabilities,
 };
 use crate::provider::verification_protocol::openid4vp::final1_0::OpenID4VPFinal1_0;
 use crate::provider::verification_protocol::openid4vp::final1_0::model::{
@@ -28,9 +28,7 @@ use crate::provider::verification_protocol::openid4vp::final1_0::model::{
 use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, OpenID4VPVerifierInteractionContent,
 };
-use crate::provider::verification_protocol::openid4vp::{
-    FormatMapper, TypeToDescriptorMapper, VerificationProtocolError,
-};
+use crate::provider::verification_protocol::openid4vp::{FormatMapper, VerificationProtocolError};
 use crate::provider::verification_protocol::{
     VerificationProtocol, deserialize_interaction_data, serialize_interaction_data,
 };
@@ -134,14 +132,6 @@ impl VerificationProtocol for OpenID4VPFinalSwiyu {
                 && url.query().is_none() // SWIYU invite links have no query param
     }
 
-    async fn holder_get_presentation_definition(
-        &self,
-        _proof: &Proof,
-        _context: Value,
-    ) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError> {
-        Err(VerificationProtocolError::OperationNotSupported)
-    }
-
     fn get_capabilities(&self) -> VerificationProtocolCapabilities {
         let mut features = vec![];
 
@@ -237,19 +227,12 @@ impl VerificationProtocol for OpenID4VPFinalSwiyu {
         &self,
         proof: &Proof,
         format_to_type_mapper: FormatMapper,
-        type_to_descriptor: TypeToDescriptorMapper,
         callback: Option<BoxFuture<'static, ()>>,
         params: Option<ShareProofRequestParamsDTO>,
     ) -> Result<ShareResponse, VerificationProtocolError> {
         let mut response = self
             .inner
-            .verifier_share_proof(
-                proof,
-                format_to_type_mapper,
-                type_to_descriptor,
-                callback,
-                params,
-            )
+            .verifier_share_proof(proof, format_to_type_mapper, callback, params)
             .await?;
         let mut interaction_data: OpenID4VPVerifierInteractionContent =
             deserialize_interaction_data(response.interaction_data.as_ref())?;

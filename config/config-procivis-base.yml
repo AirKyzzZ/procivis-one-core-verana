@@ -175,26 +175,6 @@ issuanceProtocol:
           enabled: true
           allowedSchemes: ["https"]
 verificationProtocol:
-  MDOC_OPENID4VP:
-    enabled: false
-    display:
-      en: "OpenID4VP (ISO 18013-7 Annex B)"
-      de: "OpenID4VP (ISO 18013-7 Annex B)"
-    order: 2
-    type: "OPENID4VP_DRAFT20"
-    params:
-      public:
-        webhookTask: "WEBHOOK_NOTIFY"
-        useRequestUri: true
-        urlScheme: mdoc-openid4vp
-        verifier:
-          interactionExpiresIn: 3600
-          supportedClientIdSchemes: [x509_san_dns]
-        holder:
-          supportedClientIdSchemes: [x509_san_dns]
-        redirectUri:
-          enabled: true
-          allowedSchemes: ["https"]
   OPENID4VP_FINAL1_SWIYU:
     display:
       en: "OpenID4VP final 1.0 (SWIYU)"

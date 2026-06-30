@@ -48,10 +48,10 @@ use crate::provider::presentation_formatter::provider::MockPresentationFormatter
 use crate::provider::verification_protocol::dto::ShareResponse;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::model::{
-    ClientIdScheme, OpenID4VPClientMetadata, OpenID4VPHolderInteractionData,
+    ClientIdScheme, OpenID4VPHolderInteractionData,
 };
 use crate::provider::verification_protocol::{
-    FormatMapper, TypeToDescriptorMapper, VerificationProtocol, serialize_interaction_data,
+    FormatMapper, VerificationProtocol, serialize_interaction_data,
 };
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
@@ -248,7 +248,7 @@ fn test_holder_interaction_data(
         nonce: Some("test-nonce-12345".to_string()),
         client_id_scheme: ClientIdScheme::RedirectUri,
         client_id: "https://verifier.example.com".to_string(),
-        client_metadata: Some(OpenID4VPClientMetadata::Final1_0(ClientMetadata {
+        client_metadata: Some(ClientMetadata {
             vp_formats_supported: HashMap::from([(
                 "mso_mdoc".to_string(),
                 PresentationFormat::MdocAlgs(MdocAlgs {
@@ -257,7 +257,7 @@ fn test_holder_interaction_data(
                 }),
             )]),
             ..Default::default()
-        })),
+        }),
         client_metadata_uri: None,
         response_mode,
         response_uri: Some("https://verifier.example.com/response".parse().unwrap()),
@@ -432,7 +432,6 @@ async fn test_share_proof_direct_post() {
 
     let proof = test_verifier_proof("JWT".into(), None);
     let format_type_mapper: FormatMapper = Arc::new(move |_| Ok(FormatType::Jwt));
-    let type_to_descriptor_mapper: TypeToDescriptorMapper = Arc::new(move |_| Ok(HashMap::new()));
 
     let ShareResponse {
         url,
@@ -442,7 +441,6 @@ async fn test_share_proof_direct_post() {
         .verifier_share_proof(
             &proof,
             format_type_mapper,
-            type_to_descriptor_mapper,
             None,
             Some(ShareProofRequestParamsDTO {
                 client_id_scheme: Some(ClientIdScheme::RedirectUri),
@@ -538,13 +536,11 @@ async fn test_share_proof_direct_post_jwt_ecdsa() {
 
     let proof = test_verifier_proof("JWT".into(), Some(key_agreement_key));
     let format_type_mapper: FormatMapper = Arc::new(move |_| Ok(FormatType::Jwt));
-    let type_to_descriptor_mapper: TypeToDescriptorMapper = Arc::new(move |_| Ok(HashMap::new()));
 
     let ShareResponse { url, .. } = protocol
         .verifier_share_proof(
             &proof,
             format_type_mapper,
-            type_to_descriptor_mapper,
             None,
             Some(ShareProofRequestParamsDTO {
                 client_id_scheme: Some(ClientIdScheme::RedirectUri),
@@ -619,13 +615,11 @@ async fn test_share_proof_direct_post_jwt_eddsa() {
 
     let proof = test_verifier_proof("JWT".into(), Some(key_agreement_key));
     let format_type_mapper: FormatMapper = Arc::new(move |_| Ok(FormatType::Jwt));
-    let type_to_descriptor_mapper: TypeToDescriptorMapper = Arc::new(move |_| Ok(HashMap::new()));
 
     let ShareResponse { url, .. } = protocol
         .verifier_share_proof(
             &proof,
             format_type_mapper,
-            type_to_descriptor_mapper,
             None,
             Some(ShareProofRequestParamsDTO {
                 client_id_scheme: Some(ClientIdScheme::RedirectUri),

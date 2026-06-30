@@ -2,13 +2,10 @@ use std::collections::HashMap;
 use std::str::FromStr;
 
 use ct_codecs::{Base64, Base64UrlSafeNoPadding, Encoder};
-use one_core::provider::verification_protocol::openid4vp::model::{
-    OpenID4VPDraftClientMetadata, OpenID4VPPresentationDefinition,
-};
 use rcgen::{CertificateParams, SanType};
 use serde_json::{Value, json};
 use similar_asserts::assert_eq;
-use standardized_types::openid4vp::{ClientMetadata, GenericAlgs, PresentationFormat, SdJwtVcAlgs};
+use standardized_types::openid4vp::{ClientMetadata, PresentationFormat, SdJwtVcAlgs};
 use url::Url;
 use uuid::Uuid;
 use wiremock::http::Method;
@@ -804,48 +801,78 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_reference() {
     let (context, organistion) =
         TestContext::new_with_organisation(openid4vci_final1_json_metadata_config()).await;
 
-    let client_metadata = serde_json::to_string(&OpenID4VPDraftClientMetadata {
+    let client_metadata = ClientMetadata {
         jwks: Default::default(),
-        vp_formats: HashMap::from([(
-            "jwt_vp_json".to_string(),
-            PresentationFormat::GenericAlgList(GenericAlgs {
-                alg: vec!["EdDSA".to_string()],
+        vp_formats_supported: HashMap::from([(
+            "dc+sd-jwt".to_string(),
+            PresentationFormat::SdJwtVcAlgs(SdJwtVcAlgs {
+                sd_jwt_alg_values: vec!["EdDSA".to_string()],
+                kb_jwt_alg_values: vec!["EdDSA".to_string()],
             }),
         )]),
         ..Default::default()
-    })
-    .unwrap();
-    let presentation_definition = serde_json::to_string(&OpenID4VPPresentationDefinition {
-        id: Default::default(),
-        input_descriptors: vec![],
-    })
-    .unwrap();
+    };
+    let dcql_query = json!({
+        "credentials": [
+            {
+                "id": "my_credential",
+                "format": "dc+sd-jwt",
+                "require_cryptographic_holder_binding": true,
+                "meta": {
+                    "vct_values": [
+                        "https://credentials.example.com/identity_credential"
+                    ]
+                },
+                "claims": [
+                    { "path": ["last_name"] },
+                    { "path": ["first_name"] }
+                ]
+            }
+        ]
+    });
     let nonce = Uuid::new_v4().to_string();
     let callback_url = "http://127.0.0.1/callback";
-    let client_metadata_uri = format!("{}/client-metadata", mock_server.uri());
-    let presentation_definition_uri = format!("{}/presentation-definition", mock_server.uri());
-    let query = Url::parse(&format!("openid4vp-draft20://?response_type=vp_token&nonce={nonce}&client_id_scheme=redirect_uri&client_id={callback_url}&client_metadata_uri={client_metadata_uri}&response_mode=direct_post&response_uri={callback_url}&presentation_definition_uri={presentation_definition_uri}")).unwrap().to_string();
+    let client_id = format!("redirect_uri:{callback_url}");
+    let auth_request = json!({
+        "client_id": client_id,
+        "response_type": "vp_token",
+        "response_mode": "direct_post",
+        "client_metadata": client_metadata,
+        "nonce": nonce,
+        "dcql_query": dcql_query,
+        "response_uri": callback_url,
+    });
 
+    // unsigned JWT — redirect_uri client_id_scheme skips signature verification
+    let header = json!({ "alg": "none", "typ": "oauth-authz-req+jwt" });
+    let header_b64 =
+        Base64UrlSafeNoPadding::encode_to_string(serde_json::to_vec(&header).unwrap()).unwrap();
+    let payload_b64 =
+        Base64UrlSafeNoPadding::encode_to_string(serde_json::to_vec(&auth_request).unwrap())
+            .unwrap();
+    let request_jwt = format!("{header_b64}.{payload_b64}.");
+
+    // the authorization request is fetched by reference from request_uri
+    let request_uri = format!("{}/request", mock_server.uri());
     Mock::given(method(Method::GET))
-        .and(path("/client-metadata"))
-        .respond_with(ResponseTemplate::new(200).set_body_raw(client_metadata, "application/json"))
-        .expect(1)
-        .mount(&mock_server)
-        .await;
-    Mock::given(method(Method::GET))
-        .and(path("/presentation-definition"))
+        .and(path("/request"))
         .respond_with(
-            ResponseTemplate::new(200).set_body_raw(presentation_definition, "application/json"),
+            ResponseTemplate::new(200).set_body_raw(request_jwt, "application/oauth-authz-req+jwt"),
         )
         .expect(1)
         .mount(&mock_server)
         .await;
 
+    let mut query = Url::parse(&format!("openid4vp://?client_id={client_id}")).unwrap();
+    query
+        .query_pairs_mut()
+        .append_pair("request_uri", &request_uri);
+
     // WHEN
     let resp = context
         .api
         .interactions
-        .handle_invitation(organistion.id, &query)
+        .handle_invitation(organistion.id, query.as_ref())
         .await;
     // THEN
     assert_eq!(resp.status(), 201);
@@ -853,47 +880,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_reference() {
     let resp = resp.json_value().await;
     assert!(resp.get("interactionId").is_some());
     assert_eq!(resp["interactionType"], "VERIFICATION");
-    assert_eq!(resp["protocol"], "OPENID4VP_DRAFT20");
-}
-
-#[tokio::test]
-async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_value() {
-    let (context, organistion) =
-        TestContext::new_with_organisation(openid4vci_final1_json_metadata_config()).await;
-
-    let client_metadata = serde_json::to_string(&OpenID4VPDraftClientMetadata {
-        jwks: Default::default(),
-        vp_formats: HashMap::from([(
-            "jwt_vp_json".to_string(),
-            PresentationFormat::GenericAlgList(GenericAlgs {
-                alg: vec!["EdDSA".to_string()],
-            }),
-        )]),
-        ..Default::default()
-    })
-    .unwrap();
-    let presentation_definition = serde_json::to_string(&OpenID4VPPresentationDefinition {
-        id: Default::default(),
-        input_descriptors: vec![],
-    })
-    .unwrap();
-    let nonce = Uuid::new_v4().to_string();
-    let callback_url = "http://127.0.0.1/callback";
-    let query = Url::parse(&format!("openid4vp-draft20://?response_type=vp_token&nonce={nonce}&client_id_scheme=redirect_uri&client_id={callback_url}&client_metadata={client_metadata}&response_mode=direct_post&response_uri={callback_url}&presentation_definition={presentation_definition}")).unwrap().to_string();
-
-    // WHEN
-    let resp = context
-        .api
-        .interactions
-        .handle_invitation(organistion.id, &query)
-        .await;
-
-    // THEN
-    assert_eq!(resp.status(), 201);
-
-    let resp = resp.json_value().await;
-    assert!(resp.get("interactionId").is_some());
-    assert_eq!(resp["interactionType"], "VERIFICATION");
+    assert_eq!(resp["protocol"], "OPENID4VP_FINAL1");
 }
 
 #[tokio::test]

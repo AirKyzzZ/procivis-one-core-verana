@@ -21,7 +21,6 @@ use crate::provider::credential_formatter::provider::CredentialFormatterProvider
 use crate::provider::verification_protocol::VerificationProtocol;
 use crate::provider::verification_protocol::dto::PresentationDefinitionVersion;
 use crate::provider::verification_protocol::model::CommonParams;
-use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4Vp20Params;
 use crate::util::key_selection::KeyFilter;
 use crate::validator::{
     throw_if_endpoint_version_incompatible, throw_if_org_not_matching_session,
@@ -171,12 +170,6 @@ pub(super) fn validate_redirect_uri(
         .error_while("getting protocol config")?;
 
     let redirect_uri_config = match fields.r#type {
-        VerificationProtocolType::OpenId4VpDraft20 => {
-            let exchange_params: OpenID4Vp20Params = config
-                .get(exchange)
-                .error_while("getting protocol params")?;
-            Some(exchange_params.redirect_uri)
-        }
         VerificationProtocolType::OpenId4VpFinal1_0 => {
             let exchange_params: crate::provider::verification_protocol::openid4vp::final1_0::model::Params = config
                 .get(exchange)
@@ -467,8 +460,8 @@ mod tests {
         assert!(validate_mdl_exchange("ISO_MDL", engagement, uri, &config).is_err());
         assert!(validate_mdl_exchange("ISO_MDL", None, uri, &config).is_err());
 
-        assert!(validate_mdl_exchange("OPENID4VP_DRAFT20", None, uri, &config).is_ok());
-        assert!(validate_mdl_exchange("OPENID4VP_DRAFT20", engagement, uri, &config).is_err());
-        assert!(validate_mdl_exchange("OPENID4VP_DRAFT20", engagement, None, &config).is_err());
+        assert!(validate_mdl_exchange("OPENID4VP_FINAL1", None, uri, &config).is_ok());
+        assert!(validate_mdl_exchange("OPENID4VP_FINAL1", engagement, uri, &config).is_err());
+        assert!(validate_mdl_exchange("OPENID4VP_FINAL1", engagement, None, &config).is_err());
     }
 }

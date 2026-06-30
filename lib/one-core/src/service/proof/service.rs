@@ -50,9 +50,9 @@ use crate::model::proof::{
 use crate::model::proof_schema::{ProofInputSchemaRelations, ProofSchemaRelations};
 use crate::proto::nfc::static_handover_handler::NfcStaticHandoverHandler;
 use crate::provider::credential_formatter::mdoc_formatter::util::EmbeddedCbor;
+use crate::provider::verification_protocol::FormatMapper;
 use crate::provider::verification_protocol::dto::{
-    PresentationDefinitionResponseDTO, PresentationDefinitionV2ResponseDTO,
-    PresentationDefinitionVersion, ShareResponse,
+    PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion, ShareResponse,
 };
 use crate::provider::verification_protocol::iso_mdl::ble_holder::{
     MdocBleHolderInteractionData, NfcHceSession, receive_mdl_request, start_mdl_server,
@@ -62,8 +62,6 @@ use crate::provider::verification_protocol::iso_mdl::device_engagement::{
     BleOptions, DeviceEngagement, DeviceRetrievalMethod, RetrievalOptions, Security,
 };
 use crate::provider::verification_protocol::iso_mdl::nfc::create_nfc_handover_select_message;
-use crate::provider::verification_protocol::openid4vp::mapper::create_format_map;
-use crate::provider::verification_protocol::{FormatMapper, TypeToDescriptorMapper};
 use crate::service::common_dto::{ListQueryDTO, TrustInformationDetailResponseDTO};
 use crate::service::credential_schema::validator::validate_key_storage_security_supported;
 use crate::util::interactions::{add_new_interaction, clear_previous_interaction};
@@ -182,29 +180,6 @@ impl ProofService {
             )
             .await
         }
-    }
-
-    /// Returns presentation definition of proof
-    ///
-    /// # Arguments
-    ///
-    /// * `id` - Proof uuid
-    pub async fn get_proof_presentation_definition(
-        &self,
-        id: &ProofId,
-    ) -> Result<PresentationDefinitionResponseDTO, ProofServiceError> {
-        let proof = self.load_proof_for_presentation_definition(id).await?;
-        let exchange = self.protocol_provider.get_protocol(&proof.protocol)?;
-        validate_proof_for_proof_definition(
-            &proof,
-            &*self.session_provider,
-            &*exchange,
-            &PresentationDefinitionVersion::V1,
-        )?;
-        Ok(exchange
-            .holder_get_presentation_definition(&proof, interaction_data_from_proof(&proof)?)
-            .await
-            .error_while("getting presentation definition V1")?)
     }
 
     pub async fn get_proof_presentation_definition_v2(
@@ -582,8 +557,6 @@ impl ProofService {
                 .to_owned())
         });
 
-        let type_to_descriptor_mapper: TypeToDescriptorMapper = Arc::new(create_format_map);
-
         let on_submission_callback = Some(self.get_on_submission_ble_mqtt_callback(*id));
 
         let ShareResponse {
@@ -595,7 +568,6 @@ impl ProofService {
             .verifier_share_proof(
                 &proof,
                 format_type_mapper,
-                type_to_descriptor_mapper,
                 on_submission_callback,
                 request.params,
             )

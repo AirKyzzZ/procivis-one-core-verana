@@ -1,17 +1,15 @@
-use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::sync::Arc;
 
 use dto::{
-    FormattedCredentialPresentation, InvitationResponseDTO, PresentationDefinitionResponseDTO,
-    ShareResponse, UpdateResponse, VerificationProtocolCapabilities,
+    FormattedCredentialPresentation, InvitationResponseDTO, ShareResponse, UpdateResponse,
+    VerificationProtocolCapabilities,
 };
 use error::VerificationProtocolError;
 use futures::future::BoxFuture;
 use proc_macros::provider_mock;
 use serde::de::Deserialize;
 use shared_types::CredentialFormat;
-use standardized_types::openid4vp::PresentationFormat;
 use url::Url;
 
 use crate::config::core_config::FormatType;
@@ -30,8 +28,6 @@ pub(crate) mod model;
 pub mod openid4vp;
 
 pub(crate) mod provider;
-#[cfg(test)]
-mod test;
 
 pub(crate) fn deserialize_interaction_data<DataDTO: for<'a> Deserialize<'a>>(
     data: Option<&Vec<u8>>,
@@ -50,12 +46,6 @@ pub(crate) fn serialize_interaction_data<DataDTO: ?Sized + serde::Serialize>(
 
 pub(crate) type FormatMapper =
     Arc<dyn Fn(&CredentialFormat) -> Result<FormatType, VerificationProtocolError> + Send + Sync>;
-
-pub(crate) type TypeToDescriptorMapper = Arc<
-    dyn Fn(&FormatType) -> Result<HashMap<String, PresentationFormat>, VerificationProtocolError>
-        + Send
-        + Sync,
->;
 
 /// This trait contains methods for exchanging credentials between holders and verifiers.
 #[provider_mock]
@@ -87,16 +77,6 @@ pub(crate) trait VerificationProtocol: Provider + Send + Sync {
     /// Takes a proof request and filters held credentials,
     /// returning those which are acceptable for the request.
     ///
-    /// Storage access is needed to check held credentials.
-    async fn holder_get_presentation_definition(
-        &self,
-        proof: &Proof,
-        context: serde_json::Value,
-    ) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError>;
-
-    /// Takes a proof request and filters held credentials,
-    /// returning those which are acceptable for the request.
-    ///
     /// V2 endpoint which is tailored towards DCQL queries rather than presentation exchange.
     ///
     /// Storage access is needed to check held credentials.
@@ -111,7 +91,6 @@ pub(crate) trait VerificationProtocol: Provider + Send + Sync {
         &self,
         proof: &Proof,
         format_to_type_mapper: FormatMapper,
-        type_to_descriptor: TypeToDescriptorMapper,
         on_submission_callback: Option<BoxFuture<'static, ()>>,
         params: Option<ShareProofRequestParamsDTO>,
     ) -> Result<ShareResponse, VerificationProtocolError>;

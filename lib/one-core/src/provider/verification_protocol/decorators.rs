@@ -5,11 +5,11 @@ use futures::future::BoxFuture;
 use url::Url;
 
 use super::dto::{
-    FormattedCredentialPresentation, InvitationResponseDTO, PresentationDefinitionResponseDTO,
-    PresentationDefinitionV2ResponseDTO, UpdateResponse, VerificationProtocolCapabilities,
+    FormattedCredentialPresentation, InvitationResponseDTO, PresentationDefinitionV2ResponseDTO,
+    UpdateResponse, VerificationProtocolCapabilities,
 };
 use super::error::VerificationProtocolError;
-use super::{FormatMapper, ShareResponse, TypeToDescriptorMapper, VerificationProtocol};
+use super::{FormatMapper, ShareResponse, VerificationProtocol};
 use crate::model::identifier::IdentifierType;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
@@ -55,14 +55,6 @@ impl<T: Provider + VerificationProtocol + Display + ?Sized> VerificationProtocol
         self.disabled_error()
     }
 
-    async fn holder_get_presentation_definition(
-        &self,
-        _proof: &Proof,
-        _context: serde_json::Value,
-    ) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError> {
-        self.disabled_error()
-    }
-
     async fn holder_get_presentation_definition_v2(
         &self,
         _proof: &Proof,
@@ -75,7 +67,6 @@ impl<T: Provider + VerificationProtocol + Display + ?Sized> VerificationProtocol
         &self,
         _proof: &Proof,
         _format_to_type_mapper: FormatMapper,
-        _type_to_descriptor: TypeToDescriptorMapper,
         _on_submission_callback: Option<BoxFuture<'static, ()>>,
         _params: Option<ShareProofRequestParamsDTO>,
     ) -> Result<ShareResponse, VerificationProtocolError> {
@@ -138,24 +129,6 @@ impl VerificationProtocol for CapabilityChecked {
             .await
     }
 
-    async fn holder_get_presentation_definition(
-        &self,
-        proof: &Proof,
-        context: serde_json::Value,
-    ) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError> {
-        let capabilities = self.inner.get_capabilities();
-        if !capabilities
-            .supported_presentation_definition
-            .contains(&PresentationDefinitionVersion::V1)
-        {
-            return Err(VerificationProtocolError::OperationNotSupported);
-        }
-
-        self.inner
-            .holder_get_presentation_definition(proof, context)
-            .await
-    }
-
     async fn holder_get_presentation_definition_v2(
         &self,
         proof: &Proof,
@@ -178,7 +151,6 @@ impl VerificationProtocol for CapabilityChecked {
         &self,
         proof: &Proof,
         format_to_type_mapper: FormatMapper,
-        type_to_descriptor: TypeToDescriptorMapper,
         on_submission_callback: Option<BoxFuture<'static, ()>>,
         params: Option<ShareProofRequestParamsDTO>,
     ) -> Result<ShareResponse, VerificationProtocolError> {
@@ -221,13 +193,7 @@ impl VerificationProtocol for CapabilityChecked {
         }
 
         self.inner
-            .verifier_share_proof(
-                proof,
-                format_to_type_mapper,
-                type_to_descriptor,
-                on_submission_callback,
-                params,
-            )
+            .verifier_share_proof(proof, format_to_type_mapper, on_submission_callback, params)
             .await
     }
 

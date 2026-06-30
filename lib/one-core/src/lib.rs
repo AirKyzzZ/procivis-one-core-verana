@@ -84,7 +84,6 @@ use crate::service::nfc::NfcService;
 use crate::service::oid4vci_final1_0::OID4VCIFinal1_0Service;
 use crate::service::oid4vci_final1_0::resolver::initialize_credential_issuer_metadata_cache_from_config;
 use crate::service::oid4vci_final1_0_swiyu::OID4VCIFinal1_0SwiyuService;
-use crate::service::oid4vp_draft20::OID4VPDraft20Service;
 use crate::service::oid4vp_final1_0::OID4VPFinal1_0Service;
 use crate::service::oid4vp_final1_0_swiyu::OID4VPFinal1_0SwiyuService;
 use crate::service::organisation::OrganisationService;
@@ -133,7 +132,6 @@ pub struct OneCore {
     pub revocation_list_service: RevocationListService,
     pub oid4vci_final1_0_swiyu_service: OID4VCIFinal1_0SwiyuService,
     pub oid4vci_final1_0_service: OID4VCIFinal1_0Service,
-    pub oid4vp_draft20_service: OID4VPDraft20Service,
     pub oid4vp_final1_0_service: OID4VPFinal1_0Service,
     pub oid4vp_final1_0_swiyu_service: OID4VPFinal1_0SwiyuService,
     pub ssi_issuer_service: SSIIssuerService,
@@ -485,7 +483,6 @@ impl OneCore {
             identifier_creator.clone(),
             ble_waiter.clone(),
             client.clone(),
-            openid_metadata_cache,
             Some(mqtt_client),
             nfc_hce.clone(),
             data_provider.get_history_repository(),
@@ -651,18 +648,6 @@ impl OneCore {
                 wallet_unit_proto.clone(),
                 credential_issuer_metadata_cache,
                 credential_formatter_provider.clone(),
-            ),
-            oid4vp_draft20_service: OID4VPDraft20Service::new(
-                data_provider.get_credential_repository(),
-                data_provider.get_proof_repository(),
-                data_provider.get_key_repository(),
-                key_provider.clone(),
-                config.clone(),
-                key_algorithm_provider.clone(),
-                blob_storage_provider.clone(),
-                identifier_creator.clone(),
-                data_provider.get_tx_manager(),
-                openid4vp_proof_validator.clone(),
             ),
             oid4vp_final1_0_service: OID4VPFinal1_0Service::new(
                 data_provider.get_credential_repository(),

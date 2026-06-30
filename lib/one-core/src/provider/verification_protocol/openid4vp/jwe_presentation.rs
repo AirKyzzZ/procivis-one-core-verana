@@ -2,11 +2,10 @@ use anyhow::anyhow;
 use one_crypto::jwe::Header;
 use standardized_types::jwa::EncryptionAlgorithm;
 use standardized_types::jwk::{JwkUse, PublicJwk};
+use standardized_types::openid4vp::ClientMetadata;
 
 use crate::provider::key_algorithm::provider::{KeyAlgorithmProvider, ParsedKey};
-use crate::provider::verification_protocol::openid4vp::model::{
-    JwePayload, OpenID4VPClientMetadata,
-};
+use crate::provider::verification_protocol::openid4vp::model::JwePayload;
 
 pub(crate) async fn build_jwe(
     payload: JwePayload,
@@ -49,13 +48,10 @@ pub(crate) async fn build_jwe(
 }
 
 pub(crate) fn encryption_key_from_metadata(
-    metadata: OpenID4VPClientMetadata,
+    metadata: ClientMetadata,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> Option<PublicJwk> {
-    let jwks = match metadata {
-        OpenID4VPClientMetadata::Draft(metadata) => metadata.jwks,
-        OpenID4VPClientMetadata::Final1_0(metadata) => metadata.jwks,
-    };
+    let jwks = metadata.jwks;
 
     let is_usable_for_encryption = |key: &PublicJwk| -> bool {
         // Per RFC 7517 §4.2, `use` is OPTIONAL. When absent, the key's algorithm

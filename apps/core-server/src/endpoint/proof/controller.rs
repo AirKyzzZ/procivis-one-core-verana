@@ -8,9 +8,8 @@ use proc_macros::endpoint;
 use shared_types::{Permission, ProofId};
 
 use super::dto::{
-    CreateProofRequestRestDTO, GetProofQuery, PresentationDefinitionResponseRestDTO,
-    PresentationDefinitionV2ResponseRestDTO, ProofDetailResponseRestDTO, ShareProofRequestRestDTO,
-    ShareProofResponseRestDTO,
+    CreateProofRequestRestDTO, GetProofQuery, PresentationDefinitionV2ResponseRestDTO,
+    ProofDetailResponseRestDTO, ShareProofRequestRestDTO, ShareProofResponseRestDTO,
 };
 use crate::dto::common::trust_detail::TrustInformationDetailResponseRestDTO;
 use crate::dto::common::{EntityResponseRestDTO, GetProofsResponseRestDTO};
@@ -18,42 +17,6 @@ use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
 use crate::extractor::Qs;
 use crate::router::AppState;
-
-#[endpoint(
-    permissions = [Permission::ProofDetail],
-    get,
-    path = "/api/proof-request/v1/{id}/presentation-definition",
-    responses(OkOrErrorResponse<PresentationDefinitionResponseRestDTO>),
-    params(
-        ("id" = ProofId, Path, description = "Proof id")
-    ),
-    tag = "proof_management",
-    security(
-        ("bearer" = [])
-    ),
-    summary = "Presentation definition (V1)",
-    description = indoc::formatdoc! {"
-        For wallets; after a wallet connects to a verifier's request for proof via the
-        [Handle Invitation](../core/handle-invitation.api.mdx) endpoint, the presentation
-        definition endpoint takes the resulting `proofId` and filters the wallet, returning
-        credentials which match the verifier's request.
-
-        This version uses Presentation Exchange as the query language.
-    "},
-)]
-pub(crate) async fn get_proof_presentation_definition(
-    state: State<AppState>,
-    WithRejection(Path(id), _): WithRejection<Path<ProofId>, ErrorResponseRestDTO>,
-) -> OkOrErrorResponse<PresentationDefinitionResponseRestDTO> {
-    let result = state
-        .core
-        .proof_service
-        .get_proof_presentation_definition(&id)
-        .await
-        .error_while("getting presentation definition")
-        .map_err(ServiceError::from);
-    OkOrErrorResponse::from_result_fallible(result, state, "getting presentation definition")
-}
 
 #[endpoint(
     permissions = [Permission::ProofDetail],

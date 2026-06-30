@@ -7,9 +7,6 @@ use one_core::provider::verification_protocol::dto::{
     ApplicableCredential, CredentialDetailClaimExtResponseDTO,
     CredentialQueryFailureHintResponseDTO, CredentialQueryFailureReasonEnum,
     CredentialQueryResponseDTO, CredentialSetResponseDTO, DisclosurePolicyViolation,
-    PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
-    PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
-    PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
     PresentationDefinitionV2ResponseDTO,
 };
 use one_core::provider::verification_protocol::openid4vp::model::ClientIdScheme;
@@ -26,7 +23,7 @@ use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
 use shared_types::i18n::I18nString;
 use shared_types::{
-    CertificateId, CredentialId, DidId, IdentifierId, KeyId, OrganisationId, ProofId, ProofSchemaId,
+    CertificateId, DidId, IdentifierId, KeyId, OrganisationId, ProofId, ProofSchemaId,
 };
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
@@ -300,82 +297,6 @@ pub(crate) struct ProofListItemResponseRestDTO {
     /// Profile associated with this proof request
     pub profile: Option<String>,
     pub webhook_destination_url: Option<String>,
-}
-
-#[derive(Debug, Serialize, ToSchema, TryFrom)]
-#[serde(rename_all = "camelCase")]
-#[try_from(T = PresentationDefinitionResponseDTO, Error = MapperError)]
-pub(crate) struct PresentationDefinitionResponseRestDTO {
-    #[try_from(with_fn = convert_inner, infallible)]
-    pub request_groups: Vec<PresentationDefinitionRequestGroupResponseRestDTO>,
-    #[try_from(with_fn = try_convert_inner)]
-    pub credentials: Vec<GetCredentialResponseRestDTO<CredentialDetailClaimResponseRestDTO>>,
-}
-
-#[options_not_nullable]
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(PresentationDefinitionRequestGroupResponseDTO)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct PresentationDefinitionRequestGroupResponseRestDTO {
-    pub id: String,
-    pub name: Option<String>,
-    /// Stated purpose of the request.
-    pub purpose: Option<String>,
-    pub rule: PresentationDefinitionRuleRestDTO,
-    #[from(with_fn = convert_inner)]
-    pub requested_credentials: Vec<PresentationDefinitionRequestedCredentialResponseRestDTO>,
-}
-
-/// Summary of the credentials requested by the verifier, including suitable
-/// credentials filtered from the wallet.
-#[options_not_nullable]
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(PresentationDefinitionRequestedCredentialResponseDTO)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct PresentationDefinitionRequestedCredentialResponseRestDTO {
-    pub id: String,
-    pub name: Option<String>,
-    /// Stated purpose of the request.
-    pub purpose: Option<String>,
-    #[from(with_fn = convert_inner)]
-    pub fields: Vec<PresentationDefinitionFieldRestDTO>,
-    pub applicable_credentials: Vec<CredentialId>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub inapplicable_credentials: Vec<CredentialId>,
-    pub multiple: Option<bool>,
-}
-
-#[options_not_nullable]
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
-#[serde(rename_all = "camelCase")]
-#[from(PresentationDefinitionFieldDTO)]
-pub struct PresentationDefinitionFieldRestDTO {
-    pub id: String,
-    pub name: Option<String>,
-    /// Stated purpose of the request.
-    pub purpose: Option<String>,
-    pub required: Option<bool>,
-    pub key_map: HashMap<CredentialId, String>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, ToSchema, From)]
-#[from(PresentationDefinitionRuleTypeEnum)]
-pub(crate) enum PresentationDefinitionRuleTypeRestEnum {
-    #[serde(rename = "all")]
-    All,
-    #[serde(rename = "pick")]
-    Pick,
-}
-
-#[options_not_nullable]
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[serde(rename_all = "camelCase")]
-#[from(PresentationDefinitionRuleDTO)]
-pub(crate) struct PresentationDefinitionRuleRestDTO {
-    pub r#type: PresentationDefinitionRuleTypeRestEnum,
-    pub min: Option<u32>,
-    pub max: Option<u32>,
-    pub count: Option<u32>,
 }
 
 // detail endpoint

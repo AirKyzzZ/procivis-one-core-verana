@@ -398,7 +398,7 @@ async fn test_extract_presentation() {
             &presentation_token,
             Box::new(verify_mock),
             ExtractPresentationCtx {
-                verification_protocol_type: VerificationProtocolType::OpenId4VpDraft20,
+                verification_protocol_type: VerificationProtocolType::OpenId4VpFinal1_0,
                 nonce: None,
                 format_nonce: None,
                 issuance_date: None,

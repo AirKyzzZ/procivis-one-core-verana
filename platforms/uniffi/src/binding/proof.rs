@@ -6,9 +6,7 @@ use one_core::model::proof::{
 use one_core::provider::verification_protocol::dto::{
     CredentialDetailClaimExtResponseDTO, CredentialQueryFailureHintResponseDTO,
     CredentialQueryFailureReasonEnum, CredentialQueryResponseDTO, CredentialSetResponseDTO,
-    DisclosurePolicyViolation, PresentationDefinitionRequestGroupResponseDTO,
-    PresentationDefinitionResponseDTO, PresentationDefinitionRuleDTO,
-    PresentationDefinitionRuleTypeEnum, PresentationDefinitionV2ResponseDTO,
+    DisclosurePolicyViolation, PresentationDefinitionV2ResponseDTO,
 };
 use one_core::provider::verification_protocol::openid4vp::model::ClientIdScheme;
 use one_core::service::credential_schema::dto::CredentialSchemaDetailResponseDTO;
@@ -19,7 +17,6 @@ use one_core::service::proof::dto::{
     ShareProofRequestParamsDTO, ShareProofResponseDTO,
 };
 use one_core::service::ssi_holder::dto::{
-    PresentationSubmitCredentialRequestDTO, PresentationSubmitRequestDTO,
     PresentationSubmitV2CredentialRequestDTO, PresentationSubmitV2RequestDTO,
 };
 use one_dto_mapper::{From, Into, TryInto, convert_inner, try_convert_inner_of_inner};
@@ -113,26 +110,6 @@ impl OneCore {
             .await?)
     }
 
-    /// Submits a presentation using Presentation Exchange as the query
-    /// language; this should be used after `getPresentationDefinition`.
-    #[uniffi::method]
-    pub async fn holder_submit_proof(
-        &self,
-        interaction_id: String,
-        submit_credentials: HashMap<String, Vec<PresentationSubmitCredentialRequestBindingDTO>>,
-    ) -> Result<(), BindingError> {
-        let core = self.use_core().await?;
-
-        core.ssi_holder_service
-            .submit_proof(PresentationSubmitRequestDTO {
-                interaction_id: into_id(&interaction_id)?,
-                submit_credentials: try_convert_inner_of_inner(submit_credentials)?,
-            })
-            .await?;
-
-        Ok(())
-    }
-
     /// Submits a presentation using DCQL as a query language; this should
     /// be used after `getPresentationDefinitionv2`.
     #[uniffi::method]
@@ -190,19 +167,6 @@ impl OneCore {
             .delete_proof_claims(into_id(&proof_id)?)
             .await?;
         Ok(())
-    }
-
-    #[uniffi::method]
-    pub async fn get_presentation_definition(
-        &self,
-        proof_id: String,
-    ) -> Result<PresentationDefinitionBindingDTO, BindingError> {
-        let core = self.use_core().await?;
-        Ok(core
-            .proof_service
-            .get_proof_presentation_definition(&into_id(&proof_id)?)
-            .await?
-            .into())
     }
 
     #[uniffi::method]
@@ -460,17 +424,6 @@ pub enum ProofRoleBindingEnum {
 }
 
 #[derive(Clone, Debug, TryInto, uniffi::Record)]
-#[try_into(T = PresentationSubmitCredentialRequestDTO, Error = ServiceError)]
-#[uniffi(name = "PresentationSubmitCredentialRequest")]
-pub struct PresentationSubmitCredentialRequestBindingDTO {
-    /// ID of the credential to submit.
-    #[try_into(with_fn_ref = into_id)]
-    pub credential_id: String,
-    #[try_into(infallible)]
-    pub submit_claims: Vec<String>,
-}
-
-#[derive(Clone, Debug, TryInto, uniffi::Record)]
 #[try_into(T = PresentationSubmitV2CredentialRequestDTO, Error = ServiceError)]
 #[uniffi(name = "PresentationSubmitV2CredentialRequest")]
 pub struct PresentationSubmitV2CredentialRequestBindingDTO {
@@ -546,68 +499,6 @@ pub struct ShareProofResponseBindingDTO {
     pub url: String,
     #[from(with_fn = optional_time)]
     pub expires_at: Option<String>,
-}
-
-#[derive(Clone, Debug, From, uniffi::Record)]
-#[from(PresentationDefinitionResponseDTO)]
-#[uniffi(name = "PresentationDefinition")]
-pub struct PresentationDefinitionBindingDTO {
-    #[from(with_fn = convert_inner)]
-    pub request_groups: Vec<PresentationDefinitionRequestGroupBindingDTO>,
-    #[from(with_fn = convert_inner)]
-    pub credentials: Vec<CredentialDetailBindingDTO>,
-}
-
-#[derive(Clone, Debug, From, uniffi::Record)]
-#[from(PresentationDefinitionRequestGroupResponseDTO)]
-#[uniffi(name = "PresentationDefinitionRequestGroup")]
-pub struct PresentationDefinitionRequestGroupBindingDTO {
-    pub id: String,
-    pub name: Option<String>,
-    pub purpose: Option<String>,
-    pub rule: PresentationDefinitionRuleBindingDTO,
-    #[from(with_fn = convert_inner)]
-    pub requested_credentials: Vec<PresentationDefinitionRequestedCredentialBindingDTO>,
-}
-
-#[derive(Clone, Debug, uniffi::Record)]
-#[uniffi(name = "PresentationDefinitionRequestedCredential")]
-pub struct PresentationDefinitionRequestedCredentialBindingDTO {
-    pub id: String,
-    pub name: Option<String>,
-    pub purpose: Option<String>,
-    pub fields: Vec<PresentationDefinitionFieldBindingDTO>,
-    pub applicable_credentials: Vec<String>,
-    pub inapplicable_credentials: Vec<String>,
-    pub multiple: Option<bool>,
-}
-
-#[derive(Clone, Debug, uniffi::Record)]
-#[uniffi(name = "PresentationDefinitionField")]
-pub struct PresentationDefinitionFieldBindingDTO {
-    pub id: String,
-    pub name: Option<String>,
-    pub purpose: Option<String>,
-    pub required: bool,
-    pub key_map: HashMap<String, String>,
-}
-
-#[derive(Clone, Debug, From, uniffi::Enum)]
-#[from(PresentationDefinitionRuleTypeEnum)]
-#[uniffi(name = "PresentationDefinitionRuleType")]
-pub enum PresentationDefinitionRuleTypeBindingEnum {
-    All,
-    Pick,
-}
-
-#[derive(Clone, Debug, From, uniffi::Record)]
-#[from(PresentationDefinitionRuleDTO)]
-#[uniffi(name = "PresentationDefinitionRule")]
-pub struct PresentationDefinitionRuleBindingDTO {
-    pub r#type: PresentationDefinitionRuleTypeBindingEnum,
-    pub min: Option<u32>,
-    pub max: Option<u32>,
-    pub count: Option<u32>,
 }
 
 #[derive(Debug, From, uniffi::Record)]

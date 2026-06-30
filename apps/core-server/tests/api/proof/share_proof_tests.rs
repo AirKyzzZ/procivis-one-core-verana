@@ -56,7 +56,7 @@ async fn test_share_proof_success() {
         Some(&proof_schema),
         ProofStateEnum::Created,
         ProofRole::Verifier,
-        "OPENID4VP_DRAFT20",
+        "OPENID4VP_FINAL1",
         None,
         Some(&key),
         None,
@@ -117,7 +117,7 @@ async fn test_share_proof_key_storage_disabled_success() {
     )
     .await;
 
-    for exchange in ["OPENID4VP_DRAFT20", "OPENID4VP_FINAL1"] {
+    for exchange in ["OPENID4VP_FINAL1"] {
         let proof = fixtures::create_proof(
             &context.db.db_conn,
             &identifier,
@@ -182,7 +182,7 @@ async fn test_share_proof_twice() {
         Some(&proof_schema),
         ProofStateEnum::Created,
         ProofRole::Verifier,
-        "OPENID4VP_DRAFT20",
+        "OPENID4VP_FINAL1",
         None,
         Some(&key),
         None,
@@ -310,7 +310,7 @@ async fn test_share_proof_success_with_separate_encryption_key() {
             &identifier,
             Some(&proof_schema),
             ProofStateEnum::Created,
-            "OPENID4VP_DRAFT20",
+            "OPENID4VP_FINAL1",
             None,
             signing_key,
             None,
@@ -397,7 +397,7 @@ async fn test_share_proof_success_mdoc() {
             &identifier,
             Some(&proof_schema),
             ProofStateEnum::Created,
-            VerificationProtocolType::OpenId4VpDraft20.as_ref(),
+            VerificationProtocolType::OpenId4VpFinal1_0.as_ref(),
             None,
             key,
             None,
@@ -410,59 +410,46 @@ async fn test_share_proof_success_mdoc() {
     let proof = context.db.proofs.get(&proof.id).await;
     let interaction = proof.interaction.unwrap();
     let data: Value = serde_json::from_slice(&interaction.data.unwrap()).unwrap();
-    let input_descriptor = data["presentation_definition"]["input_descriptors"][0].to_owned();
+    let mut credential_query = data["dcql_query"]["credentials"][0].to_owned();
+    credential_query["id"] = serde_json::json!("CREDENTIAL_ID");
 
     let expected = serde_json::json!({
-        "constraints": {
-          "fields": [
-            {
-              "id": "48db4654-01c4-4a43-9df4-300f1f425c40",
-              "path": [
-                  "$['namespace']"
-              ],
-              "optional": false,
-              "intent_to_retain": true
-            },
-            {
-              "id": "48db4654-01c4-4a43-9df4-300f1f425c41",
-              "intent_to_retain": true,
-              "optional": false,
-              "path": [
-                "$['namespace']['location']"
-              ]
-            },
-            {
-              "id": "48db4654-01c4-4a43-9df4-300f1f425c42",
-              "intent_to_retain": true,
-              "optional": false,
-              "path": [
-                "$['namespace']['location/X']"
-              ]
-            },
-            {
-              "id": "48db4654-01c4-4a43-9df4-300f1f425c43",
-              "intent_to_retain": true,
-              "optional": false,
-              "path": [
-                "$['namespace']['location/Y']"
-              ]
-            }
-          ],
-          "limit_disclosure": "required"
+        "id": "CREDENTIAL_ID",
+        "format": "mso_mdoc",
+        "multiple": false,
+        "require_cryptographic_holder_binding": true,
+        "meta": {
+          "doctype_value": "org.iso.18013.5.1.mDL"
         },
-        "format": {
-          "mso_mdoc": {
-            "alg": [
-              "EdDSA",
-              "ES256"
-            ]
+        "claims": [
+          {
+            "id": "48db4654-01c4-4a43-9df4-300f1f425c40",
+            "intent_to_retain": true,
+            "path": ["namespace"],
+            "required": true
+          },
+          {
+            "id": "48db4654-01c4-4a43-9df4-300f1f425c41",
+            "intent_to_retain": true,
+            "path": ["namespace", "location"],
+            "required": true
+          },
+          {
+            "id": "48db4654-01c4-4a43-9df4-300f1f425c42",
+            "intent_to_retain": true,
+            "path": ["namespace", "location", "X"],
+            "required": true
+          },
+          {
+            "id": "48db4654-01c4-4a43-9df4-300f1f425c43",
+            "intent_to_retain": true,
+            "path": ["namespace", "location", "Y"],
+            "required": true
           }
-        },
-        "id": "org.iso.18013.5.1.mDL",
-        "name": "test"
+        ]
     });
 
-    assert_eq!(expected, input_descriptor);
+    assert_eq!(expected, credential_query);
 }
 
 #[tokio::test]
@@ -523,7 +510,7 @@ async fn test_share_proof_success_jsonld() {
             &identifier,
             Some(&proof_schema),
             ProofStateEnum::Created,
-            "OPENID4VP_DRAFT20",
+            "OPENID4VP_FINAL1",
             None,
             key,
             None,
@@ -536,41 +523,30 @@ async fn test_share_proof_success_jsonld() {
     let proof = context.db.proofs.get(&proof.id).await;
     let interaction = proof.interaction.unwrap();
     let data: Value = serde_json::from_slice(&interaction.data.unwrap()).unwrap();
-    let input_descriptor = data["presentation_definition"]["input_descriptors"][0].to_owned();
+    let mut credential_query = data["dcql_query"]["credentials"][0].to_owned();
+    credential_query["id"] = serde_json::json!("CREDENTIAL_ID");
 
     let expected = serde_json::json!({
-        "id": "input_0",
-        "name": "test",
-        "constraints": {
-          "fields": [
-            {
-              "filter": {
-                "const": "test",
-                "type": "string"
-              },
-              "path": [
-                "$.credentialSchema.id"
-              ]
-            },
-            {
-              "id": "48db4654-01c4-4a43-9df4-300f1f425c42",
-              "optional": false,
-              "path": [
-                "$.vc.credentialSubject.location_x"
-              ]
-            }
+        "id": "CREDENTIAL_ID",
+        "format": "ldp_vc",
+        "multiple": false,
+        "require_cryptographic_holder_binding": true,
+        "meta": {
+          "type_values": [
+            ["https://www.w3.org/2018/credentials#VerifiableCredential", "test#Test"],
+            ["Test"]
           ]
         },
-        "format": {
-          "ldp_vc": {
-            "proof_type": [
-              "DataIntegrityProof"
-            ]
+        "claims": [
+          {
+            "id": "48db4654-01c4-4a43-9df4-300f1f425c42",
+            "path": ["credentialSubject", "location_x"],
+            "required": true
           }
-        }
+        ]
     });
 
-    assert_eq!(expected, input_descriptor);
+    assert_eq!(expected, credential_query);
 }
 
 async fn prepare_created_openid4vp_proof(exchange: Option<&str>) -> (TestContext, Proof) {
@@ -609,7 +585,7 @@ async fn prepare_created_openid4vp_proof(exchange: Option<&str>) -> (TestContext
         Some(&proof_schema),
         ProofStateEnum::Created,
         ProofRole::Verifier,
-        exchange.unwrap_or("OPENID4VP_DRAFT20"),
+        exchange.unwrap_or("OPENID4VP_FINAL1"),
         None,
         Some(&key),
         None,
@@ -684,9 +660,9 @@ async fn extract_client_id(response: Response) -> String {
 }
 
 #[tokio::test]
-async fn test_share_proof_client_id_scheme_redirect_uri_openid4vp_draft20() {
+async fn test_share_proof_client_id_scheme_redirect_uri_openid4vp_final1_0() {
     // GIVEN
-    let (context, proof) = prepare_created_openid4vp_proof(None).await;
+    let (context, proof) = prepare_created_openid4vp_proof(Some("OPENID4VP_FINAL1")).await;
 
     // WHEN
     let resp = context
@@ -700,7 +676,7 @@ async fn test_share_proof_client_id_scheme_redirect_uri_openid4vp_draft20() {
     assert_eq!(
         client_id,
         format!(
-            "{}/ssi/openid4vp/draft-20/response",
+            "redirect_uri:{}/ssi/openid4vp/final-1.0/response",
             context.config.app.core_base_url
         )
     );
@@ -724,20 +700,17 @@ async fn test_share_proof_client_id_scheme_did_openid4vp_draft20() {
     let client_id = extract_client_id(resp).await;
     assert_eq!(
         client_id,
-        proof
-            .verifier_identifier
-            .unwrap()
-            .did
-            .unwrap()
-            .did
-            .to_string()
+        format!(
+            "decentralized_identifier:{}",
+            proof.verifier_identifier.unwrap().did.unwrap().did
+        )
     );
 
     assert_history_count(&context, &proof.id.into(), HistoryAction::Shared, 1).await;
 }
 
 #[tokio::test]
-async fn test_share_proof_client_id_scheme_verifier_attestation_openid4vp_draft20() {
+async fn test_share_proof_client_id_scheme_verifier_attestation_openid4vp_final1_0() {
     // GIVEN
     let (context, proof) = prepare_created_openid4vp_proof(None).await;
 
@@ -753,7 +726,7 @@ async fn test_share_proof_client_id_scheme_verifier_attestation_openid4vp_draft2
     assert_eq!(
         client_id,
         format!(
-            "{}/ssi/openid4vp/draft-20/response",
+            "verifier_attestation:{}/ssi/openid4vp/final-1.0/response",
             context.config.app.core_base_url
         )
     );

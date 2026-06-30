@@ -1,90 +1,22 @@
 use std::collections::HashMap;
 
 use serde::Serialize;
+use shared_types::InteractionId;
 use shared_types::i18n::I18nString;
-use shared_types::{CredentialId, InteractionId};
 use strum::{AsRefStr, Display, EnumString};
 use time::OffsetDateTime;
 
 use crate::config::core_config::{DidType, IdentifierType, TransportType};
-use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::Did;
 use crate::model::key::Key;
 use crate::model::proof::{Proof, UpdateProofRequest};
 use crate::service::credential::dto::{
-    CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO,
-    DetailCredentialClaimValueResponseDTO,
+    CredentialDetailResponseDTO, DetailCredentialClaimValueResponseDTO,
 };
 use crate::service::credential_schema::dto::{
     CredentialClaimSchemaDTO, CredentialSchemaDetailResponseDTO,
 };
-
-#[derive(Clone, Debug)]
-pub struct PresentationDefinitionResponseDTO {
-    pub request_groups: Vec<PresentationDefinitionRequestGroupResponseDTO>,
-    pub credentials: Vec<CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>>,
-}
-
-#[derive(Clone, Debug)]
-pub struct PresentationDefinitionRequestGroupResponseDTO {
-    pub id: String,
-    pub name: Option<String>,
-    pub purpose: Option<String>,
-    pub rule: PresentationDefinitionRuleDTO,
-    pub requested_credentials: Vec<PresentationDefinitionRequestedCredentialResponseDTO>,
-}
-
-#[derive(Clone, Debug)]
-pub struct PresentationDefinitionRequestedCredentialResponseDTO {
-    pub id: String,
-    pub name: Option<String>,
-    pub purpose: Option<String>,
-    pub fields: Vec<PresentationDefinitionFieldDTO>,
-    pub multiple: Option<bool>,
-    pub applicable_credentials: Vec<CredentialId>,
-    pub inapplicable_credentials: Vec<CredentialId>,
-}
-
-#[derive(Clone, Debug)]
-pub struct PresentationDefinitionFieldDTO {
-    pub id: String,
-    pub name: Option<String>,
-    pub purpose: Option<String>,
-    pub required: Option<bool>,
-    pub key_map: HashMap<CredentialId, String>,
-}
-
-#[derive(Clone, Debug)]
-pub enum PresentationDefinitionRuleTypeEnum {
-    All,
-    Pick,
-}
-
-#[derive(Clone, Debug)]
-pub struct PresentationDefinitionRuleDTO {
-    pub r#type: PresentationDefinitionRuleTypeEnum,
-    pub min: Option<u32>,
-    pub max: Option<u32>,
-    pub count: Option<u32>,
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct CredentialGroup {
-    pub id: String,
-    pub name: Option<String>,
-    pub purpose: Option<String>,
-    pub claims: Vec<CredentialGroupItem>,
-    pub applicable_credentials: Vec<Credential>,
-    pub inapplicable_credentials: Vec<Credential>,
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct CredentialGroupItem {
-    pub id: String,
-    pub key: String,
-    pub required: bool,
-}
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -104,9 +36,6 @@ pub(crate) enum Feature {
 
 #[derive(Debug, Copy, Clone, Display, EnumString, Serialize, AsRefStr, Eq, PartialEq)]
 pub enum PresentationDefinitionVersion {
-    #[serde(rename = "V1")]
-    #[strum(serialize = "V1")]
-    V1,
     #[serde(rename = "V2")]
     #[strum(serialize = "V2")]
     V2,
@@ -131,7 +60,6 @@ pub(crate) struct FormattedCredentialPresentation {
 /// Information required for the provider to include the credential presentation in the submission.
 #[derive(Clone, Debug)]
 pub(crate) enum PresentationReference {
-    PresentationExchange(PresentationDefinitionRequestedCredentialResponseDTO),
     Dcql { credential_query_id: String },
 }
 

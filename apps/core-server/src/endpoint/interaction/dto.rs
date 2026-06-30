@@ -6,8 +6,7 @@ use one_core::service::error::ServiceError;
 use one_core::service::proof::dto::{ProposeProofRequestDTO, ProposeProofResponseDTO};
 use one_core::service::ssi_holder::dto::{
     ContinueIssuanceResponseDTO, InitiateIssuanceAuthorizationDetailDTO,
-    InitiateIssuanceResponseDTO, PresentationSubmitCredentialRequestDTO,
-    PresentationSubmitRequestDTO, PresentationSubmitV2CredentialRequestDTO,
+    InitiateIssuanceResponseDTO, PresentationSubmitV2CredentialRequestDTO,
     PresentationSubmitV2RequestDTO,
 };
 use one_dto_mapper::{From, Into, TryInto, convert_inner_of_inner};
@@ -20,7 +19,6 @@ use shared_types::{
 use strum::Display;
 use url::Url;
 use utoipa::ToSchema;
-use uuid::Uuid;
 
 use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::endpoint::credential_schema::dto::KeyStorageSecurityRestEnum;
@@ -173,40 +171,6 @@ impl<T> From<SingleOrArray<T>> for Vec<T> {
             SingleOrArray::Array(v) => v,
         }
     }
-}
-
-#[options_not_nullable]
-#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
-#[into(PresentationSubmitRequestDTO)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub(crate) struct PresentationSubmitRequestRestDTO {
-    pub interaction_id: InteractionId,
-    #[into(with_fn = convert_inner_of_inner)]
-    #[serde(deserialize_with = "deserialize_submit_credentials")]
-    pub submit_credentials: HashMap<String, Vec<PresentationSubmitCredentialRequestRestDTO>>,
-}
-
-fn deserialize_submit_credentials<'de, D>(
-    deserializer: D,
-) -> Result<HashMap<String, Vec<PresentationSubmitCredentialRequestRestDTO>>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    let map =
-        HashMap::<String, SingleOrArray<PresentationSubmitCredentialRequestRestDTO>>::deserialize(
-            deserializer,
-        )?;
-    Ok(map.into_iter().map(|(k, v)| (k, v.into())).collect())
-}
-
-#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-#[into(PresentationSubmitCredentialRequestDTO)]
-pub(crate) struct PresentationSubmitCredentialRequestRestDTO {
-    /// Select a credential.
-    pub credential_id: Uuid,
-    /// claimSchemaId of the claim to send from this credential.
-    pub submit_claims: Vec<String>,
 }
 
 #[options_not_nullable]
