@@ -16,7 +16,6 @@ use shared_types::{OrganisationId, ProofSchemaId};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
-use validator::Validate;
 
 use crate::deserialize::deserialize_timestamp;
 use crate::dto::common::ListQueryParamsRest;
@@ -29,11 +28,10 @@ use crate::endpoint::credential_schema::dto::{
 use crate::serialize::{front_time, front_time_option};
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Default, Deserialize, ToSchema, Validate, TryInto)]
+#[derive(Clone, Debug, Default, Deserialize, ToSchema, TryInto)]
 #[try_into(T = CreateProofSchemaRequestDTO, Error = ServiceError)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct CreateProofSchemaRequestRestDTO {
-    #[validate(length(min = 1))]
     #[schema(min_length = 1)]
     #[try_into(infallible)]
     pub name: String,
@@ -55,7 +53,7 @@ pub(crate) struct CreateProofSchemaRequestRestDTO {
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Default, Deserialize, ToSchema, Validate, Into)]
+#[derive(Clone, Debug, Default, Deserialize, ToSchema, Into)]
 #[into(ProofInputSchemaRequestDTO)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct ProofInputSchemaRequestRestDTO {

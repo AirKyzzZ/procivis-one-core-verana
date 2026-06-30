@@ -26,7 +26,6 @@ use standardized_types::etsi_119_472::disclosure_policy::DisclosurePolicy;
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
-use validator::Validate;
 
 use crate::deserialize::deserialize_timestamp;
 use crate::dto::common::{Boolean, ListQueryParamsRest};
@@ -310,12 +309,12 @@ pub(crate) enum KeyStorageSecurityRestEnum {
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Validate, TryInto, ModifySchema)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, TryInto, ModifySchema)]
 #[try_into(T=CreateCredentialSchemaRequestDTO, Error=ServiceError)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct CreateCredentialSchemaRequestRestDTO {
     /// Provide a name for this schema.
-    #[validate(length(min = 1))]
+    #[schema(min_length = 1)]
     #[try_into(infallible)]
     pub name: String,
     /// Choose a credential format for credentials issued using this
@@ -337,7 +336,7 @@ pub(crate) struct CreateCredentialSchemaRequestRestDTO {
     pub organisation_id: Option<OrganisationId>,
     /// Defines the set of claims to be asserted when using this credential
     /// schema.
-    #[validate(length(min = 1))]
+    #[schema(min_items = 1)]
     #[try_into(with_fn = convert_inner, infallible)]
     pub claims: Vec<CredentialClaimSchemaRequestRestDTO>,
     /// Specifies key storage security requirements that the holder's wallet
@@ -693,23 +692,23 @@ pub(crate) struct CredentialSchemaFormatRequestRestDTO {
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, TryInto, Validate)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, TryInto)]
 #[try_into(T = CreateCredentialSchemaV2RequestDTO, Error = ServiceError)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct CreateCredentialSchemaV2RequestRestDTO {
     /// Name of the credential schema.
-    #[validate(length(min = 1))]
+    #[schema(min_length = 1)]
     #[try_into(infallible)]
     pub name: String,
     /// List of credential formats supported by this schema.
-    #[validate(length(min = 1))]
+    #[schema(min_items = 1)]
     #[try_into(with_fn = convert_inner, infallible)]
     pub formats: Vec<CredentialSchemaFormatRequestRestDTO>,
     /// Required when not using STS authentication mode.
     #[try_into(with_fn = fallback_organisation_id_from_session)]
     pub organisation_id: Option<OrganisationId>,
     /// Defines the set of claims to be asserted when using this credential schema.
-    #[validate(length(min = 1))]
+    #[schema(min_items = 1)]
     #[try_into(with_fn = convert_inner, infallible)]
     pub claims: Vec<CredentialClaimSchemaRequestRestDTO>,
     /// Specifies key storage security requirements.

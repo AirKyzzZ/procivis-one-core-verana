@@ -33,7 +33,6 @@ use standardized_types::etsi_119_602::TrustedEntityInformation;
 use standardized_types::jwk::PublicJwk;
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
-use validator::Validate;
 
 use crate::deserialize::deserialize_timestamp;
 use crate::dto::common::{Boolean, ListQueryParamsRest};
@@ -52,7 +51,7 @@ use crate::mapper::MapperError;
 use crate::serialize::{front_time, front_time_option};
 
 #[options_not_nullable]
-#[derive(Debug, Deserialize, ToSchema, Validate, TryInto)]
+#[derive(Debug, Deserialize, ToSchema, TryInto)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[try_into(T = CreateIdentifierRequestDTO, Error = ServiceError)]
 pub(crate) struct CreateIdentifierRequestRestDTO {
@@ -550,7 +549,7 @@ pub enum CreateSelfSignedCaRequestIssuerAlternativeNameTypeRest {
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Deserialize, ToSchema, Validate, Into)]
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[into(ResolveTrustEntriesRequestDTO)]
 pub(crate) struct ResolveTrustEntriesRequestRestDTO {
