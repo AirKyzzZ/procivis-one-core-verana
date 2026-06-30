@@ -13,6 +13,7 @@ use axum::routing::{delete, get, patch, post};
 use axum::{Extension, Router, middleware};
 use indexmap::IndexMap;
 use one_core::OneCore;
+use one_core::proto::session_provider::Session;
 use tower_http::catch_panic::CatchPanicLayer;
 use tower_http::trace::TraceLayer;
 use tracing::Span;
@@ -32,7 +33,7 @@ use crate::endpoint::{
     proof_schema, qes, signature, ssi, statistics, task, trust_collection, trust_list_publication,
     vc_api, verifier_instance, wallet_provider,
 };
-use crate::middleware::{UserInfo, get_http_request_context};
+use crate::middleware::get_http_request_context;
 use crate::openapi::gen_openapi_documentation;
 
 pub(crate) struct InternalAppState {
@@ -82,8 +83,7 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
         tracing::warn!("Management APIs and External APIs disabled.");
     }
 
-    let management_endpoints =
-        get_management_endpoints(&config, authentication, &mut openapi_paths);
+    let management_endpoints = get_management_endpoints(&config, &mut openapi_paths);
 
     let external_endpoints = get_external_endpoints(&config, &mut openapi_paths);
 
@@ -171,11 +171,13 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
     }
 
     router
+        // Only now log messages from authorization extraction once the request span is set up
+        .layer(middleware::from_fn(crate::middleware::log_authz_warning))
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(|request: &Request<_>| {
                     let context = get_http_request_context(request);
-                    let user_info = request.extensions().get::<UserInfo>();
+                    let session = request.extensions().get::<Session>();
                     tracing::error_span!(
                         "http_request",
                         method = context.method,
@@ -183,9 +185,11 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
                         service = "one-core",
                         requestId = context.request_id.as_ref(),
                         sessionId = context.session_id, // Derived from x-session-id header,
-                        organisation = user_info.and_then(|s| s.organisation_id.clone()),
-                        user = user_info.and_then(|s| s.user_id.clone()),
-                        actor = user_info.and_then(|s| s.act.clone())
+                        organisation = session
+                            .and_then(|s| s.organisation_id)
+                            .map(|o| o.to_string()),
+                        user = session.map(|s| s.user_id.clone()),
+                        actor = session.and_then(|s| s.actor.clone())
                     )
                 })
                 .on_request(|request: &Request<_>, _span: &Span| {
@@ -204,14 +208,15 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
                     );
                 }),
         )
-        .layer(middleware::from_fn(crate::middleware::user_init))
+        // Eagerly extract and validate authorization, so there is accurate user / session information for logging
+        .layer(middleware::from_fn(crate::middleware::session_init))
+        .layer(Extension(authentication))
         .with_state(state)
 }
 
 #[expect(deprecated)]
 fn get_management_endpoints(
     config: &ServerConfig,
-    authentication: Authentication,
     openapi_paths: &mut Option<&mut IndexMap<String, PathItem>>,
 ) -> Router<AppState> {
     if config.enable_management_endpoints {
@@ -587,9 +592,7 @@ fn get_management_endpoints(
             paths.shift_remove("/api/build-info/v1");
         }
 
-        router
-            .layer(middleware::from_fn(crate::middleware::authorization_check))
-            .layer(Extension(authentication))
+        router.layer(middleware::from_fn(crate::middleware::authorization_check))
     } else {
         if let Some(paths) = openapi_paths {
             paths.shift_remove("/api");

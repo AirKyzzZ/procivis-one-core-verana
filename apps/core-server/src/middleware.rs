@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -11,11 +10,9 @@ use axum::middleware::Next;
 use axum::response::IntoResponse;
 use headers::HeaderValue;
 use http_body_util::BodyExt;
-use one_core::proto::jwt::Jwt;
 use one_core::proto::session_provider::Session;
 use sentry::{Hub, SentryFutureExt};
 use serde::Deserialize;
-use serde_json::Value;
 use shared_types::{OrganisationId, Permission};
 use uuid::Uuid;
 
@@ -102,11 +99,22 @@ pub async fn sentry_layer(
 }
 
 pub async fn authorization_check(
+    authorized_opt: Option<Extension<Authorized>>,
+    request: Request<Body>,
+    next: Next,
+) -> Result<axum::response::Response, StatusCode> {
+    if authorized_opt.is_none() {
+        return Err(StatusCode::UNAUTHORIZED);
+    };
+    Ok(next.run(request).await)
+}
+
+pub async fn session_init(
     Extension(authentication): Extension<Authentication>,
     mut request: Request<Body>,
     next: Next,
-) -> Result<axum::response::Response, StatusCode> {
-    let response = match authentication {
+) -> axum::response::Response {
+    match authentication {
         Authentication::None => {
             request.extensions_mut().insert(Authorized {
                 permissions: Permissions::All,
@@ -114,82 +122,64 @@ pub async fn authorization_check(
             next.run(request).await
         }
         Authentication::Static(static_token) => {
-            let token = extract_auth_token(&request).ok_or(StatusCode::UNAUTHORIZED)?;
-            if !token.is_empty() && token == static_token {
-                request.extensions_mut().insert(Authorized {
-                    permissions: Permissions::All,
-                });
-            } else {
-                tracing::warn!(
-                    "Could not authorize request. Incorrect authorization method or token."
-                );
-                return Err(StatusCode::UNAUTHORIZED);
+            if let Some(token) = extract_auth_token(&request) {
+                if !token.is_empty() && token == static_token {
+                    request.extensions_mut().insert(Authorized {
+                        permissions: Permissions::All,
+                    });
+                } else {
+                    request
+                        .extensions_mut()
+                        .insert(AuthWarning("Invalid static token.".to_owned()));
+                }
             }
+
             next.run(request).await
         }
         Authentication::SecurityTokenService(security_token_service) => {
-            let token = extract_auth_token(&request).ok_or(StatusCode::UNAUTHORIZED)?;
-            let decomposed_token = security_token_service
-                .validate_sts_token::<StsToken>(token)
-                .await
-                .inspect_err(|e| {
-                    tracing::warn!("Could not authorize request. Invalid token. Cause: {e}")
-                })
-                .map_err(|_| StatusCode::UNAUTHORIZED)?;
-            request.extensions_mut().insert(Authorized {
-                permissions: Permissions::Subset(
-                    decomposed_token.payload.custom.permissions.clone(),
-                ),
-            });
-            // Initialize session scoped to this request
-            let session = Session {
-                organisation_id: decomposed_token.payload.custom.organisation_id,
-                permissions: decomposed_token.payload.custom.permissions,
-                user_id: decomposed_token
-                    .payload
-                    .subject
-                    .ok_or(StatusCode::UNAUTHORIZED)?,
-                actor: decomposed_token.payload.custom.act.map(|act| act.sub),
-            };
-            request.extensions_mut().insert(session.clone());
-            tracing::trace!("Session initialized: {session}");
-            SESSION.scope(session, next.run(request)).await
-        }
-    };
-    Ok(response)
-}
-
-pub async fn user_init(mut request: Request<Body>, next: Next) -> axum::response::Response {
-    let Some(token) = extract_auth_token(&request) else {
-        return next.run(request).await;
-    };
-    let Some(mut jwt) = Jwt::<HashMap<String, Value>>::decompose_token(token).ok() else {
-        return next.run(request).await;
-    };
-
-    request.extensions_mut().insert(UserInfo {
-        user_id: jwt.payload.subject,
-        act: jwt
-            .payload
-            .custom
-            .remove("act")
-            .and_then(|val| val.get("sub").and_then(|s| s.as_str()).map(String::from)),
-        organisation_id: jwt.payload.custom.remove("organisationId").and_then(|o| {
-            if let Value::String(s) = o {
-                Some(s)
+            if let Some(token) = extract_auth_token(&request)
+                && let Ok(decomposed_token) = security_token_service
+                    .validate_sts_token::<StsToken>(token)
+                    .await
+                    .inspect_err(|e| {
+                        request
+                            .extensions_mut()
+                            .insert(AuthWarning(format!("Invalid bearer token. Cause: {e}")));
+                    })
+                && let Some(user_id) = decomposed_token.payload.subject
+            {
+                request.extensions_mut().insert(Authorized {
+                    permissions: Permissions::Subset(
+                        decomposed_token.payload.custom.permissions.clone(),
+                    ),
+                });
+                let session = Session {
+                    organisation_id: decomposed_token.payload.custom.organisation_id,
+                    permissions: decomposed_token.payload.custom.permissions,
+                    user_id,
+                    actor: decomposed_token.payload.custom.act.map(|act| act.sub),
+                };
+                request.extensions_mut().insert(session.clone());
+                SESSION.scope(session, next.run(request)).await
             } else {
-                None
+                next.run(request).await
             }
-        }),
-    });
-    next.run(request).await
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
-pub struct UserInfo {
-    pub user_id: Option<String>,
-    pub act: Option<String>,
-    pub organisation_id: Option<String>,
+pub struct AuthWarning(String);
+
+pub async fn log_authz_warning(
+    auth_message: Option<Extension<AuthWarning>>,
+    request: Request<Body>,
+    next: Next,
+) -> axum::response::Response {
+    if let Some(Extension(AuthWarning(auth_warning))) = auth_message {
+        tracing::warn!(auth_warning);
+    }
+    next.run(request).await
 }
 
 fn extract_auth_token(request: &Request<Body>) -> Option<&str> {
