@@ -686,7 +686,7 @@ async fn test_fail_create_credential_schema_v2_unsupported_data_type() {
             organisation_id: organisation.id.into(),
             formats: vec![serde_json::json!({ "format": "SD_JWT_VC_SWIYU", "schemaId": "ID" })],
             claims: vec![TestClaim {
-                datatype: "STRING".to_string(),
+                datatype: "PICTURE".to_string(),
                 key: "firstName".to_string(),
                 required: true,
                 claims: vec![],

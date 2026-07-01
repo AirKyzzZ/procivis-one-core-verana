@@ -495,7 +495,7 @@ async fn test_fail_create_credential_schema_with_unsupported_data_type() {
         ..Default::default()
     };
     create_request.claims = vec![TestClaim {
-        datatype: "STRING".to_string(),
+        datatype: "PICTURE".to_string(),
         key: "firstName".to_string(),
         required: true,
         claims: vec![],

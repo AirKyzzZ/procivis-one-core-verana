@@ -377,6 +377,8 @@ impl CredentialFormatter for SDJWTVCFormatter {
             "BIRTH_DATE".to_string(),
             "NUMBER".to_string(),
             "EAA_CATEGORY".to_string(),
+            "OBJECT".to_string(),
+            "ARRAY".to_string(),
         ];
         let mut issuance_exchange_protocols = vec![];
         let mut issuance_did_methods = vec![DidType::WebVh];
@@ -401,11 +403,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             issuance_exchange_protocols.push(IssuanceProtocolType::OpenId4vciFinal1_0Swiyu);
             proof_exchange_protocols.push(VerificationProtocolType::OpenId4VpFinal1_0Swiyu)
         } else {
-            datatypes.extend_from_slice(&[
-                "PICTURE".to_string(),
-                "OBJECT".to_string(),
-                "ARRAY".to_string(),
-            ]);
+            datatypes.extend_from_slice(&["PICTURE".to_string()]);
             issuance_did_methods.extend_from_slice(&[DidType::Key, DidType::Web, DidType::Jwk]);
             issuance_exchange_protocols.push(IssuanceProtocolType::OpenId4VciFinal1_0);
             issuance_identifier_types.push(IdentifierType::Certificate);
