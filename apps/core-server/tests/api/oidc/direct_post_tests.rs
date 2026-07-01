@@ -1460,7 +1460,7 @@ async fn test_direct_post_oversized_body_returns_413() {
     let context = TestContext::new(Some(
         indoc::indoc! {"
             app:
-                maxOid4vpResponseBodyBytes: 1024
+                maxLargeExternalRequestBodyBytes: 1024
         "}
         .to_string(),
     ))

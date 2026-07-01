@@ -831,6 +831,31 @@ async fn test_create_credential_with_big_picture_success() {
 }
 
 #[tokio::test]
+async fn test_create_credential_oversized_body_returns_413() {
+    let context = TestContext::new(Some(
+        indoc::indoc! {"
+            app:
+                maxLargeRequestBodyBytes: 1024
+        "}
+        .to_string(),
+    ))
+    .await;
+
+    let resp = context
+        .api
+        .client
+        .post(
+            "/api/credential/v1",
+            serde_json::json!({
+                "payload": "x".repeat(2048)
+            }),
+        )
+        .await;
+
+    assert_eq!(resp.status(), 413);
+}
+
+#[tokio::test]
 async fn test_create_credential_failed_specified_object_claim() {
     // GIVEN
     let (context, organisation, did, ..) = TestContext::new_with_did(None).await;

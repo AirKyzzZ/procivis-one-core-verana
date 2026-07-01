@@ -220,6 +220,8 @@ fn get_management_endpoints(
     openapi_paths: &mut Option<&mut IndexMap<String, PathItem>>,
 ) -> Router<AppState> {
     if config.enable_management_endpoints {
+        let large_request_body_limit = config.max_large_request_body_bytes;
+
         let mut router = Router::new()
             .route("/api/cache/v1", delete(cache::controller::prune_cache))
             .route("/api/config/v1", get(config::controller::get_config))
@@ -227,7 +229,7 @@ fn get_management_endpoints(
                 "/api/credential/v1",
                 get(credential::controller::get_credential_list)
                     .post(credential::controller::post_credential)
-                    .layer(DefaultBodyLimit::disable()),
+                    .layer(DefaultBodyLimit::max(large_request_body_limit)),
             )
             .route(
                 "/api/credential/v1/{id}",
@@ -605,7 +607,7 @@ fn get_external_endpoints(
     config: &ServerConfig,
     openapi_paths: &mut Option<&mut IndexMap<String, PathItem>>,
 ) -> Router<AppState> {
-    let oid4vp_response_body_limit = config.max_oid4vp_response_body_bytes;
+    let large_external_request_body_limit = config.max_large_external_request_body_bytes;
 
     if config.enable_external_endpoints {
         Router::new()
@@ -679,7 +681,7 @@ fn get_external_endpoints(
             .route(
                 "/ssi/openid4vp/draft-20/response",
                 post(ssi::verification::draft20::controller::oid4vp_draft20_direct_post)
-                    .layer(DefaultBodyLimit::max(oid4vp_response_body_limit)),
+                    .layer(DefaultBodyLimit::max(large_external_request_body_limit)),
             )
             .route(
                 "/ssi/openid4vp/draft-20/{id}/presentation-definition",
@@ -696,7 +698,7 @@ fn get_external_endpoints(
             .route(
                 "/ssi/openid4vp/final-1.0/response",
                 post(ssi::verification::final1_0::controller::oid4vp_final1_0_direct_post)
-                    .layer(DefaultBodyLimit::max(oid4vp_response_body_limit)),
+                    .layer(DefaultBodyLimit::max(large_external_request_body_limit)),
             )
             .route(
                 "/ssi/openid4vp/final-1.0/{id}/client-metadata",
@@ -713,7 +715,7 @@ fn get_external_endpoints(
             .route(
                 "/ssi/openid4vp/final-1.0-swiyu/response/{id}",
                 post(ssi::verification::final1_0_swiyu::controller::oid4vp_final1_0_swiyu_direct_post)
-                    .layer(DefaultBodyLimit::max(oid4vp_response_body_limit)),
+                    .layer(DefaultBodyLimit::max(large_external_request_body_limit)),
             )
             .route(
                 "/ssi/revocation/v1/list/{id}",

@@ -72,13 +72,15 @@ pub struct ServerConfig {
     pub enable_signature_endpoints: bool,
     #[serde(default)]
     pub enable_qes_endpoints: bool,
-    #[serde(default = "default_oid4vp_response_body_bytes")]
-    pub max_oid4vp_response_body_bytes: usize,
+    #[serde(default = "default_large_request_body_bytes")]
+    pub max_large_request_body_bytes: usize,
+    #[serde(default = "default_large_request_body_bytes")]
+    pub max_large_external_request_body_bytes: usize,
     pub auth: AuthMode,
 }
 
-/// Default cap for OID4VP `/response` POSTs (10 MiB).
-fn default_oid4vp_response_body_bytes() -> usize {
+/// Default cap for endpoints that accept larger request bodies (10 MiB).
+fn default_large_request_body_bytes() -> usize {
     10 * 1024 * 1024
 }
 
