@@ -21,6 +21,7 @@ pub mod etsi_119_602;
 pub mod etsi_119_612;
 pub mod jades;
 pub mod jwa;
+pub mod jwe;
 pub mod jwk;
 pub mod mapper;
 pub mod oauth2;

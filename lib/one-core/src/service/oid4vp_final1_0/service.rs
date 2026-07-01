@@ -460,8 +460,10 @@ impl OID4VPFinal1_0Service {
                         "Failed parsing JWE header: {err}"
                     ))
                 })?;
-
-                let key_id = KeyId::from_str(&jwe_header.key_id).map_err(|err| {
+                let key_id = jwe_header.key_id.as_ref().ok_or(
+                    OID4VPFinal1_0ServiceError::ValidationError("Missing JWE key_id".to_string()),
+                )?;
+                let key_id = KeyId::from_str(key_id).map_err(|err| {
                     OID4VPFinal1_0ServiceError::ValidationError(format!(
                         "JWE key_id value invalid format: {err}"
                     ))
@@ -502,7 +504,7 @@ impl OID4VPFinal1_0Service {
                         ))
                     })?;
 
-                let payload = JwePayload::try_from_json_base64_decode(&payload).map_err(|err| {
+                let payload = JwePayload::try_from_json(&payload).map_err(|err| {
                     OID4VPFinal1_0ServiceError::ValidationError(format!(
                         "Failed deserializing JWE payload: {err}"
                     ))

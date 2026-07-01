@@ -25,6 +25,7 @@ use model::{
     TokenRequestWalletAttestationRequest, WalletAttestationResult,
 };
 use one_crypto::encryption::{decrypt_string, encrypt_string};
+use one_crypto::jwe::decrypt_jwe_payload;
 use proc_macros::Provider;
 use proof_formatter::{OpenID4VCIProofJWTFormatter, PublicKeyInfo};
 use secrecy::{ExposeSecret, SecretString};
@@ -38,6 +39,7 @@ use shared_types::{
     BlobId, CredentialFormat, CredentialId, CredentialSchemaFormatId, CredentialSchemaId,
     InteractionId, OrganisationId, SerializedCredential,
 };
+use standardized_types::jwk::JwkUse;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
@@ -58,7 +60,7 @@ use super::{
 };
 use crate::clock::now_utc;
 use crate::config::core_config::{
-    BlobStorageType, CoreConfig, DidType as ConfigDidType, FormatType,
+    BlobStorageType, CoreConfig, DidType as ConfigDidType, FormatType, KeyAlgorithmType,
 };
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
 use crate::mapper::openid4vp::format_type_to_dcql_format;
@@ -80,7 +82,7 @@ use crate::model::key::{Key, KeyRelations};
 use crate::model::organisation::Organisation;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::credential_schema::importer::CredentialSchemaImporter;
-use crate::proto::http_client::HttpClient;
+use crate::proto::http_client::{HttpClient, Response};
 use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::jwt::model::DecomposedJwt;
 use crate::proto::key_verification::KeyVerification;
@@ -97,7 +99,11 @@ use crate::provider::credential_formatter::model::{
 };
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::issuance_protocol::openid4vci_final1_0::jwe::build_jwe;
 use crate::provider::issuance_protocol::openid4vci_final1_0::mapper_v2::credential_to_credential_detail_v2;
+use crate::provider::issuance_protocol::openid4vci_final1_0::model::OpenID4VCICredentialResponseEncryptionDTO;
+use crate::provider::key_algorithm::ecdsa::ecdsa_public_key_as_jwk;
+use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_security_level::provider::KeySecurityLevelProvider;
 use crate::provider::key_storage::provider::KeyProvider;
@@ -120,6 +126,7 @@ use crate::util::vcdm_jsonld_contexts::vcdm_v2_base_context;
 
 mod attestations;
 mod holder_credentials;
+mod jwe;
 pub(crate) mod mapper;
 mod mapper_v2;
 pub mod model;
@@ -746,20 +753,12 @@ impl OpenID4VCIFinal1_0 {
                 interaction_data.credential_configuration_id.to_owned(),
             ),
             proofs: Some(OpenID4VCICredentialRequestProofs::Jwt(proofs)),
+            credential_response_encryption: None,
         };
 
-        let response: OpenID4VCICredentialResponseDTO = async {
-            self.client
-                .post(interaction_data.credential_endpoint.as_str())
-                .bearer_auth(access_token.expose_secret())
-                .json(&body)?
-                .send()
-                .await?
-                .error_for_status()?
-                .json()
-        }
-        .await
-        .error_while("requesting credential")?;
+        let response = self
+            .fetch_credential(interaction_data, access_token, body)
+            .await?;
 
         let credentials = response
             .credentials
@@ -775,6 +774,164 @@ impl OpenID4VCIFinal1_0 {
             redirect_uri: response.redirect_uri,
             notification_id: response.notification_id,
         })
+    }
+
+    async fn fetch_credential(
+        &self,
+        interaction_data: &HolderInteractionData,
+        access_token: &SecretString,
+        mut body: OpenID4VCICredentialRequestDTO,
+    ) -> Result<OpenID4VCICredentialResponseDTO, IssuanceProtocolError> {
+        let encryption_key = self.prepare_response_encryption(interaction_data, &mut body)?;
+        let response: Response = if let Some(request_encryption) =
+            &interaction_data.credential_request_encryption
+        {
+            // All algorithms defined in the enum are supported -> pick the first one
+            let selected_encryption_alg = request_encryption
+                .enc_values_supported
+                .first()
+                .cloned()
+                .ok_or(IssuanceProtocolError::Failed(
+                    "credential_request_encryption contains no enc_values_supported entries"
+                        .to_string(),
+                ))?;
+            let selected_compression_alg = request_encryption.zip_values_supported.first().cloned();
+            let payload = serde_json::to_vec(&body)?;
+            let issuer_key = request_encryption.jwks.keys.first().cloned().ok_or(
+                IssuanceProtocolError::Failed(
+                    "credential_request_encryption contains empty jwks".to_string(),
+                ),
+            )?;
+            let encrypted = build_jwe(
+                &payload,
+                issuer_key,
+                selected_encryption_alg,
+                selected_compression_alg,
+                &*self.key_algorithm_provider,
+            )
+            .await?;
+            async {
+                self.client
+                    .post(interaction_data.credential_endpoint.as_str())
+                    .bearer_auth(access_token.expose_secret())
+                    .header("Content-Type", "application/jwt")
+                    .body(encrypted.into_bytes())
+                    .send()
+                    .await?
+                    .error_for_status()
+            }
+            .await
+            .error_while("requesting credential")?
+        } else {
+            async {
+                self.client
+                    .post(interaction_data.credential_endpoint.as_str())
+                    .bearer_auth(access_token.expose_secret())
+                    .json(&body)?
+                    .send()
+                    .await?
+                    .error_for_status()
+            }
+            .await
+            .error_while("requesting credential")?
+        };
+
+        let response = if let Some(encryption_key) = encryption_key {
+            let key_agreement =
+                encryption_key
+                    .key_agreement()
+                    .ok_or(IssuanceProtocolError::Failed(
+                        "Key agreement not set".to_string(),
+                    ))?;
+            let content_type =
+                response
+                    .header_get("Content-Type")
+                    .ok_or(IssuanceProtocolError::Failed(
+                        "Missing response content type".to_string(),
+                    ))?;
+            if content_type != "application/jwt" {
+                return Err(IssuanceProtocolError::Failed(format!(
+                    "Requested encrypted response (application/jwt), but got `{content_type}`"
+                )));
+            };
+            let jwe = String::from_utf8(response.body)?;
+            let decrypted = decrypt_jwe_payload(
+                &jwe,
+                key_agreement
+                    .private()
+                    .ok_or(IssuanceProtocolError::Failed(
+                        "private key not set".to_string(),
+                    ))?
+                    .as_ref(),
+            )
+            .await?;
+            serde_json::from_slice(&decrypted)?
+        } else {
+            response.json().error_while("parsing credential response")?
+        };
+
+        Ok(response)
+    }
+
+    fn prepare_response_encryption(
+        &self,
+        interaction_data: &HolderInteractionData,
+        body: &mut OpenID4VCICredentialRequestDTO,
+    ) -> Result<Option<KeyHandle>, IssuanceProtocolError> {
+        let Some(response_encryption) = &interaction_data.credential_response_encryption else {
+            return Ok(None);
+        };
+
+        // ECDH-ES supports multiple curves. The metadata does not specify which curve to use.
+        // P-256 is used as it is the most likely supported curve.
+        let Some(algorithm) = self
+            .key_algorithm_provider
+            .key_algorithm_from_type(KeyAlgorithmType::Ecdsa)
+            .ok()
+        else {
+            // If this becomes an issue, fallback to other curves could be implemented.
+            return if response_encryption.encryption_required {
+                Err(IssuanceProtocolError::Failed(
+                    "Response encryption is required, but ECDSA key algorithm is not available"
+                        .to_string(),
+                ))
+            } else {
+                // Encryption is not required, so it is skipped
+                tracing::warn!(
+                    "Skipping optional response encryption because ECDSA key algorithm is not available"
+                );
+                Ok(None)
+            };
+        };
+        let enc = response_encryption
+            .enc_values_supported
+            .first()
+            .cloned()
+            .ok_or(IssuanceProtocolError::Failed(
+                "credential_response_encryption contains no enc_values_supported entries"
+                    .to_string(),
+            ))?;
+
+        let response_encryption_key = algorithm
+            .generate_key()
+            .error_while("Generating encryption key")?;
+        let key_agreement =
+            response_encryption_key
+                .key
+                .key_agreement()
+                .ok_or(IssuanceProtocolError::Failed(
+                    "Key agreement not set".to_string(),
+                ))?;
+        // A freshly generated key does not have a use attached to it, so jwk created with explicit use
+        let jwk =
+            ecdsa_public_key_as_jwk(&key_agreement.public().as_raw(), Some(JwkUse::Encryption))
+                .error_while("Generating JWK")?;
+        body.credential_response_encryption = Some(OpenID4VCICredentialResponseEncryptionDTO {
+            jwk,
+            enc,
+            zip: response_encryption.zip_values_supported.first().cloned(),
+        });
+        Ok(Some(response_encryption_key.key))
     }
 
     async fn public_key_info_from_meta_and_holder_binding(
@@ -1177,6 +1334,14 @@ impl OpenID4VCIFinal1_0 {
             token_endpoint_auth_methods_supported,
             client_attestation_pop_signing_alg_values_supported,
             credential_metadata: credential_config.credential_metadata.clone(),
+            credential_request_encryption: issuer_metadata
+                .metadata()
+                .credential_request_encryption
+                .clone(),
+            credential_response_encryption: issuer_metadata
+                .metadata()
+                .credential_response_encryption
+                .clone(),
             credential_configuration_id: configuration_id.to_owned(),
             notification_id: None,
             protocol: self.config_id.to_owned(),

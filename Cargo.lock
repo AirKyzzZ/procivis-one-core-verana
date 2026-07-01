@@ -3885,6 +3885,7 @@ dependencies = [
  "concat-kdf",
  "ct-codecs",
  "ed25519-compact",
+ "flate2",
  "hex",
  "hex-literal",
  "hmac 0.12.1",

@@ -1510,6 +1510,7 @@ async fn test_create_credential_success() {
                 proofs: Some(OpenID4VCICredentialRequestProofs::Jwt(vec![
                     PROOF_JWT.to_string(),
                 ])),
+                credential_response_encryption: None,
             },
         )
         .await;
@@ -1695,6 +1696,7 @@ async fn test_create_credential_success_sd_jwt_vc() {
                 proofs: Some(OpenID4VCICredentialRequestProofs::Jwt(vec![
                     PROOF_JWT.to_string(),
                 ])),
+                credential_response_encryption: None,
             },
         )
         .await;
@@ -1903,6 +1905,7 @@ async fn test_create_credential_success_mdoc() {
                 proofs: Some(OpenID4VCICredentialRequestProofs::Jwt(vec![
                     PROOF_JWT.to_string(),
                 ])),
+                credential_response_encryption: None,
             },
         )
         .await;
@@ -1945,6 +1948,7 @@ async fn test_create_credential_configuration_id_invalid() {
                 proofs: Some(OpenID4VCICredentialRequestProofs::Jwt(vec![
                     PROOF_JWT.to_string(),
                 ])),
+                credential_response_encryption: None,
             },
         )
         .await;
@@ -1988,6 +1992,7 @@ async fn test_create_credential_format_invalid_bearer_token() {
                 proofs: Some(OpenID4VCICredentialRequestProofs::Jwt(vec![
                     PROOF_JWT.to_string(),
                 ])),
+                credential_response_encryption: None,
             },
         )
         .await;
@@ -2042,6 +2047,7 @@ async fn test_create_credential_pre_authorized_code_not_used() {
                 proofs: Some(OpenID4VCICredentialRequestProofs::Jwt(vec![
                     PROOF_JWT.to_string(),
                 ])),
+                credential_response_encryption: None,
             },
         )
         .await;
@@ -2096,6 +2102,7 @@ async fn test_create_credential_interaction_data_invalid() {
                 proofs: Some(OpenID4VCICredentialRequestProofs::Jwt(vec![
                     PROOF_JWT.to_string(),
                 ])),
+                credential_response_encryption: None,
             },
         )
         .await;
@@ -2158,6 +2165,7 @@ async fn test_create_credential_access_token_expired() {
                 proofs: Some(OpenID4VCICredentialRequestProofs::Jwt(vec![
                     PROOF_JWT.to_string(),
                 ])),
+                credential_response_encryption: None,
             },
         )
         .await;
@@ -2332,6 +2340,7 @@ async fn test_create_credential_issuer_failed() {
                 proofs: Some(OpenID4VCICredentialRequestProofs::Jwt(vec![
                     PROOF_JWT.to_string(),
                 ])),
+                credential_response_encryption: None,
             },
         )
         .await;
@@ -2479,6 +2488,7 @@ async fn test_create_credential_nonce_reused() {
                 proofs: Some(OpenID4VCICredentialRequestProofs::Jwt(vec![
                     PROOF_JWT.to_string(),
                 ])),
+                credential_response_encryption: None,
             },
         )
         .await;

@@ -5,11 +5,9 @@ use dcql::DcqlQuery;
 use serde::{Deserialize, Serialize};
 use serde_with::{OneOrMany, serde_as, skip_serializing_none};
 use shared_types::{ClaimSchemaId, InteractionId, KeyId};
-use standardized_types::jwa::EncryptionAlgorithm;
-use standardized_types::jwk::PublicJwk;
-use standardized_types::openid4vp::{
-    ClientMetadata, ClientMetadataJwks, PresentationFormat, ResponseMode,
-};
+use standardized_types::jwa::{EncryptionAlgorithm, EncryptionKeyManagementAlgorithm};
+use standardized_types::jwk::{Jwks, PublicJwk};
+use standardized_types::openid4vp::{ClientMetadata, PresentationFormat, ResponseMode};
 use strum::{Display, EnumString};
 use time::OffsetDateTime;
 use url::Url;
@@ -30,16 +28,15 @@ pub(crate) struct JwePayload {
 }
 
 impl JwePayload {
-    pub(crate) fn try_from_json_base64_decode(payload: &[u8]) -> anyhow::Result<Self> {
+    pub(crate) fn try_from_json(payload: &[u8]) -> anyhow::Result<Self> {
         let payload =
-            serde_json::from_slice(payload).context("MdocJwePayload deserialization failed")?;
+            serde_json::from_slice(payload).context("JWE payload deserialization failed")?;
 
         Ok(payload)
     }
 
-    pub(crate) fn try_into_json_base64_encode(&self) -> anyhow::Result<Vec<u8>> {
-        let payload = serde_json::to_vec(self).context("MdocJwePayload serialization failed")?;
-
+    pub(crate) fn try_into_json(&self) -> anyhow::Result<Vec<u8>> {
+        let payload = serde_json::to_vec(self).context("JWE payload serialization failed")?;
         Ok(payload)
     }
 }
@@ -118,25 +115,16 @@ pub struct OpenID4VPDirectPostResponseDTO {
     pub redirect_uri: Option<String>,
 }
 
-// https://datatracker.ietf.org/doc/html/rfc7518#section-4.1
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Display)]
-pub enum AuthorizationEncryptedResponseAlgorithm {
-    // Elliptic Curve Diffie-Hellman Ephemeral Static key agreement using Concat KDF
-    #[serde(rename = "ECDH-ES")]
-    #[strum(serialize = "ECDH-ES")]
-    EcdhEs,
-}
-
 #[skip_serializing_none]
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Default)]
 pub struct OpenID4VPDraftClientMetadata {
     #[serde(default)]
-    pub jwks: Option<ClientMetadataJwks>,
+    pub jwks: Option<Jwks>,
     #[serde(default)]
     pub jwks_uri: Option<String>,
     pub vp_formats: HashMap<String, PresentationFormat>,
     #[serde(default)]
-    pub authorization_encrypted_response_alg: Option<AuthorizationEncryptedResponseAlgorithm>,
+    pub authorization_encrypted_response_alg: Option<EncryptionKeyManagementAlgorithm>,
     #[serde(default)]
     pub authorization_encrypted_response_enc: Option<EncryptionAlgorithm>,
     #[serde(default)]

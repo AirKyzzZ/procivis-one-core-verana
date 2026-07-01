@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::{VecSkipError, serde_as, skip_serializing_none};
 
 use crate::jwa::EncryptionAlgorithm;
-use crate::jwk::PublicJwk;
+use crate::jwk::Jwks;
 
 #[serde_as]
 #[skip_serializing_none]
@@ -15,7 +15,7 @@ use crate::jwk::PublicJwk;
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub struct ClientMetadata {
     #[serde(default)]
-    pub jwks: Option<ClientMetadataJwks>,
+    pub jwks: Option<Jwks>,
     #[serde(default)]
     pub jwks_uri: Option<String>,
     pub vp_formats_supported: HashMap<String, PresentationFormat>,
@@ -28,12 +28,6 @@ pub struct ClientMetadata {
     pub id_token_encrypted_response_alg: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub subject_syntax_types_supported: Vec<String>,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug, Default, PartialEq)]
-#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
-pub struct ClientMetadataJwks {
-    pub keys: Vec<PublicJwk>,
 }
 
 // All vp_formats_supported fields are optional,

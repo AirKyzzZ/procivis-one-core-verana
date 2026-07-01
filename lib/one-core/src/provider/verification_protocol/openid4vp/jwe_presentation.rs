@@ -16,16 +16,12 @@ pub(crate) async fn build_jwe(
     encryption_algorithm: EncryptionAlgorithm,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> anyhow::Result<String> {
-    let payload = payload.try_into_json_base64_encode()?;
+    let payload = payload.try_into_json()?;
     let ParsedKey { algorithm_type, .. } = key_algorithm_provider.parse_jwk(&verifier_key)?;
     let algorithm = key_algorithm_provider
         .key_algorithm_from_type(algorithm_type)
         .map_err(|_| anyhow!("Algorithm not found"))?;
 
-    let key_id = verifier_key
-        .kid()
-        .ok_or(anyhow!("Missing verifier key id"))?
-        .to_string();
     let private_key = algorithm.generate_key()?;
     let key_agreement = private_key
         .key
@@ -41,7 +37,8 @@ pub(crate) async fn build_jwe(
     Ok(one_crypto::jwe::build_jwe(
         &payload,
         Header {
-            key_id,
+            key_id: verifier_key.kid().map(String::from),
+            zip: None,
             partyuinfo_data: Some(holder_nonce.as_bytes().to_vec()),
             partyvinfo_data: Some(nonce.as_bytes().to_vec()),
         },

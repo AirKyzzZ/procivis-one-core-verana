@@ -1,5 +1,6 @@
 use std::string::FromUtf8Error;
 
+use one_crypto::encryption::EncryptionError;
 use shared_types::CredentialSchemaId;
 use thiserror::Error;
 
@@ -47,6 +48,8 @@ pub enum IssuanceProtocolError {
 
     #[error("JSON error: `{0}`")]
     Json(#[from] serde_json::Error),
+    #[error("Encryption error: `{0}`")]
+    Encryption(#[from] EncryptionError),
 
     #[error(transparent)]
     OpenIDIssuanceError(#[from] OpenIDIssuanceError),
@@ -67,7 +70,10 @@ impl ErrorCodeMixin for IssuanceProtocolError {
             Self::IncorrectCredentialSchemaType => ErrorCode::BR_0087,
             Self::InvalidRequest(_) => ErrorCode::BR_0085,
             Self::Untrusted => ErrorCode::BR_0433,
-            Self::Failed(_) | Self::Json(_) | Self::OpenIDIssuanceError(_) => ErrorCode::BR_0062,
+            Self::Failed(_)
+            | Self::Json(_)
+            | Self::OpenIDIssuanceError(_)
+            | Self::Encryption(_) => ErrorCode::BR_0062,
             Self::DidMismatch
             | Self::KeyMismatch
             | Self::CertificateMismatch

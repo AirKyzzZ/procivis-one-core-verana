@@ -2053,6 +2053,8 @@ fn dummy_interaction() -> HolderInteractionData {
         token_endpoint_auth_methods_supported: None,
         client_attestation_pop_signing_alg_values_supported: None,
         credential_metadata: None,
+        credential_request_encryption: None,
+        credential_response_encryption: None,
         credential_configuration_id: "".to_string(),
         notification_id: None,
         protocol: "".to_string(),

@@ -4,8 +4,8 @@ use dcql::{CredentialFormat, CredentialQuery, MsoMdocMeta, PathSegment, SdJwtVcM
 use one_dto_mapper::convert_inner_of_inner;
 use serde::Deserialize;
 use standardized_types::jwa::EncryptionAlgorithm;
-use standardized_types::jwk::PublicJwk;
-use standardized_types::openid4vp::{ClientMetadata, ClientMetadataJwks};
+use standardized_types::jwk::{Jwks, PublicJwk};
+use standardized_types::openid4vp::ClientMetadata;
 use url::Url;
 
 use super::model::{AuthorizationRequest, AuthorizationRequestQueryParams, Params};
@@ -37,7 +37,7 @@ pub(crate) fn create_open_id_for_vp_client_metadata_final1_0(
     };
 
     if let Some(key_agreement_key) = key_agreement_key {
-        metadata.jwks = Some(ClientMetadataJwks {
+        metadata.jwks = Some(Jwks {
             keys: vec![key_agreement_key],
         });
         metadata.encrypted_response_enc_values_supported = Some(vec![

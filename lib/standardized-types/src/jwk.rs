@@ -7,6 +7,12 @@ use strum::Display;
 
 use crate::mapper::secret_string;
 
+#[derive(Clone, Serialize, Deserialize, Debug, Default, PartialEq)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
+pub struct Jwks {
+    pub keys: Vec<PublicJwk>,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 #[serde(rename_all = "camelCase")]

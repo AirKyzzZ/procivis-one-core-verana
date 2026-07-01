@@ -10,9 +10,9 @@ use one_core::provider::issuance_protocol::openid4vci_final1_0::model::{
     OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialMetadataClaimResponseDTO,
     OpenID4VCICredentialMetadataResponseDTO, OpenID4VCICredentialRequestDTO,
     OpenID4VCICredentialRequestIdentifier, OpenID4VCICredentialRequestProofs,
-    OpenID4VCICredentialSubjectItem, OpenID4VCIFinal1CredentialOfferDTO, OpenID4VCIGrants,
-    OpenID4VCIIssuerMetadataBatchIssuanceDTO, OpenID4VCIIssuerMetadataClaimDisplay,
-    OpenID4VCIIssuerMetadataCredentialMetadataImage,
+    OpenID4VCICredentialResponseEncryptionDTO, OpenID4VCICredentialSubjectItem,
+    OpenID4VCIFinal1CredentialOfferDTO, OpenID4VCIGrants, OpenID4VCIIssuerMetadataBatchIssuanceDTO,
+    OpenID4VCIIssuerMetadataClaimDisplay, OpenID4VCIIssuerMetadataCredentialMetadataImage,
     OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
     OpenID4VCIIssuerMetadataDisplayResponseDTO, OpenID4VCIIssuerMetadataLogoDTO,
     OpenID4VCINonceResponseDTO, OpenID4VCINotificationEvent, OpenID4VCINotificationRequestDTO,
@@ -27,6 +27,9 @@ use proc_macros::options_not_nullable;
 use secrecy::SecretString;
 use serde::{Deserialize, Serialize};
 use standardized_types::etsi_119_472::disclosure_policy::DisclosurePolicy;
+use standardized_types::jwa::EncryptionAlgorithm;
+use standardized_types::jwe::CompressionAlgorithm;
+use standardized_types::jwk::PublicJwk;
 use standardized_types::mapper::secret_string;
 use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
 use utoipa::ToSchema;
@@ -245,6 +248,18 @@ pub(crate) struct OpenID4VCIFinal1CredentialRequestRestDTO {
     pub credential: OpenID4VCICredentialRequestIdentifierRest,
     #[into(with_fn = convert_inner)]
     pub proofs: Option<OpenID4VCICredentialRequestProofsRest>,
+    #[into(with_fn = convert_inner)]
+    pub credential_response_encryption:
+        Option<OpenID4VCICredentialResponseEncryptionRequestRestDTO>,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, Into)]
+#[into(OpenID4VCICredentialResponseEncryptionDTO)]
+pub struct OpenID4VCICredentialResponseEncryptionRequestRestDTO {
+    pub jwk: PublicJwk,
+    pub enc: EncryptionAlgorithm,
+    pub zip: Option<CompressionAlgorithm>,
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]

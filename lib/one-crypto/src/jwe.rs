@@ -1,3 +1,4 @@
+use std::io::{Read, Write};
 use std::str::FromStr;
 
 use aes::cipher::block_padding::Pkcs7;
@@ -7,11 +8,13 @@ use aes::{Aes128, Aes256};
 use aes_gcm::aead::generic_array::GenericArray;
 use aes_gcm::{AeadCore, AeadInPlace, Aes128Gcm, Aes256Gcm, AesGcm, KeyInit};
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
+use flate2::read::DeflateDecoder;
+use flate2::write::DeflateEncoder;
 use hmac::Mac;
 use secrecy::{ExposeSecret, ExposeSecretMut, SecretSlice};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
-use standardized_types::jwa::EncryptionAlgorithm;
+use standardized_types::jwa::{EncryptionAlgorithm, EncryptionKeyManagementAlgorithm};
+use standardized_types::jwe::CompressionAlgorithm;
 use standardized_types::jwk::PublicJwk;
 
 use crate::HmacSha256;
@@ -20,7 +23,8 @@ use crate::utilities::{generate_random_bytes, get_rng};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Header {
-    pub key_id: String,
+    pub key_id: Option<String>,
+    pub zip: Option<CompressionAlgorithm>,
     // decoded apu param
     // Optional per RFC 7518 §4.6.2 (defaults to empty)
     pub partyuinfo_data: Option<Vec<u8>>,
@@ -32,8 +36,11 @@ pub struct Header {
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct JweHeader<T> {
     #[serde(rename = "kid")]
-    pub key_id: String,
+    pub key_id: Option<String>,
+    pub alg: EncryptionKeyManagementAlgorithm,
     pub enc: EncryptionAlgorithm,
+    #[serde(rename = "zip", default, skip_serializing_if = "Option::is_none")]
+    pub compression_alg: Option<CompressionAlgorithm>,
     // apu param — optional per RFC 7518 §4.6.2
     #[serde(rename = "apu", default, skip_serializing_if = "Option::is_none")]
     pub agreement_partyuinfo: Option<String>,
@@ -54,18 +61,41 @@ pub fn build_jwe(
 ) -> Result<String, EncryptionError> {
     let apu_data = header.partyuinfo_data.as_deref().unwrap_or(&[]);
     let apv_data = header.partyvinfo_data.as_deref().unwrap_or(&[]);
-    let apu_b64 = Base64UrlSafeNoPadding::encode_to_string(apu_data)
-        .map_err(|e| EncryptionError::Crypto(format!("failed to encode apu: {e}")))?;
-    let apv_b64 = Base64UrlSafeNoPadding::encode_to_string(apv_data)
-        .map_err(|e| EncryptionError::Crypto(format!("failed to encode apv: {e}")))?;
-    let protected_header = json!({
-        "kid": header.key_id,
-        "enc": encryption_alg,
-        "alg": "ECDH-ES",
-        "apu": apu_b64,
-        "apv": apv_b64,
-        "epk": remote_jwk,
-    });
+
+    let mut protected_header = JweHeader {
+        key_id: header.key_id,
+        enc: encryption_alg,
+        alg: EncryptionKeyManagementAlgorithm::EcdhEs,
+        ephemeral_public_key: remote_jwk,
+        agreement_partyuinfo: None,
+        agreement_partyvinfo: None,
+        compression_alg: None,
+    };
+    if !apu_data.is_empty() {
+        let apu_b64 = Base64UrlSafeNoPadding::encode_to_string(apu_data)
+            .map_err(|e| EncryptionError::Crypto(format!("failed to encode apu: {e}")))?;
+        protected_header.agreement_partyuinfo = Some(apu_b64);
+    }
+    if !apv_data.is_empty() {
+        let apv_b64 = Base64UrlSafeNoPadding::encode_to_string(apv_data)
+            .map_err(|e| EncryptionError::Crypto(format!("failed to encode apv: {e}")))?;
+        protected_header.agreement_partyvinfo = Some(apv_b64);
+    }
+
+    let mut compressed_payload = if let Some(compression) = header.zip {
+        protected_header.compression_alg = Some(compression);
+        let mut encoder = match compression {
+            CompressionAlgorithm::DEF => DeflateEncoder::new(Vec::new(), Default::default()),
+        };
+        encoder
+            .write_all(payload)
+            .map_err(|e| EncryptionError::Crypto(format!("failed to compress: {e}")))?;
+        encoder
+            .finish()
+            .map_err(|e| EncryptionError::Crypto(format!("failed to compress: {e}")))?
+    } else {
+        payload.to_vec()
+    };
     let protected_header_bytes = serde_json::to_vec(&protected_header).map_err(|e| {
         EncryptionError::Crypto(format!("failed to serialize protected JWE header: {e}"))
     })?;
@@ -77,25 +107,24 @@ pub fn build_jwe(
     let encryption_key =
         derive_encryption_key(&shared_secret, apu_data, apv_data, &encryption_alg)?;
 
-    let mut encrypted = payload.to_vec();
     let AeadOutput { tag_b64, iv_b64 } = match encryption_alg {
         EncryptionAlgorithm::A128GCM => encrypt_in_place_aes_gmc::<Aes128>(
-            &mut encrypted,
+            &mut compressed_payload,
             protected_header_b64.as_bytes(),
             &encryption_key,
         )?,
         EncryptionAlgorithm::A256GCM => encrypt_in_place_aes_gmc::<Aes256>(
-            &mut encrypted,
+            &mut compressed_payload,
             protected_header_b64.as_bytes(),
             &encryption_key,
         )?,
         EncryptionAlgorithm::A128CBCHS256 => encrypt_in_place_aes_cbc_hs256(
-            &mut encrypted,
+            &mut compressed_payload,
             protected_header_b64.as_bytes(),
             &encryption_key,
         )?,
     };
-    let encrypted_b64 = Base64UrlSafeNoPadding::encode_to_string(encrypted)
+    let encrypted_b64 = Base64UrlSafeNoPadding::encode_to_string(compressed_payload)
         .map_err(|e| EncryptionError::Crypto(format!("failed to encode JWE payload: {e}")))?;
 
     Ok([
@@ -277,6 +306,7 @@ pub fn extract_jwe_header(jwe: &str) -> Result<Header, EncryptionError> {
         partyuinfo_data,
         partyvinfo_data,
         key_id: header.key_id,
+        zip: None,
     })
 }
 
@@ -360,7 +390,18 @@ impl EncryptedJWE {
             }
         };
 
-        Ok(decrypted)
+        let decompressed = if let Some(compression) = header.compression_alg {
+            let mut decoder = match compression {
+                CompressionAlgorithm::DEF => DeflateDecoder::new(&*decrypted),
+            };
+            let mut buf = vec![];
+            decoder.read_to_end(&mut buf)?;
+            buf
+        } else {
+            decrypted
+        };
+
+        Ok(decompressed)
     }
 
     async fn derive_shared_secret(
@@ -554,7 +595,8 @@ mod test {
     async fn test_decrypt_jwe_ec() {
         let expected_payload = "eyJhdWQiOiJodHRwOi8vMC4wLjAuMDozMDAwL3NzaS9vaWRjLXZlcmlmaWVyL3YxL3Jlc3BvbnNlIiwiZXhwIjoxNzMxNTA5NDY5LCJ2cF90b2tlbiI6Im8yZDJaWEp6YVc5dVl6RXVNR2xrYjJOMWJXVnVkSE9CbzJka2IyTlVlWEJsZFc5eVp5NXBjMjh1TVRnd01UTXVOUzR4TG0xRVRHeHBjM04xWlhKVGFXZHVaV1NpYW01aGJXVlRjR0ZqWlhPaFpIUmxjM1NCMkJoWVg2Um9aR2xuWlhOMFNVUUFabkpoYm1SdmJWZ2dBQnBqa1h3Q2RYdVJUdUlaU3RqWnRCZ0dhZ3FqcFlpeGMxSWFINUpRY1JweFpXeGxiV1Z1ZEVsa1pXNTBhV1pwWlhKbWRtRnNkV1V4YkdWc1pXMWxiblJXWVd4MVpXUjBaWE4wYW1semMzVmxja0YxZEdpRVE2RUJKcUVZSVZrRGx6Q0NBNU13Z2dNNG9BTUNBUUlDRkVQamdGUExNb1NmRk4xSVRPeDc0OUlKWWFtQ01Bb0dDQ3FHU000OUJBTUNNR0l4Q3pBSkJnTlZCQVlUQWtOSU1ROHdEUVlEVlFRSERBWmFkWEpwWTJneEVUQVBCZ05WQkFvTUNGQnliMk5wZG1sek1SRXdEd1lEVlFRTERBaFFjbTlqYVhacGN6RWNNQm9HQTFVRUF3d1RZMkV1WkdWMkxtMWtiQzF3YkhWekxtTnZiVEFlRncweU5ERXhNVE14TkRBMU1EQmFGdzB5TlRBeU1URXdNREF3TURCYU1Fb3hDekFKQmdOVkJBWVRBa05JTVE4d0RRWURWUVFIREFaYWRYSnBZMmd4RkRBU0JnTlZCQW9NQzFCeWIyTnBkbWx6SUVGSE1SUXdFZ1lEVlFRRERBdHdjbTlqYVhacGN5NWphREJaTUJNR0J5cUdTTTQ5QWdFR0NDcUdTTTQ5QXdFSEEwSUFCQ2tTU0YxUHFjaEhCMUVVVVVPZUkwNGZUMDA1Z1dLSU9lNjBBOWJnckw4S2QzMURaY1JTcWF4QVVHQnQ3MEhCN3VDWmR1ZkE2dUtkTDZCdkF6VWhiSldqZ2dIaU1JSUIzakFPQmdOVkhROEJBZjhFQkFNQ0I0QXdGUVlEVlIwbEFRSF9CQXN3Q1FZSEtJR01YUVVCQWpBTUJnTlZIUk1CQWY4RUFqQUFNQjhHQTFVZEl3UVlNQmFBRk8wYXNKM2lZRVZRQUR2YVdqUXlHcGktTGJmRk1Gb0dBMVVkSHdSVE1GRXdUNkJOb0V1R1NXaDBkSEJ6T2k4dlkyRXVaR1YyTG0xa2JDMXdiSFZ6TG1OdmJTOWpjbXd2TkRCRFJESXlOVFEzUmpNNE16UkROVEkyUXpWRE1qSkZNVUV5TmtNM1JUSXdNek15TkRZMk9DOHdnY29HQ0NzR0FRVUZCd0VCQklHOU1JRzZNRnNHQ0NzR0FRVUZCekFDaGs5b2RIUndjem92TDJOaExtUmxkaTV0Wkd3dGNHeDFjeTVqYjIwdmFYTnpkV1Z5THpRd1EwUXlNalUwTjBZek9ETTBRelV5TmtNMVF6SXlSVEZCTWpaRE4wVXlNRE16TWpRMk5qZ3VaR1Z5TUZzR0NDc0dBUVVGQnpBQmhrOW9kSFJ3Y3pvdkwyTmhMbVJsZGk1dFpHd3RjR3gxY3k1amIyMHZiMk56Y0M4ME1FTkVNakkxTkRkR016Z3pORU0xTWpaRE5VTXlNa1V4UVRJMlF6ZEZNakF6TXpJME5qWTRMMk5sY25Rdk1DWUdBMVVkRWdRZk1CMkdHMmgwZEhCek9pOHZZMkV1WkdWMkxtMWtiQzF3YkhWekxtTnZiVEFXQmdOVkhSRUVEekFOZ2d0d2NtOWphWFpwY3k1amFEQWRCZ05WSFE0RUZnUVVoSVZ4XzRLOHVEU2dUTG4yZnhaT2VaaWxhSkV3Q2dZSUtvWkl6ajBFQXdJRFNRQXdSZ0loQUlNUlllcmhWNWYtdGRwbVpuZjRYRXRLVmQyMUQzVlpwcGNNbHNpcHBYNXdBaUVBMnJJV3FnQWpla1JMcWYxaGM5bjlSSFV3eklnVnF1OVplc2FCSDZkcWhieFpBVkhZR0ZrQlRLWm5kbVZ5YzJsdmJtTXhMakJ2WkdsblpYTjBRV3huYjNKcGRHaHRaMU5JUVMweU5UWnNkbUZzZFdWRWFXZGxjM1J6b1dSMFpYTjBvUUJZSUNPSVpMdlZTaUJCWnNVTHo0VTluQnZDZUxnV0FScVFZeE9RWTdCQkxIQWxiV1JsZG1salpVdGxlVWx1Wm0taGFXUmxkbWxqWlV0bGVhTUJBU0FHSVZnZ0dFMXZRVS13MDZmc1o4WVZpS3hrTnc3MXduY1BaUmpDdW9oTXJIVDBvdEpuWkc5alZIbHdaWFZ2Y21jdWFYTnZMakU0TURFekxqVXVNUzV0UkV4c2RtRnNhV1JwZEhsSmJtWnZwR1p6YVdkdVpXVEFkREl3TWpRdE1URXRNVE5VTVRRNk1qVTZNVEZhYVhaaGJHbGtSbkp2YmNCME1qQXlOQzB4TVMweE0xUXhORG95TlRveE1WcHFkbUZzYVdSVmJuUnBiTUIwTWpBeU5DMHhNUzB4TmxReE5Eb3lOVG94TVZwdVpYaHdaV04wWldSVmNHUmhkR1hBZERJd01qUXRNVEV0TVRSVU1UUTZNalU2TVRGYVdFQnpBc0tGNGVKZzdFNFJTdUx4RjJDQk5YZzdpWUREMklsN3dTN1dkLXJVa2VQbWRjS1Jld0VQX3ZVSjlmbVRlLV9SYmZUM0dkeTV1Yndtbl9qTDY4TmxiR1JsZG1salpWTnBaMjVsWktKcWJtRnRaVk53WVdObGM5Z1lRYUJxWkdWMmFXTmxRWFYwYUtGdlpHVjJhV05sVTJsbmJtRjBkWEpsaEVPaEFTZWc5bGhBV2Z6c00tOEI0SF9xLTRXdVJnZVlQbjNhNEMydUxjQkdKam1qV3FJSTFGeS1tb0JOcV9FU3FkTkcycFZGYlZoVkh1Nm9pTUxLU0FFRHh2WHNjRlJUQkdaemRHRjBkWE1BIiwicHJlc2VudGF0aW9uX3N1Ym1pc3Npb24iOnsiaWQiOiJiOTE0NWEyYS00MDY0LTRhZjMtODY5Yi0xYzhkMmZkOGUzYzciLCJkZWZpbml0aW9uX2lkIjoiYzQ2MzU1NTMtMjQ5Ni00ZGIwLTg5OWUtNTFkZDkyNDJiZjZiIiwiZGVzY3JpcHRvcl9tYXAiOlt7ImlkIjoiaW5wdXRfMCIsImZvcm1hdCI6Im1zb19tZG9jIiwicGF0aCI6IiQiLCJwYXRoX25lc3RlZCI6eyJmb3JtYXQiOiJtc29fbWRvYyIsInBhdGgiOiIkLnZwLnZlcmlmaWFibGVDcmVkZW50aWFsWzBdIn19XX0sInN0YXRlIjoiYzQ2MzU1NTMtMjQ5Ni00ZGIwLTg5OWUtNTFkZDkyNDJiZjZiIn0";
         let expected_header = Header {
-            key_id: "eec37767-ad74-47c9-a349-d95a1bd241d4".to_string(),
+            key_id: Some("eec37767-ad74-47c9-a349-d95a1bd241d4".to_string()),
+            zip: None,
             partyuinfo_data: Some(hex!("184707c38b637205c39ec2a7c3b9c2977ec38a30573e3946c3963d17c2b9767fc2aec3b40c681c75c299c387").to_vec()),
             partyvinfo_data: Some(hex!("627565466e786d575431454a456d5042357a71346d3661716b68456a494e386a").to_vec()),
         };
@@ -577,7 +619,8 @@ mod test {
     async fn test_decrypt_jwe_eddsa() {
         let expected_payload = "eyJhdWQiOiJodHRwOi8vMC4wLjAuMDozMDAwL3NzaS9vaWRjLXZlcmlmaWVyL3YxL3Jlc3BvbnNlIiwiZXhwIjoxNzMxNTEwNzg5LCJ2cF90b2tlbiI6Im8yZDJaWEp6YVc5dVl6RXVNR2xrYjJOMWJXVnVkSE9CbzJka2IyTlVlWEJsZFc5eVp5NXBjMjh1TVRnd01UTXVOUzR4TG0xRVRHeHBjM04xWlhKVGFXZHVaV1NpYW01aGJXVlRjR0ZqWlhPaFpIUmxjM1NCMkJoWVg2Um9aR2xuWlhOMFNVUUFabkpoYm1SdmJWZ2dBQnBqa1h3Q2RYdVJUdUlaU3RqWnRCZ0dhZ3FqcFlpeGMxSWFINUpRY1JweFpXeGxiV1Z1ZEVsa1pXNTBhV1pwWlhKbWRtRnNkV1V4YkdWc1pXMWxiblJXWVd4MVpXUjBaWE4wYW1semMzVmxja0YxZEdpRVE2RUJKcUVZSVZrRGx6Q0NBNU13Z2dNNG9BTUNBUUlDRkVQamdGUExNb1NmRk4xSVRPeDc0OUlKWWFtQ01Bb0dDQ3FHU000OUJBTUNNR0l4Q3pBSkJnTlZCQVlUQWtOSU1ROHdEUVlEVlFRSERBWmFkWEpwWTJneEVUQVBCZ05WQkFvTUNGQnliMk5wZG1sek1SRXdEd1lEVlFRTERBaFFjbTlqYVhacGN6RWNNQm9HQTFVRUF3d1RZMkV1WkdWMkxtMWtiQzF3YkhWekxtTnZiVEFlRncweU5ERXhNVE14TkRBMU1EQmFGdzB5TlRBeU1URXdNREF3TURCYU1Fb3hDekFKQmdOVkJBWVRBa05JTVE4d0RRWURWUVFIREFaYWRYSnBZMmd4RkRBU0JnTlZCQW9NQzFCeWIyTnBkbWx6SUVGSE1SUXdFZ1lEVlFRRERBdHdjbTlqYVhacGN5NWphREJaTUJNR0J5cUdTTTQ5QWdFR0NDcUdTTTQ5QXdFSEEwSUFCQ2tTU0YxUHFjaEhCMUVVVVVPZUkwNGZUMDA1Z1dLSU9lNjBBOWJnckw4S2QzMURaY1JTcWF4QVVHQnQ3MEhCN3VDWmR1ZkE2dUtkTDZCdkF6VWhiSldqZ2dIaU1JSUIzakFPQmdOVkhROEJBZjhFQkFNQ0I0QXdGUVlEVlIwbEFRSF9CQXN3Q1FZSEtJR01YUVVCQWpBTUJnTlZIUk1CQWY4RUFqQUFNQjhHQTFVZEl3UVlNQmFBRk8wYXNKM2lZRVZRQUR2YVdqUXlHcGktTGJmRk1Gb0dBMVVkSHdSVE1GRXdUNkJOb0V1R1NXaDBkSEJ6T2k4dlkyRXVaR1YyTG0xa2JDMXdiSFZ6TG1OdmJTOWpjbXd2TkRCRFJESXlOVFEzUmpNNE16UkROVEkyUXpWRE1qSkZNVUV5TmtNM1JUSXdNek15TkRZMk9DOHdnY29HQ0NzR0FRVUZCd0VCQklHOU1JRzZNRnNHQ0NzR0FRVUZCekFDaGs5b2RIUndjem92TDJOaExtUmxkaTV0Wkd3dGNHeDFjeTVqYjIwdmFYTnpkV1Z5THpRd1EwUXlNalUwTjBZek9ETTBRelV5TmtNMVF6SXlSVEZCTWpaRE4wVXlNRE16TWpRMk5qZ3VaR1Z5TUZzR0NDc0dBUVVGQnpBQmhrOW9kSFJ3Y3pvdkwyTmhMbVJsZGk1dFpHd3RjR3gxY3k1amIyMHZiMk56Y0M4ME1FTkVNakkxTkRkR016Z3pORU0xTWpaRE5VTXlNa1V4UVRJMlF6ZEZNakF6TXpJME5qWTRMMk5sY25Rdk1DWUdBMVVkRWdRZk1CMkdHMmgwZEhCek9pOHZZMkV1WkdWMkxtMWtiQzF3YkhWekxtTnZiVEFXQmdOVkhSRUVEekFOZ2d0d2NtOWphWFpwY3k1amFEQWRCZ05WSFE0RUZnUVVoSVZ4XzRLOHVEU2dUTG4yZnhaT2VaaWxhSkV3Q2dZSUtvWkl6ajBFQXdJRFNRQXdSZ0loQUlNUlllcmhWNWYtdGRwbVpuZjRYRXRLVmQyMUQzVlpwcGNNbHNpcHBYNXdBaUVBMnJJV3FnQWpla1JMcWYxaGM5bjlSSFV3eklnVnF1OVplc2FCSDZkcWhieFpBVkhZR0ZrQlRLWm5kbVZ5YzJsdmJtTXhMakJ2WkdsblpYTjBRV3huYjNKcGRHaHRaMU5JUVMweU5UWnNkbUZzZFdWRWFXZGxjM1J6b1dSMFpYTjBvUUJZSUNPSVpMdlZTaUJCWnNVTHo0VTluQnZDZUxnV0FScVFZeE9RWTdCQkxIQWxiV1JsZG1salpVdGxlVWx1Wm0taGFXUmxkbWxqWlV0bGVhTUJBU0FHSVZnZ0dFMXZRVS13MDZmc1o4WVZpS3hrTnc3MXduY1BaUmpDdW9oTXJIVDBvdEpuWkc5alZIbHdaWFZ2Y21jdWFYTnZMakU0TURFekxqVXVNUzV0UkV4c2RtRnNhV1JwZEhsSmJtWnZwR1p6YVdkdVpXVEFkREl3TWpRdE1URXRNVE5VTVRRNk1qVTZNVEZhYVhaaGJHbGtSbkp2YmNCME1qQXlOQzB4TVMweE0xUXhORG95TlRveE1WcHFkbUZzYVdSVmJuUnBiTUIwTWpBeU5DMHhNUzB4TmxReE5Eb3lOVG94TVZwdVpYaHdaV04wWldSVmNHUmhkR1hBZERJd01qUXRNVEV0TVRSVU1UUTZNalU2TVRGYVdFQnpBc0tGNGVKZzdFNFJTdUx4RjJDQk5YZzdpWUREMklsN3dTN1dkLXJVa2VQbWRjS1Jld0VQX3ZVSjlmbVRlLV9SYmZUM0dkeTV1Yndtbl9qTDY4TmxiR1JsZG1salpWTnBaMjVsWktKcWJtRnRaVk53WVdObGM5Z1lRYUJxWkdWMmFXTmxRWFYwYUtGdlpHVjJhV05sVTJsbmJtRjBkWEpsaEVPaEFTZWc5bGhBdkd2MUUwanZOR05ZY21wbllqMWRKRUJ5MFZ2alJZWkNXWm1pdWRpRC1ETEdyQi1lc1JNUjhIRG9hWGx6R0xEcW5hbEVRQVQyNV82MzN5blpMcUVmQ21aemRHRjBkWE1BIiwicHJlc2VudGF0aW9uX3N1Ym1pc3Npb24iOnsiaWQiOiJkYmEwZTQ5MS1iNjk5LTRkM2UtYTQ0YS01MTg4OWE2MmQzNmIiLCJkZWZpbml0aW9uX2lkIjoiZGFkZTE1MmItYjg1NS00NWNiLWJkZjAtNTIyZmUxNWMwOWI3IiwiZGVzY3JpcHRvcl9tYXAiOlt7ImlkIjoiaW5wdXRfMCIsImZvcm1hdCI6Im1zb19tZG9jIiwicGF0aCI6IiQiLCJwYXRoX25lc3RlZCI6eyJmb3JtYXQiOiJtc29fbWRvYyIsInBhdGgiOiIkLnZwLnZlcmlmaWFibGVDcmVkZW50aWFsWzBdIn19XX0sInN0YXRlIjoiZGFkZTE1MmItYjg1NS00NWNiLWJkZjAtNTIyZmUxNWMwOWI3In0";
         let expected_header = Header {
-            key_id: "9be052ed-83b8-4c60-ab4f-214fe21caa93".to_string(),
+            key_id: Some("9be052ed-83b8-4c60-ab4f-214fe21caa93".to_string()),
+            zip: None,
             partyuinfo_data: Some(hex!("424a22c3bb7a7711c29307c3873ec2bbc39d250ac3816b26c3a2c38cc395c2b006c29ec3955fc28ac39625235a61").to_vec()),
             partyvinfo_data: Some(hex!("6534786d4d61476b364f32555832356571374f706334364c553750647a555870").to_vec()),
         };
@@ -600,7 +643,8 @@ mod test {
     async fn test_jwe_round_trip_ec() {
         let payload = b"test_payload";
         let header = Header {
-            key_id: "eec37767-ad74-47c9-a349-d95a1bd241d4".to_string(),
+            key_id: Some("eec37767-ad74-47c9-a349-d95a1bd241d4".to_string()),
+            zip: None,
             partyuinfo_data: Some(hex!("184707c38b637205c39ec2a7c3b9c2977ec38a30573e3946c3963d17c2b9767fc2aec3b40c681c75c299c387").to_vec()),
             partyvinfo_data: Some(hex!("627565466e786d575431454a456d5042357a71346d3661716b68456a494e386a").to_vec()),
         };
@@ -641,7 +685,8 @@ mod test {
     async fn test_jwe_round_trip_eddsa() {
         let payload = b"test_payload";
         let header = Header {
-            key_id: "9be052ed-83b8-4c60-ab4f-214fe21caa93".to_string(),
+            key_id: Some("9be052ed-83b8-4c60-ab4f-214fe21caa93".to_string()),
+            zip: None,
             partyuinfo_data: Some(hex!("424a22c3bb7a7711c29307c3873ec2bbc39d250ac3816b26c3a2c38cc395c2b006c29ec3955fc28ac39625235a61").to_vec()),
             partyvinfo_data: Some(hex!("6534786d4d61476b364f32555832356571374f706334364c553750647a555870").to_vec()),
         };
@@ -682,7 +727,8 @@ mod test {
     async fn test_jwe_round_trip_eddsa_aes128_cbc_hs256() {
         let payload = b"test_payload";
         let header = Header {
-            key_id: "9be052ed-83b8-4c60-ab4f-214fe21caa93".to_string(),
+            key_id: Some("9be052ed-83b8-4c60-ab4f-214fe21caa93".to_string()),
+            zip: None,
             partyuinfo_data: Some(hex!("424a22c3bb7a7711c29307c3873ec2bbc39d250ac3816b26c3a2c38cc395c2b006c29ec3955fc28ac39625235a61").to_vec()),
             partyvinfo_data: Some(hex!("6534786d4d61476b364f32555832356571374f706334364c553750647a555870").to_vec()),
         };

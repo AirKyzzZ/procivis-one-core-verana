@@ -4,7 +4,6 @@ use one_core::provider::did_method::dto::{
     DidDocumentDTO, DidServiceEndointDTO, DidVerificationMethodDTO,
 };
 use one_core::provider::issuance_protocol::error::OpenID4VCIError;
-use one_core::provider::verification_protocol::openid4vp::model::AuthorizationEncryptedResponseAlgorithm;
 use one_core::service::ssi_issuer::dto::{
     JsonLDContextDTO, JsonLDContextResponseDTO, JsonLDEntityDTO, JsonLDInlineEntityDTO,
     JsonLDNestedContextDTO, JsonLDNestedEntityDTO, SdJwtVcClaimDTO, SdJwtVcClaimDisplayDTO,
@@ -91,13 +90,6 @@ pub(crate) enum OpenID4VCIErrorRestEnum {
     InvalidNotificationId,
     InvalidNotificationRequest,
     RuntimeError(String),
-}
-
-#[derive(Debug, Clone, Serialize, ToSchema, From)]
-#[from(AuthorizationEncryptedResponseAlgorithm)]
-pub(crate) enum OID4VPAuthorizationEncryptedResponseAlgorithm {
-    #[serde(rename = "ECDH-ES")]
-    EcdhEs,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

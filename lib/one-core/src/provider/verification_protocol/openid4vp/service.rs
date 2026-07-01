@@ -1,14 +1,11 @@
 use std::collections::HashMap;
 
-use standardized_types::jwa::EncryptionAlgorithm;
-use standardized_types::jwk::PublicJwk;
-use standardized_types::openid4vp::{ClientMetadataJwks, PresentationFormat};
+use standardized_types::jwa::{EncryptionAlgorithm, EncryptionKeyManagementAlgorithm};
+use standardized_types::jwk::{Jwks, PublicJwk};
+use standardized_types::openid4vp::PresentationFormat;
 
 use super::error::OpenID4VCError;
-use super::model::{
-    AuthorizationEncryptedResponseAlgorithm, EncryptionInfo, OpenID4VPClientMetadata,
-    OpenID4VPHolderInteractionData,
-};
+use super::model::{EncryptionInfo, OpenID4VPClientMetadata, OpenID4VPHolderInteractionData};
 use crate::error::ContextWithErrorCode;
 use crate::model::proof::Proof;
 use crate::proto::http_client::HttpClient;
@@ -28,9 +25,9 @@ pub(crate) fn create_open_id_for_vp_client_metadata_draft(
         ..Default::default()
     };
     if let Some(jwk) = jwk {
-        metadata.jwks = Some(ClientMetadataJwks { keys: vec![jwk] });
+        metadata.jwks = Some(Jwks { keys: vec![jwk] });
         metadata.authorization_encrypted_response_alg =
-            Some(AuthorizationEncryptedResponseAlgorithm::EcdhEs);
+            Some(EncryptionKeyManagementAlgorithm::EcdhEs);
         metadata.authorization_encrypted_response_enc = Some(EncryptionAlgorithm::A256GCM);
     }
 
@@ -78,13 +75,13 @@ pub(crate) async fn encryption_info_from_metadata(
 
     if !matches!(
         client_metadata.authorization_encrypted_response_alg,
-        Some(AuthorizationEncryptedResponseAlgorithm::EcdhEs)
+        Some(EncryptionKeyManagementAlgorithm::EcdhEs)
     ) {
         // Encrypted presentations not supported
         return Ok(None);
     }
 
-    let encryption_alg = match client_metadata.authorization_encrypted_response_enc.clone() {
+    let encryption_alg = match client_metadata.authorization_encrypted_response_enc {
         // Encrypted presentations not supported
         None => return Ok(None),
         Some(alg) => alg,

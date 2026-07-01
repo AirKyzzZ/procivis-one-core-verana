@@ -4,11 +4,9 @@ use std::sync::Arc;
 
 use shared_types::{InteractionId, ProofId};
 use similar_asserts::assert_eq;
-use standardized_types::jwa::EncryptionAlgorithm;
-use standardized_types::jwk::{JwkUse, PublicJwk, PublicJwkEc};
-use standardized_types::openid4vp::{
-    ClientMetadataJwks, GenericAlgs, LdpVcAlgs, PresentationFormat, SdJwtVcAlgs,
-};
+use standardized_types::jwa::{EncryptionAlgorithm, EncryptionKeyManagementAlgorithm};
+use standardized_types::jwk::{JwkUse, Jwks, PublicJwk, PublicJwkEc};
+use standardized_types::openid4vp::{GenericAlgs, LdpVcAlgs, PresentationFormat, SdJwtVcAlgs};
 use uuid::Uuid;
 
 use super::OID4VPDraft20Service;
@@ -533,7 +531,7 @@ async fn test_get_client_metadata_success() {
     let result = service.get_client_metadata(proof_id).await.unwrap();
     assert_eq!(
         OpenID4VPDraftClientMetadata {
-            jwks: Some(ClientMetadataJwks {
+            jwks: Some(Jwks {
                 keys: vec![PublicJwk::Okp(PublicJwkEc {
                     alg: None,
                     r#use: Some(JwkUse::Encryption),
@@ -583,9 +581,7 @@ async fn test_get_client_metadata_success() {
                     })
                 ),
             ]),
-            authorization_encrypted_response_alg: Some(
-                AuthorizationEncryptedResponseAlgorithm::EcdhEs
-            ),
+            authorization_encrypted_response_alg: Some(EncryptionKeyManagementAlgorithm::EcdhEs),
             authorization_encrypted_response_enc: Some(EncryptionAlgorithm::A256GCM),
             ..Default::default()
         },

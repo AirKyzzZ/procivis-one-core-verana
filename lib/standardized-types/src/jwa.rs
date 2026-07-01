@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use strum::Display;
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Display)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Display)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub enum EncryptionAlgorithm {
     A128GCM,
@@ -12,4 +12,15 @@ pub enum EncryptionAlgorithm {
     #[serde(rename = "A128CBC-HS256")]
     #[strum(to_string = "A128CBC-HS256")]
     A128CBCHS256,
+}
+
+/// Algorithm to derive / encrypt / select the encryption key
+/// https://datatracker.ietf.org/doc/html/rfc7518#section-4.1
+#[derive(Clone, Copy, Serialize, Deserialize, Debug, Eq, PartialEq, Display)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
+pub enum EncryptionKeyManagementAlgorithm {
+    // Elliptic Curve Diffie-Hellman Ephemeral Static key agreement using Concat KDF
+    #[serde(rename = "ECDH-ES")]
+    #[strum(serialize = "ECDH-ES")]
+    EcdhEs,
 }

@@ -79,6 +79,8 @@ pub(crate) fn create_issuer_metadata_response(
         }]),
         issuer_info: issuer_info.unwrap_or_default(),
         batch_credential_issuance,
+        credential_request_encryption: None,
+        credential_response_encryption: None,
     })
 }
 

@@ -8,6 +8,9 @@ use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::{DurationSeconds, serde_as, skip_serializing_none};
 use shared_types::OrganisationId;
 use standardized_types::etsi_119_472::disclosure_policy::DisclosurePolicy;
+use standardized_types::jwa::{EncryptionAlgorithm, EncryptionKeyManagementAlgorithm};
+use standardized_types::jwe::CompressionAlgorithm;
+use standardized_types::jwk::{Jwks, PublicJwk};
 use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
 use strum::Display;
 use time::{Duration, OffsetDateTime};
@@ -163,6 +166,10 @@ pub(crate) struct HolderInteractionData {
     pub client_attestation_pop_signing_alg_values_supported: Option<Vec<String>>,
     #[serde(default)]
     pub credential_metadata: Option<OpenID4VCICredentialMetadataResponseDTO>,
+    #[serde(default)]
+    pub credential_request_encryption: Option<OpenID4VCIRequestEncryptionDTO>,
+    #[serde(default)]
+    pub credential_response_encryption: Option<OpenID4VCIResponseEncryptionDTO>,
     pub credential_configuration_id: String,
     #[serde(default)]
     pub notification_id: Option<String>,
@@ -209,6 +216,28 @@ pub struct OpenID4VCIIssuerMetadataResponseDTO {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub issuer_info: Vec<EtsiIssuerInfoResponseDTO>,
     pub batch_credential_issuance: Option<OpenID4VCIIssuerMetadataBatchIssuanceDTO>,
+    pub credential_request_encryption: Option<OpenID4VCIRequestEncryptionDTO>,
+    pub credential_response_encryption: Option<OpenID4VCIResponseEncryptionDTO>,
+}
+
+#[skip_serializing_none]
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct OpenID4VCIRequestEncryptionDTO {
+    pub jwks: Jwks,
+    pub enc_values_supported: Vec<EncryptionAlgorithm>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub zip_values_supported: Vec<CompressionAlgorithm>,
+    pub encryption_required: bool,
+}
+
+#[skip_serializing_none]
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct OpenID4VCIResponseEncryptionDTO {
+    pub alg_values_supported: Vec<EncryptionKeyManagementAlgorithm>,
+    pub enc_values_supported: Vec<EncryptionAlgorithm>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub zip_values_supported: Vec<CompressionAlgorithm>,
+    pub encryption_required: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -430,6 +459,15 @@ pub struct OpenID4VCICredentialRequestDTO {
     #[serde(flatten)]
     pub credential: OpenID4VCICredentialRequestIdentifier,
     pub proofs: Option<OpenID4VCICredentialRequestProofs>,
+    pub credential_response_encryption: Option<OpenID4VCICredentialResponseEncryptionDTO>,
+}
+
+#[skip_serializing_none]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct OpenID4VCICredentialResponseEncryptionDTO {
+    pub jwk: PublicJwk,
+    pub enc: EncryptionAlgorithm,
+    pub zip: Option<CompressionAlgorithm>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

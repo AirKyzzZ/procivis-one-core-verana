@@ -15,12 +15,11 @@ use serde::{Deserialize, Serialize};
 use serde_with::json::JsonString;
 use serde_with::{OneOrMany, serde_as};
 use shared_types::InteractionId;
-use standardized_types::jwa::EncryptionAlgorithm;
-use standardized_types::openid4vp::{ClientMetadataJwks, PresentationFormat};
+use standardized_types::jwa::{EncryptionAlgorithm, EncryptionKeyManagementAlgorithm};
+use standardized_types::jwk::Jwks;
+use standardized_types::openid4vp::PresentationFormat;
 use utoipa::ToSchema;
 use uuid::Uuid;
-
-use crate::endpoint::ssi::dto::OID4VPAuthorizationEncryptedResponseAlgorithm;
 
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
@@ -112,7 +111,7 @@ pub(crate) struct OpenID4VPDirectPostResponseRestDTO {
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VPDraftClientMetadata)]
 pub(crate) struct OpenID4VPDraftClientMetadataResponseRestDTO {
-    pub jwks: Option<ClientMetadataJwks>,
+    pub jwks: Option<Jwks>,
     pub jwks_uri: Option<String>,
     pub id_token_encrypted_response_enc: Option<String>,
     pub id_token_encrypted_response_alg: Option<String>,
@@ -120,8 +119,7 @@ pub(crate) struct OpenID4VPDraftClientMetadataResponseRestDTO {
     pub subject_syntax_types_supported: Vec<String>,
     #[from(with_fn = convert_inner)]
     pub vp_formats: HashMap<String, PresentationFormat>,
-    #[from(with_fn = convert_inner)]
-    pub authorization_encrypted_response_alg: Option<OID4VPAuthorizationEncryptedResponseAlgorithm>,
+    pub authorization_encrypted_response_alg: Option<EncryptionKeyManagementAlgorithm>,
     pub authorization_encrypted_response_enc: Option<EncryptionAlgorithm>,
 }
 
