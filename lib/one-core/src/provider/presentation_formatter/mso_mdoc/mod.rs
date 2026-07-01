@@ -23,6 +23,7 @@ use crate::mapper::x509::pem_chain_into_x5c;
 use crate::mapper::{decode_cbor_base64, encode_cbor_base64};
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::cose::{CoseSign1, CoseSign1Builder};
+use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::TokenError;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::mdoc_formatter::util::{
@@ -56,12 +57,14 @@ pub struct MsoMdocPresentationFormatter {
     certificate_validator: Arc<dyn CertificateValidator>,
     base_url: Option<String>,
     params: Params,
+    client: Arc<dyn HttpClient>,
 }
 
 impl MsoMdocPresentationFormatter {
     pub(crate) fn new(
         certificate_validator: Arc<dyn CertificateValidator>,
         base_url: Option<String>,
+        client: Arc<dyn HttpClient>,
     ) -> Self {
         Self {
             base_url,
@@ -69,6 +72,7 @@ impl MsoMdocPresentationFormatter {
             params: Params {
                 leeway: Duration::seconds(60),
             },
+            client,
         }
     }
 }
@@ -172,6 +176,7 @@ impl PresentationFormatter for MsoMdocPresentationFormatter {
 
             let cert_details = extract_certificate_from_x5chain_header(
                 &*self.certificate_validator,
+                &*self.client,
                 &issuer_signed.issuer_auth,
                 true,
             )

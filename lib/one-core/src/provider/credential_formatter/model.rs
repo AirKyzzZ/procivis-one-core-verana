@@ -93,6 +93,15 @@ pub struct CertificateDetails {
     pub fingerprint: String,
     pub expiry: OffsetDateTime,
     pub subject_common_name: Option<String>,
+    #[serde(default)]
+    pub x5_references: X5References,
+}
+
+#[derive(Debug, Clone, Copy, Default, Eq, PartialEq, Serialize, Deserialize)]
+pub struct X5References {
+    pub x5c: bool,
+    pub x5u: bool,
+    pub x5t_s256: bool,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]

@@ -6,7 +6,7 @@ use rcgen::CertificateParams;
 use shared_types::SerializedCredential;
 use uuid::Uuid;
 
-use crate::fixtures::certificate::{create_ca_cert, create_cert, ecdsa, eddsa};
+use crate::fixtures::certificate::{create_ca_cert, create_cert, ecdsa, eddsa, fingerprint};
 
 pub(crate) async fn format_mdoc_credential(
     mut credential_data: CredentialData,
@@ -22,7 +22,7 @@ pub(crate) async fn format_mdoc_credential(
     );
     let chain = format!("{}{}", cert.pem(), ca_cert.pem());
 
-    // the formatter will only use the chain
+    // the fingerprint feeds the COSE `x5t` header, so it must match the leaf certificate
     credential_data.issuer_certificate = Some(Certificate {
         id: Uuid::new_v4().into(),
         identifier_id: Uuid::new_v4().into(),
@@ -32,7 +32,7 @@ pub(crate) async fn format_mdoc_credential(
         expiry_date: one_core::clock::now_utc(),
         name: "".to_string(),
         chain,
-        fingerprint: "".to_string(),
+        fingerprint: fingerprint(&cert),
         state: CertificateState::Active,
         roles: vec![],
         key: None,

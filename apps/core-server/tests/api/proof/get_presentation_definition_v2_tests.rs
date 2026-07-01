@@ -1366,6 +1366,7 @@ async fn test_get_presentation_definition_2_disclosure_policy_no_violation() {
             fingerprint: certificate.fingerprint,
             expiry: certificate.expiry_date,
             subject_common_name: Some("test cert".to_string()),
+            x5_references: Default::default(),
         })),
     )
     .await;

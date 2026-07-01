@@ -6,12 +6,12 @@ use standardized_types::jwk::PublicJwk;
 use time::Duration;
 use url::Url;
 
-use super::WRPValidator;
 use super::error::WRPValidatorError;
 use super::model::{
     AccessCertificateResult, FetchRegistryResult, RegistrationCertificateResult, RegistryKeys,
     TrustMode, WRPPayload,
 };
+use super::{QUALIFIED_EAA_CATEGORY, WRPValidator};
 use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::x5c_into_pem_chain;
 use crate::model::credential_schema::CredentialSchema;
@@ -38,6 +38,7 @@ use crate::proto::verifier_provider_client::VerifierProviderClient;
 use crate::proto::wallet_provider_client::WalletProviderClient;
 use crate::provider::credential_formatter::model::{
     CertificateDetails, CredentialStatus, IdentifierDetails, PublicKeySource, VerificationFn,
+    X5References,
 };
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -259,8 +260,23 @@ impl WRPValidator for WRPValidatorImpl {
         &self,
         issuer_certificate_pem_chain: Option<&'a str>,
         credential_schema: &CredentialSchema,
+        credential_category: Option<&'a str>,
+        issuer_x5_references: X5References,
         organisation_id: OrganisationId,
     ) -> Result<Option<TrustEntityResponse>, WRPValidatorError> {
+        if let Some(category) = credential_category {
+            if category != QUALIFIED_EAA_CATEGORY {
+                return Ok(None);
+            }
+            return self
+                .validate_qeaa_issuer(
+                    issuer_certificate_pem_chain,
+                    issuer_x5_references,
+                    organisation_id,
+                )
+                .await;
+        }
+
         let credential_schema_format = credential_schema.format().await?;
         let formatter_capabilities = self
             .credential_formatter_provider
@@ -384,6 +400,32 @@ enum TrustEntityIdentifier<'a> {
 }
 
 impl WRPValidatorImpl {
+    async fn validate_qeaa_issuer(
+        &self,
+        issuer_certificate_pem_chain: Option<&str>,
+        issuer_x5_references: X5References,
+        organisation_id: OrganisationId,
+    ) -> Result<Option<TrustEntityResponse>, WRPValidatorError> {
+        let Some(pem_chain) = issuer_certificate_pem_chain else {
+            return Err(WRPValidatorError::IssuerNotTrusted);
+        };
+        // ETSI TS 119 472-1 QEAA-5.6.2-02: the protected header shall carry x5u and
+        // x5t#S256. x5c is only recommended (QEAA-5.6.2-03), so it is not required.
+        if !(issuer_x5_references.x5u && issuer_x5_references.x5t_s256) {
+            tracing::info!("QEAA issuer signature missing required x5u/x5t#S256 references");
+            return Err(WRPValidatorError::IssuerNotTrusted);
+        }
+        let trusted_entity = self
+            .perform_trust_validation(
+                TrustEntityIdentifier::PemChain(Cow::from(pem_chain)),
+                TrustListRoleEnum::QeaaProvider,
+                organisation_id,
+            )
+            .await?
+            .ok_or(WRPValidatorError::IssuerNotTrusted)?;
+        Ok(Some(trusted_entity))
+    }
+
     #[expect(clippy::too_many_arguments)]
     pub(crate) fn new(
         trust_collection_repository: Arc<dyn TrustCollectionRepository>,
@@ -423,9 +465,7 @@ impl WRPValidatorImpl {
         role: TrustListRoleEnum,
         organisation_id: OrganisationId,
     ) -> Result<Option<TrustEntityResponse>, WRPValidatorError> {
-        let subscriptions = self
-            .get_trust_subscriptions_for_role(role, organisation_id)
-            .await?;
+        let subscriptions = self.get_active_trust_subscriptions(organisation_id).await?;
 
         self.find_matching_trust_entity(subscriptions, identifier, role)
             .await
@@ -438,6 +478,10 @@ impl WRPValidatorImpl {
         requested_role: TrustListRoleEnum,
     ) -> Result<Option<TrustEntityResponse>, WRPValidatorError> {
         for subscription in subscriptions {
+            if subscription.role.is_some_and(|role| role != requested_role) {
+                continue;
+            }
+
             let subscriber = self
                 .trust_list_subscriber_provider
                 .get(&subscription.r#type)
@@ -461,9 +505,6 @@ impl WRPValidatorImpl {
             }
             .error_while("resolving trust")?;
 
-            // Roleless subscriptions (e.g. ETSI_LOTL) are candidates for every requested
-            // role, so accept the entry whose derived role matches. Role-bearing
-            // subscriptions were already role-filtered at the SQL layer.
             for entity in trust_entities {
                 if subscription.role.is_some() || entity.derived_role == Some(requested_role) {
                     return Ok(Some(entity));
@@ -474,9 +515,8 @@ impl WRPValidatorImpl {
         Ok(None)
     }
 
-    async fn get_trust_subscriptions_for_role(
+    async fn get_active_trust_subscriptions(
         &self,
-        role: TrustListRoleEnum,
         organisation_id: OrganisationId,
     ) -> Result<Vec<TrustListSubscription>, WRPValidatorError> {
         let collections = self
@@ -506,8 +546,7 @@ impl WRPValidatorImpl {
                     TrustListSubscriptionFilterValue::TrustCollectionId(collections).condition()
                         & TrustListSubscriptionFilterValue::State(vec![
                             TrustListSubscriptionState::Active,
-                        ])
-                        & TrustListSubscriptionFilterValue::Role(vec![role]),
+                        ]),
                 ),
                 ..Default::default()
             })
@@ -559,6 +598,7 @@ impl WRPValidatorImpl {
                     fingerprint: attributes.fingerprint,
                     expiry: attributes.not_after,
                     subject_common_name,
+                    x5_references: Default::default(),
                 }),
                 None,
                 false,
@@ -657,7 +697,7 @@ mod tests {
     use time::OffsetDateTime;
     use url::Url;
 
-    use super::{TrustEntityIdentifier, WRPValidatorImpl};
+    use super::{QUALIFIED_EAA_CATEGORY, TrustEntityIdentifier, WRPValidatorImpl};
     use crate::model::trust_collection::{GetTrustCollectionList, TrustCollection};
     use crate::model::trust_list_role::TrustListRoleEnum;
     use crate::model::trust_list_subscription::{
@@ -673,7 +713,7 @@ mod tests {
     use crate::proto::wrp_validator::WRPValidator;
     use crate::proto::wrp_validator::error::WRPValidatorError;
     use crate::proto::wrp_validator::model::{LegalEntity, WRPPayload, WRPPayloadData};
-    use crate::provider::credential_formatter::model::PublicKeySource;
+    use crate::provider::credential_formatter::model::{PublicKeySource, X5References};
     use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
     use crate::provider::did_method::provider::MockDidMethodProvider;
     use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
@@ -690,6 +730,7 @@ mod tests {
     use crate::repository::trust_collection_repository::MockTrustCollectionRepository;
     use crate::repository::trust_list_subscription_repository::MockTrustListSubscriptionRepository;
     use crate::repository::verifier_instance_repository::MockVerifierInstanceRepository;
+    use crate::service::test_utilities::dummy_credential_schema;
 
     fn make_validator() -> WRPValidatorImpl {
         WRPValidatorImpl::new(
@@ -880,6 +921,113 @@ mod tests {
         assert!(
             result.is_some(),
             "expected role-bearing subscription entity to be accepted unchanged"
+        );
+    }
+
+    fn all_x5_references() -> X5References {
+        X5References {
+            x5c: true,
+            x5u: true,
+            x5t_s256: true,
+        }
+    }
+
+    #[tokio::test]
+    async fn test_qeaa_issuer_trusted_when_in_tsl_with_full_x5_references() {
+        let validator = make_validator_with_subscription(
+            dummy_subscription(None),
+            Some(tsl_entity(Some(TrustListRoleEnum::QeaaProvider))),
+        );
+
+        let result = validator
+            .validate_credential_issuer(
+                Some("pem"),
+                &dummy_credential_schema(),
+                Some(QUALIFIED_EAA_CATEGORY),
+                all_x5_references(),
+                OrganisationId::from(uuid::Uuid::new_v4()),
+            )
+            .await
+            .unwrap();
+
+        assert!(result.is_some(), "QEAA issuer in the TSL must be trusted");
+    }
+
+    #[tokio::test]
+    async fn test_qeaa_issuer_trusted_without_x5c() {
+        let validator = make_validator_with_subscription(
+            dummy_subscription(None),
+            Some(tsl_entity(Some(TrustListRoleEnum::QeaaProvider))),
+        );
+
+        // ETSI TS 119 472-1 marks x5c as recommended only; x5u + x5t#S256 suffice.
+        let result = validator
+            .validate_credential_issuer(
+                Some("pem"),
+                &dummy_credential_schema(),
+                Some(QUALIFIED_EAA_CATEGORY),
+                X5References {
+                    x5c: false,
+                    ..all_x5_references()
+                },
+                OrganisationId::from(uuid::Uuid::new_v4()),
+            )
+            .await
+            .unwrap();
+
+        assert!(
+            result.is_some(),
+            "QEAA issuer referencing its certificate via x5u alone must be trusted"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_qeaa_issuer_rejected_when_x5_reference_missing() {
+        let validator = make_validator_with_subscription(
+            dummy_subscription(None),
+            Some(tsl_entity(Some(TrustListRoleEnum::QeaaProvider))),
+        );
+
+        let result = validator
+            .validate_credential_issuer(
+                Some("pem"),
+                &dummy_credential_schema(),
+                Some(QUALIFIED_EAA_CATEGORY),
+                X5References {
+                    x5u: false,
+                    ..all_x5_references()
+                },
+                OrganisationId::from(uuid::Uuid::new_v4()),
+            )
+            .await;
+
+        assert!(
+            matches!(result, Err(WRPValidatorError::IssuerNotTrusted)),
+            "a QEAA issuer missing x5u must be rejected"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_non_qualified_category_skips_issuer_trust_check() {
+        let validator = make_validator_with_subscription(
+            dummy_subscription(None),
+            Some(tsl_entity(Some(TrustListRoleEnum::QeaaProvider))),
+        );
+
+        let result = validator
+            .validate_credential_issuer(
+                Some("pem"),
+                &dummy_credential_schema(),
+                Some("urn:etsi:esi:eaa:eu:pub"),
+                all_x5_references(),
+                OrganisationId::from(uuid::Uuid::new_v4()),
+            )
+            .await
+            .unwrap();
+
+        assert!(
+            result.is_none(),
+            "non-qualified EAA is out of scope and must not be trust-checked"
         );
     }
 

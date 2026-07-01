@@ -6,13 +6,29 @@ use shared_types::OrganisationId;
 use time::Duration;
 use url::Url;
 
+use crate::model::claim::Claim;
 use crate::model::credential_schema::CredentialSchema;
+use crate::provider::credential_formatter::model::X5References;
 use crate::provider::signer::registration_certificate::model::Payload;
 use crate::provider::trust_list_subscriber::TrustEntityResponse;
 
 pub(crate) mod error;
 pub(crate) mod model;
 pub(crate) mod validator;
+
+pub(crate) const QUALIFIED_EAA_CATEGORY: &str = "urn:etsi:esi:eaa:eu:qualified";
+
+pub(crate) fn credential_category(claims: &[Claim], namespaced: bool) -> Option<&str> {
+    claims
+        .iter()
+        .find(
+            |claim| match claim.path.split_once(crate::mapper::NESTED_CLAIM_MARKER) {
+                None => !namespaced && claim.path == "category",
+                Some((_namespace, rest)) => namespaced && rest == "category",
+            },
+        )
+        .and_then(|claim| claim.value.as_deref())
+}
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
@@ -51,6 +67,8 @@ pub(crate) trait WRPValidator: Send + Sync {
         &self,
         issuer_certificate_pem_chain: Option<&'a str>,
         credential_schema: &CredentialSchema,
+        credential_category: Option<&'a str>,
+        issuer_x5_references: X5References,
         organisation_id: OrganisationId,
     ) -> Result<Option<TrustEntityResponse>, WRPValidatorError>;
 

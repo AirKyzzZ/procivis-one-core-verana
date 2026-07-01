@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use std::string::ToString;
 
-use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
+use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use one_crypto::hasher::sha256::SHA256;
 use one_crypto::{Hasher, MockHasher};
 use serde_json::{Value, json};
@@ -706,4 +706,25 @@ pub fn get_credential_data(status: CredentialStatus, core_base_url: &str) -> Cre
         holder_key_id: Some("did-vm-id".to_string()),
         issuer_certificate: None,
     }
+}
+
+#[test]
+fn verify_x5t_s256_accepts_matching_thumbprint() {
+    let fingerprint = "0102030405060708090a0b0c0d0e0f10";
+    let thumbprint =
+        Base64UrlSafeNoPadding::encode_to_string(hex::decode(fingerprint).unwrap()).unwrap();
+
+    assert!(super::verify_x5t_s256(&thumbprint, fingerprint).is_ok());
+}
+
+#[test]
+fn verify_x5t_s256_rejects_mismatching_thumbprint() {
+    let fingerprint = "0102030405060708090a0b0c0d0e0f10";
+
+    let result = super::verify_x5t_s256("not-the-thumbprint", fingerprint);
+
+    assert!(matches!(
+        result,
+        Err(crate::provider::credential_formatter::error::FormatterError::CouldNotExtractCredentials(_))
+    ));
 }

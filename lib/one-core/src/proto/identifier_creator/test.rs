@@ -137,6 +137,7 @@ async fn test_get_or_create_remote_identifier_certificate_new() {
                 fingerprint: "fingerprint".to_string(),
                 expiry: now,
                 subject_common_name: Some("subject_common_name".to_string()),
+                x5_references: Default::default(),
             }),
             IdentifierName::PrefixForId(IdentifierRole::Issuer.to_string()),
         )
@@ -211,6 +212,7 @@ async fn test_get_or_create_remote_identifier_certificate_existing() {
                 fingerprint: "fingerprint".to_string(),
                 expiry: now,
                 subject_common_name: Some("subject_common_name".to_string()),
+                x5_references: Default::default(),
             }),
             IdentifierName::PrefixForId(IdentifierRole::Issuer.to_string()),
         )

@@ -143,6 +143,7 @@ fn initialize_provider(
             datatype_config.clone(),
             data_type_provider.clone(),
             key_algorithm_provider.clone(),
+            client.clone(),
         )?),
     };
     Ok(provider)

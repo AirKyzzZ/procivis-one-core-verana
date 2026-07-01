@@ -595,15 +595,18 @@ async fn test_submit_proof_failed_on_trust_failure() {
     proof_validator
         .expect_validate_submission()
         .returning(|_, _, _, _| {
+            let mut credential = dummy_credential();
+            credential.schema = Some(dummy_credential_schema_with_format("JWT"));
             Ok((
                 ValidatedProofResult {
                     proved_credentials: vec![ProvedCredential {
-                        credential: dummy_credential(),
+                        credential,
                         issuer_details: IdentifierDetails::Certificate(CertificateDetails {
                             chain: "chain".to_string(),
                             fingerprint: "fingerprint".to_string(),
                             expiry: get_dummy_date(),
                             subject_common_name: None,
+                            x5_references: Default::default(),
                         }),
                         holder_details: IdentifierDetails::Did("did:holder:123".parse().unwrap()),
                     }],
@@ -621,7 +624,7 @@ async fn test_submit_proof_failed_on_trust_failure() {
     wrp_validator
         .expect_validate_credential_issuer()
         .once()
-        .return_once(|_, _, _| Err(WRPValidatorError::IssuerNotTrusted));
+        .return_once(|_, _, _, _, _| Err(WRPValidatorError::IssuerNotTrusted));
 
     let mut history_repository = MockHistoryRepository::new();
     history_repository

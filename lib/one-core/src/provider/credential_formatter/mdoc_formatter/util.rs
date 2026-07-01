@@ -4,7 +4,6 @@ use coset::iana::EnumI64;
 use coset::{AsCborValue, Label, RegisteredLabelWithPrivate, iana};
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use indexmap::IndexMap;
-use pem::{EncodeConfig, LineEnding, Pem, encode_many_config};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize, Serializer, de, ser};
 use serde_with::skip_serializing_none;
@@ -14,12 +13,15 @@ use time::format_description::well_known::Rfc3339;
 
 use crate::config::core_config::KeyAlgorithmType;
 use crate::error::ContextWithErrorCode;
+use crate::mapper::x509::der_chain_into_pem_chain;
 use crate::proto::certificate_validator::{
     CertificateValidationOptions, CertificateValidator, EnforceKeyUsage, ParsedCertificate,
 };
 use crate::proto::cose::CoseSign1;
+use crate::proto::http_client::HttpClient;
+use crate::provider::credential_formatter::common::resolve_x5u;
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::model::CertificateDetails;
+use crate::provider::credential_formatter::model::{CertificateDetails, X5References};
 
 const EMBEDDED_CBOR_TAG: u64 = 24;
 const DATE_TIME_CBOR_TAG: u64 = 0;
@@ -288,44 +290,42 @@ where
     }
 }
 
+/// Extracts the issuer signing certificate referenced by the COSE headers. The
+/// certificate may be carried inline via `x5chain` or referenced via `x5u` (both
+/// IETF RFC 9360); ETSI TS 119 472-1 (QEAA-6.6.2-02) allows QEAA/PuB-EAA to reference
+/// it by `x5u` + `x5t` only, so the chain is fetched from `x5u` when `x5chain` is absent.
 pub(crate) async fn extract_certificate_from_x5chain_header(
     certificate_validator: &dyn CertificateValidator,
+    http_client: &dyn HttpClient,
     CoseSign1(cose_sign1): &CoseSign1,
     verify: bool,
 ) -> Result<CertificateDetails, FormatterError> {
-    let x5chain_label = Label::Int(coset::iana::HeaderParameter::X5Chain.to_i64());
+    let x5chain = cose_header(cose_sign1, iana::HeaderParameter::X5Chain);
+    let x5u = cose_header(cose_sign1, iana::HeaderParameter::X5U);
+    let x5t = cose_header(cose_sign1, iana::HeaderParameter::X5T);
 
-    let (_, x5c) = cose_sign1
-        .unprotected
-        .rest
-        .iter()
-        .find(|(label, _)| label == &x5chain_label)
-        .ok_or(FormatterError::CouldNotExtractCredentials(
-            "Missing x5chain header".to_string(),
-        ))?;
-
-    let pem_chain_bytes = match x5c {
-        Value::Bytes(single_cert) => {
-            vec![single_cert.clone()]
-        }
-        Value::Array(many_certs) => many_certs
-            .iter()
-            .flat_map(|val| val.as_bytes().into_iter().cloned())
-            .collect(),
-        val => {
+    let chain = match x5chain {
+        Some(Value::Bytes(cert)) => der_chain_into_pem_chain(vec![cert.clone()]),
+        Some(Value::Array(certs)) => der_chain_into_pem_chain(
+            certs
+                .iter()
+                .flat_map(|cert| cert.as_bytes().into_iter().cloned())
+                .collect(),
+        ),
+        Some(other) => {
             return Err(FormatterError::CouldNotExtractCredentials(format!(
-                "Unexpected value in x5chain header: {val:?}"
+                "Unexpected value in x5chain header: {other:?}"
             )));
         }
+        None => {
+            let url =
+                x5u.and_then(Value::as_text)
+                    .ok_or(FormatterError::CouldNotExtractCredentials(
+                        "Missing x5chain/x5u header".to_string(),
+                    ))?;
+            resolve_x5u(url, http_client).await?
+        }
     };
-    let pems: Vec<Pem> =
-        pem_chain_bytes
-            .into_iter()
-            .try_fold(Vec::new(), |mut aggr, der_bytes| {
-                aggr.push(Pem::new("CERTIFICATE", der_bytes));
-                Ok::<_, FormatterError>(aggr)
-            })?;
-    let chain = encode_many_config(&pems, EncodeConfig::new().set_line_ending(LineEnding::LF));
 
     let validation_context = if verify {
         CertificateValidationOptions::signature_and_revocation(Some(vec![
@@ -344,12 +344,69 @@ pub(crate) async fn extract_certificate_from_x5chain_header(
         .await
         .error_while("parsing PEM chain")?;
 
+    // `x5t` (RFC 9360 COSE_CertHash) binds the referenced certificate to the signature;
+    // enforce it only when verifying, alongside the other integrity checks. When present
+    // it must match the resolved leaf, whether the certificate was inlined via `x5chain`
+    // or fetched via `x5u`.
+    if verify && let Some(x5t) = x5t {
+        verify_x5t(x5t, &attributes.fingerprint)?;
+    }
+
     Ok(CertificateDetails {
         chain,
         fingerprint: attributes.fingerprint,
         expiry: attributes.not_after,
         subject_common_name,
+        x5_references: X5References {
+            x5c: x5chain.is_some(),
+            x5u: x5u.is_some(),
+            x5t_s256: x5t.is_some(),
+        },
     })
+}
+
+fn cose_header(cose_sign1: &coset::CoseSign1, param: iana::HeaderParameter) -> Option<&Value> {
+    let label = Label::Int(param.to_i64());
+    cose_sign1
+        .protected
+        .header
+        .rest
+        .iter()
+        .chain(cose_sign1.unprotected.rest.iter())
+        .find(|(l, _)| l == &label)
+        .map(|(_, value)| value)
+}
+
+/// Verifies the `x5t` header (RFC 9360 `COSE_CertHash` = `[hashAlg, hashValue]`) against
+/// the resolved leaf. ETSI TS 119 472-1 QEAA-6.6.2-03 requires the digest to be SHA-256.
+fn verify_x5t(x5t: &Value, leaf_fingerprint: &str) -> Result<(), FormatterError> {
+    let Some([alg, hash]) = x5t.as_array().map(Vec::as_slice) else {
+        return Err(FormatterError::CouldNotExtractCredentials(
+            "x5t is not a COSE_CertHash [hashAlg, hashValue]".to_string(),
+        ));
+    };
+
+    if alg.as_integer().map(i128::from) != Some(iana::Algorithm::SHA_256.to_i64() as i128) {
+        return Err(FormatterError::CouldNotExtractCredentials(
+            "x5t digest algorithm must be SHA-256".to_string(),
+        ));
+    }
+
+    let hash = hash
+        .as_bytes()
+        .ok_or(FormatterError::CouldNotExtractCredentials(
+            "x5t hash value must be a byte string".to_string(),
+        ))?;
+    let expected = hex::decode(leaf_fingerprint).map_err(|e| {
+        FormatterError::CouldNotExtractCredentials(format!("invalid certificate fingerprint: {e}"))
+    })?;
+
+    if hash != &expected {
+        return Err(FormatterError::CouldNotExtractCredentials(
+            "x5t does not match the referenced certificate".to_string(),
+        ));
+    }
+    Ok(())
 }
 
 pub(crate) fn extract_algorithm_from_header(
@@ -481,4 +538,46 @@ pub(crate) fn try_extract_holder_public_key(
             )));
         }
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use ciborium::Value;
+    use coset::iana::{self, EnumI64};
+
+    use super::verify_x5t;
+
+    fn cose_cert_hash(algorithm: i64, hash: Vec<u8>) -> Value {
+        Value::Array(vec![Value::from(algorithm), Value::Bytes(hash)])
+    }
+
+    #[test]
+    fn verify_x5t_accepts_matching_sha256_hash() {
+        let fingerprint = "0102030405060708090a0b0c0d0e0f10";
+        let x5t = cose_cert_hash(
+            iana::Algorithm::SHA_256.to_i64(),
+            hex::decode(fingerprint).unwrap(),
+        );
+
+        assert!(verify_x5t(&x5t, fingerprint).is_ok());
+    }
+
+    #[test]
+    fn verify_x5t_rejects_mismatching_hash() {
+        let fingerprint = "0102030405060708090a0b0c0d0e0f10";
+        let x5t = cose_cert_hash(iana::Algorithm::SHA_256.to_i64(), vec![0xaa; 16]);
+
+        assert!(verify_x5t(&x5t, fingerprint).is_err());
+    }
+
+    #[test]
+    fn verify_x5t_rejects_non_sha256_algorithm() {
+        let fingerprint = "0102030405060708090a0b0c0d0e0f10";
+        let x5t = cose_cert_hash(
+            iana::Algorithm::ES256.to_i64(),
+            hex::decode(fingerprint).unwrap(),
+        );
+
+        assert!(verify_x5t(&x5t, fingerprint).is_err());
+    }
 }

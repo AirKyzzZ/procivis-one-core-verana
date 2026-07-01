@@ -244,6 +244,7 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
                     fingerprint: attributes.fingerprint,
                     expiry: attributes.not_after,
                     subject_common_name,
+                    x5_references: Default::default(),
                 })
             }
             _ => {

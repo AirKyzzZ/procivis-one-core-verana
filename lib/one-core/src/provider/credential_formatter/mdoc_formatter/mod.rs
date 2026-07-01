@@ -59,6 +59,7 @@ use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatC
 use crate::model::organisation::Organisation;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::cose::{CoseSign1, CoseSign1Builder};
+use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::TokenError;
 use crate::provider::data_type::model::ExtractedClaim;
 use crate::provider::data_type::provider::DataTypeProvider;
@@ -85,6 +86,7 @@ pub struct MdocFormatter {
     datatype_provider: Arc<dyn DataTypeProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     base_url: Option<Arc<str>>,
+    client: Arc<dyn HttpClient>,
 }
 
 #[serde_as]
@@ -117,6 +119,7 @@ impl MdocFormatter {
         datatype_config: DatatypeConfig,
         datatype_provider: Arc<dyn DataTypeProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+        client: Arc<dyn HttpClient>,
     ) -> Result<Self, InitializationError> {
         let params =
             serde_json::from_value(params).map_err(|err| InitializationError::InvalidParams {
@@ -133,6 +136,7 @@ impl MdocFormatter {
             datatype_config,
             datatype_provider,
             key_algorithm_provider,
+            client,
         })
     }
 }
@@ -310,7 +314,7 @@ impl CredentialFormatter for MdocFormatter {
         _credential_schema: Option<&'a crate::model::credential_schema::CredentialSchema>,
         _verification: VerificationFn,
     ) -> Result<DetailCredential, FormatterError> {
-        extract_credentials_internal(&*self.certificate_validator, token, true).await
+        extract_credentials_internal(&*self.certificate_validator, &*self.client, token, true).await
     }
 
     async fn extract_credentials_unverified<'a>(
@@ -318,7 +322,8 @@ impl CredentialFormatter for MdocFormatter {
         token: &SerializedCredential,
         _credential_schema: Option<&'a crate::model::credential_schema::CredentialSchema>,
     ) -> Result<DetailCredential, FormatterError> {
-        extract_credentials_internal(&*self.certificate_validator, token, false).await
+        extract_credentials_internal(&*self.certificate_validator, &*self.client, token, false)
+            .await
     }
 
     // Extract issuer_signed, keep only the claims that the verifier asked for, re-encode issuer_signed that back to the same format
@@ -474,6 +479,7 @@ impl CredentialFormatter for MdocFormatter {
         let issuer_signed: IssuerSigned = decode_cbor_base64(credential.as_ref())?;
         let issuer_certificate = extract_certificate_from_x5chain_header(
             &*self.certificate_validator,
+            &*self.client,
             &issuer_signed.issuer_auth,
             true,
         )
@@ -631,12 +637,14 @@ impl CredentialFormatter for MdocFormatter {
 
 async fn extract_credentials_internal(
     certificate_validator: &dyn CertificateValidator,
+    http_client: &dyn HttpClient,
     token: &SerializedCredential,
     verify: bool,
 ) -> Result<DetailCredential, FormatterError> {
     let issuer_signed: IssuerSigned = decode_cbor_base64(token.as_ref())?;
     let issuer_cert = extract_certificate_from_x5chain_header(
         certificate_validator,
+        http_client,
         &issuer_signed.issuer_auth,
         verify,
     )

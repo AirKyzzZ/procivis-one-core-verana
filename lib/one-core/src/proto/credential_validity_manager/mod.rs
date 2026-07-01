@@ -848,6 +848,7 @@ fn issuer_details(issuer_identifier: &Identifier) -> Result<IdentifierDetails, E
                 fingerprint: certificate.fingerprint,
                 expiry: certificate.expiry_date,
                 subject_common_name: None,
+                x5_references: Default::default(),
             })
         }
         _ => {

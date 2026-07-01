@@ -294,8 +294,6 @@ async fn test_list_trust_list_subscription_with_role_filter() {
         s.role = Some(TrustListRoleEnum::WalletProvider);
         s
     };
-    // A roleless subscription (e.g. ETSI_LOTL) must be persisted with a NULL role
-    // and be returned by role-scoped queries.
     let subscription3 = {
         let mut s = dummy_trust_list_subscription(trust_collection_id);
         s.name = "roleless-subscription".to_string();

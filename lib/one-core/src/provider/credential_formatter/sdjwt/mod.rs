@@ -13,7 +13,7 @@ use time::Duration;
 
 use super::model::{
     AuthenticationFn, CertificateDetails, CredentialClaim, HolderBindingCtx, IdentifierDetails,
-    PublicKeySource, SettableClaims, SignatureProvider, VerificationFn,
+    PublicKeySource, SettableClaims, SignatureProvider, VerificationFn, X5References,
 };
 use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::{CertificateParsingError, pem_chain_into_x5c, x5c_into_pem_chain};
@@ -29,6 +29,7 @@ use crate::proto::jwt::model::{
     DecomposedJwt, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey,
 };
 use crate::proto::jwt::{AnyPayload, Jwt, JwtPublicKeyInfo};
+use crate::provider::credential_formatter::common::resolve_x5u;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_claims::prepare_identifier;
 use crate::provider::credential_formatter::model::CredentialPresentation;
@@ -161,6 +162,24 @@ pub(crate) async fn format_credential<T: Serialize>(
         .error_while("creating SD-JWT token")?;
     append_disclosures(&mut token, disclosures);
     Ok(token.into())
+}
+
+/// Verifies that the `x5t#S256` header parameter (base64url-encoded SHA-256 of the
+/// signing certificate DER, RFC 7515 clause 4.1.8) matches the resolved leaf.
+fn verify_x5t_s256(header_thumbprint: &str, leaf_fingerprint: &str) -> Result<(), FormatterError> {
+    let der_fingerprint = hex::decode(leaf_fingerprint).map_err(|e| {
+        FormatterError::CouldNotExtractCredentials(format!("invalid certificate fingerprint: {e}"))
+    })?;
+    let expected = Base64UrlSafeNoPadding::encode_to_string(&der_fingerprint)
+        .map_err(CertificateParsingError::from)
+        .error_while("encoding thumbprint as base64url")?;
+
+    if expected != header_thumbprint {
+        return Err(FormatterError::CouldNotExtractCredentials(
+            "x5t#S256 does not match the referenced certificate".to_string(),
+        ));
+    }
+    Ok(())
 }
 
 fn certificate_into_x5c_and_x5u(
@@ -309,9 +328,22 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
         })?;
 
         let issuer = decomposed_token.payload.issuer.as_deref();
-        let x5c = decomposed_token.header.x5c.as_deref();
+        let header = &decomposed_token.header;
 
-        let (params, issuer_details) = match (issuer, x5c) {
+        // The signing certificate may be carried inline via `x5c` or referenced via
+        // `x5u`. ETSI TS 119 472-1 (QEAA-5.6.2-02) allows QEAA/PuB-EAA to reference it
+        // by `x5u` + `x5t#S256` only, so fetch the chain from `x5u` when `x5c` is absent.
+        let certificate_chain = match (header.x5c.as_deref(), header.x5u.as_deref()) {
+            (Some(x5c), _) => Some(Cow::Borrowed(x5c)),
+            (None, Some(x5u)) => {
+                let pem_chain = resolve_x5u(x5u, http_client).await?;
+                let x5c = pem_chain_into_x5c(&pem_chain).error_while("parsing x5u chain")?;
+                Some(Cow::Owned(x5c))
+            }
+            (None, None) => None,
+        };
+
+        let (params, issuer_details) = match (issuer, certificate_chain.as_deref()) {
             // DID issuer
             (Some(iss), _) if iss.starts_with("did:") => {
                 let did: DidValue = iss
@@ -320,9 +352,50 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
                     .error_while("parsing issuer DID")?;
                 let params = PublicKeySource::Did {
                     did: Cow::Owned(did.clone()),
-                    key_id: decomposed_token.header.key_id.as_deref(),
+                    key_id: header.key_id.as_deref(),
                 };
                 (params, IdentifierDetails::Did(did))
+            }
+            // Certificate issuer (x5c and/or x5u)
+            (_, Some(x5c)) => {
+                let certificate_validator =
+                    certificate_validator.ok_or(FormatterError::CouldNotExtractCredentials(
+                        "x5c/x5u header param not supported".to_string(),
+                    ))?;
+
+                let chain = x5c_into_pem_chain(x5c).error_while("parsing x5c")?;
+                let validation_options =
+                    CertificateValidationOptions::signature_and_revocation(None);
+                let ParsedCertificate {
+                    attributes,
+                    subject_common_name,
+                    ..
+                } = certificate_validator
+                    .parse_pem_chain(&chain, validation_options)
+                    .await
+                    .error_while("parsing PEM chain")?;
+
+                // `x5t#S256` (RFC 7515 clause 4.1.8) binds the referenced certificate to
+                // the signature; when present it must match the resolved leaf, whether the
+                // certificate was inlined via `x5c` or fetched via `x5u`.
+                if let Some(thumbprint) = header.x5t_s256.as_deref() {
+                    verify_x5t_s256(thumbprint, &attributes.fingerprint)?;
+                }
+
+                (
+                    PublicKeySource::X5c { x5c },
+                    IdentifierDetails::Certificate(CertificateDetails {
+                        chain,
+                        fingerprint: attributes.fingerprint,
+                        expiry: attributes.not_after,
+                        subject_common_name,
+                        x5_references: X5References {
+                            x5c: header.x5c.is_some(),
+                            x5u: header.x5u.is_some(),
+                            x5t_s256: header.x5t_s256.is_some(),
+                        },
+                    }),
+                )
             }
             // URL issuer, resolve JWKS
             (Some(iss), None) => {
@@ -335,7 +408,7 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
                     http_client,
                 )
                 .await?;
-                let header_key_id = decomposed_token.header.key_id.as_deref();
+                let header_key_id = header.key_id.as_deref();
 
                 let jwk = jwks
                     .iter()
@@ -350,37 +423,10 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
                 };
                 (params, IdentifierDetails::Key(jwk.clone()))
             }
-            (_, Some(x5c)) => {
-                let certificate_validator =
-                    certificate_validator.ok_or(FormatterError::CouldNotExtractCredentials(
-                        "x5c header param not supported".to_string(),
-                    ))?;
-                let params = PublicKeySource::X5c { x5c };
-                let chain = x5c_into_pem_chain(x5c).error_while("parsing x5c")?;
-                let validation_options =
-                    CertificateValidationOptions::signature_and_revocation(None);
-                let ParsedCertificate {
-                    attributes,
-                    subject_common_name,
-                    ..
-                } = certificate_validator
-                    .parse_pem_chain(&chain, validation_options)
-                    .await
-                    .error_while("parsing PEM chain")?;
-                (
-                    params,
-                    IdentifierDetails::Certificate(CertificateDetails {
-                        chain,
-                        fingerprint: attributes.fingerprint,
-                        expiry: attributes.not_after,
-                        subject_common_name,
-                    }),
-                )
-            }
-            // Neither iss nor x5c
+            // Neither iss nor x5c/x5u
             (None, None) => {
                 return Err(FormatterError::CouldNotExtractCredentials(
-                    "Missing issuer: no iss claim and no x5c in header".to_string(),
+                    "Missing issuer: no iss claim and no x5c/x5u in header".to_string(),
                 ));
             }
         };

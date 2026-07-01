@@ -1,11 +1,31 @@
 use indexmap::IndexMap;
 
 use super::model::PublishedClaimValue;
+use crate::error::ContextWithErrorCode;
+use crate::proto::http_client::HttpClient;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::PublishedClaim;
 use crate::service::credential::dto::{
     DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO,
 };
+
+/// Resolves the certificate (chain) referenced by the `x5u` header parameter
+/// (IETF RFC 7515 clause 4.1.5 for JOSE, IETF RFC 9360 for COSE). ETSI TS 119 472-1
+/// requires QEAA/PuB-EAA to make their signing certificate available this way
+/// (QEAA-5.6.2-02, QEAA-6.6.2-02). The referenced resource is a PEM-encoded certificate
+/// chain, leaf first.
+pub async fn resolve_x5u(
+    url: &str,
+    http_client: &dyn HttpClient,
+) -> Result<String, FormatterError> {
+    let response = async { http_client.get(url).send().await?.error_for_status() }
+        .await
+        .error_while("fetching x5u certificate")?;
+
+    String::from_utf8(response.body).map_err(|e| {
+        FormatterError::CouldNotExtractCredentials(format!("x5u response is not valid PEM: {e}"))
+    })
+}
 
 pub fn nest_claims(
     claims: impl IntoIterator<Item = PublishedClaim>,

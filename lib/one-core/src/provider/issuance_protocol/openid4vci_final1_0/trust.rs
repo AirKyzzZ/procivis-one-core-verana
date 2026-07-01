@@ -1,4 +1,4 @@
-use shared_types::{CredentialId, OrganisationId};
+use shared_types::{CredentialId, OrganisationId, SerializedCredential};
 use url::Url;
 use uuid::Uuid;
 
@@ -11,6 +11,8 @@ use crate::clock::now_utc;
 use crate::config::core_config::BlobStorageType;
 use crate::error::ContextWithErrorCode;
 use crate::model::blob::{Blob, BlobType};
+use crate::model::certificate::Certificate;
+use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::history::{
     History, HistoryAction, HistoryEntityType, HistoryMetadata, HistorySource,
@@ -19,6 +21,10 @@ use crate::model::history::{
 use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
 use crate::proto::session_provider::SessionExt;
+use crate::proto::wrp_validator::model::TrustMode;
+use crate::proto::wrp_validator::{QUALIFIED_EAA_CATEGORY, credential_category};
+use crate::provider::credential_formatter::CredentialFormatter;
+use crate::provider::credential_formatter::model::{Features, IdentifierDetails, X5References};
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::signer::registration_certificate;
 
@@ -29,6 +35,94 @@ pub(super) struct TrustInfo {
 }
 
 impl OpenID4VCIFinal1_0 {
+    #[expect(clippy::too_many_arguments)]
+    pub(super) async fn resolve_credential_issuer_trust(
+        &self,
+        credential: &Credential,
+        issuer_certificate: Option<&Certificate>,
+        serialized: Option<&SerializedCredential>,
+        schema: &CredentialSchema,
+        formatter: &dyn CredentialFormatter,
+        access_certificate_trust: TrustResolutionResult,
+        organisation_id: OrganisationId,
+    ) -> TrustResolutionResult {
+        let namespaced = formatter_requires_namespaces(formatter);
+        let is_qeaa = credential
+            .claims
+            .as_deref()
+            .and_then(|claims| credential_category(claims, namespaced))
+            == Some(QUALIFIED_EAA_CATEGORY);
+
+        if is_qeaa {
+            return self
+                .resolve_qeaa_issuer_trust(serialized, schema, formatter, organisation_id)
+                .await;
+        }
+
+        if access_certificate_trust == TrustResolutionResult::Trusted
+            && let Err(err) = self
+                .wrp_validator
+                .validate_credential_issuer(
+                    issuer_certificate.map(|certificate| certificate.chain.as_str()),
+                    schema,
+                    None,
+                    X5References::default(),
+                    organisation_id,
+                )
+                .await
+        {
+            tracing::info!(%err, "Credential issuer trust not verified");
+            return TrustResolutionResult::Untrusted;
+        }
+        access_certificate_trust
+    }
+
+    async fn resolve_qeaa_issuer_trust(
+        &self,
+        serialized: Option<&SerializedCredential>,
+        schema: &CredentialSchema,
+        formatter: &dyn CredentialFormatter,
+        organisation_id: OrganisationId,
+    ) -> TrustResolutionResult {
+        let Some(serialized) = serialized else {
+            tracing::info!("Missing serialized QEAA credential for issuer trust resolution");
+            return TrustResolutionResult::Untrusted;
+        };
+        let issuer = match formatter
+            .extract_credentials_unverified(serialized, Some(schema))
+            .await
+        {
+            Ok(detail) => detail.issuer,
+            Err(err) => {
+                tracing::info!(%err, "Failed to extract QEAA issuer for trust resolution");
+                return TrustResolutionResult::Untrusted;
+            }
+        };
+        let (chain, x5_references) = match &issuer {
+            IdentifierDetails::Certificate(certificate) => {
+                (Some(certificate.chain.as_str()), certificate.x5_references)
+            }
+            _ => (None, X5References::default()),
+        };
+        match self
+            .wrp_validator
+            .validate_credential_issuer(
+                chain,
+                schema,
+                Some(QUALIFIED_EAA_CATEGORY),
+                x5_references,
+                organisation_id,
+            )
+            .await
+        {
+            Ok(_) => TrustResolutionResult::Trusted,
+            Err(err) => {
+                tracing::info!(%err, "QEAA issuer trust not verified");
+                TrustResolutionResult::Untrusted
+            }
+        }
+    }
+
     pub(super) async fn validate_trust(
         &self,
         credential_config: &OpenID4VCICredentialConfigurationData,
@@ -212,6 +306,7 @@ impl OpenID4VCIFinal1_0 {
         Ok(())
     }
 
+    #[expect(clippy::too_many_arguments)]
     pub(super) async fn validate_batch_refresh_trust(
         &self,
         interaction_data: &HolderInteractionData,
@@ -219,8 +314,37 @@ impl OpenID4VCIFinal1_0 {
         interaction: &Interaction,
         schema: &CredentialSchema,
         batch_parent_id: CredentialId,
-        issuer_certificate_chain: Option<&str>,
+        credential: &Credential,
+        serialized: Option<&SerializedCredential>,
+        formatter: &dyn CredentialFormatter,
     ) -> Result<(), IssuanceProtocolError> {
+        if interaction_data.trust_mode == TrustMode::Disabled {
+            return Ok(());
+        }
+
+        let namespaced = formatter_requires_namespaces(formatter);
+        if credential
+            .claims
+            .as_deref()
+            .and_then(|claims| credential_category(claims, namespaced))
+            == Some(QUALIFIED_EAA_CATEGORY)
+        {
+            let trust_resolution = self
+                .resolve_qeaa_issuer_trust(serialized, schema, formatter, organisation.id)
+                .await;
+            return self
+                .store_trust_resolved_event(batch_parent_id, organisation.id, trust_resolution)
+                .await;
+        }
+
+        if interaction_data.trust_resolution != TrustResolutionResult::Trusted {
+            return Ok(());
+        }
+
+        let issuer_certificate_chain = credential
+            .issuer_certificate
+            .as_ref()
+            .map(|certificate| certificate.chain.as_str());
         let mut trust_resolution = TrustResolutionResult::Trusted;
 
         let relying_party_id =
@@ -284,25 +408,47 @@ impl OpenID4VCIFinal1_0 {
         if trust_resolution == TrustResolutionResult::Trusted
             && let Err(err) = self
                 .wrp_validator
-                .validate_credential_issuer(issuer_certificate_chain, schema, organisation.id)
+                .validate_credential_issuer(
+                    issuer_certificate_chain,
+                    schema,
+                    None,
+                    Default::default(),
+                    organisation.id,
+                )
                 .await
         {
             tracing::info!(%err, "Credential issuer trust not verified");
             trust_resolution = TrustResolutionResult::Untrusted;
         }
 
+        self.store_trust_resolved_event(batch_parent_id, organisation.id, trust_resolution)
+            .await
+    }
+
+    async fn store_trust_resolved_event(
+        &self,
+        target: CredentialId,
+        organisation_id: OrganisationId,
+        trust_resolution: TrustResolutionResult,
+    ) -> Result<(), IssuanceProtocolError> {
         self.store_trust_history_event(
             HistoryAction::TrustResolved,
-            batch_parent_id,
-            organisation.id,
+            target,
+            organisation_id,
             None,
             Some(HistoryMetadata::TrustResolution(TrustResolutionMetadata {
                 result: trust_resolution,
             })),
         )
-        .await?;
-        Ok(())
+        .await
     }
+}
+
+fn formatter_requires_namespaces(formatter: &dyn CredentialFormatter) -> bool {
+    formatter
+        .get_capabilities()
+        .features
+        .contains(&Features::RequiresNamespaces)
 }
 
 fn credential_config_matches_reg_cert_attestation(

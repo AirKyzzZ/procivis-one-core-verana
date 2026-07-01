@@ -103,6 +103,7 @@ impl OpenID4VPFinal1_0 {
                 fingerprint: attributes.fingerprint,
                 expiry: attributes.not_after,
                 subject_common_name,
+                x5_references: Default::default(),
             },
         ))
     }
@@ -159,6 +160,7 @@ impl OpenID4VPFinal1_0 {
                 fingerprint: attributes.fingerprint,
                 expiry: attributes.not_after,
                 subject_common_name,
+                x5_references: Default::default(),
             },
         ))
     }

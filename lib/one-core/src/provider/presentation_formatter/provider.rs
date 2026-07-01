@@ -77,6 +77,7 @@ pub(crate) fn get_presentation_formatter_provider(
                 Arc::new(MsoMdocPresentationFormatter::new(
                     certificate_validator.clone(),
                     core_base_url,
+                    client.clone(),
                 )) as _,
             ),
             (

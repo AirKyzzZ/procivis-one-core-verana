@@ -3,6 +3,7 @@ use uuid::Uuid;
 
 use super::OID4VPFinal1_0Service;
 use super::error::OID4VPFinal1_0ServiceError;
+use crate::config::core_config::FormatType;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::history::{
     History, HistoryAction, HistoryEntityType, HistoryMetadata, HistorySource,
@@ -11,8 +12,11 @@ use crate::model::history::{
 use crate::model::proof::Proof;
 use crate::proto::openid4vp_proof_validator::ValidatedProofResult;
 use crate::proto::session_provider::SessionExt;
+use crate::proto::wrp_validator::credential_category;
 use crate::proto::wrp_validator::model::TrustMode;
-use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
+use crate::provider::credential_formatter::model::{
+    CertificateDetails, IdentifierDetails, X5References,
+};
 use crate::provider::trust_list_subscriber::TrustEntityResponse;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::model::ProvedCredential;
@@ -129,18 +133,37 @@ impl OID4VPFinal1_0Service {
             OID4VPFinal1_0ServiceError::MappingError("missing credential schema".to_string()),
         )?;
 
-        let issuer_certificate_pem_chain = match &credential.issuer_details {
-            IdentifierDetails::Certificate(CertificateDetails { chain, .. }) => {
-                Some(chain.as_str())
-            }
-            _ => None,
+        let (issuer_certificate_pem_chain, issuer_x5_references) = match &credential.issuer_details
+        {
+            IdentifierDetails::Certificate(CertificateDetails {
+                chain,
+                x5_references,
+                ..
+            }) => (Some(chain.as_str()), *x5_references),
+            _ => (None, X5References::default()),
         };
+
+        let namespaced = self
+            .config
+            .format
+            .get_fields(&credential_schema.format().await?)
+            .error_while("getting format config")?
+            .r#type
+            == FormatType::Mdoc;
+
+        let category = credential
+            .credential
+            .claims
+            .as_deref()
+            .and_then(|claims| credential_category(claims, namespaced));
 
         Ok(self
             .wrp_validator
             .validate_credential_issuer(
                 issuer_certificate_pem_chain,
                 credential_schema,
+                category,
+                issuer_x5_references,
                 organisation_id,
             )
             .await

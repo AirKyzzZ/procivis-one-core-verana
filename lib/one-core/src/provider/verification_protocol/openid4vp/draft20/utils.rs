@@ -104,6 +104,7 @@ async fn parse_referenced_data_from_x509_san_dns_token(
             fingerprint: attributes.fingerprint,
             expiry: attributes.not_after,
             subject_common_name,
+            x5_references: Default::default(),
         },
     ))
 }

@@ -18,9 +18,10 @@ use crate::model::credential_schema::{BackgroundProperties, LayoutProperties, La
 use crate::model::did::Did;
 use crate::model::identifier::Identifier;
 use crate::proto::certificate_validator::{MockCertificateValidator, ParsedCertificate};
+use crate::proto::http_client::MockHttpClient;
 use crate::provider::credential_formatter::model::{
     CertificateDetails, CredentialSchemaMetadata, Issuer, MockSignatureProvider, MockTokenVerifier,
-    PublishedClaimValue,
+    PublishedClaimValue, X5References,
 };
 use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredentialSubject};
 use crate::provider::data_type::error::DataTypeProviderError;
@@ -371,6 +372,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         config.datatype,
         Arc::new(MockDataTypeProvider::new()),
         Arc::new(key_algorithm_provider),
+        Arc::new(MockHttpClient::new()),
     )
     .unwrap();
 
@@ -663,6 +665,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         config.datatype,
         Arc::new(MockDataTypeProvider::new()),
         Arc::new(key_algorithm_provider),
+        Arc::new(MockHttpClient::new()),
     )
     .unwrap();
 
@@ -711,7 +714,12 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
             .to_string(),
             fingerprint: hex::encode("testfoo"),
             expiry,
-            subject_common_name: Some("common name".to_string())
+            subject_common_name: Some("common name".to_string()),
+            x5_references: X5References {
+                x5c: true,
+                x5u: true,
+                x5t_s256: true,
+            },
         }),
         credential.issuer
     );
@@ -951,6 +959,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         config.datatype,
         Arc::new(MockDataTypeProvider::new()),
         Arc::new(key_algorithm_provider),
+        Arc::new(MockHttpClient::new()),
     )
     .unwrap();
 
@@ -994,6 +1003,7 @@ fn test_credential_schema_id() {
         generic_config().core.datatype,
         Arc::new(MockDataTypeProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
+        Arc::new(MockHttpClient::new()),
     )
     .unwrap();
     let schema_id = "schema_id_name".to_string();
@@ -1099,6 +1109,7 @@ async fn test_parse_credential() {
         generic_config().core.datatype,
         Arc::new(datatype_provider),
         Arc::new(key_algorithm_provider),
+        Arc::new(MockHttpClient::new()),
     )
     .unwrap();
     let mut verify_mock = MockTokenVerifier::new();

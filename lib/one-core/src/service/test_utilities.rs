@@ -533,6 +533,10 @@ pub fn dummy_proof_schema() -> ProofSchema {
 }
 
 pub fn dummy_credential_schema() -> CredentialSchema {
+    dummy_credential_schema_with_format("format")
+}
+
+pub fn dummy_credential_schema_with_format(format: &str) -> CredentialSchema {
     let credential_schema_id = Uuid::new_v4().into();
     CredentialSchema {
         id: credential_schema_id,
@@ -547,7 +551,7 @@ pub fn dummy_credential_schema() -> CredentialSchema {
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
             credential_schema_id,
-            format: "format".into(),
+            format: format.into(),
             schema_id: "CredentialSchemaId".to_owned(),
             claim_mappings: Default::default(),
         }]
