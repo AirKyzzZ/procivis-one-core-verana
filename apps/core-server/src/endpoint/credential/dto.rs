@@ -500,7 +500,9 @@ pub(crate) struct CreateCredentialRequestRestDTO {
     pub redirect_uri: Option<String>,
     /// Optional profile to associate with this credential
     pub profile: Option<String>,
-    /// If set, notifications about state changes of the credential will be posted on this webhook URL
+    /// Set a webhook URL or MQTT topic to receive notifications of
+    /// credential state changes. See
+    /// [Webhooks](https://docs.procivis.ch/webhooks) for configuration.
     pub webhook_destination_url: Option<String>,
     /// Optional subscriber information associated with this credential
     pub subscriber_information: Option<String>,
