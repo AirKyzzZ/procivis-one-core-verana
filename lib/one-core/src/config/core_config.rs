@@ -739,6 +739,9 @@ pub enum TrustListSubscriberType {
     #[serde(rename = "ETSI_LOTE")]
     #[strum(serialize = "ETSI_LOTE")]
     EtsiLote,
+    #[serde(rename = "ETSI_LOTL")]
+    #[strum(serialize = "ETSI_LOTL")]
+    EtsiLotl,
 }
 
 pub type BlobStorageConfig = Dict<BlobStorageType, BlobStorageFields>;

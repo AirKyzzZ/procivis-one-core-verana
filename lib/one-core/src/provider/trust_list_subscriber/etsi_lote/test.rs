@@ -88,17 +88,19 @@ async fn validate_subscription_success() {
 }
 
 #[tokio::test]
-async fn validate_subscription_unknown_role() {
+async fn validate_subscription_roleless_when_no_role_derivable() {
     let time = datetime!(2026-03-01 00:00 UTC);
     let reference = Url::parse("https://example.com/lote").unwrap();
 
     let subscriber = setup_subscriber(time, &reference);
 
-    let result = subscriber.validate_subscription(&reference, None).await;
-    assert!(matches!(
-        result,
-        Err(TrustListSubscriberError::UnknownTrustListRole)
-    ));
+    // A LoTE with no derivable role is a roleless subscription; the role is then
+    // re-derived per entity at resolve time.
+    let result = subscriber
+        .validate_subscription(&reference, None)
+        .await
+        .unwrap();
+    assert_eq!(result.role, None);
 }
 
 #[tokio::test]
@@ -309,6 +311,7 @@ fn setup_subscriber(time: OffsetDateTime, reference: &Url) -> EtsiLoteSubscriber
         Arc::new(MockXAdESProto::new()),
         LoteContentType::Jwt,
         Duration::seconds(0),
+        None,
     );
     let cache = EtsiLoteCache::new(
         Arc::new(resolver),
@@ -417,6 +420,7 @@ fn setup_subscriber_xml(time: OffsetDateTime, reference: &Url) -> EtsiLoteSubscr
         Arc::new(xades),
         LoteContentType::Xml,
         Duration::seconds(0),
+        None,
     );
     let cache = EtsiLoteCache::new(
         Arc::new(resolver),

@@ -35,7 +35,8 @@ use crate::provider::signer::registration_certificate::model::{
 };
 use crate::provider::trust_list_subscriber::provider::MockTrustListSubscriberProvider;
 use crate::provider::trust_list_subscriber::{
-    Feature, MockTrustListSubscriber, TrustEntityResponse, TrustListSubscriberCapabilities,
+    Feature, MockTrustListSubscriber, TrustEntityMetadata, TrustEntityResponse,
+    TrustListSubscriberCapabilities,
 };
 use crate::repository::certificate_repository::MockCertificateRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
@@ -276,7 +277,13 @@ async fn test_resolve_trust_entries_success() {
         .expect_resolve_entries()
         .returning(move |_, _| {
             let mut map = HashMap::new();
-            map.insert(identifier_id, TrustEntityResponse::LOTE(Default::default()));
+            map.insert(
+                identifier_id,
+                vec![TrustEntityResponse {
+                    derived_role: None,
+                    metadata: TrustEntityMetadata::Lote(Default::default()),
+                }],
+            );
             Ok(map)
         });
 

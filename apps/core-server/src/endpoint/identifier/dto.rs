@@ -1,7 +1,7 @@
 use one_core::model::identifier::{
     ExactIdentifierFilterColumn, IdentifierState, IdentifierType, SortableIdentifierColumn,
 };
-use one_core::provider::trust_list_subscriber::TrustEntityResponse;
+use one_core::provider::trust_list_subscriber::{TrustEntityMetadata, TslServiceEntry};
 use one_core::service::certificate::dto::{
     CreateCertificateCaDTO, CreateCertificateContentDTO, CreateCertificateRequestDTO,
 };
@@ -601,9 +601,19 @@ pub(crate) struct ResolvedTrustEntrySourceResponseRestDTO {
 
 #[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[serde(rename_all = "camelCase")]
+#[from(TslServiceEntry)]
+pub(crate) struct TslServiceEntryRestDTO {
+    pub service_name: String,
+    pub service_type_identifier: String,
+    pub service_status: String,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-#[from(TrustEntityResponse)]
-#[allow(clippy::upper_case_acronyms)]
+#[from(TrustEntityMetadata)]
 pub(crate) enum TrustEntityResponseRestEnum {
-    LOTE(TrustedEntityInformation),
+    Lote(TrustedEntityInformation),
+    Tsl(TslServiceEntryRestDTO),
 }

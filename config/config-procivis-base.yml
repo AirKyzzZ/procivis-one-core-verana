@@ -692,6 +692,19 @@ trustListSubscriber:
       private:
         accepts: "application/jwt"
         leeway: 60
+        # Max depth to follow through chained PointersToOtherLoTE.
+        maxPointerDepth: 5
+  LOTL_SUBSCRIBER:
+    type: ETSI_LOTL
+    order: 2
+    display: "trustListSubscriber.etsiLotlList"
+    params:
+      private:
+        leeway: 60
+        # subscribers to delegate non-612 pointers to
+        delegateSubscribers: ["LOTE_SUBSCRIBER"]
+        # root LOTL signer cert(s), base64 DER; empty = trust-on-first-use
+        trustAnchors: []
 blobStorage:
   DB:
     enabled: true

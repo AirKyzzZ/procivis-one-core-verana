@@ -32,6 +32,7 @@ use crate::util::key_selection::KeyFilter;
 
 pub(crate) mod credential_schema_claim;
 pub(crate) mod etsi_lote;
+pub(crate) mod etsi_lotl;
 pub(crate) mod exchange;
 mod key_security;
 pub(crate) mod oidc;

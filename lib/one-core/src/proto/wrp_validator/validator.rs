@@ -427,7 +427,7 @@ impl WRPValidatorImpl {
             .get_trust_subscriptions_for_role(role, organisation_id)
             .await?;
 
-        self.find_matching_trust_entity(subscriptions, identifier)
+        self.find_matching_trust_entity(subscriptions, identifier, role)
             .await
     }
 
@@ -435,6 +435,7 @@ impl WRPValidatorImpl {
         &self,
         subscriptions: Vec<TrustListSubscription>,
         identifier: TrustEntityIdentifier<'_>,
+        requested_role: TrustListRoleEnum,
     ) -> Result<Option<TrustEntityResponse>, WRPValidatorError> {
         for subscription in subscriptions {
             let subscriber = self
@@ -446,7 +447,7 @@ impl WRPValidatorImpl {
                 .error_while("getting trust list subscriber")?;
 
             let reference = subscription.reference.parse()?;
-            let trust_entity = match &identifier {
+            let trust_entities = match &identifier {
                 TrustEntityIdentifier::PemChain(pem_chain) => {
                     subscriber
                         .resolve_certificate(&reference, pem_chain.as_ref())
@@ -460,8 +461,13 @@ impl WRPValidatorImpl {
             }
             .error_while("resolving trust")?;
 
-            if trust_entity.is_some() {
-                return Ok(trust_entity);
+            // Roleless subscriptions (e.g. ETSI_LOTL) are candidates for every requested
+            // role, so accept the entry whose derived role matches. Role-bearing
+            // subscriptions were already role-filtered at the SQL layer.
+            for entity in trust_entities {
+                if subscription.role.is_some() || entity.derived_role == Some(requested_role) {
+                    return Ok(Some(entity));
+                }
             }
         }
 
@@ -642,14 +648,21 @@ impl<'a> TryFrom<PublicKeySource<'a>> for TrustEntityIdentifier<'a> {
 mod tests {
     use std::borrow::Cow;
     use std::collections::HashMap;
+    use std::str::FromStr;
     use std::sync::Arc;
 
-    use shared_types::DidValue;
+    use shared_types::{DidValue, OrganisationId, TrustCollectionId, TrustListSubscriberId};
     use similar_asserts::assert_eq;
     use standardized_types::jwk::{PublicJwk, PublicJwkEc};
+    use time::OffsetDateTime;
     use url::Url;
 
     use super::{TrustEntityIdentifier, WRPValidatorImpl};
+    use crate::model::trust_collection::{GetTrustCollectionList, TrustCollection};
+    use crate::model::trust_list_role::TrustListRoleEnum;
+    use crate::model::trust_list_subscription::{
+        GetTrustListSubscriptionList, TrustListSubscription, TrustListSubscriptionState,
+    };
     use crate::proto::certificate_validator::MockCertificateValidator;
     use crate::proto::http_client::{
         HttpClient, Method, MockHttpClient, Request, RequestBuilder, Response, StatusCode,
@@ -668,7 +681,11 @@ mod tests {
     use crate::provider::signer::registration_certificate::model::{
         Payload, Status, SupervisoryAuthority,
     };
+    use crate::provider::trust_list_subscriber::etsi_lotl::model::TslServiceEntry;
     use crate::provider::trust_list_subscriber::provider::MockTrustListSubscriberProvider;
+    use crate::provider::trust_list_subscriber::{
+        MockTrustListSubscriber, TrustEntityMetadata, TrustEntityResponse,
+    };
     use crate::repository::holder_wallet_instance_repository::MockHolderWalletInstanceRepository;
     use crate::repository::trust_collection_repository::MockTrustCollectionRepository;
     use crate::repository::trust_list_subscription_repository::MockTrustListSubscriptionRepository;
@@ -708,6 +725,162 @@ mod tests {
             Arc::new(MockRevocationMethodProvider::default()),
             Arc::new(MockCredentialFormatterProvider::default()),
         )
+    }
+
+    fn make_validator_with_subscription(
+        subscription: TrustListSubscription,
+        resolved_entity: Option<TrustEntityResponse>,
+    ) -> WRPValidatorImpl {
+        let mut collection_repo = MockTrustCollectionRepository::default();
+        collection_repo.expect_list().returning(|_| {
+            Ok(GetTrustCollectionList {
+                values: vec![TrustCollection {
+                    id: TrustCollectionId::from(uuid::Uuid::new_v4()),
+                    name: "collection".to_string(),
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                    deactivated_at: None,
+                    remote_trust_collection_url: None,
+                    organisation_id: OrganisationId::from(uuid::Uuid::new_v4()),
+                    organisation: None,
+                }],
+                total_pages: 1,
+                total_items: 1,
+            })
+        });
+
+        let mut subscription_repo = MockTrustListSubscriptionRepository::default();
+        subscription_repo.expect_list().returning(move |_| {
+            Ok(GetTrustListSubscriptionList {
+                values: vec![subscription.clone()],
+                total_pages: 1,
+                total_items: 1,
+            })
+        });
+
+        let mut subscriber = MockTrustListSubscriber::default();
+        subscriber
+            .expect_resolve_certificate()
+            .returning(move |_, _| Ok(resolved_entity.clone().into_iter().collect()));
+
+        let subscriber = Arc::new(subscriber);
+        let mut subscriber_provider = MockTrustListSubscriberProvider::default();
+        subscriber_provider
+            .expect_get()
+            .returning(move |_| Some(subscriber.clone()));
+
+        WRPValidatorImpl::new(
+            Arc::new(collection_repo),
+            Arc::new(subscription_repo),
+            Arc::new(subscriber_provider),
+            Arc::new(MockHolderWalletInstanceRepository::default()),
+            Arc::new(MockWalletProviderClient::default()),
+            Arc::new(MockVerifierInstanceRepository::default()),
+            Arc::new(MockVerifierProviderClient::default()),
+            Arc::new(MockDidMethodProvider::default()),
+            Arc::new(MockKeyAlgorithmProvider::default()),
+            Arc::new(MockCertificateValidator::default()),
+            Arc::new(MockHttpClient::default()),
+            Arc::new(MockRevocationMethodProvider::default()),
+            Arc::new(MockCredentialFormatterProvider::default()),
+        )
+    }
+
+    fn dummy_subscription(role: Option<TrustListRoleEnum>) -> TrustListSubscription {
+        TrustListSubscription {
+            id: uuid::Uuid::new_v4().into(),
+            name: "subscription".to_string(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            deactivated_at: None,
+            r#type: TrustListSubscriberId::from_str("ETSI_LOTL").unwrap(),
+            reference: "https://example.com/lotl".to_string(),
+            role,
+            state: TrustListSubscriptionState::Active,
+            trust_collection_id: TrustCollectionId::from(uuid::Uuid::new_v4()),
+            trust_collection: None,
+        }
+    }
+
+    fn tsl_entity(derived_role: Option<TrustListRoleEnum>) -> TrustEntityResponse {
+        TrustEntityResponse {
+            derived_role,
+            metadata: TrustEntityMetadata::Tsl(TslServiceEntry {
+                service_name: "service".to_string(),
+                service_type_identifier: "http://example.com/svc".to_string(),
+                service_status: "active".to_string(),
+            }),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_roleless_subscription_accepts_when_derived_role_matches() {
+        // given: a roleless (LOTL) subscription resolving a TSL entry with derived QeaaProvider
+        let validator = make_validator_with_subscription(
+            dummy_subscription(None),
+            Some(tsl_entity(Some(TrustListRoleEnum::QeaaProvider))),
+        );
+
+        // when: requesting trust for the matching role
+        let result = validator
+            .perform_trust_validation(
+                TrustEntityIdentifier::PemChain(Cow::from("pem")),
+                TrustListRoleEnum::QeaaProvider,
+                OrganisationId::from(uuid::Uuid::new_v4()),
+            )
+            .await
+            .unwrap();
+
+        // then: the entity is accepted
+        assert!(result.is_some(), "expected entity to be accepted");
+    }
+
+    #[tokio::test]
+    async fn test_roleless_subscription_rejects_when_derived_role_mismatches() {
+        // given: a roleless (LOTL) subscription resolving a TSL entry with derived QeaaProvider
+        let validator = make_validator_with_subscription(
+            dummy_subscription(None),
+            Some(tsl_entity(Some(TrustListRoleEnum::QeaaProvider))),
+        );
+
+        // when: requesting trust for a different role, even though the cert resolves
+        let result = validator
+            .perform_trust_validation(
+                TrustEntityIdentifier::PemChain(Cow::from("pem")),
+                TrustListRoleEnum::PidProvider,
+                OrganisationId::from(uuid::Uuid::new_v4()),
+            )
+            .await
+            .unwrap();
+
+        // then: the entity is rejected because the derived role does not match
+        assert!(result.is_none(), "expected entity to be rejected");
+    }
+
+    #[tokio::test]
+    async fn test_role_bearing_subscription_accepts_without_derived_role_check() {
+        // given: a role-bearing subscription that resolves a TSL entry with a *mismatching*
+        // derived role (which must NOT be checked because the subscription was role-filtered)
+        let validator = make_validator_with_subscription(
+            dummy_subscription(Some(TrustListRoleEnum::PidProvider)),
+            Some(tsl_entity(Some(TrustListRoleEnum::QeaaProvider))),
+        );
+
+        // when
+        let result = validator
+            .perform_trust_validation(
+                TrustEntityIdentifier::PemChain(Cow::from("pem")),
+                TrustListRoleEnum::PidProvider,
+                OrganisationId::from(uuid::Uuid::new_v4()),
+            )
+            .await
+            .unwrap();
+
+        // then: accepted as-is, no derived-role gate for role-bearing subscriptions
+        assert!(
+            result.is_some(),
+            "expected role-bearing subscription entity to be accepted unchanged"
+        );
     }
 
     fn dummy_wrp_payload() -> WRPPayload {

@@ -103,14 +103,16 @@ X2qJiGDrkN4Lr/85kRw7KHlsHq/w1aXLp0/Eg/c5aMur6qSWBjMD
     let ski = ski.trim_matches('"');
     let preprocessed_lote = serde_json::json!({
         "role": "ISSUER",
-        "trusted_entities": [trusted_entity],
-        "certificate_fingerprints": {
-            fingerprint: 0
-        },
-        "certificate_by_subject_key_identifier": {
-            ski: {
-                "idx": 0,
-                "pem": pem
+        "trusted_entities": [{ "info": trusted_entity, "derived_role": null }],
+        "cert_index": {
+            "fingerprint_to_entries": {
+                fingerprint: [0]
+            },
+            "ca_ski_to_entries": {
+                ski: [{
+                    "idx": 0,
+                    "pem": pem
+                }]
             }
         }
     });

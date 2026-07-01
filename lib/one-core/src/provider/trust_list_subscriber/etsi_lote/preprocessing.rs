@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::slice::from_ref;
 
 use ct_codecs::{Base64, Encoder};
@@ -11,9 +11,10 @@ use standardized_types::x509::KeyIdentifier;
 use x509_parser::error::X509Error;
 use x509_parser::oid_registry::OID_X509_EXT_SUBJECT_KEY_IDENTIFIER;
 
-use super::model::{CertificateEntry, PreprocessedLote};
+use super::model::{LoteEntity, PreprocessedLote};
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, NestedError};
 use crate::mapper::x509::{pem_to_subject_key_identifier, x5c_into_pem_chain};
+use crate::model::trust_list_role::TrustListRoleEnum;
 use crate::proto::certificate_validator::parse::extract_leaf_pem_from_chain;
 use crate::proto::certificate_validator::{
     CertificateValidationOptions, CertificateValidator, ParsedCertificate,
@@ -85,10 +86,7 @@ pub(super) async fn preprocess_lote(
         });
     let mut preprocessed_lote = PreprocessedLote {
         role: lote_type,
-        trusted_entities: Vec::new(),
-        certificate_fingerprints: HashMap::new(),
-        certificate_by_subject_key_identifier: HashMap::new(),
-        public_keys: HashMap::new(),
+        ..Default::default()
     };
 
     let Some(trusted_entities) = lote.trusted_entities_list else {
@@ -114,32 +112,56 @@ pub(super) async fn preprocess_lote(
             }
         };
 
-        preprocessed_lote.trusted_entities.push(entity);
+        let derived_role = preprocessed_lote.role;
+        preprocessed_lote.trusted_entities.push(LoteEntity {
+            info: entity,
+            derived_role,
+        });
         let idx = preprocessed_lote.trusted_entities.len() - 1;
 
         for certificate in certificates {
-            preprocessed_lote
-                .certificate_fingerprints
-                .insert(certificate.fingerprint, idx);
-
-            if let Some(subject_key_identifier) = certificate.subject_key_identifier {
-                preprocessed_lote
-                    .certificate_by_subject_key_identifier
-                    .insert(
-                        subject_key_identifier,
-                        CertificateEntry {
-                            idx,
-                            pem: certificate.pem,
-                        },
-                    );
-            }
+            preprocessed_lote.cert_index.insert(
+                certificate.fingerprint,
+                certificate.subject_key_identifier,
+                certificate.pem,
+                idx,
+            );
         }
 
         for public_key in public_keys {
-            preprocessed_lote.public_keys.insert(public_key, idx);
+            preprocessed_lote
+                .public_keys
+                .entry(public_key)
+                .or_default()
+                .push(idx);
         }
     }
     Ok(preprocessed_lote)
+}
+
+/// Merge a pointed-to LoTE into `target`, offsetting its entity indices and
+/// recomputing the aggregate role.
+pub(super) fn merge_lote(target: &mut PreprocessedLote, source: PreprocessedLote) {
+    let offset = target.trusted_entities.len();
+    target.trusted_entities.extend(source.trusted_entities);
+    target.cert_index.extend_offset(source.cert_index, offset);
+    for (key, indices) in source.public_keys {
+        target
+            .public_keys
+            .entry(key)
+            .or_default()
+            .extend(indices.into_iter().map(|idx| idx + offset));
+    }
+    target.role = aggregate_role(&target.trusted_entities);
+}
+
+/// The role shared by every entity, or `None` if they differ or there are none.
+fn aggregate_role(entities: &[LoteEntity]) -> Option<TrustListRoleEnum> {
+    let first = entities.iter().find_map(|e| e.derived_role)?;
+    entities
+        .iter()
+        .all(|e| e.derived_role == Some(first))
+        .then_some(first)
 }
 
 struct PreprocessingResult {
@@ -367,4 +389,82 @@ pub(super) fn jwk_to_der_b64(
             .error_while("encoding public key to DER")?,
     )?;
     Ok(der_b64)
+}
+
+#[cfg(test)]
+mod test {
+    use similar_asserts::assert_eq;
+
+    use super::*;
+
+    fn entity(role: Option<TrustListRoleEnum>) -> LoteEntity {
+        LoteEntity {
+            info: Default::default(),
+            derived_role: role,
+        }
+    }
+
+    #[test]
+    fn aggregate_role_is_the_shared_role_when_homogeneous() {
+        let entities = vec![
+            entity(Some(TrustListRoleEnum::PidProvider)),
+            entity(Some(TrustListRoleEnum::PidProvider)),
+        ];
+        assert_eq!(
+            aggregate_role(&entities),
+            Some(TrustListRoleEnum::PidProvider)
+        );
+    }
+
+    #[test]
+    fn aggregate_role_is_none_when_roles_differ() {
+        let entities = vec![
+            entity(Some(TrustListRoleEnum::PidProvider)),
+            entity(Some(TrustListRoleEnum::WalletProvider)),
+        ];
+        assert_eq!(aggregate_role(&entities), None);
+    }
+
+    #[test]
+    fn aggregate_role_is_none_when_no_entity_has_a_role() {
+        assert_eq!(aggregate_role(&[entity(None), entity(None)]), None);
+    }
+
+    #[test]
+    fn merge_offsets_indices_and_recomputes_a_roleless_aggregate() {
+        let mut target = PreprocessedLote {
+            role: Some(TrustListRoleEnum::PidProvider),
+            trusted_entities: vec![entity(Some(TrustListRoleEnum::PidProvider))],
+            ..Default::default()
+        };
+        target
+            .cert_index
+            .insert("fp-root".to_string(), None, String::new(), 0);
+        let mut source = PreprocessedLote {
+            role: Some(TrustListRoleEnum::WalletProvider),
+            trusted_entities: vec![entity(Some(TrustListRoleEnum::WalletProvider))],
+            ..Default::default()
+        };
+        source
+            .cert_index
+            .insert("fp-child".to_string(), None, String::new(), 0);
+        source.public_keys.insert("pk-child".to_string(), vec![0]);
+
+        merge_lote(&mut target, source);
+
+        assert_eq!(target.trusted_entities.len(), 2);
+        // the child's entity index 0 is offset past the root's entry
+        assert_eq!(
+            target.cert_index.fingerprint_to_entries.get("fp-child"),
+            Some(&vec![1])
+        );
+        assert_eq!(target.public_keys.get("pk-child"), Some(&vec![1]));
+        // each entity keeps the role of its source list
+        assert_eq!(
+            target.trusted_entities[1].derived_role,
+            Some(TrustListRoleEnum::WalletProvider)
+        );
+        // a mixed aggregate is roleless (gated per entity at resolve time)
+        assert_eq!(target.role, None);
+    }
 }

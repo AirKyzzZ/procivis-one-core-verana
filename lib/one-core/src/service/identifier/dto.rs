@@ -13,7 +13,7 @@ use crate::model::did::KeyRole;
 use crate::model::identifier::{ExactIdentifierFilterColumn, IdentifierState, IdentifierType};
 use crate::model::trust_list_role::TrustListRoleEnum;
 use crate::model::trust_list_subscription::TrustListSubscriptionState;
-use crate::provider::trust_list_subscriber::TrustEntityResponse;
+use crate::provider::trust_list_subscriber::TrustEntityMetadata;
 use crate::service::certificate::dto::{CertificateResponseDTO, CreateCertificateRequestDTO};
 use crate::service::did::dto::{CreateDidRequestKeysDTO, DidResponseDTO};
 use crate::service::key::dto::{KeyGenerateCSRRequestSubjectDTO, KeyResponseDTO};
@@ -192,7 +192,7 @@ pub struct ResolvedTrustEntriesResponseDTO {
 
 #[derive(Debug, Clone)]
 pub struct ResolvedTrustEntryResponseDTO {
-    pub metadata: Option<TrustEntityResponse>,
+    pub metadata: Option<TrustEntityMetadata>,
     pub source: ResolvedTrustEntrySourceResponseDTO,
 }
 

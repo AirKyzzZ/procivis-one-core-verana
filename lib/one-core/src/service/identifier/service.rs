@@ -614,11 +614,16 @@ impl IdentifierService {
     ) -> Result<Vec<ResolvedTrustEntriesResponseDTO>, IdentifierServiceError> {
         let identifiers = self.fetch_identifiers(request.identifiers).await?;
 
+        let requested_roles = request.roles.clone().unwrap_or_default();
         let trust_list_subscriptions = self
             .fetch_trust_list_subscriptions(request.roles, request.trust_collection_ids)
             .await?;
         let all_resolved_entries = self
-            .resolve_trust_list_subscriptions(&identifiers, trust_list_subscriptions)
+            .resolve_trust_list_subscriptions(
+                &identifiers,
+                trust_list_subscriptions,
+                &requested_roles,
+            )
             .await?;
 
         let identifier_id_to_entries = group_entries_by_identifier_id(all_resolved_entries)?;
@@ -632,14 +637,19 @@ impl IdentifierService {
         &self,
         valid_identifiers: &[Identifier],
         trust_list_subscriptions: Vec<TrustListSubscription>,
+        requested_roles: &[TrustListRoleEnum],
     ) -> Result<
-        Vec<HashMap<IdentifierId, (TrustEntityResponse, TrustListSubscription)>>,
+        Vec<Vec<(IdentifierId, TrustEntityResponse, TrustListSubscription)>>,
         IdentifierServiceError,
     > {
         let mut all_resolved_entries = Vec::new();
         for mut trust_list_subscription in trust_list_subscriptions {
             let resolved_entries = self
-                .resolve_trust_list_subscription(valid_identifiers, &mut trust_list_subscription)
+                .resolve_trust_list_subscription(
+                    valid_identifiers,
+                    &mut trust_list_subscription,
+                    requested_roles,
+                )
                 .await?;
             all_resolved_entries.push(resolved_entries);
         }
@@ -650,8 +660,9 @@ impl IdentifierService {
         &self,
         identifiers: &[Identifier],
         trust_list_subscription: &mut TrustListSubscription,
+        requested_roles: &[TrustListRoleEnum],
     ) -> Result<
-        HashMap<IdentifierId, (TrustEntityResponse, TrustListSubscription)>,
+        Vec<(IdentifierId, TrustEntityResponse, TrustListSubscription)>,
         IdentifierServiceError,
     > {
         let trust_list_subscriber = self
@@ -683,20 +694,29 @@ impl IdentifierService {
                     "Failed to resolve entries for trust list subscription {}",
                     trust_list_subscription.reference
                 );
-                return Ok(HashMap::new());
+                return Ok(Vec::new());
             }
             Ok(resolved_entries) => resolved_entries,
         };
 
         Ok(resolved_entries
             .into_iter()
-            .map(|(identifier_id, trust_entity)| {
-                (
-                    identifier_id,
-                    (trust_entity, trust_list_subscription.clone()),
+            .flat_map(|(identifier_id, entities)| {
+                entities
+                    .into_iter()
+                    .map(move |entity| (identifier_id, entity))
+            })
+            .filter(|(_, trust_entity)| {
+                entry_matches_requested_roles(
+                    trust_entity,
+                    trust_list_subscription,
+                    requested_roles,
                 )
             })
-            .collect::<HashMap<_, _>>())
+            .map(|(identifier_id, trust_entity)| {
+                (identifier_id, trust_entity, trust_list_subscription.clone())
+            })
+            .collect())
     }
 
     async fn fetch_identifiers(
@@ -823,17 +843,30 @@ fn filter_resolvable_identifiers(
         .collect()
 }
 
+fn entry_matches_requested_roles(
+    entity: &TrustEntityResponse,
+    subscription: &TrustListSubscription,
+    requested_roles: &[TrustListRoleEnum],
+) -> bool {
+    if requested_roles.is_empty() || subscription.role.is_some() {
+        return true;
+    }
+    entity
+        .derived_role
+        .is_some_and(|role| requested_roles.contains(&role))
+}
+
 fn group_entries_by_identifier_id(
-    all_resolved_entries: Vec<HashMap<IdentifierId, (TrustEntityResponse, TrustListSubscription)>>,
+    all_resolved_entries: Vec<Vec<(IdentifierId, TrustEntityResponse, TrustListSubscription)>>,
 ) -> Result<HashMap<IdentifierId, Vec<ResolvedTrustEntryResponseDTO>>, IdentifierServiceError> {
     let mut identifier_to_entries = HashMap::new();
     for resolved_entries in all_resolved_entries {
-        for (identifier_id, (trust_entity, trust_list_subscription)) in resolved_entries {
+        for (identifier_id, trust_entity, trust_list_subscription) in resolved_entries {
             identifier_to_entries
                 .entry(identifier_id)
                 .or_insert(Vec::new())
                 .push(ResolvedTrustEntryResponseDTO {
-                    metadata: Some(trust_entity),
+                    metadata: Some(trust_entity.metadata),
                     source: trust_list_subscription.try_into()?,
                 });
         }
