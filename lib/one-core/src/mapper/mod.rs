@@ -577,7 +577,7 @@ mod tests {
             did_method: "didMethod".into(),
             deactivated: false,
             keys: Default::default(),
-            organisation: None,
+            organisation: dummy_organisation(None).into(),
             log: None,
         };
         let credential_schema_id = Uuid::new_v4().into();

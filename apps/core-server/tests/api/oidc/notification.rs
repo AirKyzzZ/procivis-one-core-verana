@@ -95,7 +95,7 @@ async fn setup_accepted_credential() -> (TestContext, Credential, CredentialSche
         .db
         .dids
         .create(
-            Some(organisation.clone()),
+            organisation.clone(),
             TestingDidParams {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,

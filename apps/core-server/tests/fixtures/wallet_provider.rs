@@ -44,7 +44,7 @@ pub(crate) async fn create_wallet_unit_attestation_issuer_identifier(
         .db
         .dids
         .create(
-            Some(org.to_owned()),
+            org.to_owned(),
             TestingDidParams {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,

@@ -407,7 +407,7 @@ pub fn dummy_did() -> Did {
         did_type: DidType::Local,
         did_method: "INTERNAL".into(),
         keys: Default::default(),
-        organisation: Some(dummy_organisation(None).into()),
+        organisation: dummy_organisation(None).into(),
         deactivated: false,
         log: None,
     }

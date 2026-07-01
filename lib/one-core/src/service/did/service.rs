@@ -132,16 +132,8 @@ impl DidService {
         let Some(did) = did else {
             return Err(DidServiceError::NotFound(*id));
         };
-        throw_if_org_id_not_matching_session(
-            did.organisation
-                .as_ref()
-                .ok_or(DidServiceError::MappingError(
-                    "organisation is None".to_string(),
-                ))?
-                .id_ref(),
-            &*self.session_provider,
-        )
-        .error_while("checking session")?;
+        throw_if_org_id_not_matching_session(did.organisation.id_ref(), &*self.session_provider)
+            .error_while("checking session")?;
 
         response_from_did(did).await
     }
@@ -228,16 +220,8 @@ impl DidService {
         let Some(did) = did else {
             return Err(DidServiceError::NotFound(*id));
         };
-        throw_if_org_id_not_matching_session(
-            did.organisation
-                .as_ref()
-                .ok_or(DidServiceError::MappingError(
-                    "organisation is None".to_string(),
-                ))?
-                .id_ref(),
-            &*self.session_provider,
-        )
-        .error_while("checking session")?;
+        throw_if_org_id_not_matching_session(did.organisation.id_ref(), &*self.session_provider)
+            .error_while("checking session")?;
 
         let did_method_key = &did.did_method;
         let (did_method, _) = self.did_method_provider.get_did_method(did_method_key)?;

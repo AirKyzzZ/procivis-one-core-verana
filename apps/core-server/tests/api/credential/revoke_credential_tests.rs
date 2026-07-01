@@ -28,7 +28,7 @@ async fn test_revoke_credential_with_bitstring_status_list_success() {
         .db
         .dids
         .create(
-            Some(organisation.clone()),
+            organisation.clone(),
             TestingDidParams {
                 did: Some(
                     DidValue::from_str("did:key:zDnaetpgFTTteRE2RWG8DtbNX6WNWxxgFs627d7z2JVjboM2L")
@@ -99,7 +99,7 @@ async fn test_revoke_credential_with_webhook() {
         .db
         .dids
         .create(
-            Some(organisation.clone()),
+            organisation.clone(),
             TestingDidParams {
                 did: Some(
                     DidValue::from_str("did:key:zDnaetpgFTTteRE2RWG8DtbNX6WNWxxgFs627d7z2JVjboM2L")
@@ -192,7 +192,7 @@ async fn test_revoke_credential_deleted() {
         .db
         .dids
         .create(
-            Some(organisation.clone()),
+            organisation.clone(),
             TestingDidParams {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
@@ -225,7 +225,7 @@ async fn test_revoke_credential_deleted() {
         .db
         .dids
         .create(
-            Some(organisation.clone()),
+            organisation.clone(),
             TestingDidParams {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,

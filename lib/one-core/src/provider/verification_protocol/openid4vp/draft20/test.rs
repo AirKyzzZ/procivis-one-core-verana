@@ -412,7 +412,7 @@ fn test_proof(proof_id: Uuid, credential_format: CredentialFormat) -> Proof {
                     reference: "1".to_string(),
                 }]
                 .into(),
-                organisation: None,
+                organisation: dummy_organisation(None).into(),
                 log: None,
             }),
             ..dummy_identifier()

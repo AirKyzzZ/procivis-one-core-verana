@@ -57,7 +57,7 @@ pub struct Did {
     pub log: Option<String>,
 
     pub keys: RelatedVec<RelatedKey>,
-    pub organisation: Option<Related<Organisation>>,
+    pub organisation: Related<Organisation>,
 }
 
 impl Did {

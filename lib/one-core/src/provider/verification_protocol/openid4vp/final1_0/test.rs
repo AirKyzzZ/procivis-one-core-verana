@@ -223,7 +223,7 @@ fn test_verifier_proof(format: CredentialFormat, verifier_key: Option<RelatedKey
                         reference: "1".to_string(),
                     }])
                     .into(),
-                organisation: None,
+                organisation: dummy_organisation(None).into(),
                 log: None,
             }),
             ..dummy_identifier()

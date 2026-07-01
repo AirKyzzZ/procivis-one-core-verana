@@ -20,7 +20,7 @@ async fn test_db_schema_did() {
         "log",
     ];
     if schema.backend() == DbBackend::MySql {
-        columns.extend(["deleted_at_materialized", "organisation_id_materialized"]);
+        columns.extend(["deleted_at_materialized"]);
     }
 
     let mut index_columns1 = vec!["name", "organisation_id"];
@@ -30,12 +30,10 @@ async fn test_db_schema_did() {
         index_columns1.push("deleted_at")
     }
 
-    let mut index_columns2 = vec!["did"];
+    let mut index_columns2 = vec!["did", "organisation_id"];
     if schema.backend() == DbBackend::MySql {
-        index_columns2.push("organisation_id_materialized");
         index_columns2.push("deleted_at_materialized");
     } else {
-        index_columns2.push("organisation_id");
         index_columns2.push("deleted_at");
     }
 
@@ -85,7 +83,8 @@ async fn test_db_schema_did() {
         .default(None);
     did.column("organisation_id")
         .r#type(ColumnType::Uuid)
-        .nullable(true)
+        .nullable(false)
+        .default(None)
         .foreign_key("fk-Did-OrganisationId", "organisation", "id");
     did.column("deactivated")
         .r#type(ColumnType::Boolean)

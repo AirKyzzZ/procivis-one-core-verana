@@ -1432,7 +1432,7 @@ fn generic_credential() -> Credential {
         created_date: now,
         last_modified: now,
         name: "did1".to_string(),
-        organisation: Some(organisation.clone().into()),
+        organisation: organisation.clone().into(),
         did: "did:example:1".parse().unwrap(),
         did_type: DidType::Local,
         did_method: "KEY".into(),

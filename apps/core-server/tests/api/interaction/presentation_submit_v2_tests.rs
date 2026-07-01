@@ -379,7 +379,7 @@ async fn setup_submittable_presentation_dcql(
         .db
         .dids
         .create(
-            Some(organisation.clone()),
+            organisation.clone(),
             TestingDidParams {
                 keys: Some(vec![
                     RelatedKey {
@@ -701,7 +701,7 @@ async fn test_presentation_submit_endpoint_for_openid4vp_dcql_array_claim() {
         .db
         .dids
         .create(
-            Some(organisation.clone()),
+            organisation.clone(),
             TestingDidParams {
                 keys: Some(vec![
                     RelatedKey {

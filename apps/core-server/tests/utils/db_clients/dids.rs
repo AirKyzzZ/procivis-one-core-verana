@@ -18,11 +18,7 @@ impl DidsDB {
         Self { repository }
     }
 
-    pub async fn create(
-        &self,
-        organisation: Option<Organisation>,
-        params: TestingDidParams,
-    ) -> Did {
+    pub async fn create(&self, organisation: Organisation, params: TestingDidParams) -> Did {
         let now = one_core::clock::now_utc();
 
         let did_id = params.id.unwrap_or(DidId::from(Uuid::new_v4()));
@@ -32,7 +28,7 @@ impl DidsDB {
             created_date: params.created_date.unwrap_or(now),
             last_modified: params.last_modified.unwrap_or(now),
             name: unwrap_or_random(params.name),
-            organisation: organisation.map(Into::into),
+            organisation: organisation.into(),
             did: params
                 .did
                 .unwrap_or(DidValue::from_str(&format!("did:test:{did_id}")).unwrap()),

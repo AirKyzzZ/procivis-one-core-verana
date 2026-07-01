@@ -23,7 +23,7 @@ async fn test_get_sd_jwt_vc_issuer_metadata_success_with_did() {
         .db
         .dids
         .create(
-            Some(organisation.clone()),
+            organisation.clone(),
             TestingDidParams {
                 did: Some(DidValue::from_str("did:test:123").unwrap()),
                 did_type: Some(DidType::Local),

@@ -91,7 +91,7 @@ async fn new_test_data() -> TestContextWithOID4VCIData {
         .db
         .dids
         .create(
-            Some(organisation.clone()),
+            organisation.clone(),
             TestingDidParams {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,

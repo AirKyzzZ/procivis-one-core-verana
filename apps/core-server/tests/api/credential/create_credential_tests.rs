@@ -301,7 +301,7 @@ async fn test_create_credential_with_issuer_key() {
         .db
         .dids
         .create(
-            Some(organisation.clone()),
+            organisation.clone(),
             TestingDidParams {
                 keys: Some(vec![
                     RelatedKey {
@@ -391,7 +391,7 @@ async fn test_fail_to_create_credential_invalid_key_role() {
         .db
         .dids
         .create(
-            Some(organisation.clone()),
+            organisation.clone(),
             TestingDidParams {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::CapabilityInvocation,

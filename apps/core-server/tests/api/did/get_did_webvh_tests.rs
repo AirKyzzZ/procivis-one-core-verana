@@ -19,7 +19,7 @@ async fn test_get_did_webvh_ok() {
         .db
         .dids
         .create(
-            Some(organisation.clone()),
+            organisation.clone(),
             TestingDidParams {
                 log: Some(log.clone()),
                 did_type: Some(DidType::Local),
@@ -55,7 +55,7 @@ async fn test_get_did_webvh_success_did_deactivated() {
         .db
         .dids
         .create(
-            Some(organisation.clone()),
+            organisation.clone(),
             TestingDidParams {
                 log: Some(log.clone()),
                 did_type: Some(DidType::Local),

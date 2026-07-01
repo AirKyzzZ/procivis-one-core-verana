@@ -50,7 +50,7 @@ async fn test_revoke_check_failed_if_not_holder_role() {
         .db
         .dids
         .create(
-            Some(organisation.clone()),
+            organisation.clone(),
             TestingDidParams {
                 did_method: Some("KEY".into()),
                 did: Some(
@@ -348,7 +348,7 @@ async fn setup_bitstring_status_list_success(
         .db
         .dids
         .create(
-            Some(organisation.clone()),
+            organisation.clone(),
             TestingDidParams {
                 did_method: Some("KEY".into()),
                 did: Some(issuer_did.parse().unwrap()),
@@ -450,7 +450,7 @@ async fn test_revoke_check_mdoc_update() {
         .db
         .dids
         .create(
-            Some(organisation.clone()),
+            organisation.clone(),
             TestingDidParams {
                 did_method: Some("KEY".into()),
                 did: Some(
@@ -592,7 +592,7 @@ async fn test_revoke_check_mdoc_update_invalid() {
         .db
         .dids
         .create(
-            Some(organisation.clone()),
+            organisation.clone(),
             TestingDidParams {
                 did_method: Some("KEY".into()),
                 did: Some(
@@ -737,7 +737,7 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
         .db
         .dids
         .create(
-            Some(organisation.clone()),
+            organisation.clone(),
             TestingDidParams {
                 did_method: Some("KEY".into()),
                 did: Some(
@@ -885,7 +885,7 @@ async fn test_revoke_check_token_update() {
         .db
         .dids
         .create(
-            Some(organisation.clone()),
+            organisation.clone(),
             TestingDidParams {
                 did_method: Some("KEY".into()),
                 did: Some(
@@ -1017,7 +1017,7 @@ async fn test_revoke_check_mdoc_tokens_expired() {
         .db
         .dids
         .create(
-            Some(organisation.clone()),
+            organisation.clone(),
             TestingDidParams {
                 did_method: Some("KEY".into()),
                 did: Some(
@@ -1152,7 +1152,7 @@ async fn test_revoke_check_mdoc_fail_to_update_token_valid_mso() {
         .db
         .dids
         .create(
-            Some(organisation.clone()),
+            organisation.clone(),
             TestingDidParams {
                 did_method: Some("KEY".into()),
                 did: Some(
@@ -1273,7 +1273,7 @@ async fn test_suspended_to_valid_mdoc() {
         .db
         .dids
         .create(
-            Some(organisation.clone()),
+            organisation.clone(),
             TestingDidParams {
                 did_method: Some("KEY".into()),
                 did: Some(
@@ -1454,7 +1454,7 @@ async fn test_suspended_to_suspended_update_failed() {
         .db
         .dids
         .create(
-            Some(organisation.clone()),
+            organisation.clone(),
             TestingDidParams {
                 did_method: Some("KEY".into()),
                 did: Some(
@@ -1589,7 +1589,7 @@ async fn test_revoke_check_failed_deleted_credential() {
         .db
         .dids
         .create(
-            Some(organisation.clone()),
+            organisation.clone(),
             TestingDidParams {
                 did_method: Some("KEY".into()),
                 did: Some(
@@ -1726,7 +1726,7 @@ async fn minimal_mdoc_credential(params: serde_json::Value) -> SerializedCredent
             is_remote: true,
             state: IdentifierState::Active,
             deleted_at: None,
-            organisation: dummy_organisation(Some(Uuid::new_v4().into())).into(),
+            organisation: dummy_organisation(None).into(),
             did: Some(Did {
                 deleted_at: None,
                 id: Uuid::new_v4().into(),
@@ -1741,7 +1741,7 @@ async fn minimal_mdoc_credential(params: serde_json::Value) -> SerializedCredent
                 deactivated: false,
                 log: None,
                 keys: Default::default(),
-                organisation: None,
+                organisation: dummy_organisation(None).into(),
             }),
             key: None,
             certificates: None,

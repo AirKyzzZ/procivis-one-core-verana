@@ -16,7 +16,7 @@ async fn test_update_did_cannot_deactivate_did_key() {
         .db
         .dids
         .create(
-            Some(organisation.clone()),
+            organisation.clone(),
             TestingDidParams {
                 did_method: Some("KEY".into()),
                 ..Default::default()
@@ -39,7 +39,7 @@ async fn test_update_did_deactivates_local_did_web() {
         .db
         .dids
         .create(
-            Some(organisation.clone()),
+            organisation.clone(),
             TestingDidParams {
                 did_method: Some("WEB".into()),
                 ..Default::default()
@@ -74,7 +74,7 @@ async fn test_update_did_cannot_deactivate_remote_did_web() {
         .db
         .dids
         .create(
-            Some(organisation.clone()),
+            organisation.clone(),
             TestingDidParams {
                 did_method: Some("WEB".into()),
                 did_type: Some(DidType::Remote),
@@ -98,7 +98,7 @@ async fn test_update_did_same_deactivated_status_as_requested() {
         .db
         .dids
         .create(
-            Some(organisation.clone()),
+            organisation.clone(),
             TestingDidParams {
                 did_method: Some("WEB".into()),
                 deactivated: Some(true),

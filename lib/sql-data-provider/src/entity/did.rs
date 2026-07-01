@@ -20,7 +20,7 @@ pub struct Model {
     pub type_field: DidType,
     pub method: DidMethodId,
     pub log: Option<String>,
-    pub organisation_id: Option<OrganisationId>,
+    pub organisation_id: OrganisationId,
     pub deactivated: bool,
 }
 

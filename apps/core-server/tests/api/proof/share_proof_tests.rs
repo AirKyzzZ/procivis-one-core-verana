@@ -226,7 +226,7 @@ async fn test_share_proof_success_with_separate_encryption_key() {
         .db
         .dids
         .create(
-            Some(organisation.clone()),
+            organisation.clone(),
             TestingDidParams {
                 keys: Some(vec![
                     RelatedKey {

@@ -74,7 +74,7 @@ async fn setup() -> TestSetup {
         deactivated: false,
         log: None,
         keys: Default::default(),
-        organisation: Some(organisation.clone().into()),
+        organisation: organisation.clone().into(),
     };
 
     TestSetup {
@@ -221,7 +221,7 @@ async fn test_get_identifier_list() {
         deactivated: false,
         log: None,
         keys: Default::default(),
-        organisation: Some(setup.organisation.clone().into()),
+        organisation: setup.organisation.clone().into(),
     };
 
     let identifier2 = Identifier {

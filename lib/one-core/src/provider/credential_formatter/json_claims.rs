@@ -276,7 +276,7 @@ pub fn prepare_identifier(
                 deactivated: false,
                 log: None,
                 keys: Default::default(),
-                organisation: Some(organisation.to_owned().into()),
+                organisation: organisation.to_owned().into(),
             };
             (
                 None,

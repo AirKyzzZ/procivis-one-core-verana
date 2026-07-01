@@ -144,13 +144,14 @@ async fn test_handle_invitation_success() {
         .expect_get_or_create_remote_identifier()
         .once()
         .returning(|_, did, _| {
+            let organisation = dummy_organisation(None);
             Ok((
                 Identifier {
                     id: Uuid::new_v4().into(),
                     created_date: crate::clock::now_utc(),
                     last_modified: crate::clock::now_utc(),
                     name: "verifier".to_string(),
-                    organisation: dummy_organisation(Some(uuid::Uuid::new_v4().into())).into(),
+                    organisation: organisation.clone().into(),
                     did: None,
                     key: None,
                     certificates: None,
@@ -171,7 +172,7 @@ async fn test_handle_invitation_success() {
                     did_method: "KEY".into(),
                     deactivated: false,
                     keys: Default::default(),
-                    organisation: None,
+                    organisation: organisation.into(),
                     log: None,
                 }),
             ))

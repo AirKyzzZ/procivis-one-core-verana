@@ -832,7 +832,7 @@ fn dummy_did() -> Did {
         did_type: DidType::Local,
         did_method: "John".into(),
         keys: Default::default(),
-        organisation: None,
+        organisation: dummy_organisation(None).into(),
         deactivated: false,
         log: None,
     }

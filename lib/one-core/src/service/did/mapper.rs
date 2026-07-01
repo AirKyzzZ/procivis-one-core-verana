@@ -23,8 +23,6 @@ use crate::provider::did_method::{DidCreated, DidKeys, DidUpdate};
 use crate::service::key::dto::KeyListItemResponseDTO;
 
 pub(crate) async fn response_from_did(value: Did) -> Result<DidResponseDTO, DidServiceError> {
-    let organisation_id = value.organisation.map(|value| value.id());
-
     let keys = value.keys.as_ref().await?;
     let filter_keys = |role: KeyRole| -> Vec<KeyListItemResponseDTO> {
         keys.iter()
@@ -38,7 +36,7 @@ pub(crate) async fn response_from_did(value: Did) -> Result<DidResponseDTO, DidS
         created_date: value.created_date,
         last_modified: value.last_modified,
         name: value.name,
-        organisation_id,
+        organisation_id: Some(value.organisation.id()),
         did: value.did,
         did_type: value.did_type,
         did_method: value.did_method,
@@ -124,7 +122,7 @@ pub(crate) fn did_from_did_request(
         last_modified: now,
         deleted_at: None,
         name: request.name,
-        organisation: Some(organisation.into()),
+        organisation: organisation.into(),
         did: did_create.did,
         did_type: DidType::Local,
         did_method: request.did_method,

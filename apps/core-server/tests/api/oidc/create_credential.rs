@@ -550,7 +550,7 @@ async fn issuer_setup(additional_config: Option<String>) -> TestIssuerSetup {
         .db
         .dids
         .create(
-            Some(organisation.clone()),
+            organisation.clone(),
             TestingDidParams {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,

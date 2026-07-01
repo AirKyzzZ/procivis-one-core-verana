@@ -48,7 +48,7 @@ impl IdentifierCreatorProto {
                     created_date: now,
                     last_modified: now,
                     name: name.for_id(id),
-                    organisation: Some(organisation.to_owned().into()),
+                    organisation: organisation.to_owned().into(),
                     did: did_value.to_owned(),
                     did_method,
                     did_type: DidType::Remote,

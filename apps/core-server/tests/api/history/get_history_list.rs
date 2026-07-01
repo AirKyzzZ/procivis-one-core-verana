@@ -71,7 +71,7 @@ async fn test_get_history_list_schema_joins_credentials() {
     let issuer_did = context
         .db
         .dids
-        .create(Some(organisation.clone()), TestingDidParams::default())
+        .create(organisation.clone(), TestingDidParams::default())
         .await;
     let identifier = context
         .db
@@ -501,7 +501,7 @@ async fn test_get_history_search_by_credential_schema_name() {
     let issuer_did = context
         .db
         .dids
-        .create(Some(organisation.clone()), TestingDidParams::default())
+        .create(organisation.clone(), TestingDidParams::default())
         .await;
     let identifier = context
         .db
@@ -594,7 +594,7 @@ async fn test_get_history_search_defaults_to_all() {
     let issuer_did = context
         .db
         .dids
-        .create(Some(organisation.clone()), TestingDidParams::default())
+        .create(organisation.clone(), TestingDidParams::default())
         .await;
     let identifier = context
         .db

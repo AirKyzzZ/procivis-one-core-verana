@@ -188,7 +188,7 @@ fn generic_credential_did() -> Credential {
         did_method: "KEY".into(),
         keys: Default::default(),
         deactivated: false,
-        organisation: Some(dummy_organisation(None).into()),
+        organisation: dummy_organisation(None).into(),
         log: None,
     };
     let issuer_identifier = Identifier {

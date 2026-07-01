@@ -136,7 +136,7 @@ async fn test_create_did() {
             deleted_at: None,
             id,
             name: "Name".to_string(),
-            organisation: Some(organisation.into()),
+            organisation: organisation.into(),
             did: "did:key:123".parse().unwrap(),
             did_type: DidType::Local,
             created_date: get_dummy_date(),
@@ -187,7 +187,7 @@ async fn test_create_did_invalid_organisation() {
             deleted_at: None,
             id: Uuid::new_v4().into(),
             name: "Name".to_string(),
-            organisation: Some(non_existing_organisation.into()),
+            organisation: non_existing_organisation.into(),
             did: "did:key:123".parse().unwrap(),
             did_type: DidType::Local,
             created_date: get_dummy_date(),
@@ -224,7 +224,7 @@ async fn test_get_did_by_value_existing_inside_organisation() {
     assert_eq!(content.did_type, DidType::Local);
     assert_eq!(content.did, did_value);
     assert_eq!(content.name, did_name);
-    assert_eq!(content.organisation.unwrap().id(), organisation.id);
+    assert_eq!(content.organisation.id(), organisation.id);
 }
 
 #[tokio::test]
@@ -246,7 +246,7 @@ async fn test_get_did_by_value_existing_ignoring_organisation() {
     assert_eq!(content.id, did_id);
     assert_eq!(content.did, did_value);
     assert_eq!(content.name, did_name);
-    assert_eq!(content.organisation.unwrap().id(), organisation.id);
+    assert_eq!(content.organisation.id(), organisation.id);
 }
 
 #[tokio::test]
@@ -315,7 +315,7 @@ async fn test_get_did_existing() {
     assert_eq!(content.did, did_value);
     assert_eq!(content.name, did_name);
 
-    assert_eq!(content.organisation.unwrap().id(), organisation.id);
+    assert_eq!(content.organisation.id(), organisation.id);
     let keys = content.keys.as_ref().await.unwrap();
     assert_eq!(keys.len(), 1);
     assert_eq!(keys[0].key.id, key.id);
@@ -579,7 +579,7 @@ async fn test_get_did_list_sorting() {
         name: Set("a".to_owned()),
         type_field: Set(did::DidType::Local),
         method: Set("KEY".into()),
-        organisation_id: Set(Some(organisation.id)),
+        organisation_id: Set(organisation.id),
         deactivated: Set(false),
         deleted_at: NotSet,
         log: NotSet,
@@ -596,7 +596,7 @@ async fn test_get_did_list_sorting() {
         name: Set("b".to_owned()),
         type_field: Set(did::DidType::Local),
         method: Set("KEY".into()),
-        organisation_id: Set(Some(organisation.id)),
+        organisation_id: Set(organisation.id),
         deactivated: Set(false),
         deleted_at: NotSet,
         log: NotSet,
@@ -767,7 +767,7 @@ async fn test_get_did_list_complex_filter_condition() {
         name: Set("a".to_owned()),
         type_field: Set(did::DidType::Local),
         method: Set("KEY".into()),
-        organisation_id: Set(Some(organisation.id)),
+        organisation_id: Set(organisation.id),
         deactivated: Set(false),
         deleted_at: NotSet,
         log: NotSet,
@@ -784,7 +784,7 @@ async fn test_get_did_list_complex_filter_condition() {
         name: Set("b".to_owned()),
         type_field: Set(did::DidType::Local),
         method: Set("KEY".into()),
-        organisation_id: Set(Some(organisation.id)),
+        organisation_id: Set(organisation.id),
         deactivated: Set(false),
         deleted_at: NotSet,
         log: NotSet,

@@ -2213,7 +2213,7 @@ pub enum CredentialSchema {
     TransactionCodeDescription,
 }
 
-#[derive(DeriveIden)]
+#[derive(DeriveIden, Clone)]
 pub enum Did {
     Table,
     Id,

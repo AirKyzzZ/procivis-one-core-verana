@@ -170,7 +170,7 @@ async fn test_run_retain_proof_check_with_update() {
         .db
         .dids
         .create(
-            Some(organisation.clone()),
+            organisation.clone(),
             TestingDidParams {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
@@ -559,7 +559,7 @@ async fn test_run_task_holder_check_credential_status_with_params_none_existing_
         .db
         .dids
         .create(
-            Some(organisation.clone()),
+            organisation.clone(),
             TestingDidParams {
                 did_method: Some("KEY".into()),
                 did: Some(
@@ -594,7 +594,7 @@ async fn test_run_task_holder_check_credential_status_with_params_none_existing_
         .db
         .dids
         .create(
-            Some(organisation.clone()),
+            organisation.clone(),
             TestingDidParams {
                 did_method: Some("KEY".into()),
                 did: Some(
@@ -762,7 +762,7 @@ async fn test_run_interaction_expiration_check_with_update() {
         .db
         .dids
         .create(
-            Some(organisation.clone()),
+            organisation.clone(),
             TestingDidParams {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,

@@ -6,8 +6,6 @@ use uuid::Uuid;
 
 use crate::model::did::{Did, DidListQuery, GetDidList, UpdateDidRequest};
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
-use crate::model::organisation::Organisation;
-use crate::model::relation::Related;
 use crate::proto::session_provider::{SessionExt, SessionProvider};
 use crate::repository::did_repository::DidRepository;
 use crate::repository::error::DataLayerError;
@@ -25,13 +23,8 @@ impl DidHistoryDecorator {
         id: DidId,
         name: String,
         action: HistoryAction,
-        organisation: Option<&Related<Organisation>>,
+        organisation_id: OrganisationId,
     ) {
-        let Some(organisation_id) = organisation.map(|o| o.id()) else {
-            tracing::warn!("did (id: {id}) missing organisation");
-            return;
-        };
-
         let result = self
             .history_repository
             .create_history(History {
@@ -60,10 +53,10 @@ impl DidHistoryDecorator {
 impl DidRepository for DidHistoryDecorator {
     async fn create_did(&self, request: Did) -> Result<DidId, DataLayerError> {
         let name = request.name.clone();
-        let organisation = request.organisation.to_owned();
+        let organisation_id = request.organisation.id();
         let did_id = self.inner.create_did(request).await?;
 
-        self.create_history(did_id, name, HistoryAction::Created, organisation.as_ref())
+        self.create_history(did_id, name, HistoryAction::Created, organisation_id)
             .await;
 
         Ok(did_id)
@@ -103,7 +96,7 @@ impl DidRepository for DidHistoryDecorator {
                 } else {
                     HistoryAction::Reactivated
                 },
-                did.organisation.as_ref(),
+                did.organisation.id(),
             )
             .await;
         };
@@ -117,7 +110,7 @@ impl DidRepository for DidHistoryDecorator {
             did.id,
             did.name.clone(),
             HistoryAction::Deleted,
-            did.organisation.as_ref(),
+            did.organisation.id(),
         )
         .await;
         Ok(())

@@ -1754,7 +1754,7 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
             is_remote: true,
             state: IdentifierState::Active,
             deleted_at: None,
-            organisation: dummy_organisation(Some(uuid::Uuid::new_v4().into())).into(),
+            organisation: dummy_organisation(None).into(),
             did: Some(Did {
                 deleted_at: None,
                 id: Uuid::new_v4().into(),
@@ -1765,7 +1765,7 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
                 did_type: DidType::Remote,
                 did_method: "KEY".into(),
                 keys: Default::default(),
-                organisation: None,
+                organisation: dummy_organisation(None).into(),
                 deactivated: false,
                 log: None,
             }),

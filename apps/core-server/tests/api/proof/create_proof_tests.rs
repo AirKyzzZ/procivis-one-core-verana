@@ -278,7 +278,7 @@ async fn test_create_proof_mdoc_without_key_agreement_key() {
         .db
         .dids
         .create(
-            Some(organisation.clone()),
+            organisation.clone(),
             TestingDidParams {
                 keys: Some(vec![
                     RelatedKey {
@@ -381,7 +381,7 @@ async fn test_create_proof_success_without_key_agreement_key() {
         .db
         .dids
         .create(
-            Some(organisation.clone()),
+            organisation.clone(),
             TestingDidParams {
                 keys: Some(vec![
                     RelatedKey {

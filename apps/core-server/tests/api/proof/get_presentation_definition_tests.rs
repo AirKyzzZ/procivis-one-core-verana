@@ -240,7 +240,7 @@ async fn test_get_presentation_definition_open_id_vp_with_match() {
         .db
         .dids
         .create(
-            Some(organisation.clone()),
+            organisation.clone(),
             TestingDidParams {
                 did_type: Some(DidType::Remote),
                 did: Some(

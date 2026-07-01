@@ -271,7 +271,7 @@ async fn setup_submittable_presentation(
         .db
         .dids
         .create(
-            Some(organisation.clone()),
+            organisation.clone(),
             TestingDidParams {
                 keys: Some(vec![
                     RelatedKey {
@@ -493,7 +493,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
     let verifier_did = context
         .db
         .dids
-        .create(Some(organisation.to_owned()), Default::default())
+        .create(organisation.clone(), Default::default())
         .await;
     let verifier_identifier = context
         .db
@@ -531,7 +531,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
         .db
         .dids
         .create(
-            Some(organisation.to_owned()),
+            organisation.clone(),
             TestingDidParams {
                 did_method: Some("KEY".into()),
                 did: Some(

@@ -100,8 +100,6 @@ impl IntoJoinRelations for DidFilterValue {
 
 impl From<Did> for did::ActiveModel {
     fn from(value: Did) -> Self {
-        let organisation_id = value.organisation.map(|f| f.id());
-
         Self {
             id: Set(value.id),
             did: Set(value.did.to_owned()),
@@ -110,7 +108,7 @@ impl From<Did> for did::ActiveModel {
             name: Set(value.name),
             type_field: Set(value.did_type.into()),
             method: Set(value.did_method),
-            organisation_id: Set(organisation_id),
+            organisation_id: Set(value.organisation.id()),
             deactivated: Set(value.deactivated),
             deleted_at: Set(value.deleted_at),
             log: Set(value.log),
@@ -124,10 +122,6 @@ pub(crate) fn did_from_model(
     organisation_repository: &Arc<dyn OrganisationRepository>,
     key_repository: &Arc<dyn KeyRepository>,
 ) -> Did {
-    let organisation = model
-        .organisation_id
-        .map(|organisation_id| Related::new(organisation_id, organisation_repository.to_owned()));
-
     let id = model.id;
     Did {
         id,
@@ -138,7 +132,7 @@ pub(crate) fn did_from_model(
         did: model.did,
         did_type: model.type_field.into(),
         did_method: model.method,
-        organisation,
+        organisation: Related::new(model.organisation_id, organisation_repository.to_owned()),
         keys: RelatedVec::new(DidKeysLoader {
             id,
             db: db.clone(),

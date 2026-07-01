@@ -114,7 +114,7 @@ impl TestContext {
             .db
             .dids
             .create(
-                Some(organisation.clone()),
+                organisation.clone(),
                 TestingDidParams {
                     keys: Some(vec![
                         RelatedKey {

@@ -719,14 +719,12 @@ async fn test_get_client_metadata_success() {
                 created_date: now,
                 last_modified: now,
                 name: "did1".to_string(),
-                organisation: Some(
-                    dummy_organisation(Some(
-                        Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
-                            .unwrap()
-                            .into(),
-                    ))
-                    .into(),
-                ),
+                organisation: dummy_organisation(Some(
+                    Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+                        .unwrap()
+                        .into(),
+                ))
+                .into(),
                 did: "did:example:1".parse().unwrap(),
                 did_type: DidType::Local,
                 did_method: "KEY".into(),
