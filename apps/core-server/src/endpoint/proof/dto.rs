@@ -138,7 +138,7 @@ pub(crate) struct CreateProofRequestRestDTO {
     /// proof request state changes. See
     /// [Webhooks](https://docs.procivis.ch/webhooks) for configuration.
     pub webhook_destination_url: Option<String>,
-    /// Optional subscriber information associated with this proof request
+    /// Optional subscriber information associated with this proof request.
     pub subscriber_information: Option<String>,
 }
 

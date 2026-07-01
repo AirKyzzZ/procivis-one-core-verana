@@ -504,7 +504,7 @@ pub(crate) struct CreateCredentialRequestRestDTO {
     /// credential state changes. See
     /// [Webhooks](https://docs.procivis.ch/webhooks) for configuration.
     pub webhook_destination_url: Option<String>,
-    /// Optional subscriber information associated with this credential
+    /// Optional subscriber information associated with this credential.
     pub subscriber_information: Option<String>,
 }
 
