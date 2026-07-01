@@ -264,7 +264,7 @@ async fn test_credential_formatting_ok_for_ecdsa() {
         issuer_certificate: Some(Certificate {
             id: cert_id.into(),
             identifier_id: Uuid::new_v4().into(),
-            organisation: None,
+            organisation: dummy_organisation(None).into(),
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
             deleted_at: None,
@@ -528,7 +528,7 @@ async fn test_unverified_credential_extraction() {
         issuer_certificate: Some(Certificate {
             id: Uuid::new_v4().into(),
             identifier_id: Uuid::new_v4().into(),
-            organisation: None,
+            organisation: dummy_organisation(None).into(),
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
             deleted_at: None,
@@ -817,7 +817,7 @@ async fn format_and_extract_ecdsa() -> DetailCredential {
         issuer_certificate: Some(Certificate {
             id: Uuid::new_v4().into(),
             identifier_id: Uuid::new_v4().into(),
-            organisation: Some(dummy_organisation(None).into()),
+            organisation: dummy_organisation(None).into(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             deleted_at: None,

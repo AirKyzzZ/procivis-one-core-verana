@@ -103,7 +103,8 @@ async fn test_db_schema_certificate() {
     certificate
         .column("organisation_id")
         .r#type(ColumnType::Uuid)
-        .nullable(true)
+        .nullable(false)
+        .default(None)
         .foreign_key("fk_certificate_organisation_id", "organisation", "id");
     certificate
         .column("deleted_at")

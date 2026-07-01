@@ -192,7 +192,7 @@ async fn insert_did_to_database(
 async fn insert_certificate_to_database(
     database: &DatabaseConnection,
     identifier_id: IdentifierId,
-    organisation_id: Option<OrganisationId>,
+    organisation_id: OrganisationId,
     key_id: Option<KeyId>,
     deleted: bool,
 ) -> CertificateId {
@@ -453,7 +453,7 @@ async fn add_unexportable_certificates(
             insert_certificate_to_database(
                 db,
                 identifier_id,
-                Some(organisation_id),
+                organisation_id,
                 Some((*key_id).into()),
                 false,
             )
@@ -467,7 +467,7 @@ async fn add_unexportable_certificates(
             insert_certificate_to_database(
                 db,
                 identifier_id,
-                Some(organisation_id),
+                organisation_id,
                 Some((*key_id).into()),
                 false,
             )
@@ -483,7 +483,7 @@ async fn add_unexportable_certificates(
             insert_certificate_to_database(
                 db,
                 identifier_id,
-                Some(organisation_id),
+                organisation_id,
                 Some((*key_id).into()),
                 true,
             )
@@ -571,7 +571,7 @@ async fn add_identifier_with_type(
             insert_certificate_to_database(
                 db,
                 exportable_identifier,
-                Some(organisation_id),
+                organisation_id,
                 Some(key_id.into()),
                 false,
             )
@@ -591,7 +591,7 @@ async fn add_identifier_with_type(
             insert_certificate_to_database(
                 db,
                 exportable_identifier,
-                Some(organisation_id),
+                organisation_id,
                 Some(key_id.into()),
                 false,
             )
@@ -745,7 +745,14 @@ async fn test_fetch_unexportable_identifiers_certs_remote() {
         IdentifierType::Certificate,
     )
     .await;
-    insert_certificate_to_database(&setup.db, exportable_identifier, None, None, false).await;
+    insert_certificate_to_database(
+        &setup.db,
+        exportable_identifier,
+        setup.organisation_id,
+        None,
+        false,
+    )
+    .await;
 
     let unexportable = setup.provider.fetch_unexportable(None).await.unwrap();
 

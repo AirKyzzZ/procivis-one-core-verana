@@ -489,6 +489,7 @@ async fn test_create_proof_success_with_certificate() {
         .certificates
         .create(
             identifier.id,
+            organisation.clone(),
             TestingCertificateParams {
                 key: Some(key),
                 ..Default::default()
@@ -573,6 +574,7 @@ async fn test_create_proof_certificate_without_authentication_role() {
         .certificates
         .create(
             identifier.id,
+            organisation.clone(),
             TestingCertificateParams {
                 key: Some(key),
                 roles: Some(vec![CertificateRole::AssertionMethod]),

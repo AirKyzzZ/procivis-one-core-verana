@@ -20,7 +20,7 @@ async fn test_get_cert_fail_session_org_mismatch() {
         Ok(Some(Certificate {
             id: Uuid::new_v4().into(),
             identifier_id: Uuid::new_v4().into(),
-            organisation: Some(dummy_organisation(None).into()),
+            organisation: dummy_organisation(None).into(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             deleted_at: None,
@@ -52,7 +52,7 @@ async fn test_get_certificate_authority_invalid_identifier() {
         Ok(Some(Certificate {
             id,
             identifier_id: Uuid::new_v4().into(),
-            organisation: Some(dummy_organisation(None).into()),
+            organisation: dummy_organisation(None).into(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             expiry_date: get_dummy_date(),
@@ -103,7 +103,7 @@ async fn test_get_certificate_pem_success() {
         Ok(Some(Certificate {
             id,
             identifier_id: Uuid::new_v4().into(),
-            organisation: Some(dummy_organisation(None).into()),
+            organisation: dummy_organisation(None).into(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             expiry_date: get_dummy_date(),
@@ -144,7 +144,7 @@ async fn test_get_certificate_pem_invalid_identifier() {
         Ok(Some(Certificate {
             id,
             identifier_id: Uuid::new_v4().into(),
-            organisation: Some(dummy_organisation(None).into()),
+            organisation: dummy_organisation(None).into(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             expiry_date: get_dummy_date(),

@@ -2118,7 +2118,7 @@ pub enum BlobStorage {
     Value,
 }
 
-#[derive(DeriveIden)]
+#[derive(DeriveIden, Clone)]
 pub enum Certificate {
     Table,
     Id,

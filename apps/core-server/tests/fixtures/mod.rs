@@ -557,7 +557,7 @@ pub async fn create_cert_identifier(
     let certificate = Certificate {
         id: Uuid::new_v4().into(),
         identifier_id,
-        organisation: Some(organisation.clone().into()),
+        organisation: organisation.clone().into(),
         created_date: cert_params.created_date.unwrap_or(now),
         last_modified: cert_params.last_modified.unwrap_or(now),
         expiry_date: cert_params
@@ -590,6 +590,7 @@ pub async fn create_cert_identifier(
         .certificates
         .create(
             identifier.id,
+            organisation.clone(),
             TestingCertificateParams::from(certificate).await,
         )
         .await;

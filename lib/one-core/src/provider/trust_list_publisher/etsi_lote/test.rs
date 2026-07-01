@@ -43,7 +43,7 @@ fn dummy_certificate(pem: String) -> Certificate {
     Certificate {
         id: Uuid::new_v4().into(),
         identifier_id: Uuid::new_v4().into(),
-        organisation: None,
+        organisation: dummy_organisation(None).into(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         deleted_at: None,

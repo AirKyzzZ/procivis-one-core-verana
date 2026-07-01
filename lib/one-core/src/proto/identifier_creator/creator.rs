@@ -214,7 +214,7 @@ impl IdentifierCreator for IdentifierCreatorProto {
                         let cert = Certificate {
                             id: Uuid::new_v4().into(),
                             identifier_id,
-                            organisation: Some(organisation.clone().into()),
+                            organisation: organisation.clone().into(),
                             created_date: now,
                             last_modified: now,
                             deleted_at: None,

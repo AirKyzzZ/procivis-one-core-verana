@@ -5753,7 +5753,7 @@ async fn test_create_credential_invalid_certificate_role() {
     let certificate = Certificate {
         id: certificate_id,
         identifier_id,
-        organisation: Some(organisation.into()),
+        organisation: organisation.into(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         deleted_at: None,

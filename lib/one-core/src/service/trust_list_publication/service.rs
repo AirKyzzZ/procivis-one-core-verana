@@ -548,7 +548,7 @@ mod tests {
             certificates: Some(vec![Certificate {
                 id: Uuid::new_v4().into(),
                 identifier_id,
-                organisation: Some(organisation.into()),
+                organisation: organisation.into(),
                 created_date: now,
                 last_modified: now,
                 expiry_date: now + Duration::days(2),
@@ -1075,7 +1075,7 @@ mod tests {
         let certificate = Certificate {
             id: Uuid::new_v4().into(),
             identifier_id,
-            organisation: None,
+            organisation: dummy_organisation(None).into(),
             created_date: now,
             last_modified: now,
             deleted_at: None,

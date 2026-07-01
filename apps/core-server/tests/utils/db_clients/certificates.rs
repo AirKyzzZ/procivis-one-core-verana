@@ -5,6 +5,7 @@ use one_core::model::certificate::{
 };
 use one_core::model::key::Key;
 use one_core::model::organisation::Organisation;
+use one_core::model::relation::Related;
 use one_core::repository::certificate_repository::CertificateRepository;
 use shared_types::{CertificateId, IdentifierId};
 use time::OffsetDateTime;
@@ -23,7 +24,6 @@ pub struct TestingCertificateParams {
     pub fingerprint: Option<String>,
     pub state: Option<CertificateState>,
     pub key: Option<Key>,
-    pub organisation: Option<Organisation>,
     pub roles: Option<Vec<CertificateRole>>,
 }
 
@@ -32,10 +32,6 @@ impl TestingCertificateParams {
         let key = match certificate.key {
             None => None,
             Some(key) => Some(key.as_ref().await.unwrap().to_owned()),
-        };
-        let organisation = match certificate.organisation {
-            None => None,
-            Some(organisation) => Some(organisation.as_ref().await.unwrap().to_owned()),
         };
         Self {
             id: Some(certificate.id),
@@ -47,7 +43,6 @@ impl TestingCertificateParams {
             fingerprint: Some(certificate.fingerprint),
             state: Some(certificate.state),
             key,
-            organisation,
             roles: Some(certificate.roles),
         }
     }
@@ -65,6 +60,7 @@ impl CertificatesDB {
     pub async fn create(
         &self,
         identifier_id: IdentifierId,
+        organisation: impl Into<Related<Organisation>>,
         params: TestingCertificateParams,
     ) -> Certificate {
         let now = one_core::clock::now_utc();
@@ -84,7 +80,7 @@ impl CertificatesDB {
                 CertificateRole::AssertionMethod,
             ]),
             key: params.key.map(Into::into),
-            organisation: params.organisation.map(Into::into),
+            organisation: organisation.into(),
             deleted_at: None,
         };
 

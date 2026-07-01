@@ -27,7 +27,7 @@ pub struct Certificate {
     pub roles: Vec<CertificateRole>,
 
     pub key: Option<Related<Key>>,
-    pub organisation: Option<Related<Organisation>>,
+    pub organisation: Related<Organisation>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, EnumString, Display)]

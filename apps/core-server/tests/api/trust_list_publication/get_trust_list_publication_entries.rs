@@ -219,7 +219,7 @@ async fn create_dummy_certificate_identifier(
     let certificate = Certificate {
         id: Uuid::new_v4().into(),
         identifier_id,
-        organisation: Some(organisation.clone().into()),
+        organisation: organisation.clone().into(),
         created_date: now,
         last_modified: now,
         expiry_date: now.add(Duration::minutes(10)),
@@ -251,6 +251,7 @@ async fn create_dummy_certificate_identifier(
         .certificates
         .create(
             identifier.id,
+            organisation.clone(),
             TestingCertificateParams::from(certificate).await,
         )
         .await;

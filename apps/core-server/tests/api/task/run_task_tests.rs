@@ -412,6 +412,7 @@ async fn test_run_task_certificate_check_with_update() {
         .certificates
         .create(
             ok_identifier.id,
+            organisation.clone(),
             TestingCertificateParams {
                 state: Some(CertificateState::Active),
                 expiry_date: Some(
@@ -443,6 +444,7 @@ async fn test_run_task_certificate_check_with_update() {
         .certificates
         .create(
             identifier.id,
+            organisation.clone(),
             TestingCertificateParams {
                 state: Some(CertificateState::Active),
                 expiry_date: Some(one_core::clock::now_utc().sub(Duration::hours(1))),

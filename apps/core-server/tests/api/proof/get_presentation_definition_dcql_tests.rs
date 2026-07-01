@@ -2551,12 +2551,12 @@ mod trusted_authorities {
             .certificates
             .create(
                 identifier.id,
+                organisation.clone(),
                 TestingCertificateParams {
                     name: Some("issuer certificate".to_string()),
                     chain: Some(raw_cert.pem()),
                     fingerprint: Some(fingerprint(raw_cert)),
                     state: Some(CertificateState::Active),
-                    organisation: Some(organisation.to_owned()),
                     ..Default::default()
                 },
             )

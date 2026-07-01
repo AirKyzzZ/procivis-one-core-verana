@@ -296,6 +296,7 @@ impl MigratorTrait for Migrator {
             ),
             Box::new(migrations::m20260629_120000_trust_list_subscription_role_nullable::Migration),
             Box::new(migrations::m20260701_033735_did_organisation_id_mandatory::Migration),
+            Box::new(migrations::m20260701_064657_certificate_organisation_id_mandatory::Migration),
         ]
     }
 }

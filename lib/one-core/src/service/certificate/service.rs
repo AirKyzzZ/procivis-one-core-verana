@@ -23,15 +23,11 @@ impl CertificateService {
             .filter(|c| c.deleted_at.is_none())
             .ok_or(CertificateServiceError::NotFound(id))?;
 
-        let org_id = certificate.organisation.as_ref().map(|o| o.id()).ok_or(
-            CertificateServiceError::MappingError(format!(
-                "missing organisation on certificate {}",
-                certificate.id
-            )),
-        )?;
-
-        throw_if_org_id_not_matching_session(&org_id, &*self.session_provider)
-            .error_while("checking session")?;
+        throw_if_org_id_not_matching_session(
+            certificate.organisation.id_ref(),
+            &*self.session_provider,
+        )
+        .error_while("checking session")?;
 
         certificate_to_response_dto(certificate).await
     }

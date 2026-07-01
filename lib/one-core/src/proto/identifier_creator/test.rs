@@ -161,7 +161,7 @@ async fn test_get_or_create_remote_identifier_certificate_existing() {
     let certificate = Certificate {
         id: certificate_id,
         identifier_id,
-        organisation: Some(organisation.clone().into()),
+        organisation: organisation.clone().into(),
         created_date: now,
         last_modified: now,
         deleted_at: None,

@@ -1,5 +1,6 @@
 use one_core::model::certificate::{Certificate, CertificateState};
 use one_core::provider::credential_formatter::model::CredentialData;
+use one_core::service::test_utilities::dummy_organisation;
 use one_core::util::test_mdoc::format_mdoc_credential as format_mdoc;
 use rcgen::CertificateParams;
 use shared_types::SerializedCredential;
@@ -25,7 +26,7 @@ pub(crate) async fn format_mdoc_credential(
     credential_data.issuer_certificate = Some(Certificate {
         id: Uuid::new_v4().into(),
         identifier_id: Uuid::new_v4().into(),
-        organisation: None,
+        organisation: dummy_organisation(None).into(),
         created_date: one_core::clock::now_utc(),
         last_modified: one_core::clock::now_utc(),
         expiry_date: one_core::clock::now_utc(),

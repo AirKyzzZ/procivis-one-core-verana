@@ -25,7 +25,7 @@ use crate::provider::key_storage::MockKeyStorage;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::RevocationMethod;
 use crate::repository::revocation_list_repository::MockRevocationListRepository;
-use crate::service::test_utilities::{dummy_identifier, dummy_key};
+use crate::service::test_utilities::{dummy_identifier, dummy_key, dummy_organisation};
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_add_signature_new_list() {
@@ -387,7 +387,7 @@ fn dummy_ca_certificate(issuer: &Identifier) -> Certificate {
     Certificate {
         id: Uuid::new_v4().into(),
         identifier_id: issuer.id,
-        organisation: None,
+        organisation: dummy_organisation(None).into(),
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         deleted_at: None,

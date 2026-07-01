@@ -60,7 +60,7 @@ async fn test_create_certificate() {
     let certificate = Certificate {
         id,
         identifier_id: setup.identifier_id,
-        organisation: Some(dummy_organisation(Some(setup.organisation_id)).into()),
+        organisation: dummy_organisation(Some(setup.organisation_id)).into(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         expiry_date: get_dummy_date(),
@@ -83,7 +83,7 @@ async fn test_get_certificate() {
     let certificate = Certificate {
         id: Uuid::new_v4().into(),
         identifier_id: setup.identifier_id,
-        organisation: Some(dummy_organisation(Some(setup.organisation_id)).into()),
+        organisation: dummy_organisation(Some(setup.organisation_id)).into(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         expiry_date: get_dummy_date(),
@@ -129,7 +129,7 @@ async fn test_update_certificate() {
     let certificate = Certificate {
         id: Uuid::new_v4().into(),
         identifier_id: setup.identifier_id,
-        organisation: Some(dummy_organisation(Some(setup.organisation_id)).into()),
+        organisation: dummy_organisation(Some(setup.organisation_id)).into(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         expiry_date: get_dummy_date(),
@@ -168,7 +168,7 @@ async fn test_get_returns_soft_deleted_certificate() {
     let certificate = Certificate {
         id,
         identifier_id: setup.identifier_id,
-        organisation: Some(dummy_organisation(Some(setup.organisation_id)).into()),
+        organisation: dummy_organisation(Some(setup.organisation_id)).into(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         expiry_date: get_dummy_date(),
@@ -200,7 +200,7 @@ async fn test_delete_certificate_sets_deleted_at() {
     let certificate = Certificate {
         id,
         identifier_id: setup.identifier_id,
-        organisation: Some(dummy_organisation(Some(setup.organisation_id)).into()),
+        organisation: dummy_organisation(Some(setup.organisation_id)).into(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         expiry_date: get_dummy_date(),
@@ -238,7 +238,7 @@ async fn test_list_excludes_soft_deleted_certificates() {
     let mk = |id, fp: &str| Certificate {
         id,
         identifier_id: setup.identifier_id,
-        organisation: Some(dummy_organisation(Some(setup.organisation_id)).into()),
+        organisation: dummy_organisation(Some(setup.organisation_id)).into(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         expiry_date: get_dummy_date(),
@@ -284,7 +284,7 @@ async fn test_unique_fingerprint_allows_reuse_after_soft_delete() {
     let mk = |name: &str, fp: &str| Certificate {
         id: Uuid::new_v4().into(),
         identifier_id: setup.identifier_id,
-        organisation: Some(dummy_organisation(Some(setup.organisation_id)).into()),
+        organisation: dummy_organisation(Some(setup.organisation_id)).into(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         expiry_date: get_dummy_date(),

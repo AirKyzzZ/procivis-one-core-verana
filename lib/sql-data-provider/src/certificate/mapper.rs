@@ -30,7 +30,7 @@ impl From<Certificate> for ActiveModel {
             fingerprint: Set(certificate.fingerprint),
             state: Set(certificate.state.into()),
             key_id: Set(certificate.key.map(|key| key.id())),
-            organisation_id: Set(certificate.organisation.map(|o| o.id())),
+            organisation_id: Set(certificate.organisation.id()),
             roles: Set(roles),
             deleted_at: Set(certificate.deleted_at),
         }

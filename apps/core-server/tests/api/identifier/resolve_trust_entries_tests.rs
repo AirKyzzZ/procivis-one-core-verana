@@ -158,6 +158,7 @@ X2qJiGDrkN4Lr/85kRw7KHlsHq/w1aXLp0/Eg/c5aMur6qSWBjMD
         .certificates
         .create(
             identifier.id,
+            organisation.clone(),
             TestingCertificateParams {
                 state: Some(CertificateState::Active),
                 chain: Some(pem.to_string()),
@@ -370,6 +371,7 @@ trustListSubscriber:
         .certificates
         .create(
             identifier.id,
+            organisation.clone(),
             TestingCertificateParams {
                 fingerprint: Some(fingerprint.to_string()),
                 state: Some(CertificateState::Active),

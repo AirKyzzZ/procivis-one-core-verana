@@ -760,7 +760,7 @@ async fn test_post_issuer_credential_mdoc() {
     let certificate_model = Certificate {
         id: Uuid::new_v4().into(),
         identifier_id,
-        organisation: Some(organisation.clone().into()),
+        organisation: organisation.clone().into(),
         created_date: now,
         last_modified: now,
         expiry_date: now.add(Duration::minutes(10)),
@@ -814,6 +814,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         .certificates
         .create(
             issuer_identifier.id,
+            organisation.clone(),
             TestingCertificateParams::from(certificate_model).await,
         )
         .await;

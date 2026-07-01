@@ -1443,7 +1443,7 @@ fn make_issuer_certificate(cert_id: uuid::Uuid) -> Certificate {
         state: CertificateState::Active,
         roles: vec![CertificateRole::AssertionMethod],
         key: None,
-        organisation: None,
+        organisation: dummy_organisation(None).into(),
     }
 }
 

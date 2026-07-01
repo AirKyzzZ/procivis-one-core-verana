@@ -510,6 +510,7 @@ async fn test_create_credential_with_certificate_identifier() {
         .certificates
         .create(
             identifier.id,
+            organisation.clone(),
             TestingCertificateParams {
                 key: Some(key.clone()),
                 roles: Some(vec![CertificateRole::AssertionMethod]),
@@ -588,6 +589,7 @@ async fn test_create_credential_with_certificate_selection() {
         .certificates
         .create(
             identifier.id,
+            organisation.clone(),
             TestingCertificateParams {
                 key: Some(key2),
                 roles: Some(vec![CertificateRole::AssertionMethod]),
@@ -601,6 +603,7 @@ async fn test_create_credential_with_certificate_selection() {
         .certificates
         .create(
             identifier.id,
+            organisation.clone(),
             TestingCertificateParams {
                 key: Some(key.clone()),
                 roles: Some(vec![CertificateRole::AssertionMethod]),
@@ -675,6 +678,7 @@ async fn test_create_credential_with_invalid_certificate_id() {
         .certificates
         .create(
             identifier.id,
+            organisation.clone(),
             TestingCertificateParams {
                 key: Some(key.clone()),
                 ..Default::default()
@@ -744,6 +748,7 @@ async fn test_create_credential_fail_with_only_certificate_id() {
         .certificates
         .create(
             identifier.id,
+            organisation.clone(),
             TestingCertificateParams {
                 key: Some(key.clone()),
                 ..Default::default()

@@ -48,9 +48,7 @@ impl CertificateProvider {
             key: model
                 .key_id
                 .map(|key_id| Related::new(key_id, self.key_repository.clone())),
-            organisation: model
-                .organisation_id
-                .map(|org_id| Related::new(org_id, self.organisation_repository.clone())),
+            organisation: Related::new(model.organisation_id, self.organisation_repository.clone()),
             deleted_at: model.deleted_at,
         })
     }

@@ -25,7 +25,7 @@ pub(crate) async fn certificate_to_response_dto(
         chain: certificate.chain,
         key: convert_inner(key),
         x509_attributes,
-        organisation_id: certificate.organisation.as_ref().map(|o| o.id()),
+        organisation_id: Some(certificate.organisation.id()),
         roles: certificate.roles,
     })
 }
