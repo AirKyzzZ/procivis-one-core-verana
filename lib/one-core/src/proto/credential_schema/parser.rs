@@ -17,7 +17,9 @@ use super::dto::{
 use crate::config::core_config::{ConfigExt, CoreConfig, DatatypeType, FormatType};
 use crate::error::ContextWithErrorCode;
 use crate::mapper::NESTED_CLAIM_MARKER;
-use crate::mapper::credential_schema_claim::claim_schema_from_metadata_claim_schema;
+use crate::mapper::credential_schema_claim::{
+    claim_name_translations_from_dto, claim_schema_from_metadata_claim_schema,
+};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{
     BackgroundProperties, CodeProperties, CredentialSchema, LayoutProperties, LayoutType,
@@ -530,8 +532,13 @@ impl CredentialSchemaImportParserImpl {
         let key = claim_schema_dto.key.clone();
         let flattened_key =
             self.parse_claim_schema_key(parent_key, claim_schema_dto.key, formatters)?;
+        let id = Uuid::new_v4().into();
+        let translations = match &claim_schema_dto.translations {
+            Some(t) => claim_name_translations_from_dto(id, t, now).into(),
+            None => Default::default(),
+        };
         let claim_schema = ClaimSchema {
-            id: Uuid::new_v4().into(),
+            id,
             key: flattened_key.clone(),
             data_type: self.parse_claim_schema_datatype(
                 &key,
@@ -544,7 +551,7 @@ impl CredentialSchemaImportParserImpl {
             array: self.parse_claim_schema_array(&key, claim_schema_dto.array, formatters)?,
             metadata: false,
             required: claim_schema_dto.required,
-            translations: Default::default(),
+            translations,
         };
         let mut childs = self.parse_level_claim_schemas(
             now,
@@ -1440,6 +1447,7 @@ mod test {
             array: None,
             claims: vec![],
             mappings: None,
+            translations: None,
         }];
 
         // when
@@ -1588,6 +1596,7 @@ mod test {
                 array: Some(false),
                 claims: vec![],
                 mappings: None,
+                translations: None,
             },
             ImportCredentialSchemaClaimSchemaDTO {
                 id: Uuid::new_v4(),
@@ -1599,6 +1608,7 @@ mod test {
                 array: Some(false),
                 claims: vec![],
                 mappings: None,
+                translations: None,
             },
         ];
 
@@ -1630,6 +1640,7 @@ mod test {
                 array: Some(false),
                 claims: vec![],
                 mappings: None,
+                translations: None,
             },
             ImportCredentialSchemaClaimSchemaDTO {
                 id: Uuid::new_v4(),
@@ -1641,6 +1652,7 @@ mod test {
                 array: Some(false),
                 claims: vec![],
                 mappings: None,
+                translations: None,
             },
         ];
 
@@ -1671,6 +1683,7 @@ mod test {
             array: Some(false),
             claims: vec![],
             mappings: None,
+            translations: None,
         }];
 
         // when
@@ -1719,8 +1732,10 @@ mod test {
                 array: None,
                 claims: vec![],
                 mappings: None,
+                translations: None,
             }],
             mappings: None,
+            translations: None,
         }];
 
         // when
@@ -1779,8 +1794,10 @@ mod test {
                 array: None,
                 claims: vec![],
                 mappings: None,
+                translations: None,
             }],
             mappings: None,
+            translations: None,
         }];
 
         // when
@@ -1839,6 +1856,7 @@ mod test {
             array: None,
             claims: vec![],
             mappings: None,
+            translations: None,
         }];
 
         // when

@@ -491,6 +491,7 @@ impl TryFrom<ImportCredentialSchemaV2ClaimSchemaBindingDTO>
             mappings: value
                 .mappings
                 .map(|ms| ms.into_iter().map(Into::into).collect()),
+            translations: convert_inner(value.translations),
         })
     }
 }

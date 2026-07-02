@@ -648,8 +648,8 @@ pub(crate) struct ImportCredentialSchemaClaimSchemaRestDTO {
     #[serde(default)]
     #[into(with_fn = convert_inner_of_inner)]
     pub mappings: Option<Vec<CredentialClaimSchemaMappingRestDTO>>,
-    #[allow(unused)]
-    #[into(skip)]
+    #[serde(default)]
+    #[into(with_fn = convert_inner)]
     pub translations: Option<CredentialClaimSchemaTranslationsRestDTO>,
 }
 

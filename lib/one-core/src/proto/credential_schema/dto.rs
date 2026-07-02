@@ -66,6 +66,8 @@ pub struct ImportCredentialSchemaClaimSchemaDTO {
     #[serde(default)]
     pub claims: Vec<ImportCredentialSchemaClaimSchemaDTO>,
     pub mappings: Option<Vec<CredentialClaimSchemaMappingDTO>>,
+    pub translations:
+        Option<crate::service::credential_schema::dto::CredentialClaimSchemaTranslationsDTO>,
 }
 
 #[derive(Clone, Debug)]

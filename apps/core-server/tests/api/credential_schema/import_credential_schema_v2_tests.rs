@@ -138,6 +138,120 @@ async fn test_import_credential_schema_v2_with_translations() {
 }
 
 #[tokio::test]
+async fn test_import_credential_schema_v2_imports_claim_translations() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let import_schema = serde_json::json!(
+    {
+      "allowSuspension": false,
+      "claims": [
+        {
+          "array": false,
+          "claims": [
+            {
+              "array": false,
+              "claims": [],
+              "createdDate": "2026-05-18T13:53:49.979Z",
+              "datatype": "STRING",
+              "id": "ac18f142-50c4-4878-802a-7e3245ac0d05",
+              "key": "firstName",
+              "lastModified": "2026-05-18T13:53:49.979Z",
+              "mappings": [
+                {
+                  "format": "JWT",
+                  "technicalKey": "root/firstName"
+                }
+              ],
+              "required": true,
+              "translations": {
+                "name": {
+                  "en": "First name",
+                  "de": "Vorname"
+                }
+              }
+            }
+          ],
+          "createdDate": "2026-05-18T13:53:49.979Z",
+          "datatype": "OBJECT",
+          "id": "ef625d50-b816-43ce-b69b-2f5fc6cc59c8",
+          "key": "root",
+          "lastModified": "2026-05-18T13:53:49.979Z",
+          "mappings": [
+            {
+              "format": "JWT",
+              "technicalKey": "root"
+            }
+          ],
+          "required": true,
+          "translations": {
+            "name": {
+              "en": "Root",
+              "de": "Hauptobjekt"
+            }
+          }
+        }
+      ],
+      "createdDate": "2026-05-18T13:53:49.979Z",
+      "formats": [
+        {
+          "format": "JWT",
+          "schemaId": "7812e9af-523d-4892-8fb2-fe67101a5ffe"
+        }
+      ],
+      "id": "7812e9af-523d-4892-8fb2-fe67101a5ffe",
+      "importedSourceUrl": "http://127.0.0.1:51147/ssi/schema/v2/6b457c8b-5af4-4fd9-9767-c87349675dd2",
+      "lastModified": "2026-05-18T13:53:49.979Z",
+      "layoutProperties": {
+        "background": {
+          "color": "bg-color"
+        },
+        "primaryAttribute": "root/firstName"
+      },
+      "layoutType": "CARD",
+      "name": "exportable schema",
+      "organisationId": "b6bb4b89-8e70-48b3-9ff7-e8e9c44904e7",
+      "requiresWalletInstanceAttestation": false,
+      "translations": {
+        "name": {
+          "en": "Importable schema"
+        }
+      }
+    });
+
+    // WHEN
+    let import_resp = context
+        .api
+        .credential_schemas
+        .import_v2(organisation.id, import_schema)
+        .await;
+
+    // THEN
+    assert_eq!(import_resp.status(), 201);
+    let imported_id = import_resp.json_value().await["id"].parse::<uuid::Uuid>();
+
+    let get_resp = context.api.credential_schemas.get_v2(&imported_id).await;
+    assert_eq!(get_resp.status(), 200);
+    let get_resp = get_resp.json_value().await;
+
+    let claims = get_resp["claims"].as_array().unwrap();
+    let root_claim = claims
+        .iter()
+        .find(|c| c["key"] == "root")
+        .expect("root claim should be present");
+    assert_eq!(root_claim["translations"]["name"]["en"], "Root");
+    assert_eq!(root_claim["translations"]["name"]["de"], "Hauptobjekt");
+
+    let first_name_claim = root_claim["claims"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["key"] == "firstName")
+        .expect("firstName claim should be present");
+    assert_eq!(first_name_claim["translations"]["name"]["en"], "First name");
+    assert_eq!(first_name_claim["translations"]["name"]["de"], "Vorname");
+}
+
+#[tokio::test]
 async fn test_import_credential_schema_v2_without_translation() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;

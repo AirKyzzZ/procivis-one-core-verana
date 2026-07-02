@@ -541,6 +541,7 @@ pub struct ImportCredentialSchemaV2ClaimSchemaBindingDTO {
     pub array: Option<bool>,
     pub claims: Option<Vec<ImportCredentialSchemaV2ClaimSchemaBindingDTO>>,
     pub mappings: Option<Vec<CredentialClaimSchemaMappingBindingDTO>>,
+    pub translations: Option<CredentialClaimSchemaTranslationsBindingDTO>,
 }
 
 #[derive(Clone, Debug, TryInto, uniffi::Record)]

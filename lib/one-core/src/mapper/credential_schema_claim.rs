@@ -39,27 +39,34 @@ pub(crate) fn claim_schema_from_metadata_claim_schema(
     }
 }
 
+pub(crate) fn claim_name_translations_from_dto(
+    id: ClaimSchemaId,
+    translations: &CredentialClaimSchemaTranslationsDTO,
+    now: OffsetDateTime,
+) -> Vec<LocalizedText> {
+    translations
+        .name
+        .0
+        .iter()
+        .map(|(lang, value)| LocalizedText {
+            entity_id: id.into(),
+            field: LocalizedTextField::Name,
+            created_date: now,
+            last_modified: now,
+            lang: lang.clone(),
+            value: value.clone(),
+            entity_type: LocalizedTextEntityType::ClaimSchema,
+        })
+        .collect()
+}
+
 pub(crate) fn from_request_claim_schema(
     now: OffsetDateTime,
     request: &CredentialClaimSchemaRequestDTO,
 ) -> ClaimSchema {
     let id: ClaimSchemaId = Uuid::new_v4().into();
     let translations = match &request.translations {
-        Some(t) => t
-            .name
-            .0
-            .iter()
-            .map(|(lang, value)| LocalizedText {
-                entity_id: id.into(),
-                field: LocalizedTextField::Name,
-                created_date: now,
-                last_modified: now,
-                lang: lang.clone(),
-                value: value.clone(),
-                entity_type: LocalizedTextEntityType::ClaimSchema,
-            })
-            .collect::<Vec<_>>()
-            .into(),
+        Some(t) => claim_name_translations_from_dto(id, t, now).into(),
         None => Default::default(),
     };
     ClaimSchema {

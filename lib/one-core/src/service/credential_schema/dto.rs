@@ -498,6 +498,8 @@ pub struct ImportCredentialSchemaClaimSchemaDTO {
     pub claims: Vec<ImportCredentialSchemaClaimSchemaDTO>,
     #[into(with_fn = convert_inner_of_inner)]
     pub mappings: Option<Vec<CredentialClaimSchemaMappingDTO>>,
+    #[serde(default)]
+    pub translations: Option<CredentialClaimSchemaTranslationsDTO>,
 }
 
 #[derive(Clone, Debug, Into, Deserialize)]
