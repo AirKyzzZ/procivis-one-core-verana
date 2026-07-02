@@ -15,7 +15,6 @@ use self::model::{
     DeviceAuth, DeviceAuthentication, DeviceNamespaces, DeviceResponse, DeviceResponseVersion,
     DeviceSigned, Document,
 };
-use self::session_transcript::iso_18013_7::OID4VPDraftHandover;
 use self::session_transcript::{Handover, SessionTranscript};
 use crate::config::core_config::{FormatType, KeyAlgorithmType, VerificationProtocolType};
 use crate::error::ContextWithErrorCode;
@@ -326,18 +325,9 @@ impl MsoMdocPresentationFormatter {
                 )?)
             }
             _ => {
-                let mdoc_generated_nonce = context.format_nonce.as_ref().ok_or(
-                    FormatterError::CouldNotExtractPresentation(
-                        "Missing mdoc_generated_nonce".to_owned(),
-                    ),
-                )?;
-
-                Handover::Iso18013_7AnnexB(OID4VPDraftHandover::compute(
-                    &client_id,
-                    response_uri,
-                    &nonce,
-                    mdoc_generated_nonce,
-                )?)
+                return Err(FormatterError::CouldNotExtractPresentation(
+                    "Unsupported verification protocol type".to_owned(),
+                ));
             }
         };
 
