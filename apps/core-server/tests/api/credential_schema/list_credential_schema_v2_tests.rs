@@ -171,6 +171,83 @@ async fn test_get_list_credential_schema_v2_filter_batch_issuance_success() {
 }
 
 #[tokio::test]
+async fn test_get_list_credential_schema_v2_filter_ids_success() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let resp_a = context
+        .api
+        .credential_schemas
+        .create_v2(CreateSchemaV2Params {
+            name: "schema-a".to_string(),
+            organisation_id: organisation.id.into(),
+            formats: vec![json!({"format": "JWT"})],
+            claims: default_claim(),
+            ..Default::default()
+        })
+        .await;
+    let id_a = resp_a.json_value().await["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    let resp_b = context
+        .api
+        .credential_schemas
+        .create_v2(CreateSchemaV2Params {
+            name: "schema-b".to_string(),
+            organisation_id: organisation.id.into(),
+            formats: vec![json!({"format": "JWT"})],
+            claims: default_claim(),
+            ..Default::default()
+        })
+        .await;
+    let id_b = resp_b.json_value().await["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    context
+        .api
+        .credential_schemas
+        .create_v2(CreateSchemaV2Params {
+            name: "schema-c".to_string(),
+            organisation_id: organisation.id.into(),
+            formats: vec![json!({"format": "JWT"})],
+            claims: default_claim(),
+            ..Default::default()
+        })
+        .await;
+
+    // WHEN - filter by two database UUIDs
+    let resp = context
+        .api
+        .credential_schemas
+        .list_v2(
+            0,
+            10,
+            &organisation.id,
+            None,
+            Some(&format!("ids[]={id_a}&ids[]={id_b}")),
+        )
+        .await;
+
+    // THEN - only the two requested schemas are returned
+    assert_eq!(resp.status(), 200);
+    let resp_json = resp.json_value().await;
+    assert_eq!(resp_json["totalItems"], 2);
+    let names: Vec<&str> = resp_json["values"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v["name"].as_str().unwrap())
+        .collect();
+    assert!(names.contains(&"schema-a"));
+    assert!(names.contains(&"schema-b"));
+    assert!(!names.contains(&"schema-c"));
+}
+
+#[tokio::test]
 async fn test_get_list_credential_schema_v2_filter_schema_ids_success() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;

@@ -18,8 +18,8 @@ use one_core::service::credential::dto::{
     MdocMsoValidityResponseDTO,
 };
 use one_core::service::credential_schema::dto::{
-    CredentialSchemaFilterParamsDTO, CredentialSchemaListIncludeEntityTypeEnum,
-    CredentialSchemaListItemResponseDTO, DisclosurePolicyCreateRequest,
+    CredentialSchemaListIncludeEntityTypeEnum, CredentialSchemaListItemResponseDTO,
+    CredentialSchemaV2FilterParamsDTO, DisclosurePolicyCreateRequest,
     ImportCredentialSchemaClaimSchemaDTO,
 };
 use one_core::service::did::dto::{
@@ -886,7 +886,7 @@ impl TryFrom<ListProofSchemasFiltersBindingDTO>
 impl TryFrom<CredentialSchemaListQueryBindingDTO>
     for ListQueryDTO<
         SortableCredentialSchemaColumn,
-        CredentialSchemaFilterParamsDTO,
+        CredentialSchemaV2FilterParamsDTO,
         CredentialSchemaListIncludeEntityTypeEnum,
     >
 {
@@ -898,11 +898,10 @@ impl TryFrom<CredentialSchemaListQueryBindingDTO>
             page_size: value.page_size,
             sort: convert_inner(value.sort),
             sort_direction: convert_inner(value.sort_direction),
-            filter: CredentialSchemaFilterParamsDTO {
+            filter: CredentialSchemaV2FilterParamsDTO {
                 name: value.name,
                 exact: convert_inner_of_inner(value.exact),
                 organisation_id: into_id(value.organisation_id)?,
-                schema_id: value.schema_id,
                 schema_ids: value.schema_ids,
                 formats: value.formats,
                 requires_wallet_instance_attestation: None,

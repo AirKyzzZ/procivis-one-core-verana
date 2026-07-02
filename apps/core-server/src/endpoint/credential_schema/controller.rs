@@ -8,7 +8,7 @@ use shared_types::{CredentialSchemaId, Permission};
 
 use super::dto::{
     CredentialSchemaResponseRestDTO, CredentialSchemaShareResponseRestDTO,
-    CredentialSchemaV2ResponseRestDTO, GetCredentialSchemaQuery,
+    CredentialSchemaV2ResponseRestDTO, GetCredentialSchemaQuery, GetCredentialSchemaV2Query,
     ImportCredentialSchemaRequestRestDTO, ImportCredentialSchemaV2RequestRestDTO,
 };
 use crate::dto::common::{
@@ -112,7 +112,7 @@ pub(crate) async fn get_credential_schema_list(
     get,
     path = "/api/credential-schema/v2",
     responses(OkOrErrorResponse<GetCredentialSchemasV2ResponseDTO>),
-    params(GetCredentialSchemaQuery),
+    params(GetCredentialSchemaV2Query),
     tag = "credential_schema_management",
     security(
         ("bearer" = [])
@@ -122,7 +122,10 @@ pub(crate) async fn get_credential_schema_list(
 )]
 pub(crate) async fn get_credential_schema_list_v2(
     state: State<AppState>,
-    WithRejection(Qs(query), _): WithRejection<Qs<GetCredentialSchemaQuery>, ErrorResponseRestDTO>,
+    WithRejection(Qs(query), _): WithRejection<
+        Qs<GetCredentialSchemaV2Query>,
+        ErrorResponseRestDTO,
+    >,
 ) -> OkOrErrorResponse<GetCredentialSchemasV2ResponseDTO> {
     let result = async {
         Ok::<_, ServiceError>(

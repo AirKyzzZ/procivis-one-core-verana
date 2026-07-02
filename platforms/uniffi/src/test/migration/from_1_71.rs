@@ -31,7 +31,6 @@ async fn test_unpack_real_backup_1_71() {
             name: None,
             exact: None,
             ids: None,
-            schema_id: None,
             schema_ids: None,
             formats: None,
             uses_batch_issuance: None,

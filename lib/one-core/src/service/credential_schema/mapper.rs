@@ -17,7 +17,7 @@ use super::dto::{
     CredentialSchemaFilterValue, CredentialSchemaFormatResponseDTO,
     CredentialSchemaLayoutPropertiesRequestDTO, CredentialSchemaListItemResponseDTO,
     CredentialSchemaListItemV2ResponseDTO, CredentialSchemaLogoPropertiesRequestDTO,
-    CredentialSchemaTranslationsDTO,
+    CredentialSchemaTranslationsDTO, CredentialSchemaV2FilterParamsDTO,
 };
 use super::error::CredentialSchemaServiceError;
 use crate::config::core_config::{CoreConfig, DatatypeType, FormatType};
@@ -1033,6 +1033,93 @@ impl From<CredentialSchemaFilterParamsDTO> for ListFilterCondition<CredentialSch
         organisation_id
             & name
             & schema_id
+            & schema_ids
+            & formats
+            & key_storage_security
+            & requires_wia
+            & credential_schema_ids
+            & created_date_after
+            & created_date_before
+            & last_modified_after
+            & last_modified_before
+            & uses_batch_issuance
+            & is_multiformat_schema
+    }
+}
+
+impl From<CredentialSchemaV2FilterParamsDTO> for ListFilterCondition<CredentialSchemaFilterValue> {
+    fn from(value: CredentialSchemaV2FilterParamsDTO) -> Self {
+        let exact = value.exact.unwrap_or_default();
+        let get_string_match_type = |column| {
+            if exact.contains(&column) {
+                StringMatchType::Equals
+            } else {
+                StringMatchType::StartsWith
+            }
+        };
+
+        let organisation_id =
+            CredentialSchemaFilterValue::OrganisationId(value.organisation_id).condition();
+
+        let name = value.name.map(|name| {
+            CredentialSchemaFilterValue::Name(StringMatch {
+                r#match: get_string_match_type(CredentialSchemaExactColumn::Name),
+                value: name,
+            })
+        });
+
+        let formats = value.formats.map(CredentialSchemaFilterValue::Formats);
+
+        let key_storage_security = value
+            .key_storage_security
+            .map(CredentialSchemaFilterValue::KeyStorageSecurity);
+
+        let requires_wia = value
+            .requires_wallet_instance_attestation
+            .map(CredentialSchemaFilterValue::RequiresWalletInstanceAttestation);
+
+        let credential_schema_ids = value
+            .credential_schema_ids
+            .map(CredentialSchemaFilterValue::CredentialSchemaIds);
+
+        let created_date_after = value.created_date_after.map(|date| {
+            CredentialSchemaFilterValue::CreatedDate(ValueComparison {
+                comparison: ComparisonType::GreaterThanOrEqual,
+                value: date,
+            })
+        });
+        let created_date_before = value.created_date_before.map(|date| {
+            CredentialSchemaFilterValue::CreatedDate(ValueComparison {
+                comparison: ComparisonType::LessThanOrEqual,
+                value: date,
+            })
+        });
+
+        let last_modified_after = value.last_modified_after.map(|date| {
+            CredentialSchemaFilterValue::LastModified(ValueComparison {
+                comparison: ComparisonType::GreaterThanOrEqual,
+                value: date,
+            })
+        });
+        let last_modified_before = value.last_modified_before.map(|date| {
+            CredentialSchemaFilterValue::LastModified(ValueComparison {
+                comparison: ComparisonType::LessThanOrEqual,
+                value: date,
+            })
+        });
+
+        let uses_batch_issuance = value
+            .uses_batch_issuance
+            .map(CredentialSchemaFilterValue::UsesBatchIssuance);
+
+        let is_multiformat_schema = value
+            .is_multiformat_schema
+            .map(CredentialSchemaFilterValue::IsMultiformatSchema);
+
+        let schema_ids = value.schema_ids.map(CredentialSchemaFilterValue::SchemaIds);
+
+        organisation_id
+            & name
             & schema_ids
             & formats
             & key_storage_security

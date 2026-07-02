@@ -153,7 +153,6 @@ pub struct CredentialSchemaListQueryBindingDTO {
     pub ids: Option<Vec<String>>,
     pub exact: Option<Vec<CredentialSchemaListQueryExactColumnBindingEnum>>,
     pub include: Option<Vec<CredentialSchemaListIncludeEntityType>>,
-    pub schema_id: Option<String>,
     pub schema_ids: Option<Vec<String>>,
     pub formats: Option<Vec<String>>,
     pub uses_batch_issuance: Option<bool>,

@@ -11,8 +11,9 @@ use super::dto::{
     CredentialSchemaFilterParamsDTO, CredentialSchemaFormatRequestDTO,
     CredentialSchemaListIncludeEntityTypeEnum, CredentialSchemaListItemResponseDTO,
     CredentialSchemaListItemV2ResponseDTO, CredentialSchemaShareResponseDTO,
-    GetCredentialSchemaListResponseDTO, GetCredentialSchemaListV2ResponseDTO,
-    ImportCredentialSchemaRequestDTO, ImportCredentialSchemaV2RequestDTO,
+    CredentialSchemaV2FilterParamsDTO, GetCredentialSchemaListResponseDTO,
+    GetCredentialSchemaListV2ResponseDTO, ImportCredentialSchemaRequestDTO,
+    ImportCredentialSchemaV2RequestDTO,
 };
 use super::error::CredentialSchemaServiceError;
 use super::mapper::{
@@ -513,7 +514,7 @@ impl CredentialSchemaService {
         &self,
         filter_params: ListQueryDTO<
             SortableCredentialSchemaColumn,
-            CredentialSchemaFilterParamsDTO,
+            CredentialSchemaV2FilterParamsDTO,
             CredentialSchemaListIncludeEntityTypeEnum,
         >,
     ) -> Result<GetCredentialSchemaListV2ResponseDTO, CredentialSchemaServiceError> {

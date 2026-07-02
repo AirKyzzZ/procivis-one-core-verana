@@ -214,6 +214,24 @@ pub struct CredentialSchemaFilterParamsDTO {
     pub schema_ids: Option<Vec<String>>,
 }
 
+#[derive(Clone, Debug)]
+pub struct CredentialSchemaV2FilterParamsDTO {
+    pub name: Option<String>,
+    pub exact: Option<Vec<CredentialSchemaExactColumn>>,
+    pub organisation_id: OrganisationId,
+    pub formats: Option<Vec<String>>,
+    pub requires_wallet_instance_attestation: Option<bool>,
+    pub key_storage_security: Option<Vec<KeyStorageSecurity>>,
+    pub credential_schema_ids: Option<Vec<CredentialSchemaId>>,
+    pub created_date_after: Option<OffsetDateTime>,
+    pub created_date_before: Option<OffsetDateTime>,
+    pub last_modified_after: Option<OffsetDateTime>,
+    pub last_modified_before: Option<OffsetDateTime>,
+    pub uses_batch_issuance: Option<bool>,
+    pub is_multiformat_schema: Option<bool>,
+    pub schema_ids: Option<Vec<String>>,
+}
+
 pub type GetCredentialSchemaListResponseDTO = GetListResponse<CredentialSchemaListItemResponseDTO>;
 pub type GetCredentialSchemaListV2ResponseDTO =
     GetListResponse<CredentialSchemaListItemV2ResponseDTO>;
