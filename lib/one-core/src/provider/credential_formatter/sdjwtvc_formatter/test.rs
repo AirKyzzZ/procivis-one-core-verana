@@ -40,8 +40,10 @@ use crate::provider::credential_formatter::model::{
 };
 use crate::provider::credential_formatter::sdjwt::disclosures::DisclosureArray;
 use crate::provider::credential_formatter::sdjwt::test::get_credential_data;
-use crate::provider::credential_formatter::sdjwtvc_formatter::SDJWTVCFormatter;
 use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVc;
+use crate::provider::credential_formatter::sdjwtvc_formatter::{
+    SDJWTVCFormatter, post_process_claims,
+};
 use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredentialSubject};
 use crate::provider::credential_formatter::{CredentialFormatter, nest_claims};
 use crate::provider::data_type::provider::MockDataTypeProvider;
@@ -2275,5 +2277,85 @@ async fn test_format_presentation_complex_test_vector_sd_array_element() {
     assert_eq!(
         presentation.split('~').collect::<HashSet<_>>(),
         expected_presentation.split('~').collect::<HashSet<_>>()
+    );
+}
+
+fn claim(value: CredentialClaimValue) -> CredentialClaim {
+    CredentialClaim {
+        selectively_disclosable: false,
+        metadata: false,
+        value,
+    }
+}
+
+fn string_claim(value: &str) -> CredentialClaim {
+    claim(CredentialClaimValue::String(value.to_string()))
+}
+
+#[test]
+fn test_post_process_claims_nested_object() {
+    let mut claims = HashMap::from([(
+        "profile".to_string(),
+        claim(CredentialClaimValue::Object(HashMap::from([(
+            "portrait".to_string(),
+            string_claim("abc"),
+        )]))),
+    )]);
+
+    post_process_claims(vec!["profile", "portrait"], &mut claims, |value| {
+        format!("processed:{value}")
+    });
+
+    let profile = claims.get("profile").unwrap().value.as_object().unwrap();
+    assert_eq!(
+        profile.get("portrait").unwrap().value.as_str(),
+        Some("processed:abc")
+    );
+}
+
+#[test]
+fn test_post_process_claims_array() {
+    let mut claims = HashMap::from([(
+        "photos".to_string(),
+        claim(CredentialClaimValue::Array(vec![
+            string_claim("abc"),
+            string_claim("def"),
+        ])),
+    )]);
+
+    post_process_claims(vec!["photos"], &mut claims, |value| {
+        format!("processed:{value}")
+    });
+
+    let photos = claims.get("photos").unwrap().value.as_array().unwrap();
+    assert_eq!(photos[0].value.as_str(), Some("processed:abc"));
+    assert_eq!(photos[1].value.as_str(), Some("processed:def"));
+}
+
+#[test]
+fn test_post_process_claims_object_array() {
+    let mut claims = HashMap::from([(
+        "documents".to_string(),
+        claim(CredentialClaimValue::Array(vec![claim(
+            CredentialClaimValue::Object(HashMap::from([
+                ("photo".to_string(), string_claim("abc")),
+                ("name".to_string(), string_claim("passport")),
+            ])),
+        )])),
+    )]);
+
+    post_process_claims(vec!["documents", "photo"], &mut claims, |value| {
+        format!("processed:{value}")
+    });
+
+    let documents = claims.get("documents").unwrap().value.as_array().unwrap();
+    let document = documents[0].value.as_object().unwrap();
+    assert_eq!(
+        document.get("photo").unwrap().value.as_str(),
+        Some("processed:abc")
+    );
+    assert_eq!(
+        document.get("name").unwrap().value.as_str(),
+        Some("passport")
     );
 }

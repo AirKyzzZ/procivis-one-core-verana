@@ -646,25 +646,53 @@ impl SDJWTVCFormatter {
 }
 
 fn post_process_claims(
-    mut path: Vec<&str>,
+    path: Vec<&str>,
     claims: &mut HashMap<String, CredentialClaim>,
     process: impl Fn(&str) -> String,
 ) {
-    let Some(current) = path.pop() else { return };
-    let Some(current_value) = claims.get_mut(current) else {
+    let Some((current, remaining_path)) = path.split_first() else {
+        return;
+    };
+    let Some(current_value) = claims.get_mut(*current) else {
         return;
     };
 
-    if path.is_empty() {
-        let Some(str_value) = current_value.value.as_str() else {
+    post_process_claim_value_at_path(&mut current_value.value, remaining_path, &process);
+}
+
+fn post_process_claim_value_at_path(
+    value: &mut CredentialClaimValue,
+    path: &[&str],
+    process: &impl Fn(&str) -> String,
+) {
+    let Some((current, remaining_path)) = path.split_first() else {
+        post_process_claim_value(value, process);
+        return;
+    };
+
+    if let Some(map_value) = value.as_object_mut() {
+        let Some(current_value) = map_value.get_mut(*current) else {
             return;
         };
-        current_value.value = CredentialClaimValue::String(process(str_value));
-    } else {
-        let Some(map_value) = current_value.value.as_object_mut() else {
-            return;
-        };
-        post_process_claims(path, map_value, process)
+        post_process_claim_value_at_path(&mut current_value.value, remaining_path, process);
+    } else if let Some(array_value) = value.as_array_mut() {
+        for claim in array_value {
+            post_process_claim_value_at_path(&mut claim.value, path, process);
+        }
+    }
+}
+
+fn post_process_claim_value(value: &mut CredentialClaimValue, process: &impl Fn(&str) -> String) {
+    if let Some(str_value) = value.as_str() {
+        *value = CredentialClaimValue::String(process(str_value));
+    } else if let Some(map_value) = value.as_object_mut() {
+        for claim in map_value.values_mut() {
+            post_process_claim_value(&mut claim.value, process);
+        }
+    } else if let Some(array_value) = value.as_array_mut() {
+        for claim in array_value {
+            post_process_claim_value(&mut claim.value, process);
+        }
     }
 }
 

@@ -295,11 +295,11 @@ impl IssuanceProtocol for OpenID4VCISwiyu {
                     .datatype
                     .get_type(&schema.data_type)
                     .error_while("getting claim data type")?;
-                let additional_values = claim.additional_values.get_or_insert_default();
-                additional_values.insert(
-                    "value_type".to_string(),
-                    serde_json::json!(to_swiyu_data_type(data_type)?),
-                );
+                if let Some(value_type) = to_swiyu_data_type(data_type, schema.array)? {
+                    let additional_values = claim.additional_values.get_or_insert_default();
+                    additional_values
+                        .insert("value_type".to_string(), serde_json::json!(value_type));
+                }
             }
         }
         let issuer_info = self
