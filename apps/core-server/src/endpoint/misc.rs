@@ -17,6 +17,9 @@ use crate::metrics::encode_metrics;
     responses(
         (status = 200, description = "Ok")
     ),
+    security(
+        ("bearer" = [])
+    ),
     tag = "other",
     summary = "Retrieve version",
     description = indoc::formatdoc! {"
