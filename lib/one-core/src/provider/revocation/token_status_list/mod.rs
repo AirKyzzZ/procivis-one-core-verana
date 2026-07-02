@@ -366,7 +366,6 @@ impl RevocationMethod for TokenStatusList {
                 issuer_id,
                 &IdentifierRelations {
                     did: Some(Default::default()),
-                    key: Some(Default::default()),
                     certificates: Some(Default::default()),
                     ..Default::default()
                 },
@@ -515,7 +514,6 @@ impl RevocationMethod for TokenStatusList {
                             issuer_identifier: Some(IdentifierRelations {
                                 certificates: Some(Default::default()),
                                 did: Some(Default::default()),
-                                key: Some(Default::default()),
                                 ..Default::default()
                             }),
                             issuer_certificate: Some(Default::default()),

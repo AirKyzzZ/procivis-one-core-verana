@@ -10,6 +10,7 @@ use crate::config::core_config::CoreConfig;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::{Did, KeyRole, RelatedKey};
 use crate::model::identifier::Identifier;
+use crate::model::relation::Related;
 use crate::provider::issuance_protocol::MockIssuanceProtocol;
 use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
@@ -164,7 +165,7 @@ async fn test_get_sd_jwt_vc_issuer_metadata_success() {
     identifier.did = None;
     let mut key = dummy_key();
     key.storage_type = "INTERNAL".to_string();
-    identifier.key = Some(key);
+    identifier.key = Some(Related::from(key));
 
     let mut protocol_provider = MockIssuanceProtocolProvider::new();
     protocol_provider

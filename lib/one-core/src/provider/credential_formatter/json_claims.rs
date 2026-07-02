@@ -11,6 +11,7 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::identifier::{Identifier, IdentifierState};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
+use crate::model::relation::Related;
 use crate::provider::credential_formatter::model::IdentifierDetails;
 use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -320,7 +321,7 @@ pub fn prepare_identifier(
         deleted_at: None,
         organisation: organisation.into(),
         did: identifier_did,
-        key: identifier_key,
+        key: identifier_key.map(Related::from),
         certificates: identifier_certificate.map(|c| vec![c]),
         trust_information: None,
     })

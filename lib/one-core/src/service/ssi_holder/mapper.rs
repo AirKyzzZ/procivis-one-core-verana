@@ -58,10 +58,13 @@ pub(super) async fn select_holder_key(
         IdentifierType::Key => {
             let key = identifier
                 .key
-                .to_owned()
+                .as_ref()
                 .ok_or(HolderServiceError::MappingError(
                     "Missing identifier key".to_string(),
-                ))?;
+                ))?
+                .as_ref()
+                .await?
+                .to_owned();
 
             if let Some(key_id) = key_id
                 && key_id != key.id

@@ -166,7 +166,6 @@ impl CredentialValidityManagerImpl {
                     issuer_certificate: Some(Default::default()),
                     holder_identifier: Some(IdentifierRelations {
                         did: Some(Default::default()),
-                        key: Some(KeyRelations::default()),
                         ..Default::default()
                     }),
                     schema: Some(Default::default()),
@@ -612,7 +611,6 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
                     }),
                     holder_identifier: Some(IdentifierRelations {
                         did: Some(Default::default()),
-                        key: Some(KeyRelations::default()),
                         ..Default::default()
                     }),
                     interaction: Some(InteractionRelations {

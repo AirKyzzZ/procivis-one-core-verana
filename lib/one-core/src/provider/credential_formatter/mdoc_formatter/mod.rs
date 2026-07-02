@@ -56,6 +56,7 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum, CredentialType};
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
+use crate::model::identifier;
 use crate::model::organisation::Organisation;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::cose::{CoseSign1, CoseSign1Builder};
@@ -178,10 +179,15 @@ impl CredentialFormatter for MdocFormatter {
                 ))?;
 
         let holder_key = match holder_identifier.r#type {
-            crate::model::identifier::IdentifierType::Key => {
-                let key = holder_identifier.key.ok_or(FormatterError::CouldNotFormat(
-                    "Missing holder key".to_string(),
-                ))?;
+            identifier::IdentifierType::Key => {
+                let key = holder_identifier
+                    .key
+                    .as_ref()
+                    .ok_or(FormatterError::CouldNotFormat(
+                        "Missing holder key".to_string(),
+                    ))?
+                    .as_ref()
+                    .await?;
 
                 self.key_algorithm_provider
                     .key_algorithm_from_key(&key)
@@ -191,7 +197,7 @@ impl CredentialFormatter for MdocFormatter {
                     .public_key_as_cose()
                     .error_while("getting CoseKey")?
             }
-            crate::model::identifier::IdentifierType::Did => {
+            identifier::IdentifierType::Did => {
                 let jwk = try_extract_did(
                     self.did_method_provider.as_ref(),
                     &holder_identifier

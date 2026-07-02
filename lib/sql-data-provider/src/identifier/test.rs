@@ -13,15 +13,16 @@ use one_core::model::identifier::{
 use one_core::model::identifier_trust_information::{
     IdentifierTrustInformation, IdentifierTrustInformationRelations, SchemaFormat,
 };
+use one_core::model::key::Key;
 use one_core::model::list_filter::{ListFilterCondition, ListFilterValue};
 use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::model::organisation::Organisation;
+use one_core::model::relation::Related;
 use one_core::repository::certificate_repository::CertificateRepository;
 use one_core::repository::did_repository::MockDidRepository;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::identifier_repository::IdentifierRepository;
 use one_core::repository::identifier_trust_information_repository::IdentifierTrustInformationRepository;
-use one_core::repository::key_repository::MockKeyRepository;
 use sea_orm::DatabaseConnection;
 use shared_types::DidValue;
 use similar_asserts::assert_eq;
@@ -31,7 +32,7 @@ use super::IdentifierProvider;
 use crate::entity::blob::BlobType;
 use crate::test_utilities::{
     dummy_organisation, get_dummy_date, insert_blob_to_database, insert_did_key,
-    insert_organisation_to_database, setup_test_data_layer_and_connection,
+    insert_key_to_database, insert_organisation_to_database, setup_test_data_layer_and_connection,
 };
 use crate::transaction_context::TransactionManagerImpl;
 
@@ -82,7 +83,7 @@ async fn setup() -> TestSetup {
             db: TransactionManagerImpl::new(db.clone()),
             organisation_repository: data_layer.organisation_repository,
             did_repository: Arc::new(MockDidRepository::default()),
-            key_repository: Arc::new(MockKeyRepository::default()),
+            key_repository: data_layer.key_repository.clone(),
             certificate_repository: data_layer.certificate_repository.clone(),
             trust_information_repository: data_layer
                 .identifier_trust_information_repository
@@ -174,6 +175,65 @@ async fn test_get_identifier() {
     assert_eq!(retrieved.organisation.id(), identifier.organisation.id());
     assert!(retrieved.did.is_none());
     assert!(retrieved.key.is_none());
+}
+
+#[tokio::test]
+async fn test_get_identifier_of_type_key_resolves_key_lazily() {
+    let setup = setup().await;
+    let id = Uuid::new_v4().into();
+
+    let key_id = insert_key_to_database(
+        &setup.db,
+        "EDDSA".to_string(),
+        vec![0, 1, 2, 3],
+        vec![4, 5, 6, 7],
+        None,
+        setup.organisation.id,
+    )
+    .await
+    .unwrap();
+
+    let key = Key {
+        id: key_id,
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        public_key: vec![0, 1, 2, 3],
+        name: format!("{key_id}-key"),
+        key_reference: Some(vec![4, 5, 6, 7]),
+        storage_type: "INTERNAL".to_string(),
+        key_type: "EDDSA".to_string(),
+        organisation: setup.organisation.clone().into(),
+    };
+
+    let identifier = Identifier {
+        id,
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        name: "test_key_identifier".to_string(),
+        r#type: IdentifierType::Key,
+        is_remote: false,
+        state: IdentifierState::Active,
+        organisation: setup.organisation.clone().into(),
+        did: None,
+        key: Some(Related::from(key)),
+        certificates: None,
+        deleted_at: None,
+        trust_information: None,
+    };
+
+    setup.provider.create(identifier).await.unwrap();
+
+    // No relation request is needed: `key` is now lazily populated from the FK.
+    let retrieved = setup
+        .provider
+        .get(id, &Default::default())
+        .await
+        .unwrap()
+        .unwrap();
+
+    let retrieved_key = retrieved.key.expect("key relation should be populated");
+    let loaded = retrieved_key.as_ref().await.unwrap();
+    assert_eq!(loaded.id, key_id);
 }
 
 #[tokio::test]

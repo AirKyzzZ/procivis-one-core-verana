@@ -632,6 +632,7 @@ impl OpenID4VCIFinal1_0 {
                 r#type,
                 ..
             }) if r#type == &IdentifierType::Key => {
+                let key = key.as_ref().await?;
                 let key_handle = self
                     .key_algorithm_provider
                     .reconstruct_key(
@@ -674,7 +675,7 @@ impl OpenID4VCIFinal1_0 {
         credential.state = CredentialStateEnum::Accepted;
         credential.protocol = self.config_id.to_owned();
         credential.interaction = Some(interaction.to_owned());
-        attach_matching_holder_binding(&mut credential, holder_bindings)?;
+        attach_matching_holder_binding(&mut credential, holder_bindings).await?;
         Ok(credential)
     }
 
@@ -1163,7 +1164,7 @@ async fn apply_issuer_metadata_to_schema(
     Ok(())
 }
 
-fn attach_matching_holder_binding(
+async fn attach_matching_holder_binding(
     credential: &mut Credential,
     holder_bindings: &mut Vec<HolderBindingInput>,
 ) -> Result<(), IssuanceProtocolError> {
@@ -1175,9 +1176,14 @@ fn attach_matching_holder_binding(
                 "No parsed holder identifier".to_string(),
             ))?;
 
-    let Some(position) = holder_bindings.iter().position(|holder_binding| {
-        holder_binding_matching_parsed_identifier(holder_binding, &parsed_identifier)
-    }) else {
+    let mut position = None;
+    for (index, holder_binding) in holder_bindings.iter().enumerate() {
+        if holder_binding_matching_parsed_identifier(holder_binding, &parsed_identifier).await? {
+            position = Some(index);
+            break;
+        }
+    }
+    let Some(position) = position else {
         return Err(IssuanceProtocolError::Failed(
             "No matching holder identifier".to_string(),
         ));
@@ -1190,28 +1196,29 @@ fn attach_matching_holder_binding(
     Ok(())
 }
 
-fn holder_binding_matching_parsed_identifier(
+async fn holder_binding_matching_parsed_identifier(
     holder_binding: &HolderBindingInput,
     parsed_identifier: &Identifier,
-) -> bool {
+) -> Result<bool, IssuanceProtocolError> {
     match parsed_identifier.r#type {
         IdentifierType::Key => {
             let Some(parsed_key) = &parsed_identifier.key else {
-                return false;
+                return Ok(false);
             };
+            let parsed_key = parsed_key.as_ref().await?;
 
-            holder_binding.key.key_type == parsed_key.key_type
-                && holder_binding.key.public_key == parsed_key.public_key
+            Ok(holder_binding.key.key_type == parsed_key.key_type
+                && holder_binding.key.public_key == parsed_key.public_key)
         }
         IdentifierType::Did => {
             let Some(parsed_did) = &parsed_identifier.did else {
-                return false;
+                return Ok(false);
             };
             let Some(holder_binding_did) = &holder_binding.identifier.did else {
-                return false;
+                return Ok(false);
             };
 
-            holder_binding_did.did == parsed_did.did
+            Ok(holder_binding_did.did == parsed_did.did)
         }
         IdentifierType::Certificate | IdentifierType::CertificateAuthority => {
             // No credential format uses certificates for holder binding at this point
@@ -1220,7 +1227,7 @@ fn holder_binding_matching_parsed_identifier(
                 parsed_identifier.r#type
             );
 
-            false
+            Ok(false)
         }
     }
 }

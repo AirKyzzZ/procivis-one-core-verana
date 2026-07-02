@@ -9,7 +9,6 @@ use tracing::info;
 use crate::error::ContextWithErrorCode;
 use crate::mapper::{list_response_into, list_response_try_into};
 use crate::model::identifier::{Identifier, IdentifierRelations};
-use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::trust_entry::{SortableTrustEntryColumn, TrustEntry, TrustEntryRelations};
 use crate::model::trust_list_publication::{
@@ -342,7 +341,6 @@ impl TrustListPublicationService {
                 identifier_id,
                 &IdentifierRelations {
                     certificates: Some(Default::default()),
-                    key: Some(KeyRelations::default()),
                     ..Default::default()
                 },
             )
@@ -499,6 +497,7 @@ mod tests {
     use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
     use crate::model::key::Key;
     use crate::model::organisation::Organisation;
+    use crate::model::relation::Related;
     use crate::model::trust_entry::TrustEntryStateEnum;
     use crate::model::trust_list_role::TrustListRoleEnum;
     use crate::proto::session_provider::MockSessionProvider;
@@ -865,7 +864,7 @@ mod tests {
     async fn test_validate_publication_identifier_capabilities_invalid_selected_key_type() {
         // given
         let identifier = create_test_key_identifier("EDDSA");
-        let key_id = identifier.key.as_ref().unwrap().id;
+        let key_id = identifier.key.as_ref().unwrap().id();
 
         let capabilities = TrustListPublisherCapabilities {
             supported_roles: vec![],
@@ -1028,7 +1027,7 @@ mod tests {
             deleted_at: None,
             organisation: dummy_organisation(Some(uuid::Uuid::new_v4().into())).into(),
             did: None,
-            key: Some(create_test_key(key_type)),
+            key: Some(Related::from(create_test_key(key_type))),
             certificates: None,
             trust_information: None,
         }

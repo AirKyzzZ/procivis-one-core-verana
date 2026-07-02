@@ -20,6 +20,7 @@ use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
+use crate::model::relation::Related;
 use crate::model::wallet_instance::{
     WalletInstance, WalletInstanceOs, WalletInstanceStatus, WalletProviderType,
 };
@@ -186,7 +187,7 @@ async fn test_register_wallet_unit() {
                 deleted_at: None,
                 organisation: dummy_organisation(Some(uuid::Uuid::new_v4().into())).into(),
                 did: None,
-                key: Some(Key {
+                key: Some(Related::from(Key {
                     id: Uuid::new_v4().into(),
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
@@ -196,7 +197,7 @@ async fn test_register_wallet_unit() {
                     storage_type: "TEST".to_string(),
                     key_type: "ECDSA".to_string(),
                     organisation: dummy_organisation(None).into(),
-                }),
+                })),
                 certificates: None,
                 trust_information: None,
             }))
@@ -299,7 +300,7 @@ async fn test_register_wallet_unit_integrity_check() {
                 deleted_at: None,
                 organisation: dummy_organisation(Some(uuid::Uuid::new_v4().into())).into(),
                 did: None,
-                key: Some(Key {
+                key: Some(Related::from(Key {
                     id: Uuid::new_v4().into(),
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
@@ -309,7 +310,7 @@ async fn test_register_wallet_unit_integrity_check() {
                     storage_type: "TEST".to_string(),
                     key_type: "ECDSA".to_string(),
                     organisation: dummy_organisation(None).into(),
-                }),
+                })),
                 certificates: None,
                 trust_information: None,
             }))

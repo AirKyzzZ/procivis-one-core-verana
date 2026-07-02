@@ -71,7 +71,6 @@ impl IdentifierService {
                 *id,
                 &IdentifierRelations {
                     did: Some(Default::default()),
-                    key: Some(Default::default()),
                     certificates: Some(Default::default()),
                     trust_information: Some(IdentifierTrustInformationRelations::default()),
                 },
@@ -732,7 +731,6 @@ impl IdentifierService {
                     identifier_id,
                     &IdentifierRelations {
                         did: None,
-                        key: Some(Default::default()),
                         certificates: Some(Default::default()),
                         trust_information: None,
                     },

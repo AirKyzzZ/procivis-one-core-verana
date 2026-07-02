@@ -263,7 +263,8 @@ async fn test_get_or_create_remote_identifier_key_existing() {
         }
     });
 
-    let identifier = dummy_identifier();
+    let mut identifier = dummy_identifier();
+    identifier.key = Some(key.clone().into());
     let identifier_id = identifier.id;
     let mut identifier_repository = MockIdentifierRepository::new();
     identifier_repository
@@ -303,7 +304,7 @@ async fn test_get_or_create_remote_identifier_key_existing() {
         .unwrap();
 
     assert_eq!(identifier.id, identifier_id);
-    assert_eq!(identifier.key, Some(key));
+    assert_eq!(identifier.key, Some(key.into()));
     let_assert!(RemoteIdentifierRelation::Key(key) = relation);
     assert_eq!(key.id, key_id);
 }

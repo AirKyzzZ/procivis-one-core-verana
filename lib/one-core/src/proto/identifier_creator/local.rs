@@ -13,6 +13,7 @@ use crate::model::did::Did;
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierState, IdentifierType};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
+use crate::model::relation::Related;
 use crate::proto::certificate_validator::x509_extension::validate_ca;
 use crate::proto::certificate_validator::{
     CertificateValidationOptions, CrlMode, ParsedCertificate,
@@ -90,7 +91,7 @@ impl IdentifierCreatorProto {
             state: IdentifierState::Active,
             deleted_at: None,
             did: None,
-            key: Some(key),
+            key: Some(Related::from(key)),
             certificates: None,
             trust_information: None,
         };

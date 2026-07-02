@@ -24,7 +24,11 @@ impl IdentifierProvider {
         model: identifier::Model,
         relations: &IdentifierRelations,
     ) -> Result<Identifier, DataLayerError> {
-        let mut result = identifier_from_model(model.clone(), &self.organisation_repository);
+        let mut result = identifier_from_model(
+            model.clone(),
+            &self.organisation_repository,
+            &self.key_repository,
+        );
 
         if let Some(_trust_relations) = &relations.trust_information {
             result.trust_information = Some(
@@ -42,18 +46,6 @@ impl IdentifierProvider {
                 DataLayerError::MissingRequiredRelation {
                     relation: "identifier-did",
                     id: did_id.to_string(),
-                },
-            )?);
-        }
-
-        if model.r#type == identifier::IdentifierType::Key
-            && let Some(_key_relations) = &relations.key
-            && let Some(key_id) = &model.key_id
-        {
-            result.key = Some(self.key_repository.get_key(key_id).await?.ok_or(
-                DataLayerError::MissingRequiredRelation {
-                    relation: "identifier-key",
-                    id: key_id.to_string(),
                 },
             )?);
         }
@@ -186,7 +178,11 @@ impl IdentifierRepository for IdentifierProvider {
         let query = get_identifier_list_query(&query_params);
 
         list_query_with_custom_model(query, query_params, &self.db, |model| {
-            Ok(identifier_from_model(model, &self.organisation_repository))
+            Ok(identifier_from_model(
+                model,
+                &self.organisation_repository,
+                &self.key_repository,
+            ))
         })
         .await
     }

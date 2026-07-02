@@ -40,7 +40,6 @@ use crate::model::history::{
     History, HistoryAction, HistoryEntityType, HistoryErrorMetadata, HistoryMetadata, HistorySource,
 };
 use crate::model::identifier::{IdentifierRelations, IdentifierType};
-use crate::model::key::KeyRelations;
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::{ListPagination, ListSorting};
 use crate::model::organisation::{Organisation, OrganisationRelations};
@@ -1072,7 +1071,6 @@ impl WalletProviderService {
                 issuer_identifier_id,
                 &IdentifierRelations {
                     did: Some(Default::default()),
-                    key: Some(KeyRelations::default()),
                     certificates: Some(Default::default()),
                     ..Default::default()
                 },
@@ -1251,7 +1249,6 @@ impl WalletProviderService {
                         revocation: Some(RevocationListRelations {
                             issuer_identifier: Some(IdentifierRelations {
                                 did: Some(Default::default()),
-                                key: Some(KeyRelations::default()),
                                 certificates: Some(Default::default()),
                                 ..Default::default()
                             }),

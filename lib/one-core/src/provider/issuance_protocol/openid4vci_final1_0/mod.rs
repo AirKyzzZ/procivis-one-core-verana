@@ -2295,7 +2295,6 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                             schema: Some(Default::default()),
                             holder_identifier: Some(IdentifierRelations {
                                 did: Some(Default::default()),
-                                key: Some(Default::default()),
                                 ..Default::default()
                             }),
                             key: Some(Default::default()),

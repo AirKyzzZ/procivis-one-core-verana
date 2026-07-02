@@ -31,7 +31,6 @@ impl SignatureService {
                 request.issuer,
                 &IdentifierRelations {
                     did: Some(Default::default()),
-                    key: Some(Default::default()),
                     certificates: Some(Default::default()),
                     ..Default::default()
                 },

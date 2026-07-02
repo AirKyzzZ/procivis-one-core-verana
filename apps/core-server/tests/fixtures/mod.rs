@@ -501,7 +501,7 @@ pub async fn create_identifier(
         name: unwrap_or_random(params.name),
         organisation: organisation.to_owned().into(),
         did: params.did,
-        key: params.key,
+        key: params.key.map(Related::from),
         certificates: params.certificates,
         state: params.state.unwrap_or(IdentifierState::Active),
         r#type: params.r#type.unwrap_or(IdentifierType::Did),

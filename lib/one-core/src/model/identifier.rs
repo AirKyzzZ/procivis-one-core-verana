@@ -7,7 +7,7 @@ use time::OffsetDateTime;
 use super::certificate::{Certificate, CertificateRelations, CertificateRole, CertificateState};
 use super::common::GetListResponse;
 use super::did::{Did, DidRelations, KeyRole};
-use super::key::{Key, KeyRelations};
+use super::key::Key;
 use super::list_filter::{ListFilterValue, StringMatch};
 use super::list_query::ListQuery;
 use super::organisation::Organisation;
@@ -34,7 +34,7 @@ pub struct Identifier {
 
     // Relations:
     pub did: Option<Did>,
-    pub key: Option<Key>,
+    pub key: Option<Related<Key>>,
     pub certificates: Option<Vec<Certificate>>,
     pub trust_information: Option<Vec<IdentifierTrustInformation>>,
 }
@@ -87,7 +87,6 @@ pub enum IdentifierState {
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct IdentifierRelations {
     pub did: Option<DidRelations>,
-    pub key: Option<KeyRelations>,
     pub certificates: Option<CertificateRelations>,
     pub trust_information: Option<IdentifierTrustInformationRelations>,
 }

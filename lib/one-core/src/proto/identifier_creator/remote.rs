@@ -16,6 +16,7 @@ use crate::model::identifier::{
 use crate::model::key::{Key, KeyFilterValue, KeyListQuery};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::organisation::Organisation;
+use crate::model::relation::Related;
 use crate::proto::certificate_validator::{CertificateValidationOptions, ParsedCertificate};
 use crate::proto::identifier_creator::RemoteIdentifierRelation;
 use crate::provider::credential_formatter::model::IdentifierDetails;
@@ -70,7 +71,6 @@ impl IdentifierCreatorProto {
                 did.id,
                 &IdentifierRelations {
                     did: Some(Default::default()),
-                    key: Some(Default::default()),
                     certificates: Some(Default::default()),
                     ..Default::default()
                 },
@@ -249,9 +249,7 @@ impl IdentifierCreatorProto {
                 .into_iter()
                 .next();
 
-            if let Some(mut identifier) = identifier {
-                // Back-fill relations
-                identifier.key = Some(key.clone());
+            if let Some(identifier) = identifier {
                 return Ok((key, identifier));
             };
 
@@ -289,7 +287,7 @@ impl IdentifierCreatorProto {
             deleted_at: None,
             organisation: organisation.to_owned().into(),
             did: None,
-            key: Some(key.clone()),
+            key: Some(Related::from(key.clone())),
             certificates: None,
             trust_information: None,
         };

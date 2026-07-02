@@ -4,6 +4,7 @@ use one_core::model::identifier::{
     Identifier, IdentifierRelations, IdentifierState, IdentifierType,
 };
 use one_core::model::organisation::Organisation;
+use one_core::model::relation::Related;
 use one_core::repository::identifier_repository::IdentifierRepository;
 use shared_types::IdentifierId;
 use uuid::Uuid;
@@ -34,7 +35,7 @@ impl IdentifiersDB {
             name: unwrap_or_random(params.name),
             organisation: organisation.clone().into(),
             did: params.did,
-            key: params.key,
+            key: params.key.map(Related::from),
             certificates: params.certificates,
             state: params.state.unwrap_or(IdentifierState::Active),
             r#type: params.r#type.unwrap_or(IdentifierType::Did),
@@ -53,7 +54,6 @@ impl IdentifiersDB {
             .get(
                 identifier_id,
                 &IdentifierRelations {
-                    key: Some(Default::default()),
                     did: Some(Default::default()),
                     certificates: Some(Default::default()),
                     trust_information: Some(Default::default()),

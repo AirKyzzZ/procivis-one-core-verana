@@ -62,7 +62,6 @@ impl SSIHolderService {
                         did_id,
                         &IdentifierRelations {
                             did: Some(Default::default()),
-                            key: Some(Default::default()),
                             ..Default::default()
                         },
                     )
@@ -76,7 +75,6 @@ impl SSIHolderService {
                         identifier_id,
                         &IdentifierRelations {
                             did: Some(Default::default()),
-                            key: Some(Default::default()),
                             ..Default::default()
                         },
                     )

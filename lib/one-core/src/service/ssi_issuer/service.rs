@@ -403,7 +403,6 @@ impl SSIIssuerService {
                 *identifier_id,
                 &IdentifierRelations {
                     did: Some(Default::default()),
-                    key: Some(Default::default()),
                     certificates: Some(Default::default()),
                     ..Default::default()
                 },

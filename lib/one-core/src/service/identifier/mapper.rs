@@ -113,11 +113,10 @@ pub(super) async fn identifier_to_response_dto(
         is_remote: value.is_remote,
         state: value.state,
         did,
-        key: value
-            .key
-            .map(TryInto::try_into)
-            .transpose()
-            .error_while("converting key")?,
+        key: match value.key {
+            Some(key) => Some(key.as_ref().await?.to_owned().into()),
+            None => None,
+        },
         certificates,
         certificate_authorities,
         trust_information,

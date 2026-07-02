@@ -91,7 +91,7 @@ impl JWTFormatter {
             ),
             SelectedKey::Key(key) => {
                 let key = key_alg_provider
-                    .key_algorithm_from_key(key)
+                    .key_algorithm_from_key(&key)
                     .error_while("getting key algorithm")?
                     .reconstruct_key(&key.public_key, None, None)
                     .error_while("reconstructing key")?

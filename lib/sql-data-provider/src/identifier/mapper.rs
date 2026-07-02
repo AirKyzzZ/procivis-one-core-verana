@@ -4,6 +4,7 @@ use one_core::model::identifier::{Identifier, IdentifierFilterValue, SortableIde
 use one_core::model::identifier_trust_information::SchemaFormat;
 use one_core::model::list_filter::{ListFilterCondition, StringMatch, StringMatchType};
 use one_core::model::relation::Related;
+use one_core::repository::key_repository::KeyRepository;
 use one_core::repository::organisation_repository::OrganisationRepository;
 use sea_orm::sea_query::{Alias, ColumnRef, ExprTrait, IntoCondition, IntoIden, SimpleExpr};
 use sea_orm::{ColumnTrait, Condition, IntoSimpleExpr, JoinType, RelationTrait, Set};
@@ -20,7 +21,7 @@ use crate::list_query_generic::{
 impl From<Identifier> for ActiveModel {
     fn from(identifier: Identifier) -> Self {
         let did_id = identifier.did.map(|did| did.id);
-        let key_id = identifier.key.map(|key| key.id);
+        let key_id = identifier.key.map(|key| key.id());
 
         Self {
             id: Set(identifier.id),
@@ -41,6 +42,7 @@ impl From<Identifier> for ActiveModel {
 pub(crate) fn identifier_from_model(
     value: identifier::Model,
     organisation_repository: &Arc<dyn OrganisationRepository>,
+    key_repository: &Arc<dyn KeyRepository>,
 ) -> Identifier {
     Identifier {
         id: value.id,
@@ -53,7 +55,9 @@ pub(crate) fn identifier_from_model(
         deleted_at: value.deleted_at,
         organisation: Related::new(value.organisation_id, organisation_repository.to_owned()),
         did: None,
-        key: None,
+        key: value
+            .key_id
+            .map(|key_id| Related::new(key_id, key_repository.to_owned())),
         certificates: None,
         trust_information: None,
     }

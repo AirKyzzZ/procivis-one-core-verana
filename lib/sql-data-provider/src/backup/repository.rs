@@ -454,7 +454,13 @@ impl BackupRepository for BackupProvider {
                 .collect(),
             identifiers: identifiers
                 .into_iter()
-                .map(|identifier| identifier_from_model(identifier, &self.organisation_repository))
+                .map(|identifier| {
+                    identifier_from_model(
+                        identifier,
+                        &self.organisation_repository,
+                        &self.key_repository,
+                    )
+                })
                 .collect(),
             histories: try_convert_inner(histories)?,
             total_credentials,

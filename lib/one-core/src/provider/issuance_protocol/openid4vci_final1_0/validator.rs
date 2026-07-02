@@ -264,9 +264,9 @@ pub(super) async fn validate_batch_consistency(
         }
     }
 
-    let reference_issuer = comparable_issuer(&reference.credential)?;
+    let reference_issuer = comparable_issuer(&reference.credential).await?;
     for credential in credentials.iter().skip(1) {
-        let issuer = comparable_issuer(&credential.credential)?;
+        let issuer = comparable_issuer(&credential.credential).await?;
         if issuer != reference_issuer {
             return Err(IssuanceProtocolError::InvalidRequest(
                 "Batch credentials have inconsistent issuers".to_string(),
@@ -338,10 +338,10 @@ fn sorted_claim_entries(
 enum ComparableIssuer<'a> {
     Did { did: &'a DidValue },
     Certificate { fingerprint: &'a String },
-    Key { public_key: &'a [u8] },
+    Key { public_key: Vec<u8> },
 }
 
-fn comparable_issuer(
+async fn comparable_issuer(
     credential: &Credential,
 ) -> Result<ComparableIssuer<'_>, IssuanceProtocolError> {
     let issuer = credential
@@ -356,7 +356,7 @@ fn comparable_issuer(
                 "missing parsed credential issuer key".to_string(),
             ))?;
             Ok(ComparableIssuer::Key {
-                public_key: &key.public_key,
+                public_key: key.as_ref().await?.public_key.clone(),
             })
         }
         IdentifierType::Did => {

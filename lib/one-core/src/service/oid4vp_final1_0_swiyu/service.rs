@@ -26,7 +26,6 @@ impl OID4VPFinal1_0SwiyuService {
                         did: Some(Default::default()),
                         certificates: Some(Default::default()),
                         trust_information: Some(IdentifierTrustInformationRelations {}),
-                        ..Default::default()
                     }),
                     verifier_key: Some(Default::default()),
                     verifier_certificate: Some(Default::default()),

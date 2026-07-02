@@ -64,7 +64,6 @@ impl CredentialService {
                     &IdentifierRelations {
                         did: Some(Default::default()),
                         certificates: Some(Default::default()),
-                        key: Some(Default::default()),
                         ..Default::default()
                     },
                 )

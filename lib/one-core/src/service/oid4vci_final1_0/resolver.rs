@@ -176,7 +176,7 @@ impl CredentialIssuerMetadataResolver {
                 let key_handle = self
                     .key_provider
                     .get_key_storage(&key.storage_type)?
-                    .key_handle(key)
+                    .key_handle(&key)
                     .error_while("getting key handle")?;
                 (
                     Some(JwtPublicKeyInfo::Jwk(

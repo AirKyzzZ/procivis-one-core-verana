@@ -4,7 +4,6 @@ use super::error::OrganisationServiceError;
 use crate::config::core_config::{ConfigExt, CoreConfig, KeyAlgorithmType};
 use crate::error::ContextWithErrorCode;
 use crate::model::identifier::IdentifierRelations;
-use crate::model::key::KeyRelations;
 use crate::model::list_filter::ListFilterCondition;
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::{OrganisationFilterValue, OrganisationListQuery};
@@ -27,7 +26,6 @@ pub(super) async fn validate_wallet_provider_issuer(
             issuer_id,
             &IdentifierRelations {
                 did: Some(Default::default()),
-                key: Some(KeyRelations::default()),
                 certificates: Some(Default::default()),
                 ..Default::default()
             },

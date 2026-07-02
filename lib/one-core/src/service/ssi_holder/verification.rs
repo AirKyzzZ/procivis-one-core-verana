@@ -477,7 +477,6 @@ impl SSIHolderService {
                     key: Some(Default::default()),
                     holder_identifier: Some(IdentifierRelations {
                         did: Some(Default::default()),
-                        key: Some(Default::default()),
                         ..Default::default()
                     }),
                     schema: Some(Default::default()),
@@ -531,7 +530,6 @@ impl SSIHolderService {
                         &CredentialRelations {
                             holder_identifier: Some(IdentifierRelations {
                                 did: Some(Default::default()),
-                                key: Some(Default::default()),
                                 ..Default::default()
                             }),
                             key: Some(KeyRelations::default()),

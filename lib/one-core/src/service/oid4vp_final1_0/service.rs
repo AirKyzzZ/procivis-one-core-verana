@@ -74,7 +74,6 @@ impl OID4VPFinal1_0Service {
                         did: Some(Default::default()),
                         certificates: Some(Default::default()),
                         trust_information: Some(IdentifierTrustInformationRelations {}),
-                        ..Default::default()
                     }),
                     verifier_key: Some(Default::default()),
                     verifier_certificate: Some(Default::default()),

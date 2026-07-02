@@ -1402,7 +1402,17 @@ async fn test_parse_credential_cnf() {
     assert!(result.holder_identifier.is_some());
     let holder = result.holder_identifier.as_ref().unwrap();
     assert!(holder.key.is_some());
-    assert_eq!(holder.key.as_ref().unwrap().public_key, vec![0x0, 0x1]);
+    assert_eq!(
+        holder
+            .key
+            .as_ref()
+            .unwrap()
+            .as_ref()
+            .await
+            .unwrap()
+            .public_key,
+        vec![0x0, 0x1]
+    );
 }
 
 const TEST_PEM_CERT: &str = r#"-----BEGIN CERTIFICATE-----

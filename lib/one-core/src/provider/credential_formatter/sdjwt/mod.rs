@@ -103,10 +103,12 @@ pub(crate) async fn format_credential<T: Serialize>(
                 let key = identifier
                     .key
                     .as_ref()
-                    .ok_or(FormatterError::CouldNotFormat("Missing key".to_string()))?;
+                    .ok_or(FormatterError::CouldNotFormat("Missing key".to_string()))?
+                    .as_ref()
+                    .await?;
 
                 let key_algorithm = key_algorithm_provider
-                    .key_algorithm_from_key(key)
+                    .key_algorithm_from_key(&key)
                     .error_while("getting key algorithm")?;
 
                 let jwk = key_algorithm

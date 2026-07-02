@@ -172,7 +172,7 @@ impl From<KeyFilter> for KeySelection {
 }
 
 pub enum SelectedKey<'a> {
-    Key(&'a Key),
+    Key(Box<Key>),
     Certificate {
         certificate: &'a Certificate,
         key: Box<Key>,
@@ -404,11 +404,16 @@ impl Identifier {
                 self.throw_on_certificate_id(&selection)?;
                 self.throw_on_did_id(&selection)?;
 
-                let key = self.key.as_ref().ok_or(KeySelectionError::MappingError(
-                    "Missing identifier key".to_owned(),
-                ))?;
+                let key = self
+                    .key
+                    .as_ref()
+                    .ok_or(KeySelectionError::MappingError(
+                        "Missing identifier key".to_owned(),
+                    ))?
+                    .as_ref()
+                    .await?;
 
-                if !filter.matches_key(key) {
+                if !filter.matches_key(&key) {
                     return Err(KeySelectionError::NoKeyMatchingFilter {
                         identifier_id: self.id,
                         key_filter: filter.clone(),
@@ -423,7 +428,7 @@ impl Identifier {
                         key_id,
                     });
                 };
-                Ok(SelectedKey::Key(key))
+                Ok(SelectedKey::Key(Box::new(key.as_ref().clone())))
             }
             IdentifierType::Did => {
                 self.throw_on_certificate_id(&selection)?;
@@ -497,17 +502,22 @@ impl Identifier {
         let filter = key_filter.unwrap_or_default();
         match self.r#type {
             IdentifierType::Key => {
-                let key = self.key.as_ref().ok_or(KeySelectionError::MappingError(
-                    "Missing identifier key".to_owned(),
-                ))?;
+                let key = self
+                    .key
+                    .as_ref()
+                    .ok_or(KeySelectionError::MappingError(
+                        "Missing identifier key".to_owned(),
+                    ))?
+                    .as_ref()
+                    .await?;
 
-                if !filter.matches_key(key) {
+                if !filter.matches_key(&key) {
                     return Err(KeySelectionError::NoKeyMatchingFilter {
                         identifier_id: self.id,
                         key_filter: filter,
                     });
                 }
-                Ok(vec![SelectedKey::Key(key)])
+                Ok(vec![SelectedKey::Key(Box::new(key.as_ref().clone()))])
             }
             IdentifierType::Did => {
                 let did = self.did.as_ref().ok_or(KeySelectionError::MappingError(
