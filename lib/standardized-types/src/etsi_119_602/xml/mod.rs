@@ -224,7 +224,7 @@ pub struct ServiceDigitalIdentities {
 #[from(super::json::MultiLangString)]
 #[into(super::json::MultiLangString)]
 pub struct MultiLangString {
-    #[serde(rename(serialize = "@xml:lang", deserialize = "@lang"))]
+    #[serde(rename = "@xml:lang")]
     pub lang: String,
     #[serde(rename = "$text")]
     pub value: String,
@@ -236,7 +236,7 @@ pub struct MultiLangString {
 #[from(super::json::MultiLangUri)]
 #[into(super::json::MultiLangUri)]
 pub struct MultiLangUri {
-    #[serde(rename(serialize = "@xml:lang", deserialize = "@lang"))]
+    #[serde(rename = "@xml:lang")]
     pub lang: String,
     #[serde(rename = "$text")]
     pub uri_value: String,
@@ -292,7 +292,7 @@ pub struct PostalAddress {
     pub state_or_province: Option<String>,
     pub postal_code: Option<String>,
 
-    #[serde(rename(serialize = "@xml:lang", deserialize = "@lang"))]
+    #[serde(rename = "@xml:lang")]
     pub lang: String,
 
     #[serde(rename = "CountryName")]

@@ -56,7 +56,7 @@ pub struct InternationalNames {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct LangString {
-    #[serde(rename(serialize = "@xml:lang", deserialize = "@lang"))]
+    #[serde(rename = "@xml:lang")]
     pub lang: String,
     #[serde(rename = "$text")]
     pub value: String,
