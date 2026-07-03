@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use shared_types::{
     CredentialId, CredentialSchemaId, EntityId, HistoryId, IdentifierId, OrganisationId, ProofId,
-    ProofSchemaId,
+    ProofSchemaId, TrustCollectionId,
 };
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
@@ -355,6 +355,12 @@ pub(crate) struct HistoryFilterQueryParamsRest {
     #[param(nullable = false)]
     #[try_into(infallible)]
     pub proof_schema_id: Option<ProofSchemaId>,
+    /// Return only events associated with the provided trust collection UUID.
+    /// Includes the collection's own events and the events of all trust list
+    /// subscriptions it contains.
+    #[param(nullable = false)]
+    #[try_into(infallible)]
+    pub trust_collection_id: Option<TrustCollectionId>,
     /// Return only events associated with the provided users. Only applicable
     /// in STS authentication mode.
     #[param(rename = "users[]", nullable = false)]

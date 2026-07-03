@@ -2,7 +2,7 @@ use one_dto_mapper::{From, convert_inner};
 use serde::{Deserialize, Serialize};
 use shared_types::{
     CredentialId, CredentialSchemaId, EntityId, HistoryId, IdentifierId, OrganisationId, ProofId,
-    ProofSchemaId,
+    ProofSchemaId, TrustCollectionId,
 };
 use time::OffsetDateTime;
 
@@ -77,6 +77,7 @@ pub struct HistoryFilterParamsDTO {
     pub credential_schema_id: Option<CredentialSchemaId>,
     pub proof_id: Option<ProofId>,
     pub proof_schema_id: Option<ProofSchemaId>,
+    pub trust_collection_id: Option<TrustCollectionId>,
     pub users: Option<Vec<String>>,
     pub sources: Option<Vec<HistorySource>>,
     pub search_query: Option<String>,

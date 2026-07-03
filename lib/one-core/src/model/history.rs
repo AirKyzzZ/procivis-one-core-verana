@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use shared_types::{
     BlobId, CredentialId, CredentialSchemaId, EntityId, HistoryId, IdentifierId, OrganisationId,
-    ProofId, ProofSchemaId,
+    ProofId, ProofSchemaId, TrustCollectionId,
 };
 use standardized_types::etsi_119_602::MultiLangString;
 use strum::IntoStaticStr;
@@ -202,6 +202,7 @@ pub enum HistoryFilterValue {
     OrganisationIds(Vec<OrganisationId>),
     ProofId(ProofId),
     ProofSchemaId(ProofSchemaId),
+    TrustCollectionId(TrustCollectionId),
     Users(Vec<String>),
     Sources(Vec<HistorySource>),
 }

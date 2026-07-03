@@ -15,8 +15,8 @@ use shared_types::{
     BlobId, CertificateId, ClaimId, ClaimSchemaId, CredentialId, CredentialSchemaFormatId,
     CredentialSchemaId, DidId, DidMethodId, DidValue, EntityId, HistoryId, IdentifierId,
     InteractionId, KeyId, NonceId, OrganisationId, ProofId, ProofSchemaId, RevocationListEntryId,
-    RevocationListId, RevocationMethodId, TrustCollectionId, WalletInstanceAttestedKeyId,
-    WalletInstanceId,
+    RevocationListId, RevocationMethodId, TrustCollectionId, TrustListSubscriptionId,
+    WalletInstanceAttestedKeyId, WalletInstanceId,
 };
 use similar_asserts::assert_eq;
 use standardized_types::jwk::PublicJwk;
@@ -38,7 +38,8 @@ use crate::entity::{
     blob, claim, claim_schema, credential, credential_schema, credential_schema_format, did,
     identifier, interaction, key, key_did, organisation, proof, proof_claim,
     proof_input_claim_schema, proof_input_schema, proof_schema, revocation_list,
-    revocation_list_entry, trust_collection, wallet_instance, wallet_instance_attested_key,
+    revocation_list_entry, trust_collection, trust_list_subscription, wallet_instance,
+    wallet_instance_attested_key,
 };
 use crate::{DataLayer, db_conn};
 
@@ -812,6 +813,28 @@ pub async fn insert_trust_collection_to_database(
     .insert(database)
     .await?;
     Ok(collection.id)
+}
+
+pub async fn insert_trust_list_subscription_to_database(
+    database: &DatabaseConnection,
+    trust_collection_id: TrustCollectionId,
+) -> Result<TrustListSubscriptionId, DbErr> {
+    let id = Uuid::new_v4().into();
+    let subscription = trust_list_subscription::ActiveModel {
+        id: Set(id),
+        name: Set(id.to_string()),
+        created_date: Set(get_dummy_date()),
+        last_modified: Set(get_dummy_date()),
+        deactivated_at: NotSet,
+        r#type: Set("LoTE".into()),
+        reference: Set(format!("https://example.com/trust-list/{id}")),
+        role: NotSet,
+        state: Set(trust_list_subscription::TrustListSubscriptionState::Active),
+        trust_collection_id: Set(trust_collection_id),
+    }
+    .insert(database)
+    .await?;
+    Ok(subscription.id)
 }
 
 pub fn random_jwk_string() -> String {

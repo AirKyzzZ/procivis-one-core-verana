@@ -1,7 +1,10 @@
+use std::collections::HashSet;
+
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::DidType;
 use one_core::model::history::{HistoryAction, HistoryEntityType};
 use one_core::model::identifier::IdentifierType;
+use one_core::model::trust_list_subscription::TrustListSubscriptionState;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
@@ -9,6 +12,7 @@ use crate::fixtures::{TestingCredentialParams, TestingDidParams, TestingIdentifi
 use crate::utils::api_clients::histories::QueryParams;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::histories::TestingHistoryParams;
+use crate::utils::db_clients::trust_collections::TestTrustCollectionParams;
 
 #[tokio::test]
 async fn test_get_history_list_simple() {
@@ -491,6 +495,145 @@ async fn test_get_history_list_by_proof_id() {
     let resp = resp.json_value().await;
     let values = resp["values"].as_array().unwrap();
     assert_eq!(2, values.len());
+}
+
+#[tokio::test]
+async fn test_get_history_list_by_trust_collection_id() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let trust_collection = context
+        .db
+        .trust_collections
+        .create(
+            organisation.clone(),
+            TestTrustCollectionParams {
+                name: Some("collection".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+    let subscription_1 = context
+        .db
+        .trust_list_subscriptions
+        .create(
+            "subscription-1",
+            None,
+            "LoTE",
+            "https://example.com/trust-list/1",
+            TrustListSubscriptionState::Active,
+            trust_collection.id,
+        )
+        .await;
+    let subscription_2 = context
+        .db
+        .trust_list_subscriptions
+        .create(
+            "subscription-2",
+            None,
+            "LoTE",
+            "https://example.com/trust-list/2",
+            TrustListSubscriptionState::Active,
+            trust_collection.id,
+        )
+        .await;
+
+    // Another collection with its own subscription - must not be returned
+    let other_collection = context
+        .db
+        .trust_collections
+        .create(
+            organisation.clone(),
+            TestTrustCollectionParams {
+                name: Some("other-collection".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+    let other_subscription = context
+        .db
+        .trust_list_subscriptions
+        .create(
+            "other-subscription",
+            None,
+            "LoTE",
+            "https://example.com/trust-list/other",
+            TrustListSubscriptionState::Active,
+            other_collection.id,
+        )
+        .await;
+
+    // History for the collection itself and both of its subscriptions
+    for (entity_id, entity_type) in [
+        (
+            trust_collection.id.into(),
+            HistoryEntityType::TrustCollection,
+        ),
+        (
+            subscription_1.id.into(),
+            HistoryEntityType::TrustListSubscription,
+        ),
+        (
+            subscription_2.id.into(),
+            HistoryEntityType::TrustListSubscription,
+        ),
+        // Unrelated entries that must be excluded
+        (
+            other_collection.id.into(),
+            HistoryEntityType::TrustCollection,
+        ),
+        (
+            other_subscription.id.into(),
+            HistoryEntityType::TrustListSubscription,
+        ),
+    ] {
+        context
+            .db
+            .histories
+            .create(
+                &organisation,
+                TestingHistoryParams {
+                    action: Some(HistoryAction::Created),
+                    entity_id: Some(entity_id),
+                    entity_type: Some(entity_type),
+                    ..Default::default()
+                },
+            )
+            .await;
+    }
+
+    // WHEN
+    let resp = context
+        .api
+        .histories
+        .list(
+            0,
+            10,
+            QueryParams {
+                organisation_ids: Some(vec![organisation.id]),
+                trust_collection_id: Some(trust_collection.id),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+
+    let resp = resp.json_value().await;
+    let values = resp["values"].as_array().unwrap();
+    assert_eq!(3, values.len());
+
+    let returned_entity_ids = values
+        .iter()
+        .map(|value| value["entityId"].as_str().unwrap().to_string())
+        .collect::<HashSet<_>>();
+    let expected_entity_ids = HashSet::from([
+        trust_collection.id.to_string(),
+        subscription_1.id.to_string(),
+        subscription_2.id.to_string(),
+    ]);
+    assert_eq!(expected_entity_ids, returned_entity_ids);
 }
 
 #[tokio::test]

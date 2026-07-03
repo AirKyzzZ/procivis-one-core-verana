@@ -1,6 +1,8 @@
 use core_server::endpoint::history::dto::{HistoryAction, HistoryEntityType, HistorySource};
 use serde_json::json;
-use shared_types::{CredentialSchemaId, EntityId, HistoryId, OrganisationId, ProofId};
+use shared_types::{
+    CredentialSchemaId, EntityId, HistoryId, OrganisationId, ProofId, TrustCollectionId,
+};
 
 use super::{HttpClient, Response};
 
@@ -15,6 +17,7 @@ pub struct QueryParams {
     pub entity_types: Option<Vec<String>>,
     pub entity_ids: Option<Vec<EntityId>>,
     pub proof_id: Option<ProofId>,
+    pub trust_collection_id: Option<TrustCollectionId>,
     pub actions: Option<Vec<String>>,
     pub sources: Option<Vec<HistorySource>>,
     pub users: Option<Vec<String>>,
@@ -88,6 +91,9 @@ impl HistoriesApi {
         }
         if let Some(proof_id) = filter.proof_id {
             url.push_str(&format!("&proofId={proof_id}"));
+        }
+        if let Some(trust_collection_id) = filter.trust_collection_id {
+            url.push_str(&format!("&trustCollectionId={trust_collection_id}"));
         }
         if let Some(search_text) = &filter.search_text {
             url.push_str(&format!("&searchText={search_text}"));

@@ -249,6 +249,8 @@ pub struct HistoryListQueryBindingDTO {
     pub proof_id: Option<String>,
     /// Return only events associated with the provided proof schema ID.
     pub proof_schema_id: Option<String>,
+    /// Return only events associated with the provided trust collection D.
+    pub trust_collection_id: Option<String>,
     /// Search history events by string. Set `text` to specify the search
     /// string and optionally `type` to restrict which field is searched.
     /// When `type` is omitted, all searchable fields are checked.

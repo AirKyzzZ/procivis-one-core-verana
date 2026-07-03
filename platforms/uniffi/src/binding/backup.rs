@@ -274,6 +274,7 @@ mod tests {
                 credential_schema_id: None,
                 proof_id: None,
                 proof_schema_id: None,
+                trust_collection_id: None,
                 search: None,
                 users: None,
             })

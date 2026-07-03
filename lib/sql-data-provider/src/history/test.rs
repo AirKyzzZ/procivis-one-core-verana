@@ -657,6 +657,99 @@ async fn test_get_history_list_joins_schema_credential_claim_proof_and_proof_sch
 }
 
 #[tokio::test]
+async fn test_get_history_list_filter_by_trust_collection() {
+    let TestSetup {
+        provider,
+        organisation,
+        db,
+        ..
+    } = setup_empty().await;
+
+    let trust_collection_id = insert_trust_collection_to_database(&db, organisation.id)
+        .await
+        .unwrap();
+    let subscription_1 = insert_trust_list_subscription_to_database(&db, trust_collection_id)
+        .await
+        .unwrap();
+    let subscription_2 = insert_trust_list_subscription_to_database(&db, trust_collection_id)
+        .await
+        .unwrap();
+
+    // Another collection with its own subscription - must not be returned
+    let other_collection_id = insert_trust_collection_to_database(&db, organisation.id)
+        .await
+        .unwrap();
+    let other_subscription = insert_trust_list_subscription_to_database(&db, other_collection_id)
+        .await
+        .unwrap();
+
+    // History for the target collection and its subscriptions
+    insert_history(
+        &db,
+        HistoryAction::Created.into(),
+        trust_collection_id.into(),
+        HistoryEntityType::TrustCollection.into(),
+        organisation.id,
+        trust_collection_id.to_string(),
+    )
+    .await
+    .unwrap();
+    insert_history(
+        &db,
+        HistoryAction::Created.into(),
+        subscription_1.into(),
+        HistoryEntityType::TrustListSubscription.into(),
+        organisation.id,
+        subscription_1.to_string(),
+    )
+    .await
+    .unwrap();
+    insert_history(
+        &db,
+        HistoryAction::Updated.into(),
+        subscription_2.into(),
+        HistoryEntityType::TrustListSubscription.into(),
+        organisation.id,
+        subscription_2.to_string(),
+    )
+    .await
+    .unwrap();
+
+    // Unrelated history that must be excluded
+    insert_history(
+        &db,
+        HistoryAction::Created.into(),
+        other_collection_id.into(),
+        HistoryEntityType::TrustCollection.into(),
+        organisation.id,
+        other_collection_id.to_string(),
+    )
+    .await
+    .unwrap();
+    insert_history(
+        &db,
+        HistoryAction::Created.into(),
+        other_subscription.into(),
+        HistoryEntityType::TrustListSubscription.into(),
+        organisation.id,
+        other_subscription.to_string(),
+    )
+    .await
+    .unwrap();
+
+    let result = provider
+        .get_history_list(history_list_query_with_filter(
+            organisation.id,
+            HistoryFilterValue::TrustCollectionId(trust_collection_id),
+        ))
+        .await
+        .unwrap();
+
+    // collection + 2 subscriptions
+    assert_result(3, result);
+}
+
+#[tokio::test]
 async fn test_get_history_list_entity_of_another_type_should_not_get_fetched() {
     let TestSetupWithCredentialsSchemaAndProof {
         provider,

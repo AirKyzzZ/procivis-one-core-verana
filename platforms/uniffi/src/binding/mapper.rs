@@ -562,6 +562,7 @@ impl TryFrom<HistoryListQueryBindingDTO>
                 credential_schema_id: into_id_opt(value.credential_schema_id)?,
                 proof_id: into_id_opt(value.proof_id)?,
                 proof_schema_id: into_id_opt(value.proof_schema_id)?,
+                trust_collection_id: into_id_opt(value.trust_collection_id)?,
                 users: value.users,
                 sources: None,
                 search_query,

@@ -69,6 +69,9 @@ impl From<HistoryFilterParamsDTO> for ListFilterCondition<HistoryFilterValue> {
         let proof_schema_id = filter
             .proof_schema_id
             .map(HistoryFilterValue::ProofSchemaId);
+        let trust_collection_id = filter
+            .trust_collection_id
+            .map(HistoryFilterValue::TrustCollectionId);
         let users = filter.users.map(HistoryFilterValue::Users);
         let sources = filter.sources.map(HistoryFilterValue::Sources);
 
@@ -89,6 +92,7 @@ impl From<HistoryFilterParamsDTO> for ListFilterCondition<HistoryFilterValue> {
             & credential_schema_id
             & proof_id
             & proof_schema_id
+            & trust_collection_id
             & users
             & sources
             & search_query

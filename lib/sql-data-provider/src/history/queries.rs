@@ -22,6 +22,7 @@ use time::OffsetDateTime;
 use crate::entity::{
     claim, claim_schema, credential, credential_schema, did, history, identifier, proof,
     proof_claim, proof_input_claim_schema, proof_input_schema, proof_schema,
+    trust_list_subscription,
 };
 use crate::history::mapper::{ceil, floor};
 use crate::history::model::TimeResolution;
@@ -114,6 +115,20 @@ impl IntoFilterCondition for HistoryFilterValue {
                                 .eq(Expr::col((proof::Entity, proof::Column::ProofSchemaId))),
                         )
                         .cond_where(proof_schema::Column::Id.eq(proof_schema_id.to_string()))
+                        .to_owned(),
+                ))
+                .into_condition(),
+            Self::TrustCollectionId(trust_collection_id) => history::Column::EntityId
+                .eq(trust_collection_id)
+                .and(history::Column::EntityType.eq(history::HistoryEntityType::TrustCollection))
+                .or(history::Column::EntityId.in_subquery(
+                    Query::select()
+                        .expr(trust_list_subscription::Column::Id.into_expr())
+                        .from(trust_list_subscription::Entity)
+                        .cond_where(
+                            trust_list_subscription::Column::TrustCollectionId
+                                .eq(trust_collection_id),
+                        )
                         .to_owned(),
                 ))
                 .into_condition(),
