@@ -2767,26 +2767,8 @@ async fn credential_schema_with_claims(claims: Vec<ClaimSchema>) -> CredentialSc
 }
 
 #[tokio::test]
-async fn test_create_proof_schema_verify_nested_2nd_level_success() {
-    let keys = ["root/nested", "root/nested2", "root/nested3"];
-    assert!(
-        test_create_proof_schema_verify_nested_generic(
-            &keys,
-            &[Features::SelectiveDisclosure],
-            &[SelectiveDisclosure::SecondLevel]
-        )
-        .await
-        .is_ok()
-    )
-}
-
-#[tokio::test]
-async fn test_create_proof_schema_verify_nested_2nd_level_fail_3rd_level() {
-    let keys = [
-        "root/nested",
-        "root/nested2",
-        "root/nested3/even more nested",
-    ];
+async fn test_create_proof_schema_verify_nested_2nd_level_fail_nested() {
+    let keys = ["root", "root/nested"];
     assert!(
         test_create_proof_schema_verify_nested_generic(
             &keys,
@@ -2800,7 +2782,7 @@ async fn test_create_proof_schema_verify_nested_2nd_level_fail_3rd_level() {
 
 #[tokio::test]
 async fn test_create_proof_schema_verify_nested_2nd_level_success_root_level() {
-    let keys = ["root/nested", "root", "root/nested3"];
+    let keys = ["root"];
     assert!(
         test_create_proof_schema_verify_nested_generic(
             &keys,

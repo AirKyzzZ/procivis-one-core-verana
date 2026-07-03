@@ -165,10 +165,11 @@ pub(super) fn validate_proof_schema_nesting(
     ) {
         (true, None) => false,     // Incompatible capabilities
         (false, Some(_)) => false, // Incompatible capabilities
-        (false, None) => !claim_schema.key.contains('/'),
+        (false, None) => !claim_schema.key.contains(NESTED_CLAIM_MARKER),
         (true, Some(SelectiveDisclosure::AnyLevel)) => true,
         (true, Some(SelectiveDisclosure::SecondLevel)) => {
-            claim_schema.key.chars().filter(|&c| c == '/').count() <= 1
+            // TODO(ONE-10546): After v2 migrations, 2nd level on MDOC becomes 1st
+            !claim_schema.key.contains(NESTED_CLAIM_MARKER)
         }
     };
 
