@@ -2029,7 +2029,7 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
         .returning(|| FormatterCapabilities {
             revocation_methods: vec![],
             features: vec![Features::SelectiveDisclosure],
-            selective_disclosure: vec![SelectiveDisclosure::SecondLevel],
+            selective_disclosure: vec![SelectiveDisclosure::FirstLevel],
             ..Default::default()
         });
 
@@ -2209,7 +2209,7 @@ async fn test_import_proof_schema_rehosts_source_url_when_enabled() {
         .returning(|| FormatterCapabilities {
             revocation_methods: vec![],
             features: vec![Features::SelectiveDisclosure],
-            selective_disclosure: vec![SelectiveDisclosure::SecondLevel],
+            selective_disclosure: vec![SelectiveDisclosure::FirstLevel],
             ..Default::default()
         });
 
@@ -2767,13 +2767,13 @@ async fn credential_schema_with_claims(claims: Vec<ClaimSchema>) -> CredentialSc
 }
 
 #[tokio::test]
-async fn test_create_proof_schema_verify_nested_2nd_level_fail_nested() {
+async fn test_create_proof_schema_verify_nested_1st_level_fail_nested() {
     let keys = ["root", "root/nested"];
     assert!(
         test_create_proof_schema_verify_nested_generic(
             &keys,
             &[Features::SelectiveDisclosure],
-            &[SelectiveDisclosure::SecondLevel]
+            &[SelectiveDisclosure::FirstLevel]
         )
         .await
         .is_err_and(|e| e.error_code() == ErrorCode::BR_0130)
@@ -2781,13 +2781,13 @@ async fn test_create_proof_schema_verify_nested_2nd_level_fail_nested() {
 }
 
 #[tokio::test]
-async fn test_create_proof_schema_verify_nested_2nd_level_success_root_level() {
+async fn test_create_proof_schema_verify_nested_1st_level_success_root_level() {
     let keys = ["root"];
     assert!(
         test_create_proof_schema_verify_nested_generic(
             &keys,
             &[Features::SelectiveDisclosure],
-            &[SelectiveDisclosure::SecondLevel]
+            &[SelectiveDisclosure::FirstLevel]
         )
         .await
         .is_ok()

@@ -433,7 +433,7 @@ pub enum Features {
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum SelectiveDisclosure {
     AnyLevel,
-    SecondLevel,
+    FirstLevel,
 }
 
 #[derive(Debug, Serialize, Deserialize, Display, IntoStaticStr)]

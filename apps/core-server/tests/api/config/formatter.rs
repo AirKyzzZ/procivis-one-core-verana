@@ -135,7 +135,7 @@ async fn test_expected_format_selective_disclosure() {
 
     assert_eq!(
         resp["format"]["MDOC"]["capabilities"]["selectiveDisclosure"],
-        json!(["SECOND_LEVEL"])
+        json!(["FIRST_LEVEL"])
     );
     assert_eq!(
         resp["format"]["SD_JWT"]["capabilities"]["selectiveDisclosure"],
