@@ -105,7 +105,7 @@ impl TransactionManager for TransactionManagerImpl {
         let access_mode = access_mode.map(map_access_mode);
         // Check if we are already in a transaction. If we are, we need to nest deeper on the existing one.
         let new_tx = if let Ok((tx, parent_isolation, _)) = TX_CONTEXT.try_with(|v| v.clone()) {
-            tracing::debug!(
+            tracing::trace!(
                 "Nested transaction, isolation_level:{requested_isolation:?}, access_mode:{access_mode:?}"
             );
 
@@ -127,7 +127,7 @@ impl TransactionManager for TransactionManagerImpl {
 
             tx.begin_with_config(None, access_mode).await
         } else {
-            tracing::debug!(
+            tracing::trace!(
                 "Non-nested transaction, isolation_level:{requested_isolation:?}, access_mode:{access_mode:?}"
             );
             self.db
