@@ -4919,3 +4919,12 @@ async fn test_holder_accept_credential_request_and_response_encryption_with_comp
         Some("credential".into())
     );
 }
+
+#[test]
+fn test_parse_eudi_issuer_metadata() {
+    // Taken from https://issuer.eudiw.dev/.well-known/openid-credential-issuer on 03.07.2026
+    let metadata = include_str!("fixtures/eudi_issuer_metadata.json");
+    assert!(
+        serde_json::from_str::<super::model::OpenID4VCIIssuerMetadataResponseDTO>(metadata).is_ok()
+    );
+}

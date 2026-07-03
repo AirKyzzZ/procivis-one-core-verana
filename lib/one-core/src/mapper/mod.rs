@@ -2,8 +2,8 @@ use std::collections::{HashMap, HashSet};
 
 use ct_codecs::{Base64UrlSafe, Base64UrlSafeNoPadding, Decoder, Encoder};
 use one_dto_mapper::{convert_inner, try_convert_inner};
-use serde::Serialize;
 use serde::de::DeserializeOwned;
+use serde::{Deserialize, Deserializer, Serialize};
 use shared_types::{ClaimSchemaId, CredentialId};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -37,6 +37,25 @@ pub mod x509;
 
 pub const NESTED_CLAIM_MARKER: char = '/';
 pub const NESTED_CLAIM_MARKER_STR: &str = "/";
+
+/// Deserialize a list of values while discarding any entries that are not recognized.
+pub(crate) fn deserialize_ignoring_unknown<'de, D, T>(deserializer: D) -> Result<Vec<T>, D::Error>
+where
+    D: Deserializer<'de>,
+    T: DeserializeOwned,
+{
+    let values = Vec::<serde_json::Value>::deserialize(deserializer)?;
+    Ok(values
+        .into_iter()
+        .filter_map(|value| match T::deserialize(&value) {
+            Ok(parsed) => Some(parsed),
+            Err(error) => {
+                tracing::warn!(%error, %value, "Discarding unrecognized value while deserializing");
+                None
+            }
+        })
+        .collect())
+}
 
 pub(crate) fn remove_first_nesting_layer(name: &str) -> String {
     match name.find(NESTED_CLAIM_MARKER) {

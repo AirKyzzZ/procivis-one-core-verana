@@ -224,8 +224,13 @@ pub struct OpenID4VCIIssuerMetadataResponseDTO {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct OpenID4VCIRequestEncryptionDTO {
     pub jwks: Jwks,
+    #[serde(deserialize_with = "crate::mapper::deserialize_ignoring_unknown")]
     pub enc_values_supported: Vec<EncryptionAlgorithm>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        default,
+        deserialize_with = "crate::mapper::deserialize_ignoring_unknown",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub zip_values_supported: Vec<CompressionAlgorithm>,
     pub encryption_required: bool,
 }
@@ -233,9 +238,15 @@ pub struct OpenID4VCIRequestEncryptionDTO {
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct OpenID4VCIResponseEncryptionDTO {
+    #[serde(deserialize_with = "crate::mapper::deserialize_ignoring_unknown")]
     pub alg_values_supported: Vec<EncryptionKeyManagementAlgorithm>,
+    #[serde(deserialize_with = "crate::mapper::deserialize_ignoring_unknown")]
     pub enc_values_supported: Vec<EncryptionAlgorithm>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        default,
+        deserialize_with = "crate::mapper::deserialize_ignoring_unknown",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub zip_values_supported: Vec<CompressionAlgorithm>,
     pub encryption_required: bool,
 }
