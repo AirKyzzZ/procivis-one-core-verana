@@ -1,8 +1,13 @@
 use sea_orm::FromQueryResult;
-use shared_types::{CredentialSchemaId, OrganisationId, ProofSchemaId};
+use shared_types::{CredentialSchemaId, EntityId, OrganisationId, ProofSchemaId};
 use time::{Duration, OffsetDateTime};
 
 use crate::entity::history::{HistoryAction, HistoryEntityType};
+
+#[derive(FromQueryResult, Debug)]
+pub(crate) struct EntityIdRow {
+    pub entity_id: EntityId,
+}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum TimeResolution {

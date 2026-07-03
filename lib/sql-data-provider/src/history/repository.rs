@@ -6,6 +6,7 @@ use one_core::model::history::{
     OrganisationStats, OrganisationSummaryStats, SystemInteractionStatsQuery,
     SystemManagementStatsQuery, SystemOperationsCount, SystemStats, VerifierStatsQuery,
 };
+use one_core::model::list_query::ListQuery;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::history_repository::HistoryRepository;
 use sea_orm::sea_query::SelectStatement;
@@ -28,8 +29,8 @@ use crate::history::model::{
 };
 use crate::history::queries::{
     CountOperationsQuery, count_ops_query, issuer_stats_query, org_timelines_query,
-    system_interaction_stats_query, system_management_stats_query, top_orgs_query,
-    verifier_stats_query,
+    preprocess_history_filter, system_interaction_stats_query, system_management_stats_query,
+    top_orgs_query, verifier_stats_query,
 };
 use crate::list_query_generic::{SelectWithFilterJoin, SelectWithListQuery};
 use crate::mapper::to_data_layer_error;
@@ -74,6 +75,26 @@ impl HistoryRepository for HistoryProvider {
         &self,
         query_params: HistoryListQuery,
     ) -> Result<GetHistoryList, DataLayerError> {
+        let ListQuery {
+            pagination,
+            sorting,
+            filtering,
+            include,
+        } = query_params;
+
+        // Execute expensive subqueries up-front so that the history table can be filtered more
+        // efficiently
+        let filtering = match filtering {
+            Some(filter) => Some(preprocess_history_filter(&self.db, filter).await?),
+            None => None,
+        };
+        let query_params = ListQuery {
+            pagination,
+            sorting,
+            filtering,
+            include,
+        };
+
         let query = history::Entity::find()
             .with_list_query(&query_params)
             .with_filter_join(&query_params)

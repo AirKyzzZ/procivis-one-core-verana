@@ -1,11 +1,16 @@
+use std::collections::HashSet;
+
+use futures::future::try_join_all;
 use one_core::model::history::{
-    HistoryFilterValue, HistorySearchEnum, IssuerStatsQuery, SortableHistoryColumn,
-    SortableIssuerStatisticsColumn, SortableSystemInteractionStatisticsColumn,
-    SortableSystemManagementStatisticsColumn, SortableVerifierStatisticsColumn,
-    StatsBySchemaFilterValue, SystemInteractionStatsQuery, SystemManagementStatsQuery,
-    SystemStatsFilterValue, VerifierStatsQuery,
+    HistoryAction, HistoryEntityType, HistoryFilterValue, HistorySearchEnum, HistorySource,
+    IssuerStatsQuery, SortableHistoryColumn, SortableIssuerStatisticsColumn,
+    SortableSystemInteractionStatisticsColumn, SortableSystemManagementStatisticsColumn,
+    SortableVerifierStatisticsColumn, StatsBySchemaFilterValue, SystemInteractionStatsQuery,
+    SystemManagementStatsQuery, SystemStatsFilterValue, VerifierStatsQuery,
 };
-use one_core::model::list_filter::{ListFilterCondition, StringMatch, StringMatchType};
+use one_core::model::list_filter::{
+    ListFilterCondition, ListFilterValue, StringMatch, StringMatchType, ValueComparison,
+};
 use one_core::repository::error::DataLayerError;
 use one_dto_mapper::convert_inner;
 use sea_orm::sea_query::{
@@ -13,10 +18,13 @@ use sea_orm::sea_query::{
     IntoTableRef, Query, SelectStatement, SimpleExpr,
 };
 use sea_orm::{
-    ActiveEnum, ColumnTrait, DbBackend, EntityTrait, IntoSimpleExpr, JoinType, Order, QueryFilter,
-    QuerySelect, QueryTrait, RelationTrait,
+    ActiveEnum, ColumnTrait, ConnectionTrait, DbBackend, EntityTrait, FromQueryResult,
+    IntoSimpleExpr, JoinType, Order, QueryFilter, QuerySelect, QueryTrait, RelationTrait,
 };
-use shared_types::OrganisationId;
+use shared_types::{
+    CredentialId, CredentialSchemaId, EntityId, IdentifierId, OrganisationId, ProofId,
+    ProofSchemaId, TrustCollectionId,
+};
 use time::OffsetDateTime;
 
 use crate::entity::{
@@ -25,11 +33,29 @@ use crate::entity::{
     trust_list_subscription,
 };
 use crate::history::mapper::{ceil, floor};
-use crate::history::model::TimeResolution;
+use crate::history::model::{EntityIdRow, TimeResolution};
 use crate::list_query_generic::{
     IntoFilterCondition, IntoJoinRelations, IntoSortingColumn, JoinRelation, SelectWithListQuery,
     get_blob_match_condition, get_comparison_condition,
 };
+
+const ENTITY_ID: &str = "entity_id";
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(super) enum PreprocessedHistoryFilterValue {
+    EntityTypes(Vec<HistoryEntityType>),
+    EntityIds(Vec<EntityId>),
+    Actions(Vec<HistoryAction>),
+    CreatedDate(ValueComparison<OffsetDateTime>),
+    IdentifierId(IdentifierId),
+    OrganisationIds(Vec<OrganisationId>),
+    ProofId(ProofId),
+    Users(Vec<String>),
+    Sources(Vec<HistorySource>),
+    Target(String),
+}
+
+impl ListFilterValue for PreprocessedHistoryFilterValue {}
 
 impl IntoSortingColumn for SortableHistoryColumn {
     fn get_column(&self) -> SimpleExpr {
@@ -45,7 +71,97 @@ impl IntoSortingColumn for SortableHistoryColumn {
     }
 }
 
-impl IntoFilterCondition for HistoryFilterValue {
+fn credential_id_related_subqueries(credential_id: CredentialId) -> Vec<SelectStatement> {
+    vec![
+        select_proof_id_from_proof_claim_to_claim_join()
+            .cond_where(claim::Column::CredentialId.eq(credential_id))
+            .to_owned(),
+    ]
+}
+
+fn credential_schema_id_related_subqueries(
+    credential_schema_id: CredentialSchemaId,
+) -> Vec<SelectStatement> {
+    let match_condition = credential_schema::Column::Id.eq(credential_schema_id);
+    vec![
+        select_proof_id_from_proof_to_cred_schema_joins()
+            .cond_where(match_condition.clone())
+            .to_owned(),
+        select_credential_id_from_credential_to_schema_join()
+            .cond_where(match_condition)
+            .to_owned(),
+    ]
+}
+
+fn select_credential_id_from_credential_to_schema_join() -> SelectStatement {
+    Query::select()
+        .expr_as(credential::Column::Id.into_expr(), ENTITY_ID)
+        .from(credential::Entity)
+        .inner_join(
+            credential_schema::Entity,
+            Expr::col((credential::Entity, credential::Column::CredentialSchemaId)).eq(Expr::col(
+                (credential_schema::Entity, credential_schema::Column::Id),
+            )),
+        )
+        .to_owned()
+}
+
+fn select_proof_id_from_proof_to_cred_schema_joins() -> SelectStatement {
+    select_proof_id_from_proof_claim_to_claim_join()
+        .inner_join(
+            credential::Entity,
+            Expr::col((claim::Entity, claim::Column::CredentialId))
+                .eq(Expr::col((credential::Entity, credential::Column::Id))),
+        )
+        .inner_join(
+            credential_schema::Entity,
+            Expr::col((credential::Entity, credential::Column::CredentialSchemaId)).eq(Expr::col(
+                (credential_schema::Entity, credential_schema::Column::Id),
+            )),
+        )
+        .to_owned()
+}
+
+fn select_proof_id_from_proof_claim_to_claim_join() -> SelectStatement {
+    Query::select()
+        .expr_as(proof_claim::Column::ProofId.into_expr(), ENTITY_ID)
+        .from(proof_claim::Entity)
+        .inner_join(
+            claim::Entity,
+            Expr::col((proof_claim::Entity, proof_claim::Column::ClaimId))
+                .eq(Expr::col((claim::Entity, claim::Column::Id))),
+        )
+        .to_owned()
+}
+
+fn proof_schema_id_related_subqueries(proof_schema_id: ProofSchemaId) -> Vec<SelectStatement> {
+    vec![
+        Query::select()
+            .expr_as(proof::Column::Id.into_expr(), ENTITY_ID)
+            .from(proof::Entity)
+            .inner_join(
+                proof_schema::Entity,
+                Expr::col((proof_schema::Entity, proof_schema::Column::Id))
+                    .eq(Expr::col((proof::Entity, proof::Column::ProofSchemaId))),
+            )
+            .cond_where(proof_schema::Column::Id.eq(proof_schema_id))
+            .to_owned(),
+    ]
+}
+
+fn trust_collection_id_related_subqueries(
+    trust_collection_id: TrustCollectionId,
+) -> Vec<SelectStatement> {
+    vec![
+        Query::select()
+            .expr_as(trust_list_subscription::Column::Id.into_expr(), ENTITY_ID)
+            .from(trust_list_subscription::Entity)
+            .cond_where(trust_list_subscription::Column::TrustCollectionId.eq(trust_collection_id))
+            .to_owned(),
+    ]
+}
+
+impl IntoFilterCondition for PreprocessedHistoryFilterValue {
     fn get_condition(self, _entire_filter: &ListFilterCondition<Self>) -> Condition {
         match self {
             Self::EntityTypes(entity_types) => history::Column::EntityType
@@ -73,64 +189,8 @@ impl IntoFilterCondition for HistoryFilterValue {
                     .eq(identifier_id)
                     .and(history::Column::EntityType.eq(history::HistoryEntityType::Identifier)))
                 .into_condition(),
-            Self::CredentialId(credential_id) => history::Column::EntityId
-                .eq(credential_id)
-                .and(history::Column::EntityType.eq(history::HistoryEntityType::Credential))
-                .or(history::Column::EntityId.in_subquery(
-                    Query::select()
-                        .expr(proof_claim::Column::ProofId.into_expr())
-                        .from(proof_claim::Entity)
-                        .inner_join(
-                            claim::Entity,
-                            Expr::col((proof_claim::Entity, proof_claim::Column::ClaimId))
-                                .eq(Expr::col((claim::Entity, claim::Column::Id))),
-                        )
-                        .cond_where(claim::Column::CredentialId.eq(credential_id))
-                        .to_owned(),
-                ))
-                .or(history::Column::Target
-                    .eq(credential_id)
-                    .and(history::Column::EntityType.eq(history::HistoryEntityType::Notification)))
-                .into_condition(),
-            Self::CredentialSchemaId(credential_schema_id) => credential_schema_filter_condition(
-                history::Column::EntityId.eq(credential_schema_id.to_string()),
-                credential_schema::Column::Id.eq(credential_schema_id.to_string()),
-            ),
-            Self::SearchQuery(search_text, search_type) => {
-                search_query_filter(search_text, search_type)
-            }
             Self::OrganisationIds(organisation_ids) => history::Column::OrganisationId
                 .is_in(organisation_ids)
-                .into_condition(),
-            Self::ProofSchemaId(proof_schema_id) => history::Column::EntityId
-                .eq(proof_schema_id)
-                .and(history::Column::EntityType.eq(history::HistoryEntityType::ProofSchema))
-                .or(history::Column::EntityId.in_subquery(
-                    Query::select()
-                        .expr(proof::Column::Id.into_expr())
-                        .from(proof::Entity)
-                        .inner_join(
-                            proof_schema::Entity,
-                            Expr::col((proof_schema::Entity, proof_schema::Column::Id))
-                                .eq(Expr::col((proof::Entity, proof::Column::ProofSchemaId))),
-                        )
-                        .cond_where(proof_schema::Column::Id.eq(proof_schema_id.to_string()))
-                        .to_owned(),
-                ))
-                .into_condition(),
-            Self::TrustCollectionId(trust_collection_id) => history::Column::EntityId
-                .eq(trust_collection_id)
-                .and(history::Column::EntityType.eq(history::HistoryEntityType::TrustCollection))
-                .or(history::Column::EntityId.in_subquery(
-                    Query::select()
-                        .expr(trust_list_subscription::Column::Id.into_expr())
-                        .from(trust_list_subscription::Entity)
-                        .cond_where(
-                            trust_list_subscription::Column::TrustCollectionId
-                                .eq(trust_collection_id),
-                        )
-                        .to_owned(),
-                ))
                 .into_condition(),
             Self::ProofId(proof_id) => history::Column::EntityId
                 .eq(proof_id)
@@ -143,297 +203,210 @@ impl IntoFilterCondition for HistoryFilterValue {
             Self::Sources(sources) => history::Column::Source
                 .is_in::<history::HistorySource, _>(convert_inner(sources))
                 .into_condition(),
+            Self::Target(target) => history::Column::Target.eq(target).into_condition(),
         }
     }
 }
 
-fn search_query_filter(search_text: String, search_type: HistorySearchEnum) -> Condition {
+fn search_query_subqueries(
+    search_text: String,
+    search_type: HistorySearchEnum,
+) -> Vec<SelectStatement> {
     match search_type {
-        HistorySearchEnum::All => search_all_condition(search_text),
-        HistorySearchEnum::ClaimName => history::Column::EntityId
-            .in_subquery(
-                Query::select()
-                    .expr(claim::Column::CredentialId.into_expr())
-                    .from(claim::Entity)
-                    .inner_join(
-                        claim_schema::Entity,
-                        Expr::col((claim_schema::Entity, claim_schema::Column::Id))
-                            .eq(Expr::col((claim::Entity, claim::Column::ClaimSchemaId))),
-                    )
-                    .cond_where(claim_schema::Column::Key.contains(search_text.to_owned()))
-                    .to_owned(),
-            )
-            .or(history::Column::EntityId.in_subquery(
-                Query::select()
-                    .expr(proof::Column::Id.into_expr())
-                    .from(claim::Entity)
-                    .inner_join(
-                        claim_schema::Entity,
-                        Expr::col((claim_schema::Entity, claim_schema::Column::Id))
-                            .eq(Expr::col((claim::Entity, claim::Column::ClaimSchemaId))),
-                    )
-                    .inner_join(
+        HistorySearchEnum::All => search_all_subqueries(search_text),
+        HistorySearchEnum::ClaimName => vec![
+            Query::select()
+                .expr_as(claim::Column::CredentialId.into_expr(), ENTITY_ID)
+                .from(claim::Entity)
+                .inner_join(
+                    claim_schema::Entity,
+                    Expr::col((claim_schema::Entity, claim_schema::Column::Id))
+                        .eq(Expr::col((claim::Entity, claim::Column::ClaimSchemaId))),
+                )
+                .cond_where(claim_schema::Column::Key.contains(search_text.to_owned()))
+                .to_owned(),
+            Query::select()
+                .expr_as(proof::Column::Id.into_expr(), ENTITY_ID)
+                .from(claim::Entity)
+                .inner_join(
+                    claim_schema::Entity,
+                    Expr::col((claim_schema::Entity, claim_schema::Column::Id))
+                        .eq(Expr::col((claim::Entity, claim::Column::ClaimSchemaId))),
+                )
+                .inner_join(
+                    proof_input_claim_schema::Entity,
+                    Expr::col((claim::Entity, claim::Column::ClaimSchemaId)).eq(Expr::col((
                         proof_input_claim_schema::Entity,
-                        Expr::col((claim::Entity, claim::Column::ClaimSchemaId)).eq(Expr::col((
-                            proof_input_claim_schema::Entity,
-                            proof_input_claim_schema::Column::ClaimSchemaId,
-                        ))),
-                    )
-                    .inner_join(
-                        proof_input_schema::Entity,
-                        Expr::col((proof_input_schema::Entity, proof_input_schema::Column::Id)).eq(
-                            Expr::col((
-                                proof_input_claim_schema::Entity,
-                                proof_input_claim_schema::Column::ProofInputSchemaId,
-                            )),
-                        ),
-                    )
-                    .inner_join(
-                        proof::Entity,
+                        proof_input_claim_schema::Column::ClaimSchemaId,
+                    ))),
+                )
+                .inner_join(
+                    proof_input_schema::Entity,
+                    Expr::col((proof_input_schema::Entity, proof_input_schema::Column::Id)).eq(
                         Expr::col((
-                            proof_input_schema::Entity,
-                            proof_input_schema::Column::ProofSchema,
-                        ))
-                        .eq(Expr::col((proof::Entity, proof::Column::ProofSchemaId))),
-                    )
-                    .cond_where(claim_schema::Column::Key.contains(search_text))
-                    .to_owned(),
-            ))
-            .into_condition(),
-        HistorySearchEnum::ClaimValue => history::Column::EntityId
-            .in_subquery(
-                Query::select()
-                    .expr(claim::Column::CredentialId.into_expr())
-                    .from(claim::Entity)
-                    .cond_where(get_blob_match_condition(
-                        claim::Column::Value,
-                        StringMatch {
-                            r#match: StringMatchType::Contains,
-                            value: search_text.to_owned(),
-                        },
-                        255,
+                            proof_input_claim_schema::Entity,
+                            proof_input_claim_schema::Column::ProofInputSchemaId,
+                        )),
+                    ),
+                )
+                .inner_join(
+                    proof::Entity,
+                    Expr::col((
+                        proof_input_schema::Entity,
+                        proof_input_schema::Column::ProofSchema,
                     ))
-                    .to_owned(),
-            )
-            .or(history::Column::EntityId.in_subquery(
-                Query::select()
-                    .expr(proof::Column::Id.into_expr())
-                    .from(claim::Entity)
-                    .inner_join(
+                    .eq(Expr::col((proof::Entity, proof::Column::ProofSchemaId))),
+                )
+                .cond_where(claim_schema::Column::Key.contains(search_text))
+                .to_owned(),
+        ],
+        HistorySearchEnum::ClaimValue => vec![
+            Query::select()
+                .expr_as(claim::Column::CredentialId.into_expr(), ENTITY_ID)
+                .from(claim::Entity)
+                .cond_where(get_blob_match_condition(
+                    claim::Column::Value,
+                    StringMatch {
+                        r#match: StringMatchType::Contains,
+                        value: search_text.to_owned(),
+                    },
+                    255,
+                ))
+                .to_owned(),
+            Query::select()
+                .expr_as(proof::Column::Id.into_expr(), ENTITY_ID)
+                .from(claim::Entity)
+                .inner_join(
+                    proof_input_claim_schema::Entity,
+                    Expr::col((claim::Entity, claim::Column::ClaimSchemaId)).eq(Expr::col((
                         proof_input_claim_schema::Entity,
-                        Expr::col((claim::Entity, claim::Column::ClaimSchemaId)).eq(Expr::col((
-                            proof_input_claim_schema::Entity,
-                            proof_input_claim_schema::Column::ClaimSchemaId,
-                        ))),
-                    )
-                    .inner_join(
-                        proof_input_schema::Entity,
-                        Expr::col((proof_input_schema::Entity, proof_input_schema::Column::Id)).eq(
-                            Expr::col((
-                                proof_input_claim_schema::Entity,
-                                proof_input_claim_schema::Column::ProofInputSchemaId,
-                            )),
-                        ),
-                    )
-                    .inner_join(
-                        proof::Entity,
+                        proof_input_claim_schema::Column::ClaimSchemaId,
+                    ))),
+                )
+                .inner_join(
+                    proof_input_schema::Entity,
+                    Expr::col((proof_input_schema::Entity, proof_input_schema::Column::Id)).eq(
                         Expr::col((
-                            proof_input_schema::Entity,
-                            proof_input_schema::Column::ProofSchema,
-                        ))
-                        .eq(Expr::col((proof::Entity, proof::Column::ProofSchemaId))),
-                    )
-                    .cond_where(get_blob_match_condition(
-                        claim::Column::Value,
-                        StringMatch {
-                            r#match: StringMatchType::Contains,
-                            value: search_text,
-                        },
-                        255,
+                            proof_input_claim_schema::Entity,
+                            proof_input_claim_schema::Column::ProofInputSchemaId,
+                        )),
+                    ),
+                )
+                .inner_join(
+                    proof::Entity,
+                    Expr::col((
+                        proof_input_schema::Entity,
+                        proof_input_schema::Column::ProofSchema,
                     ))
-                    .to_owned(),
-            ))
-            .into_condition(),
-        HistorySearchEnum::CredentialSchemaName => credential_schema_name_search_condition(
+                    .eq(Expr::col((proof::Entity, proof::Column::ProofSchemaId))),
+                )
+                .cond_where(get_blob_match_condition(
+                    claim::Column::Value,
+                    StringMatch {
+                        r#match: StringMatchType::Contains,
+                        value: search_text,
+                    },
+                    255,
+                ))
+                .to_owned(),
+        ],
+        HistorySearchEnum::CredentialSchemaName => credential_schema_name_search_subqueries(
             credential_schema::Column::Name.contains(search_text),
         ),
-        HistorySearchEnum::IssuerDid => search_query_identifier_filter_condition(
+        HistorySearchEnum::IssuerDid => search_query_identifier_subqueries(
             credential::Column::Id,
             credential::Column::IssuerIdentifierId,
             did::Column::Did.contains(search_text),
         ),
-        HistorySearchEnum::IssuerName => search_query_identifier_filter_condition(
+        HistorySearchEnum::IssuerName => search_query_identifier_subqueries(
             credential::Column::Id,
             credential::Column::IssuerIdentifierId,
             did::Column::Name.contains(search_text),
         ),
-        HistorySearchEnum::VerifierDid => search_query_identifier_filter_condition(
+        HistorySearchEnum::VerifierDid => search_query_identifier_subqueries(
             proof::Column::Id,
             proof::Column::VerifierIdentifierId,
             did::Column::Did.contains(search_text),
         ),
-        HistorySearchEnum::VerifierName => search_query_identifier_filter_condition(
+        HistorySearchEnum::VerifierName => search_query_identifier_subqueries(
             proof::Column::Id,
             proof::Column::VerifierIdentifierId,
             did::Column::Name.contains(search_text),
         ),
-        HistorySearchEnum::ProofSchemaName => history::Column::EntityId
-            .in_subquery(
-                proof_schema::Entity::find()
-                    .filter(proof_schema::Column::Name.contains(search_text))
-                    .select_only()
-                    .column(proof_schema::Column::Id)
-                    .into_query(),
-            )
-            .into_condition(),
+        HistorySearchEnum::ProofSchemaName => vec![
+            proof_schema::Entity::find()
+                .filter(proof_schema::Column::Name.contains(search_text))
+                .select_only()
+                .column_as(proof_schema::Column::Id, "entity_id")
+                .into_query(),
+        ],
     }
 }
 
-fn search_query_identifier_filter_condition(
+fn search_query_identifier_subqueries(
     entity_id_column: impl ColumnTrait,
     identifier_id_column: impl ColumnTrait + IntoIden,
     condition: impl IntoCondition + Clone,
-) -> Condition {
-    history::Column::EntityId
-        .in_subquery(
-            Query::select()
-                .expr(entity_id_column.into_expr())
-                .from(entity_id_column.entity_name().into_table_ref())
-                .inner_join(
-                    identifier::Entity,
-                    Expr::col(ColumnRef::TableColumn(
-                        identifier_id_column.entity_name(),
-                        identifier_id_column.into_iden(),
-                    ))
-                    .eq(Expr::col((identifier::Entity, identifier::Column::Id))),
-                )
-                .inner_join(
-                    did::Entity,
-                    Expr::col((identifier::Entity, identifier::Column::DidId))
-                        .eq(Expr::col((did::Entity, did::Column::Id))),
-                )
-                .cond_where(condition.to_owned())
-                .to_owned(),
-        )
-        .or(history::Column::EntityId.in_subquery(
-            Query::select()
-                .expr(did::Column::Id.into_expr())
-                .from(did::Entity)
-                .inner_join(
-                    identifier::Entity,
-                    Expr::col((did::Entity, did::Column::Id))
-                        .eq(Expr::col((identifier::Entity, identifier::Column::DidId))),
-                )
-                .inner_join(
+) -> Vec<SelectStatement> {
+    vec![
+        Query::select()
+            .expr_as(entity_id_column.into_expr(), ENTITY_ID)
+            .from(entity_id_column.entity_name().into_table_ref())
+            .inner_join(
+                identifier::Entity,
+                Expr::col(ColumnRef::TableColumn(
                     identifier_id_column.entity_name(),
-                    Expr::col(ColumnRef::TableColumn(
-                        identifier_id_column.entity_name(),
-                        identifier_id_column.into_iden(),
-                    ))
-                    .eq(Expr::col((identifier::Entity, identifier::Column::Id))),
-                )
-                .cond_where(condition)
-                .to_owned(),
-        ))
-        .into_condition()
+                    identifier_id_column.into_iden(),
+                ))
+                .eq(Expr::col((identifier::Entity, identifier::Column::Id))),
+            )
+            .inner_join(
+                did::Entity,
+                Expr::col((identifier::Entity, identifier::Column::DidId))
+                    .eq(Expr::col((did::Entity, did::Column::Id))),
+            )
+            .cond_where(condition.to_owned())
+            .to_owned(),
+        Query::select()
+            .expr_as(did::Column::Id.into_expr(), ENTITY_ID)
+            .from(did::Entity)
+            .inner_join(
+                identifier::Entity,
+                Expr::col((did::Entity, did::Column::Id))
+                    .eq(Expr::col((identifier::Entity, identifier::Column::DidId))),
+            )
+            .inner_join(
+                identifier_id_column.entity_name(),
+                Expr::col(ColumnRef::TableColumn(
+                    identifier_id_column.entity_name(),
+                    identifier_id_column.into_iden(),
+                ))
+                .eq(Expr::col((identifier::Entity, identifier::Column::Id))),
+            )
+            .cond_where(condition)
+            .to_owned(),
+    ]
 }
 
-fn credential_schema_name_search_condition(
+fn credential_schema_name_search_subqueries(
     credential_schema_match_condition: SimpleExpr,
-) -> Condition {
-    history::Column::EntityId
-        .in_subquery(
-            Query::select()
-                .expr(proof_claim::Column::ProofId.into_expr())
-                .from(proof_claim::Entity)
-                .inner_join(
-                    claim::Entity,
-                    Expr::col((proof_claim::Entity, proof_claim::Column::ClaimId))
-                        .eq(Expr::col((claim::Entity, claim::Column::Id))),
-                )
-                .inner_join(
-                    credential::Entity,
-                    Expr::col((claim::Entity, claim::Column::CredentialId))
-                        .eq(Expr::col((credential::Entity, credential::Column::Id))),
-                )
-                .inner_join(
-                    credential_schema::Entity,
-                    Expr::col((credential::Entity, credential::Column::CredentialSchemaId)).eq(
-                        Expr::col((credential_schema::Entity, credential_schema::Column::Id)),
-                    ),
-                )
-                .cond_where(credential_schema_match_condition.to_owned())
-                .to_owned(),
-        )
-        .or(history::Column::EntityId.in_subquery(
-            Query::select()
-                .expr(credential::Column::Id.into_expr())
-                .from(credential::Entity)
-                .inner_join(
-                    credential_schema::Entity,
-                    Expr::col((credential::Entity, credential::Column::CredentialSchemaId)).eq(
-                        Expr::col((credential_schema::Entity, credential_schema::Column::Id)),
-                    ),
-                )
-                .cond_where(credential_schema_match_condition.to_owned())
-                .to_owned(),
-        ))
-        .or(history::Column::EntityId.in_subquery(
-            Query::select()
-                .expr(credential_schema::Column::Id.into_expr())
-                .from(credential_schema::Entity)
-                .cond_where(credential_schema_match_condition)
-                .to_owned(),
-        ))
-        .into_condition()
+) -> Vec<SelectStatement> {
+    vec![
+        select_proof_id_from_proof_to_cred_schema_joins()
+            .cond_where(credential_schema_match_condition.to_owned())
+            .to_owned(),
+        select_credential_id_from_credential_to_schema_join()
+            .cond_where(credential_schema_match_condition.to_owned())
+            .to_owned(),
+        Query::select()
+            .expr_as(credential_schema::Column::Id.into_expr(), ENTITY_ID)
+            .from(credential_schema::Entity)
+            .cond_where(credential_schema_match_condition)
+            .to_owned(),
+    ]
 }
 
-fn credential_schema_filter_condition(
-    starting_expression: SimpleExpr,
-    credential_schema_match_condition: SimpleExpr,
-) -> Condition {
-    starting_expression
-        .and(history::Column::EntityType.eq(history::HistoryEntityType::CredentialSchema))
-        .or(history::Column::EntityId.in_subquery(
-            Query::select()
-                .expr(proof_claim::Column::ProofId.into_expr())
-                .from(proof_claim::Entity)
-                .inner_join(
-                    claim::Entity,
-                    Expr::col((proof_claim::Entity, proof_claim::Column::ClaimId))
-                        .eq(Expr::col((claim::Entity, claim::Column::Id))),
-                )
-                .inner_join(
-                    credential::Entity,
-                    Expr::col((claim::Entity, claim::Column::CredentialId))
-                        .eq(Expr::col((credential::Entity, credential::Column::Id))),
-                )
-                .inner_join(
-                    credential_schema::Entity,
-                    Expr::col((credential::Entity, credential::Column::CredentialSchemaId)).eq(
-                        Expr::col((credential_schema::Entity, credential_schema::Column::Id)),
-                    ),
-                )
-                .cond_where(credential_schema_match_condition.to_owned())
-                .to_owned(),
-        ))
-        .or(history::Column::EntityId.in_subquery(
-            Query::select()
-                .expr(credential::Column::Id.into_expr())
-                .from(credential::Entity)
-                .inner_join(
-                    credential_schema::Entity,
-                    Expr::col((credential::Entity, credential::Column::CredentialSchemaId)).eq(
-                        Expr::col((credential_schema::Entity, credential_schema::Column::Id)),
-                    ),
-                )
-                .cond_where(credential_schema_match_condition)
-                .to_owned(),
-        ))
-        .into_condition()
-}
-
-impl IntoJoinRelations for HistoryFilterValue {
+impl IntoJoinRelations for PreprocessedHistoryFilterValue {
     fn get_join(&self) -> Vec<JoinRelation> {
         match self {
             Self::IdentifierId(_) => {
@@ -455,7 +428,7 @@ impl IntoJoinRelations for HistoryFilterValue {
     }
 }
 
-fn search_all_condition(search_text: String) -> Condition {
+fn search_all_subqueries(search_text: String) -> Vec<SelectStatement> {
     [
         HistorySearchEnum::ClaimName,
         HistorySearchEnum::ClaimValue,
@@ -466,9 +439,120 @@ fn search_all_condition(search_text: String) -> Condition {
         HistorySearchEnum::VerifierName,
     ]
     .into_iter()
-    .fold(Condition::any(), |cond, entry| {
-        cond.add(search_query_filter(search_text.to_owned(), entry))
-    })
+    .flat_map(|entry| search_query_subqueries(search_text.to_owned(), entry))
+    .collect()
+}
+
+/// Executes the related-entity subqueries of `filter` up-front, returning an equivalent filter in
+/// which every subquery-backed leaf is replaced by a concrete
+/// [`PreprocessedHistoryFilterValue::EntityIds`] list.
+///
+/// Building the list query with `entity_id IN (subquery)` conditions forces MySQL into a full
+/// organisation scan: the `IN (subquery)` branch can't participate in `index_merge`, so the
+/// optimizer uses the `organisation_id`/`created_date` index only for the `ORDER BY … LIMIT` and
+/// filters every row of the organisation. Plain `entity_id IN (id, …)` lists let it use
+/// `index_merge` on the `entity_id` index instead.
+pub(super) async fn preprocess_history_filter(
+    db: &impl ConnectionTrait,
+    filter: ListFilterCondition<HistoryFilterValue>,
+) -> Result<ListFilterCondition<PreprocessedHistoryFilterValue>, DataLayerError> {
+    let prepared_filter = match filter {
+        ListFilterCondition::And(conditions) => {
+            let mut prepared = Vec::with_capacity(conditions.len());
+            for condition in conditions {
+                prepared.push(Box::pin(preprocess_history_filter(db, condition)).await?);
+            }
+            ListFilterCondition::And(prepared)
+        }
+        ListFilterCondition::Or(conditions) => {
+            let mut prepared = Vec::with_capacity(conditions.len());
+            for condition in conditions {
+                prepared.push(Box::pin(preprocess_history_filter(db, condition)).await?);
+            }
+            ListFilterCondition::Or(prepared)
+        }
+        ListFilterCondition::Value(value) => preresolve_expensive_relations(db, value).await?,
+    };
+    Ok(prepared_filter)
+}
+
+/// Preresolve expensive subqueries into easier conditions so that the history table can be filtered more efficiently.
+async fn preresolve_expensive_relations(
+    db: &impl ConnectionTrait,
+    value: HistoryFilterValue,
+) -> Result<ListFilterCondition<PreprocessedHistoryFilterValue>, DataLayerError> {
+    use PreprocessedHistoryFilterValue as Preprocessed;
+
+    let resolved_filter = match value {
+        HistoryFilterValue::CredentialId(id) => {
+            let entity_ids = resolve_entity_ids(db, credential_id_related_subqueries(id)).await?;
+            Preprocessed::EntityIds(entity_ids).condition()
+                | (Preprocessed::EntityIds(vec![id.into()]).condition()
+                    & Preprocessed::EntityTypes(vec![HistoryEntityType::Credential]))
+                | (Preprocessed::Target(id.to_string()).condition()
+                    & Preprocessed::EntityTypes(vec![HistoryEntityType::Notification]))
+        }
+        HistoryFilterValue::CredentialSchemaId(id) => {
+            let entity_ids =
+                resolve_entity_ids(db, credential_schema_id_related_subqueries(id)).await?;
+            Preprocessed::EntityIds(entity_ids).condition()
+                | (Preprocessed::EntityIds(vec![id.into()]).condition()
+                    & Preprocessed::EntityTypes(vec![HistoryEntityType::CredentialSchema]))
+        }
+        HistoryFilterValue::ProofSchemaId(id) => {
+            let entity_ids = resolve_entity_ids(db, proof_schema_id_related_subqueries(id)).await?;
+            Preprocessed::EntityIds(entity_ids).condition()
+                | (Preprocessed::EntityIds(vec![id.into()]).condition()
+                    & Preprocessed::EntityTypes(vec![HistoryEntityType::ProofSchema]))
+        }
+        HistoryFilterValue::TrustCollectionId(id) => {
+            let entity_ids =
+                resolve_entity_ids(db, trust_collection_id_related_subqueries(id)).await?;
+            Preprocessed::EntityIds(entity_ids).condition()
+                | (Preprocessed::EntityIds(vec![id.into()]).condition()
+                    & Preprocessed::EntityTypes(vec![HistoryEntityType::TrustCollection]))
+        }
+        HistoryFilterValue::SearchQuery(search_text, search_type) => {
+            let entity_ids =
+                resolve_entity_ids(db, search_query_subqueries(search_text, search_type)).await?;
+            Preprocessed::EntityIds(entity_ids).condition()
+        }
+        // Pass-through variants that need no resolution — mapped explicitly so a newly added
+        // variant forces a decision here rather than silently falling through.
+        HistoryFilterValue::EntityTypes(v) => Preprocessed::EntityTypes(v).condition(),
+        HistoryFilterValue::EntityIds(v) => Preprocessed::EntityIds(v).condition(),
+        HistoryFilterValue::Actions(v) => Preprocessed::Actions(v).condition(),
+        HistoryFilterValue::CreatedDate(v) => Preprocessed::CreatedDate(v).condition(),
+        HistoryFilterValue::IdentifierId(v) => Preprocessed::IdentifierId(v).condition(),
+        HistoryFilterValue::OrganisationIds(v) => Preprocessed::OrganisationIds(v).condition(),
+        HistoryFilterValue::ProofId(v) => Preprocessed::ProofId(v).condition(),
+        HistoryFilterValue::Users(v) => Preprocessed::Users(v).condition(),
+        HistoryFilterValue::Sources(v) => Preprocessed::Sources(v).condition(),
+    };
+    Ok(resolved_filter)
+}
+
+/// Runs the subqueries (each selecting a single id column aliased to `entity_id`) concurrently and
+/// returns the de-duplicated union of the resulting ids.
+async fn resolve_entity_ids(
+    db: &impl ConnectionTrait,
+    subqueries: Vec<SelectStatement>,
+) -> Result<Vec<EntityId>, DataLayerError> {
+    let backend = db.get_database_backend();
+    let rows_per_subquery = try_join_all(
+        subqueries
+            .iter()
+            .map(|subquery| EntityIdRow::find_by_statement(backend.build(subquery)).all(db)),
+    )
+    .await
+    .map_err(|err| DataLayerError::Db(err.into()))?;
+
+    let entity_ids: HashSet<EntityId> = rows_per_subquery
+        .into_iter()
+        .flatten()
+        .map(|row| row.entity_id)
+        .collect();
+    Ok(entity_ids.into_iter().collect())
 }
 
 pub(super) struct CountOperationsQuery(pub SelectStatement);
