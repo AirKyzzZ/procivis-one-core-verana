@@ -28,6 +28,7 @@ pub struct ProviderTrustCollectionRestDTO {
     pub display_name: Vec<DisplayNameRestDTO>,
     #[into(with_fn = convert_inner)]
     pub description: Vec<DisplayNameRestDTO>,
+    pub default_selected: Option<bool>,
 }
 
 #[derive(Clone, Debug, Deserialize, Into)]

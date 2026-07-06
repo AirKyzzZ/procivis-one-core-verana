@@ -110,7 +110,7 @@ pub(crate) async fn prepare_trust_collection_info(
         local_id_to_metadata.insert(local_collection.id, metadata_collection);
     }
 
-    let mut result = vec![];
+    let mut collections_with_subscription_state = vec![];
     for (id, metadata) in local_id_to_metadata {
         let subscriptions = trust_subscription_repository
             .list(TrustListSubscriptionListQuery {
@@ -129,13 +129,29 @@ pub(crate) async fn prepare_trust_collection_info(
             .await
             .error_while("listing subscriptions")?;
 
-        result.push(TrustCollectionInfoDTO {
-            selected: subscriptions.total_items > 0,
-            collection: ProviderTrustCollectionDTO { id, ..metadata },
-        });
+        collections_with_subscription_state.push((id, metadata, subscriptions.total_items > 0));
     }
 
-    Ok(result)
+    // When no collection has an active subscription yet, the user has not made a selection;
+    // in that case the provider-configured `defaultSelected` flag determines the selection.
+    let any_subscription_exists = collections_with_subscription_state
+        .iter()
+        .any(|(_, _, has_subscription)| *has_subscription);
+
+    Ok(collections_with_subscription_state
+        .into_iter()
+        .map(|(id, metadata, has_subscription)| {
+            let selected = if any_subscription_exists {
+                has_subscription
+            } else {
+                metadata.default_selected.unwrap_or(false)
+            };
+            TrustCollectionInfoDTO {
+                selected,
+                collection: ProviderTrustCollectionDTO { id, ..metadata },
+            }
+        })
+        .collect())
 }
 
 pub(crate) async fn set_active_trust_collections(

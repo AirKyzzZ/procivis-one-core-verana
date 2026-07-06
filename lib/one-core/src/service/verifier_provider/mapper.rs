@@ -32,6 +32,7 @@ impl From<ProviderTrustCollectionDTO>
             logo: value.logo,
             display_name: convert_inner(value.display_name),
             description: convert_inner(value.description),
+            default_selected: value.default_selected,
         }
     }
 }

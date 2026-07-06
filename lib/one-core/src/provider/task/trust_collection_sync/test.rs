@@ -299,6 +299,7 @@ fn dummy_wallet_provider_metadata(
                 logo: "logo".to_string(),
                 display_name: vec![],
                 description: vec![],
+                default_selected: None,
             })
             .collect(),
         document_signers: vec![],
@@ -325,6 +326,7 @@ fn dummy_verifier_provider_metadata(
                 logo: "logo".to_string(),
                 display_name: vec![],
                 description: vec![],
+                default_selected: None,
             })
             .collect(),
         feature_flags: verifier::model::FeatureFlags {

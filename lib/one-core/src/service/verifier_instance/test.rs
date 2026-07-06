@@ -184,6 +184,7 @@ async fn test_get_trust_collections() {
                     logo: "logo".to_string(),
                     display_name: vec![],
                     description: vec![],
+                    default_selected: None,
                 }],
                 feature_flags: FeatureFlags {
                     trust_ecosystems_enabled: true,

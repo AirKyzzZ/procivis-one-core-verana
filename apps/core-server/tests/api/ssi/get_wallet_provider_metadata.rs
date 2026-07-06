@@ -264,6 +264,7 @@ async fn test_wallet_provider_metadata_with_trust_collections() {
                     en: name1
                   description:
                     en: description1
+                  defaultSelected: true
                 {collection_2_id}:
                   logo: logo2
                   displayName:
@@ -341,7 +342,8 @@ async fn test_wallet_provider_metadata_with_trust_collections() {
             "description": [{
                 "lang": "en",
                 "value": "description1"
-            }]
+            }],
+            "defaultSelected": true
         }
     )));
     assert!(trust_collections_vec.contains(&serde_json::json!(

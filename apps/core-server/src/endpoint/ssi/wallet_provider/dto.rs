@@ -167,6 +167,7 @@ pub(crate) struct DocumentSignerMetadataRestDTO {
     pub logo: String,
 }
 
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(dto::ProviderTrustCollectionDTO)]
@@ -178,6 +179,7 @@ pub(crate) struct ProviderTrustCollectionRestDTO {
     pub display_name: Vec<DisplayNameRestDTO>,
     #[from(with_fn = convert_inner)]
     pub description: Vec<DisplayNameRestDTO>,
+    pub default_selected: Option<bool>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

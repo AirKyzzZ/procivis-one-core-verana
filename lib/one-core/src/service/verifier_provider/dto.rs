@@ -17,6 +17,7 @@ pub struct ProviderTrustCollectionDTO {
     pub logo: String,
     pub display_name: Vec<DisplayNameDTO>,
     pub description: Vec<DisplayNameDTO>,
+    pub default_selected: Option<bool>,
 }
 
 #[derive(Clone, Debug)]

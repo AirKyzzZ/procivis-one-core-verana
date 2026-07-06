@@ -53,6 +53,7 @@ pub struct FeatureFlagsRestDTO {
     pub trust_ecosystems_enabled: bool,
 }
 
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(ProviderTrustCollectionDTO)]
@@ -64,6 +65,7 @@ pub(crate) struct ProviderTrustCollectionRestDTO {
     pub display_name: Vec<DisplayNameRestDTO>,
     #[from(with_fn = convert_inner)]
     pub description: Vec<DisplayNameRestDTO>,
+    pub default_selected: Option<bool>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

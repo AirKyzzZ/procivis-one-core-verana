@@ -1401,6 +1401,7 @@ impl WalletProviderService {
                         logo: params.logo,
                         display_name: params_into_display_names(params.display_name),
                         description: params_into_display_names(params.description),
+                        default_selected: params.default_selected,
                     })
                 })
                 .collect::<Result<_, WalletProviderError>>()?

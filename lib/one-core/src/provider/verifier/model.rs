@@ -40,4 +40,5 @@ pub struct TrustCollectionParams {
     pub logo: String,
     pub display_name: HashMap<String, String>,
     pub description: HashMap<String, String>,
+    pub default_selected: Option<bool>,
 }

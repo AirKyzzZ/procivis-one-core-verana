@@ -64,6 +64,7 @@ async fn test_get_verifier_provider_with_trust_collection() {
                     en: Name
                   description:
                     en: Description
+                  defaultSelected: true
     "};
     let (context, organisation) = TestContext::new_with_organisation(Some(config)).await;
 
@@ -102,7 +103,8 @@ async fn test_get_verifier_provider_with_trust_collection() {
             "description": [{
                 "lang": "en",
                 "value": "Description"
-            }]
+            }],
+            "defaultSelected": true
         })
     );
 }
