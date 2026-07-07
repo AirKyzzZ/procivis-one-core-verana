@@ -396,6 +396,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
         if !self.params.swiyu_mode {
             features.push(Features::SupportsCombinedPresentation);
             features.push(Features::SupportsTxCode);
+            features.push(Features::SupportsTransactionData);
         }
 
         if self.params.swiyu_mode {

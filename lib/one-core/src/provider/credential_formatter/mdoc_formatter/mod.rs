@@ -410,6 +410,7 @@ impl CredentialFormatter for MdocFormatter {
                 Features::SupportsCombinedPresentation,
                 Features::SupportsTxCode,
                 Features::RequiresNamespaces,
+                Features::SupportsTransactionData,
             ],
             ecosystem_schema_ids: self.params.ecosystem_schema_ids.to_owned(),
             pid_schema_ids: self.params.pid_schema_ids.to_owned(),

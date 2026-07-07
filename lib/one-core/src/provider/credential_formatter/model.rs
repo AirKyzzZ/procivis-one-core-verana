@@ -427,6 +427,7 @@ pub enum Features {
     SupportsCombinedPresentation,
     SupportsTxCode,
     RequiresNamespaces,
+    SupportsTransactionData,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

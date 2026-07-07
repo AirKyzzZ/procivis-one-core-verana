@@ -72,7 +72,8 @@ async fn test_expected_format_features() {
             "REQUIRES_PRESENTATION_ENCRYPTION",
             "SUPPORTS_COMBINED_PRESENTATION",
             "SUPPORTS_TX_CODE",
-            "REQUIRES_NAMESPACES"
+            "REQUIRES_NAMESPACES",
+            "SUPPORTS_TRANSACTION_DATA"
         ])
     );
     assert_eq!(
@@ -91,7 +92,8 @@ async fn test_expected_format_features() {
             "SUPPORTS_SCHEMA_ID",
             "SUPPORTS_CREDENTIAL_DESIGN",
             "SUPPORTS_COMBINED_PRESENTATION",
-            "SUPPORTS_TX_CODE"
+            "SUPPORTS_TX_CODE",
+            "SUPPORTS_TRANSACTION_DATA"
         ])
     );
     assert_eq!(
