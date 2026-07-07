@@ -15,10 +15,10 @@ use standardized_types::iana;
 use crate::config::core_config::FormatType;
 use crate::provider::provider_directory::InitializationError;
 use crate::provider::transaction_data::error::TransactionDataError;
+use crate::provider::transaction_data::processed_transaction_data::ProcessedTransactionData;
 use crate::provider::transaction_data::{
-    ProcessedTransactionData, TransactionData, TransactionDataCapabilities,
-    TransactionDataDisplayParams, TransactionDataMetadata, TransactionDataParams,
-    decode_transaction_data,
+    TransactionData, TransactionDataCapabilities, TransactionDataDisplayParams,
+    TransactionDataMetadata, TransactionDataParams, decode_transaction_data,
 };
 
 #[cfg(test)]

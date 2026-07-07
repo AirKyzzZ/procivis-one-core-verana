@@ -14,7 +14,6 @@ use crate::provider::transaction_data::{TransactionData, decode_transaction_data
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 pub trait TransactionDataProvider: Send + Sync {
-    #[expect(dead_code)]
     fn get_transaction_data(
         &self,
         transaction_data: &str,

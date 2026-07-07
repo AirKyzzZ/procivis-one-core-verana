@@ -45,6 +45,7 @@ use crate::provider::key_storage::MockKeyStorage;
 use crate::provider::key_storage::model::KeyStorageCapabilities;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::presentation_formatter::provider::MockPresentationFormatterProvider;
+use crate::provider::transaction_data::provider::MockTransactionDataProvider;
 use crate::provider::verification_protocol::dto::ShareResponse;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::model::{
@@ -77,6 +78,7 @@ struct TestInputs {
     pub wrp_validator: MockWRPValidator,
     pub blob_storage_provider: MockBlobStorageProvider,
     pub trust_information_provider: MockTrustInformationProvider,
+    pub transaction_data_provider: MockTransactionDataProvider,
     pub params: Option<serde_json::Value>,
 }
 
@@ -98,6 +100,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VPFinal1_0 {
         Arc::new(inputs.wrp_validator),
         Arc::new(inputs.blob_storage_provider),
         Arc::new(inputs.trust_information_provider),
+        Arc::new(inputs.transaction_data_provider),
         Arc::new(inputs.http_client),
         inputs.params.unwrap_or(generic_params()),
         Arc::new(generic_config().core),
@@ -264,6 +267,7 @@ fn test_holder_interaction_data(
         presentation_definition: None,
         presentation_definition_uri: None,
         dcql_query: None,
+        transaction_data: Default::default(),
         redirect_uri: None,
         verifier_details: None,
         verifier_info: vec![],

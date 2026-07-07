@@ -278,12 +278,14 @@ pub(crate) async fn append_key_binding_token(
         .jose_alg()
         .error_while("getting JOSE alg")?;
     let sd_hash = hasher.hash_base64_url(token.as_bytes())?;
+
     let payload = JWTPayload {
         issued_at: Some(crate::clock::now_utc()),
         audience: Some(vec![holder_binding_ctx.audience]),
         custom: KeyBindingPayload {
             nonce: holder_binding_ctx.nonce,
             sd_hash,
+            transaction_data: holder_binding_ctx.transaction_data,
         },
         ..Default::default()
     };

@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+use dcql::CredentialQueryId;
 use futures_util::FutureExt;
 use itertools::Itertools;
 use shared_types::{CredentialId, InteractionId, ProofId, SerializedCredential};
@@ -44,8 +45,7 @@ use crate::provider::verification_protocol::VerificationProtocol;
 use crate::provider::verification_protocol::dto::ApplicableCredentialOrFailureHintEnum::ApplicableCredentials;
 use crate::provider::verification_protocol::dto::{
     CredentialDetailClaimExtResponseDTO, FormattedCredentialPresentation, InvitationResponseDTO,
-    PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion, PresentationReference,
-    UpdateResponse,
+    PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion, UpdateResponse,
 };
 use crate::provider::verification_protocol::openid4vp::model::OpenID4VPHolderInteractionData;
 use crate::service::credential::dto::{
@@ -298,7 +298,7 @@ impl SSIHolderService {
                     consumed_item,
                 } = self
                     .get_credential_presentation(
-                        query_id.to_owned(),
+                        query_id.to_owned().into(),
                         credential_id,
                         &presented_paths,
                     )
@@ -458,7 +458,7 @@ impl SSIHolderService {
 
     async fn get_credential_presentation(
         &self,
-        credential_query_id: String,
+        credential_query_id: CredentialQueryId,
         credential_id: CredentialId,
         presented_paths: &[String],
     ) -> Result<SubmissionItem, HolderServiceError> {
@@ -593,9 +593,7 @@ impl SSIHolderService {
         let presentation = FormattedCredentialPresentation {
             presentation,
             credential_schema: credential_schema.clone(),
-            reference: PresentationReference::Dcql {
-                credential_query_id,
-            },
+            credential_query_id,
             holder_did,
             key,
             jwk_key_id,

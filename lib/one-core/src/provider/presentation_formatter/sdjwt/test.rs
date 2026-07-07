@@ -71,11 +71,12 @@ async fn test_format_presentation_with_cnf_success() {
                 credential_format: FormatType::SdJwt,
             }],
             Box::new(signer),
-            &Some(holder_did.clone()),
             FormatPresentationCtx {
                 nonce: Some(nonce.to_string()),
                 audience: Some(audience.to_string()),
+                holder_did: Some(holder_did),
                 mdoc_session_transcript: None,
+                ..Default::default()
             },
         )
         .await
@@ -157,10 +158,10 @@ async fn test_format_presentation_with_cnf_missing_nonce_fails() {
                 credential_format: FormatType::SdJwt,
             }],
             Box::new(MockSignatureProvider::default()),
-            &Some(holder_did),
             FormatPresentationCtx {
                 nonce: None,
                 audience: Some(audience.to_string()),
+                holder_did: Some(holder_did),
                 ..Default::default()
             },
         )
@@ -190,10 +191,10 @@ async fn test_format_presentation_with_cnf_missing_audience_fails() {
                 credential_format: FormatType::SdJwt,
             }],
             Box::new(MockSignatureProvider::default()),
-            &Some(holder_did),
             FormatPresentationCtx {
                 nonce: Some(nonce.to_string()),
                 audience: None,
+                holder_did: Some(holder_did),
                 ..Default::default()
             },
         )
@@ -246,11 +247,12 @@ async fn test_format_presentation_without_cnf_success() {
                 credential_format: FormatType::SdJwt,
             }],
             Box::new(signer),
-            &Some(holder_did.clone()),
             FormatPresentationCtx {
                 nonce: Some(nonce.to_string()),
                 audience: Some(audience.to_string()),
                 mdoc_session_transcript: None,
+                holder_did: Some(holder_did),
+                ..Default::default()
             },
         )
         .await
@@ -337,11 +339,12 @@ async fn test_format_presentation_without_cnf_missing_audience_nonce_succeeds() 
                 credential_format: FormatType::SdJwt,
             }],
             Box::new(signer),
-            &Some(holder_did),
             FormatPresentationCtx {
                 nonce: None,
                 audience: None,
                 mdoc_session_transcript: None,
+                holder_did: Some(holder_did),
+                ..Default::default()
             },
         )
         .await

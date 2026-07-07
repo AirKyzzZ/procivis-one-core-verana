@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use anyhow::Context;
-use dcql::DcqlQuery;
+use dcql::{CredentialQueryId, DcqlQuery};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use shared_types::{ClaimSchemaId, InteractionId, KeyId};
@@ -191,6 +191,8 @@ pub(crate) struct OpenID4VPHolderInteractionData {
     #[serde(default)]
     #[serde(deserialize_with = "deserialize_with_serde_json")]
     pub dcql_query: Option<DcqlQuery>,
+    #[serde(default)]
+    pub transaction_data: HolderTxData,
 
     #[serde(default, skip_serializing)]
     pub redirect_uri: Option<String>,
@@ -199,6 +201,27 @@ pub(crate) struct OpenID4VPHolderInteractionData {
     pub verifier_details: Option<IdentifierDetails>,
     #[serde(default)]
     pub verifier_info: Vec<VerifierInfoAttestation>,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug)]
+pub enum HolderTxData {
+    Unvalidated(Vec<String>),
+    Validated(Vec<ValidatedHolderTxData>),
+}
+
+impl Default for HolderTxData {
+    fn default() -> Self {
+        Self::Unvalidated(Vec::new())
+    }
+}
+
+#[skip_serializing_none]
+#[derive(Clone, Deserialize, Serialize, Debug)]
+pub struct ValidatedHolderTxData {
+    /// Raw base64URL-encoded transaction data.
+    pub raw: String,
+    /// Credential ids the transaction data is for.
+    pub credential_query_ids: Vec<CredentialQueryId>,
 }
 
 // Apparently the indirection via functions is required: https://github.com/serde-rs/serde/issues/368

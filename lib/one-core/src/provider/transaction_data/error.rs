@@ -19,6 +19,8 @@ pub enum TransactionDataError {
     UnsupportedCredentialFormat(FormatType),
     #[error("invalid transaction data object `{0}`")]
     InvalidTransactionData(String),
+    #[error("transaction data conflict: `{0}`")]
+    TransactionDataConflict(String),
     #[error(transparent)]
     Nested(#[from] NestedError),
 }
@@ -32,7 +34,8 @@ impl ErrorCodeMixin for TransactionDataError {
             | Self::UnsupportedHashAlgorithm(_)
             | Self::Hashing(_)
             | Self::UnsupportedCredentialFormat(_)
-            | Self::InvalidTransactionData(_) => ErrorCode::BR_0458,
+            | Self::InvalidTransactionData(_)
+            | Self::TransactionDataConflict(_) => ErrorCode::BR_0458,
             Self::Nested(nested) => nested.error_code(),
         }
     }

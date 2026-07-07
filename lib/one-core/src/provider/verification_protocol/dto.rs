@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use dcql::CredentialQueryId;
 use serde::Serialize;
 use shared_types::InteractionId;
 use shared_types::i18n::I18nString;
@@ -51,16 +52,10 @@ pub(crate) struct InvitationResponseDTO {
 pub(crate) struct FormattedCredentialPresentation {
     pub presentation: String,
     pub credential_schema: CredentialSchema,
-    pub reference: PresentationReference,
+    pub credential_query_id: CredentialQueryId,
     pub holder_did: Option<Did>,
     pub key: Key,
     pub jwk_key_id: Option<String>,
-}
-
-/// Information required for the provider to include the credential presentation in the submission.
-#[derive(Clone, Debug)]
-pub(crate) enum PresentationReference {
-    Dcql { credential_query_id: String },
 }
 
 #[derive(Clone, Debug)]

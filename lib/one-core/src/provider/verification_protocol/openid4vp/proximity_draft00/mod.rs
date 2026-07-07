@@ -58,8 +58,8 @@ use crate::provider::presentation_formatter::provider::PresentationFormatterProv
 use crate::provider::provider_directory::InitializationError;
 use crate::provider::verification_protocol::dto::{
     Feature, FormattedCredentialPresentation, InvitationResponseDTO,
-    PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion, PresentationReference,
-    ShareResponse, UpdateResponse, VerificationProtocolCapabilities,
+    PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion, ShareResponse,
+    UpdateResponse, VerificationProtocolCapabilities,
 };
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::mapper::proof_from_handle_invitation;
@@ -774,17 +774,15 @@ pub(super) async fn create_presentation(
             .format_presentation(
                 vec![credentials],
                 auth_fn,
-                &credential_presentation
-                    .holder_did
-                    .as_ref()
-                    .map(|did| did.did.to_owned()),
-                format_presentation_context(&params, presentation_format)?,
+                format_presentation_context(
+                    &params,
+                    presentation_format,
+                    &credential_presentation.holder_did,
+                )?,
             )
             .await
             .error_while("formatting presentation")?;
-        let PresentationReference::Dcql {
-            credential_query_id,
-        } = credential_presentation.reference.to_owned();
+        let credential_query_id = credential_presentation.credential_query_id.to_string();
         vp_token
             .entry(credential_query_id)
             .and_modify(|presentations: &mut Vec<String>| {
@@ -875,16 +873,26 @@ pub(super) async fn prepare_proof_share(
 fn format_presentation_context(
     params: &CreatePresentationParams<'_>,
     presentation_format: FormatType,
+    holder_did: &Option<Did>,
 ) -> Result<FormatPresentationCtx, VerificationProtocolError> {
     let ctx = if presentation_format == FormatType::Mdoc {
-        mdoc_presentation_context(Handover::OID4VPFinal1_0(
-            OID4VPFinal1_0Handover::compute(params.client_id, params.client_id, params.nonce, None)
+        mdoc_presentation_context(
+            Handover::OID4VPFinal1_0(
+                OID4VPFinal1_0Handover::compute(
+                    params.client_id,
+                    params.client_id,
+                    params.nonce,
+                    None,
+                )
                 .error_while("computing handover")?,
-        ))?
+            ),
+            None,
+        )?
     } else {
         FormatPresentationCtx {
             nonce: Some(params.nonce.to_owned()),
             audience: Some(params.client_id.to_owned()),
+            holder_did: holder_did.as_ref().map(|did| did.did.to_owned()),
             ..Default::default()
         }
     };

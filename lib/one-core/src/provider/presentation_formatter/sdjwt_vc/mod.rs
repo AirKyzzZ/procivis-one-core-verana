@@ -5,7 +5,6 @@ use one_crypto::CryptoProvider;
 use serde::Deserialize;
 use serde_json::Value;
 use serde_with::{DurationSeconds, serde_as};
-use shared_types::DidValue;
 use time::Duration;
 
 use crate::error::ContextWithErrorCode;
@@ -28,6 +27,7 @@ use crate::provider::presentation_formatter::model::{
     CredentialToPresent, ExtractPresentationCtx, ExtractedPresentation, FormatPresentationCtx,
     FormattedPresentation,
 };
+use crate::provider::transaction_data::processed_transaction_data::ProcessedTransactionData;
 
 #[cfg(test)]
 mod test;
@@ -76,7 +76,6 @@ impl PresentationFormatter for SdjwtVCPresentationFormatter {
         &self,
         credentials: Vec<CredentialToPresent>,
         holder_binding_fn: AuthenticationFn,
-        _holder_did: &Option<DidValue>,
         context: FormatPresentationCtx,
     ) -> Result<FormattedPresentation, FormatterError> {
         let [credential] = credentials.as_slice() else {
@@ -106,6 +105,7 @@ impl PresentationFormatter for SdjwtVCPresentationFormatter {
         let FormatPresentationCtx {
             nonce: Some(nonce),
             audience: Some(audience),
+            transaction_data,
             ..
         } = context
         else {
@@ -114,9 +114,25 @@ impl PresentationFormatter for SdjwtVCPresentationFormatter {
             ));
         };
 
+        let transaction_data = match transaction_data {
+            Some(ProcessedTransactionData::KbJwtClaims(transaction_data)) => {
+                Some(Value::Object(transaction_data))
+            }
+            Some(_) => {
+                return Err(FormatterError::CouldNotFormat(
+                    "Invalid transaction data".to_owned(),
+                ));
+            }
+            None => None,
+        };
+
         append_key_binding_token(
             &*hasher,
-            HolderBindingCtx { nonce, audience },
+            HolderBindingCtx {
+                nonce,
+                audience,
+                transaction_data,
+            },
             &*holder_binding_fn,
             &mut vp_token,
         )
@@ -199,6 +215,7 @@ impl SdjwtVCPresentationFormatter {
             (Some(nonce), Some(client_id)) => Some(HolderBindingCtx {
                 nonce: nonce.clone(),
                 audience: client_id.clone(),
+                transaction_data: None,
             }),
             _ => None,
         };

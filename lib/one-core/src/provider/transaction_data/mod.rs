@@ -1,8 +1,3 @@
-pub(crate) mod decorators;
-pub mod error;
-pub(crate) mod provider;
-pub(crate) mod qes_approval;
-
 use std::fmt::{Display, Formatter};
 
 use async_trait::async_trait;
@@ -10,6 +5,7 @@ use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use dcql::CredentialQueryId;
 use error::TransactionDataError;
 use proc_macros::provider_mock;
+use processed_transaction_data::ProcessedTransactionData;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json_path::JsonPath;
@@ -17,7 +13,12 @@ use shared_types::TransactionDataType;
 
 use crate::config::core_config::FormatType;
 use crate::provider::Provider;
-use crate::provider::presentation_formatter::mso_mdoc::model::DeviceNamespaces;
+
+pub(crate) mod decorators;
+pub mod error;
+pub(crate) mod processed_transaction_data;
+pub(crate) mod provider;
+pub(crate) mod qes_approval;
 
 pub(crate) fn decode_transaction_data<T: DeserializeOwned>(
     transaction_data: &str,
@@ -29,16 +30,6 @@ pub(crate) fn decode_transaction_data<T: DeserializeOwned>(
 #[derive(Clone, Debug, PartialEq)]
 pub struct TransactionDataMetadata {
     pub credential_ids: Vec<CredentialQueryId>,
-}
-
-/// Format-specific representation of processed transaction data, to be merged into the
-/// presentation response.
-#[derive(Clone, Debug, PartialEq)]
-pub enum ProcessedTransactionData {
-    /// Top-level claims for the SD-JWT VC Key Binding JWT
-    KbJwtClaims(serde_json::Map<String, serde_json::Value>),
-    /// Data elements for the mdoc `DeviceSigned` structure
-    DeviceSignedElements(DeviceNamespaces),
 }
 
 #[derive(Clone, Default, Serialize)]

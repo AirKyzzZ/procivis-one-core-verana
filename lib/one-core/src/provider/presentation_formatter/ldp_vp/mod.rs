@@ -5,7 +5,6 @@ use indexmap::indexset;
 use one_crypto::CryptoProvider;
 use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
-use shared_types::DidValue;
 use time::Duration;
 use url::Url;
 
@@ -75,7 +74,6 @@ impl PresentationFormatter for LdpVpPresentationFormatter {
         &self,
         credentials_to_present: Vec<CredentialToPresent>,
         holder_binding_fn: AuthenticationFn,
-        holder_did: &Option<DidValue>,
         context: FormatPresentationCtx,
     ) -> Result<FormattedPresentation, FormatterError> {
         let json_ld_context = indexset![ContextType::Url(Context::CredentialsV2.to_url())];
@@ -99,7 +97,8 @@ impl PresentationFormatter for LdpVpPresentationFormatter {
             }
         }
 
-        let holder = holder_did
+        let holder = context
+            .holder_did
             .as_ref()
             .ok_or(FormatterError::CouldNotFormat(
                 "Holder DID not specified".to_string(),

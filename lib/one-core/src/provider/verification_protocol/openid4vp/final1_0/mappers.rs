@@ -22,7 +22,7 @@ use crate::provider::verification_protocol::openid4vp::mapper::{
     format_authorization_request_client_id_scheme_x509,
 };
 use crate::provider::verification_protocol::openid4vp::model::{
-    ClientIdScheme, OpenID4VPHolderInteractionData,
+    ClientIdScheme, HolderTxData, OpenID4VPHolderInteractionData,
 };
 use crate::service::oid4vp_final1_0::proof_request::generate_vp_formats_supported;
 
@@ -253,6 +253,7 @@ impl TryFrom<AuthorizationRequestQueryParams> for AuthorizationRequest {
             redirect_uri: query_params.redirect_uri,
             dcql_query: query_params.dcql_query.map(json_parse).transpose()?,
             verifier_info: vec![],
+            transaction_data: query_params.transaction_data.unwrap_or_default(),
         })
     }
 }
@@ -289,6 +290,7 @@ impl TryFrom<AuthorizationRequest> for OpenID4VPHolderInteractionData {
             presentation_definition: None,
             presentation_definition_uri: None,
             dcql_query: value.dcql_query,
+            transaction_data: HolderTxData::Unvalidated(value.transaction_data),
             redirect_uri: value.redirect_uri,
             verifier_details: None,
             verifier_info: value.verifier_info,
@@ -296,7 +298,7 @@ impl TryFrom<AuthorizationRequest> for OpenID4VPHolderInteractionData {
     }
 }
 
-impl From<wrp_validator::model::Credential> for registration_certificate::model::Credential {
+impl From<wrp_validator::model::Credential> for Credential {
     fn from(value: wrp_validator::model::Credential) -> Self {
         Self {
             format: value.format,

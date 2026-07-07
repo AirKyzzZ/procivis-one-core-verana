@@ -5,7 +5,6 @@ use async_trait::async_trait;
 use coset::{HeaderBuilder, ProtectedHeader, RegisteredLabelWithPrivate, SignatureContext, iana};
 use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
-use shared_types::DidValue;
 use standardized_types::jwk::PublicJwk;
 use time::Duration;
 use url::Url;
@@ -40,6 +39,7 @@ use crate::provider::presentation_formatter::model::{
     FormattedPresentation,
 };
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::openid4vp_final1_0::OID4VPFinal1_0Handover;
+use crate::provider::transaction_data::processed_transaction_data::ProcessedTransactionData;
 
 pub(crate) mod model;
 pub(crate) mod session_transcript;
@@ -82,7 +82,6 @@ impl PresentationFormatter for MsoMdocPresentationFormatter {
         &self,
         credentials_to_present: Vec<CredentialToPresent>,
         holder_binding_fn: AuthenticationFn,
-        _holder_did: &Option<DidValue>,
         context: FormatPresentationCtx,
     ) -> Result<FormattedPresentation, FormatterError> {
         let FormatPresentationCtx {
@@ -108,6 +107,24 @@ impl PresentationFormatter for MsoMdocPresentationFormatter {
             })
             .collect::<Result<Vec<String>, FormatterError>>()?;
 
+        let transaction_data = match context.transaction_data {
+            Some(_) if tokens.len() > 1 => {
+                return Err(FormatterError::CouldNotFormat(
+                    "Transaction data is only supported in single credential presentations"
+                        .to_owned(),
+                ));
+            }
+            Some(ProcessedTransactionData::DeviceSignedElements(device_signed_elements)) => {
+                Some(device_signed_elements)
+            }
+            Some(_) => {
+                return Err(FormatterError::CouldNotFormat(
+                    "Invalid transaction data".to_owned(),
+                ));
+            }
+            None => None,
+        };
+
         let mut documents = Vec::with_capacity(tokens.len());
         for token in tokens {
             let issuer_signed: IssuerSigned = decode_cbor_base64(&token)?;
@@ -122,6 +139,7 @@ impl PresentationFormatter for MsoMdocPresentationFormatter {
                 algorithm,
                 &doc_type,
                 &session_transcript,
+                transaction_data.clone(),
             )
             .await?;
 
@@ -440,9 +458,11 @@ async fn try_build_device_signed(
     algorithm: KeyAlgorithmType,
     doctype: &str,
     session_transcript_bytes: &[u8],
+    device_namespaces: Option<DeviceNamespaces>,
 ) -> Result<DeviceSigned, FormatterError> {
     let session_transcript = ciborium::from_reader(session_transcript_bytes)?;
-    let device_namespaces = EmbeddedCbor::<DeviceNamespaces>::new([].into())?;
+    let device_namespaces =
+        EmbeddedCbor::<DeviceNamespaces>::new(device_namespaces.unwrap_or_default())?;
 
     let device_auth = DeviceAuthentication {
         session_transcript,

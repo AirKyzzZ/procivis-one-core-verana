@@ -1,5 +1,4 @@
 use async_trait::async_trait;
-use shared_types::DidValue;
 use time::Duration;
 
 use crate::provider::credential_formatter::error::FormatterError;
@@ -26,7 +25,6 @@ pub trait PresentationFormatter: Send + Sync {
         &self,
         credentials_to_present: Vec<CredentialToPresent>,
         holder_binding_fn: AuthenticationFn,
-        holder_did: &Option<DidValue>,
         context: FormatPresentationCtx,
     ) -> Result<FormattedPresentation, FormatterError>;
 

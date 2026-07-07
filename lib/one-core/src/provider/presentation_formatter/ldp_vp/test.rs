@@ -162,8 +162,8 @@ async fn test_format_presentation_multi_tokens() {
                 },
             ],
             Box::new(auth_fn),
-            &Some(holder_did),
             FormatPresentationCtx {
+                holder_did: Some(holder_did),
                 ..Default::default()
             },
         )

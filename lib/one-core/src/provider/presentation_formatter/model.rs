@@ -1,11 +1,12 @@
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-use shared_types::SerializedCredential;
+use shared_types::{DidValue, SerializedCredential};
 use standardized_types::jwk::PublicJwk;
 use time::OffsetDateTime;
 
 use crate::config::core_config::{FormatType, VerificationProtocolType};
 use crate::provider::credential_formatter::model::IdentifierDetails;
+use crate::provider::transaction_data::processed_transaction_data::ProcessedTransactionData;
 
 pub struct CredentialToPresent {
     pub credential_token: String,
@@ -31,9 +32,12 @@ pub struct FormattedPresentation {
 
 #[derive(Debug, Default, Clone)]
 pub struct FormatPresentationCtx {
+    pub holder_did: Option<DidValue>,
     pub nonce: Option<String>,
     pub audience: Option<String>,
     pub mdoc_session_transcript: Option<Vec<u8>>,
+    /// The transaction data to be included in the presentation.
+    pub transaction_data: Option<ProcessedTransactionData>,
 }
 
 #[derive(Debug, Clone)]

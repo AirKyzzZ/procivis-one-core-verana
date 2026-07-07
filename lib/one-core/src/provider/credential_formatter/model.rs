@@ -367,6 +367,7 @@ pub struct CredentialStatus {
 pub struct HolderBindingCtx {
     pub nonce: String,
     pub audience: String,
+    pub transaction_data: Option<serde_json::Value>,
 }
 
 #[derive(Clone, Debug)]

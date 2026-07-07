@@ -29,6 +29,7 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::provider_directory::{InitializationError, ProviderDirectory};
+use crate::provider::transaction_data::provider::TransactionDataProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::history_repository::HistoryRepository;
@@ -98,6 +99,7 @@ fn initialize_provider(
     wrp_validator: &Arc<dyn WRPValidator>,
     blob_storage_provider: &Arc<dyn BlobStorageProvider>,
     trust_information_provider: &Arc<dyn TrustInformationProvider>,
+    transaction_data_provider: &Arc<dyn TransactionDataProvider>,
 ) -> Result<Arc<dyn VerificationProtocol>, InitializationError> {
     let protocol: Arc<dyn VerificationProtocol> = match fields.r#type {
         VerificationProtocolType::OpenId4VpFinal1_0 => Arc::new(OpenID4VPFinal1_0::new(
@@ -117,6 +119,7 @@ fn initialize_provider(
             wrp_validator.clone(),
             blob_storage_provider.clone(),
             trust_information_provider.clone(),
+            transaction_data_provider.clone(),
             client.clone(),
             fields.merge_fields(),
             core_config.clone(),
@@ -148,6 +151,7 @@ fn initialize_provider(
                 wrp_validator.clone(),
                 blob_storage_provider.clone(),
                 trust_information_provider.clone(),
+                transaction_data_provider.clone(),
                 client.clone(),
                 final1_params,
                 core_config.clone(),
@@ -222,6 +226,7 @@ pub(crate) fn verification_protocol_provider_from_config(
     wrp_validator: Arc<dyn WRPValidator>,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
     trust_information_provider: Arc<dyn TrustInformationProvider>,
+    transaction_data_provider: Arc<dyn TransactionDataProvider>,
 ) -> Result<Arc<dyn VerificationProtocolProvider>, ConfigValidationError> {
     let core_config = Arc::new(config.to_owned());
 
@@ -253,6 +258,7 @@ pub(crate) fn verification_protocol_provider_from_config(
                 &wrp_validator,
                 &blob_storage_provider,
                 &trust_information_provider,
+                &transaction_data_provider,
             )?;
 
             let provider: Arc<dyn VerificationProtocol> = Arc::new(CapabilityChecked {

@@ -494,6 +494,7 @@ impl OneCore {
             wrp_validator.clone(),
             blob_storage_provider.clone(),
             trust_information_provider.clone(),
+            transaction_data_provider.clone(),
         )?;
 
         let config = Arc::new(config);

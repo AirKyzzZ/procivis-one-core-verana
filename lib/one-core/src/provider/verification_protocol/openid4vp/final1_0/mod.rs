@@ -7,6 +7,7 @@ use futures::future::BoxFuture;
 use mappers::{create_openid4vp_final1_0_authorization_request, encode_client_id_with_scheme};
 use model::Params;
 use one_crypto::utilities;
+use one_dto_mapper::convert_inner;
 use proc_macros::Provider;
 use serde_json::Value;
 use standardized_types::iana::EncryptionAlgorithm;
@@ -24,6 +25,7 @@ use crate::config::core_config::{
     CoreConfig, DidType, FormatType, IdentifierType, TransportType, VerificationProtocolType,
 };
 use crate::error::ContextWithErrorCode;
+use crate::model::did::Did;
 use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
@@ -42,10 +44,12 @@ use crate::provider::presentation_formatter::mso_mdoc::session_transcript::Hando
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::openid4vp_final1_0::OID4VPFinal1_0Handover;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::provider_directory::InitializationError;
+use crate::provider::transaction_data::processed_transaction_data::ProcessedTransactionData;
+use crate::provider::transaction_data::provider::TransactionDataProvider;
 use crate::provider::verification_protocol::dto::{
     Feature, FormattedCredentialPresentation, InvitationResponseDTO,
-    PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion, PresentationReference,
-    ShareResponse, UpdateResponse, VerificationProtocolCapabilities,
+    PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion, ShareResponse,
+    UpdateResponse, VerificationProtocolCapabilities,
 };
 use crate::provider::verification_protocol::mapper::{
     interaction_from_handle_invitation, proof_from_handle_invitation,
@@ -53,8 +57,9 @@ use crate::provider::verification_protocol::mapper::{
 use crate::provider::verification_protocol::openid4vp::dcql::get_presentation_definition_v2;
 use crate::provider::verification_protocol::openid4vp::final1_0::mappers::create_open_id_for_vp_client_metadata_final1_0;
 use crate::provider::verification_protocol::openid4vp::model::{
-    ClientIdScheme, DcqlSubmission, JwePayload, OpenID4VPDirectPostResponseDTO,
-    OpenID4VPHolderInteractionData, OpenID4VPVerifierInteractionContent, VpSubmissionData,
+    ClientIdScheme, DcqlSubmission, HolderTxData, JwePayload, OpenID4VPDirectPostResponseDTO,
+    OpenID4VPHolderInteractionData, OpenID4VPVerifierInteractionContent, ValidatedHolderTxData,
+    VpSubmissionData,
 };
 use crate::provider::verification_protocol::openid4vp::{
     FormatMapper, VerificationProtocolError, get_client_id_scheme,
@@ -103,6 +108,7 @@ pub(crate) struct OpenID4VPFinal1_0 {
     wrp_validator: Arc<dyn WRPValidator>,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
     trust_information_provider: Arc<dyn TrustInformationProvider>,
+    transaction_data_provider: Arc<dyn TransactionDataProvider>,
     base_url: Option<String>,
     params: Params,
     config: Arc<CoreConfig>,
@@ -132,6 +138,7 @@ impl OpenID4VPFinal1_0 {
         wrp_validator: Arc<dyn WRPValidator>,
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
         trust_information_provider: Arc<dyn TrustInformationProvider>,
+        transaction_data_provider: Arc<dyn TransactionDataProvider>,
         client: Arc<dyn HttpClient>,
         params: serde_json::Value,
         config: Arc<CoreConfig>,
@@ -162,6 +169,7 @@ impl OpenID4VPFinal1_0 {
             config,
             blob_storage_provider,
             trust_information_provider,
+            transaction_data_provider,
         })
     }
 
@@ -235,12 +243,19 @@ impl OpenID4VPFinal1_0 {
                     ))?,
             ),
         };
+        let mut transaction_data = match &interaction_data.transaction_data {
+            HolderTxData::Validated(transaction_data) => transaction_data.clone(),
+            HolderTxData::Unvalidated(data) if data.is_empty() => vec![],
+            _ => {
+                return Err(VerificationProtocolError::Failed(
+                    "unvalidated transaction data".to_string(),
+                ));
+            }
+        };
 
         // For DCQL each credential gets a presentation individually
         for credential_presentation in credential_presentations {
-            let PresentationReference::Dcql {
-                credential_query_id,
-            } = credential_presentation.reference.clone();
+            let credential_query_id = credential_presentation.credential_query_id.clone();
 
             // Look up the credential query to check require_cryptographic_holder_binding
             let require_holder_binding = interaction_data
@@ -250,7 +265,7 @@ impl OpenID4VPFinal1_0 {
                     query
                         .credentials
                         .iter()
-                        .find(|cq| cq.id.to_string() == credential_query_id)
+                        .find(|cq| cq.id == credential_query_id)
                 })
                 .map(|cq| cq.require_cryptographic_holder_binding)
                 .unwrap_or(true);
@@ -280,6 +295,29 @@ impl OpenID4VPFinal1_0 {
                     credential_presentation.jwk_key_id,
                     self.key_algorithm_provider.clone(),
                 )?;
+                // TODO ONE-10479: Adjust proof submit to allow the client to specify the credential to use for transaction data.
+                let applicable_tx_data = transaction_data.extract_if(.., |tx| {
+                    tx.credential_query_ids
+                        .contains(&credential_presentation.credential_query_id)
+                });
+
+                let mut aggregated_tx_data = None;
+                for tx_data in applicable_tx_data {
+                    let data = self
+                        .transaction_data_provider
+                        .get_transaction_data(&tx_data.raw)?;
+                    let processed = data
+                        .process_transaction_data(&tx_data.raw, credential_format)
+                        .await
+                        .error_while("processing transaction data")?;
+                    let Some(existing) = aggregated_tx_data.as_mut() else {
+                        aggregated_tx_data = Some(processed);
+                        continue;
+                    };
+                    existing
+                        .merge(processed)
+                        .error_while("merging transaction data")?;
+                }
 
                 let credentials = CredentialToPresent {
                     credential_token: credential_presentation.presentation,
@@ -289,25 +327,26 @@ impl OpenID4VPFinal1_0 {
                     .format_presentation(
                         vec![credentials],
                         auth_fn,
-                        &credential_presentation.holder_did.map(|did| did.did),
                         format_presentation_context(
                             interaction_data,
                             presentation_format,
                             self.params.use_legacy_did_client_id_scheme,
+                            credential_presentation.holder_did,
+                            aggregated_tx_data,
                         )?,
                     )
                     .await
                     .error_while("formatting presentation")?;
 
                 vp_token
-                    .entry(credential_query_id)
+                    .entry(credential_query_id.to_string())
                     .and_modify(|presentations: &mut Vec<String>| {
                         presentations.push(formatted_presentation.vp_token.to_owned())
                     })
                     .or_insert(vec![formatted_presentation.vp_token]);
             } else {
                 // No holder binding — send bare credential tokens without VP wrapper
-                let tokens = vp_token.entry(credential_query_id).or_default();
+                let tokens = vp_token.entry(credential_query_id.to_string()).or_default();
                 tokens.push(credential_presentation.presentation);
             }
         }
@@ -329,7 +368,7 @@ impl OpenID4VPFinal1_0 {
             ))?;
 
         let proof_id = Uuid::new_v4().into();
-        let holder_interaction_data = {
+        let mut holder_interaction_data = {
             let (authorization_request, verifier_details) = self
                 .request_from_openid4vp_query(query, proof_id, organisation.id)
                 .await?;
@@ -344,6 +383,7 @@ impl OpenID4VPFinal1_0 {
         };
 
         validate_interaction_data(&holder_interaction_data)?;
+        self.process_transaction_data(&mut holder_interaction_data)?;
         let data = serialize_interaction_data(&holder_interaction_data)?;
 
         let Some(_) = holder_interaction_data.response_uri else {
@@ -377,6 +417,54 @@ impl OpenID4VPFinal1_0 {
             proof,
         })
     }
+
+    fn process_transaction_data(
+        &self,
+        holder_interaction_data: &mut OpenID4VPHolderInteractionData,
+    ) -> Result<(), VerificationProtocolError> {
+        if let HolderTxData::Unvalidated(transaction_data) =
+            &holder_interaction_data.transaction_data
+        {
+            let mut validated_tx_data = Vec::with_capacity(transaction_data.len());
+            let dcql_query = holder_interaction_data.dcql_query.as_ref().ok_or(
+                VerificationProtocolError::InvalidRequest("missing DCQL query".to_string()),
+            )?;
+            for (idx, tx_data) in transaction_data.iter().enumerate() {
+                let data = self
+                    .transaction_data_provider
+                    .get_transaction_data(tx_data)?;
+                let validated = data
+                    .validate_transaction_data(tx_data)
+                    .error_while("validating transaction data")?;
+
+                for credential_query_id in &validated.credential_ids {
+                    let Some(query) = dcql_query
+                        .credentials
+                        .iter()
+                        .find(|c| &c.id == credential_query_id)
+                    else {
+                        return Err(VerificationProtocolError::InvalidRequest(format!(
+                            "Invalid transaction data at index {idx}: credential query id `{}` not found in DCQL query",
+                            credential_query_id
+                        )));
+                    };
+                    if !query.require_cryptographic_holder_binding {
+                        return Err(VerificationProtocolError::InvalidRequest(format!(
+                            "Invalid transaction data at index {idx}: referenced credential query `{}` does not require cryptographic holder binding",
+                            credential_query_id
+                        )));
+                    }
+                }
+
+                validated_tx_data.push(ValidatedHolderTxData {
+                    raw: tx_data.clone(),
+                    credential_query_ids: convert_inner(validated.credential_ids),
+                });
+            }
+            holder_interaction_data.transaction_data = HolderTxData::Validated(validated_tx_data);
+        }
+        Ok(())
+    }
 }
 
 #[async_trait::async_trait]
@@ -391,9 +479,9 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
         self.params.url_scheme == url.scheme()
             && !query_has_key(PROXIMITY_QUERY_PARAM_KEY) // Ensure we do not match proximity URLs
             && (!query_has_key(CLIENT_ID_SCHEME_QUERY_PARAM_KEY)
-                || query_has_key(DCQL_QUERY_VALUE_QUERY_PARAM_KEY)
-                || query_has_key(REQUEST_URI_QUERY_PARAM_KEY)
-                || query_has_key(REQUEST_QUERY_PARAM_KEY))
+            || query_has_key(DCQL_QUERY_VALUE_QUERY_PARAM_KEY)
+            || query_has_key(REQUEST_URI_QUERY_PARAM_KEY)
+            || query_has_key(REQUEST_QUERY_PARAM_KEY))
     }
 
     fn get_capabilities(&self) -> VerificationProtocolCapabilities {
@@ -719,6 +807,8 @@ fn format_presentation_context(
     interaction_data: &OpenID4VPHolderInteractionData,
     presentation_format: FormatType,
     use_legacy_did_client_id_scheme: bool,
+    holder_did: Option<Did>,
+    transaction_data: Option<ProcessedTransactionData>,
 ) -> Result<FormatPresentationCtx, VerificationProtocolError> {
     let verifier_nonce =
         interaction_data
@@ -752,19 +842,18 @@ fn format_presentation_context(
             None
         };
 
-        mdoc_presentation_context(Handover::OID4VPFinal1_0(
-            OID4VPFinal1_0Handover::compute(
-                &encode_client_id_with_scheme(
-                    interaction_data.client_id.clone(),
-                    interaction_data.client_id_scheme,
-                    use_legacy_did_client_id_scheme,
-                ),
-                response_uri.as_str(),
-                &verifier_nonce,
-                encryption_key.as_ref(),
-            )
-            .error_while("computing handover")?,
-        ))?
+        let handover = OID4VPFinal1_0Handover::compute(
+            &encode_client_id_with_scheme(
+                interaction_data.client_id.clone(),
+                interaction_data.client_id_scheme,
+                use_legacy_did_client_id_scheme,
+            ),
+            response_uri.as_str(),
+            &verifier_nonce,
+            encryption_key.as_ref(),
+        )
+        .error_while("computing handover")?;
+        mdoc_presentation_context(Handover::OID4VPFinal1_0(handover), transaction_data)?
     } else {
         FormatPresentationCtx {
             nonce: Some(verifier_nonce),
@@ -773,6 +862,8 @@ fn format_presentation_context(
                 interaction_data.client_id_scheme,
                 use_legacy_did_client_id_scheme,
             )),
+            holder_did: holder_did.map(|did| did.did),
+            transaction_data,
             ..Default::default()
         }
     };

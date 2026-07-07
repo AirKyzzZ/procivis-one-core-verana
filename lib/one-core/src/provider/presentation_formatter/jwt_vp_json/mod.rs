@@ -4,7 +4,6 @@ use async_trait::async_trait;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
-use shared_types::DidValue;
 use time::Duration;
 use uuid::Uuid;
 
@@ -60,7 +59,6 @@ impl PresentationFormatter for JwtVpPresentationFormatter {
         &self,
         credentials_to_present: Vec<CredentialToPresent>,
         holder_binding_fn: AuthenticationFn,
-        holder_did: &Option<DidValue>,
         context: FormatPresentationCtx,
     ) -> Result<FormattedPresentation, FormatterError> {
         let supported_credential_formats = [
@@ -91,7 +89,7 @@ impl PresentationFormatter for JwtVpPresentationFormatter {
         let now = crate::clock::now_utc();
         let valid_for = Duration::minutes(5);
 
-        let holder_did = holder_did.as_ref().map(|did| did.to_string());
+        let holder_did = context.holder_did.as_ref().map(|did| did.to_string());
         let payload = JWTPayload {
             issued_at: Some(now),
             expires_at: now.checked_add(valid_for),

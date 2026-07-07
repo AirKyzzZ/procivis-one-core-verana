@@ -9,10 +9,10 @@ use crate::provider::Provider;
 use crate::provider::disabled_provider::DisabledProvider;
 use crate::provider::provider_directory::WithDisabledDecorator;
 use crate::provider::transaction_data::error::TransactionDataError;
+use crate::provider::transaction_data::processed_transaction_data::ProcessedTransactionData;
 use crate::provider::transaction_data::{
-    ProcessedTransactionData, TransactionData, TransactionDataCapabilities,
-    TransactionDataDisplayParams, TransactionDataDisplayValue, TransactionDataMetadata,
-    decode_transaction_data,
+    TransactionData, TransactionDataCapabilities, TransactionDataDisplayParams,
+    TransactionDataDisplayValue, TransactionDataMetadata, decode_transaction_data,
 };
 
 impl WithDisabledDecorator for dyn TransactionData {

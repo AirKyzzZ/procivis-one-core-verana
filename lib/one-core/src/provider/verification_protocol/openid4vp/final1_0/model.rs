@@ -68,6 +68,7 @@ pub(crate) struct AuthorizationRequestQueryParams {
     pub response_uri: Option<String>,
     pub client_metadata: Option<String>,
     pub dcql_query: Option<String>,
+    pub transaction_data: Option<Vec<String>>,
 
     // https://www.rfc-editor.org/rfc/rfc9101.html#name-authorization-request
     pub request: Option<String>,
@@ -107,6 +108,9 @@ pub(crate) struct AuthorizationRequest {
     #[serde_as(as = "VecSkipError<_>")] // wallets SHOULD ignore any unrecognized or unsupported Verifier Info types
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub verifier_info: Vec<VerifierInfoAttestation>,
+
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub transaction_data: Vec<String>,
 }
 
 #[skip_serializing_none]

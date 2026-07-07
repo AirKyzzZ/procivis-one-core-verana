@@ -178,8 +178,11 @@ pub struct SdJwtFormattingInputs {
     pub issuer_certificate: Option<Certificate>,
 }
 
+#[skip_serializing_none]
 #[derive(Default, Debug, Serialize, Deserialize)]
 pub struct KeyBindingPayload {
     pub nonce: String,
     pub sd_hash: String,
+    #[serde(flatten)]
+    pub transaction_data: Option<Value>,
 }

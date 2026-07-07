@@ -17,7 +17,7 @@ use crate::provider::presentation_formatter::PresentationFormatter;
 use crate::provider::presentation_formatter::jwt_vp_json::model::{VP, VerifiableCredential};
 use crate::provider::presentation_formatter::jwt_vp_json::{JwtVpPresentationFormatter, Params};
 use crate::provider::presentation_formatter::model::{
-    CredentialToPresent, ExtractPresentationCtx, FormattedPresentation,
+    CredentialToPresent, ExtractPresentationCtx, FormatPresentationCtx, FormattedPresentation,
 };
 
 #[tokio::test]
@@ -136,8 +136,10 @@ async fn test_format_presentation() {
                 credential_format: FormatType::Jwt,
             }],
             Box::new(auth_fn),
-            &Some("did:example:123".parse().unwrap()),
-            Default::default(),
+            FormatPresentationCtx {
+                holder_did: Some("did:example:123".parse().unwrap()),
+                ..Default::default()
+            },
         )
         .await;
 

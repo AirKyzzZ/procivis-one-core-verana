@@ -43,6 +43,7 @@ pub(crate) fn generate_authorization_request_params_final1_0(
         dcql_query: Some(dcql_query),
         redirect_uri: None,
         verifier_info,
+        transaction_data: vec![],
     })
 }
 

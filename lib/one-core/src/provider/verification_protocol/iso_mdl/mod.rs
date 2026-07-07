@@ -200,11 +200,6 @@ impl VerificationProtocol for IsoMdl {
             self.key_algorithm_provider.clone(),
         )?;
 
-        let holder_did = credential_presentation
-            .holder_did
-            .as_ref()
-            .map(|did| did.did.to_owned());
-
         let presentation_schema_format = credential_presentation.credential_schema.format().await?;
         let format_type = self
             .config
@@ -235,7 +230,7 @@ impl VerificationProtocol for IsoMdl {
         }
 
         let FormattedPresentation { vp_token, .. } = presentation_formatter
-            .format_presentation(presentations, auth_fn, &holder_did, ctx)
+            .format_presentation(presentations, auth_fn, ctx)
             .await
             .error_while("formatting presentation")?;
 

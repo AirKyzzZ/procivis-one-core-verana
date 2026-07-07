@@ -5,7 +5,6 @@ use one_crypto::CryptoProvider;
 use serde::Deserialize;
 use serde_json::Value;
 use serde_with::{DurationSeconds, serde_as};
-use shared_types::DidValue;
 use time::Duration;
 
 use crate::config::core_config::FormatType;
@@ -75,10 +74,15 @@ impl PresentationFormatter for SdjwtPresentationFormatter {
         &self,
         credentials: Vec<CredentialToPresent>,
         holder_binding_fn: AuthenticationFn,
-        holder_did: &Option<DidValue>,
         context: FormatPresentationCtx,
     ) -> Result<FormattedPresentation, FormatterError> {
         let mut processed_credentials = Vec::with_capacity(credentials.len());
+
+        if context.transaction_data.is_some() {
+            return Err(FormatterError::CouldNotFormat(
+                "Transaction data not supported for SD-JWT format.".to_owned(),
+            ));
+        }
 
         for credential in &credentials {
             let mut vp_token = credential.credential_token.clone();
@@ -107,8 +111,8 @@ impl PresentationFormatter for SdjwtPresentationFormatter {
             } = context.clone()
             else {
                 return Err(FormatterError::CouldNotFormat(
-                "Missing nonce or audience in context, cannot format presentation SD-JWT with key binding token".to_owned(),
-            ));
+                    "Missing nonce or audience in context, cannot format presentation SD-JWT with key binding token".to_owned(),
+                ));
             };
 
             let hash_alg = jwt_payload
@@ -124,6 +128,7 @@ impl PresentationFormatter for SdjwtPresentationFormatter {
                 HolderBindingCtx {
                     nonce: nonce.clone(),
                     audience: audience.clone(),
+                    transaction_data: None,
                 },
                 &*holder_binding_fn,
                 &mut vp_token,
@@ -139,12 +144,7 @@ impl PresentationFormatter for SdjwtPresentationFormatter {
         let jwt_formatter = JwtVpPresentationFormatter::new(self.key_algorithm_provider.clone());
 
         jwt_formatter
-            .format_presentation(
-                processed_credentials,
-                holder_binding_fn,
-                holder_did,
-                context,
-            )
+            .format_presentation(processed_credentials, holder_binding_fn, context)
             .await
     }
 
@@ -217,6 +217,7 @@ impl SdjwtPresentationFormatter {
             (Some(nonce), Some(client_id)) => Some(HolderBindingCtx {
                 nonce: nonce.clone(),
                 audience: client_id.clone(),
+                transaction_data: None,
             }),
             _ => None,
         };
