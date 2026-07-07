@@ -29,3 +29,4 @@ pub mod m20260629_120000_trust_list_subscription_role_nullable;
 pub mod m20260701_033735_did_organisation_id_mandatory;
 pub mod m20260701_064657_certificate_organisation_id_mandatory;
 pub mod m20260701_090000_clear_stale_lotl_lote_cache;
+pub mod m20260703_120000_add_history_target_index;

@@ -27,7 +27,8 @@ async fn test_db_schema_history() {
             "index-History-Org-CreatedDate",
             false,
             &["organisation_id", "created_date"],
-        );
+        )
+        .index("index-History-Target", false, &["target"]);
     history
         .column("id")
         .r#type(ColumnType::Uuid)
