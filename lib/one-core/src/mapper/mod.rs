@@ -560,7 +560,7 @@ mod tests {
                 state: IdentifierState::Active,
                 deleted_at: None,
                 organisation: dummy_organisation(Some(uuid::Uuid::new_v4().into())).into(),
-                did: Some(did.clone()),
+                did: Some((did.clone()).into()),
                 key: None,
                 certificates: None,
                 trust_information: None,

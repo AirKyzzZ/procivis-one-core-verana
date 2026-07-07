@@ -702,7 +702,15 @@ async fn test_share_proof_client_id_scheme_did_openid4vp_draft20() {
         client_id,
         format!(
             "decentralized_identifier:{}",
-            proof.verifier_identifier.unwrap().did.unwrap().did
+            proof
+                .verifier_identifier
+                .unwrap()
+                .did
+                .unwrap()
+                .as_ref()
+                .await
+                .unwrap()
+                .did
         )
     );
 
@@ -753,6 +761,9 @@ async fn test_share_proof_client_id_scheme_did_openid4vp_final1_0() {
         .verifier_identifier
         .unwrap()
         .did
+        .unwrap()
+        .as_ref()
+        .await
         .unwrap()
         .did
         .to_string();

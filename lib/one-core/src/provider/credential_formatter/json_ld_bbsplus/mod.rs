@@ -141,11 +141,14 @@ impl CredentialFormatter for JsonLdBbsplus {
             vcdm.valid_until = Some(now + self.params.expiration_time);
         }
 
-        let holder_did = credential_data
+        let holder_did = match credential_data
             .holder_identifier
             .as_ref()
             .and_then(|identifier| identifier.did.as_ref())
-            .map(|did| did.did.clone().into_url());
+        {
+            Some(did) => Some(did.as_ref().await?.did.clone().into_url()),
+            None => None,
+        };
 
         if let Some(cs) = vcdm
             .credential_subject

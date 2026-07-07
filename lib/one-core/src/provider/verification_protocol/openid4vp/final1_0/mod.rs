@@ -689,6 +689,8 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
                 .ok_or(VerificationProtocolError::Failed(
                     "proof is missing verifier_did, required for did client_id_scheme".to_string(),
                 ))?
+                .as_ref()
+                .await?
                 .did
                 .to_string(),
         };

@@ -19,7 +19,6 @@ use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::model::organisation::Organisation;
 use one_core::model::relation::Related;
 use one_core::repository::certificate_repository::CertificateRepository;
-use one_core::repository::did_repository::MockDidRepository;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::identifier_repository::IdentifierRepository;
 use one_core::repository::identifier_trust_information_repository::IdentifierTrustInformationRepository;
@@ -82,7 +81,7 @@ async fn setup() -> TestSetup {
         provider: IdentifierProvider {
             db: TransactionManagerImpl::new(db.clone()),
             organisation_repository: data_layer.organisation_repository,
-            did_repository: Arc::new(MockDidRepository::default()),
+            did_repository: data_layer.did_repository.clone(),
             key_repository: data_layer.key_repository.clone(),
             certificate_repository: data_layer.certificate_repository.clone(),
             trust_information_repository: data_layer
@@ -111,7 +110,7 @@ async fn test_create_and_delete_identifier() {
         is_remote: false,
         state: IdentifierState::Active,
         organisation: setup.organisation.into(),
-        did: Some(setup.did),
+        did: Some((setup.did).into()),
         key: None,
         certificates: None,
         deleted_at: None,
@@ -142,7 +141,7 @@ async fn test_get_identifier() {
         is_remote: false,
         state: IdentifierState::Active,
         organisation: setup.organisation.clone().into(),
-        did: Some(setup.did.clone()),
+        did: Some(setup.did.clone().into()),
         key: None,
         certificates: None,
         deleted_at: None,
@@ -173,7 +172,9 @@ async fn test_get_identifier() {
     assert_eq!(retrieved.state, identifier.state);
     assert_eq!(retrieved.is_remote, identifier.is_remote);
     assert_eq!(retrieved.organisation.id(), identifier.organisation.id());
-    assert!(retrieved.did.is_none());
+    let related = retrieved.did.unwrap();
+    let loaded = related.as_ref().await.unwrap();
+    assert_eq!(loaded.id, setup.did.id);
     assert!(retrieved.key.is_none());
 }
 
@@ -251,7 +252,7 @@ async fn test_get_identifier_list() {
         is_remote: false,
         state: IdentifierState::Active,
         organisation: setup.organisation.clone().into(),
-        did: Some(setup.did.clone()),
+        did: Some((setup.did.clone()).into()),
         key: None,
         certificates: None,
         deleted_at: None,
@@ -293,7 +294,7 @@ async fn test_get_identifier_list() {
         is_remote: true,
         state: IdentifierState::Active,
         organisation: setup.organisation.clone().into(),
-        did: Some(did2),
+        did: Some((did2).into()),
         key: None,
         certificates: None,
         deleted_at: None,
@@ -359,7 +360,7 @@ async fn test_get_identifier_with_trust_info() {
         is_remote: false,
         state: IdentifierState::Active,
         organisation: setup.organisation.clone().into(),
-        did: Some(setup.did.clone()),
+        did: Some((setup.did.clone()).into()),
         key: None,
         certificates: None,
         deleted_at: None,
@@ -457,7 +458,7 @@ async fn test_list_identifier_filter_trust_info() {
         is_remote: false,
         state: IdentifierState::Active,
         organisation: setup.organisation.clone().into(),
-        did: Some(setup.did.clone()),
+        did: Some((setup.did.clone()).into()),
         key: None,
         certificates: None,
         deleted_at: None,
@@ -590,7 +591,7 @@ async fn test_list_identifier_filter_certificate_role() {
         is_remote: false,
         state: IdentifierState::Active,
         organisation: setup.organisation.clone().into(),
-        did: Some(setup.did.clone()),
+        did: Some((setup.did.clone()).into()),
         key: None,
         certificates: None,
         deleted_at: None,

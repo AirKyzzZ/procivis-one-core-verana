@@ -305,7 +305,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
             }),
         }]),
         issuer_identifier: Some(Identifier {
-            did: Some(dummy_did()),
+            did: Some((dummy_did()).into()),
             ..dummy_identifier()
         }),
         issuer_certificate: None,

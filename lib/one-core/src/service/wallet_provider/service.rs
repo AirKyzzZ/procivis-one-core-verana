@@ -1070,7 +1070,6 @@ impl WalletProviderService {
             .get(
                 issuer_identifier_id,
                 &IdentifierRelations {
-                    did: Some(Default::default()),
                     certificates: Some(Default::default()),
                     ..Default::default()
                 },
@@ -1089,13 +1088,14 @@ impl WalletProviderService {
         let issuer_key = selection.key();
 
         let key_id = if issuer_identifier.r#type == IdentifierType::Did {
-            let issuer_did =
-                issuer_identifier
-                    .did
-                    .as_ref()
-                    .ok_or(WalletProviderError::MappingError(
-                        "issuer did is None".to_string(),
-                    ))?;
+            let issuer_did = issuer_identifier
+                .did
+                .as_ref()
+                .ok_or(WalletProviderError::MappingError(
+                    "issuer did is None".to_string(),
+                ))?
+                .as_ref()
+                .await?;
 
             let key = issuer_did
                 .find_key(
@@ -1248,7 +1248,6 @@ impl WalletProviderService {
                     attested_keys: Some(WalletInstanceAttestedKeyRelations {
                         revocation: Some(RevocationListRelations {
                             issuer_identifier: Some(IdentifierRelations {
-                                did: Some(Default::default()),
                                 certificates: Some(Default::default()),
                                 ..Default::default()
                             }),

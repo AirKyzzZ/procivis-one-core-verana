@@ -36,7 +36,7 @@ pub(super) fn validate_credentials_match_session_organisation(
     Ok(())
 }
 
-pub(super) fn validate_holder_capabilities(
+pub(super) async fn validate_holder_capabilities(
     config: &CoreConfig,
     holder_binding: &HolderBindingInput,
     capabilities: &FormatterCapabilities,
@@ -50,14 +50,15 @@ pub(super) fn validate_holder_capabilities(
     }
 
     if holder_binding.identifier.r#type == IdentifierType::Did {
-        let did =
-            holder_binding
-                .identifier
-                .did
-                .as_ref()
-                .ok_or(HolderServiceError::MappingError(
-                    "Missing identifier did".to_string(),
-                ))?;
+        let did = holder_binding
+            .identifier
+            .did
+            .as_ref()
+            .ok_or(HolderServiceError::MappingError(
+                "Missing identifier did".to_string(),
+            ))?
+            .as_ref()
+            .await?;
         let did_type = config
             .did
             .get_fields(&did.did_method)

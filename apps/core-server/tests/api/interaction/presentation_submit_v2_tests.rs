@@ -63,7 +63,15 @@ async fn test_presentation_submit_endpoint_for_openid4vp_dcql() {
             .any(|c| c.claim.value == Some("test".to_string()))
     );
     assert_eq!(
-        proof.verifier_identifier.unwrap().did.unwrap().did,
+        proof
+            .verifier_identifier
+            .unwrap()
+            .did
+            .unwrap()
+            .as_ref()
+            .await
+            .unwrap()
+            .did,
         verifier_did.did
     );
     // There is no longer a single holder identifier associated with the proof
@@ -164,7 +172,15 @@ async fn test_presentation_submit_endpoint_for_openid4vp_dcql_batch_credential()
             .any(|c| c.claim.value == Some("test".to_string()))
     );
     assert_eq!(
-        proof.verifier_identifier.unwrap().did.unwrap().did,
+        proof
+            .verifier_identifier
+            .unwrap()
+            .did
+            .unwrap()
+            .as_ref()
+            .await
+            .unwrap()
+            .did,
         verifier_did.did
     );
     let proof_history = context
@@ -817,7 +833,15 @@ async fn test_presentation_submit_endpoint_for_openid4vp_dcql_array_claim() {
             .any(|c| c.claim.value == Some("value2".to_string()))
     );
     assert_eq!(
-        proof.verifier_identifier.unwrap().did.unwrap().did,
+        proof
+            .verifier_identifier
+            .unwrap()
+            .did
+            .unwrap()
+            .as_ref()
+            .await
+            .unwrap()
+            .did,
         verifier_did.did
     );
     let proof_history = context

@@ -316,7 +316,7 @@ impl SSIIssuerService {
         let credential_schema = self.fetch_credential_schema(credential_schema_id).await?;
 
         let issuer = if let Some(issuer_did) = identifier.did.as_ref() {
-            issuer_did.did.as_str().to_string()
+            issuer_did.as_ref().await?.did.as_str().to_string()
         } else {
             format!(
                 "{core_base_url}/ssi/openid4vci/{protocol_id}/{}/{}",
@@ -402,7 +402,6 @@ impl SSIIssuerService {
             .get(
                 *identifier_id,
                 &IdentifierRelations {
-                    did: Some(Default::default()),
                     certificates: Some(Default::default()),
                     ..Default::default()
                 },

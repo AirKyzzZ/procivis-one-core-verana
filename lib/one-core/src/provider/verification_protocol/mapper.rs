@@ -117,7 +117,6 @@ pub(crate) async fn get_presentation_credentials_by_schema_id(
                             ..Default::default()
                         }),
                         issuer_identifier: Some(IdentifierRelations {
-                            did: Some(Default::default()),
                             ..Default::default()
                         }),
                         claims: Some(ClaimRelations {

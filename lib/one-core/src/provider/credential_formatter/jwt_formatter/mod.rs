@@ -119,11 +119,14 @@ impl CredentialFormatter for JWTFormatter {
 
         let vc = VcClaim { vc: vcdm.into() };
 
-        let holder_did = credential_data
+        let holder_did = match credential_data
             .holder_identifier
             .as_ref()
             .and_then(|identifier| identifier.did.as_ref())
-            .map(|did| did.did.to_string());
+        {
+            Some(did) => Some(did.as_ref().await?.did.to_string()),
+            None => None,
+        };
 
         let payload = JWTPayload {
             issued_at: Some(now),

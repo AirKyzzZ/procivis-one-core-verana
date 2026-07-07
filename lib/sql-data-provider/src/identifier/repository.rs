@@ -27,6 +27,7 @@ impl IdentifierProvider {
         let mut result = identifier_from_model(
             model.clone(),
             &self.organisation_repository,
+            &self.did_repository,
             &self.key_repository,
         );
 
@@ -36,18 +37,6 @@ impl IdentifierProvider {
                     .get_by_identifier_id(&model.id)
                     .await?,
             );
-        }
-
-        if model.r#type == identifier::IdentifierType::Did
-            && let Some(_did_relations) = &relations.did
-            && let Some(did_id) = &model.did_id
-        {
-            result.did = Some(self.did_repository.get_did(did_id).await?.ok_or(
-                DataLayerError::MissingRequiredRelation {
-                    relation: "identifier-did",
-                    id: did_id.to_string(),
-                },
-            )?);
         }
 
         if (model.r#type == identifier::IdentifierType::Certificate
@@ -181,6 +170,7 @@ impl IdentifierRepository for IdentifierProvider {
             Ok(identifier_from_model(
                 model,
                 &self.organisation_repository,
+                &self.did_repository,
                 &self.key_repository,
             ))
         })

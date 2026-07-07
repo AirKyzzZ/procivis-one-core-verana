@@ -320,7 +320,7 @@ pub fn prepare_identifier(
         state: IdentifierState::Active,
         deleted_at: None,
         organisation: organisation.into(),
-        did: identifier_did,
+        did: identifier_did.map(Related::from),
         key: identifier_key.map(Related::from),
         certificates: identifier_certificate.map(|c| vec![c]),
         trust_information: None,

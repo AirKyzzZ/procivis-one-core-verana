@@ -3,6 +3,7 @@ use std::sync::Arc;
 use futures::StreamExt;
 use one_core::repository::backup_repository::BackupRepository;
 use one_core::repository::credential_repository::MockCredentialRepository;
+use one_core::repository::did_repository::MockDidRepository;
 use one_core::repository::key_repository::MockKeyRepository;
 use one_core::repository::organisation_repository::MockOrganisationRepository;
 use sea_orm::ActiveValue::NotSet;
@@ -282,6 +283,7 @@ async fn setup_empty() -> TestSetup {
             exportable_storages: vec!["INTERNAL".into()],
             credential_repository: Arc::new(MockCredentialRepository::new()),
             organisation_repository: Arc::new(MockOrganisationRepository::new()),
+            did_repository: Arc::new(MockDidRepository::new()),
             key_repository: Arc::new(MockKeyRepository::new()),
         },
         organisation_id,

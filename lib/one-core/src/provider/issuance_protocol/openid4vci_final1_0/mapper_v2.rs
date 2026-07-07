@@ -59,6 +59,7 @@ pub(super) async fn credential_to_credential_detail_v2(
         credential_schema_format,
         config,
     )
+    .await
     .error_while("creating VCDM")?;
 
     let credential_data = CredentialData {

@@ -1,6 +1,9 @@
+use std::sync::Arc;
+
 use shared_types::{DidId, DidValue, OrganisationId};
 
 use crate::model::did::{Did, DidListQuery, GetDidList, UpdateDidRequest};
+use crate::model::relation::AsyncModelLoader;
 use crate::repository::error::DataLayerError;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
@@ -25,4 +28,16 @@ pub trait DidRepository: Send + Sync {
     async fn update_did(&self, request: UpdateDidRequest) -> Result<(), DataLayerError>;
 
     async fn delete_did(&self, did: &Did) -> Result<(), DataLayerError>;
+}
+
+#[async_trait::async_trait]
+impl AsyncModelLoader<Did> for Arc<dyn DidRepository> {
+    async fn load(&self, id: &DidId) -> Result<Did, DataLayerError> {
+        self.get_did(id)
+            .await?
+            .ok_or_else(|| DataLayerError::MissingRequiredRelation {
+                relation: "did",
+                id: id.to_string(),
+            })
+    }
 }

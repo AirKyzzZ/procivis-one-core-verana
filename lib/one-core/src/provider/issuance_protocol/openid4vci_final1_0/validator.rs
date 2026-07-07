@@ -336,7 +336,7 @@ fn sorted_claim_entries(
 
 #[derive(Eq, PartialEq)]
 enum ComparableIssuer<'a> {
-    Did { did: &'a DidValue },
+    Did { did: DidValue },
     Certificate { fingerprint: &'a String },
     Key { public_key: Vec<u8> },
 }
@@ -363,7 +363,9 @@ async fn comparable_issuer(
             let did = issuer.did.as_ref().ok_or(IssuanceProtocolError::Failed(
                 "missing parsed credential issuer did".to_string(),
             ))?;
-            Ok(ComparableIssuer::Did { did: &did.did })
+            Ok(ComparableIssuer::Did {
+                did: did.as_ref().await?.did.clone(),
+            })
         }
         IdentifierType::Certificate | IdentifierType::CertificateAuthority => {
             // Compare via `issuer_certificate`, which holds the exact leaf certificate that signed this credential.

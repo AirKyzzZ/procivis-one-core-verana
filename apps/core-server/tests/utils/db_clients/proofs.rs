@@ -158,7 +158,6 @@ impl ProofsDB {
                         }),
                     }),
                     verifier_identifier: Some(IdentifierRelations {
-                        did: Some(Default::default()),
                         ..Default::default()
                     }),
                     interaction: Some(Default::default()),

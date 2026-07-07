@@ -134,10 +134,13 @@ async fn test_submit_proof_failed_on_validator_failure() {
             Ok(Some(Proof {
                 id: proof_id,
                 verifier_identifier: Some(Identifier {
-                    did: Some(Did {
-                        did: verifier_did,
-                        ..dummy_did()
-                    }),
+                    did: Some(
+                        (Did {
+                            did: verifier_did,
+                            ..dummy_did()
+                        })
+                        .into(),
+                    ),
                     ..dummy_identifier()
                 }),
                 state: ProofStateEnum::Pending,
@@ -266,10 +269,13 @@ async fn test_submit_proof_failed_on_trust_failure() {
             Ok(Some(Proof {
                 id: proof_id,
                 verifier_identifier: Some(Identifier {
-                    did: Some(Did {
-                        did: verifier_did,
-                        ..dummy_did()
-                    }),
+                    did: Some(
+                        (Did {
+                            did: verifier_did,
+                            ..dummy_did()
+                        })
+                        .into(),
+                    ),
                     ..dummy_identifier()
                 }),
                 state: ProofStateEnum::Pending,
@@ -433,32 +439,35 @@ async fn test_get_client_metadata_success() {
         schema: None,
         claims: None,
         verifier_identifier: Some(Identifier {
-            did: Some(Did {
-                deleted_at: None,
-                id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb966")
-                    .unwrap()
-                    .into(),
-                created_date: now,
-                last_modified: now,
-                name: "did1".to_string(),
-                organisation: dummy_organisation(Some(
-                    Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+            did: Some(
+                (Did {
+                    deleted_at: None,
+                    id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb966")
                         .unwrap()
                         .into(),
-                ))
+                    created_date: now,
+                    last_modified: now,
+                    name: "did1".to_string(),
+                    organisation: dummy_organisation(Some(
+                        Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+                            .unwrap()
+                            .into(),
+                    ))
+                    .into(),
+                    did: "did:example:1".parse().unwrap(),
+                    did_type: DidType::Local,
+                    did_method: "KEY".into(),
+                    keys: vec![RelatedKey {
+                        role: KeyRole::KeyAgreement,
+                        key: verifier_key.clone(),
+                        reference: "1".to_string(),
+                    }]
+                    .into(),
+                    deactivated: false,
+                    log: None,
+                })
                 .into(),
-                did: "did:example:1".parse().unwrap(),
-                did_type: DidType::Local,
-                did_method: "KEY".into(),
-                keys: vec![RelatedKey {
-                    role: KeyRole::KeyAgreement,
-                    key: verifier_key.clone(),
-                    reference: "1".to_string(),
-                }]
-                .into(),
-                deactivated: false,
-                log: None,
-            }),
+            ),
             ..dummy_identifier()
         }),
         verifier_key: Some(verifier_key),

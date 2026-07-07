@@ -62,7 +62,6 @@ impl CredentialService {
                 .get(
                     issuer_identifier_id,
                     &IdentifierRelations {
-                        did: Some(Default::default()),
                         certificates: Some(Default::default()),
                         ..Default::default()
                     },
@@ -79,7 +78,6 @@ impl CredentialService {
                     .get_from_did_id(
                         issuer_did_id,
                         &IdentifierRelations {
-                            did: Some(Default::default()),
                             ..Default::default()
                         },
                     )
@@ -672,11 +670,9 @@ impl CredentialService {
                     }),
                     schema: Some(Default::default()),
                     issuer_identifier: Some(IdentifierRelations {
-                        did: Some(Default::default()),
                         ..Default::default()
                     }),
                     holder_identifier: Some(IdentifierRelations {
-                        did: Some(Default::default()),
                         ..Default::default()
                     }),
                     interaction: Some(InteractionRelations::default()),

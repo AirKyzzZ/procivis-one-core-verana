@@ -500,7 +500,7 @@ pub async fn create_identifier(
         last_modified: params.last_modified.unwrap_or(now),
         name: unwrap_or_random(params.name),
         organisation: organisation.to_owned().into(),
-        did: params.did,
+        did: (params.did).map(Into::into),
         key: params.key.map(Related::from),
         certificates: params.certificates,
         state: params.state.unwrap_or(IdentifierState::Active),
@@ -1060,7 +1060,6 @@ pub async fn get_proof(db_conn: &DbConn, proof_id: &ProofId) -> Proof {
                     }),
                 }),
                 verifier_identifier: Some(IdentifierRelations {
-                    did: Some(Default::default()),
                     ..Default::default()
                 }),
                 verifier_key: Some(KeyRelations::default()),

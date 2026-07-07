@@ -61,7 +61,6 @@ impl SSIHolderService {
                     .get_from_did_id(
                         did_id,
                         &IdentifierRelations {
-                            did: Some(Default::default()),
                             ..Default::default()
                         },
                     )
@@ -74,7 +73,6 @@ impl SSIHolderService {
                     .get(
                         identifier_id,
                         &IdentifierRelations {
-                            did: Some(Default::default()),
                             ..Default::default()
                         },
                     )
@@ -201,7 +199,8 @@ impl SSIHolderService {
                 holder_binding,
                 &formatter.get_capabilities(),
                 self.key_algorithm_provider.as_ref(),
-            )?;
+            )
+            .await?;
         }
 
         let protocol = self

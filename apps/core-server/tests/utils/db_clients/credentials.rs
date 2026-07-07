@@ -38,7 +38,6 @@ impl CredentialsDB {
                     schema: Some(Default::default()),
                     interaction: Some(Default::default()),
                     holder_identifier: Some(IdentifierRelations {
-                        did: Some(Default::default()),
                         ..Default::default()
                     }),
                     key: Some(Default::default()),

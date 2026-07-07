@@ -7,6 +7,7 @@ use one_core::model::backup::{Metadata, UnexportableEntities};
 use one_core::model::history::History;
 use one_core::repository::backup_repository::BackupRepository;
 use one_core::repository::credential_repository::CredentialRepository;
+use one_core::repository::did_repository::DidRepository;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::key_repository::KeyRepository;
 use one_core::repository::organisation_repository::OrganisationRepository;
@@ -42,6 +43,7 @@ impl BackupProvider {
         credential_repository: Arc<dyn CredentialRepository>,
         exportable_storages: Vec<String>,
         organisation_repository: Arc<dyn OrganisationRepository>,
+        did_repository: Arc<dyn DidRepository>,
         key_repository: Arc<dyn KeyRepository>,
     ) -> Self {
         Self {
@@ -49,6 +51,7 @@ impl BackupProvider {
             credential_repository,
             exportable_storages,
             organisation_repository,
+            did_repository,
             key_repository,
         }
     }
@@ -458,6 +461,7 @@ impl BackupRepository for BackupProvider {
                     identifier_from_model(
                         identifier,
                         &self.organisation_repository,
+                        &self.did_repository,
                         &self.key_repository,
                     )
                 })

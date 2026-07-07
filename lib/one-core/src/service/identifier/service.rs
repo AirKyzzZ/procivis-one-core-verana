@@ -70,7 +70,6 @@ impl IdentifierService {
             .get(
                 *id,
                 &IdentifierRelations {
-                    did: Some(Default::default()),
                     certificates: Some(Default::default()),
                     trust_information: Some(IdentifierTrustInformationRelations::default()),
                 },
@@ -551,7 +550,6 @@ impl IdentifierService {
                 *id,
                 &IdentifierRelations {
                     certificates: Some(Default::default()),
-                    did: Some(Default::default()),
                     ..Default::default()
                 },
             )
@@ -583,8 +581,9 @@ impl IdentifierService {
                     tracing::info!("Deleted certificate `{}` ({})`", cert.name, cert.id);
                 }
                 if let Some(did) = &identifier.did {
+                    let did = did.as_ref().await?;
                     self.did_repository
-                        .delete_did(did)
+                        .delete_did(&did)
                         .await
                         .error_while("deleting DID")?;
                     tracing::info!("Deleted DID `{}` ({})", did.name, did.id);
@@ -730,7 +729,6 @@ impl IdentifierService {
                     // TODO: This is really a bad solution, fix once a lazy loading is implemented
                     identifier_id,
                     &IdentifierRelations {
-                        did: None,
                         certificates: Some(Default::default()),
                         trust_information: None,
                     },

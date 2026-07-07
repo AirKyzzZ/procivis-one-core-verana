@@ -228,10 +228,13 @@ async fn test_credential_formatting_ok_for_ecdsa() {
     let holder_did: DidValue = "did:holder:123".parse().unwrap();
 
     let holder_identifier = Identifier {
-        did: Some(Did {
-            did: holder_did.clone(),
-            ..dummy_did()
-        }),
+        did: Some(
+            (Did {
+                did: holder_did.clone(),
+                ..dummy_did()
+            })
+            .into(),
+        ),
         ..dummy_identifier()
     };
     let cert_id = Uuid::new_v4();
@@ -493,10 +496,13 @@ async fn test_unverified_credential_extraction() {
     });
 
     let holder_identifier = Identifier {
-        did: Some(Did {
-            did: holder_did.clone(),
-            ..dummy_did()
-        }),
+        did: Some(
+            (Did {
+                did: holder_did.clone(),
+                ..dummy_did()
+            })
+            .into(),
+        ),
         ..dummy_identifier()
     };
 
@@ -788,10 +794,13 @@ async fn format_and_extract_ecdsa() -> DetailCredential {
     });
 
     let holder_identifier = Identifier {
-        did: Some(Did {
-            did: holder_did.clone(),
-            ..dummy_did()
-        }),
+        did: Some(
+            (Did {
+                did: holder_did.clone(),
+                ..dummy_did()
+            })
+            .into(),
+        ),
         ..dummy_identifier()
     };
 

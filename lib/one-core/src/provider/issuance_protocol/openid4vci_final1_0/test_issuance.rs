@@ -74,19 +74,22 @@ async fn test_issuer_submit_succeeds() {
         state: CredentialStateEnum::Offered,
         suspend_end_date: None,
         holder_identifier: Some(Identifier {
-            did: Some(dummy_did()),
+            did: Some((dummy_did()).into()),
             ..dummy_identifier()
         }),
         issuer_identifier: Some(Identifier {
-            did: Some(Did {
-                keys: vec![RelatedKey {
-                    role: KeyRole::AssertionMethod,
-                    key: key.to_owned(),
-                    reference: "1".to_string(),
-                }]
+            did: Some(
+                (Did {
+                    keys: vec![RelatedKey {
+                        role: KeyRole::AssertionMethod,
+                        key: key.to_owned(),
+                        reference: "1".to_string(),
+                    }]
+                    .into(),
+                    ..dummy_did()
+                })
                 .into(),
-                ..dummy_did()
-            }),
+            ),
             ..dummy_identifier()
         }),
         key: Some(key),
@@ -261,19 +264,22 @@ async fn generic_mdoc_credential(state: CredentialStateEnum) -> Credential {
         state,
         suspend_end_date: None,
         holder_identifier: Some(Identifier {
-            did: Some(dummy_did()),
+            did: Some((dummy_did()).into()),
             ..dummy_identifier()
         }),
         issuer_identifier: Some(Identifier {
-            did: Some(Did {
-                keys: vec![RelatedKey {
-                    role: KeyRole::AssertionMethod,
-                    key: key.to_owned(),
-                    reference: "1".to_string(),
-                }]
+            did: Some(
+                (Did {
+                    keys: vec![RelatedKey {
+                        role: KeyRole::AssertionMethod,
+                        key: key.to_owned(),
+                        reference: "1".to_string(),
+                    }]
+                    .into(),
+                    ..dummy_did()
+                })
                 .into(),
-                ..dummy_did()
-            }),
+            ),
             ..dummy_identifier()
         }),
         key: Some(key),

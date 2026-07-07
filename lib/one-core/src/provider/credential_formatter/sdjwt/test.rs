@@ -692,10 +692,13 @@ pub fn get_credential_data(status: CredentialStatus, core_base_url: &str) -> Cre
         .with_valid_until(issuance_date + valid_for);
 
     let holder_identifier = Identifier {
-        did: Some(Did {
-            did: holder_did,
-            ..dummy_did()
-        }),
+        did: Some(
+            (Did {
+                did: holder_did,
+                ..dummy_did()
+            })
+            .into(),
+        ),
         ..dummy_identifier()
     };
 

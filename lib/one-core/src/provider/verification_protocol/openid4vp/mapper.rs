@@ -316,7 +316,9 @@ pub(crate) async fn format_authorization_request_client_id_scheme_verifier_attes
         .as_ref()
         .ok_or(VerificationProtocolError::Failed(
             "verifier_did is None".to_string(),
-        ))?;
+        ))?
+        .as_ref()
+        .await?;
 
     let key = verifier_did
         .find_key(&verifier_key.id, &Default::default())
@@ -416,7 +418,9 @@ pub(crate) async fn format_authorization_request_client_id_scheme_did<T: Seriali
         .as_ref()
         .ok_or(VerificationProtocolError::Failed(
             "verifier_did is None".to_string(),
-        ))?;
+        ))?
+        .as_ref()
+        .await?;
 
     let key = verifier_did
         .find_key(&verifier_key.id, &Default::default())

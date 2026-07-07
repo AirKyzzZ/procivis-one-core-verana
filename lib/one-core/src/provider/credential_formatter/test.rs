@@ -110,20 +110,23 @@ fn generate_credential_matching_detail(
             state: crate::model::identifier::IdentifierState::Active,
             deleted_at: None,
             organisation: dummy_organisation(Some(uuid::Uuid::new_v4().into())).into(),
-            did: Some(Did {
-                deleted_at: None,
-                id: Uuid::new_v4().into(),
-                created_date: detail.created_date,
-                last_modified: detail.last_modified,
-                name: "issuer".to_string(),
-                did: DidValue::from_str("did:key:issuer").unwrap(),
-                did_type: DidType::Remote,
-                did_method: "".into(),
-                deactivated: false,
-                log: None,
-                keys: Default::default(),
-                organisation: dummy_organisation(None).into(),
-            }),
+            did: Some(
+                (Did {
+                    deleted_at: None,
+                    id: Uuid::new_v4().into(),
+                    created_date: detail.created_date,
+                    last_modified: detail.last_modified,
+                    name: "issuer".to_string(),
+                    did: DidValue::from_str("did:key:issuer").unwrap(),
+                    did_type: DidType::Remote,
+                    did_method: "".into(),
+                    deactivated: false,
+                    log: None,
+                    keys: Default::default(),
+                    organisation: dummy_organisation(None).into(),
+                })
+                .into(),
+            ),
             key: None,
             certificates: None,
             trust_information: None,
@@ -139,20 +142,23 @@ fn generate_credential_matching_detail(
             state: crate::model::identifier::IdentifierState::Active,
             deleted_at: None,
             organisation: dummy_organisation(Some(uuid::Uuid::new_v4().into())).into(),
-            did: Some(Did {
-                deleted_at: None,
-                id: Uuid::new_v4().into(),
-                created_date: detail.created_date,
-                last_modified: detail.last_modified,
-                name: "holder".to_string(),
-                did: DidValue::from_str("did:key:holder").unwrap(),
-                did_type: DidType::Remote,
-                did_method: "".into(),
-                deactivated: false,
-                log: None,
-                keys: Default::default(),
-                organisation: dummy_organisation(None).into(),
-            }),
+            did: Some(
+                (Did {
+                    deleted_at: None,
+                    id: Uuid::new_v4().into(),
+                    created_date: detail.created_date,
+                    last_modified: detail.last_modified,
+                    name: "holder".to_string(),
+                    did: DidValue::from_str("did:key:holder").unwrap(),
+                    did_type: DidType::Remote,
+                    did_method: "".into(),
+                    deactivated: false,
+                    log: None,
+                    keys: Default::default(),
+                    organisation: dummy_organisation(None).into(),
+                })
+                .into(),
+            ),
             key: None,
             certificates: None,
             trust_information: None,
@@ -290,6 +296,7 @@ async fn test_from_credential_detail_response_nested_claim_mapping() {
         formats.first().unwrap(),
         &generic_config().core,
     )
+    .await
     .unwrap()
     .claims;
 
@@ -423,6 +430,7 @@ async fn test_from_credential_detail_response_nested_claim_mapping_array() {
         formats.first().unwrap(),
         &generic_config().core,
     )
+    .await
     .unwrap()
     .claims;
 

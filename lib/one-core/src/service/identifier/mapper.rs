@@ -100,7 +100,11 @@ pub(super) async fn identifier_to_response_dto(
     let trust_information = map_trust_information(blob_storage_provider, trust_information).await?;
 
     let did = match value.did {
-        Some(did) => Some(response_from_did(did).await.error_while("converting did")?),
+        Some(did) => Some(
+            response_from_did(did.as_ref().await?.to_owned())
+                .await
+                .error_while("converting did")?,
+        ),
         None => None,
     };
     Ok(GetIdentifierResponseDTO {

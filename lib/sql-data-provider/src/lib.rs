@@ -280,6 +280,7 @@ impl DataLayer {
             credential_repository.clone(),
             exportable_storages,
             organisation_repository.clone(),
+            did_repository.clone(),
             key_repository.clone(),
         ));
 

@@ -1,3 +1,4 @@
+use proc_macros::Model;
 use serde::{Deserialize, Serialize};
 use shared_types::{DidId, DidMethodId, DidValue, KeyId, OrganisationId};
 use strum::Display;
@@ -42,9 +43,10 @@ pub struct RelatedKey {
     pub reference: String,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Model)]
 #[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
 pub struct Did {
+    #[model(id)]
     pub id: DidId,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,

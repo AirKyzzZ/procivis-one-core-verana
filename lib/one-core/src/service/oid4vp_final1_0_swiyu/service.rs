@@ -23,7 +23,6 @@ impl OID4VPFinal1_0SwiyuService {
                 &id,
                 &ProofRelations {
                     verifier_identifier: Some(IdentifierRelations {
-                        did: Some(Default::default()),
                         certificates: Some(Default::default()),
                         trust_information: Some(IdentifierTrustInformationRelations {}),
                     }),

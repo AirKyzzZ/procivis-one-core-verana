@@ -261,16 +261,19 @@ async fn test_accept_credential() {
     identifier_repository.expect_get().return_once(move |_, _| {
         Ok(Some(Identifier {
             id: identifier_id,
-            did: Some(Did {
-                keys: vec![RelatedKey {
-                    role: KeyRole::Authentication,
-                    key: dummy_key(),
-                    reference: "1".to_string(),
-                }]
+            did: Some(
+                (Did {
+                    keys: vec![RelatedKey {
+                        role: KeyRole::Authentication,
+                        key: dummy_key(),
+                        reference: "1".to_string(),
+                    }]
+                    .into(),
+                    did_method: "KEY".into(),
+                    ..dummy_did()
+                })
                 .into(),
-                did_method: "KEY".into(),
-                ..dummy_did()
-            }),
+            ),
             organisation: dummy_organisation(None).into(),
             ..dummy_identifier()
         }))
@@ -392,17 +395,20 @@ async fn test_accept_credential_with_did() {
         .expect_get_from_did_id()
         .return_once(move |_, _| {
             Ok(Some(Identifier {
-                did: Some(Did {
-                    id: did_id,
-                    keys: vec![RelatedKey {
-                        role: KeyRole::Authentication,
-                        key: dummy_key(),
-                        reference: "1".to_string(),
-                    }]
+                did: Some(
+                    (Did {
+                        id: did_id,
+                        keys: vec![RelatedKey {
+                            role: KeyRole::Authentication,
+                            key: dummy_key(),
+                            reference: "1".to_string(),
+                        }]
+                        .into(),
+                        did_method: "KEY".into(),
+                        ..dummy_did()
+                    })
                     .into(),
-                    did_method: "KEY".into(),
-                    ..dummy_did()
-                }),
+                ),
                 organisation: dummy_organisation(None).into(),
                 ..dummy_identifier()
             }))
@@ -629,16 +635,19 @@ async fn test_accept_credential_wrong_tx_code() {
         .return_once(move |_, _| {
             Ok(Some(Identifier {
                 id: identifier_id,
-                did: Some(Did {
-                    keys: vec![RelatedKey {
-                        role: KeyRole::Authentication,
-                        key: dummy_key(),
-                        reference: "1".to_string(),
-                    }]
+                did: Some(
+                    (Did {
+                        keys: vec![RelatedKey {
+                            role: KeyRole::Authentication,
+                            key: dummy_key(),
+                            reference: "1".to_string(),
+                        }]
+                        .into(),
+                        did_method: "KEY".into(),
+                        ..dummy_did()
+                    })
                     .into(),
-                    did_method: "KEY".into(),
-                    ..dummy_did()
-                }),
+                ),
                 organisation: dummy_organisation(None).into(),
                 ..dummy_identifier()
             }))
@@ -1064,20 +1073,23 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
             state: IdentifierState::Active,
             deleted_at: None,
             organisation: dummy_organisation(None).into(),
-            did: Some(Did {
-                deleted_at: None,
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                name: "issuer_did".to_string(),
-                did: "did:key:123".parse().unwrap(),
-                did_type: DidType::Remote,
-                did_method: "KEY".into(),
-                keys: Default::default(),
-                organisation: dummy_organisation(None).into(),
-                deactivated: false,
-                log: None,
-            }),
+            did: Some(
+                (Did {
+                    deleted_at: None,
+                    id: Uuid::new_v4().into(),
+                    created_date: crate::clock::now_utc(),
+                    last_modified: crate::clock::now_utc(),
+                    name: "issuer_did".to_string(),
+                    did: "did:key:123".parse().unwrap(),
+                    did_type: DidType::Remote,
+                    did_method: "KEY".into(),
+                    keys: Default::default(),
+                    organisation: dummy_organisation(None).into(),
+                    deactivated: false,
+                    log: None,
+                })
+                .into(),
+            ),
             key: None,
             certificates: None,
             trust_information: None,
@@ -1177,16 +1189,19 @@ async fn test_accept_credential_identifier_org_mismatch() {
     identifier_repository.expect_get().return_once(move |_, _| {
         Ok(Some(Identifier {
             id: identifier_id,
-            did: Some(Did {
-                keys: vec![RelatedKey {
-                    role: KeyRole::Authentication,
-                    key: dummy_key(),
-                    reference: "1".to_string(),
-                }]
+            did: Some(
+                (Did {
+                    keys: vec![RelatedKey {
+                        role: KeyRole::Authentication,
+                        key: dummy_key(),
+                        reference: "1".to_string(),
+                    }]
+                    .into(),
+                    did_method: "KEY".into(),
+                    ..dummy_did()
+                })
                 .into(),
-                did_method: "KEY".into(),
-                ..dummy_did()
-            }),
+            ),
             organisation: dummy_organisation(Some(organisation_id)).into(),
             ..dummy_identifier()
         }))
@@ -1218,16 +1233,19 @@ async fn test_accept_interaction_credential_org_mismatch() {
     identifier_repository.expect_get().return_once(move |_, _| {
         Ok(Some(Identifier {
             id: identifier_id,
-            did: Some(Did {
-                keys: vec![RelatedKey {
-                    role: KeyRole::Authentication,
-                    key: dummy_key(),
-                    reference: "1".to_string(),
-                }]
+            did: Some(
+                (Did {
+                    keys: vec![RelatedKey {
+                        role: KeyRole::Authentication,
+                        key: dummy_key(),
+                        reference: "1".to_string(),
+                    }]
+                    .into(),
+                    did_method: "KEY".into(),
+                    ..dummy_did()
+                })
                 .into(),
-                did_method: "KEY".into(),
-                ..dummy_did()
-            }),
+            ),
             organisation: dummy_organisation(Some(session_organisation_id)).into(),
             ..dummy_identifier()
         }))
@@ -1279,16 +1297,19 @@ async fn test_reject_credential_credential_org_mismatch() {
     identifier_repository.expect_get().return_once(move |_, _| {
         Ok(Some(Identifier {
             id: identifier_id,
-            did: Some(Did {
-                keys: vec![RelatedKey {
-                    role: KeyRole::Authentication,
-                    key: dummy_key(),
-                    reference: "1".to_string(),
-                }]
+            did: Some(
+                (Did {
+                    keys: vec![RelatedKey {
+                        role: KeyRole::Authentication,
+                        key: dummy_key(),
+                        reference: "1".to_string(),
+                    }]
+                    .into(),
+                    did_method: "KEY".into(),
+                    ..dummy_did()
+                })
                 .into(),
-                did_method: "KEY".into(),
-                ..dummy_did()
-            }),
+            ),
             organisation: dummy_organisation(Some(session_organisation_id)).into(),
             ..dummy_identifier()
         }))

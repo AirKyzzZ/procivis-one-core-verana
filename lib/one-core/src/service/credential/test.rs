@@ -173,7 +173,7 @@ async fn generic_credential() -> Credential {
             state: IdentifierState::Active,
             deleted_at: None,
             organisation: dummy_organisation(Some(uuid::Uuid::new_v4().into())).into(),
-            did: Some(issuer_did),
+            did: Some((issuer_did).into()),
             key: None,
             certificates: None,
             trust_information: None,
@@ -261,20 +261,23 @@ async fn generic_credential_list_entity() -> Credential {
             state: IdentifierState::Active,
             deleted_at: None,
             organisation: organisation.clone().into(),
-            did: Some(Did {
-                deleted_at: None,
-                id: Uuid::new_v4().into(),
-                created_date: now,
-                last_modified: now,
-                name: "did1".to_string(),
-                organisation: organisation.clone().into(),
-                did: "did:example:1".parse().unwrap(),
-                did_type: DidType::Local,
-                did_method: "KEY".into(),
-                keys: Default::default(),
-                deactivated: false,
-                log: None,
-            }),
+            did: Some(
+                (Did {
+                    deleted_at: None,
+                    id: Uuid::new_v4().into(),
+                    created_date: now,
+                    last_modified: now,
+                    name: "did1".to_string(),
+                    organisation: organisation.clone().into(),
+                    did: "did:example:1".parse().unwrap(),
+                    did_type: DidType::Local,
+                    did_method: "KEY".into(),
+                    keys: Default::default(),
+                    deactivated: false,
+                    log: None,
+                })
+                .into(),
+            ),
             key: None,
             certificates: None,
             trust_information: None,
@@ -935,7 +938,7 @@ async fn test_create_credential_based_on_issuer_did_success() {
                     .did
                     .as_ref()
                     .unwrap()
-                    .id,
+                    .id(),
             ),
             issuer_key: None,
             issuer_certificate: None,
@@ -1208,7 +1211,7 @@ async fn test_create_credential_failed_formatter_doesnt_support_did_identifiers(
                     .did
                     .as_ref()
                     .unwrap()
-                    .id,
+                    .id(),
             ),
             issuer_key: None,
             issuer_certificate: None,
@@ -1325,7 +1328,7 @@ async fn test_create_credential_failed_issuance_did_method_incompatible() {
                     .did
                     .as_ref()
                     .unwrap()
-                    .id,
+                    .id(),
             ),
             issuer_key: None,
             issuer_certificate: None,
@@ -1381,7 +1384,7 @@ async fn test_create_credential_fails_if_did_is_deactivated() {
         .expect_get_from_did_id()
         .return_once(|_, _| {
             Ok(Some(Identifier {
-                did: Some(issuer_did),
+                did: Some((issuer_did).into()),
                 ..dummy_identifier()
             }))
         });
@@ -1561,7 +1564,7 @@ async fn test_create_credential_one_required_claim_missing_success() {
                 .did
                 .as_ref()
                 .unwrap()
-                .id,
+                .id(),
         ),
         issuer_key: None,
         issuer_certificate: None,
@@ -1692,7 +1695,7 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
                 .did
                 .as_ref()
                 .unwrap()
-                .id,
+                .id(),
         ),
         issuer_key: None,
         issuer_certificate: None,
@@ -1849,7 +1852,7 @@ async fn test_create_credential_namespace_optional() {
     let create_request_template = CreateCredentialRequestDTO {
         credential_schema_id: credential_schema.id,
         issuer: None,
-        issuer_did: Some(issuer_did.id),
+        issuer_did: Some(issuer_did.id()),
         issuer_key: None,
         issuer_certificate: None,
         protocol: "OPENID4VCI_FINAL1".to_string(),
@@ -1982,7 +1985,7 @@ async fn test_create_credential_schema_deleted() {
                     .did
                     .as_ref()
                     .unwrap()
-                    .id,
+                    .id(),
             ),
             issuer_key: None,
             issuer_certificate: None,
@@ -2098,9 +2101,20 @@ async fn test_create_credential_key_with_issuer_key() {
                     .did
                     .as_ref()
                     .unwrap()
+                    .id(),
+            ),
+            issuer_key: Some(
+                issuer_did
+                    .as_ref()
+                    .await
+                    .unwrap()
+                    .keys
+                    .as_ref()
+                    .await
+                    .unwrap()[0]
+                    .key
                     .id,
             ),
-            issuer_key: Some(issuer_did.keys.as_ref().await.unwrap()[0].key.id),
             issuer_certificate: None,
             protocol: "OPENID4VCI_FINAL1".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
@@ -2168,7 +2182,16 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
             },
         ]
         .into(),
-        ..credential.issuer_identifier.clone().unwrap().did.unwrap()
+        ..credential
+            .issuer_identifier
+            .clone()
+            .unwrap()
+            .did
+            .unwrap()
+            .as_ref()
+            .await
+            .unwrap()
+            .clone()
     };
     let credential_schema = credential.schema.clone().unwrap();
 
@@ -2176,7 +2199,7 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
         .expect_get_from_did_id()
         .return_once(|_, _| {
             Ok(Some(Identifier {
-                did: Some(issuer_did),
+                did: Some((issuer_did).into()),
                 ..dummy_identifier()
             }))
         });
@@ -2246,7 +2269,7 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
                     .did
                     .as_ref()
                     .unwrap()
-                    .id,
+                    .id(),
             ),
             issuer_key: Some(key_id.into()),
             issuer_certificate: None,
@@ -2297,7 +2320,16 @@ async fn test_fail_to_create_credential_no_assertion_key() {
             reference: "1".to_string(),
         }]
         .into(),
-        ..credential.issuer_identifier.clone().unwrap().did.unwrap()
+        ..credential
+            .issuer_identifier
+            .clone()
+            .unwrap()
+            .did
+            .unwrap()
+            .as_ref()
+            .await
+            .unwrap()
+            .clone()
     };
 
     let credential_schema = credential.schema.clone().unwrap();
@@ -2306,7 +2338,7 @@ async fn test_fail_to_create_credential_no_assertion_key() {
         .expect_get_from_did_id()
         .return_once(|_, _| {
             Ok(Some(Identifier {
-                did: Some(issuer_did),
+                did: Some((issuer_did).into()),
                 ..dummy_identifier()
             }))
         });
@@ -2367,7 +2399,7 @@ async fn test_fail_to_create_credential_no_assertion_key() {
                     .did
                     .as_ref()
                     .unwrap()
-                    .id,
+                    .id(),
             ),
             issuer_key: None,
             issuer_certificate: None,
@@ -2476,7 +2508,7 @@ async fn test_fail_to_create_credential_unknown_key_id() {
                     .did
                     .as_ref()
                     .unwrap()
-                    .id,
+                    .id(),
             ),
             issuer_key: Some(Uuid::new_v4().into()),
             issuer_certificate: None,
@@ -2528,7 +2560,16 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
             reference: "1".to_string(),
         }]
         .into(),
-        ..credential.issuer_identifier.clone().unwrap().did.unwrap()
+        ..credential
+            .issuer_identifier
+            .clone()
+            .unwrap()
+            .did
+            .unwrap()
+            .as_ref()
+            .await
+            .unwrap()
+            .clone()
     };
     let credential_schema = credential.schema.clone().unwrap();
 
@@ -2536,7 +2577,7 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
         .expect_get_from_did_id()
         .return_once(|_, _| {
             Ok(Some(Identifier {
-                did: Some(issuer_did),
+                did: Some((issuer_did).into()),
                 ..dummy_identifier()
             }))
         });
@@ -2597,7 +2638,7 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
                     .did
                     .as_ref()
                     .unwrap()
-                    .id,
+                    .id(),
             ),
             issuer_key: Some(key_id.into()),
             issuer_certificate: None,
@@ -2649,7 +2690,16 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
             reference: "1".to_string(),
         }]
         .into(),
-        ..credential.issuer_identifier.clone().unwrap().did.unwrap()
+        ..credential
+            .issuer_identifier
+            .clone()
+            .unwrap()
+            .did
+            .unwrap()
+            .as_ref()
+            .await
+            .unwrap()
+            .clone()
     };
     let credential_schema = credential.schema.clone().unwrap();
 
@@ -2657,7 +2707,7 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
         .expect_get_from_did_id()
         .return_once(|_, _| {
             Ok(Some(Identifier {
-                did: Some(issuer_did),
+                did: Some((issuer_did).into()),
                 ..dummy_identifier()
             }))
         });
@@ -2718,7 +2768,7 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
                     .did
                     .as_ref()
                     .unwrap()
-                    .id,
+                    .id(),
             ),
             issuer_key: Some(key_id.into()),
             issuer_certificate: None,
@@ -2824,7 +2874,7 @@ async fn test_create_credential_fail_incompatible_format_and_tranposrt_protocol(
                     .did
                     .as_ref()
                     .unwrap()
-                    .id,
+                    .id(),
             ),
             issuer_key: None,
             issuer_certificate: None,
@@ -2930,9 +2980,20 @@ async fn test_create_credential_fail_invalid_redirect_uri() {
                     .did
                     .as_ref()
                     .unwrap()
+                    .id(),
+            ),
+            issuer_key: Some(
+                issuer_did
+                    .as_ref()
+                    .await
+                    .unwrap()
+                    .keys
+                    .as_ref()
+                    .await
+                    .unwrap()[0]
+                    .key
                     .id,
             ),
-            issuer_key: Some(issuer_did.keys.as_ref().await.unwrap()[0].key.id),
             issuer_certificate: None,
             protocol: "OPENID4VCI_FINAL1".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
@@ -3622,35 +3683,38 @@ async fn test_get_credential_success_array_complex_nested_all() {
             state: IdentifierState::Active,
             deleted_at: None,
             organisation: dummy_organisation(Some(uuid::Uuid::new_v4().into())).into(),
-            did: Some(Did {
-                deleted_at: None,
-                id: Uuid::new_v4().into(),
-                created_date: now,
-                last_modified: now,
-                name: "did1".to_string(),
-                organisation: organisation.clone().into(),
-                did: "did:example:1".parse().unwrap(),
-                did_type: DidType::Local,
-                did_method: "KEY".into(),
-                keys: vec![RelatedKey {
-                    role: KeyRole::AssertionMethod,
-                    key: Key {
-                        id: Uuid::new_v4().into(),
-                        created_date: crate::clock::now_utc(),
-                        last_modified: crate::clock::now_utc(),
-                        public_key: vec![],
-                        name: "key_name".to_string(),
-                        key_reference: None,
-                        storage_type: "INTERNAL".to_string(),
-                        key_type: "EDDSA".to_string(),
-                        organisation: organisation.clone().into(),
-                    },
-                    reference: "1".to_string(),
-                }]
+            did: Some(
+                (Did {
+                    deleted_at: None,
+                    id: Uuid::new_v4().into(),
+                    created_date: now,
+                    last_modified: now,
+                    name: "did1".to_string(),
+                    organisation: organisation.clone().into(),
+                    did: "did:example:1".parse().unwrap(),
+                    did_type: DidType::Local,
+                    did_method: "KEY".into(),
+                    keys: vec![RelatedKey {
+                        role: KeyRole::AssertionMethod,
+                        key: Key {
+                            id: Uuid::new_v4().into(),
+                            created_date: crate::clock::now_utc(),
+                            last_modified: crate::clock::now_utc(),
+                            public_key: vec![],
+                            name: "key_name".to_string(),
+                            key_reference: None,
+                            storage_type: "INTERNAL".to_string(),
+                            key_type: "EDDSA".to_string(),
+                            organisation: organisation.clone().into(),
+                        },
+                        reference: "1".to_string(),
+                    }]
+                    .into(),
+                    deactivated: false,
+                    log: None,
+                })
                 .into(),
-                deactivated: false,
-                log: None,
-            }),
+            ),
             key: None,
             certificates: None,
             trust_information: None,
@@ -4403,35 +4467,38 @@ async fn test_get_credential_success_array_index_sorting() {
             state: IdentifierState::Active,
             deleted_at: None,
             organisation: dummy_organisation(Some(uuid::Uuid::new_v4().into())).into(),
-            did: Some(Did {
-                deleted_at: None,
-                id: Uuid::new_v4().into(),
-                created_date: now,
-                last_modified: now,
-                name: "did1".to_string(),
-                organisation: organisation.clone().into(),
-                did: "did:example:1".parse().unwrap(),
-                did_type: DidType::Local,
-                did_method: "KEY".into(),
-                keys: vec![RelatedKey {
-                    role: KeyRole::AssertionMethod,
-                    key: Key {
-                        id: Uuid::new_v4().into(),
-                        created_date: crate::clock::now_utc(),
-                        last_modified: crate::clock::now_utc(),
-                        public_key: vec![],
-                        name: "key_name".to_string(),
-                        key_reference: None,
-                        storage_type: "INTERNAL".to_string(),
-                        key_type: "EDDSA".to_string(),
-                        organisation: dummy_organisation(None).into(),
-                    },
-                    reference: "1".to_string(),
-                }]
+            did: Some(
+                (Did {
+                    deleted_at: None,
+                    id: Uuid::new_v4().into(),
+                    created_date: now,
+                    last_modified: now,
+                    name: "did1".to_string(),
+                    organisation: organisation.clone().into(),
+                    did: "did:example:1".parse().unwrap(),
+                    did_type: DidType::Local,
+                    did_method: "KEY".into(),
+                    keys: vec![RelatedKey {
+                        role: KeyRole::AssertionMethod,
+                        key: Key {
+                            id: Uuid::new_v4().into(),
+                            created_date: crate::clock::now_utc(),
+                            last_modified: crate::clock::now_utc(),
+                            public_key: vec![],
+                            name: "key_name".to_string(),
+                            key_reference: None,
+                            storage_type: "INTERNAL".to_string(),
+                            key_type: "EDDSA".to_string(),
+                            organisation: dummy_organisation(None).into(),
+                        },
+                        reference: "1".to_string(),
+                    }]
+                    .into(),
+                    deactivated: false,
+                    log: None,
+                })
                 .into(),
-                deactivated: false,
-                log: None,
-            }),
+            ),
             key: None,
             certificates: None,
             trust_information: None,
@@ -4821,35 +4888,38 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
             state: IdentifierState::Active,
             deleted_at: None,
             organisation: dummy_organisation(Some(uuid::Uuid::new_v4().into())).into(),
-            did: Some(Did {
-                deleted_at: None,
-                id: Uuid::new_v4().into(),
-                created_date: now,
-                last_modified: now,
-                name: "did1".to_string(),
-                organisation: organisation.clone().into(),
-                did: "did:example:1".parse().unwrap(),
-                did_type: DidType::Local,
-                did_method: "KEY".into(),
-                keys: vec![RelatedKey {
-                    role: KeyRole::AssertionMethod,
-                    key: Key {
-                        id: Uuid::new_v4().into(),
-                        created_date: crate::clock::now_utc(),
-                        last_modified: crate::clock::now_utc(),
-                        public_key: vec![],
-                        name: "key_name".to_string(),
-                        key_reference: None,
-                        storage_type: "INTERNAL".to_string(),
-                        key_type: "EDDSA".to_string(),
-                        organisation: dummy_organisation(None).into(),
-                    },
-                    reference: "1".to_string(),
-                }]
+            did: Some(
+                (Did {
+                    deleted_at: None,
+                    id: Uuid::new_v4().into(),
+                    created_date: now,
+                    last_modified: now,
+                    name: "did1".to_string(),
+                    organisation: organisation.clone().into(),
+                    did: "did:example:1".parse().unwrap(),
+                    did_type: DidType::Local,
+                    did_method: "KEY".into(),
+                    keys: vec![RelatedKey {
+                        role: KeyRole::AssertionMethod,
+                        key: Key {
+                            id: Uuid::new_v4().into(),
+                            created_date: crate::clock::now_utc(),
+                            last_modified: crate::clock::now_utc(),
+                            public_key: vec![],
+                            name: "key_name".to_string(),
+                            key_reference: None,
+                            storage_type: "INTERNAL".to_string(),
+                            key_type: "EDDSA".to_string(),
+                            organisation: dummy_organisation(None).into(),
+                        },
+                        reference: "1".to_string(),
+                    }]
+                    .into(),
+                    deactivated: false,
+                    log: None,
+                })
                 .into(),
-                deactivated: false,
-                log: None,
-            }),
+            ),
             key: None,
             certificates: None,
             trust_information: None,
@@ -5094,35 +5164,38 @@ async fn test_get_credential_success_array_single_element() {
             state: IdentifierState::Active,
             deleted_at: None,
             organisation: dummy_organisation(Some(uuid::Uuid::new_v4().into())).into(),
-            did: Some(Did {
-                deleted_at: None,
-                id: Uuid::new_v4().into(),
-                created_date: now,
-                last_modified: now,
-                name: "did1".to_string(),
-                organisation: organisation.clone().into(),
-                did: "did:example:1".parse().unwrap(),
-                did_type: DidType::Local,
-                did_method: "KEY".into(),
-                keys: vec![RelatedKey {
-                    role: KeyRole::AssertionMethod,
-                    key: Key {
-                        id: Uuid::new_v4().into(),
-                        created_date: crate::clock::now_utc(),
-                        last_modified: crate::clock::now_utc(),
-                        public_key: vec![],
-                        name: "key_name".to_string(),
-                        key_reference: None,
-                        storage_type: "INTERNAL".to_string(),
-                        key_type: "EDDSA".to_string(),
-                        organisation: dummy_organisation(None).into(),
-                    },
-                    reference: "1".to_string(),
-                }]
+            did: Some(
+                (Did {
+                    deleted_at: None,
+                    id: Uuid::new_v4().into(),
+                    created_date: now,
+                    last_modified: now,
+                    name: "did1".to_string(),
+                    organisation: organisation.clone().into(),
+                    did: "did:example:1".parse().unwrap(),
+                    did_type: DidType::Local,
+                    did_method: "KEY".into(),
+                    keys: vec![RelatedKey {
+                        role: KeyRole::AssertionMethod,
+                        key: Key {
+                            id: Uuid::new_v4().into(),
+                            created_date: crate::clock::now_utc(),
+                            last_modified: crate::clock::now_utc(),
+                            public_key: vec![],
+                            name: "key_name".to_string(),
+                            key_reference: None,
+                            storage_type: "INTERNAL".to_string(),
+                            key_type: "EDDSA".to_string(),
+                            organisation: dummy_organisation(None).into(),
+                        },
+                        reference: "1".to_string(),
+                    }]
+                    .into(),
+                    deactivated: false,
+                    log: None,
+                })
                 .into(),
-                deactivated: false,
-                log: None,
-            }),
+            ),
             key: None,
             certificates: None,
             trust_information: None,
@@ -5370,7 +5443,7 @@ async fn test_create_credential_array(
         .expect_get_from_did_id()
         .return_once(|_, _| {
             Ok(Some(Identifier {
-                did: Some(did_clone),
+                did: Some((did_clone).into()),
                 ..dummy_identifier()
             }))
         });

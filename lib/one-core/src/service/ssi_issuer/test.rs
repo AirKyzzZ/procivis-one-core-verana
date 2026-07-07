@@ -86,7 +86,7 @@ async fn test_get_sd_jwt_vc_issuer_metadata_success_with_did() {
         reference: "key-1".to_string(),
     }]
     .into();
-    identifier.did = Some(did.clone());
+    identifier.did = Some((did.clone()).into());
 
     let mut protocol_provider = MockIssuanceProtocolProvider::new();
     protocol_provider

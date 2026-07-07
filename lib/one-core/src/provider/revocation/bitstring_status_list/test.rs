@@ -99,7 +99,7 @@ async fn revocation_status(suspension: bool) -> Vec<CredentialRevocationInfo> {
 
     let mut credential = dummy_credential();
     credential.issuer_identifier = Some(Identifier {
-        did: Some(dummy_did()),
+        did: Some((dummy_did()).into()),
         ..dummy_identifier()
     });
     if let Some(ref mut schema) = credential.schema {

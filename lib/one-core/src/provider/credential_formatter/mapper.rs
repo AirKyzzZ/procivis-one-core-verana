@@ -35,7 +35,7 @@ pub(super) fn default_2_years() -> Duration {
 }
 
 #[expect(clippy::too_many_arguments)]
-pub(crate) fn credential_data_from_credential_detail_response(
+pub(crate) async fn credential_data_from_credential_detail_response(
     credential_detail: CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>,
     credential: &Credential,
     core_base_url: &str,
@@ -56,7 +56,8 @@ pub(crate) fn credential_data_from_credential_detail_response(
         credential_schema,
         credential_schema_format,
         config,
-    )?;
+    )
+    .await?;
 
     Ok(CredentialData {
         vcdm,
@@ -68,7 +69,7 @@ pub(crate) fn credential_data_from_credential_detail_response(
 }
 
 #[expect(clippy::too_many_arguments)]
-pub(crate) fn vcdm_from_credential_and_published_claims(
+pub(crate) async fn vcdm_from_credential_and_published_claims(
     credential: &Credential,
     core_base_url: &str,
     credential_status: Vec<CredentialStatus>,
@@ -100,7 +101,7 @@ pub(crate) fn vcdm_from_credential_and_published_claims(
         credential_schema_format,
     )?;
     context.insert(ContextType::Url(credential_schema_context));
-    let issuer = issuer_for_credential(credential, core_base_url)?;
+    let issuer = issuer_for_credential(credential, core_base_url).await?;
     // We don't add the credentialSubject.id here for backwards compatibility with older JWT/SD-JWT formatters where they store the "id" in the "sub" claim.
     // For JSON-LD formats the "id" is added to the credentialSubject inside the formatter.
     // This is currently the only way to remain backwards compatible with the old formatters.
@@ -154,7 +155,7 @@ fn get_credential_schema_context(
     Ok(context.parse()?)
 }
 
-fn issuer_for_credential(
+async fn issuer_for_credential(
     credential: &Credential,
     core_base_url: &str,
 ) -> Result<Issuer, FormatterError> {
@@ -163,6 +164,7 @@ fn issuer_for_credential(
         .as_ref()
         .and_then(|identifier| identifier.did.as_ref())
     {
+        let issuer_did = issuer_did.as_ref().await?;
         return Ok(Issuer::Url(issuer_did.did.clone().into_url()));
     }
     let issuer_identifier_id = credential

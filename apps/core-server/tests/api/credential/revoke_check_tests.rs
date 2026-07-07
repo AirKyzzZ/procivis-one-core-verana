@@ -1727,22 +1727,25 @@ async fn minimal_mdoc_credential(params: serde_json::Value) -> SerializedCredent
             state: IdentifierState::Active,
             deleted_at: None,
             organisation: dummy_organisation(None).into(),
-            did: Some(Did {
-                deleted_at: None,
-                id: Uuid::new_v4().into(),
-                created_date: one_core::clock::now_utc(),
-                last_modified: one_core::clock::now_utc(),
-                name: "holder".to_string(),
-                did: "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX"
-                    .parse()
-                    .unwrap(),
-                did_type: DidType::Local,
-                did_method: "KEY".into(),
-                deactivated: false,
-                log: None,
-                keys: Default::default(),
-                organisation: dummy_organisation(None).into(),
-            }),
+            did: Some(
+                (Did {
+                    deleted_at: None,
+                    id: Uuid::new_v4().into(),
+                    created_date: one_core::clock::now_utc(),
+                    last_modified: one_core::clock::now_utc(),
+                    name: "holder".to_string(),
+                    did: "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX"
+                        .parse()
+                        .unwrap(),
+                    did_type: DidType::Local,
+                    did_method: "KEY".into(),
+                    deactivated: false,
+                    log: None,
+                    keys: Default::default(),
+                    organisation: dummy_organisation(None).into(),
+                })
+                .into(),
+            ),
             key: None,
             certificates: None,
             trust_information: None,

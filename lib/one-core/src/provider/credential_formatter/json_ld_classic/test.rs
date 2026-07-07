@@ -104,10 +104,13 @@ async fn create_token(include_layout: bool) -> Value {
         vcdm,
         claims,
         holder_identifier: Some(Identifier {
-            did: Some(Did {
-                did: holder_did.clone(),
-                ..dummy_did()
-            }),
+            did: Some(
+                (Did {
+                    did: holder_did.clone(),
+                    ..dummy_did()
+                })
+                .into(),
+            ),
             ..dummy_identifier()
         }),
         holder_key_id: None,
@@ -323,13 +326,29 @@ async fn test_parse_credential() {
 
     let issuer = credential.issuer_identifier.as_ref().unwrap();
     assert_eq!(
-        issuer.did.as_ref().unwrap().did.to_string(),
+        issuer
+            .did
+            .as_ref()
+            .unwrap()
+            .as_ref()
+            .await
+            .unwrap()
+            .did
+            .to_string(),
         "did:tdw:QmPxAB6sCcNqVyvg7io53dumteRfUSWDqJNs742UPm3FZ5:core.dev.procivis-one.com:ssi:did-webvh:v1:7301784b-4fb1-44c7-9f73-71d1a4d7c4f7"
     );
 
     let holder = credential.holder_identifier.as_ref().unwrap();
     assert_eq!(
-        holder.did.as_ref().unwrap().did.to_string(),
+        holder
+            .did
+            .as_ref()
+            .unwrap()
+            .as_ref()
+            .await
+            .unwrap()
+            .did
+            .to_string(),
         "did:key:zDnaeQtSJWkb9qaCu3imWNh6HZqVdcDESDNGnZjMqFZykv3m5"
     );
 

@@ -159,13 +159,11 @@ impl CredentialValidityManagerImpl {
                 &credential_id,
                 &CredentialRelations {
                     issuer_identifier: Some(IdentifierRelations {
-                        did: Some(Default::default()),
                         certificates: Some(Default::default()),
                         ..Default::default()
                     }),
                     issuer_certificate: Some(Default::default()),
                     holder_identifier: Some(IdentifierRelations {
-                        did: Some(Default::default()),
                         ..Default::default()
                     }),
                     schema: Some(Default::default()),
@@ -304,7 +302,7 @@ impl CredentialValidityManagerImpl {
             match revocation_method
                 .check_credential_revocation_status(
                     &status,
-                    &issuer_details(issuer_identifier)?,
+                    &issuer_details(issuer_identifier).await?,
                     credential_data_by_role.to_owned(),
                     force_refresh,
                 )
@@ -605,12 +603,10 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
                 &CredentialRelations {
                     schema: Some(Default::default()),
                     issuer_identifier: Some(IdentifierRelations {
-                        did: Some(Default::default()),
                         certificates: Some(Default::default()),
                         ..Default::default()
                     }),
                     holder_identifier: Some(IdentifierRelations {
-                        did: Some(Default::default()),
                         ..Default::default()
                     }),
                     interaction: Some(InteractionRelations {
@@ -708,7 +704,6 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
                             &batch_item.id,
                             &CredentialRelations {
                                 issuer_identifier: Some(IdentifierRelations {
-                                    did: Some(Default::default()),
                                     certificates: Some(Default::default()),
                                     ..Default::default()
                                 }),
@@ -818,13 +813,15 @@ fn verify_suspension_support(
     Ok(())
 }
 
-fn issuer_details(issuer_identifier: &Identifier) -> Result<IdentifierDetails, Error> {
+async fn issuer_details(issuer_identifier: &Identifier) -> Result<IdentifierDetails, Error> {
     Ok(match issuer_identifier.r#type {
         IdentifierType::Did => {
             let issuer_did = issuer_identifier
                 .did
                 .as_ref()
-                .ok_or(Error::MappingError("issuer_did is None".to_string()))?;
+                .ok_or(Error::MappingError("issuer_did is None".to_string()))?
+                .as_ref()
+                .await?;
 
             IdentifierDetails::Did(issuer_did.did.clone())
         }

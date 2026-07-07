@@ -174,13 +174,14 @@ impl VerificationProtocol for CapabilityChecked {
         }
 
         if verifier_identifier.r#type == IdentifierType::Did {
-            let verifier_did =
-                verifier_identifier
-                    .did
-                    .as_ref()
-                    .ok_or(VerificationProtocolError::Failed(
-                        "Missing verifier DID".to_string(),
-                    ))?;
+            let verifier_did = verifier_identifier
+                .did
+                .as_ref()
+                .ok_or(VerificationProtocolError::Failed(
+                    "Missing verifier DID".to_string(),
+                ))?
+                .as_ref()
+                .await?;
             let (_, did_type) = self
                 .did_method_provider
                 .get_did_method(&verifier_did.did_method)?;

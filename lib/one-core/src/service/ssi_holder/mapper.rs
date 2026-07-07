@@ -33,6 +33,8 @@ pub(super) async fn holder_did_key_jwk_from_credential(
             .ok_or(HolderServiceError::MappingError(
                 "missing identifier did".to_string(),
             ))?
+            .as_ref()
+            .await?
             .to_owned();
 
         // There should probably be a nicer error if a key is rotated out from a did
@@ -81,7 +83,9 @@ pub(super) async fn select_holder_key(
                 .as_ref()
                 .ok_or(HolderServiceError::MappingError(
                     "Missing identifier did".to_string(),
-                ))?;
+                ))?
+                .as_ref()
+                .await?;
 
             let key_filter = KeyFilter::did_role(KeyRole::Authentication);
             let selected_key = match key_id {

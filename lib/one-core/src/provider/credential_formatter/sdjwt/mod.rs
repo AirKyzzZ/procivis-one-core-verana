@@ -83,7 +83,9 @@ pub(crate) async fn format_credential<T: Serialize>(
                 let did = identifier
                     .did
                     .as_ref()
-                    .ok_or(FormatterError::CouldNotFormat("Missing did".to_string()))?;
+                    .ok_or(FormatterError::CouldNotFormat("Missing did".to_string()))?
+                    .as_ref()
+                    .await?;
                 let did_document = did_method_provider
                     .resolve(&did.did)
                     .await
@@ -126,12 +128,14 @@ pub(crate) async fn format_credential<T: Serialize>(
         None => None,
     };
 
-    let subject = additional_inputs
+    let subject = match additional_inputs
         .holder_identifier
         .as_ref()
         .and_then(|identifier| identifier.did.as_ref())
-        .map(|did| did.did.clone())
-        .map(|did| did.to_string());
+    {
+        Some(did) => Some(did.as_ref().await?.did.to_string()),
+        None => None,
+    };
 
     let payload = JWTPayload {
         issued_at: Some(crate::clock::now_utc()),

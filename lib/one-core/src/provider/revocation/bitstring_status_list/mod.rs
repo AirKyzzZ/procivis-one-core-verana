@@ -420,7 +420,9 @@ impl BitstringStatusList {
             .as_ref()
             .ok_or(RevocationError::MappingError(
                 "issuer did is None".to_string(),
-            ))?;
+            ))?
+            .as_ref()
+            .await?;
 
         let is_bbs = !issuer_did
             .keys

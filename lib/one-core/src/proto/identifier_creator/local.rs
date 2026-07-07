@@ -52,7 +52,7 @@ impl IdentifierCreatorProto {
             is_remote: false,
             state: IdentifierState::Active,
             deleted_at: None,
-            did: Some(did),
+            did: Some(did.into()),
             key: None,
             certificates: None,
             trust_information: None,

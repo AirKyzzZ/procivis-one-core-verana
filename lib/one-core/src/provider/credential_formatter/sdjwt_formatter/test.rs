@@ -105,8 +105,13 @@ async fn test_format_credential() {
     let holder_did = credential_data
         .holder_identifier
         .as_ref()
-        .and_then(|identifier| identifier.did.as_ref().map(|did| did.did.clone()))
-        .unwrap();
+        .and_then(|identifier| identifier.did.as_ref())
+        .unwrap()
+        .as_ref()
+        .await
+        .unwrap()
+        .did
+        .clone();
 
     let did_document = dummy_did_document(&holder_did);
 
@@ -289,8 +294,13 @@ async fn test_format_credential_with_array() {
     let holder_did = credential_data
         .holder_identifier
         .as_ref()
-        .and_then(|identifier| identifier.did.as_ref().map(|did| did.did.clone()))
-        .unwrap();
+        .and_then(|identifier| identifier.did.as_ref())
+        .unwrap()
+        .as_ref()
+        .await
+        .unwrap()
+        .did
+        .clone();
 
     let did_document = dummy_did_document(&holder_did);
     did_method_provider
@@ -421,8 +431,13 @@ async fn test_format_credential_with_array_sd() {
     let holder_did = credential_data
         .holder_identifier
         .as_ref()
-        .and_then(|identifier| identifier.did.as_ref().map(|did| did.did.clone()))
-        .unwrap();
+        .and_then(|identifier| identifier.did.as_ref())
+        .unwrap()
+        .as_ref()
+        .await
+        .unwrap()
+        .did
+        .clone();
 
     let did_document = dummy_did_document(&holder_did);
     did_method_provider
@@ -1078,10 +1093,13 @@ fn get_credential_data_with_array(status: CredentialStatus, core_base_url: &str)
         .with_valid_until(issuance_date + valid_for);
 
     let holder_identifier = Identifier {
-        did: Some(Did {
-            did: holder_did,
-            ..dummy_did()
-        }),
+        did: Some(
+            (Did {
+                did: holder_did,
+                ..dummy_did()
+            })
+            .into(),
+        ),
         ..dummy_identifier()
     };
     CredentialData {
@@ -1195,7 +1213,15 @@ async fn test_parse_credential() {
     let issuer = result.issuer_identifier.as_ref().unwrap();
     assert!(issuer.did.is_some());
     assert_eq!(
-        issuer.did.as_ref().unwrap().did.to_string(),
+        issuer
+            .did
+            .as_ref()
+            .unwrap()
+            .as_ref()
+            .await
+            .unwrap()
+            .did
+            .to_string(),
         "did:key:zDnaebvyVpwG3R7Qj1znrVy9rtsi6N8TgjWPKZhyBda2qv58w"
     );
 
@@ -1204,7 +1230,15 @@ async fn test_parse_credential() {
     let holder = result.holder_identifier.as_ref().unwrap();
     assert!(holder.did.is_some());
     assert_eq!(
-        holder.did.as_ref().unwrap().did.to_string(),
+        holder
+            .did
+            .as_ref()
+            .unwrap()
+            .as_ref()
+            .await
+            .unwrap()
+            .did
+            .to_string(),
         "did:key:zDnaekoMC2sFkgcFLp3K4nnGUFUqYo8goWsjt3sAfhNAV9ES9"
     );
 
@@ -1489,8 +1523,13 @@ async fn test_format_credential_sets_x5c_and_x5u_headers() {
     let holder_did = credential_data
         .holder_identifier
         .as_ref()
-        .and_then(|id| id.did.as_ref().map(|d| d.did.clone()))
-        .unwrap();
+        .and_then(|id| id.did.as_ref())
+        .unwrap()
+        .as_ref()
+        .await
+        .unwrap()
+        .did
+        .clone();
     did_method_provider
         .expect_resolve()
         .return_once(move |_| Ok(dummy_did_document(&holder_did)));
@@ -1566,8 +1605,13 @@ async fn test_format_credential_without_certificate_has_no_x5_headers() {
     let holder_did = credential_data
         .holder_identifier
         .as_ref()
-        .and_then(|id| id.did.as_ref().map(|d| d.did.clone()))
-        .unwrap();
+        .and_then(|id| id.did.as_ref())
+        .unwrap()
+        .as_ref()
+        .await
+        .unwrap()
+        .did
+        .clone();
     did_method_provider
         .expect_resolve()
         .return_once(move |_| Ok(dummy_did_document(&holder_did)));

@@ -607,7 +607,9 @@ impl OpenID4VCIFinal1_0 {
                 did: Some(did),
                 r#type,
                 ..
-            }) if r#type == &IdentifierType::Did => IdentifierDetails::Did(did.did.to_owned()),
+            }) if r#type == &IdentifierType::Did => {
+                IdentifierDetails::Did(did.as_ref().await?.did.to_owned())
+            }
             Some(Identifier {
                 certificates: Some(certificates),
                 r#type,
@@ -1217,6 +1219,8 @@ async fn holder_binding_matching_parsed_identifier(
             let Some(holder_binding_did) = &holder_binding.identifier.did else {
                 return Ok(false);
             };
+            let parsed_did = parsed_did.as_ref().await?;
+            let holder_binding_did = holder_binding_did.as_ref().await?;
 
             Ok(holder_binding_did.did == parsed_did.did)
         }

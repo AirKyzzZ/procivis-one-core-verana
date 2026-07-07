@@ -121,6 +121,7 @@ pub(crate) async fn select_key_agreement_key_from_proof(
                     "verifier_did is None".to_string(),
                 ));
             };
+            let verifier_did = verifier_did.as_ref().await?;
 
             let key_agreement_key_filter = KeyFilter::did_role(KeyRole::KeyAgreement);
             // We ensure the specified key is a key agreement key

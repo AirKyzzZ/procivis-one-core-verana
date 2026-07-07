@@ -30,7 +30,6 @@ impl SignatureService {
             .get(
                 request.issuer,
                 &IdentifierRelations {
-                    did: Some(Default::default()),
                     certificates: Some(Default::default()),
                     ..Default::default()
                 },

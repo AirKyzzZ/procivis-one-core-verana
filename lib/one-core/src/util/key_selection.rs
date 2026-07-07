@@ -178,7 +178,7 @@ pub enum SelectedKey<'a> {
         key: Box<Key>,
     },
     Did {
-        did: &'a Did,
+        did: Box<Did>,
         key: Box<RelatedKey>,
     },
 }
@@ -201,7 +201,7 @@ impl SelectedKey<'_> {
 
     pub fn did(&self) -> Option<&Did> {
         match self {
-            Self::Did { did, .. } => Some(did),
+            Self::Did { did, .. } => Some(did.as_ref()),
             _ => None,
         }
     }
@@ -433,9 +433,15 @@ impl Identifier {
             IdentifierType::Did => {
                 self.throw_on_certificate_id(&selection)?;
 
-                let did = self.did.as_ref().ok_or(KeySelectionError::MappingError(
-                    "Missing identifier did".to_owned(),
-                ))?;
+                let did = self
+                    .did
+                    .as_ref()
+                    .ok_or(KeySelectionError::MappingError(
+                        "Missing identifier did".to_owned(),
+                    ))?
+                    .as_ref()
+                    .await?
+                    .clone();
 
                 if did.deactivated {
                     return Err(KeySelectionError::DidDeactivated { did_id: did.id });
@@ -456,7 +462,7 @@ impl Identifier {
                     },
                 )?;
                 Ok(SelectedKey::Did {
-                    did,
+                    did: Box::new(did),
                     key: Box::new(key),
                 })
             }
@@ -520,9 +526,15 @@ impl Identifier {
                 Ok(vec![SelectedKey::Key(Box::new(key.as_ref().clone()))])
             }
             IdentifierType::Did => {
-                let did = self.did.as_ref().ok_or(KeySelectionError::MappingError(
-                    "Missing identifier did".to_owned(),
-                ))?;
+                let did = self
+                    .did
+                    .as_ref()
+                    .ok_or(KeySelectionError::MappingError(
+                        "Missing identifier did".to_owned(),
+                    ))?
+                    .as_ref()
+                    .await?
+                    .clone();
 
                 if did.deactivated {
                     return Err(KeySelectionError::DidDeactivated { did_id: did.id });
@@ -538,7 +550,7 @@ impl Identifier {
                 Ok(matching_keys
                     .into_iter()
                     .map(|key| SelectedKey::Did {
-                        did,
+                        did: Box::new(did.clone()),
                         key: Box::new(key),
                     })
                     .collect())

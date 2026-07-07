@@ -5,7 +5,7 @@ use one_core::model::claim::{Claim, ClaimRelations};
 use one_core::model::credential::{
     Credential, CredentialRelations, CredentialRole, CredentialStateEnum, CredentialType,
 };
-use one_core::model::did::{Did, DidRelations, DidType};
+use one_core::model::did::{Did, DidType};
 use one_core::model::identifier::{
     Identifier, IdentifierRelations, IdentifierState, IdentifierType,
 };
@@ -356,20 +356,23 @@ async fn test_create_proof_success() {
             state: IdentifierState::Active,
             deleted_at: None,
             organisation: dummy_organisation(None).into(),
-            did: Some(Did {
-                deleted_at: None,
-                id: did_id,
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-                name: "verifier".to_string(),
-                did: "did:key:123".parse().unwrap(),
-                did_type: DidType::Local,
-                did_method: "KEY".into(),
-                organisation: dummy_organisation(None).into(),
-                keys: Default::default(),
-                deactivated: false,
-                log: None,
-            }),
+            did: Some(
+                (Did {
+                    deleted_at: None,
+                    id: did_id,
+                    created_date: get_dummy_date(),
+                    last_modified: get_dummy_date(),
+                    name: "verifier".to_string(),
+                    did: "did:key:123".parse().unwrap(),
+                    did_type: DidType::Local,
+                    did_method: "KEY".into(),
+                    organisation: dummy_organisation(None).into(),
+                    keys: Default::default(),
+                    deactivated: false,
+                    log: None,
+                })
+                .into(),
+            ),
             key: None,
             certificates: None,
             trust_information: None,
@@ -533,20 +536,23 @@ async fn test_get_proof_with_relations() {
                 state: IdentifierState::Active,
                 deleted_at: None,
                 organisation: dummy_organisation(None).into(),
-                did: Some(Did {
-                    deleted_at: None,
-                    id: Uuid::new_v4().into(),
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                    name: "verifier".to_string(),
-                    did: "did:key:123".parse().unwrap(),
-                    did_type: DidType::Local,
-                    did_method: "KEY".into(),
-                    organisation: dummy_organisation(None).into(),
-                    keys: Default::default(),
-                    deactivated: false,
-                    log: None,
-                }),
+                did: Some(
+                    (Did {
+                        deleted_at: None,
+                        id: Uuid::new_v4().into(),
+                        created_date: get_dummy_date(),
+                        last_modified: get_dummy_date(),
+                        name: "verifier".to_string(),
+                        did: "did:key:123".parse().unwrap(),
+                        did_type: DidType::Local,
+                        did_method: "KEY".into(),
+                        organisation: dummy_organisation(None).into(),
+                        keys: Default::default(),
+                        deactivated: false,
+                        log: None,
+                    })
+                    .into(),
+                ),
                 key: None,
                 certificates: None,
                 trust_information: None,
@@ -725,7 +731,6 @@ async fn test_get_proof_with_relations() {
                 }),
                 schema: Some(ProofSchemaRelations::default()),
                 verifier_identifier: Some(IdentifierRelations {
-                    did: Some(DidRelations::default()),
                     ..Default::default()
                 }),
                 verifier_key: Some(KeyRelations::default()),

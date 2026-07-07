@@ -103,8 +103,12 @@ async fn test_format_credential() {
         .unwrap()
         .did
         .as_ref()
-        .map(|did| did.did.clone())
-        .unwrap();
+        .unwrap()
+        .as_ref()
+        .await
+        .unwrap()
+        .did
+        .clone();
 
     let did_document = dummy_did_document(&holder_did);
     did_method_provider
@@ -294,8 +298,12 @@ async fn test_format_credential_swiyu() {
         .unwrap()
         .did
         .as_ref()
-        .map(|did| did.did.clone())
-        .unwrap();
+        .unwrap()
+        .as_ref()
+        .await
+        .unwrap()
+        .did
+        .clone();
 
     let holder_did_document = dummy_did_document(&holder_did);
 
@@ -1233,10 +1241,13 @@ async fn test_format_extract_round_trip_non_sd_array_elements() {
         .with_valid_until(now + Duration::seconds(10));
 
     let holder_identifier = Identifier {
-        did: Some(Did {
-            did: holder_did.clone(),
-            ..dummy_did()
-        }),
+        did: Some(
+            (Did {
+                did: holder_did.clone(),
+                ..dummy_did()
+            })
+            .into(),
+        ),
         ..dummy_identifier()
     };
 
@@ -1445,10 +1456,13 @@ async fn test_format_extract_round_trip_sd_array_elements() {
         .with_valid_until(now + Duration::seconds(10));
 
     let holder_identifier = Identifier {
-        did: Some(Did {
-            did: holder_did.clone(),
-            ..dummy_did()
-        }),
+        did: Some(
+            (Did {
+                did: holder_did.clone(),
+                ..dummy_did()
+            })
+            .into(),
+        ),
         ..dummy_identifier()
     };
 

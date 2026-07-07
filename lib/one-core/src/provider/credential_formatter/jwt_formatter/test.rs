@@ -96,10 +96,13 @@ fn get_credential_data(status: CredentialStatus, core_base_url: &str) -> Credent
     .add_credential_status(status);
 
     let holder_identifier = Identifier {
-        did: Some(Did {
-            did: holder_did,
-            ..dummy_did()
-        }),
+        did: Some(
+            (Did {
+                did: holder_did,
+                ..dummy_did()
+            })
+            .into(),
+        ),
         ..dummy_identifier()
     };
 
@@ -164,10 +167,13 @@ fn get_credential_data_with_array(status: CredentialStatus, core_base_url: &str)
     .add_credential_status(status);
 
     let holder_identifier = Identifier {
-        did: Some(Did {
-            did: holder_did,
-            ..dummy_did()
-        }),
+        did: Some(
+            (Did {
+                did: holder_did,
+                ..dummy_did()
+            })
+            .into(),
+        ),
         ..dummy_identifier()
     };
 
@@ -857,13 +863,29 @@ async fn test_parse_credential() {
 
     let issuer = credential.issuer_identifier.as_ref().unwrap();
     assert_eq!(
-        issuer.did.as_ref().unwrap().did.to_string(),
+        issuer
+            .did
+            .as_ref()
+            .unwrap()
+            .as_ref()
+            .await
+            .unwrap()
+            .did
+            .to_string(),
         "did:web:core.dev.procivis-one.com:ssi:did-web:v1:f6283305-667a-474b-a7e3-02c4ba998796"
     );
 
     let holder = credential.holder_identifier.as_ref().unwrap();
     assert_eq!(
-        holder.did.as_ref().unwrap().did.to_string(),
+        holder
+            .did
+            .as_ref()
+            .unwrap()
+            .as_ref()
+            .await
+            .unwrap()
+            .did
+            .to_string(),
         "did:key:zDnaeokW7xJYWFLNk5yA8W9LVVq7Ee2tYTQwMK2dJyC4e3rCr"
     );
 

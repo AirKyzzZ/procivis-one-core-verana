@@ -70,7 +70,6 @@ impl IdentifierCreatorProto {
             .get_from_did_id(
                 did.id,
                 &IdentifierRelations {
-                    did: Some(Default::default()),
                     certificates: Some(Default::default()),
                     ..Default::default()
                 },
@@ -90,7 +89,7 @@ impl IdentifierCreatorProto {
                     state: IdentifierState::Active,
                     deleted_at: None,
                     organisation: organisation.to_owned().into(),
-                    did: Some(did.to_owned()),
+                    did: Some(did.to_owned().into()),
                     key: None,
                     certificates: None,
                     trust_information: None,
@@ -321,7 +320,6 @@ impl IdentifierCreatorProto {
                     .get_from_did_id(
                         did.id,
                         &IdentifierRelations {
-                            did: Some(Default::default()),
                             ..Default::default()
                         },
                     )

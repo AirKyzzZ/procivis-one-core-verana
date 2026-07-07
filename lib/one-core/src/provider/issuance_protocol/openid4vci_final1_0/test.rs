@@ -208,7 +208,7 @@ fn generic_credential_did() -> Credential {
         state: IdentifierState::Active,
         deleted_at: None,
         organisation: dummy_organisation(Some(uuid::Uuid::new_v4().into())).into(),
-        did: Some(issuer_did),
+        did: Some((issuer_did).into()),
         key: None,
         certificates: None,
         trust_information: None,
@@ -1034,15 +1034,18 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
             Some(HolderBindingInput {
                 identifier: Identifier {
                     r#type: IdentifierType::Did,
-                    did: Some(Did {
-                        keys: vec![RelatedKey {
-                            role: KeyRole::Authentication,
-                            key: key.to_owned(),
-                            reference: "ref".to_string(),
-                        }]
+                    did: Some(
+                        (Did {
+                            keys: vec![RelatedKey {
+                                role: KeyRole::Authentication,
+                                key: key.to_owned(),
+                                reference: "ref".to_string(),
+                            }]
+                            .into(),
+                            ..dummy_did()
+                        })
                         .into(),
-                        ..dummy_did()
-                    }),
+                    ),
                     ..dummy_identifier()
                 },
                 key,

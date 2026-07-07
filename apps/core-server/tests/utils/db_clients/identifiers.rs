@@ -34,7 +34,7 @@ impl IdentifiersDB {
             last_modified: params.last_modified.unwrap_or(now),
             name: unwrap_or_random(params.name),
             organisation: organisation.clone().into(),
-            did: params.did,
+            did: (params.did).map(Into::into),
             key: params.key.map(Related::from),
             certificates: params.certificates,
             state: params.state.unwrap_or(IdentifierState::Active),
@@ -54,7 +54,6 @@ impl IdentifiersDB {
             .get(
                 identifier_id,
                 &IdentifierRelations {
-                    did: Some(Default::default()),
                     certificates: Some(Default::default()),
                     trust_information: Some(Default::default()),
                 },

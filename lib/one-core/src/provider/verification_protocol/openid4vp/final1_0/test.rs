@@ -208,27 +208,30 @@ fn test_verifier_proof(format: CredentialFormat, verifier_key: Option<RelatedKey
         }),
         claims: None,
         verifier_identifier: Some(Identifier {
-            did: Some(Did {
-                deleted_at: None,
-                id: Uuid::new_v4().into(),
-                created_date: crate::clock::now_utc(),
-                last_modified: crate::clock::now_utc(),
-                name: "did".to_string(),
-                did: "did:example:123".parse().unwrap(),
-                did_type: DidType::Local,
-                did_method: "KEY".into(),
-                deactivated: false,
-                keys: verifier_key
-                    .map(|k| vec![k])
-                    .unwrap_or(vec![RelatedKey {
-                        role: KeyRole::AssertionMethod,
-                        key: key.clone(),
-                        reference: "1".to_string(),
-                    }])
-                    .into(),
-                organisation: dummy_organisation(None).into(),
-                log: None,
-            }),
+            did: Some(
+                (Did {
+                    deleted_at: None,
+                    id: Uuid::new_v4().into(),
+                    created_date: crate::clock::now_utc(),
+                    last_modified: crate::clock::now_utc(),
+                    name: "did".to_string(),
+                    did: "did:example:123".parse().unwrap(),
+                    did_type: DidType::Local,
+                    did_method: "KEY".into(),
+                    deactivated: false,
+                    keys: verifier_key
+                        .map(|k| vec![k])
+                        .unwrap_or(vec![RelatedKey {
+                            role: KeyRole::AssertionMethod,
+                            key: key.clone(),
+                            reference: "1".to_string(),
+                        }])
+                        .into(),
+                    organisation: dummy_organisation(None).into(),
+                    log: None,
+                })
+                .into(),
+            ),
             ..dummy_identifier()
         }),
         verifier_key: Some(key),

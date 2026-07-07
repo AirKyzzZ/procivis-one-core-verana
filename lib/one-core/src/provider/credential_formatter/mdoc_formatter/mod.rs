@@ -198,14 +198,17 @@ impl CredentialFormatter for MdocFormatter {
                     .error_while("getting CoseKey")?
             }
             identifier::IdentifierType::Did => {
+                let did = holder_identifier
+                    .did
+                    .ok_or(FormatterError::CouldNotFormat(
+                        "Missing holder did".to_string(),
+                    ))?
+                    .as_ref()
+                    .await?
+                    .to_owned();
                 let jwk = try_extract_did(
                     self.did_method_provider.as_ref(),
-                    &holder_identifier
-                        .did
-                        .ok_or(FormatterError::CouldNotFormat(
-                            "Missing holder did".to_string(),
-                        ))?
-                        .did,
+                    &did.did,
                     credential_data.holder_key_id.as_ref(),
                 )
                 .await?;

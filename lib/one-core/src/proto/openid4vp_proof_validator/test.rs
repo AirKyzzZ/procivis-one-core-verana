@@ -370,10 +370,13 @@ fn test_data(dcql_query: Option<DcqlQuery>) -> TestData {
     let proof = Proof {
         id: proof_id,
         verifier_identifier: Some(Identifier {
-            did: Some(Did {
-                did: verifier_did,
-                ..dummy_did()
-            }),
+            did: Some(
+                (Did {
+                    did: verifier_did,
+                    ..dummy_did()
+                })
+                .into(),
+            ),
             ..dummy_identifier()
         }),
         state: ProofStateEnum::Pending,

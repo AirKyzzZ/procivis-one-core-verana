@@ -120,7 +120,6 @@ impl OID4VCIFinal1_0Service {
             .get(
                 *identifier_id,
                 &IdentifierRelations {
-                    did: Some(Default::default()),
                     certificates: Some(Default::default()),
                     trust_information: Some(Default::default()),
                 },
@@ -914,7 +913,6 @@ impl OID4VCIFinal1_0Service {
                 &interaction.id,
                 &CredentialRelations {
                     issuer_identifier: Some(IdentifierRelations {
-                        did: Some(Default::default()),
                         certificates: Some(Default::default()),
                         ..Default::default()
                     }),

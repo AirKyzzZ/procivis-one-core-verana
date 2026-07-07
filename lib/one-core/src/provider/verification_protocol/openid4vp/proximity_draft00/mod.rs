@@ -834,6 +834,7 @@ pub(super) async fn prepare_proof_share(
             { params.proof.id }
         )));
     };
+    let verifier_did = verifier_did.as_ref().await?;
 
     let Ok(verifier_key) = verifier_did
         .find_key(

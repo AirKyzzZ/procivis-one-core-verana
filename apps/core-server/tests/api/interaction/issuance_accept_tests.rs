@@ -193,7 +193,7 @@ async fn test_issuance_accept_openid4vc() {
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
     assert_eq!(
         holder_did.id,
-        credential.holder_identifier.unwrap().did.unwrap().id
+        credential.holder_identifier.unwrap().did.unwrap().id()
     );
     assert_eq!(CredentialStateEnum::Accepted, credential.state);
 
@@ -794,7 +794,7 @@ async fn test_issuance_accept_openid4vc_with_key_id() {
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
     assert_eq!(
         holder_did.id,
-        credential.holder_identifier.unwrap().did.unwrap().id
+        credential.holder_identifier.unwrap().did.unwrap().id()
     );
     assert_eq!(key.id, credential.key.unwrap().id);
 
@@ -1501,7 +1501,7 @@ async fn test_issuance_accept_openid4vc_with_tx_code() {
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
     assert_eq!(
         holder_did.id,
-        credential.holder_identifier.unwrap().did.unwrap().id
+        credential.holder_identifier.unwrap().did.unwrap().id()
     );
 
     assert_eq!(CredentialStateEnum::Accepted, credential.state);

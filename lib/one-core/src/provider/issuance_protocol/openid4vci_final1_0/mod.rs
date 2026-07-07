@@ -365,6 +365,7 @@ impl OpenID4VCIFinal1_0 {
         let Some(ref did) = issuer_identifier.did else {
             return Ok(None);
         };
+        let did = did.as_ref().await?;
 
         let related_did_key = did
             .find_key(&key.id, &KeyFilter::did_role(KeyRole::AssertionMethod))
@@ -955,7 +956,9 @@ impl OpenID4VCIFinal1_0 {
                     .as_ref()
                     .ok_or(IssuanceProtocolError::Failed(
                         "Missing identifier did".to_string(),
-                    ))?;
+                    ))?
+                    .as_ref()
+                    .await?;
                 if methods
                     .iter()
                     .any(|method| &format!("did:{}", did.did.method()) == method)
@@ -1572,6 +1575,7 @@ impl OpenID4VCIFinal1_0 {
             schema_format,
             &self.config,
         )
+        .await
         .error_while("getting credential data")?;
         Ok(credential_data)
     }
@@ -1987,7 +1991,6 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                     }),
                     schema: Some(Default::default()),
                     issuer_identifier: Some(IdentifierRelations {
-                        did: Some(Default::default()),
                         certificates: Some(Default::default()),
                         ..Default::default()
                     }),
@@ -2294,7 +2297,6 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                         &CredentialRelations {
                             schema: Some(Default::default()),
                             holder_identifier: Some(IdentifierRelations {
-                                did: Some(Default::default()),
                                 ..Default::default()
                             }),
                             key: Some(Default::default()),

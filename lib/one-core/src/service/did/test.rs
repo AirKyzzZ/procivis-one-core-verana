@@ -235,7 +235,7 @@ async fn test_create_did_success() {
         .once()
         .return_once(|_, _, _| {
             Ok(Identifier {
-                did: Some(dummy_did()),
+                did: Some((dummy_did()).into()),
                 ..dummy_identifier()
             })
         });

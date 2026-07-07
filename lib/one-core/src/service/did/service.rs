@@ -196,6 +196,7 @@ impl DidService {
         let did = identifier
             .did
             .ok_or(DidServiceError::MappingError("Did not found".to_string()))?;
+        let did = did.as_ref().await?;
 
         tracing::info!(
             "Created did `{}` ({}): did method `{}`",
