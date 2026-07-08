@@ -947,7 +947,7 @@ fn map_to_ciborium_value(
     })
 }
 
-fn build_x5chain_header_value(
+pub(crate) fn build_x5chain_header_value(
     certificate: &Certificate,
 ) -> Result<ciborium::Value, FormatterError> {
     let x5c = pem_chain_into_x5c(&certificate.chain).error_while("parsing PEM chain")?;
@@ -979,7 +979,7 @@ fn build_x5thumbprint_header(certificate: &Certificate) -> Result<ciborium::Valu
     ]))
 }
 
-trait HeaderBuilderExt {
+pub(crate) trait HeaderBuilderExt {
     fn add_header(self, name: HeaderParameter, value: ciborium::Value) -> Self;
 }
 

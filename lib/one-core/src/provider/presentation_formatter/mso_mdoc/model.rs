@@ -8,6 +8,7 @@ use crate::proto::cose::CoseSign1;
 use crate::provider::credential_formatter::mdoc_formatter::util::{
     DataElementIdentifier, DataElementValue, EmbeddedCbor, IssuerSigned, Namespace,
 };
+use crate::provider::verification_protocol::iso_mdl::common::ItemsRequest;
 
 pub type DeviceSignedItems = IndexMap<DataElementIdentifier, DataElementValue>;
 pub type DeviceNamespaces = IndexMap<Namespace, DeviceSignedItems>;
@@ -77,6 +78,29 @@ impl Serialize for DeviceAuthentication {
             self.session_transcript,
             self.doctype,
             self.device_namespaces,
+        ])
+        .map_err(ser::Error::custom)?
+        .serialize(serializer)
+    }
+}
+
+// used in ReaderAuth as detached payload
+// should be serialized as cbor array: ReaderAuthentication = ["ReaderAuthentication", SessionTranscript, ItemsRequestBytes]
+#[derive(Debug)]
+pub(crate) struct ReaderAuthentication {
+    pub session_transcript: SessionTranscript,
+    pub items_request: EmbeddedCbor<ItemsRequest>,
+}
+
+impl Serialize for ReaderAuthentication {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        cbor!([
+            "ReaderAuthentication",
+            self.session_transcript,
+            self.items_request,
         ])
         .map_err(ser::Error::custom)?
         .serialize(serializer)

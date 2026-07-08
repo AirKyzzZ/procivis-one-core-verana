@@ -57,6 +57,7 @@ use crate::provider::verification_protocol::dto::{
 use crate::provider::verification_protocol::iso_mdl::ble_holder::{
     MdocBleHolderInteractionData, NfcHceSession, receive_mdl_request, start_mdl_server,
 };
+use crate::provider::verification_protocol::iso_mdl::ble_verifier::IsoMdlVerifier;
 use crate::provider::verification_protocol::iso_mdl::common::{EDeviceKey, KeyAgreement};
 use crate::provider::verification_protocol::iso_mdl::device_engagement::{
     BleOptions, DeviceEngagement, DeviceRetrievalMethod, RetrievalOptions, Security,
@@ -335,28 +336,6 @@ impl ProofService {
             .error_while("getting protocol")?
             .r#type;
 
-        if exchange_type == VerificationProtocolType::IsoMdl {
-            let iso_mdl_engagement = request
-                .iso_mdl_engagement
-                .ok_or(ProofServiceError::InvalidMdlParameters)?;
-            let engagement_type = VerificationEngagement::from_str(
-                request
-                    .engagement
-                    .as_ref()
-                    .ok_or(ProofServiceError::InvalidMdlParameters)?,
-            )
-            .map_err(|_| ProofServiceError::InvalidMdlParameters)?;
-            return self
-                .handle_iso_mdl_verifier(
-                    proof_schema,
-                    request.protocol,
-                    iso_mdl_engagement,
-                    engagement_type,
-                    request.profile,
-                )
-                .await;
-        }
-
         let exchange_protocol = self.protocol_provider.get_protocol(&request.protocol)?;
 
         let exchange_protocol_capabilities = exchange_protocol.get_capabilities();
@@ -423,6 +402,43 @@ impl ProofService {
                 (key.key, None)
             }
         };
+
+        if exchange_type == VerificationProtocolType::IsoMdl {
+            let iso_mdl_engagement = request
+                .iso_mdl_engagement
+                .ok_or(ProofServiceError::InvalidMdlParameters)?;
+            let engagement_type = VerificationEngagement::from_str(
+                request
+                    .engagement
+                    .as_ref()
+                    .ok_or(ProofServiceError::InvalidMdlParameters)?,
+            )
+            .map_err(|_| ProofServiceError::InvalidMdlParameters)?;
+
+            let auth_fn = self.key_provider.get_signature_provider(
+                &verifier_key,
+                None,
+                self.key_algorithm_provider.clone(),
+            )?;
+
+            let verifier = verifier_certificate.map(|certificate| IsoMdlVerifier {
+                certificate,
+                identifier: verifier_identifier,
+                key: verifier_key,
+                auth_fn,
+            });
+
+            return self
+                .handle_iso_mdl_verifier(
+                    proof_schema,
+                    request.protocol,
+                    iso_mdl_engagement,
+                    engagement_type,
+                    request.profile,
+                    verifier,
+                )
+                .await;
+        }
 
         if let Some(cert) = &verifier_certificate
             && !cert.roles.contains(&CertificateRole::Authentication)

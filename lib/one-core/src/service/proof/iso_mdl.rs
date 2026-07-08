@@ -9,7 +9,7 @@ use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::ProofSchema;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::Handover;
 use crate::provider::verification_protocol::iso_mdl::ble_verifier::{
-    setup_verifier_session, start_client,
+    IsoMdlVerifier, setup_verifier_session, start_client,
 };
 use crate::provider::verification_protocol::iso_mdl::device_engagement::{
     DeviceEngagement, RetrievalOptions,
@@ -23,6 +23,7 @@ impl ProofService {
         iso_mdl_engagement: String,
         engagement_type: VerificationEngagement,
         profile: Option<String>,
+        verifier: Option<IsoMdlVerifier>,
     ) -> Result<ProofId, ProofServiceError> {
         let (device_engagement, handover, device_retrieval_method) = match engagement_type {
             VerificationEngagement::QrCode => {
@@ -59,9 +60,10 @@ impl ProofService {
             .as_ref()
             .ok_or_else(|| ProofServiceError::Other("BLE is missing in service".into()))?;
 
-        let verifier_session = setup_verifier_session(device_engagement, &schema, handover)
-            .await
-            .error_while("setting up verifier session")?;
+        let verifier_session =
+            setup_verifier_session(device_engagement, &schema, handover, verifier.as_ref())
+                .await
+                .error_while("setting up verifier session")?;
 
         let now = crate::clock::now_utc();
         let proof = Proof {
@@ -80,9 +82,9 @@ impl ProofService {
             schema: Some(schema),
             transport: transport.to_owned(),
             claims: None,
-            verifier_identifier: None,
-            verifier_key: None,
-            verifier_certificate: None,
+            verifier_identifier: verifier.as_ref().map(|v| v.identifier.to_owned()),
+            verifier_key: verifier.as_ref().map(|v| v.key.to_owned()),
+            verifier_certificate: verifier.map(|v| v.certificate),
             interaction: None,
             webhook_url: None,
             subscriber_information: None,

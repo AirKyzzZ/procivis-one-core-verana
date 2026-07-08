@@ -92,7 +92,7 @@ impl CoseSign1Builder {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct CoseSign1(pub coset::CoseSign1);
 
 impl From<coset::CoseSign1> for CoseSign1 {

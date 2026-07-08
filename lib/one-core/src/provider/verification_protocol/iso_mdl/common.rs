@@ -17,6 +17,7 @@ use x25519_dalek::{EphemeralSecret, PublicKey};
 
 use super::device_engagement::DeviceEngagement;
 use crate::mapper::secret_slice;
+use crate::proto::cose::CoseSign1;
 use crate::provider::credential_formatter::mdoc_formatter::util::EmbeddedCbor;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::{
     Handover, SessionTranscript,
@@ -40,6 +41,7 @@ pub(crate) struct DeviceRequest {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct DocRequest {
     pub items_request: EmbeddedCbor<ItemsRequest>,
+    pub reader_auth: Option<CoseSign1>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

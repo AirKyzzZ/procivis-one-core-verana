@@ -2,6 +2,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::{Context, Error};
+use coset::iana::HeaderParameter;
+use coset::{HeaderBuilder, ProtectedHeader};
 use shared_types::ProofId;
 use tokio::sync::oneshot;
 use uuid::Uuid;
@@ -16,7 +18,10 @@ use super::session::{Command, SessionData, SessionEstablishment, StatusCode};
 use crate::error::ContextWithErrorCode;
 use crate::error::ErrorCode::BR_0000;
 use crate::mapper::{NESTED_CLAIM_MARKER, encode_cbor_base64};
+use crate::model::certificate::Certificate;
 use crate::model::history::HistoryErrorMetadata;
+use crate::model::identifier::Identifier;
+use crate::model::key::Key;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
 use crate::proto::bluetooth_low_energy::ble_resource::{BleWaiter, OnConflict, ScheduleResult};
@@ -25,12 +30,21 @@ use crate::proto::bluetooth_low_energy::low_level::dto::{
     CharacteristicWriteType, DeviceAddress, PeripheralDiscoveryData,
 };
 use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::cose::{CoseSign1, CoseSign1Builder};
 use crate::proto::identifier_creator::IdentifierCreator;
-use crate::provider::credential_formatter::mdoc_formatter::util::{Bstr, EmbeddedCbor};
+use crate::provider::credential_formatter::mdoc_formatter::util::{
+    Bstr, EmbeddedCbor, build_algorithm_header_value,
+};
+use crate::provider::credential_formatter::mdoc_formatter::{
+    HeaderBuilderExt, build_x5chain_header_value,
+};
+use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::provider::presentation_formatter::mso_mdoc::model::DeviceResponse;
+use crate::provider::presentation_formatter::mso_mdoc::model::{
+    DeviceResponse, ReaderAuthentication,
+};
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::{
     Handover, SessionTranscript,
 };
@@ -47,10 +61,18 @@ pub(crate) struct VerifierSession {
     pub sk_device: SkDevice,
 }
 
+pub(crate) struct IsoMdlVerifier {
+    pub identifier: Identifier,
+    pub key: Key,
+    pub certificate: Certificate,
+    pub auth_fn: AuthenticationFn,
+}
+
 pub(crate) async fn setup_verifier_session(
     device_engagement: EmbeddedCbor<DeviceEngagement>,
     schema: &ProofSchema,
     handover: Option<Handover>,
+    verifier: Option<&IsoMdlVerifier>,
 ) -> Result<VerifierSession, VerificationProtocolError> {
     let key_pair = KeyAgreement::<EReaderKey>::new();
 
@@ -82,7 +104,14 @@ pub(crate) async fn setup_verifier_session(
             "missing input_schemas".to_string(),
         ))?
     {
-        doc_requests.push(proof_input_schema_to_doc_request(input_schema).await?);
+        doc_requests.push(
+            proof_input_schema_to_doc_request(
+                input_schema,
+                session_transcript_bytes.inner(),
+                verifier,
+            )
+            .await?,
+        );
     }
 
     let device_request = DeviceRequest {
@@ -575,6 +604,8 @@ async fn read_response(
 
 async fn proof_input_schema_to_doc_request(
     input: &ProofInputSchema,
+    session_transcript: &SessionTranscript,
+    verifier: Option<&IsoMdlVerifier>,
 ) -> Result<DocRequest, VerificationProtocolError> {
     let proof_claim_schemas =
         input
@@ -630,10 +661,72 @@ async fn proof_input_schema_to_doc_request(
             .insert(element_identifier.to_owned(), true);
     }
 
+    let items_request = EmbeddedCbor::new(ItemsRequest {
+        doc_type: credential_schema.schema_id().await?,
+        name_spaces,
+    })?;
+
+    let reader_auth = match verifier {
+        None => None,
+        Some(verifier) => Some(
+            prepare_reader_auth(
+                session_transcript.to_owned(),
+                items_request.clone(),
+                verifier,
+            )
+            .await?,
+        ),
+    };
+
     Ok(DocRequest {
-        items_request: EmbeddedCbor::new(ItemsRequest {
-            doc_type: credential_schema.schema_id().await?,
-            name_spaces,
-        })?,
+        items_request,
+        reader_auth,
     })
+}
+
+pub(super) async fn prepare_reader_auth(
+    session_transcript: SessionTranscript,
+    items_request: EmbeddedCbor<ItemsRequest>,
+    verifier: &IsoMdlVerifier,
+) -> Result<CoseSign1, VerificationProtocolError> {
+    let algorithm = verifier
+        .auth_fn
+        .get_key_algorithm()
+        .error_while("getting key algorithm")?;
+
+    let reader_authentication = ReaderAuthentication {
+        session_transcript,
+        items_request,
+    };
+    let reader_authentication_bytes = EmbeddedCbor::new(reader_authentication)?.into_bytes();
+
+    let protected_headers = HeaderBuilder::new()
+        .algorithm(
+            build_algorithm_header_value(algorithm).error_while("creating algorithm header")?,
+        )
+        .build();
+
+    let unprotected_headers = HeaderBuilder::new()
+        .add_header(
+            HeaderParameter::X5Chain,
+            build_x5chain_header_value(&verifier.certificate).error_while("creating x5chain")?,
+        )
+        .build();
+
+    let cose_sign1 = CoseSign1Builder::new()
+        .protected(ProtectedHeader {
+            original_data: None,
+            header: protected_headers,
+        })
+        .unprotected(unprotected_headers)
+        .try_create_detached_signature_with_provider(
+            &reader_authentication_bytes,
+            &[],
+            verifier.auth_fn.as_ref(),
+        )
+        .await
+        .error_while("creating signature")?
+        .build();
+
+    Ok(cose_sign1.into())
 }

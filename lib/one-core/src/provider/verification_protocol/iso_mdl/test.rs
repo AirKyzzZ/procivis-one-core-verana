@@ -1,14 +1,17 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
+use coset::{AsCborValue, CborSerializable};
+use hex_literal::hex;
 use maplit::hashmap;
 use secrecy::SecretSlice;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use super::IsoMdl;
-use crate::config::core_config::VerificationEngagement;
+use crate::config::core_config::{KeyAlgorithmType, VerificationEngagement};
 use crate::mapper::credential_schema_claim::backfill_default_translations;
+use crate::model::certificate::Certificate;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
@@ -27,9 +30,11 @@ use crate::proto::trust_information::MockTrustInformationProvider;
 use crate::proto::wrp_validator::MockWRPValidator;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::mdoc_formatter::util::EmbeddedCbor;
+use crate::provider::credential_formatter::model::MockSignatureProvider;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
+use crate::provider::presentation_formatter::mso_mdoc::session_transcript::SessionTranscript;
 use crate::provider::presentation_formatter::provider::MockPresentationFormatterProvider;
 use crate::provider::verification_protocol::VerificationProtocol;
 use crate::provider::verification_protocol::dto::ApplicableCredentialOrFailureHintEnum;
@@ -37,12 +42,17 @@ use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::iso_mdl::ble_holder::{
     MdocBleHolderInteractionData, MdocBleHolderInteractionSessionData,
 };
+use crate::provider::verification_protocol::iso_mdl::ble_verifier::{
+    IsoMdlVerifier, prepare_reader_auth,
+};
 use crate::provider::verification_protocol::iso_mdl::common::{
     DeviceRequest, DocRequest, ItemsRequest, SkDevice, SkReader, to_cbor,
 };
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
-use crate::service::test_utilities::{dummy_organisation, generic_config};
+use crate::service::test_utilities::{
+    dummy_certificate, dummy_identifier, dummy_key, dummy_organisation, generic_config,
+};
 
 #[tokio::test]
 async fn test_presentation_reject_ok() {
@@ -115,6 +125,7 @@ async fn test_presentation_reject_ok() {
                 },
             })
             .unwrap(),
+            reader_auth: None,
         }],
     })
     .unwrap();
@@ -233,6 +244,7 @@ async fn test_get_presentation_definition_v2() {
                 },
             })
             .unwrap(),
+            reader_auth: None,
         }],
     })
     .unwrap();
@@ -654,5 +666,68 @@ async fn test_get_presentation_definition_v2() {
             .claims
             .iter()
             .any(|claim| { claim.path == "org.iso.18013.5.1.mDL_country_code" })
+    );
+}
+
+#[tokio::test]
+async fn test_prepare_reader_auth() {
+    let transcript = hex!(
+        "83f6f682714f70656e494434565048616e646f7665725820048bc053c00442af9b8eed494cefdd9d95240d254b046b11b68013722aad38ac"
+    );
+    let transcript: SessionTranscript = ciborium::from_reader(transcript.as_slice()).unwrap();
+
+    let items_request = EmbeddedCbor::new(ItemsRequest {
+        doc_type: "org.iso.18013.5.1.mDL".to_string(),
+        name_spaces: hashmap! {
+            "org.iso.18013.5.1".to_string() => hashmap! {
+                "family_name".to_string() => true
+            }
+        },
+    })
+    .unwrap();
+
+    let mut signature_provider = MockSignatureProvider::new();
+    signature_provider
+        .expect_get_key_algorithm()
+        .returning(|| Ok(KeyAlgorithmType::Ecdsa));
+    signature_provider
+        .expect_sign()
+        .return_once(|_| Ok(vec![0x0, 0x1]));
+
+    const CERT: &str = r#"-----BEGIN CERTIFICATE-----
+MIICLzCCAdSgAwIBAgIUHyRjE466YA7tc888k03Ou2QodF4wCgYIKoZIzj0EAwIw
+KDELMAkGA1UEBhMCREUxGTAXBgNVBAMMEEdlcm1hbiBSZWdpc3RyYXIwHhcNMjYw
+MTE2MTExNTU0WhcNMjgwMTE2MTExNTU0WjAoMQswCQYDVQQGEwJERTEZMBcGA1UE
+AwwQR2VybWFuIFJlZ2lzdHJhcjBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABMef
+Y2X4ixfRkWEvp9grF2i21z6PKZsr8zzBaJ/+GnotCeH2cJ6GtLhxXhHfJjrETsMN
+IGhVaJoHoHcZTBHJrfyjgdswgdgwHQYDVR0OBBYEFKnCo9ovbaxU7s65TugsySwA
+g4AzMB8GA1UdIwQYMBaAFKnCo9ovbaxU7s65TugsySwAg4AzMBIGA1UdEwEB/wQI
+MAYBAf8CAQAwDgYDVR0PAQH/BAQDAgEGMCoGA1UdEgQjMCGGH2h0dHBzOi8vc2Fu
+ZGJveC5ldWRpLXdhbGxldC5vcmcwRgYDVR0fBD8wPTA7oDmgN4Y1aHR0cHM6Ly9z
+YW5kYm94LmV1ZGktd2FsbGV0Lm9yZy9zdGF0dXMtbWFuYWdlbWVudC9jcmwwCgYI
+KoZIzj0EAwIDSQAwRgIhAIY7ERpRrDRl0lr5H5uxjJ83JR4qua2sfPKxX+pl4Qw+
+AiEA2qL6LXVORA2r2VZjSEknfciwIG7laA12kjnyGAD3V/A=
+-----END CERTIFICATE-----
+"#;
+
+    let verifier = IsoMdlVerifier {
+        identifier: dummy_identifier(),
+        key: dummy_key(),
+        certificate: Certificate {
+            chain: CERT.to_string(),
+            ..dummy_certificate(dummy_identifier().id)
+        },
+        auth_fn: Box::new(signature_provider),
+    };
+
+    let reader_auth = prepare_reader_auth(transcript, items_request, &verifier)
+        .await
+        .unwrap();
+
+    assert_eq!(
+        reader_auth.0.to_cbor_value().unwrap().to_vec().unwrap(),
+        hex!(
+            "8443a10126a118215902333082022f308201d4a00302010202141f2463138eba600eed73cf3c934dcebb6428745e300a06082a8648ce3d0403023028310b30090603550406130244453119301706035504030c104765726d616e20526567697374726172301e170d3236303131363131313535345a170d3238303131363131313535345a3028310b30090603550406130244453119301706035504030c104765726d616e205265676973747261723059301306072a8648ce3d020106082a8648ce3d03010703420004c79f6365f88b17d191612fa7d82b1768b6d73e8f299b2bf33cc1689ffe1a7a2d09e1f6709e86b4b8715e11df263ac44ec30d206855689a07a077194c11c9adfca381db3081d8301d0603551d0e04160414a9c2a3da2f6dac54eeceb94ee82cc92c00838033301f0603551d23041830168014a9c2a3da2f6dac54eeceb94ee82cc92c0083803330120603551d130101ff040830060101ff020100300e0603551d0f0101ff040403020106302a0603551d1204233021861f68747470733a2f2f73616e64626f782e657564692d77616c6c65742e6f726730460603551d1f043f303d303ba039a037863568747470733a2f2f73616e64626f782e657564692d77616c6c65742e6f72672f7374617475732d6d616e6167656d656e742f63726c300a06082a8648ce3d0403020349003046022100863b111a51ac3465d25af91f9bb18c9f37251e2ab9adac7cf2b15fea65e10c3e022100daa2fa2d754e440dabd956634849277dc8b0206ee5680d769239f21800f757f0f6420001"
+        )
     );
 }

@@ -97,6 +97,7 @@ use crate::service::test_utilities::{
 #[derive(Default)]
 struct Repositories {
     pub proof_repository: MockProofRepository,
+    pub key_provider: MockKeyProvider,
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
     pub proof_schema_repository: MockProofSchemaRepository,
     pub identifier_repository: MockIdentifierRepository,
@@ -124,6 +125,7 @@ struct Repositories {
 fn setup_service(repositories: Repositories) -> ProofService {
     ProofService::new(
         Arc::new(repositories.proof_repository),
+        Arc::new(repositories.key_provider),
         Arc::new(repositories.key_algorithm_provider),
         Arc::new(repositories.proof_schema_repository),
         Arc::new(repositories.identifier_repository),

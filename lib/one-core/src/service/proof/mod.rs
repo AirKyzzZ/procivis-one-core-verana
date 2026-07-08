@@ -14,6 +14,7 @@ use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::verification_protocol::provider::VerificationProtocolProvider;
 use crate::repository::claim_repository::ClaimRepository;
@@ -35,6 +36,7 @@ pub mod service;
 #[derive(Clone)]
 pub struct ProofService {
     proof_repository: Arc<dyn ProofRepository>,
+    key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     proof_schema_repository: Arc<dyn ProofSchemaRepository>,
     identifier_repository: Arc<dyn IdentifierRepository>,
@@ -64,6 +66,7 @@ impl ProofService {
     #[expect(clippy::too_many_arguments)]
     pub(crate) fn new(
         proof_repository: Arc<dyn ProofRepository>,
+        key_provider: Arc<dyn KeyProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         proof_schema_repository: Arc<dyn ProofSchemaRepository>,
         identifier_repository: Arc<dyn IdentifierRepository>,
@@ -90,6 +93,7 @@ impl ProofService {
     ) -> Self {
         Self {
             proof_repository,
+            key_provider,
             key_algorithm_provider,
             proof_schema_repository,
             identifier_repository,
