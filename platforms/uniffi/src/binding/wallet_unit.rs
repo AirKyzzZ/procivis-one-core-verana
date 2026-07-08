@@ -217,6 +217,7 @@ pub struct TrustCollectionInfoBindingDTO {
     pub logo: String,
     pub display_name: Vec<DisplayNameBindingDTO>,
     pub description: Vec<DisplayNameBindingDTO>,
+    pub default_selected: Option<bool>,
 }
 
 #[derive(Clone, Debug, uniffi::Record, From)]

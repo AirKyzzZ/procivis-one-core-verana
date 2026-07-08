@@ -746,6 +746,7 @@ impl From<TrustCollectionInfoDTO> for TrustCollectionInfoBindingDTO {
             logo: value.collection.logo,
             display_name: convert_inner(value.collection.display_name),
             description: convert_inner(value.collection.description),
+            default_selected: value.collection.default_selected,
         }
     }
 }
