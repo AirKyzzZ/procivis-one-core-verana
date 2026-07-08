@@ -17,6 +17,7 @@ use one_core::proto::session_provider::Session;
 use tower_http::catch_panic::CatchPanicLayer;
 use tower_http::trace::TraceLayer;
 use tracing::Span;
+use url::Url;
 use utoipa::openapi::PathItem;
 use utoipa_swagger_ui::SwaggerUi;
 
@@ -111,9 +112,23 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
                 "/api-docs/openapi.yaml",
                 get(misc::get_openapi_yaml(&openapi_documentation)),
             )
-            .merge(
-                SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", openapi_documentation),
-            )
+            .merge({
+                let json_path = "/api-docs/openapi.json";
+                let config = if let Ok(base_url) = Url::try_from(config.core_base_url.as_str()) {
+                    match base_url.path() {
+                        "/" => None,
+                        path => Some(utoipa_swagger_ui::Config::from(format!(
+                            "{path}{json_path}"
+                        ))),
+                    }
+                } else {
+                    None
+                };
+
+                SwaggerUi::new("/swagger-ui")
+                    .url(json_path, openapi_documentation)
+                    .config(config.unwrap_or_default())
+            })
             .layer(middleware::from_fn(
                 crate::openapi::swagger_plugin::adapted_swagger_index,
             ))
