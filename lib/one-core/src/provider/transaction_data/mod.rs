@@ -53,7 +53,18 @@ pub struct TransactionDataCapabilities {
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct TransactionDataParams {
-    pub(crate) transaction_data_display_params: Vec<TransactionDataDisplayParam>,
+    pub(crate) transaction_data_display_params: TransactionDataDisplayParams,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct TransactionDataDisplayParams {
+    /// Selects the displayed entries within the transaction data
+    group_path: JsonPath,
+    /// Selects an entry's title, relative to `group_path`
+    title_path: JsonPath,
+    /// An entry's attributes, relative to `group_path`
+    attributes: Vec<TransactionDataDisplayParam>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -64,8 +75,14 @@ pub struct TransactionDataDisplayParam {
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct TransactionDataDisplayValue {
-    pub display: String,
-    pub values: Vec<serde_json::Value>,
+    pub title: String,
+    pub attributes: Vec<TransactionDataDisplayAttribute>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct TransactionDataDisplayAttribute {
+    pub key: String,
+    pub value: serde_json::Value,
 }
 
 /// The `transaction_data` arguments are base64url-encoded OpenID4VP `transaction_data` entries.
@@ -85,25 +102,40 @@ pub trait TransactionData: Provider + Send + Sync {
     ) -> Result<ProcessedTransactionData, TransactionDataError>;
     fn get_capabilities(&self) -> TransactionDataCapabilities;
     fn config_name(&self) -> &TransactionDataType;
-    fn display_params(&self) -> &[TransactionDataDisplayParam];
+    fn display_params(&self) -> &TransactionDataDisplayParams;
 
+    /// Grouped key-value data for displaying the transaction to the user
     fn get_display_data(
         &self,
         transaction_data: &str,
     ) -> Result<Vec<TransactionDataDisplayValue>, TransactionDataError> {
         let transaction_data: serde_json::Value = decode_transaction_data(transaction_data)?;
+        let params = self.display_params();
 
-        Ok(self
-            .display_params()
-            .iter()
-            .map(|param| TransactionDataDisplayValue {
-                display: param.display.clone(),
-                values: param
-                    .path
-                    .query(&transaction_data)
-                    .all()
-                    .into_iter()
-                    .cloned()
+        Ok(params
+            .group_path
+            .query(&transaction_data)
+            .all()
+            .into_iter()
+            .map(|group| TransactionDataDisplayValue {
+                title: params
+                    .title_path
+                    .query(group)
+                    .first()
+                    .and_then(|title| title.as_str())
+                    .unwrap_or_default()
+                    .to_string(),
+                attributes: params
+                    .attributes
+                    .iter()
+                    .flat_map(|param| {
+                        param.path.query(group).all().into_iter().map(|value| {
+                            TransactionDataDisplayAttribute {
+                                key: param.display.clone(),
+                                value: value.clone(),
+                            }
+                        })
+                    })
                     .collect(),
             })
             .collect())

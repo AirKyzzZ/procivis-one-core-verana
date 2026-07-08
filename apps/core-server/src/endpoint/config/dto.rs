@@ -89,6 +89,10 @@ pub(crate) struct ConfigRestDTO {
     /// deployments and their configuration.
     #[schema(example = json!({}))]
     pub verifier_provider: HashMap<String, Value>,
+    /// Implementations for processing OpenID4VP transaction data during
+    /// credential presentation.
+    #[schema(example = json!({}))]
+    pub transaction_data_provider: HashMap<String, Value>,
     /// Deployment-wide settings that are not tied to a specific config entity.
     pub global_settings: GlobalSettingsRestDTO,
 }
@@ -134,6 +138,7 @@ impl From<ConfigDTO> for ConfigRestDTO {
             trust_list_publisher: config.trust_list_publisher,
             trust_list_subscriber: config.trust_list_subscriber,
             verifier_provider: config.verifier_provider,
+            transaction_data_provider: config.transaction_data_provider,
             global_settings: config.global_settings.into(),
         }
     }

@@ -11,7 +11,7 @@ use crate::provider::provider_directory::WithDisabledDecorator;
 use crate::provider::transaction_data::error::TransactionDataError;
 use crate::provider::transaction_data::{
     ProcessedTransactionData, TransactionData, TransactionDataCapabilities,
-    TransactionDataDisplayParam, TransactionDataDisplayValue, TransactionDataMetadata,
+    TransactionDataDisplayParams, TransactionDataDisplayValue, TransactionDataMetadata,
     decode_transaction_data,
 };
 
@@ -48,7 +48,7 @@ impl<T: Provider + TransactionData + Display + ?Sized> TransactionData for Disab
         self.inner().config_name()
     }
 
-    fn display_params(&self) -> &[TransactionDataDisplayParam] {
+    fn display_params(&self) -> &TransactionDataDisplayParams {
         self.inner().display_params()
     }
 
@@ -126,7 +126,7 @@ impl TransactionData for CapabilityChecked {
         self.0.config_name()
     }
 
-    fn display_params(&self) -> &[TransactionDataDisplayParam] {
+    fn display_params(&self) -> &TransactionDataDisplayParams {
         self.0.display_params()
     }
 

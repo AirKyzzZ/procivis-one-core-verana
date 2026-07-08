@@ -3,13 +3,16 @@ use serde_json::json;
 use similar_asserts::assert_eq;
 
 use super::*;
-use crate::provider::transaction_data::TransactionDataDisplayValue;
 
 fn qes_approval_transaction_data() -> QesApprovalTransactionData {
     QesApprovalTransactionData::new(
         "QES_APPROVAL".into(),
         json!({
-            "transactionDataDisplayParams": []
+            "transactionDataDisplayParams": {
+                "groupPath": "$.documentInfos[*]",
+                "titlePath": "$.label",
+                "attributes": []
+            }
         }),
         one_crypto::initialize_crypto_provider(),
     )
@@ -132,15 +135,21 @@ async fn test_process_transaction_data_rejects_unsupported_credential_format() {
 }
 
 #[test]
-fn test_get_display_data_extracts_configured_paths() {
+fn test_get_display_data_groups_by_document() {
+    // same display params as in config-procivis-base.yml
     let provider = QesApprovalTransactionData::new(
         "QES_APPROVAL".into(),
         json!({
-            "transactionDataDisplayParams": [
-                { "path": "$.documentInfos[*].label", "display": "documentLabels" },
-                { "path": "$.signatureQualifier", "display": "signatureQualifier" },
-                { "path": "$.doesNotExist", "display": "missing" }
-            ]
+            "transactionDataDisplayParams": {
+                "groupPath": "$.documentInfos[*]",
+                "titlePath": "$.label",
+                "attributes": [
+                    { "path": "$.access", "display": "transactionData.qesApproval.documentInfo.access" },
+                    { "path": "$.href", "display": "transactionData.qesApproval.documentInfo.href" },
+                    { "path": "$.checksum", "display": "transactionData.qesApproval.documentInfo.checksum" },
+                    { "path": "$.signed_props", "display": "transactionData.qesApproval.documentInfo.signedProps" }
+                ]
+            }
         }),
         one_crypto::initialize_crypto_provider(),
     )
@@ -149,25 +158,149 @@ fn test_get_display_data_extracts_configured_paths() {
     let display_data = provider.get_display_data(&encode(csc_example())).unwrap();
 
     assert_eq!(
-        display_data,
-        vec![
-            TransactionDataDisplayValue {
-                display: "documentLabels".to_string(),
-                values: vec![
-                    json!("Example Contract"),
-                    json!("Example Terms of Service"),
-                    json!("Example Invoice"),
-                ],
+        serde_json::to_value(&display_data).unwrap(),
+        json!([
+            {
+                "title": "Example Contract",
+                "attributes": [
+                    {
+                        "key": "transactionData.qesApproval.documentInfo.access",
+                        "value": { "type": "OTP", "oneTimePassword": "51623" }
+                    },
+                    {
+                        "key": "transactionData.qesApproval.documentInfo.href",
+                        "value": "https://protected.rp.example/contract-01.pdf?token=HS9naJKWwp901hBcK348IUHiuH8374"
+                    },
+                    {
+                        "key": "transactionData.qesApproval.documentInfo.checksum",
+                        "value": "sha256-sTOgwOm+474gFj0q0x1iSNspKqbcse4IeiqlDg/HWuI="
+                    }
+                ]
             },
-            TransactionDataDisplayValue {
-                display: "signatureQualifier".to_string(),
-                values: vec![json!("eu_eidas_qes")],
+            {
+                "title": "Example Terms of Service",
+                "attributes": [
+                    {
+                        "key": "transactionData.qesApproval.documentInfo.access",
+                        "value": { "type": "public" }
+                    },
+                    {
+                        "key": "transactionData.qesApproval.documentInfo.href",
+                        "value": "https://public.rp-cdn.example/terms-and-conditions.pdf"
+                    },
+                    {
+                        "key": "transactionData.qesApproval.documentInfo.checksum",
+                        "value": "sha256-HZQzZmMAIWekfGH0/ZKW1nsdt0xg3H6bZYztgsMTLw0="
+                    }
+                ]
             },
-            TransactionDataDisplayValue {
-                display: "missing".to_string(),
-                values: vec![],
-            },
+            {
+                "title": "Example Invoice",
+                "attributes": [
+                    {
+                        "key": "transactionData.qesApproval.documentInfo.access",
+                        "value": { "type": "OTP", "oneTimePassword": "83920" }
+                    },
+                    {
+                        "key": "transactionData.qesApproval.documentInfo.href",
+                        "value": "https://protected.rp.example/invoice-2025-07.pdf?token=jk47ns88sna9a"
+                    },
+                    {
+                        "key": "transactionData.qesApproval.documentInfo.checksum",
+                        "value": "sha256-nL7zQmAKfQ2jADrOxkEZh2UqV4Lx4WsmelSivP6LjoQ="
+                    }
+                ]
+            }
+        ])
+    );
+}
+
+#[test]
+fn test_get_display_data_empty_when_group_path_matches_nothing() {
+    let mut transaction_data = csc_example();
+    transaction_data
+        .as_object_mut()
+        .unwrap()
+        .remove("documentInfos");
+
+    let display_data = qes_approval_transaction_data()
+        .get_display_data(&encode(transaction_data))
+        .unwrap();
+    assert_eq!(serde_json::to_value(&display_data).unwrap(), json!([]));
+}
+
+fn display_provider(display_params: serde_json::Value) -> QesApprovalTransactionData {
+    QesApprovalTransactionData::new(
+        "QES_APPROVAL".into(),
+        json!({ "transactionDataDisplayParams": display_params }),
+        one_crypto::initialize_crypto_provider(),
+    )
+    .unwrap()
+}
+
+#[test]
+fn test_get_display_data_group_path_matching_a_single_object() {
+    // ungrouped transaction data, e.g. an EUDI TS12 SCA payment payload
+    let provider = display_provider(json!({
+        "groupPath": "$.payload",
+        "titlePath": "$.payee.name",
+        "attributes": [
+            { "path": "$.amount", "display": "amount" },
+            { "path": "$.currency", "display": "currency" }
         ]
+    }));
+
+    let transaction_data = json!({
+        "type": "urn:eudi:sca:payment:1",
+        "payload": {
+            "payee": { "name": "Merchant X" },
+            "currency": "EUR",
+            "amount": 12.99
+        }
+    });
+
+    let display_data = provider
+        .get_display_data(&encode(transaction_data))
+        .unwrap();
+    assert_eq!(
+        serde_json::to_value(&display_data).unwrap(),
+        json!([
+            {
+                "title": "Merchant X",
+                "attributes": [
+                    { "key": "amount", "value": 12.99 },
+                    { "key": "currency", "value": "EUR" }
+                ]
+            }
+        ])
+    );
+}
+
+#[test]
+fn test_get_display_data_group_path_matching_the_root() {
+    let provider = display_provider(json!({
+        "groupPath": "$",
+        "titlePath": "$.type",
+        "attributes": [
+            { "path": "$.amount", "display": "amount" }
+        ]
+    }));
+
+    let transaction_data = json!({ "type": "flat-example", "amount": 5 });
+
+    let display_data = provider
+        .get_display_data(&encode(transaction_data))
+        .unwrap();
+    assert_eq!(
+        serde_json::to_value(&display_data).unwrap(),
+        json!([
+            {
+                "title": "flat-example",
+                "attributes": [
+                    { "key": "amount", "value": 5 }
+                ]
+            }
+        ])
     );
 }
 

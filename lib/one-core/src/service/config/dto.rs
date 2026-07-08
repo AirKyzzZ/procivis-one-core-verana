@@ -27,6 +27,7 @@ pub struct ConfigDTO {
     pub trust_list_publisher: HashMap<String, Value>,
     pub trust_list_subscriber: HashMap<String, Value>,
     pub verifier_provider: HashMap<String, Value>,
+    pub transaction_data_provider: HashMap<String, Value>,
     pub global_settings: GlobalSettingsDTO,
 }
 

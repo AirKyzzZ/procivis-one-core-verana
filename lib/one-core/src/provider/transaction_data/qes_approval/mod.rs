@@ -17,7 +17,7 @@ use crate::provider::provider_directory::InitializationError;
 use crate::provider::transaction_data::error::TransactionDataError;
 use crate::provider::transaction_data::{
     ProcessedTransactionData, TransactionData, TransactionDataCapabilities,
-    TransactionDataDisplayParam, TransactionDataMetadata, TransactionDataParams,
+    TransactionDataDisplayParams, TransactionDataMetadata, TransactionDataParams,
     decode_transaction_data,
 };
 
@@ -142,7 +142,7 @@ impl TransactionData for QesApprovalTransactionData {
         &self.config_id
     }
 
-    fn display_params(&self) -> &[TransactionDataDisplayParam] {
+    fn display_params(&self) -> &TransactionDataDisplayParams {
         &self.params.transaction_data_display_params
     }
 }
