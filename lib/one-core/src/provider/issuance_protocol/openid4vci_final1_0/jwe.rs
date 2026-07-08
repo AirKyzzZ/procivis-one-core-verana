@@ -1,5 +1,5 @@
 use one_crypto::jwe::Header;
-use standardized_types::jwa::EncryptionAlgorithm;
+use standardized_types::iana::EncryptionAlgorithm;
 use standardized_types::jwe::CompressionAlgorithm;
 use standardized_types::jwk::PublicJwk;
 

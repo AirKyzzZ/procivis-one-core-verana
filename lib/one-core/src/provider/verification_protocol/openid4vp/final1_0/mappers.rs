@@ -3,7 +3,7 @@ use std::sync::Arc;
 use dcql::{CredentialFormat, CredentialQuery, MsoMdocMeta, PathSegment, SdJwtVcMeta, W3cVcMeta};
 use one_dto_mapper::convert_inner_of_inner;
 use serde::Deserialize;
-use standardized_types::jwa::EncryptionAlgorithm;
+use standardized_types::iana::EncryptionAlgorithm;
 use standardized_types::jwk::{Jwks, PublicJwk};
 use standardized_types::openid4vp::ClientMetadata;
 use url::Url;

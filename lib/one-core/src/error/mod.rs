@@ -953,6 +953,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Trust list subscription role is required but missing")]
     BR_0457,
+
+    #[strum(message = "Invalid or unsupported transaction data")]
+    BR_0458,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

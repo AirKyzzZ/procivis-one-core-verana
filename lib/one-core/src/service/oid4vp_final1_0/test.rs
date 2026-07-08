@@ -5,7 +5,7 @@ use std::sync::Arc;
 use maplit::hashmap;
 use shared_types::{InteractionId, ProofId};
 use similar_asserts::assert_eq;
-use standardized_types::jwa::EncryptionAlgorithm;
+use standardized_types::iana::EncryptionAlgorithm;
 use standardized_types::jwk::{JwkUse, Jwks, PublicJwk, PublicJwkEc};
 use standardized_types::openid4vp::{
     ClientMetadata, MdocAlgs, PresentationFormat, SdJwtVcAlgs, W3CJwtAlgs, W3CLdpAlgs,
@@ -45,6 +45,7 @@ use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::MockKeyStorage;
 use crate::provider::key_storage::model::KeyStorageCapabilities;
 use crate::provider::key_storage::provider::MockKeyProvider;
+use crate::provider::transaction_data::provider::MockTransactionDataProvider;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::model::*;
 use crate::repository::credential_repository::MockCredentialRepository;
@@ -66,6 +67,7 @@ struct Mocks {
     pub proof_validator: MockOpenId4VpProofValidator,
     pub wrp_validator: MockWRPValidator,
     pub history_repository: MockHistoryRepository,
+    pub transaction_data_provider: MockTransactionDataProvider,
 }
 
 fn setup_service(mocks: Mocks) -> OID4VPFinal1_0Service {
@@ -83,6 +85,7 @@ fn setup_service(mocks: Mocks) -> OID4VPFinal1_0Service {
         Arc::new(mocks.wrp_validator),
         Arc::new(mocks.history_repository),
         Arc::new(NoSessionProvider),
+        Arc::new(mocks.transaction_data_provider),
     )
 }
 

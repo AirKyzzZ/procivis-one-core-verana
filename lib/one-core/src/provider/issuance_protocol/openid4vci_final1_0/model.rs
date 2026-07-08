@@ -8,7 +8,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::{DurationSeconds, serde_as, skip_serializing_none};
 use shared_types::OrganisationId;
 use standardized_types::etsi_119_472::disclosure_policy::DisclosurePolicy;
-use standardized_types::jwa::{EncryptionAlgorithm, EncryptionKeyManagementAlgorithm};
+use standardized_types::iana::{EncryptionAlgorithm, EncryptionKeyManagementAlgorithm};
 use standardized_types::jwe::CompressionAlgorithm;
 use standardized_types::jwk::{Jwks, PublicJwk};
 use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;

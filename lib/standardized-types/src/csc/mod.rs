@@ -1,5 +1,8 @@
 //! Cloud Signature Consortium (CSC) API v2.
 
+pub mod data_model;
+pub mod transaction_data;
+
 use serde::de::Error as _;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use strum::{Display, IntoEnumIterator};
@@ -24,6 +27,18 @@ pub enum SignatureQualifier {
     #[serde(rename = "eu_eidas_qeseal")]
     #[strum(to_string = "eu_eidas_qeseal")]
     EuEidasQesEal,
+    #[serde(rename = "eu_eidas_aesqc")]
+    #[strum(to_string = "eu_eidas_aesqc")]
+    EuEidasAesQc,
+    #[serde(rename = "eu_eidas_aesealqc")]
+    #[strum(to_string = "eu_eidas_aesealqc")]
+    EuEidasAesEalQc,
+    #[serde(rename = "za_ecta_aes")]
+    #[strum(to_string = "za_ecta_aes")]
+    ZaEctaAes,
+    #[serde(rename = "za_ecta_oes")]
+    #[strum(to_string = "za_ecta_oes")]
+    ZaEctaOes,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, Display)]
@@ -83,6 +98,16 @@ impl HashAlgorithm {
             Self::Sha256 => 32,
             Self::Sha384 => 48,
             Self::Sha512 => 64,
+        }
+    }
+}
+
+impl From<HashAlgorithm> for crate::iana::HashAlgorithm {
+    fn from(value: HashAlgorithm) -> Self {
+        match value {
+            HashAlgorithm::Sha256 => Self::Sha256,
+            HashAlgorithm::Sha384 => Self::Sha384,
+            HashAlgorithm::Sha512 => Self::Sha512,
         }
     }
 }

@@ -18,7 +18,8 @@ use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{Value, json};
 use serde_with::{DurationSeconds, serde_as, skip_serializing_none};
 use shared_types::{
-    CredentialFormat, DidMethodId, RevocationMethodId, SignerId, TaskId, TrustListSubscriberId,
+    CredentialFormat, DidMethodId, RevocationMethodId, SignerId, TaskId, TransactionDataType,
+    TrustListSubscriberId,
 };
 use strum::{AsRefStr, Display, EnumString};
 use time::Duration;
@@ -73,6 +74,7 @@ pub struct CoreConfig {
     pub signer: SignerConfig,
     pub verifier_provider: VerifierProviderConfig,
     pub document_signer_provider: DocumentSignerProviderConfig,
+    pub transaction_data_provider: TransactionDataProviderConfig,
     pub global_settings: GlobalSettings,
 }
 
@@ -923,6 +925,30 @@ pub enum DocumentSignerType {
 }
 
 pub type DocumentSignerProviderConfig = ConfigBlock<String, DocumentSignerType>;
+
+#[derive(
+    Debug,
+    Copy,
+    Clone,
+    Display,
+    EnumString,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Serialize,
+    Deserialize,
+    AsRefStr,
+    Hash,
+)]
+pub enum TransactionDataProviderType {
+    #[serde(rename = "QES_APPROVAL")]
+    #[strum(serialize = "QES_APPROVAL")]
+    QesApproval,
+}
+
+pub type TransactionDataProviderConfig =
+    ConfigBlock<TransactionDataType, TransactionDataProviderType>;
 
 // Alias for the collection of traits we want config keys to implement.
 pub trait ConfigKey: Debug + Display + Clone + Ord + Hash + Eq {}

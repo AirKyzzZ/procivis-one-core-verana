@@ -14,7 +14,7 @@ use serde_json::{Value, json};
 use shared_types::CredentialFormat;
 use similar_asserts::assert_eq;
 use standardized_types::etsi_119_472::disclosure_policy::{DisclosurePolicy, PolicyType};
-use standardized_types::jwa::{EncryptionAlgorithm, EncryptionKeyManagementAlgorithm};
+use standardized_types::iana::{EncryptionAlgorithm, EncryptionKeyManagementAlgorithm};
 use standardized_types::jwe::CompressionAlgorithm;
 use standardized_types::jwk::{Jwks, PublicJwk, PublicJwkEc};
 use time::Duration;

@@ -64,6 +64,7 @@ use crate::provider::presentation_formatter::provider::get_presentation_formatte
 use crate::provider::revocation::provider::revocation_method_provider_from_config;
 use crate::provider::signer::provider::signer_provider_from_config;
 use crate::provider::task::provider::task_provider_from_config;
+use crate::provider::transaction_data::provider::transaction_data_provider_from_config;
 use crate::provider::trust_list_publisher::provider::trust_list_publisher_provider_from_config;
 use crate::provider::trust_list_subscriber::provider::trust_list_subscriber_provider_from_config;
 use crate::provider::verification_protocol::provider::verification_protocol_provider_from_config;
@@ -260,6 +261,9 @@ impl OneCore {
             client.clone(),
             data_provider.get_remote_entity_cache_repository(),
         )?;
+
+        let transaction_data_provider =
+            transaction_data_provider_from_config(&mut config, crypto.clone())?;
 
         let json_ld_cache = initialize_jsonld_cache_from_config(
             &config,
@@ -663,6 +667,7 @@ impl OneCore {
                 wrp_validator.clone(),
                 data_provider.get_history_repository(),
                 session_provider.clone(),
+                transaction_data_provider.clone(),
             ),
             oid4vp_final1_0_swiyu_service: OID4VPFinal1_0SwiyuService::new(
                 data_provider.get_credential_repository(),
@@ -678,6 +683,7 @@ impl OneCore {
                 wrp_validator.clone(),
                 data_provider.get_history_repository(),
                 session_provider.clone(),
+                transaction_data_provider.clone(),
             ),
             credential_schema_service: CredentialSchemaService::new(
                 core_base_url.clone(),

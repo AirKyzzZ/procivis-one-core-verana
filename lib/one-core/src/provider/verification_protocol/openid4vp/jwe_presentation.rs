@@ -1,6 +1,6 @@
 use anyhow::anyhow;
 use one_crypto::jwe::Header;
-use standardized_types::jwa::EncryptionAlgorithm;
+use standardized_types::iana::EncryptionAlgorithm;
 use standardized_types::jwk::{JwkUse, PublicJwk};
 use standardized_types::openid4vp::ClientMetadata;
 

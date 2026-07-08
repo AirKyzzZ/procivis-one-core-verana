@@ -243,6 +243,7 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
         signer: {}
         verifierProvider: {}
         documentSignerProvider: {}
+        transactionDataProvider: {}
         trustListPublisher: {}
         trustListSubscriber: {}
         globalSettings:
@@ -251,7 +252,6 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
             httpClient:
                 insecureHttpTransportAllowed: true
                 maxRedirects: 3
-        documentSignerProvider: {}
     "};
 
     AppConfig::parse(vec![InputFormat::yaml_str(config)]).unwrap()

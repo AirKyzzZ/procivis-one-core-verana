@@ -21,6 +21,7 @@ pub mod remote_entity_storage;
 pub mod revocation;
 pub mod signer;
 pub mod task;
+pub mod transaction_data;
 pub mod trust_list_publisher;
 pub mod trust_list_subscriber;
 pub mod verification_protocol;

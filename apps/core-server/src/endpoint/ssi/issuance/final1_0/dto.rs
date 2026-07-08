@@ -27,7 +27,7 @@ use proc_macros::options_not_nullable;
 use secrecy::SecretString;
 use serde::{Deserialize, Serialize};
 use standardized_types::etsi_119_472::disclosure_policy::DisclosurePolicy;
-use standardized_types::jwa::EncryptionAlgorithm;
+use standardized_types::iana::EncryptionAlgorithm;
 use standardized_types::jwe::CompressionAlgorithm;
 use standardized_types::jwk::PublicJwk;
 use standardized_types::mapper::secret_string;

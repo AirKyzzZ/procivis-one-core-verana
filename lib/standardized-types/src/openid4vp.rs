@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_with::{VecSkipError, serde_as, skip_serializing_none};
 
-use crate::jwa::EncryptionAlgorithm;
+use crate::iana::EncryptionAlgorithm;
 use crate::jwk::Jwks;
 
 #[serde_as]

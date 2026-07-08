@@ -9,6 +9,7 @@ use crate::proto::wrp_validator::WRPValidator;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::transaction_data::provider::TransactionDataProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::key_repository::KeyRepository;
@@ -34,6 +35,7 @@ pub struct OID4VPFinal1_0Service {
     wrp_validator: Arc<dyn WRPValidator>,
     history_repository: Arc<dyn HistoryRepository>,
     session_provider: Arc<dyn SessionProvider>,
+    _transaction_data_provider: Arc<dyn TransactionDataProvider>,
 }
 
 #[expect(clippy::too_many_arguments)]
@@ -52,6 +54,7 @@ impl OID4VPFinal1_0Service {
         wrp_validator: Arc<dyn WRPValidator>,
         history_repository: Arc<dyn HistoryRepository>,
         session_provider: Arc<dyn SessionProvider>,
+        _transaction_data_provider: Arc<dyn TransactionDataProvider>,
     ) -> Self {
         Self {
             credential_repository,
@@ -67,6 +70,7 @@ impl OID4VPFinal1_0Service {
             wrp_validator,
             history_repository,
             session_provider,
+            _transaction_data_provider,
         }
     }
 }

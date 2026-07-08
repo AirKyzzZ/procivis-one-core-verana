@@ -728,3 +728,30 @@ documentSignerProvider:
         clientSecret: ""
         accountId: ""
         redirectUri: ""
+transactionDataProvider:
+  QES_APPROVAL:
+    type: QES_APPROVAL
+    display:
+      en: "QES approval transaction data"
+      de: "QES approval transaction data"
+    order: 1
+    enabled: true
+    params:
+      private:
+        transactionDataDisplayParams:
+          - path: "$.type"
+            display: "transactionData.qesApproval.type"
+          - path: "$.signatureQualifier"
+            display: "transactionData.qesApproval.signatureQualifier"
+          - path: "$.numSignatures"
+            display: "transactionData.qesApproval.numSignatures"
+          - path: "$.documentInfos[*].label"
+            display: "transactionData.qesApproval.documentInfo.label"
+          - path: "$.documentInfos[*].access"
+            display: "transactionData.qesApproval.documentInfo.access"
+          - path: "$.documentInfos[*].href"
+            display: "transactionData.qesApproval.documentInfo.href"
+          - path: "$.documentInfos[*].checksum"
+            display: "transactionData.qesApproval.documentInfo.checksum"
+          - path: "$.documentInfos[*].signed_props"
+            display: "transactionData.qesApproval.documentInfo.signedProps"

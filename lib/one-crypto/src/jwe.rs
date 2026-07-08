@@ -13,7 +13,7 @@ use flate2::write::DeflateEncoder;
 use hmac::Mac;
 use secrecy::{ExposeSecret, ExposeSecretMut, SecretSlice};
 use serde::{Deserialize, Serialize};
-use standardized_types::jwa::{EncryptionAlgorithm, EncryptionKeyManagementAlgorithm};
+use standardized_types::iana::{EncryptionAlgorithm, EncryptionKeyManagementAlgorithm};
 use standardized_types::jwe::CompressionAlgorithm;
 use standardized_types::jwk::PublicJwk;
 

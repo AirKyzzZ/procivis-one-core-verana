@@ -117,6 +117,7 @@ rusty_fork_test! {
             verificationEngagement: {}
             signer: {}
             verifierProvider: {}
+            transactionDataProvider: {}
             trustListPublisher: {}
             trustListSubscriber: {}
             globalSettings:

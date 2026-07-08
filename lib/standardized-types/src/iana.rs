@@ -1,8 +1,27 @@
-//! Spec: https://datatracker.ietf.org/doc/html/rfc7518
+//! Values from IANA registries.
 
 use serde::{Deserialize, Serialize};
 use strum::Display;
 
+/// "Named Information Hash Algorithm" registry.
+///
+/// <https://www.iana.org/assignments/named-information/named-information.xhtml>
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Display)]
+pub enum HashAlgorithm {
+    #[serde(rename = "sha-256")]
+    #[strum(to_string = "sha-256")]
+    Sha256,
+    #[serde(rename = "sha-384")]
+    #[strum(to_string = "sha-384")]
+    Sha384,
+    #[serde(rename = "sha-512")]
+    #[strum(to_string = "sha-512")]
+    Sha512,
+}
+
+/// "JSON Web Signature and Encryption Algorithms" registry, established by RFC 7518.
+///
+/// <https://www.iana.org/assignments/jose/jose.xhtml>
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Display)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub enum EncryptionAlgorithm {

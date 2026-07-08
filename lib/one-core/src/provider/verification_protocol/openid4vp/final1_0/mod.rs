@@ -9,7 +9,7 @@ use model::Params;
 use one_crypto::utilities;
 use proc_macros::Provider;
 use serde_json::Value;
-use standardized_types::jwa::EncryptionAlgorithm;
+use standardized_types::iana::EncryptionAlgorithm;
 use standardized_types::jwk::PublicJwk;
 use standardized_types::openid4vp::ResponseMode;
 use time::Duration;

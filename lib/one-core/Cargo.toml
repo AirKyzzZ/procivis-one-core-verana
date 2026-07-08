@@ -61,6 +61,7 @@ rustls-platform-verifier     = { workspace = true }
 secrecy                      = { workspace = true }
 serde.workspace              = true
 serde_json.workspace         = true
+serde_json_path.workspace    = true
 serde_qs.workspace           = true
 serde_repr                   = { version = "0.1" }
 serde_urlencoded.workspace   = true
@@ -93,7 +94,6 @@ mockall.workspace         = true
 one-crypto                = { workspace = true, features = ["mock"] }
 rstest                    = { version = "0.26" }
 rusty-fork                = { version = "0.3" }
-serde_json_path.workspace = true
 similar-asserts.workspace = true
 tokio                     = { workspace = true, features = ["rt-multi-thread", "macros"] }
 wiremock.workspace        = true
