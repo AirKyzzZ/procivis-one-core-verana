@@ -711,6 +711,7 @@ fn interaction_with_validated_tx_data(
                     .into_iter()
                     .map(CredentialQueryId::from)
                     .collect(),
+                transaction_data_type: "QES_APPROVAL".into(),
             },
         );
     }

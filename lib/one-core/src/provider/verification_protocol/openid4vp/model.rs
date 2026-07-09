@@ -15,6 +15,7 @@ use url::Url;
 use super::mapper::{deserialize_with_serde_json, unix_timestamp_option};
 use crate::model::credential::Credential;
 use crate::provider::credential_formatter::model::IdentifierDetails;
+use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::final1_0::model::VerifierInfoAttestation;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -172,6 +173,20 @@ impl Default for HolderTxData {
     }
 }
 
+impl HolderTxData {
+    pub fn validated(
+        &self,
+    ) -> Result<IndexMap<TransactionDataId, ValidatedHolderTxData>, VerificationProtocolError> {
+        match self {
+            HolderTxData::Validated(tx_data) => Ok(tx_data.clone()),
+            HolderTxData::Unvalidated(d) if d.is_empty() => Ok(IndexMap::new()),
+            HolderTxData::Unvalidated(_) => Err(VerificationProtocolError::Failed(
+                "Unvalidated transaction data".to_string(),
+            )),
+        }
+    }
+}
+
 #[skip_serializing_none]
 #[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct ValidatedHolderTxData {
@@ -179,6 +194,8 @@ pub struct ValidatedHolderTxData {
     pub raw: String,
     /// Credential ids the transaction data is for.
     pub credential_query_ids: Vec<CredentialQueryId>,
+    /// Config name of the `TransactionData` provider that validated this entry.
+    pub transaction_data_type: TransactionDataType,
 }
 
 // Apparently the indirection via functions is required: https://github.com/serde-rs/serde/issues/368

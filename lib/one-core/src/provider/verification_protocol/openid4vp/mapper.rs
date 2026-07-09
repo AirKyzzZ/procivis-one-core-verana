@@ -2,15 +2,16 @@ use std::collections::HashMap;
 use std::ops::Add;
 use std::sync::Arc;
 
+use indexmap::IndexMap;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
-use shared_types::ClaimSchemaId;
+use shared_types::{ClaimSchemaId, TransactionDataId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use super::model::{
     OpenID4VCVerifierAttestationPayload, OpenID4VPVerifierInteractionContent, ProvedCredential,
-    VpSubmissionData,
+    ValidatedHolderTxData, VpSubmissionData,
 };
 use super::{JWTSigner, get_jwt_signer};
 use crate::config::core_config::{CoreConfig, FormatType, VerificationProtocolType};
@@ -29,7 +30,9 @@ use crate::provider::credential_formatter::model::{CredentialClaim, IdentifierDe
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::presentation_formatter::model::ExtractPresentationCtx;
-use crate::provider::verification_protocol::dto::FormattedCredentialPresentation;
+use crate::provider::verification_protocol::dto::{
+    FormattedCredentialPresentation, PresentationDefinitionTransactionDataDTO,
+};
 use crate::provider::verification_protocol::openid4vp::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::service::error::{BusinessLogicError, ServiceError};
@@ -494,4 +497,17 @@ pub(crate) async fn format_authorization_request_client_id_scheme_redirect_uri<T
         .tokenize(None)
         .await
         .error_while("creating request JWT")?)
+}
+
+pub(super) fn map_transaction_data(
+    transaction_data: IndexMap<TransactionDataId, ValidatedHolderTxData>,
+) -> Vec<PresentationDefinitionTransactionDataDTO> {
+    transaction_data
+        .into_iter()
+        .map(|(id, data)| PresentationDefinitionTransactionDataDTO {
+            id,
+            r#type: data.transaction_data_type,
+            credential_query_ids: data.credential_query_ids,
+        })
+        .collect()
 }

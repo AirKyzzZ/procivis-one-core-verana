@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use dcql::CredentialQueryId;
 use serde::Serialize;
 use shared_types::i18n::I18nString;
-use shared_types::{InteractionId, TransactionDataId};
+use shared_types::{InteractionId, TransactionDataId, TransactionDataType};
 use strum::{AsRefStr, Display, EnumString};
 use time::OffsetDateTime;
 
@@ -76,6 +76,14 @@ pub(crate) struct UpdateResponse {
 pub struct PresentationDefinitionV2ResponseDTO {
     pub credential_queries: HashMap<String, CredentialQueryResponseDTO>,
     pub credential_sets: Vec<CredentialSetResponseDTO>,
+    pub transaction_data: Vec<PresentationDefinitionTransactionDataDTO>,
+}
+
+#[derive(Clone, Debug)]
+pub struct PresentationDefinitionTransactionDataDTO {
+    pub id: TransactionDataId,
+    pub r#type: TransactionDataType,
+    pub credential_query_ids: Vec<CredentialQueryId>,
 }
 
 #[derive(Clone, Debug)]

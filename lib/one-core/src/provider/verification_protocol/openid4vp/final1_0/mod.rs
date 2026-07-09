@@ -292,7 +292,7 @@ impl OpenID4VPFinal1_0 {
                 )?;
                 let mut aggregated_tx_data = None;
                 for tx_data in assigned_tx_data {
-                    let data = self
+                    let (_, data) = self
                         .transaction_data_provider
                         .get_transaction_data(&tx_data)?;
                     let processed = data
@@ -416,7 +416,7 @@ impl OpenID4VPFinal1_0 {
         {
             let mut validated_tx_data = IndexMap::with_capacity(transaction_data.len());
             for (idx, tx_data) in transaction_data.iter().enumerate() {
-                let data = self
+                let (transaction_data_type, data) = self
                     .transaction_data_provider
                     .get_transaction_data(tx_data)?;
                 let validated = data
@@ -448,6 +448,7 @@ impl OpenID4VPFinal1_0 {
                     ValidatedHolderTxData {
                         raw: tx_data.clone(),
                         credential_query_ids: convert_inner(validated.credential_ids),
+                        transaction_data_type,
                     },
                 );
             }
@@ -782,6 +783,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
             &self.config,
             interaction_data.verifier_details.as_ref(),
             &interaction_data.verifier_info,
+            Some(interaction_data.transaction_data.validated()?),
         )
         .await
     }
@@ -927,15 +929,7 @@ fn assign_transaction_data(
     credential_presentations: &[FormattedCredentialPresentation],
     interaction_data: &OpenID4VPHolderInteractionData,
 ) -> Result<Vec<Vec<String>>, VerificationProtocolError> {
-    let mut transaction_data = match &interaction_data.transaction_data {
-        HolderTxData::Validated(transaction_data) => transaction_data.clone(),
-        HolderTxData::Unvalidated(data) if data.is_empty() => IndexMap::new(),
-        _ => {
-            return Err(VerificationProtocolError::Failed(
-                "unvalidated transaction data".to_string(),
-            ));
-        }
-    };
+    let mut transaction_data = interaction_data.transaction_data.validated()?;
 
     // Assign transaction data entries to credential presentations. Explicit
     // client selections (across all credentials) are honored first, then any

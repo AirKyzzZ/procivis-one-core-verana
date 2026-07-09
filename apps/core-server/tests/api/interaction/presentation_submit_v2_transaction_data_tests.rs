@@ -25,6 +25,7 @@ use crate::fixtures::{
 };
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::blobs::TestingBlobParams;
+use crate::utils::field_match::FieldHelpers;
 
 const QES_APPROVAL_TYPE: &str = "https://cloudsignatureconsortium.org/2025/qes-approval";
 const MDOC_DOCTYPE: &str = "doctype";
@@ -258,7 +259,8 @@ async fn setup_submittable_mdoc_with_transaction_data(
                 "Validated": {
                     transaction_data_id.to_string(): {
                         "raw": qes_approval_transaction_data(),
-                        "credential_query_ids": ["input_0"]
+                        "credential_query_ids": ["input_0"],
+                        "transaction_data_type": "QES_APPROVAL"
                     }
                 }
             }
@@ -436,4 +438,29 @@ async fn test_presentation_submit_v2_transaction_data_manual_assignment() {
     let proof = fixtures::get_proof(&context.db.db_conn, &proof.id).await;
     assert_eq!(proof.state, ProofStateEnum::Accepted);
     assert_vp_token_carries_transaction_data(&context).await;
+}
+
+#[tokio::test]
+async fn test_presentation_definition_v2_surfaces_transaction_data() {
+    let (context, organisation, identifier, ..) =
+        TestContext::new_with_certificate_identifier(None).await;
+    let (_credential, _interaction, proof, transaction_data_id) =
+        setup_submittable_mdoc_with_transaction_data(&context, &organisation, &identifier).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .proofs
+        .presentation_definition_v2(proof.id)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let body = resp.json_value().await;
+    let transaction_data = body["transactionData"].as_array().unwrap();
+    assert_eq!(transaction_data.len(), 1);
+    let entry = &transaction_data[0];
+    entry["id"].assert_eq(&transaction_data_id);
+    assert_eq!(entry["type"], "QES_APPROVAL");
+    assert_eq!(entry["credentialQueryIds"], json!(["input_0"]));
 }

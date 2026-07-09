@@ -611,6 +611,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
             &self.config,
             None,
             &[],
+            None,
         )
         .await
     }

@@ -6,7 +6,8 @@ use one_core::model::proof::{
 use one_core::provider::verification_protocol::dto::{
     CredentialDetailClaimExtResponseDTO, CredentialQueryFailureHintResponseDTO,
     CredentialQueryFailureReasonEnum, CredentialQueryResponseDTO, CredentialSetResponseDTO,
-    DisclosurePolicyViolation, PresentationDefinitionV2ResponseDTO,
+    DisclosurePolicyViolation, PresentationDefinitionTransactionDataDTO,
+    PresentationDefinitionV2ResponseDTO,
 };
 use one_core::provider::verification_protocol::openid4vp::model::ClientIdScheme;
 use one_core::service::credential_schema::dto::CredentialSchemaDetailResponseDTO;
@@ -515,6 +516,20 @@ pub(crate) struct PresentationDefinitionV2ResponseBindingDTO {
     pub credential_queries: HashMap<String, CredentialQueryResponseBindingDTO>,
     #[from(with_fn = convert_inner)]
     pub credential_sets: Vec<CredentialSetResponseBindingDTO>,
+    #[from(with_fn = convert_inner)]
+    pub transaction_data: Vec<PresentationDefinitionTransactionDataBindingDTO>,
+}
+
+#[derive(Debug, From, uniffi::Record)]
+#[from(PresentationDefinitionTransactionDataDTO)]
+#[uniffi(name = "PresentationDefinitionTransactionData")]
+pub(crate) struct PresentationDefinitionTransactionDataBindingDTO {
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub id: String,
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub r#type: String,
+    #[from(with_fn = convert_inner)]
+    pub credential_query_ids: Vec<String>,
 }
 
 #[derive(Debug, From, uniffi::Record)]

@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use dcql::CredentialQueryId;
 use one_core::model::proof::{
     ExactProofFilterColumn, ProofRole, ProofStateEnum, SortableProofColumn,
 };
@@ -7,7 +8,7 @@ use one_core::provider::verification_protocol::dto::{
     ApplicableCredential, CredentialDetailClaimExtResponseDTO,
     CredentialQueryFailureHintResponseDTO, CredentialQueryFailureReasonEnum,
     CredentialQueryResponseDTO, CredentialSetResponseDTO, DisclosurePolicyViolation,
-    PresentationDefinitionV2ResponseDTO,
+    PresentationDefinitionTransactionDataDTO, PresentationDefinitionV2ResponseDTO,
 };
 use one_core::provider::verification_protocol::openid4vp::model::ClientIdScheme;
 use one_core::service::error::ServiceError;
@@ -24,6 +25,7 @@ use serde::{Deserialize, Serialize};
 use shared_types::i18n::I18nString;
 use shared_types::{
     CertificateId, DidId, IdentifierId, KeyId, OrganisationId, ProofId, ProofSchemaId,
+    TransactionDataId, TransactionDataType,
 };
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
@@ -464,6 +466,18 @@ pub(crate) struct PresentationDefinitionV2ResponseRestDTO {
     pub credential_queries: HashMap<String, CredentialQueryResponseRestDTO>,
     #[try_from(with_fn = convert_inner, infallible)]
     pub credential_sets: Vec<CredentialSetResponseRestDTO>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[try_from(with_fn = convert_inner, infallible)]
+    pub transaction_data: Vec<PresentationDefinitionTransactionDataRestDTO>,
+}
+
+#[derive(Debug, Serialize, ToSchema, From)]
+#[from(PresentationDefinitionTransactionDataDTO)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct PresentationDefinitionTransactionDataRestDTO {
+    pub id: TransactionDataId,
+    pub r#type: TransactionDataType,
+    pub credential_query_ids: Vec<CredentialQueryId>,
 }
 
 #[derive(Debug, Serialize, ToSchema, TryFrom)]

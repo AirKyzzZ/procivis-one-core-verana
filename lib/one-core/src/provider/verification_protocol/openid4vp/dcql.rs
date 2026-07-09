@@ -5,9 +5,10 @@ use dcql::{
     ClaimPath, ClaimValue, CredentialFormat, CredentialQuery, CredentialQueryId, DcqlQuery,
     PathSegment, TrustedAuthority,
 };
+use indexmap::IndexMap;
 use itertools::Itertools;
 use one_dto_mapper::convert_inner;
-use shared_types::{ClaimId, ClaimSchemaId, OrganisationId};
+use shared_types::{ClaimId, ClaimSchemaId, OrganisationId, TransactionDataId};
 use standardized_types::x509::KeyIdentifier;
 
 use super::disclosure_policy::{
@@ -42,6 +43,8 @@ use crate::provider::verification_protocol::dto::{
 };
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::mapper::get_presentation_credentials_by_schema_id;
+use crate::provider::verification_protocol::openid4vp::mapper::map_transaction_data;
+use crate::provider::verification_protocol::openid4vp::model::ValidatedHolderTxData;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::error::DataLayerError;
@@ -70,6 +73,7 @@ pub(crate) async fn get_presentation_definition_v2(
     config: &CoreConfig,
     verifier_details: Option<&IdentifierDetails>,
     verifier_info: &[VerifierInfoAttestation],
+    transaction_data: Option<IndexMap<TransactionDataId, ValidatedHolderTxData>>,
 ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
     let organisation = proof
         .interaction
@@ -286,6 +290,9 @@ pub(crate) async fn get_presentation_definition_v2(
     Ok(PresentationDefinitionV2ResponseDTO {
         credential_queries,
         credential_sets,
+        transaction_data: transaction_data
+            .map(map_transaction_data)
+            .unwrap_or_default(),
     })
 }
 

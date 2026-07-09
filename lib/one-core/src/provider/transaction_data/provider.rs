@@ -19,7 +19,7 @@ pub trait TransactionDataProvider: Send + Sync {
     fn get_transaction_data(
         &self,
         transaction_data: &str,
-    ) -> Result<Arc<dyn TransactionData>, NestedError>;
+    ) -> Result<(TransactionDataType, Arc<dyn TransactionData>), NestedError>;
 
     /// Resolves the provider by its config name
     fn get_transaction_data_by_name(
@@ -39,7 +39,7 @@ impl TransactionDataProvider
         &self,
         // base64url-encoded transaction data
         transaction_data: &str,
-    ) -> Result<Arc<dyn TransactionData>, NestedError> {
+    ) -> Result<(TransactionDataType, Arc<dyn TransactionData>), NestedError> {
         let as_value: serde_json::Value =
             decode_transaction_data(transaction_data).error_while("decoding transaction data")?;
         let transaction_data_type = as_value
@@ -50,7 +50,7 @@ impl TransactionDataProvider
             ))
             .error_while("reading transaction data type")?;
 
-        let (_, provider) = self
+        let (name, provider) = self
             .iter()
             .find(|(_, provider)| {
                 provider
@@ -64,7 +64,7 @@ impl TransactionDataProvider
             ))
             .error_while("resolving transaction data provider")?;
 
-        Ok(provider.clone())
+        Ok((name.clone(), provider.clone()))
     }
 
     fn get_transaction_data_by_name(
