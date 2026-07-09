@@ -75,7 +75,8 @@ fn on_struct_fields_allowed_values_fn(
     field_ident: proc_macro2::Ident,
     allowed_values_fn: syn::ExprPath,
 ) -> Option<proc_macro2::TokenStream> {
-    let ident_str = field_ident.to_string();
+    let field_ident = field_ident.to_string();
+    let ident_str = field_ident.strip_prefix("r#").unwrap_or(&field_ident);
     Some(quote! {
         if let std::option::Option::Some(utoipa::openapi::RefOr::T(utoipa::openapi::Schema::Object(field_obj))) = object.properties.get_mut(#ident_str) {
             let old_values = std::mem::take(&mut field_obj.enum_values);
@@ -89,7 +90,9 @@ fn on_struct_fields_field(
     field_ident: proc_macro2::Ident,
     field: syn::ExprPath,
 ) -> Option<proc_macro2::TokenStream> {
-    let ident_camel_case = to_camel_case(&field_ident.to_string());
+    let field_ident = field_ident.to_string();
+    let ident_str = field_ident.strip_prefix("r#").unwrap_or(&field_ident);
+    let ident_camel_case = to_camel_case(ident_str);
     Some(quote! {
         if let std::option::Option::Some(utoipa::openapi::RefOr::T(utoipa::openapi::Schema::Object(field_obj))) = object.properties.get_mut(#ident_camel_case) {
             let values: Vec<utoipa::r#gen::serde_json::Value> = core_config

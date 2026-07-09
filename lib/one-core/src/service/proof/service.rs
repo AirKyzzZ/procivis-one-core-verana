@@ -3,14 +3,14 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use one_dto_mapper::convert_inner;
-use shared_types::{CredentialFormat, CredentialId, ProofId};
+use shared_types::{CredentialFormat, CredentialId, ProofId, TransactionDataId};
 use uuid::Uuid;
 
 use super::ProofService;
 use super::dto::{
     CreateProofInteractionData, CreateProofRequestDTO, GetProofListResponseDTO,
-    ProofDetailResponseDTO, ProofFilterParamsDTO, ProposeProofRequestDTO, ProposeProofResponseDTO,
-    ShareProofRequestDTO, ShareProofResponseDTO,
+    ProofDetailResponseDTO, ProofFilterParamsDTO, ProofTransactionDataResponseDTO,
+    ProposeProofRequestDTO, ProposeProofResponseDTO, ShareProofRequestDTO, ShareProofResponseDTO,
 };
 use super::error::ProofServiceError;
 use super::mapper::{
@@ -51,7 +51,7 @@ use crate::model::proof::{
 use crate::model::proof_schema::{ProofInputSchemaRelations, ProofSchemaRelations};
 use crate::proto::nfc::static_handover_handler::NfcStaticHandoverHandler;
 use crate::provider::credential_formatter::mdoc_formatter::util::EmbeddedCbor;
-use crate::provider::verification_protocol::FormatMapper;
+use crate::provider::transaction_data::decode_transaction_data;
 use crate::provider::verification_protocol::dto::{
     PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion, ShareResponse,
 };
@@ -64,7 +64,10 @@ use crate::provider::verification_protocol::iso_mdl::device_engagement::{
     BleOptions, DeviceEngagement, DeviceRetrievalMethod, RetrievalOptions, Security,
 };
 use crate::provider::verification_protocol::iso_mdl::nfc::create_nfc_handover_select_message;
-use crate::provider::verification_protocol::openid4vp::model::CommonVerifierInteractionContent;
+use crate::provider::verification_protocol::openid4vp::model::{
+    CommonVerifierInteractionContent, OpenID4VPHolderInteractionData,
+};
+use crate::provider::verification_protocol::{FormatMapper, deserialize_interaction_data};
 use crate::service::common_dto::{ListQueryDTO, TrustInformationDetailResponseDTO};
 use crate::service::credential_schema::validator::validate_key_storage_security_supported;
 use crate::util::interactions::{add_new_interaction, clear_previous_interaction};
@@ -220,6 +223,51 @@ impl ProofService {
             .await
             .error_while("getting proof")?
             .ok_or(ProofServiceError::NotFound(*id))
+    }
+
+    /// Returns the details of a single (holder-side) transaction data entry of a proof request.
+    pub async fn holder_transaction_data_details(
+        &self,
+        proof_id: &ProofId,
+        transaction_data_id: &TransactionDataId,
+    ) -> Result<ProofTransactionDataResponseDTO, ProofServiceError> {
+        let proof = self
+            .load_proof_for_presentation_definition(proof_id)
+            .await?;
+        throw_if_proof_not_in_session_org(&proof, &*self.session_provider)?;
+        if proof.role != ProofRole::Holder {
+            return Err(ProofServiceError::InvalidRole(proof.role));
+        }
+
+        let interaction_data: OpenID4VPHolderInteractionData =
+            deserialize_interaction_data(proof.interaction.as_ref().and_then(|i| i.data.as_ref()))
+                .error_while("reading interaction data")?;
+
+        let validated = interaction_data
+            .transaction_data
+            .validated()
+            .error_while("validating transaction data")?;
+        let entry = validated.get(transaction_data_id).ok_or(
+            ProofServiceError::TransactionDataNotFound(*transaction_data_id),
+        )?;
+
+        let provider = self
+            .transaction_data_provider
+            .get_transaction_data_by_name(&entry.transaction_data_type)?;
+
+        let transaction_data_display = provider
+            .get_display_data(&entry.raw)
+            .error_while("assembling transaction data display")?;
+        let raw_transaction_data =
+            decode_transaction_data(&entry.raw).error_while("decoding raw transaction data")?;
+
+        Ok(ProofTransactionDataResponseDTO {
+            id: *transaction_data_id,
+            r#type: entry.transaction_data_type.clone(),
+            credential_query_ids: entry.credential_query_ids.clone(),
+            transaction_data_display,
+            raw_transaction_data: Some(raw_transaction_data),
+        })
     }
 
     /// Returns list of proofs according to query

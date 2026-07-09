@@ -464,3 +464,58 @@ async fn test_presentation_definition_v2_surfaces_transaction_data() {
     assert_eq!(entry["type"], "QES_APPROVAL");
     assert_eq!(entry["credentialQueryIds"], json!(["input_0"]));
 }
+
+#[tokio::test]
+async fn test_get_proof_transaction_data() {
+    let (context, organisation, identifier, ..) =
+        TestContext::new_with_certificate_identifier(None).await;
+    let (_credential, _interaction, proof, transaction_data_id) =
+        setup_submittable_mdoc_with_transaction_data(&context, &organisation, &identifier).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .proofs
+        .transaction_data(proof.id, transaction_data_id)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let body = resp.json_value().await;
+    body["id"].assert_eq(&transaction_data_id);
+    assert_eq!(body["type"], "QES_APPROVAL");
+    assert_eq!(body["credentialQueryIds"], json!(["input_0"]));
+
+    // display data assembled from the QES approval `documentInfos` group
+    let display = body["transactionDataDisplay"].as_array().unwrap();
+    assert_eq!(display.len(), 1);
+    assert_eq!(display[0]["title"], "Example Contract");
+    let attributes = display[0]["attributes"].as_array().unwrap();
+    assert_eq!(attributes.len(), 3);
+
+    // raw transaction data is the fully decoded verifier payload
+    assert_eq!(body["rawTransactionData"]["type"], QES_APPROVAL_TYPE);
+    assert_eq!(body["rawTransactionData"]["numSignatures"], 1);
+    assert_eq!(
+        body["rawTransactionData"]["credential_ids"],
+        json!(["input_0"])
+    );
+}
+
+#[tokio::test]
+async fn test_get_proof_transaction_data_unknown_id_returns_404() {
+    let (context, organisation, identifier, ..) =
+        TestContext::new_with_certificate_identifier(None).await;
+    let (_credential, _interaction, proof, _) =
+        setup_submittable_mdoc_with_transaction_data(&context, &organisation, &identifier).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .proofs
+        .transaction_data(proof.id, Uuid::new_v4())
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 404);
+}

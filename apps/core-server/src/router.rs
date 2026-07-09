@@ -369,6 +369,10 @@ fn get_management_endpoints(
                 get(proof::controller::get_proof_presentation_definition_v2),
             )
             .route(
+                "/api/proof-request/v1/{proofId}/transaction-data/{transactionDataId}",
+                get(proof::controller::get_proof_transaction_data),
+            )
+            .route(
                 "/api/proof-request/v1/{id}/claims",
                 delete(proof::controller::delete_proof_claims),
             )

@@ -1,7 +1,8 @@
+use dcql::CredentialQueryId;
 use serde::{Deserialize, Serialize};
 use shared_types::{
     CertificateId, CredentialSchemaId, DidId, IdentifierId, InteractionId, KeyId, OrganisationId,
-    ProofId, ProofSchemaId, TransactionDataType,
+    ProofId, ProofSchemaId, TransactionDataId, TransactionDataType,
 };
 use time::OffsetDateTime;
 
@@ -10,6 +11,7 @@ use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use crate::model::list_query::ListQuery;
 use crate::model::proof::{ExactProofFilterColumn, ProofRole, ProofStateEnum, SortableProofColumn};
 use crate::proto::trust_information::dto::TrustInformation;
+use crate::provider::transaction_data::TransactionDataDisplayValue;
 use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, CommonVerifierInteractionContent,
 };
@@ -54,6 +56,20 @@ pub struct CreateProofRequestTransactionDataDTO {
 #[derive(Clone, Debug)]
 pub struct CreateProofResponseDTO {
     pub id: ProofId,
+}
+
+/// Details of a single (holder-side) transaction data entry of a proof request.
+#[derive(Clone, Debug)]
+pub struct ProofTransactionDataResponseDTO {
+    pub id: TransactionDataId,
+    /// Config name of the transaction data provider that validated this entry.
+    pub r#type: TransactionDataType,
+    /// Credential query ids the transaction data is bound to.
+    pub credential_query_ids: Vec<CredentialQueryId>,
+    /// Grouped key-value data for displaying the transaction to the user.
+    pub transaction_data_display: Vec<TransactionDataDisplayValue>,
+    /// Base64url-decoded raw transaction data entry received from the verifier.
+    pub raw_transaction_data: Option<serde_json::Value>,
 }
 
 #[derive(Clone, Debug)]

@@ -5,11 +5,12 @@ use axum_extra::extract::WithRejection;
 use one_core::error::ContextWithErrorCode;
 use one_core::service::error::{ServiceError, ValidationError};
 use proc_macros::endpoint;
-use shared_types::{Permission, ProofId};
+use shared_types::{Permission, ProofId, TransactionDataId};
 
 use super::dto::{
     CreateProofRequestRestDTO, GetProofQuery, PresentationDefinitionV2ResponseRestDTO,
-    ProofDetailResponseRestDTO, ShareProofRequestRestDTO, ShareProofResponseRestDTO,
+    ProofDetailResponseRestDTO, ProofTransactionDataResponseRestDTO, ShareProofRequestRestDTO,
+    ShareProofResponseRestDTO,
 };
 use crate::dto::common::trust_detail::TrustInformationDetailResponseRestDTO;
 use crate::dto::common::{EntityResponseRestDTO, GetProofsResponseRestDTO};
@@ -81,6 +82,41 @@ pub(crate) async fn get_proof_details(
         .error_while("getting proof")
         .map_err(ServiceError::from);
     OkOrErrorResponse::from_result_fallible(result, state, "getting proof")
+}
+
+#[endpoint(
+    permissions = [Permission::ProofDetail],
+    get,
+    path = "/api/proof-request/v1/{proofId}/transaction-data/{transactionDataId}",
+    responses(OkOrErrorResponse<ProofTransactionDataResponseRestDTO>),
+    params(
+        ("proofId" = ProofId, Path, description = "Proof id"),
+        ("transactionDataId" = TransactionDataId, Path, description = "Transaction data id")
+    ),
+    tag = "proof_management",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "Retrieve transaction data of a proof request",
+    description = "For wallets; returns the details of a single transaction data entry of a proof request,
+        including human-readable display data and the raw transaction data received
+        from the verifier.",
+)]
+pub(crate) async fn get_proof_transaction_data(
+    state: State<AppState>,
+    WithRejection(Path((proof_id, transaction_data_id)), _): WithRejection<
+        Path<(ProofId, TransactionDataId)>,
+        ErrorResponseRestDTO,
+    >,
+) -> OkOrErrorResponse<ProofTransactionDataResponseRestDTO> {
+    let result = state
+        .core
+        .proof_service
+        .holder_transaction_data_details(&proof_id, &transaction_data_id)
+        .await
+        .error_while("getting proof transaction data")
+        .map_err(ServiceError::from);
+    OkOrErrorResponse::from_result(result, state, "getting proof transaction data")
 }
 
 #[endpoint(

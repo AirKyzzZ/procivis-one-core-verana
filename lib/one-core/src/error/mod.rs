@@ -967,6 +967,9 @@ pub enum ErrorCode {
         message = "Transaction data references a credential schema not part of the proof schema"
     )]
     BR_0461,
+
+    #[strum(message = "Transaction data not found")]
+    BR_0462,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

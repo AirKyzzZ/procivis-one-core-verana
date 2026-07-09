@@ -4,11 +4,14 @@ use dcql::CredentialQueryId;
 use one_core::model::proof::{
     ExactProofFilterColumn, ProofRole, ProofStateEnum, SortableProofColumn,
 };
+use one_core::provider::transaction_data::{
+    TransactionDataDisplayAttribute, TransactionDataDisplayValue,
+};
 use one_core::provider::verification_protocol::dto::{
     ApplicableCredential, CredentialDetailClaimExtResponseDTO,
     CredentialQueryFailureHintResponseDTO, CredentialQueryFailureReasonEnum,
     CredentialQueryResponseDTO, CredentialSetResponseDTO, DisclosurePolicyViolation,
-    PresentationDefinitionTransactionDataDTO, PresentationDefinitionV2ResponseDTO,
+    PresentationDefinitionV2ResponseDTO,
 };
 use one_core::provider::verification_protocol::openid4vp::model::ClientIdScheme;
 use one_core::service::error::ServiceError;
@@ -25,7 +28,7 @@ use serde::{Deserialize, Serialize};
 use shared_types::i18n::I18nString;
 use shared_types::{
     CertificateId, CredentialSchemaId, DidId, IdentifierId, KeyId, OrganisationId, ProofId,
-    ProofSchemaId, TransactionDataId, TransactionDataType,
+    ProofSchemaId, TransactionDataId,
 };
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
@@ -147,12 +150,13 @@ pub(crate) struct CreateProofRequestRestDTO {
 }
 
 /// Transaction data to include in a proof request.
-#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[derive(Clone, Debug, Deserialize, ToSchema, Into, ModifySchema)]
 #[into(CreateProofRequestTransactionDataDTO)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct ProofRequestTransactionDataRestDTO {
     /// The transaction data provider to use.
-    pub r#type: TransactionDataType,
+    #[modify_schema(field = transaction_data_provider)]
+    pub r#type: String,
     /// The credential schemas (of the given proof schema) the transaction data
     /// applies to.
     pub credential_schema_ids: Vec<CredentialSchemaId>,
@@ -491,13 +495,43 @@ pub(crate) struct PresentationDefinitionV2ResponseRestDTO {
     pub transaction_data: Vec<PresentationDefinitionTransactionDataRestDTO>,
 }
 
-#[derive(Debug, Serialize, ToSchema, From)]
-#[from(PresentationDefinitionTransactionDataDTO)]
+#[derive(Debug, Serialize, ToSchema, ModifySchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct PresentationDefinitionTransactionDataRestDTO {
     pub id: TransactionDataId,
-    pub r#type: TransactionDataType,
+    #[modify_schema(field = transaction_data_provider)]
+    pub r#type: String,
     pub credential_query_ids: Vec<CredentialQueryId>,
+}
+
+#[derive(Debug, Serialize, ToSchema, ModifySchema)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct ProofTransactionDataResponseRestDTO {
+    pub id: TransactionDataId,
+    #[modify_schema(field = transaction_data_provider)]
+    pub r#type: String,
+    pub credential_query_ids: Vec<CredentialQueryId>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub transaction_data_display: Vec<TransactionDataDisplayRestDTO>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub raw_transaction_data: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Serialize, ToSchema, From)]
+#[from(TransactionDataDisplayValue)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct TransactionDataDisplayRestDTO {
+    pub title: String,
+    #[from(with_fn = convert_inner)]
+    pub attributes: Vec<TransactionDataDisplayAttributeRestDTO>,
+}
+
+#[derive(Debug, Serialize, ToSchema, From)]
+#[from(TransactionDataDisplayAttribute)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct TransactionDataDisplayAttributeRestDTO {
+    pub key: String,
+    pub value: serde_json::Value,
 }
 
 #[derive(Debug, Serialize, ToSchema, TryFrom)]

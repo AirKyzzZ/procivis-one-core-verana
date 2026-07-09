@@ -231,4 +231,13 @@ impl ProofsApi {
         let url = format!("/api/proof-request/v2/{id}/presentation-definition");
         self.client.get(&url).await
     }
+
+    pub async fn transaction_data(
+        &self,
+        id: impl Display,
+        transaction_data_id: impl Display,
+    ) -> Response {
+        let url = format!("/api/proof-request/v1/{id}/transaction-data/{transaction_data_id}");
+        self.client.get(&url).await
+    }
 }

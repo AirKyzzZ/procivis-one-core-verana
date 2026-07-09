@@ -3,6 +3,9 @@ use std::collections::HashMap;
 use one_core::model::proof::{
     ExactProofFilterColumn, ProofRole, ProofStateEnum, SortableProofColumn,
 };
+use one_core::provider::transaction_data::{
+    TransactionDataDisplayAttribute, TransactionDataDisplayValue,
+};
 use one_core::provider::verification_protocol::dto::{
     CredentialDetailClaimExtResponseDTO, CredentialQueryFailureHintResponseDTO,
     CredentialQueryFailureReasonEnum, CredentialQueryResponseDTO, CredentialSetResponseDTO,
@@ -14,8 +17,8 @@ use one_core::service::credential_schema::dto::CredentialSchemaDetailResponseDTO
 use one_core::service::error::ServiceError;
 use one_core::service::proof::dto::{
     GetProofListResponseDTO, ProofClaimDTO, ProofInputDTO, ProofListItemResponseDTO,
-    ProposeProofRequestDTO, ProposeProofResponseDTO, ShareProofRequestDTO,
-    ShareProofRequestParamsDTO, ShareProofResponseDTO,
+    ProofTransactionDataResponseDTO, ProposeProofRequestDTO, ProposeProofResponseDTO,
+    ShareProofRequestDTO, ShareProofRequestParamsDTO, ShareProofResponseDTO,
 };
 use one_core::service::ssi_holder::dto::{
     PresentationSubmitV2CredentialRequestDTO, PresentationSubmitV2RequestDTO,
@@ -179,6 +182,24 @@ impl OneCore {
         Ok(core
             .proof_service
             .get_proof_presentation_definition_v2(&into_id(&proof_id)?)
+            .await?
+            .into())
+    }
+
+    /// For wallets; returns the details of a single transaction data entry of a
+    /// proof request, including human-readable display data and the raw
+    /// transaction data received from the verifier. The `transactionDataId` is
+    /// obtained from `getPresentationDefinitionv2`.
+    #[uniffi::method]
+    pub async fn holder_get_transaction_data(
+        &self,
+        proof_id: String,
+        transaction_data_id: String,
+    ) -> Result<ProofTransactionDataResponseBindingDTO, BindingError> {
+        let core = self.use_core().await?;
+        Ok(core
+            .proof_service
+            .holder_transaction_data_details(&into_id(&proof_id)?, &into_id(&transaction_data_id)?)
             .await?
             .into())
     }
@@ -545,6 +566,47 @@ pub(crate) struct PresentationDefinitionTransactionDataBindingDTO {
     pub r#type: String,
     #[from(with_fn = convert_inner)]
     pub credential_query_ids: Vec<String>,
+}
+
+/// Details of a single (holder-side) transaction data entry of a proof request.
+#[derive(Debug, From, uniffi::Record)]
+#[from(ProofTransactionDataResponseDTO)]
+#[uniffi(name = "ProofTransactionData")]
+pub(crate) struct ProofTransactionDataResponseBindingDTO {
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub id: String,
+    /// The transaction data provider that validated this entry.
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub r#type: String,
+    /// Credential query ids the transaction data is bound to.
+    #[from(with_fn = convert_inner)]
+    pub credential_query_ids: Vec<String>,
+    /// Grouped key-value data for displaying the transaction to the user.
+    #[from(with_fn = convert_inner)]
+    pub transaction_data_display: Vec<TransactionDataDisplayBindingDTO>,
+    /// The raw transaction data received from the verifier, encoded as a JSON
+    /// string.
+    #[from(with_fn = inner_to_string)]
+    pub raw_transaction_data: Option<String>,
+}
+
+#[derive(Debug, From, uniffi::Record)]
+#[from(TransactionDataDisplayValue)]
+#[uniffi(name = "TransactionDataDisplay")]
+pub(crate) struct TransactionDataDisplayBindingDTO {
+    pub title: String,
+    #[from(with_fn = convert_inner)]
+    pub attributes: Vec<TransactionDataDisplayAttributeBindingDTO>,
+}
+
+#[derive(Debug, From, uniffi::Record)]
+#[from(TransactionDataDisplayAttribute)]
+#[uniffi(name = "TransactionDataDisplayAttribute")]
+pub(crate) struct TransactionDataDisplayAttributeBindingDTO {
+    pub key: String,
+    /// The attribute value, encoded as a JSON string.
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub value: String,
 }
 
 #[derive(Debug, From, uniffi::Record)]
