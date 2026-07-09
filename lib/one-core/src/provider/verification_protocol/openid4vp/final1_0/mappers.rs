@@ -150,14 +150,7 @@ pub(crate) async fn create_openid4vp_final1_0_authorization_request(
 fn format_params_for_redirect_uri(
     authorization_request: AuthorizationRequest,
 ) -> Result<AuthorizationRequestQueryParams, VerificationProtocolError> {
-    let Some(dcql_query) = authorization_request.dcql_query else {
-        return Err(VerificationProtocolError::Failed(
-            "dcql_query is None".to_string(),
-        ));
-    };
-
-    let dcql_query = serde_json::to_string(&dcql_query)?;
-
+    let dcql_query = serde_json::to_string(&authorization_request.dcql_query)?;
     let metadata = serde_json::to_string(&authorization_request.client_metadata)?;
 
     Ok(AuthorizationRequestQueryParams {
@@ -251,7 +244,9 @@ impl TryFrom<AuthorizationRequestQueryParams> for AuthorizationRequest {
                 })?,
             client_metadata: query_params.client_metadata.map(json_parse).transpose()?,
             redirect_uri: query_params.redirect_uri,
-            dcql_query: query_params.dcql_query.map(json_parse).transpose()?,
+            dcql_query: query_params.dcql_query.map(json_parse).transpose()?.ok_or(
+                VerificationProtocolError::InvalidRequest("missing dcql query".to_string()),
+            )?,
             verifier_info: vec![],
             transaction_data: query_params.transaction_data.unwrap_or_default(),
         })
@@ -287,8 +282,6 @@ impl TryFrom<AuthorizationRequest> for OpenID4VPHolderInteractionData {
             client_metadata_uri: None,
             response_mode: value.response_mode,
             response_uri,
-            presentation_definition: None,
-            presentation_definition_uri: None,
             dcql_query: value.dcql_query,
             transaction_data: HolderTxData::Unvalidated(value.transaction_data),
             redirect_uri: value.redirect_uri,

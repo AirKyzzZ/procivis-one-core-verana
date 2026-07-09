@@ -476,29 +476,17 @@ pub(super) fn validate_interaction_data(
         ));
     }
 
-    if interaction_data.presentation_definition.is_some() {
-        return Err(VerificationProtocolError::InvalidRequest(
-            "presentation_definition must be None".to_string(),
-        ));
-    }
-
-    if interaction_data.presentation_definition_uri.is_some() {
-        return Err(VerificationProtocolError::InvalidRequest(
-            "presentation_definition_uri must be None".to_string(),
-        ));
-    }
-
-    let Some(dcql_query) = &interaction_data.dcql_query else {
-        return Err(VerificationProtocolError::InvalidRequest(
-            "dcql_query must be set".to_string(),
-        ));
-    };
-    if let Some(credential_sets) = &dcql_query.credential_sets {
+    if let Some(credential_sets) = &interaction_data.dcql_query.credential_sets {
         for query_id in credential_sets
             .iter()
             .flat_map(|s| s.options.iter().flatten())
         {
-            if !dcql_query.credentials.iter().any(|c| c.id == *query_id) {
+            if !interaction_data
+                .dcql_query
+                .credentials
+                .iter()
+                .any(|c| c.id == *query_id)
+            {
                 return Err(VerificationProtocolError::InvalidRequest(format!(
                     "invalid DCQL query: credential_set is referring to a non-existing credential query `{query_id}`"
                 )));

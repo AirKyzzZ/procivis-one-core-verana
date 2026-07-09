@@ -5,9 +5,9 @@ use dcql::{CredentialQueryId, DcqlQuery};
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-use shared_types::{ClaimSchemaId, InteractionId, KeyId, TransactionDataId, TransactionDataType};
+use shared_types::{InteractionId, KeyId, TransactionDataId, TransactionDataType};
 use standardized_types::jwk::PublicJwk;
-use standardized_types::openid4vp::{ClientMetadata, PresentationFormat, ResponseMode};
+use standardized_types::openid4vp::{ClientMetadata, ResponseMode};
 use strum::{Display, EnumString};
 use time::OffsetDateTime;
 use url::Url;
@@ -93,9 +93,8 @@ pub struct OpenID4VPClientMetadataJwks {
 #[derive(Clone, Deserialize, Serialize, Debug)]
 pub(crate) struct OpenID4VPVerifierInteractionContent {
     pub nonce: String,
-    #[serde(default)]
     #[serde(deserialize_with = "deserialize_with_serde_json")]
-    pub dcql_query: Option<DcqlQuery>,
+    pub dcql_query: DcqlQuery,
     /// with client_id_scheme prefix (for Final 1.0)
     pub client_id: String,
     pub client_id_scheme: Option<ClientIdScheme>,
@@ -113,56 +112,6 @@ pub(crate) struct TransactionDataRequest {
     pub name: TransactionDataType,
     pub credential_ids: Vec<CredentialQueryId>,
     pub data: Option<serde_json::Value>,
-}
-
-#[derive(Clone, Deserialize, Serialize, Debug, PartialEq)]
-pub struct OpenID4VPPresentationDefinition {
-    pub id: String,
-    pub input_descriptors: Vec<OpenID4VPPresentationDefinitionInputDescriptor>,
-}
-
-#[skip_serializing_none]
-#[derive(Clone, Deserialize, Serialize, Debug, PartialEq)]
-pub struct OpenID4VPPresentationDefinitionInputDescriptor {
-    pub id: String,
-    pub name: Option<String>,
-    pub purpose: Option<String>,
-    pub format: HashMap<String, PresentationFormat>,
-    pub constraints: OpenID4VPPresentationDefinitionConstraint,
-}
-
-#[skip_serializing_none]
-#[derive(Clone, Deserialize, Serialize, Debug, PartialEq)]
-pub struct OpenID4VPPresentationDefinitionConstraint {
-    pub fields: Vec<OpenID4VPPresentationDefinitionConstraintField>,
-    #[serde(default)]
-    pub limit_disclosure: Option<OpenID4VPPresentationDefinitionLimitDisclosurePreference>,
-}
-
-#[derive(Clone, Deserialize, Serialize, Debug, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub enum OpenID4VPPresentationDefinitionLimitDisclosurePreference {
-    Required,
-    Preferred,
-}
-
-#[skip_serializing_none]
-#[derive(Clone, Deserialize, Serialize, Debug, PartialEq)]
-pub struct OpenID4VPPresentationDefinitionConstraintField {
-    pub id: Option<ClaimSchemaId>,
-    pub name: Option<String>,
-    pub purpose: Option<String>,
-    pub path: Vec<String>,
-    pub optional: Option<bool>,
-    pub filter: Option<OpenID4VPPresentationDefinitionConstraintFieldFilter>,
-    #[serde(default)]
-    pub intent_to_retain: Option<bool>,
-}
-
-#[derive(Clone, Deserialize, Serialize, Debug, PartialEq)]
-pub struct OpenID4VPPresentationDefinitionConstraintFieldFilter {
-    pub r#type: String,
-    pub r#const: String,
 }
 
 #[derive(Debug, Clone)]
@@ -197,13 +146,8 @@ pub(crate) struct OpenID4VPHolderInteractionData {
     pub client_metadata_uri: Option<Url>,
     pub response_mode: Option<ResponseMode>,
     pub response_uri: Option<Url>,
-    #[serde(default)]
     #[serde(deserialize_with = "deserialize_with_serde_json")]
-    pub presentation_definition: Option<OpenID4VPPresentationDefinition>,
-    pub presentation_definition_uri: Option<Url>,
-    #[serde(default)]
-    #[serde(deserialize_with = "deserialize_with_serde_json")]
-    pub dcql_query: Option<DcqlQuery>,
+    pub dcql_query: DcqlQuery,
     #[serde(default)]
     pub transaction_data: HolderTxData,
 

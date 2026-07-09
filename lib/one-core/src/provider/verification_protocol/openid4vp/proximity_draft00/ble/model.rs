@@ -76,8 +76,16 @@ mod tests {
             protocol_data: BLEVerifierProtocolData::V2 {
                 request: AuthorizationRequest {
                     client_id: "client_id".to_string(),
-                    dcql_query: Some(dcql_query.clone()),
-                    ..Default::default()
+                    state: None,
+                    nonce: None,
+                    response_type: None,
+                    response_mode: None,
+                    response_uri: None,
+                    client_metadata: None,
+                    dcql_query: dcql_query.clone(),
+                    redirect_uri: None,
+                    verifier_info: vec![],
+                    transaction_data: vec![],
                 },
                 submission: None,
                 dcql_query: dcql_query.to_owned(),
@@ -91,6 +99,6 @@ mod tests {
 
         assert_eq!(deserialized.client_id, "client_id");
         assert_eq!(deserialized.nonce, "nonce");
-        assert_eq!(deserialized.dcql_query, Some(dcql_query));
+        assert_eq!(deserialized.dcql_query, dcql_query);
     }
 }

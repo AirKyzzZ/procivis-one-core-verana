@@ -355,9 +355,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
             key_provider: &*self.key_provider,
             config: self.config.clone(),
             // Will be filled in later using holder transport
-            dcql_query: None,
             client_id: "",
-            identity_request_nonce: None,
             nonce: "",
         };
 
@@ -601,14 +599,9 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
         })?;
 
         let interaction_data = self.parse_interaction_data(context, transport)?;
-        let dcql_query = interaction_data
-            .dcql_query
-            .ok_or(VerificationProtocolError::Failed(
-                "Presentation definition not found".to_string(),
-            ))?;
 
         get_presentation_definition_v2(
-            dcql_query,
+            interaction_data.dcql_query,
             proof,
             &*self.credential_repository,
             &*self.credential_schema_repository,
@@ -726,10 +719,8 @@ pub(super) async fn create_interaction_and_proof(
 
 pub(super) struct CreatePresentationParams<'a> {
     credential_presentations: Vec<FormattedCredentialPresentation>,
-    dcql_query: Option<&'a DcqlQuery>,
 
     client_id: &'a str,
-    identity_request_nonce: Option<&'a str>,
     nonce: &'a str,
 
     presentation_formatter_provider: &'a dyn PresentationFormatterProvider,

@@ -190,7 +190,6 @@ impl ProximityHolderTransport for MqttHolderTransport {
             client_id: interaction_data.client_id,
             dcql_query: interaction_data.dcql_query,
             nonce: interaction_data.nonce,
-            identity_request_nonce: Some(interaction_data.identity_request_nonce),
         })
     }
 

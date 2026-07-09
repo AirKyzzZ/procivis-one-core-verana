@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used)]
 
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
+use dcql::{CredentialFormat, CredentialQuery, DcqlQuery, W3cVcMeta};
 use indoc::indoc;
 use serde::{Deserialize, Serialize};
 use shared_types::{DidValue, IdentifierId, OrganisationId};
@@ -637,4 +638,21 @@ pub fn dummy_jwk() -> PublicJwk {
         x: Base64UrlSafeNoPadding::encode_to_string("xabc").unwrap(),
         y: Some(Base64UrlSafeNoPadding::encode_to_string("yabc").unwrap()),
     })
+}
+
+pub fn dummy_dcql_query(require_cryptographic_holder_binding: bool) -> DcqlQuery {
+    DcqlQuery {
+        credentials: vec![CredentialQuery {
+            id: "a83dabc3-1601-4642-84ec-7a5ad8a70d36".into(),
+            format: CredentialFormat::JwtVc(W3cVcMeta {
+                type_values: vec![vec!["CredentialSchemaId".to_string()]],
+            }),
+            claims: None,
+            claim_sets: None,
+            trusted_authorities: None,
+            multiple: false,
+            require_cryptographic_holder_binding,
+        }],
+        credential_sets: None,
+    }
 }

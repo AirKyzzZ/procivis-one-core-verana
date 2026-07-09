@@ -61,8 +61,8 @@ use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 use crate::service::test_utilities::{
-    dummy_claim_schema, dummy_credential_schema, dummy_identifier, dummy_organisation,
-    generic_config,
+    dummy_claim_schema, dummy_credential_schema, dummy_dcql_query, dummy_identifier,
+    dummy_organisation, generic_config,
 };
 
 #[derive(Default)]
@@ -268,9 +268,7 @@ fn test_holder_interaction_data(
         client_metadata_uri: None,
         response_mode,
         response_uri: Some("https://verifier.example.com/response".parse().unwrap()),
-        presentation_definition: None,
-        presentation_definition_uri: None,
-        dcql_query: None,
+        dcql_query: dummy_dcql_query(true),
         transaction_data: Default::default(),
         redirect_uri: None,
         verifier_details: None,

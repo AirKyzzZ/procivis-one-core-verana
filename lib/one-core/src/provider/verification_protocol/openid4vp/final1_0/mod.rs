@@ -259,13 +259,9 @@ impl OpenID4VPFinal1_0 {
             // Look up the credential query to check require_cryptographic_holder_binding
             let require_holder_binding = interaction_data
                 .dcql_query
-                .as_ref()
-                .and_then(|query| {
-                    query
-                        .credentials
-                        .iter()
-                        .find(|cq| cq.id == credential_query_id)
-                })
+                .credentials
+                .iter()
+                .find(|cq| cq.id == credential_query_id)
                 .map(|cq| cq.require_cryptographic_holder_binding)
                 .unwrap_or(true);
 
@@ -419,9 +415,6 @@ impl OpenID4VPFinal1_0 {
             &holder_interaction_data.transaction_data
         {
             let mut validated_tx_data = IndexMap::with_capacity(transaction_data.len());
-            let dcql_query = holder_interaction_data.dcql_query.as_ref().ok_or(
-                VerificationProtocolError::InvalidRequest("missing DCQL query".to_string()),
-            )?;
             for (idx, tx_data) in transaction_data.iter().enumerate() {
                 let data = self
                     .transaction_data_provider
@@ -431,7 +424,8 @@ impl OpenID4VPFinal1_0 {
                     .error_while("validating transaction data")?;
 
                 for credential_query_id in &validated.credential_ids {
-                    let Some(query) = dcql_query
+                    let Some(query) = holder_interaction_data
+                        .dcql_query
                         .credentials
                         .iter()
                         .find(|c| &c.id == credential_query_id)
@@ -777,14 +771,8 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
     ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
         let interaction_data: OpenID4VPHolderInteractionData = serde_json::from_value(context)?;
 
-        let dcql_query = interaction_data
-            .dcql_query
-            .ok_or(VerificationProtocolError::Failed(
-                "missing dcql_query".to_string(),
-            ))?;
-
         get_presentation_definition_v2(
-            dcql_query,
+            interaction_data.dcql_query,
             proof,
             &*self.credential_repository,
             &*self.credential_schema_repository,

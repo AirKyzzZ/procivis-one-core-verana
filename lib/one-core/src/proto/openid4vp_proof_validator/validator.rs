@@ -119,12 +119,6 @@ impl OpenId4VpProofValidatorProto {
             ));
         };
 
-        let Some(dcql_query) = interaction_data.dcql_query.as_ref() else {
-            return Err(OpenID4VCError::ValidationError(
-                "Missing DCQL query in interaction data".to_string(),
-            ));
-        };
-
         let proof_input_schemas = proof
             .schema
             .as_ref()
@@ -133,7 +127,7 @@ impl OpenId4VpProofValidatorProto {
                 "missing proof input schema".to_string(),
             ))?;
 
-        if vp_token.len() != dcql_query.credentials.len() {
+        if vp_token.len() != interaction_data.dcql_query.credentials.len() {
             return Err(OpenID4VCError::ValidationError(
                 "Different count of requested and submitted credentials".to_string(),
             ));
@@ -144,7 +138,7 @@ impl OpenId4VpProofValidatorProto {
 
         // Iterate over each credential query, validate the associated presentation(s),
         // and extract the credential(s).
-        for credential_query in &dcql_query.credentials {
+        for credential_query in &interaction_data.dcql_query.credentials {
             let dcql_credential_format = &credential_query.format;
             let query_id = credential_query.id.to_string();
 

@@ -104,7 +104,7 @@ async fn test_submit_proof_failed_on_validator_failure() {
     let interaction_data = OpenID4VPVerifierInteractionContent {
         nonce: nonce.to_owned(),
         encryption_key: None,
-        dcql_query: None,
+        dcql_query: dummy_dcql_query(true),
         client_id: "client_id".to_string(),
         client_id_scheme: Some(ClientIdScheme::RedirectUri),
         response_uri: None,
@@ -240,7 +240,7 @@ async fn test_submit_proof_failed_on_trust_failure() {
     let interaction_data = OpenID4VPVerifierInteractionContent {
         nonce: nonce.to_owned(),
         encryption_key: None,
-        dcql_query: None,
+        dcql_query: dummy_dcql_query(true),
         client_id: "client_id".to_string(),
         client_id_scheme: Some(ClientIdScheme::RedirectUri),
         response_uri: None,

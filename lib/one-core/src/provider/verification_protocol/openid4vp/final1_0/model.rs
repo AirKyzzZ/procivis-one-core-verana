@@ -79,7 +79,7 @@ pub(crate) struct AuthorizationRequestQueryParams {
 
 #[serde_as]
 #[skip_serializing_none]
-#[derive(Clone, Deserialize, Serialize, Debug, Default)]
+#[derive(Clone, Deserialize, Serialize, Debug)]
 pub(crate) struct AuthorizationRequest {
     /// with client_id_scheme prefix
     pub client_id: String,
@@ -99,8 +99,7 @@ pub(crate) struct AuthorizationRequest {
     #[serde(default, deserialize_with = "deserialize_with_serde_json")]
     pub client_metadata: Option<ClientMetadata>,
 
-    #[serde(default)]
-    pub dcql_query: Option<DcqlQuery>,
+    pub dcql_query: DcqlQuery,
 
     #[serde(default)]
     pub redirect_uri: Option<String>,

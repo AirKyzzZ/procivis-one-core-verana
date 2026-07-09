@@ -241,9 +241,16 @@ async fn get_request_v2(
 ) -> Result<(String, AuthorizationRequest), VerificationProtocolError> {
     let request = AuthorizationRequest {
         nonce: Some(nonce),
+        response_type: None,
+        response_mode: None,
+        response_uri: None,
         client_id: encode_client_id_with_scheme(params.did.to_string(), ClientIdScheme::Did, false),
-        dcql_query: Some(params.dcql_query.clone()),
-        ..Default::default()
+        dcql_query: params.dcql_query.clone(),
+        redirect_uri: None,
+        verifier_info: vec![],
+        state: None,
+        client_metadata: None,
+        transaction_data: vec![],
     };
     let signed_request = request_as_signed_jwt(request.clone(), &params.did, auth_fn).await?;
     Ok((signed_request, request))

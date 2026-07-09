@@ -129,9 +129,8 @@ pub(crate) async fn handle_invitation_with_transport<T: Send + Sync + 'static>(
 
 pub(crate) struct HolderCommonVPInteractionData {
     pub client_id: String,
-    pub dcql_query: Option<DcqlQuery>,
+    pub dcql_query: DcqlQuery,
     pub nonce: String,
-    pub identity_request_nonce: Option<String>,
 }
 
 pub(crate) async fn submit_proof_with_transport<T: Send + Sync + 'static>(
@@ -142,9 +141,7 @@ pub(crate) async fn submit_proof_with_transport<T: Send + Sync + 'static>(
     let parsed_interaction_data = transport.parse_interaction_data(interaction_data.clone())?;
 
     params.client_id = &parsed_interaction_data.client_id;
-    params.identity_request_nonce = parsed_interaction_data.identity_request_nonce.as_deref();
     params.nonce = &parsed_interaction_data.nonce;
-    params.dcql_query = parsed_interaction_data.dcql_query.as_ref();
 
     let presentation = create_presentation(params).await?;
     transport

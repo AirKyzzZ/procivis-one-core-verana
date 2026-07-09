@@ -25,7 +25,7 @@ pub(crate) struct MQTTOpenID4VPInteractionDataHolder {
     pub nonce: String,
     pub identity_request_nonce: String,
     pub session_keys: MQTTSessionKeys,
-    pub dcql_query: Option<DcqlQuery>,
+    pub dcql_query: DcqlQuery,
     pub topic_id: Uuid,
 }
 
@@ -86,6 +86,6 @@ mod tests {
 
         assert_eq!(deserialized.client_id, "client_id");
         assert_eq!(deserialized.nonce, "nonce");
-        assert_eq!(deserialized.dcql_query, Some(dcql_query));
+        assert_eq!(deserialized.dcql_query, dcql_query);
     }
 }

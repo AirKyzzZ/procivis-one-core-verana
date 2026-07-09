@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use dcql::{CredentialFormat, CredentialQuery, DcqlQuery, MsoMdocMeta, W3cVcMeta};
+use dcql::{CredentialFormat, CredentialQuery, DcqlQuery, MsoMdocMeta};
 use indexmap::IndexMap;
 use maplit::hashmap;
 use one_dto_mapper::try_convert_inner;
@@ -48,8 +48,9 @@ use crate::provider::verification_protocol::openid4vp::model::{
     TransactionDataRequest, VpSubmissionData,
 };
 use crate::service::test_utilities::{
-    dummy_claim_schema, dummy_credential_schema, dummy_did, dummy_identifier, dummy_organisation,
-    dummy_proof_schema, dummy_proof_with_protocol, generic_formatter_capabilities,
+    dummy_claim_schema, dummy_credential_schema, dummy_dcql_query, dummy_did, dummy_identifier,
+    dummy_organisation, dummy_proof_schema, dummy_proof_with_protocol,
+    generic_formatter_capabilities,
 };
 
 #[derive(Default)]
@@ -93,7 +94,7 @@ fn setup_proto(mocks: Mocks) -> OpenId4VpProofValidatorProto {
 
 #[tokio::test]
 async fn test_validate_submission_success_dcql() {
-    let test_data = test_data(Some(dummy_dcql_query(true)));
+    let test_data = test_data(dummy_dcql_query(true));
     let mocks = mocks_with_test_data(test_data.mock_data);
     let proto = setup_proto(mocks);
 
@@ -124,7 +125,7 @@ async fn test_validate_submission_success_dcql() {
 
 #[tokio::test]
 async fn test_validate_submission_suspended_dcql() {
-    let mut test_data = test_data(Some(dummy_dcql_query(true)));
+    let mut test_data = test_data(dummy_dcql_query(true));
     test_data.mock_data.revocation_check = Some(Ok(RevocationState::Suspended {
         suspend_end_date: None,
     }));
@@ -152,7 +153,7 @@ async fn test_validate_submission_suspended_dcql() {
 
 #[tokio::test]
 async fn test_validate_submission_incompatible_did_method() {
-    let mut test_data = test_data(Some(dummy_dcql_query(true)));
+    let mut test_data = test_data(dummy_dcql_query(true));
     test_data
         .mock_data
         .presentation_extraction_unverified
@@ -292,24 +293,7 @@ fn mocks_with_test_data(mock_data: MockData) -> Mocks {
     )
 }
 
-fn dummy_dcql_query(require_cryptographic_holder_binding: bool) -> DcqlQuery {
-    DcqlQuery {
-        credentials: vec![CredentialQuery {
-            id: "a83dabc3-1601-4642-84ec-7a5ad8a70d36".into(),
-            format: CredentialFormat::JwtVc(W3cVcMeta {
-                type_values: vec![vec!["CredentialSchemaId".to_string()]],
-            }),
-            claims: None,
-            claim_sets: None,
-            trusted_authorities: None,
-            multiple: false,
-            require_cryptographic_holder_binding,
-        }],
-        credential_sets: None,
-    }
-}
-
-fn test_data(dcql_query: Option<DcqlQuery>) -> TestData {
+fn test_data(dcql_query: DcqlQuery) -> TestData {
     let issuer_did: DidValue = "did:issuer:123".parse().unwrap();
     let holder_did: DidValue = "did:holder:123".parse().unwrap();
     let verifier_did: DidValue = "did:verifier:123".parse().unwrap();
@@ -465,7 +449,7 @@ fn test_data(dcql_query: Option<DcqlQuery>) -> TestData {
 
 #[tokio::test]
 async fn test_validate_submission_dcql_no_holder_binding() {
-    let mut test_data = test_data(Some(dummy_dcql_query(false)));
+    let mut test_data = test_data(dummy_dcql_query(false));
     // No VP extraction for bare credentials
     test_data.mock_data.presentation_extraction = None;
     test_data.mock_data.presentation_extraction_unverified = None;
@@ -549,7 +533,7 @@ fn transaction_data_mocks(mocks: &mut Mocks) {
 
 #[tokio::test]
 async fn test_validate_submission_transaction_data_authorized() {
-    let mut test_data = test_data(Some(mdoc_dcql_query()));
+    let mut test_data = test_data(mdoc_dcql_query());
     test_data.interaction_data.transaction_data = vec![transaction_data_request()];
     test_data
         .mock_data
@@ -587,7 +571,7 @@ async fn test_validate_submission_transaction_data_authorized() {
 
 #[tokio::test]
 async fn test_validate_submission_transaction_data_missing_evidence() {
-    let mut test_data = test_data(Some(mdoc_dcql_query()));
+    let mut test_data = test_data(mdoc_dcql_query());
     test_data.interaction_data.transaction_data = vec![transaction_data_request()];
 
     let mut mocks = mocks_with_test_data(test_data.mock_data);
@@ -616,7 +600,7 @@ async fn test_validate_submission_transaction_data_missing_evidence() {
 
 #[tokio::test]
 async fn test_validate_submission_transaction_data_duplicate_entries() {
-    let mut test_data = test_data(Some(mdoc_dcql_query()));
+    let mut test_data = test_data(mdoc_dcql_query());
     test_data.interaction_data.transaction_data =
         vec![transaction_data_request(), transaction_data_request()];
     test_data

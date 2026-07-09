@@ -201,9 +201,7 @@ impl ProximityHolderTransport for BleHolderTransport {
                 ))?,
             task_id: context.task_id,
             peer: context.ble_peer,
-            dcql_query: authz_request.dcql_query.clone().ok_or(
-                VerificationProtocolError::InvalidRequest("dcql_query missing".to_string()),
-            )?,
+            dcql_query: authz_request.dcql_query.clone(),
             openid_request: authz_request,
             identity_request_nonce,
             presentation_submission: None,
@@ -221,7 +219,6 @@ impl ProximityHolderTransport for BleHolderTransport {
             client_id: interaction_data.client_id,
             dcql_query: interaction_data.openid_request.dcql_query,
             nonce: interaction_data.nonce,
-            identity_request_nonce: interaction_data.identity_request_nonce,
         })
     }
 

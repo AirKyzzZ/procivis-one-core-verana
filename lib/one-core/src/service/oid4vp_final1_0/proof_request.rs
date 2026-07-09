@@ -42,7 +42,7 @@ pub(crate) fn generate_authorization_request_params_final1_0(
         ),
         nonce: Some(nonce),
         state: Some(interaction_id.to_string()),
-        dcql_query: Some(dcql_query),
+        dcql_query,
         transaction_data,
         redirect_uri: None,
         verifier_info,

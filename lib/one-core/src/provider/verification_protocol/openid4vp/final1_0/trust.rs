@@ -100,10 +100,6 @@ impl OpenID4VPFinal1_0 {
             }
         };
 
-        let dcql_query = authorization_request.dcql_query.as_ref().ok_or(
-            VerificationProtocolError::InvalidRequest("missing dcql_query".to_string()),
-        )?;
-
         let reg_cert_result = if authorization_request.verifier_info.is_empty() {
             let registry_url = access_certificate_trust.registry_url.as_ref().ok_or(
                 VerificationProtocolError::InvalidRequest("missing registry URL".to_string()),
@@ -112,7 +108,7 @@ impl OpenID4VPFinal1_0 {
             self.validate_against_registry_info(
                 &access_certificate_trust.relying_party_id,
                 registry_url,
-                dcql_query,
+                &authorization_request.dcql_query,
                 proof_id,
                 organisation_id,
             )
@@ -121,7 +117,7 @@ impl OpenID4VPFinal1_0 {
             // check query against registration certificates
             self.validate_registration_certificates(
                 &authorization_request.verifier_info,
-                dcql_query,
+                &authorization_request.dcql_query,
                 &access_certificate_trust.relying_party_id,
                 proof_id,
                 organisation_id,

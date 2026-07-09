@@ -35,7 +35,7 @@ use crate::provider::verification_protocol::openid4vp::proximity_draft00::holder
 };
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::peer_encryption::PeerEncryption;
 use crate::repository::interaction_repository::MockInteractionRepository;
-use crate::service::test_utilities::{dummy_organisation, generic_config};
+use crate::service::test_utilities::{dummy_dcql_query, dummy_organisation, generic_config};
 
 #[derive(Default)]
 struct TestInputs<'a> {
@@ -237,12 +237,19 @@ async fn test_handle_invitation_success() {
     let handle = holder_identity_request.clone();
     let request = AuthorizationRequest {
         client_id: format!("decentralized_identifier:{verifier_did}"),
+        state: None,
         nonce: Some("nonce".to_string()),
-        dcql_query: Some(DcqlQuery {
+        response_type: None,
+        response_mode: None,
+        response_uri: None,
+        client_metadata: None,
+        dcql_query: DcqlQuery {
             credentials: vec![],
             credential_sets: None,
-        }),
-        ..Default::default()
+        },
+        redirect_uri: None,
+        verifier_info: vec![],
+        transaction_data: vec![],
     };
     let signed = request_as_signed_jwt(request, &verifier_did, Box::new(auth_fn))
         .await
@@ -378,7 +385,7 @@ async fn test_presentation_reject_success() {
             sender_key: holder_session_keys.sender_key,
             nonce: holder_session_keys.nonce,
         },
-        dcql_query: None,
+        dcql_query: dummy_dcql_query(true),
         identity_request_nonce: "identity_request_nonce".to_string(),
         topic_id,
     };
