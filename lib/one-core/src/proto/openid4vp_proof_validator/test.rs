@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use dcql::{CredentialFormat, CredentialQuery, DcqlQuery, W3cVcMeta};
+use dcql::{CredentialFormat, CredentialQuery, DcqlQuery, MsoMdocMeta, W3cVcMeta};
+use indexmap::IndexMap;
 use maplit::hashmap;
 use one_dto_mapper::try_convert_inner;
 use serde_json::json;
@@ -31,15 +32,20 @@ use crate::provider::credential_formatter::provider::MockCredentialFormatterProv
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::presentation_formatter::MockPresentationFormatter;
-use crate::provider::presentation_formatter::model::ExtractedPresentation;
+use crate::provider::presentation_formatter::model::{
+    ExtractedPresentation, PresentedTransactionData,
+};
 use crate::provider::presentation_formatter::provider::MockPresentationFormatterProvider;
 use crate::provider::revocation::MockRevocationMethod;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::RevocationState;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
+use crate::provider::transaction_data::provider::MockTransactionDataProvider;
+use crate::provider::transaction_data::{MockTransactionData, TransactionDataAuthorization};
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::model::{
-    DcqlSubmission, OpenID4VPVerifierInteractionContent, SubmissionRequestData, VpSubmissionData,
+    DcqlSubmission, OpenID4VPVerifierInteractionContent, SubmissionRequestData,
+    TransactionDataRequest, VpSubmissionData,
 };
 use crate::service::test_utilities::{
     dummy_claim_schema, dummy_credential_schema, dummy_did, dummy_identifier, dummy_organisation,
@@ -54,6 +60,7 @@ struct Mocks {
     key_algorithm_provider: MockKeyAlgorithmProvider,
     revocation_method_provider: MockRevocationMethodProvider,
     certificate_validator: MockCertificateValidator,
+    transaction_data_provider: MockTransactionDataProvider,
 }
 
 struct TestData {
@@ -80,6 +87,7 @@ fn setup_proto(mocks: Mocks) -> OpenId4VpProofValidatorProto {
         Arc::new(mocks.key_algorithm_provider),
         Arc::new(mocks.revocation_method_provider),
         Arc::new(mocks.certificate_validator),
+        Arc::new(mocks.transaction_data_provider),
     )
 }
 
@@ -316,6 +324,7 @@ fn test_data(dcql_query: Option<DcqlQuery>) -> TestData {
         client_id: "client_id".to_string(),
         client_id_scheme: None,
         response_uri: None,
+        transaction_data: vec![],
     };
     let interaction_data_serialized = serde_json::to_vec(&interaction_data).unwrap();
     let interaction = Interaction {
@@ -436,6 +445,7 @@ fn test_data(dcql_query: Option<DcqlQuery>) -> TestData {
         issuer: Some(IdentifierDetails::Did(holder_did)),
         nonce: Some(nonce),
         credentials: vec!["credential".into()],
+        transaction_data: None,
     };
 
     let mock_data = MockData {
@@ -484,5 +494,164 @@ async fn test_validate_submission_dcql_no_holder_binding() {
     assert_eq!(
         result.0.proved_credentials.first().unwrap().issuer_details,
         IdentifierDetails::Did(test_data.issuer_did.to_owned())
+    );
+}
+
+fn mdoc_dcql_query() -> DcqlQuery {
+    DcqlQuery {
+        credentials: vec![CredentialQuery {
+            id: "a83dabc3-1601-4642-84ec-7a5ad8a70d36".into(),
+            format: CredentialFormat::MsoMdoc(MsoMdocMeta {
+                doctype_value: "org.iso.18013.5.1.mDL".to_string(),
+            }),
+            claims: None,
+            claim_sets: None,
+            trusted_authorities: None,
+            multiple: false,
+            require_cryptographic_holder_binding: true,
+        }],
+        credential_sets: None,
+    }
+}
+
+fn qes_approval_evidence() -> IndexMap<String, IndexMap<String, ciborium::Value>> {
+    IndexMap::from([(
+        "org.cloudsignatureconsortium.dm.1".to_string(),
+        IndexMap::from([(
+            "qesApproval".to_string(),
+            ciborium::Value::Bytes(vec![1, 2, 3]),
+        )]),
+    )])
+}
+
+fn transaction_data_request() -> TransactionDataRequest {
+    TransactionDataRequest {
+        name: "QES_APPROVAL".into(),
+        credential_ids: vec!["a83dabc3-1601-4642-84ec-7a5ad8a70d36".into()],
+        data: None,
+    }
+}
+
+fn transaction_data_mocks(mocks: &mut Mocks) {
+    let mut transaction_data = MockTransactionData::new();
+    transaction_data
+        .expect_prepare_transaction_data()
+        .returning(|_, _| Ok("ZW5jb2RlZC1lbnRyeQ".to_string()));
+    transaction_data
+        .expect_verify_transaction_data()
+        .returning(|_, _, _| Ok(TransactionDataAuthorization::Authorized));
+    let transaction_data = Arc::new(transaction_data);
+    mocks
+        .transaction_data_provider
+        .expect_get_transaction_data_by_name()
+        .returning(move |_| Ok(transaction_data.clone()));
+}
+
+#[tokio::test]
+async fn test_validate_submission_transaction_data_authorized() {
+    let mut test_data = test_data(Some(mdoc_dcql_query()));
+    test_data.interaction_data.transaction_data = vec![transaction_data_request()];
+    test_data
+        .mock_data
+        .presentation_extraction
+        .as_mut()
+        .unwrap()
+        .as_mut()
+        .unwrap()
+        .transaction_data = Some(PresentedTransactionData::DeviceSignedElements(
+        qes_approval_evidence(),
+    ));
+
+    let mut mocks = mocks_with_test_data(test_data.mock_data);
+    transaction_data_mocks(&mut mocks);
+    let proto = setup_proto(mocks);
+
+    let submission_data = SubmissionRequestData {
+        submission_data: VpSubmissionData::Dcql(DcqlSubmission {
+            vp_token: hashmap! {"a83dabc3-1601-4642-84ec-7a5ad8a70d36".to_string() => vec!["vp_token".to_string()]},
+        }),
+        state: "a83dabc3-1601-4642-84ec-7a5ad8a70d36".parse().unwrap(),
+        mdoc_generated_nonce: None,
+        encryption_key: None,
+    };
+    proto
+        .validate_submission(
+            submission_data,
+            test_data.proof,
+            test_data.interaction_data,
+            VerificationProtocolType::OpenId4VpFinal1_0,
+        )
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn test_validate_submission_transaction_data_missing_evidence() {
+    let mut test_data = test_data(Some(mdoc_dcql_query()));
+    test_data.interaction_data.transaction_data = vec![transaction_data_request()];
+
+    let mut mocks = mocks_with_test_data(test_data.mock_data);
+    transaction_data_mocks(&mut mocks);
+    let proto = setup_proto(mocks);
+
+    let submission_data = SubmissionRequestData {
+        submission_data: VpSubmissionData::Dcql(DcqlSubmission {
+            vp_token: hashmap! {"a83dabc3-1601-4642-84ec-7a5ad8a70d36".to_string() => vec!["vp_token".to_string()]},
+        }),
+        state: "a83dabc3-1601-4642-84ec-7a5ad8a70d36".parse().unwrap(),
+        mdoc_generated_nonce: None,
+        encryption_key: None,
+    };
+    let err = proto
+        .validate_submission(
+            submission_data,
+            test_data.proof,
+            test_data.interaction_data,
+            VerificationProtocolType::OpenId4VpFinal1_0,
+        )
+        .await
+        .unwrap_err();
+    assert!(matches!(err, OpenID4VCError::ValidationError(_)));
+}
+
+#[tokio::test]
+async fn test_validate_submission_transaction_data_duplicate_entries() {
+    let mut test_data = test_data(Some(mdoc_dcql_query()));
+    test_data.interaction_data.transaction_data =
+        vec![transaction_data_request(), transaction_data_request()];
+    test_data
+        .mock_data
+        .presentation_extraction
+        .as_mut()
+        .unwrap()
+        .as_mut()
+        .unwrap()
+        .transaction_data = Some(PresentedTransactionData::DeviceSignedElements(
+        qes_approval_evidence(),
+    ));
+
+    let mut mocks = mocks_with_test_data(test_data.mock_data);
+    transaction_data_mocks(&mut mocks);
+    let proto = setup_proto(mocks);
+
+    let submission_data = SubmissionRequestData {
+        submission_data: VpSubmissionData::Dcql(DcqlSubmission {
+            vp_token: hashmap! {"a83dabc3-1601-4642-84ec-7a5ad8a70d36".to_string() => vec!["vp_token".to_string()]},
+        }),
+        state: "a83dabc3-1601-4642-84ec-7a5ad8a70d36".parse().unwrap(),
+        mdoc_generated_nonce: None,
+        encryption_key: None,
+    };
+    let err = proto
+        .validate_submission(
+            submission_data,
+            test_data.proof,
+            test_data.interaction_data,
+            VerificationProtocolType::OpenId4VpFinal1_0,
+        )
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(err, OpenID4VCError::ValidationError(e) if e.contains("Duplicate transaction data"))
     );
 }

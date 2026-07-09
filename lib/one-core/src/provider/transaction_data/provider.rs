@@ -14,9 +14,17 @@ use crate::provider::transaction_data::{TransactionData, decode_transaction_data
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 pub trait TransactionDataProvider: Send + Sync {
+    /// Resolves the provider from the `type` field of a base64url-encoded
+    /// OpenID4VP `transaction_data` entry
     fn get_transaction_data(
         &self,
         transaction_data: &str,
+    ) -> Result<Arc<dyn TransactionData>, NestedError>;
+
+    /// Resolves the provider by its config name
+    fn get_transaction_data_by_name(
+        &self,
+        name: &TransactionDataType,
     ) -> Result<Arc<dyn TransactionData>, NestedError>;
 }
 
@@ -57,6 +65,13 @@ impl TransactionDataProvider
             .error_while("resolving transaction data provider")?;
 
         Ok(provider.clone())
+    }
+
+    fn get_transaction_data_by_name(
+        &self,
+        name: &TransactionDataType,
+    ) -> Result<Arc<dyn TransactionData>, NestedError> {
+        self.provider(name)
     }
 }
 

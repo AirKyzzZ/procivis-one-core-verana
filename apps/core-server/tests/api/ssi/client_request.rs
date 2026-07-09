@@ -4,8 +4,9 @@ use core_server::endpoint::proof::dto::ClientIdSchemeRestEnum;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use one_core::model::blob::BlobType;
 use one_core::model::identifier_trust_information::SchemaFormat;
+use one_core::model::interaction::InteractionType;
 use one_core::model::proof::{ProofRole, ProofStateEnum};
-use serde_json::Value;
+use serde_json::{Value, json};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
@@ -313,4 +314,88 @@ async fn test_get_client_request_final1_multiple_registration_certs() {
         2,
         "all registration certificates must appear in verifier_info"
     );
+}
+
+#[tokio::test]
+async fn test_get_client_request_final1_includes_transaction_data() {
+    let (context, organisation, _, identifier, key) = TestContext::new_with_did(None).await;
+
+    let interaction = fixtures::create_interaction(
+        &context.db.db_conn,
+        json!({
+            "nonce": "QnoICmZxqAUZdOlPJRVtbJrrHJRTDwCM",
+            "client_id": "redirect_uri:https://verifier.example/response",
+            "client_id_scheme": "redirect_uri",
+            "response_uri": "https://verifier.example/response",
+            "dcql_query": {
+                "credentials": [{
+                    "id": "input_0",
+                    "format": "mso_mdoc",
+                    "meta": { "doctype_value": "org.iso.18013.5.1.mDL" },
+                    "claims": [{ "path": ["namespace", "given_name"] }]
+                }]
+            },
+            "transaction_data": [{
+                "name": "QES_APPROVAL",
+                "credential_ids": ["input_0"],
+                "data": {
+                    "signatureQualifier": "eu_eidas_qes",
+                    "numSignatures": 1,
+                    "documentInfos": [{
+                        "label": "Example Contract",
+                        "hash": "sTOgwOm+474gFj0q0x1iSNspKqbcse4IeiqlDg/HWuI=",
+                        "hashType": "sodr",
+                        "access": { "type": "public" },
+                        "href": "https://public.rp-cdn.example/contract.pdf",
+                        "checksum": "sha256-sTOgwOm+474gFj0q0x1iSNspKqbcse4IeiqlDg/HWuI="
+                    }],
+                    "hashAlgorithmOID": "2.16.840.1.101.3.4.2.1"
+                }
+            }]
+        })
+        .to_string()
+        .as_bytes(),
+        &organisation,
+        InteractionType::Verification,
+    )
+    .await;
+
+    let proof = context
+        .db
+        .proofs
+        .create(
+            None,
+            &identifier,
+            None,
+            ProofStateEnum::Pending,
+            "OPENID4VP_FINAL1",
+            Some(&interaction),
+            key,
+            None,
+            None,
+        )
+        .await;
+
+    let resp = context.api.ssi.get_client_request(proof.id).await;
+
+    assert_eq!(resp.status(), 200);
+    let (_header, payload) = decode_jwt(&resp.text().await);
+
+    let transaction_data = payload["transaction_data"]
+        .as_array()
+        .expect("transaction_data must be present");
+    assert_eq!(transaction_data.len(), 1);
+
+    // the provider composes the entry from the stored name/credential_ids/data
+    let entry: Value = serde_json::from_slice(
+        &Base64UrlSafeNoPadding::decode_to_vec(transaction_data[0].as_str().unwrap(), None)
+            .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(
+        entry["type"],
+        "https://cloudsignatureconsortium.org/2025/qes-approval"
+    );
+    assert_eq!(entry["credential_ids"], json!(["input_0"]));
+    assert_eq!(entry["signatureQualifier"], "eu_eidas_qes");
 }

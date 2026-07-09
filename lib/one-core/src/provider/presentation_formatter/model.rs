@@ -6,6 +6,7 @@ use time::OffsetDateTime;
 
 use crate::config::core_config::{FormatType, VerificationProtocolType};
 use crate::provider::credential_formatter::model::IdentifierDetails;
+use crate::provider::presentation_formatter::mso_mdoc::model::DeviceNamespaces;
 use crate::provider::transaction_data::processed_transaction_data::ProcessedTransactionData;
 
 pub struct CredentialToPresent {
@@ -22,6 +23,27 @@ pub struct ExtractedPresentation {
     pub issuer: Option<IdentifierDetails>,
     pub nonce: Option<String>,
     pub credentials: Vec<SerializedCredential>,
+    pub transaction_data: Option<PresentedTransactionData>,
+}
+
+/// Transaction data evidence attached by the holder to the presentation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum PresentedTransactionData {
+    /// Custom top-level claims of the SD-JWT VC Key Binding JWT
+    KbJwtClaims(serde_json::Map<String, serde_json::Value>),
+    /// The mdoc `DeviceSigned` namespaces, merged over all documents
+    DeviceSignedElements(DeviceNamespaces),
+}
+
+impl PresentedTransactionData {
+    pub fn is_empty(&self) -> bool {
+        match self {
+            Self::KbJwtClaims(claims) => claims.is_empty(),
+            Self::DeviceSignedElements(namespaces) => {
+                namespaces.values().all(|elements| elements.is_empty())
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

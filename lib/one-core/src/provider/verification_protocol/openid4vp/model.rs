@@ -5,7 +5,7 @@ use dcql::{CredentialQueryId, DcqlQuery};
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-use shared_types::{ClaimSchemaId, InteractionId, KeyId, TransactionDataId};
+use shared_types::{ClaimSchemaId, InteractionId, KeyId, TransactionDataId, TransactionDataType};
 use standardized_types::jwk::PublicJwk;
 use standardized_types::openid4vp::{ClientMetadata, PresentationFormat, ResponseMode};
 use strum::{Display, EnumString};
@@ -101,6 +101,18 @@ pub(crate) struct OpenID4VPVerifierInteractionContent {
     pub client_id_scheme: Option<ClientIdScheme>,
     pub response_uri: Option<String>,
     pub encryption_key: Option<PublicJwk>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub transaction_data: Vec<TransactionDataRequest>,
+}
+
+/// Transaction data as provided at proof-request creation, turned into an OpenID4VP
+/// `transaction_data` entry by the transaction data provider named by `name`
+#[skip_serializing_none]
+#[derive(Clone, Deserialize, Serialize, Debug)]
+pub(crate) struct TransactionDataRequest {
+    pub name: TransactionDataType,
+    pub credential_ids: Vec<CredentialQueryId>,
+    pub data: Option<serde_json::Value>,
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq)]

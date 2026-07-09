@@ -13,6 +13,7 @@ use shared_types::TransactionDataType;
 
 use crate::config::core_config::FormatType;
 use crate::provider::Provider;
+use crate::provider::presentation_formatter::model::PresentedTransactionData;
 
 pub(crate) mod decorators;
 pub mod error;
@@ -30,6 +31,13 @@ pub(crate) fn decode_transaction_data<T: DeserializeOwned>(
 #[derive(Clone, Debug, PartialEq)]
 pub struct TransactionDataMetadata {
     pub credential_ids: Vec<CredentialQueryId>,
+}
+
+/// Outcome of checking presented evidence against a `transaction_data` entry
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TransactionDataAuthorization {
+    Authorized,
+    NotAuthorized,
 }
 
 #[derive(Clone, Default, Serialize)]
@@ -80,17 +88,36 @@ pub struct TransactionDataDisplayAttribute {
 #[provider_mock]
 #[async_trait]
 pub trait TransactionData: Provider + Send + Sync {
+    /// Composes a `transaction_data` entry from verifier-provided type-specific content,
+    /// validates it and returns it base64url-encoded for use in the authorization request.
+    fn prepare_transaction_data(
+        &self,
+        credential_ids: Vec<CredentialQueryId>,
+        data: Option<serde_json::Value>,
+    ) -> Result<String, TransactionDataError>;
     fn validate_transaction_data(
         &self,
         transaction_data: &str,
     ) -> Result<TransactionDataMetadata, TransactionDataError>;
-    /// Type-specific processing of an approved transaction; returns the fields to be
+    /// Holder-side processing of an approved transaction; returns the fields to be
     /// merged into the presentation response of the credential authorizing it.
+    /// May have side effects, e.g. calling out to external signing APIs.
     async fn process_transaction_data(
         &self,
         transaction_data: &str,
         format: FormatType,
     ) -> Result<ProcessedTransactionData, TransactionDataError>;
+    /// Verifier-side check whether the evidence presented by the holder authorizes this
+    /// transaction data entry. Must not trigger the side effects of
+    /// [`process_transaction_data`](Self::process_transaction_data).
+    /// Evidence not matching the entry is [`TransactionDataAuthorization::NotAuthorized`],
+    /// never an error; errors always denote a failure to perform the check.
+    async fn verify_transaction_data(
+        &self,
+        transaction_data: &str,
+        format: FormatType,
+        presented: &PresentedTransactionData,
+    ) -> Result<TransactionDataAuthorization, TransactionDataError>;
     fn get_capabilities(&self) -> TransactionDataCapabilities;
     fn config_name(&self) -> &TransactionDataType;
     fn display_params(&self) -> &TransactionDataDisplayParams;

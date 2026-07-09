@@ -571,6 +571,7 @@ impl OneCore {
             key_algorithm_provider.clone(),
             revocation_method_provider.clone(),
             certificate_validator.clone(),
+            transaction_data_provider.clone(),
         ));
 
         let credential_issuer_metadata_cache =

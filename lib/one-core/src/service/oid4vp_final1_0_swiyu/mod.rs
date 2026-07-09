@@ -42,7 +42,7 @@ impl OID4VPFinal1_0SwiyuService {
         wrp_validator: Arc<dyn WRPValidator>,
         history_repository: Arc<dyn HistoryRepository>,
         session_provider: Arc<dyn SessionProvider>,
-        _transaction_data_provider: Arc<dyn TransactionDataProvider>,
+        transaction_data_provider: Arc<dyn TransactionDataProvider>,
     ) -> Self {
         let inner = OID4VPFinal1_0Service::new(
             credential_repository,
@@ -58,7 +58,7 @@ impl OID4VPFinal1_0SwiyuService {
             wrp_validator,
             history_repository,
             session_provider,
-            _transaction_data_provider,
+            transaction_data_provider,
         );
         Self {
             inner,

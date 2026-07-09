@@ -239,6 +239,7 @@ impl LdpVpPresentationFormatter {
             issuer: Some(IdentifierDetails::Did(presentation.holder.to_did_value()?)),
             nonce: proof.and_then(|p| p.nonce.to_owned()),
             credentials,
+            transaction_data: None,
         })
     }
 }

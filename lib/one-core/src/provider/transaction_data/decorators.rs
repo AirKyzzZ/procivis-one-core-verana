@@ -2,17 +2,20 @@ use std::fmt::Display;
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use dcql::CredentialQueryId;
 use shared_types::TransactionDataType;
 
 use crate::config::core_config::FormatType;
 use crate::provider::Provider;
 use crate::provider::disabled_provider::DisabledProvider;
+use crate::provider::presentation_formatter::model::PresentedTransactionData;
 use crate::provider::provider_directory::WithDisabledDecorator;
 use crate::provider::transaction_data::error::TransactionDataError;
 use crate::provider::transaction_data::processed_transaction_data::ProcessedTransactionData;
 use crate::provider::transaction_data::{
-    TransactionData, TransactionDataCapabilities, TransactionDataDisplayParams,
-    TransactionDataDisplayValue, TransactionDataMetadata, decode_transaction_data,
+    TransactionData, TransactionDataAuthorization, TransactionDataCapabilities,
+    TransactionDataDisplayParams, TransactionDataDisplayValue, TransactionDataMetadata,
+    decode_transaction_data,
 };
 
 impl WithDisabledDecorator for dyn TransactionData {
@@ -23,6 +26,14 @@ impl WithDisabledDecorator for dyn TransactionData {
 
 #[async_trait]
 impl<T: Provider + TransactionData + Display + ?Sized> TransactionData for DisabledProvider<T> {
+    fn prepare_transaction_data(
+        &self,
+        credential_ids: Vec<CredentialQueryId>,
+        data: Option<serde_json::Value>,
+    ) -> Result<String, TransactionDataError> {
+        self.inner().prepare_transaction_data(credential_ids, data)
+    }
+
     fn validate_transaction_data(
         &self,
         transaction_data: &str,
@@ -37,6 +48,17 @@ impl<T: Provider + TransactionData + Display + ?Sized> TransactionData for Disab
     ) -> Result<ProcessedTransactionData, TransactionDataError> {
         self.inner()
             .process_transaction_data(transaction_data, format)
+            .await
+    }
+
+    async fn verify_transaction_data(
+        &self,
+        transaction_data: &str,
+        format: FormatType,
+        presented: &PresentedTransactionData,
+    ) -> Result<TransactionDataAuthorization, TransactionDataError> {
+        self.inner()
+            .verify_transaction_data(transaction_data, format, presented)
             .await
     }
 
@@ -94,6 +116,14 @@ impl Provider for CapabilityChecked {
 
 #[async_trait]
 impl TransactionData for CapabilityChecked {
+    fn prepare_transaction_data(
+        &self,
+        credential_ids: Vec<CredentialQueryId>,
+        data: Option<serde_json::Value>,
+    ) -> Result<String, TransactionDataError> {
+        self.0.prepare_transaction_data(credential_ids, data)
+    }
+
     fn validate_transaction_data(
         &self,
         transaction_data: &str,
@@ -115,6 +145,23 @@ impl TransactionData for CapabilityChecked {
 
         self.0
             .process_transaction_data(transaction_data, format)
+            .await
+    }
+
+    async fn verify_transaction_data(
+        &self,
+        transaction_data: &str,
+        format: FormatType,
+        presented: &PresentedTransactionData,
+    ) -> Result<TransactionDataAuthorization, TransactionDataError> {
+        self.check_supported(transaction_data)?;
+
+        if !self.0.get_capabilities().formats.contains(&format) {
+            return Err(TransactionDataError::UnsupportedCredentialFormat(format));
+        }
+
+        self.0
+            .verify_transaction_data(transaction_data, format, presented)
             .await
     }
 

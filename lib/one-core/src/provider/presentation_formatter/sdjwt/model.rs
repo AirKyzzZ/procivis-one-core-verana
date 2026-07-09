@@ -44,6 +44,7 @@ impl TryFrom<Jwt<Sdvp>> for ExtractedPresentation {
                 .map(IdentifierDetails::Did),
             nonce: jwt.payload.custom.nonce,
             credentials: jwt.payload.custom.vp.verifiable_credential,
+            transaction_data: None,
         })
     }
 }

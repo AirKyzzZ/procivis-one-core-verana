@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
+use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
+use dcql::CredentialQueryId;
 use indexmap::IndexMap;
 use one_crypto::{CryptoProvider, Hasher};
 use proc_macros::Provider;
@@ -13,12 +14,14 @@ use standardized_types::csc::transaction_data::{
 use standardized_types::iana;
 
 use crate::config::core_config::FormatType;
+use crate::provider::presentation_formatter::model::PresentedTransactionData;
 use crate::provider::provider_directory::InitializationError;
 use crate::provider::transaction_data::error::TransactionDataError;
 use crate::provider::transaction_data::processed_transaction_data::ProcessedTransactionData;
 use crate::provider::transaction_data::{
-    TransactionData, TransactionDataCapabilities, TransactionDataDisplayParams,
-    TransactionDataMetadata, TransactionDataParams, decode_transaction_data,
+    TransactionData, TransactionDataAuthorization, TransactionDataCapabilities,
+    TransactionDataDisplayParams, TransactionDataMetadata, TransactionDataParams,
+    decode_transaction_data,
 };
 
 #[cfg(test)]
@@ -63,6 +66,35 @@ impl QesApprovalTransactionData {
 
 #[async_trait]
 impl TransactionData for QesApprovalTransactionData {
+    fn prepare_transaction_data(
+        &self,
+        credential_ids: Vec<CredentialQueryId>,
+        data: Option<serde_json::Value>,
+    ) -> Result<String, TransactionDataError> {
+        let mut entry = match data {
+            None => serde_json::Map::new(),
+            Some(serde_json::Value::Object(data)) => data,
+            Some(_) => {
+                return Err(TransactionDataError::InvalidTransactionData(
+                    "transaction data content must be a JSON object".to_string(),
+                ));
+            }
+        };
+        entry.insert(
+            "type".to_string(),
+            QES_APPROVAL_TRANSACTION_DATA_TYPE.into(),
+        );
+        entry.insert(
+            "credential_ids".to_string(),
+            serde_json::to_value(credential_ids)?,
+        );
+
+        let encoded = Base64UrlSafeNoPadding::encode_to_string(serde_json::to_vec(&entry)?)?;
+        self.validate_transaction_data(&encoded)?;
+
+        Ok(encoded)
+    }
+
     fn validate_transaction_data(
         &self,
         transaction_data: &str,
@@ -129,6 +161,45 @@ impl TransactionData for QesApprovalTransactionData {
             }
             other => Err(TransactionDataError::UnsupportedCredentialFormat(other)),
         }
+    }
+
+    // processing has no side effects for this type, the expected evidence can simply
+    // be recomputed and compared
+    async fn verify_transaction_data(
+        &self,
+        transaction_data: &str,
+        format: FormatType,
+        presented: &PresentedTransactionData,
+    ) -> Result<TransactionDataAuthorization, TransactionDataError> {
+        let expected = self
+            .process_transaction_data(transaction_data, format)
+            .await?;
+
+        let authorized = match (&expected, presented) {
+            (
+                ProcessedTransactionData::KbJwtClaims(expected),
+                PresentedTransactionData::KbJwtClaims(presented),
+            ) => expected
+                .iter()
+                .all(|(claim, value)| presented.get(claim) == Some(value)),
+            (
+                ProcessedTransactionData::DeviceSignedElements(expected),
+                PresentedTransactionData::DeviceSignedElements(presented),
+            ) => expected.iter().all(|(namespace, elements)| {
+                presented.get(namespace).is_some_and(|presented| {
+                    elements
+                        .iter()
+                        .all(|(element, value)| presented.get(element) == Some(value))
+                })
+            }),
+            _ => false,
+        };
+
+        Ok(if authorized {
+            TransactionDataAuthorization::Authorized
+        } else {
+            TransactionDataAuthorization::NotAuthorized
+        })
     }
 
     fn get_capabilities(&self) -> TransactionDataCapabilities {

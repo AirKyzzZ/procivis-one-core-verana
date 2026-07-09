@@ -54,6 +54,7 @@ impl TryFrom<Jwt<VP>> for ExtractedPresentation {
             issuer,
             nonce: jwt.payload.custom.nonce,
             credentials,
+            transaction_data: None,
         })
     }
 }

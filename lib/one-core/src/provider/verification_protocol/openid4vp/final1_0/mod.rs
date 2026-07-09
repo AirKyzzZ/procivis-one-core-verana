@@ -717,6 +717,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
                 &*self.credential_formatter_provider,
             )
             .await?,
+            vec![],
             encode_client_id_with_scheme(
                 client_id_without_prefix.clone(),
                 client_id_scheme,
@@ -735,6 +736,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
             encryption_key,
             client_id_scheme: Some(client_id_scheme),
             response_uri: Some(response_uri),
+            transaction_data: vec![],
         };
 
         let authorization_request = create_openid4vp_final1_0_authorization_request(

@@ -363,3 +363,78 @@ fn test_validate_transaction_data_rejects_invalid_base64url() {
     let result = qes_approval_transaction_data().validate_transaction_data("not/valid+base64url");
     assert!(matches!(result, Err(TransactionDataError::Encoding(_))));
 }
+
+#[test]
+fn test_prepare_transaction_data_composes_csc_example() {
+    let mut data = csc_example();
+    let content = data.as_object_mut().unwrap();
+    content.remove("type");
+    content.remove("credential_ids");
+
+    let encoded = qes_approval_transaction_data()
+        .prepare_transaction_data(vec!["xyz123".into()], Some(data))
+        .unwrap();
+
+    let decoded: serde_json::Value = decode_transaction_data(&encoded).unwrap();
+    assert_eq!(decoded, csc_example());
+}
+
+#[test]
+fn test_prepare_transaction_data_rejects_invalid_content() {
+    let mut data = csc_example();
+    let content = data.as_object_mut().unwrap();
+    content.remove("type");
+    content.remove("credential_ids");
+    // neither credentialID nor signatureQualifier present
+    content.remove("signatureQualifier");
+
+    let err = qes_approval_transaction_data()
+        .prepare_transaction_data(vec!["xyz123".into()], Some(data))
+        .unwrap_err();
+
+    assert!(matches!(
+        err,
+        TransactionDataError::InvalidTransactionData(_)
+    ));
+}
+
+#[tokio::test]
+async fn test_verify_transaction_data_matches_recomputed_evidence() {
+    let transaction_data = encode(csc_example());
+    let provider = qes_approval_transaction_data();
+
+    let ProcessedTransactionData::KbJwtClaims(claims) = provider
+        .process_transaction_data(&transaction_data, FormatType::SdJwtVc)
+        .await
+        .unwrap()
+    else {
+        panic!("expected KbJwtClaims");
+    };
+
+    let authorization = provider
+        .verify_transaction_data(
+            &transaction_data,
+            FormatType::SdJwtVc,
+            &PresentedTransactionData::KbJwtClaims(claims),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(authorization, TransactionDataAuthorization::Authorized);
+}
+
+#[tokio::test]
+async fn test_verify_transaction_data_rejects_missing_evidence() {
+    let transaction_data = encode(csc_example());
+
+    let authorization = qes_approval_transaction_data()
+        .verify_transaction_data(
+            &transaction_data,
+            FormatType::SdJwtVc,
+            &PresentedTransactionData::KbJwtClaims(Default::default()),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(authorization, TransactionDataAuthorization::NotAuthorized);
+}

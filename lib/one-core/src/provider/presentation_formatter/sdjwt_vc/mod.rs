@@ -25,7 +25,7 @@ use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVc;
 use crate::provider::presentation_formatter::PresentationFormatter;
 use crate::provider::presentation_formatter::model::{
     CredentialToPresent, ExtractPresentationCtx, ExtractedPresentation, FormatPresentationCtx,
-    FormattedPresentation,
+    FormattedPresentation, PresentedTransactionData,
 };
 use crate::provider::transaction_data::processed_transaction_data::ProcessedTransactionData;
 
@@ -161,6 +161,12 @@ impl PresentationFormatter for SdjwtVCPresentationFormatter {
             issuer: Some(issuer),
             nonce: Some(proof_of_key_possession.custom.nonce),
             credentials: vec![token.into()],
+            transaction_data: Some(PresentedTransactionData::KbJwtClaims(
+                match proof_of_key_possession.custom.transaction_data {
+                    Some(Value::Object(claims)) => claims,
+                    _ => Default::default(),
+                },
+            )),
         })
     }
 
@@ -180,6 +186,7 @@ impl PresentationFormatter for SdjwtVCPresentationFormatter {
             issuer: Some(issuer),
             nonce: Some(proof_of_key_possession.custom.nonce),
             credentials: vec![token.into()],
+            transaction_data: None,
         })
     }
 

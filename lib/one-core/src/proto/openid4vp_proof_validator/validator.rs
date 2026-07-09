@@ -1,9 +1,9 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use dcql::{CredentialFormat, CredentialQuery, TrustedAuthority};
+use dcql::{CredentialFormat, CredentialQuery, CredentialQueryId, TrustedAuthority};
 use shared_types::{DidValue, SerializedCredential};
 use standardized_types::jwk::PublicJwk;
 use standardized_types::x509::KeyIdentifier;
@@ -29,18 +29,20 @@ use crate::provider::credential_formatter::provider::CredentialFormatterProvider
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::presentation_formatter::model::{
-    ExtractPresentationCtx, ExtractedPresentation,
+    ExtractPresentationCtx, ExtractedPresentation, PresentedTransactionData,
 };
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::revocation::model::{
     CredentialDataByRole, RevocationState, VerifierCredentialData,
 };
 use crate::provider::revocation::provider::RevocationMethodProvider;
+use crate::provider::transaction_data::TransactionDataAuthorization;
+use crate::provider::transaction_data::provider::TransactionDataProvider;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::mapper::extract_presentation_ctx_from_interaction_content;
 use crate::provider::verification_protocol::openid4vp::model::{
     DcqlSubmission, OpenID4VPDirectPostResponseDTO, OpenID4VPVerifierInteractionContent,
-    SubmissionRequestData, VpSubmissionData,
+    SubmissionRequestData, TransactionDataRequest, VpSubmissionData,
 };
 use crate::provider::verification_protocol::openid4vp::validator::{
     validate_expiration_time, validate_issuance_time,
@@ -54,6 +56,7 @@ pub(crate) struct OpenId4VpProofValidatorProto {
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     certificate_validator: Arc<dyn CertificateValidator>,
+    transaction_data_provider: Arc<dyn TransactionDataProvider>,
 }
 
 #[async_trait]
@@ -90,6 +93,7 @@ impl OpenId4VpProofValidatorProto {
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
         certificate_validator: Arc<dyn CertificateValidator>,
+        transaction_data_provider: Arc<dyn TransactionDataProvider>,
     ) -> Self {
         Self {
             did_method_provider,
@@ -98,6 +102,7 @@ impl OpenId4VpProofValidatorProto {
             key_algorithm_provider,
             revocation_method_provider,
             certificate_validator,
+            transaction_data_provider,
         }
     }
 
@@ -135,6 +140,7 @@ impl OpenId4VpProofValidatorProto {
         }
 
         let mut total_proved_claims: Vec<ValidatedProofClaimDTO> = Vec::new();
+        let mut transaction_data_evidence = HashMap::new();
 
         // Iterate over each credential query, validate the associated presentation(s),
         // and extract the credential(s).
@@ -182,7 +188,7 @@ impl OpenId4VpProofValidatorProto {
                 }
             };
 
-            let proved_claims = self
+            let (proved_claims, presented_transaction_data) = self
                 .validate_credential_query(
                     credential_query,
                     &interaction_data,
@@ -192,10 +198,85 @@ impl OpenId4VpProofValidatorProto {
                 )
                 .await?;
 
+            let format = match dcql_credential_format {
+                CredentialFormat::SdJwt(_) => Some(FormatType::SdJwtVc),
+                CredentialFormat::MsoMdoc(_) => Some(FormatType::Mdoc),
+                _ => None,
+            };
+            if let (Some(format), Some(presented)) = (format, presented_transaction_data) {
+                transaction_data_evidence.insert(credential_query.id.clone(), (format, presented));
+            }
+
             total_proved_claims.extend(proved_claims);
         }
 
+        self.validate_transaction_data(
+            &interaction_data.transaction_data,
+            &transaction_data_evidence,
+        )
+        .await?;
+
         Ok(total_proved_claims)
+    }
+
+    /// Validates that each transaction data entry sent in the authorization request
+    /// was authorized via exactly one of the credentials referenced in its `credential_ids`,
+    /// and that no credential presented evidence without authorizing an entry
+    async fn validate_transaction_data(
+        &self,
+        transaction_data: &[TransactionDataRequest],
+        evidence: &HashMap<CredentialQueryId, (FormatType, PresentedTransactionData)>,
+    ) -> Result<(), OpenID4VCError> {
+        let mut seen_entries = HashSet::new();
+        let mut authorizing_credentials = HashSet::new();
+
+        for request in transaction_data {
+            let provider = self
+                .transaction_data_provider
+                .get_transaction_data_by_name(&request.name)
+                .map_err(|e| OpenID4VCError::Other(e.to_string()))?;
+
+            // reconstruct the exact encoded entry sent in the authorization request
+            let entry = provider
+                .prepare_transaction_data(request.credential_ids.clone(), request.data.clone())
+                .map_err(|e| OpenID4VCError::Other(e.to_string()))?;
+
+            // identical entries produce identical evidence, making their authorizations
+            // indistinguishable
+            if !seen_entries.insert(entry.clone()) {
+                return Err(OpenID4VCError::ValidationError(
+                    "Duplicate transaction data entry in authorization request".to_string(),
+                ));
+            }
+
+            let mut authorized_by = Vec::new();
+            for credential_id in &request.credential_ids {
+                let Some((format, presented)) = evidence.get(credential_id) else {
+                    continue;
+                };
+
+                match provider
+                    .verify_transaction_data(&entry, *format, presented)
+                    .await
+                    .map_err(|e| OpenID4VCError::Other(e.to_string()))?
+                {
+                    TransactionDataAuthorization::Authorized => {
+                        authorized_by.push(credential_id);
+                    }
+                    // the wallet did not use this referenced credential for authorization
+                    TransactionDataAuthorization::NotAuthorized => {}
+                }
+            }
+
+            // OpenID4VP section 5.1: the wallet MUST use exactly one of the referenced credentials
+            let [authorizing_credential] = authorized_by.as_slice() else {
+                return Err(OpenID4VCError::ValidationError(format!(
+                    "Transaction data must be authorized by exactly one referenced credential, authorized by: {authorized_by:?}"
+                )));
+            };
+            authorizing_credentials.insert((*authorizing_credential).clone());
+        }
+        Ok(())
     }
 
     async fn validate_credential_query(
@@ -205,7 +286,13 @@ impl OpenId4VpProofValidatorProto {
         proof_input_schema: &ProofInputSchema,
         presentation_strings: &[String],
         context: ExtractPresentationCtx,
-    ) -> Result<Vec<ValidatedProofClaimDTO>, OpenID4VCError> {
+    ) -> Result<
+        (
+            Vec<ValidatedProofClaimDTO>,
+            Option<PresentedTransactionData>,
+        ),
+        OpenID4VCError,
+    > {
         let mut total_proved_claims: Vec<ValidatedProofClaimDTO> = Vec::new();
 
         // If multiple is true, then the verifier will accept multiple presentation tokens
@@ -217,7 +304,7 @@ impl OpenId4VpProofValidatorProto {
         let trusted_authorities = credential_query.trusted_authorities.as_deref();
 
         // cryptographic holder binding is required, we expect verifialbe presentations (one or many, depending on `multiple` flag)
-        let (holder_details, credentials) = if require_holder_binding {
+        let (holder_details, credentials, presented_transaction_data) = if require_holder_binding {
             if !multiple_presentations_allowed && presentation_strings.len() != 1 {
                 return Err(OpenID4VCError::ValidationError(format!(
                     "Expected one presentation for credential query {query_id}"
@@ -249,6 +336,7 @@ impl OpenId4VpProofValidatorProto {
             let ExtractedPresentation {
                 issuer,
                 credentials,
+                transaction_data,
                 ..
             } = self
                 .validate_presentation(
@@ -263,7 +351,7 @@ impl OpenId4VpProofValidatorProto {
                 "Presentation missing holder id".to_string(),
             ))?;
 
-            (Some(holder_details), credentials)
+            (Some(holder_details), credentials, transaction_data)
         } else {
             // No holder binding — presentation_strings contains bare credential tokens
             let credential_tokens = presentation_strings
@@ -271,7 +359,7 @@ impl OpenId4VpProofValidatorProto {
                 .map(|token| token.as_str().into())
                 .collect();
 
-            (None, credential_tokens)
+            (None, credential_tokens, None)
         };
 
         for credential_token in credentials {
@@ -303,7 +391,7 @@ impl OpenId4VpProofValidatorProto {
             total_proved_claims.extend(proved_claims);
         }
 
-        Ok(total_proved_claims)
+        Ok((total_proved_claims, presented_transaction_data))
     }
 
     async fn validate_credential(

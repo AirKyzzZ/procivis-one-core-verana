@@ -36,7 +36,7 @@ use crate::provider::credential_formatter::model::{
 use crate::provider::presentation_formatter::PresentationFormatter;
 use crate::provider::presentation_formatter::model::{
     CredentialToPresent, ExtractPresentationCtx, ExtractedPresentation, FormatPresentationCtx,
-    FormattedPresentation,
+    FormattedPresentation, PresentedTransactionData,
 };
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::openid4vp_final1_0::OID4VPFinal1_0Handover;
 use crate::provider::transaction_data::processed_transaction_data::ProcessedTransactionData;
@@ -187,6 +187,7 @@ impl PresentationFormatter for MsoMdocPresentationFormatter {
         let (session_transcript, nonce) = self.extract_presentation_context(&context)?;
 
         let mut presentation_issuer_jwk = None;
+        let mut device_signed_elements = DeviceNamespaces::new();
         // can we have more than one document?
         for document in documents {
             let issuer_signed = document.issuer_signed;
@@ -219,11 +220,19 @@ impl PresentationFormatter for MsoMdocPresentationFormatter {
             try_verify_device_signed(
                 session_transcript.to_owned(),
                 &doc_type,
+                &device_signed.name_spaces,
                 &signature,
                 &holder_jwk,
                 &verification_fn,
             )
             .await?;
+
+            for (namespace, elements) in device_signed.name_spaces.into_inner() {
+                device_signed_elements
+                    .entry(namespace)
+                    .or_default()
+                    .extend(elements);
+            }
 
             presentation_issuer_jwk = Some(holder_jwk);
             tokens.push(encode_cbor_base64(issuer_signed)?.into())
@@ -237,6 +246,9 @@ impl PresentationFormatter for MsoMdocPresentationFormatter {
             issuer: presentation_issuer_jwk.map(IdentifierDetails::Key),
             nonce,
             credentials: tokens,
+            transaction_data: Some(PresentedTransactionData::DeviceSignedElements(
+                device_signed_elements,
+            )),
         })
     }
 
@@ -267,6 +279,7 @@ impl PresentationFormatter for MsoMdocPresentationFormatter {
             issuer: None,
             nonce: context.nonce,
             credentials: tokens,
+            transaction_data: None,
         })
     }
 
@@ -386,16 +399,15 @@ async fn try_verify_issuer_auth(
 async fn try_verify_device_signed(
     session_transcript: SessionTranscript,
     doctype: &str,
+    device_namespaces: &EmbeddedCbor<DeviceNamespaces>,
     signature: &coset::CoseSign1,
     holder_key: &PublicJwk,
     verify_fn: &VerificationFn,
 ) -> Result<(), FormatterError> {
-    let device_namespaces = EmbeddedCbor::new([].into())?;
-
     let device_auth = DeviceAuthentication {
         session_transcript,
         doctype: doctype.to_owned(),
-        device_namespaces,
+        device_namespaces: device_namespaces.to_owned(),
     };
     let device_auth_bytes = EmbeddedCbor::new(device_auth)?.into_bytes();
 

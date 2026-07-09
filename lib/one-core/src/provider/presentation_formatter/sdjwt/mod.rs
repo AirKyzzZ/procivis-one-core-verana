@@ -249,6 +249,7 @@ impl SdjwtPresentationFormatter {
             issuer: credential.subject,
             nonce: Some(proof_of_key_possesion.custom.nonce),
             credentials: vec![token.into()],
+            transaction_data: None,
         };
 
         Ok(presentation)

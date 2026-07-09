@@ -12,8 +12,8 @@ use super::proof_request::{
 };
 use crate::clock::now_utc;
 use crate::config::core_config::{BlobStorageType, VerificationProtocolType};
-use crate::error::ContextWithErrorCode;
 use crate::error::ErrorCode::BR_0000;
+use crate::error::{ContextWithErrorCode, NestedError};
 use crate::model::blob::{Blob, BlobType};
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::identifier::{Identifier, IdentifierRelations};
@@ -119,6 +119,7 @@ impl OID4VPFinal1_0Service {
             client_id,
             response_uri: Some(response_uri),
             client_id_scheme: Some(client_id_scheme),
+            transaction_data,
             ..
         } = serde_json::from_slice(interaction_data)
             .map_err(OID4VPFinal1_0ServiceError::from)
@@ -147,9 +148,21 @@ impl OID4VPFinal1_0Service {
             _ => vec![],
         };
 
+        let transaction_data = transaction_data
+            .into_iter()
+            .map(|request| {
+                self.transaction_data_provider
+                    .get_transaction_data_by_name(&request.name)
+                    .error_while("resolving transaction data provider")?
+                    .prepare_transaction_data(request.credential_ids, request.data)
+                    .error_while("preparing transaction data")
+            })
+            .collect::<Result<Vec<_>, NestedError>>()?;
+
         let authorization_request = generate_authorization_request_params_final1_0(
             nonce.clone(),
             dcql_query.clone(),
+            transaction_data,
             client_id.clone(),
             response_uri.clone(),
             &interaction.id,

@@ -20,9 +20,11 @@ use crate::provider::verification_protocol::openid4vp::final1_0::model::{
 };
 use crate::util::key_selection::KeyFilter;
 
+#[expect(clippy::too_many_arguments)]
 pub(crate) fn generate_authorization_request_params_final1_0(
     nonce: String,
     dcql_query: DcqlQuery,
+    transaction_data: Vec<String>,
     client_id: String,
     response_uri: String,
     interaction_id: &InteractionId,
@@ -41,9 +43,9 @@ pub(crate) fn generate_authorization_request_params_final1_0(
         nonce: Some(nonce),
         state: Some(interaction_id.to_string()),
         dcql_query: Some(dcql_query),
+        transaction_data,
         redirect_uri: None,
         verifier_info,
-        transaction_data: vec![],
     })
 }
 
