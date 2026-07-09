@@ -1,8 +1,9 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 
 use url::Url;
 
+use super::dto::CreateProofRequestTransactionDataDTO;
 use super::error::ProofServiceError;
 use crate::config::core_config::{
     CoreConfig, IdentifierType, VerificationEngagement, VerificationEngagementConfig,
@@ -16,8 +17,10 @@ use crate::model::proof::{Proof, ProofRole};
 use crate::model::proof_schema::ProofSchema;
 use crate::proto::notification_scheduler::NotificationScheduler;
 use crate::proto::session_provider::SessionProvider;
+use crate::provider::ProviderExt;
 use crate::provider::credential_formatter::model::Features;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::transaction_data::provider::TransactionDataProvider;
 use crate::provider::verification_protocol::VerificationProtocol;
 use crate::provider::verification_protocol::dto::PresentationDefinitionVersion;
 use crate::provider::verification_protocol::model::CommonParams;
@@ -93,6 +96,61 @@ pub(super) async fn validate_format_and_exchange_protocol_compatibility(
             .contains(&IdentifierType::Did)
         {
             return Err(ProofServiceError::IncompatibleVerificationIdentifier);
+        }
+    }
+    Ok(())
+}
+
+pub(super) async fn validate_transaction_data(
+    transaction_data: &[CreateProofRequestTransactionDataDTO],
+    proof_schema: &ProofSchema,
+    formatter_provider: &dyn CredentialFormatterProvider,
+    transaction_data_provider: &dyn TransactionDataProvider,
+) -> Result<(), ProofServiceError> {
+    if transaction_data.is_empty() {
+        return Ok(());
+    }
+
+    let input_schemas =
+        proof_schema
+            .input_schemas
+            .as_ref()
+            .ok_or(ProofServiceError::MappingError(
+                "input_schemas is None".to_string(),
+            ))?;
+
+    let mut credential_schemas_by_id = HashMap::new();
+    for input_schema in input_schemas {
+        let credential_schema =
+            input_schema
+                .credential_schema
+                .as_ref()
+                .ok_or(ProofServiceError::MappingError(
+                    "credential_schema is None".to_string(),
+                ))?;
+        credential_schemas_by_id.insert(credential_schema.id, credential_schema);
+    }
+
+    for entry in transaction_data {
+        transaction_data_provider
+            .get_transaction_data_by_name(&entry.r#type)?
+            .ensure_enabled()?;
+        for credential_schema_id in &entry.credential_schema_ids {
+            let credential_schema = credential_schemas_by_id.get(credential_schema_id).ok_or(
+                ProofServiceError::TransactionDataUnknownCredentialSchema(*credential_schema_id),
+            )?;
+
+            let schema_format = credential_schema.format().await?;
+            let formatter = formatter_provider.get_credential_formatter(&schema_format)?;
+            if !formatter
+                .get_capabilities()
+                .features
+                .contains(&Features::SupportsTransactionData)
+            {
+                return Err(ProofServiceError::TransactionDataFormatUnsupported(
+                    *credential_schema_id,
+                ));
+            }
         }
     }
     Ok(())

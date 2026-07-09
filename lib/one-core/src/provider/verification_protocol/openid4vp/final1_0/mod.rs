@@ -57,11 +57,13 @@ use crate::provider::verification_protocol::mapper::{
     interaction_from_handle_invitation, proof_from_handle_invitation,
 };
 use crate::provider::verification_protocol::openid4vp::dcql::get_presentation_definition_v2;
-use crate::provider::verification_protocol::openid4vp::final1_0::mappers::create_open_id_for_vp_client_metadata_final1_0;
+use crate::provider::verification_protocol::openid4vp::final1_0::mappers::{
+    create_open_id_for_vp_client_metadata_final1_0, transaction_data_from_interaction,
+};
 use crate::provider::verification_protocol::openid4vp::model::{
-    ClientIdScheme, DcqlSubmission, HolderTxData, JwePayload, OpenID4VPDirectPostResponseDTO,
-    OpenID4VPHolderInteractionData, OpenID4VPVerifierInteractionContent, ValidatedHolderTxData,
-    VpSubmissionData,
+    ClientIdScheme, CommonVerifierInteractionContent, DcqlSubmission, HolderTxData, JwePayload,
+    OpenID4VPDirectPostResponseDTO, OpenID4VPHolderInteractionData,
+    OpenID4VPVerifierInteractionContent, ValidatedHolderTxData, VpSubmissionData,
 };
 use crate::provider::verification_protocol::openid4vp::{
     FormatMapper, VerificationProtocolError, get_client_id_scheme,
@@ -724,6 +726,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
             vec![],
         )?;
 
+        let transaction_data = transaction_data_from_interaction(proof)?;
         let interaction_content = OpenID4VPVerifierInteractionContent {
             nonce,
             client_id: authorization_request.client_id.clone(),
@@ -731,7 +734,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
             encryption_key,
             client_id_scheme: Some(client_id_scheme),
             response_uri: Some(response_uri),
-            transaction_data: vec![],
+            common: CommonVerifierInteractionContent { transaction_data },
         };
 
         let authorization_request = create_openid4vp_final1_0_authorization_request(

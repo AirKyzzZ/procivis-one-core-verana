@@ -71,6 +71,7 @@ use crate::provider::key_storage::MockKeyStorage;
 use crate::provider::key_storage::model::KeyStorageCapabilities;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::presentation_formatter::provider::MockPresentationFormatterProvider;
+use crate::provider::transaction_data::provider::MockTransactionDataProvider;
 use crate::provider::verification_protocol::MockVerificationProtocol;
 use crate::provider::verification_protocol::dto::{
     ShareResponse, VerificationProtocolCapabilities,
@@ -120,6 +121,7 @@ struct Repositories {
     pub proof_validator: MockOpenId4VpProofValidator,
     pub notification_scheduler: MockNotificationScheduler,
     pub trust_information_provider: MockTrustInformationProvider,
+    pub transaction_data_provider: MockTransactionDataProvider,
 }
 
 fn setup_service(repositories: Repositories) -> ProofService {
@@ -156,6 +158,7 @@ fn setup_service(repositories: Repositories) -> ProofService {
         Arc::new(repositories.proof_validator),
         Arc::new(repositories.notification_scheduler),
         Arc::new(repositories.trust_information_provider),
+        Arc::new(repositories.transaction_data_provider),
     )
 }
 
@@ -2398,6 +2401,7 @@ async fn test_create_proof_using_formatter_doesnt_support_did_identifiers() {
         engagement: None,
         webhook_destination_url: None,
         subscriber_information: None,
+        transaction_data: vec![],
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -2492,6 +2496,7 @@ async fn test_create_proof_using_invalid_did_method() {
         engagement: None,
         webhook_destination_url: None,
         subscriber_information: None,
+        transaction_data: vec![],
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -2620,6 +2625,7 @@ async fn test_create_proof_using_identifier() {
         engagement: None,
         webhook_destination_url: None,
         subscriber_information: None,
+        transaction_data: vec![],
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -2755,6 +2761,7 @@ async fn test_create_proof_without_related_key() {
         engagement: None,
         webhook_destination_url: None,
         subscriber_information: None,
+        transaction_data: vec![],
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -2895,6 +2902,7 @@ async fn test_create_proof_with_related_key() {
         engagement: None,
         webhook_destination_url: None,
         subscriber_information: None,
+        transaction_data: vec![],
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -3031,6 +3039,7 @@ async fn test_create_proof_fail_unsupported_wallet_storage_type() {
         engagement: None,
         webhook_destination_url: None,
         subscriber_information: None,
+        transaction_data: vec![],
     };
 
     let mut proof_input_schema = generic_proof_input_schema();
@@ -3164,6 +3173,7 @@ async fn test_create_proof_failed_no_key_with_authentication_method_role() {
         engagement: None,
         webhook_destination_url: None,
         subscriber_information: None,
+        transaction_data: vec![],
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -3272,6 +3282,7 @@ async fn test_create_proof_failed_incompatible_exchange() {
         engagement: None,
         webhook_destination_url: None,
         subscriber_information: None,
+        transaction_data: vec![],
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -3335,6 +3346,7 @@ async fn test_create_proof_did_deactivated_error() {
         engagement: None,
         webhook_destination_url: None,
         subscriber_information: None,
+        transaction_data: vec![],
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -3467,6 +3479,7 @@ async fn test_create_proof_schema_deleted() {
             engagement: None,
             webhook_destination_url: None,
             subscriber_information: None,
+            transaction_data: vec![],
         })
         .await;
     assert2::assert!(
@@ -3491,6 +3504,7 @@ async fn test_create_proof_failed_incompatible_verification_key_storage() {
         engagement: None,
         webhook_destination_url: None,
         subscriber_information: None,
+        transaction_data: vec![],
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -3626,6 +3640,7 @@ async fn test_create_proof_failed_invalid_redirect_uri() {
             engagement: None,
             webhook_destination_url: None,
             subscriber_information: None,
+            transaction_data: vec![],
         })
         .await;
     assert!(matches!(
@@ -3651,6 +3666,7 @@ async fn test_create_proof_fail_webhook_not_allowed() {
         engagement: None,
         webhook_destination_url: Some("http://webhook.url".to_string()),
         subscriber_information: None,
+        transaction_data: vec![],
     };
 
     let service = setup_service(Repositories {
@@ -4543,6 +4559,7 @@ async fn test_create_proof_session_org_mismatch() {
             engagement: None,
             webhook_destination_url: None,
             subscriber_information: None,
+            transaction_data: vec![],
         })
         .await;
     assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0178);

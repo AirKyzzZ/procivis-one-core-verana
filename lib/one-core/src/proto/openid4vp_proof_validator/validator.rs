@@ -205,7 +205,7 @@ impl OpenId4VpProofValidatorProto {
         }
 
         self.validate_transaction_data(
-            &interaction_data.transaction_data,
+            &interaction_data.common.transaction_data,
             &transaction_data_evidence,
         )
         .await?;
@@ -227,7 +227,7 @@ impl OpenId4VpProofValidatorProto {
         for request in transaction_data {
             let provider = self
                 .transaction_data_provider
-                .get_transaction_data_by_name(&request.name)
+                .get_transaction_data_by_name(&request.r#type)
                 .map_err(|e| OpenID4VCError::Other(e.to_string()))?;
 
             // reconstruct the exact encoded entry sent in the authorization request

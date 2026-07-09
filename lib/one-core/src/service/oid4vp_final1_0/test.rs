@@ -108,7 +108,7 @@ async fn test_submit_proof_failed_on_validator_failure() {
         client_id: "client_id".to_string(),
         client_id_scheme: Some(ClientIdScheme::RedirectUri),
         response_uri: None,
-        transaction_data: vec![],
+        common: Default::default(),
     };
     let interaction_data_serialized = serde_json::to_vec(&interaction_data).unwrap();
     let now = crate::clock::now_utc();
@@ -244,7 +244,7 @@ async fn test_submit_proof_failed_on_trust_failure() {
         client_id: "client_id".to_string(),
         client_id_scheme: Some(ClientIdScheme::RedirectUri),
         response_uri: None,
-        transaction_data: vec![],
+        common: Default::default(),
     };
     let interaction_data_serialized = serde_json::to_vec(&interaction_data).unwrap();
     let now = crate::clock::now_utc();

@@ -224,6 +224,21 @@ pub struct CreateProofRequestBindingDTO {
     pub profile: Option<String>,
     /// Use for ISO mDL verification over BLE.
     pub engagement: Option<String>,
+    /// Optional transaction data to request authorization for.
+    pub transaction_data: Option<Vec<ProofRequestTransactionDataBindingDTO>>,
+}
+
+/// Transaction data to include in a proof request.
+#[derive(Clone, Debug, uniffi::Record)]
+#[uniffi(name = "ProofRequestTransactionData")]
+pub struct ProofRequestTransactionDataBindingDTO {
+    /// The transaction data provider to use.
+    pub r#type: String,
+    /// The credential schemas (of the given proof schema) the transaction data
+    /// applies to.
+    pub credential_schema_ids: Vec<String>,
+    /// Type-specific transaction data content, encoded as a JSON string.
+    pub data: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Into, uniffi::Enum)]

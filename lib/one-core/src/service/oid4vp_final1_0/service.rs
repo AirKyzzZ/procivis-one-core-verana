@@ -42,9 +42,9 @@ use crate::provider::verification_protocol::openid4vp::mapper::{
     format_authorization_request_client_id_scheme_x509,
 };
 use crate::provider::verification_protocol::openid4vp::model::{
-    ClientIdScheme, JwePayload, OpenID4VPDirectPostRequestDTO, OpenID4VPDirectPostResponseDTO,
-    OpenID4VPVerifierInteractionContent, ResponseSubmission, SubmissionRequestData,
-    VpSubmissionData,
+    ClientIdScheme, CommonVerifierInteractionContent, JwePayload, OpenID4VPDirectPostRequestDTO,
+    OpenID4VPDirectPostResponseDTO, OpenID4VPVerifierInteractionContent, ResponseSubmission,
+    SubmissionRequestData, VpSubmissionData,
 };
 use crate::service::ssi_validator::validate_verification_protocol_type;
 use crate::util::openid4vp::persist_accepted_proof;
@@ -119,7 +119,7 @@ impl OID4VPFinal1_0Service {
             client_id,
             response_uri: Some(response_uri),
             client_id_scheme: Some(client_id_scheme),
-            transaction_data,
+            common: CommonVerifierInteractionContent { transaction_data },
             ..
         } = serde_json::from_slice(interaction_data)
             .map_err(OID4VPFinal1_0ServiceError::from)
@@ -152,7 +152,7 @@ impl OID4VPFinal1_0Service {
             .into_iter()
             .map(|request| {
                 self.transaction_data_provider
-                    .get_transaction_data_by_name(&request.name)
+                    .get_transaction_data_by_name(&request.r#type)
                     .error_while("resolving transaction data provider")?
                     .prepare_transaction_data(request.credential_ids, request.data)
                     .error_while("preparing transaction data")

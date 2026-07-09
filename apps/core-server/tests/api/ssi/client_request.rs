@@ -336,7 +336,7 @@ async fn test_get_client_request_final1_includes_transaction_data() {
                 }]
             },
             "transaction_data": [{
-                "name": "QES_APPROVAL",
+                "type": "QES_APPROVAL",
                 "credential_ids": ["input_0"],
                 "data": {
                     "signatureQualifier": "eu_eidas_qes",

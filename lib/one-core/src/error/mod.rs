@@ -959,6 +959,14 @@ pub enum ErrorCode {
 
     #[strum(message = "Invalid transaction data assignment")]
     BR_0459,
+
+    #[strum(message = "Credential schema format does not support transaction data")]
+    BR_0460,
+
+    #[strum(
+        message = "Transaction data references a credential schema not part of the proof schema"
+    )]
+    BR_0461,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

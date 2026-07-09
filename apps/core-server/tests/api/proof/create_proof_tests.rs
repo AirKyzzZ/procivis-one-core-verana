@@ -1,9 +1,15 @@
+use std::str::FromStr;
+
 use one_core::model::certificate::CertificateRole;
-use one_core::model::did::{KeyRole, RelatedKey};
+use one_core::model::credential_schema::CredentialSchema;
+use one_core::model::did::{Did, KeyRole, RelatedKey};
 use one_core::model::history::HistoryAction;
 use one_core::model::identifier::IdentifierType;
+use one_core::model::organisation::Organisation;
+use one_core::model::proof_schema::ProofSchema;
 use serde_json::{Value, json};
 use similar_asserts::assert_eq;
+use uuid::Uuid;
 
 use crate::fixtures::{self, TestingDidParams, TestingIdentifierParams, assert_history_count};
 use crate::utils;
@@ -959,4 +965,216 @@ async fn test_create_proof_fails_with_iso_mdl_engagement_and_invalid_engagement(
         resp["message"].as_str().unwrap(),
         "Verification engagement not enabled"
     );
+}
+
+async fn jwt_proof_schema_setup() -> (
+    TestContext,
+    Organisation,
+    Did,
+    CredentialSchema,
+    ProofSchema,
+) {
+    let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, Default::default())
+        .await;
+    let claim_schema = credential_schema
+        .claim_schemas
+        .as_ref()
+        .await
+        .unwrap()
+        .first()
+        .unwrap()
+        .to_owned();
+    let proof_schema = context
+        .db
+        .proof_schemas
+        .create(
+            "test",
+            &organisation,
+            vec![CreateProofInputSchema {
+                claims: vec![CreateProofClaim {
+                    id: claim_schema.id,
+                    key: &claim_schema.key,
+                    required: true,
+                    data_type: &claim_schema.data_type,
+                    array: false,
+                }],
+                credential_schema: &credential_schema,
+            }],
+        )
+        .await;
+    (context, organisation, did, credential_schema, proof_schema)
+}
+
+#[tokio::test]
+async fn test_create_proof_with_transaction_data_success() {
+    // GIVEN
+    let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
+    let claim_schemas: Vec<_> = vec![
+        (
+            Uuid::from_str("48db4654-01c4-4a43-9df4-300f1f425c40").unwrap(),
+            "namespace",
+            true,
+            "OBJECT",
+            false,
+        ),
+        (
+            Uuid::from_str("48db4654-01c4-4a43-9df4-300f1f425c41").unwrap(),
+            "namespace/name",
+            true,
+            "STRING",
+            false,
+        ),
+    ];
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create_with_claims(
+            &Uuid::new_v4(),
+            "test",
+            &organisation,
+            &claim_schemas,
+            "MDOC",
+            "org.iso.18013.5.1.mDL",
+        )
+        .await;
+    let proof_schema = context
+        .db
+        .proof_schemas
+        .create(
+            "test",
+            &organisation,
+            vec![CreateProofInputSchema::from((
+                &claim_schemas[..],
+                &credential_schema,
+            ))],
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .proofs
+        .create(CreateProofTestParams {
+            proof_schema_id: proof_schema.id.to_string().into(),
+            protocol: "OPENID4VP_FINAL1".into(),
+            verifier_did: did.id.to_string().into(),
+            transaction_data: Some(json!([{
+                "type": "QES_APPROVAL",
+                "credentialSchemaIds": [credential_schema.id.to_string()],
+                "data": { "foo": "bar" }
+            }])),
+            ..Default::default()
+        })
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+    let resp: Value = resp.json().await;
+    let proof_id = resp["id"].parse();
+
+    // the create-time interaction already carries the mapped transaction data
+    let proof = context.db.proofs.get(&proof_id).await;
+    let data: Value = serde_json::from_slice(&proof.interaction.unwrap().data.unwrap()).unwrap();
+    assert_eq!(data["transaction_data"][0]["type"], json!("QES_APPROVAL"));
+    assert_eq!(
+        data["transaction_data"][0]["credential_ids"],
+        json!([credential_schema.id.to_string()])
+    );
+    assert_eq!(data["transaction_data"][0]["data"], json!({ "foo": "bar" }));
+
+    // and it lands in the verifier interaction content when the proof is shared
+    assert_eq!(201, context.api.proofs.share(proof_id, None).await.status());
+    let proof = context.db.proofs.get(&proof_id).await;
+    let data: Value = serde_json::from_slice(&proof.interaction.unwrap().data.unwrap()).unwrap();
+    assert_eq!(data["transaction_data"][0]["type"], json!("QES_APPROVAL"));
+    assert_eq!(
+        data["transaction_data"][0]["credential_ids"],
+        json!([credential_schema.id.to_string()])
+    );
+    assert_eq!(data["transaction_data"][0]["data"], json!({ "foo": "bar" }));
+}
+
+#[tokio::test]
+async fn test_create_proof_with_transaction_data_provider_not_found() {
+    // GIVEN
+    let (context, _organisation, did, credential_schema, proof_schema) =
+        jwt_proof_schema_setup().await;
+
+    // WHEN
+    let resp = context
+        .api
+        .proofs
+        .create(CreateProofTestParams {
+            proof_schema_id: proof_schema.id.to_string().into(),
+            protocol: "OPENID4VP_FINAL1".into(),
+            verifier_did: did.id.to_string().into(),
+            transaction_data: Some(json!([{
+                "type": "NONEXISTENT_PROVIDER",
+                "credentialSchemaIds": [credential_schema.id.to_string()],
+            }])),
+            ..Default::default()
+        })
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!("BR_0430", resp.error_code().await);
+}
+
+#[tokio::test]
+async fn test_create_proof_with_transaction_data_unknown_credential_schema() {
+    // GIVEN
+    let (context, _organisation, did, _credential_schema, proof_schema) =
+        jwt_proof_schema_setup().await;
+
+    // WHEN — referenced credential schema is not part of the proof schema
+    let resp = context
+        .api
+        .proofs
+        .create(CreateProofTestParams {
+            proof_schema_id: proof_schema.id.to_string().into(),
+            protocol: "OPENID4VP_FINAL1".into(),
+            verifier_did: did.id.to_string().into(),
+            transaction_data: Some(json!([{
+                "type": "QES_APPROVAL",
+                "credentialSchemaIds": [Uuid::new_v4().to_string()],
+            }])),
+            ..Default::default()
+        })
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!("BR_0461", resp.error_code().await);
+}
+
+#[tokio::test]
+async fn test_create_proof_with_transaction_data_format_unsupported() {
+    // GIVEN — JWT credential schema does not support transaction data
+    let (context, _organisation, did, credential_schema, proof_schema) =
+        jwt_proof_schema_setup().await;
+
+    // WHEN
+    let resp = context
+        .api
+        .proofs
+        .create(CreateProofTestParams {
+            proof_schema_id: proof_schema.id.to_string().into(),
+            protocol: "OPENID4VP_FINAL1".into(),
+            verifier_did: did.id.to_string().into(),
+            transaction_data: Some(json!([{
+                "type": "QES_APPROVAL",
+                "credentialSchemaIds": [credential_schema.id.to_string()],
+            }])),
+            ..Default::default()
+        })
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!("BR_0460", resp.error_code().await);
 }

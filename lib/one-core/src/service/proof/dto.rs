@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use shared_types::{
-    CertificateId, DidId, IdentifierId, InteractionId, KeyId, OrganisationId, ProofId,
-    ProofSchemaId,
+    CertificateId, CredentialSchemaId, DidId, IdentifierId, InteractionId, KeyId, OrganisationId,
+    ProofId, ProofSchemaId, TransactionDataType,
 };
 use time::OffsetDateTime;
 
@@ -10,7 +10,9 @@ use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use crate::model::list_query::ListQuery;
 use crate::model::proof::{ExactProofFilterColumn, ProofRole, ProofStateEnum, SortableProofColumn};
 use crate::proto::trust_information::dto::TrustInformation;
-use crate::provider::verification_protocol::openid4vp::model::ClientIdScheme;
+use crate::provider::verification_protocol::openid4vp::model::{
+    ClientIdScheme, CommonVerifierInteractionContent,
+};
 use crate::service::certificate::dto::CertificateResponseDTO;
 use crate::service::credential::dto::{
     CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO,
@@ -34,6 +36,19 @@ pub struct CreateProofRequestDTO {
     pub engagement: Option<String>,
     pub webhook_destination_url: Option<String>,
     pub subscriber_information: Option<String>,
+    pub transaction_data: Vec<CreateProofRequestTransactionDataDTO>,
+}
+
+/// Transaction data supplied at proof-request creation. Turned into an OpenID4VP
+/// `transaction_data` entry by the transaction data provider named by `r#type`.
+#[derive(Clone, Debug)]
+pub struct CreateProofRequestTransactionDataDTO {
+    /// Config name of the transaction data provider.
+    pub r#type: TransactionDataType,
+    /// Credential schemas (of the proof schema) the transaction data applies to.
+    pub credential_schema_ids: Vec<CredentialSchemaId>,
+    /// Type-specific transaction data content.
+    pub data: Option<serde_json::Value>,
 }
 
 #[derive(Clone, Debug)]
@@ -159,8 +174,10 @@ pub struct ProposeProofResponseDTO {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct CreateProofInteractionData {
+pub(crate) struct CreateProofInteractionData {
     pub transport: Vec<String>,
+    #[serde(flatten)]
+    pub common: CommonVerifierInteractionContent,
 }
 
 #[derive(Clone, Debug, Default)]

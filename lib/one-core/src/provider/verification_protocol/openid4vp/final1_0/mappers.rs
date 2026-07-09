@@ -22,7 +22,8 @@ use crate::provider::verification_protocol::openid4vp::mapper::{
     format_authorization_request_client_id_scheme_x509,
 };
 use crate::provider::verification_protocol::openid4vp::model::{
-    ClientIdScheme, HolderTxData, OpenID4VPHolderInteractionData,
+    ClientIdScheme, CommonVerifierInteractionContent, HolderTxData, OpenID4VPHolderInteractionData,
+    TransactionDataRequest,
 };
 use crate::service::oid4vp_final1_0::proof_request::generate_vp_formats_supported;
 
@@ -419,6 +420,21 @@ fn query_claim_matches_reg_cert_claim(
     }
 
     true
+}
+
+pub(super) fn transaction_data_from_interaction(
+    proof: &Proof,
+) -> Result<Vec<TransactionDataRequest>, VerificationProtocolError> {
+    let Some(interaction) = &proof.interaction else {
+        return Ok(vec![]);
+    };
+    let Some(data) = &interaction.data else {
+        return Err(VerificationProtocolError::Failed(
+            "missing interaction data".to_string(),
+        ));
+    };
+    let data = serde_json::from_slice::<CommonVerifierInteractionContent>(data)?;
+    Ok(data.transaction_data)
 }
 
 #[cfg(test)]

@@ -37,7 +37,8 @@ use one_core::service::organisation::dto::{
     CreateOrganisationRequestDTO, UpsertOrganisationRequestDTO,
 };
 use one_core::service::proof::dto::{
-    CreateProofRequestDTO, ProofClaimValueDTO, ProofDetailResponseDTO, ProofFilterParamsDTO,
+    CreateProofRequestDTO, CreateProofRequestTransactionDataDTO, ProofClaimValueDTO,
+    ProofDetailResponseDTO, ProofFilterParamsDTO,
 };
 use one_core::service::proof_schema::dto::{
     ImportProofSchemaClaimSchemaDTO, ProofSchemaFilterParamsDTO,
@@ -80,7 +81,8 @@ use super::proof::{
     ApplicableCredentialOrFailureHintBindingEnum, CreateProofRequestBindingDTO,
     PresentationDefinitionV2ClaimBindingDTO, PresentationDefinitionV2ClaimValueBindingDTO,
     PresentationDefinitionV2CredentialDetailBindingDTO, ProofListQueryBindingDTO,
-    ProofRequestClaimValueBindingDTO, ProofResponseBindingDTO,
+    ProofRequestClaimValueBindingDTO, ProofRequestTransactionDataBindingDTO,
+    ProofResponseBindingDTO,
 };
 use super::proof_schema::{
     ImportProofSchemaClaimSchemaBindingDTO, ListProofSchemasFiltersBindingDTO,
@@ -89,7 +91,8 @@ use super::verifier_instance::EditVerifierInstanceRequestBindingDTO;
 use super::wallet_unit::{EditHolderWalletUnitRequestBindingDTO, TrustCollectionInfoBindingDTO};
 use crate::error::ErrorResponseBindingDTO;
 use crate::utils::{
-    TimestampFormat, into_id, into_id_opt, into_id_opt_vec, into_timestamp, into_timestamp_opt,
+    TimestampFormat, into_id, into_id_opt, into_id_opt_vec, into_id_vec, into_timestamp,
+    into_timestamp_opt,
 };
 
 impl<IN: Into<ClaimBindingDTO>> From<CredentialDetailResponseDTO<IN>>
@@ -418,6 +421,28 @@ impl TryFrom<CreateProofRequestBindingDTO> for CreateProofRequestDTO {
             engagement: value.engagement,
             webhook_destination_url: None,
             subscriber_information: None,
+            transaction_data: value
+                .transaction_data
+                .unwrap_or_default()
+                .into_iter()
+                .map(TryInto::try_into)
+                .collect::<Result<Vec<_>, _>>()?,
+        })
+    }
+}
+
+impl TryFrom<ProofRequestTransactionDataBindingDTO> for CreateProofRequestTransactionDataDTO {
+    type Error = ErrorResponseBindingDTO;
+
+    fn try_from(value: ProofRequestTransactionDataBindingDTO) -> Result<Self, Self::Error> {
+        Ok(Self {
+            r#type: value.r#type.into(),
+            credential_schema_ids: into_id_vec(&value.credential_schema_ids)?,
+            data: value
+                .data
+                .map(|data| serde_json::from_str(&data))
+                .transpose()
+                .map_err(|err| ServiceError::MappingError(err.to_string()))?,
         })
     }
 }

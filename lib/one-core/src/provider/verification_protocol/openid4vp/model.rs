@@ -101,6 +101,15 @@ pub(crate) struct OpenID4VPVerifierInteractionContent {
     pub client_id_scheme: Option<ClientIdScheme>,
     pub response_uri: Option<String>,
     pub encryption_key: Option<PublicJwk>,
+    #[serde(flatten)]
+    pub common: CommonVerifierInteractionContent,
+}
+
+/// Interaction data that is common between the data created on proof create
+/// and proof share.
+#[skip_serializing_none]
+#[derive(Clone, Deserialize, Serialize, Debug, Default)]
+pub(crate) struct CommonVerifierInteractionContent {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub transaction_data: Vec<TransactionDataRequest>,
 }
@@ -110,7 +119,8 @@ pub(crate) struct OpenID4VPVerifierInteractionContent {
 #[skip_serializing_none]
 #[derive(Clone, Deserialize, Serialize, Debug)]
 pub(crate) struct TransactionDataRequest {
-    pub name: TransactionDataType,
+    pub r#type: TransactionDataType,
+    // Corresponds to the ids of the underlying credential schemas
     pub credential_ids: Vec<CredentialQueryId>,
     pub data: Option<serde_json::Value>,
 }

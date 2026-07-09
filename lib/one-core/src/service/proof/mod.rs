@@ -16,6 +16,7 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
+use crate::provider::transaction_data::provider::TransactionDataProvider;
 use crate::provider::verification_protocol::provider::VerificationProtocolProvider;
 use crate::repository::claim_repository::ClaimRepository;
 use crate::repository::credential_repository::CredentialRepository;
@@ -60,6 +61,7 @@ pub struct ProofService {
     proof_validator: Arc<dyn OpenId4VpProofValidator>,
     notification_scheduler: Arc<dyn NotificationScheduler>,
     trust_information_provider: Arc<dyn TrustInformationProvider>,
+    transaction_data_provider: Arc<dyn TransactionDataProvider>,
 }
 
 impl ProofService {
@@ -90,6 +92,7 @@ impl ProofService {
         proof_validator: Arc<dyn OpenId4VpProofValidator>,
         notification_scheduler: Arc<dyn NotificationScheduler>,
         trust_information_provider: Arc<dyn TrustInformationProvider>,
+        transaction_data_provider: Arc<dyn TransactionDataProvider>,
     ) -> Self {
         Self {
             proof_repository,
@@ -117,6 +120,7 @@ impl ProofService {
             proof_validator,
             notification_scheduler,
             trust_information_provider,
+            transaction_data_provider,
         }
     }
 }

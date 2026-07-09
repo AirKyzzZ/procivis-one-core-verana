@@ -10,8 +10,9 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::dto::{
-    CreateProofRequestDTO, ProofClaimDTO, ProofClaimValueDTO, ProofDetailResponseDTO,
-    ProofFilterParamsDTO, ProofFilterValue, ProofInputDTO, ProofListItemResponseDTO,
+    CreateProofRequestDTO, CreateProofRequestTransactionDataDTO, ProofClaimDTO, ProofClaimValueDTO,
+    ProofDetailResponseDTO, ProofFilterParamsDTO, ProofFilterValue, ProofInputDTO,
+    ProofListItemResponseDTO,
 };
 use super::error::ProofServiceError;
 use crate::config::core_config::{CoreConfig, DatatypeType};
@@ -32,6 +33,7 @@ use crate::model::proof::{Proof, ProofClaim, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
 use crate::proto::trust_information::dto::TrustInformation;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::verification_protocol::openid4vp::model::TransactionDataRequest;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::service::certificate::mapper::certificate_to_response_dto;
 use crate::service::credential::dto::{
@@ -873,5 +875,19 @@ impl From<ProofFilterParamsDTO> for ListFilterCondition<ProofFilterValue> {
             & requested_date_before
             & completed_date_after
             & completed_date_before
+    }
+}
+
+impl From<CreateProofRequestTransactionDataDTO> for TransactionDataRequest {
+    fn from(value: CreateProofRequestTransactionDataDTO) -> Self {
+        Self {
+            r#type: value.r#type,
+            credential_ids: value
+                .credential_schema_ids
+                .into_iter()
+                .map(|id| id.to_string().into())
+                .collect(),
+            data: value.data,
+        }
     }
 }

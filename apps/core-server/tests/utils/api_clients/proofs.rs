@@ -3,7 +3,7 @@ use std::fmt::Display;
 
 use core_server::endpoint::proof::dto::ClientIdSchemeRestEnum;
 use one_core::model::proof::{ProofRole, ProofStateEnum};
-use serde_json::json;
+use serde_json::{Value, json};
 use shared_types::{IdentifierId, ProofId, ProofSchemaId};
 use time::OffsetDateTime;
 
@@ -45,6 +45,7 @@ pub struct CreateProofTestParams {
     pub iso_mdl_engagement: Option<&'static str>,
     pub engagement: Option<&'static str>,
     pub webhook_destination_url: Option<&'static str>,
+    pub transaction_data: Option<Value>,
 }
 
 impl ProofsApi {
@@ -81,6 +82,10 @@ impl ProofsApi {
 
         if let Some(webhook_destination_url) = params.webhook_destination_url {
             body["webhookDestinationUrl"] = webhook_destination_url.into();
+        }
+
+        if let Some(transaction_data) = params.transaction_data {
+            body["transactionData"] = transaction_data;
         }
 
         self.client.post("/api/proof-request/v1", body).await

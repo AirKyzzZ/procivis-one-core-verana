@@ -749,6 +749,7 @@ impl OneCore {
                 openid4vp_proof_validator,
                 notification_scheduler,
                 trust_information_provider,
+                transaction_data_provider,
             ),
             ssi_issuer_service: SSIIssuerService::new(
                 data_provider.get_credential_schema_repository(),

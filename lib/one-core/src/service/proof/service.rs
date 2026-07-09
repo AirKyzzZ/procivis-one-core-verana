@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use std::str::FromStr;
 use std::sync::Arc;
 
+use one_dto_mapper::convert_inner;
 use shared_types::{CredentialFormat, CredentialId, ProofId};
 use uuid::Uuid;
 
@@ -20,8 +21,8 @@ use super::validator::{
     throw_if_proof_not_in_session_org, validate_did_and_format_compatibility,
     validate_format_and_exchange_protocol_compatibility, validate_holder_engagements,
     validate_mdl_exchange, validate_proof_for_proof_definition, validate_redirect_uri,
-    validate_verification_key_storage_compatibility, validate_verifier_engagement,
-    validate_webhook_url,
+    validate_transaction_data, validate_verification_key_storage_compatibility,
+    validate_verifier_engagement, validate_webhook_url,
 };
 use crate::config::core_config::{
     BlobStorageType, TransportType, VerificationEngagement, VerificationProtocolType,
@@ -63,6 +64,7 @@ use crate::provider::verification_protocol::iso_mdl::device_engagement::{
     BleOptions, DeviceEngagement, DeviceRetrievalMethod, RetrievalOptions, Security,
 };
 use crate::provider::verification_protocol::iso_mdl::nfc::create_nfc_handover_select_message;
+use crate::provider::verification_protocol::openid4vp::model::CommonVerifierInteractionContent;
 use crate::service::common_dto::{ListQueryDTO, TrustInformationDetailResponseDTO};
 use crate::service::credential_schema::validator::validate_key_storage_security_supported;
 use crate::util::interactions::{add_new_interaction, clear_previous_interaction};
@@ -472,31 +474,42 @@ impl ProofService {
         )
         .error_while("validating transport")?;
 
+        validate_transaction_data(
+            &request.transaction_data,
+            &proof_schema,
+            &*self.credential_formatter_provider,
+            &*self.transaction_data_provider,
+        )
+        .await?;
+
         let mut maybe_interaction = None;
-        let transport = match transport {
-            SelectedTransportType::Single(single) => single,
+        let (transport, interaction_transports, multiple_transports) = match transport {
+            SelectedTransportType::Single(single) => (single.clone(), vec![single], false),
             // for multiple transports we store them in interaction data and set the transport=""
-            SelectedTransportType::Multiple(multiple) => {
-                let data = CreateProofInteractionData {
-                    transport: multiple,
-                };
-
-                maybe_interaction = Some(
-                    add_new_interaction(
-                        Uuid::new_v4().into(),
-                        &*self.interaction_repository,
-                        serde_json::to_vec(&data).ok(),
-                        proof_schema.organisation.clone(),
-                        InteractionType::Verification,
-                        None,
-                    )
-                    .await
-                    .error_while("adding interaction")?,
-                );
-
-                String::new()
-            }
+            SelectedTransportType::Multiple(multiple) => (String::new(), multiple, true),
         };
+
+        if multiple_transports || !request.transaction_data.is_empty() {
+            let data = CreateProofInteractionData {
+                transport: interaction_transports,
+                common: CommonVerifierInteractionContent {
+                    transaction_data: convert_inner(request.transaction_data.clone()),
+                },
+            };
+
+            maybe_interaction = Some(
+                add_new_interaction(
+                    Uuid::new_v4().into(),
+                    &*self.interaction_repository,
+                    serde_json::to_vec(&data).ok(),
+                    proof_schema.organisation.clone(),
+                    InteractionType::Verification,
+                    None,
+                )
+                .await
+                .error_while("adding interaction")?,
+            );
+        }
 
         let success_log_detail = format!(
             "using proof schema `{}` ({}): protocol `{}`, transport `{}`",

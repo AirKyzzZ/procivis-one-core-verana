@@ -1,4 +1,4 @@
-use shared_types::{DidId, IdentifierId, ProofId, ProofSchemaId};
+use shared_types::{CredentialSchemaId, DidId, IdentifierId, ProofId, ProofSchemaId};
 
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 use crate::model::did::KeyRole;
@@ -57,6 +57,11 @@ pub enum ProofServiceError {
     #[error("BBS not supported")]
     BBSNotSupported,
 
+    #[error("Credential schema `{0}` format does not support transaction data")]
+    TransactionDataFormatUnsupported(CredentialSchemaId),
+    #[error("Transaction data references credential schema `{0}` not part of the proof schema")]
+    TransactionDataUnknownCredentialSchema(CredentialSchemaId),
+
     #[error("Proof error: `{0}`")]
     Other(String),
     #[error("Mapping error: `{0}`")]
@@ -92,6 +97,8 @@ impl ErrorCodeMixin for ProofServiceError {
             Self::MissingProofSchema(_) => ErrorCode::BR_0020,
             Self::MissingDid(_) => ErrorCode::BR_0024,
             Self::MissingIdentifier(_) => ErrorCode::BR_0207,
+            Self::TransactionDataFormatUnsupported(_) => ErrorCode::BR_0460,
+            Self::TransactionDataUnknownCredentialSchema(_) => ErrorCode::BR_0461,
             Self::MappingError(_) => ErrorCode::BR_0047,
             Self::Other(_) => ErrorCode::BR_0000,
             Self::OpenID4VCError(_) => ErrorCode::BR_0048,

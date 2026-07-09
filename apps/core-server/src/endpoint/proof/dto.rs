@@ -13,9 +13,9 @@ use one_core::provider::verification_protocol::dto::{
 use one_core::provider::verification_protocol::openid4vp::model::ClientIdScheme;
 use one_core::service::error::ServiceError;
 use one_core::service::proof::dto::{
-    CreateProofRequestDTO, ProofClaimDTO, ProofClaimValueDTO, ProofDetailResponseDTO,
-    ProofFilterParamsDTO, ProofInputDTO, ProofListItemResponseDTO, ShareProofRequestDTO,
-    ShareProofRequestParamsDTO, ShareProofResponseDTO,
+    CreateProofRequestDTO, CreateProofRequestTransactionDataDTO, ProofClaimDTO, ProofClaimValueDTO,
+    ProofDetailResponseDTO, ProofFilterParamsDTO, ProofInputDTO, ProofListItemResponseDTO,
+    ShareProofRequestDTO, ShareProofRequestParamsDTO, ShareProofResponseDTO,
 };
 use one_dto_mapper::{
     From, Into, TryFrom, TryInto, convert_inner, convert_inner_of_inner, try_convert_inner,
@@ -24,8 +24,8 @@ use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
 use shared_types::i18n::I18nString;
 use shared_types::{
-    CertificateId, DidId, IdentifierId, KeyId, OrganisationId, ProofId, ProofSchemaId,
-    TransactionDataId, TransactionDataType,
+    CertificateId, CredentialSchemaId, DidId, IdentifierId, KeyId, OrganisationId, ProofId,
+    ProofSchemaId, TransactionDataId, TransactionDataType,
 };
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
@@ -139,6 +139,26 @@ pub(crate) struct CreateProofRequestRestDTO {
     pub webhook_destination_url: Option<String>,
     /// Optional subscriber information associated with this proof request.
     pub subscriber_information: Option<String>,
+    /// Optional transaction data to request authorization for.
+    #[serde(default)]
+    #[into(with_fn = convert_inner)]
+    #[schema(nullable = false)]
+    pub transaction_data: Vec<ProofRequestTransactionDataRestDTO>,
+}
+
+/// Transaction data to include in a proof request.
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[into(CreateProofRequestTransactionDataDTO)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct ProofRequestTransactionDataRestDTO {
+    /// The transaction data provider to use.
+    pub r#type: TransactionDataType,
+    /// The credential schemas (of the given proof schema) the transaction data
+    /// applies to.
+    pub credential_schema_ids: Vec<CredentialSchemaId>,
+    /// Type-specific transaction data content.
+    #[schema(value_type = Option<Object>)]
+    pub data: Option<serde_json::Value>,
 }
 
 // list endpoint

@@ -532,6 +532,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
                     interaction_data: Some(serialize_interaction_data(
                         &CreateProofInteractionData {
                             transport: transport.iter().map(ToString::to_string).collect(),
+                            common: Default::default(),
                         },
                     )?),
                     expires_at,

@@ -308,7 +308,7 @@ fn test_data(dcql_query: DcqlQuery) -> TestData {
         client_id: "client_id".to_string(),
         client_id_scheme: None,
         response_uri: None,
-        transaction_data: vec![],
+        common: Default::default(),
     };
     let interaction_data_serialized = serde_json::to_vec(&interaction_data).unwrap();
     let interaction = Interaction {
@@ -510,7 +510,7 @@ fn qes_approval_evidence() -> IndexMap<String, IndexMap<String, ciborium::Value>
 
 fn transaction_data_request() -> TransactionDataRequest {
     TransactionDataRequest {
-        name: "QES_APPROVAL".into(),
+        r#type: "QES_APPROVAL".into(),
         credential_ids: vec!["a83dabc3-1601-4642-84ec-7a5ad8a70d36".into()],
         data: None,
     }
@@ -534,7 +534,7 @@ fn transaction_data_mocks(mocks: &mut Mocks) {
 #[tokio::test]
 async fn test_validate_submission_transaction_data_authorized() {
     let mut test_data = test_data(mdoc_dcql_query());
-    test_data.interaction_data.transaction_data = vec![transaction_data_request()];
+    test_data.interaction_data.common.transaction_data = vec![transaction_data_request()];
     test_data
         .mock_data
         .presentation_extraction
@@ -572,7 +572,7 @@ async fn test_validate_submission_transaction_data_authorized() {
 #[tokio::test]
 async fn test_validate_submission_transaction_data_missing_evidence() {
     let mut test_data = test_data(mdoc_dcql_query());
-    test_data.interaction_data.transaction_data = vec![transaction_data_request()];
+    test_data.interaction_data.common.transaction_data = vec![transaction_data_request()];
 
     let mut mocks = mocks_with_test_data(test_data.mock_data);
     transaction_data_mocks(&mut mocks);
@@ -601,7 +601,7 @@ async fn test_validate_submission_transaction_data_missing_evidence() {
 #[tokio::test]
 async fn test_validate_submission_transaction_data_duplicate_entries() {
     let mut test_data = test_data(mdoc_dcql_query());
-    test_data.interaction_data.transaction_data =
+    test_data.interaction_data.common.transaction_data =
         vec![transaction_data_request(), transaction_data_request()];
     test_data
         .mock_data
