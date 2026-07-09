@@ -1,12 +1,12 @@
 use one_core::provider::verification_protocol::dto::{
     ApplicableCredentialOrFailureHintEnum, PresentationDefinitionTransactionDataDTO,
 };
-use one_core::service::proof::dto::ProofTransactionDataResponseDTO;
+use one_core::service::proof::dto::{ProofTransactionDataResponseDTO, TransactionDataResponseDTO};
 use one_dto_mapper::{convert_inner, try_convert_inner};
 
 use super::dto::{
     ApplicableCredentialOrFailureHintRestEnum, PresentationDefinitionTransactionDataRestDTO,
-    ProofTransactionDataResponseRestDTO,
+    ProofTransactionDataResponseRestDTO, TransactionDataResponseRestDTO,
 };
 use crate::mapper::MapperError;
 
@@ -65,6 +65,22 @@ impl From<ProofTransactionDataResponseDTO> for ProofTransactionDataResponseRestD
             credential_query_ids,
             transaction_data_display: convert_inner(transaction_data_display),
             raw_transaction_data,
+        }
+    }
+}
+
+impl From<TransactionDataResponseDTO> for TransactionDataResponseRestDTO {
+    fn from(value: TransactionDataResponseDTO) -> Self {
+        let TransactionDataResponseDTO {
+            r#type,
+            credential_schema_ids,
+            data,
+            ..
+        } = value;
+        Self {
+            r#type: r#type.to_string(),
+            credential_schema_ids,
+            data,
         }
     }
 }

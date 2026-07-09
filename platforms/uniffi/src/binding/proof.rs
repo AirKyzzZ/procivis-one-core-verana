@@ -20,9 +20,7 @@ use one_core::service::proof::dto::{
     ProofTransactionDataResponseDTO, ProposeProofRequestDTO, ProposeProofResponseDTO,
     ShareProofRequestDTO, ShareProofRequestParamsDTO, ShareProofResponseDTO,
 };
-use one_core::service::ssi_holder::dto::{
-    PresentationSubmitV2CredentialRequestDTO, PresentationSubmitV2RequestDTO,
-};
+use one_core::service::ssi_holder::dto::PresentationSubmitV2RequestDTO;
 use one_dto_mapper::{From, Into, TryInto, convert_inner, try_convert_inner_of_inner};
 
 use super::common::SortDirection;
@@ -41,7 +39,7 @@ use crate::binding::credential_schema::{
 };
 use crate::binding::trust_information::TrustInformationDetailResponseBindingDTO;
 use crate::error::BindingError;
-use crate::utils::{TimestampFormat, into_id, into_id_vec};
+use crate::utils::{TimestampFormat, into_id};
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCore {
@@ -410,6 +408,20 @@ pub struct ProofResponseBindingDTO {
     pub profile: Option<String>,
     /// Trust information of the verifier, if any.
     pub trust_information: Option<TrustInformationBindingDTO>,
+    /// Transaction data attached to this proof request. Present only if the proof role is `VERIFIER`.
+    pub transaction_data: Option<Vec<TransactionDataResponseBindingDTO>>,
+}
+
+/// Transaction data attached to a proof request.
+#[derive(Clone, Debug, uniffi::Record)]
+#[uniffi(name = "TransactionDataResponse")]
+pub struct TransactionDataResponseBindingDTO {
+    /// The transaction data provider used.
+    pub r#type: String,
+    /// The credential schemas the transaction data applies to.
+    pub credential_schema_ids: Vec<String>,
+    /// Type-specific transaction data content, encoded as a JSON string.
+    pub data: Option<String>,
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]
@@ -460,25 +472,21 @@ pub enum ProofRoleBindingEnum {
     Verifier,
 }
 
-#[derive(Clone, Debug, TryInto, uniffi::Record)]
-#[try_into(T = PresentationSubmitV2CredentialRequestDTO, Error = ServiceError)]
+#[derive(Clone, Debug, uniffi::Record)]
 #[uniffi(name = "PresentationSubmitV2CredentialRequest")]
 pub struct PresentationSubmitV2CredentialRequestBindingDTO {
     /// ID of the credential to submit.
-    #[try_into(with_fn_ref = into_id)]
     pub credential_id: String,
     /// Array of claim paths for claims where `userSelection: true` that the
     /// holder chooses to share. Only include paths for optional claims the
     /// holder selects. Omit entirely or use an empty array if withholding all
     /// optional claims.
-    #[try_into(infallible)]
-    pub user_selections: Vec<String>,
+    pub user_selections: Option<Vec<String>>,
     /// Optional ids of transaction-data entries to bind to this credential.
     /// Entries not listed here are auto-assigned. Ids must reference transaction
     /// data applicable to this credential. Omit entirely or use an empty array
     /// to auto-assign all transaction data.
-    #[try_into(with_fn_ref = into_id_vec)]
-    pub transaction_data_ids: Vec<String>,
+    pub transaction_data_ids: Option<Vec<String>>,
 }
 
 #[derive(Clone, Debug, TryInto, uniffi::Record)]

@@ -407,6 +407,24 @@ pub(crate) struct ProofDetailResponseRestDTO {
     pub trust_information: Option<TrustInformationRestDTO>,
     #[try_from(infallible)]
     pub subscriber_information: Option<String>,
+    /// Transaction data attached to this proof request. Present only if the proof role is `VERIFIER`.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[try_from(with_fn = convert_inner, infallible)]
+    pub transaction_data: Vec<TransactionDataResponseRestDTO>,
+}
+
+/// Transaction data attached to this proof request.
+#[derive(Clone, Debug, Serialize, ToSchema, ModifySchema)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct TransactionDataResponseRestDTO {
+    /// The transaction data provider used.
+    #[modify_schema(field = transaction_data_provider)]
+    pub r#type: String,
+    /// The credential schemas the transaction data applies to.
+    pub credential_schema_ids: Vec<CredentialSchemaId>,
+    /// Type-specific transaction data content.
+    #[schema(value_type = Option<Object>)]
+    pub data: Option<serde_json::Value>,
 }
 
 #[options_not_nullable]

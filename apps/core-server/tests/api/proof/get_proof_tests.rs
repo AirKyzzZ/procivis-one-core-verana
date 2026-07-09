@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::str::FromStr;
 
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential::CredentialStateEnum;
@@ -10,6 +11,7 @@ use one_core::model::history::{
 use one_core::model::identifier::IdentifierType;
 use one_core::model::interaction::InteractionType;
 use one_core::model::proof::ProofStateEnum;
+use serde_json::json;
 use serde_json_path::JsonPath;
 use similar_asserts::assert_eq;
 use sql_data_provider::test_utilities::get_dummy_date;
@@ -20,6 +22,7 @@ use crate::fixtures::{
     ClaimData, TestingCredentialParams, TestingDidParams, TestingIdentifierParams,
     key_to_claim_schema_id,
 };
+use crate::utils::api_clients::proofs::CreateProofTestParams;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 use crate::utils::db_clients::histories::TestingHistoryParams;
@@ -1645,4 +1648,80 @@ async fn test_get_proof_with_credentials_returns_profiles() {
     resp["proofInputs"][0]["credential"]["id"].assert_eq(&credential.id);
     assert!(resp["proofInputs"][0]["credential"]["role"].is_string());
     assert!(resp["proofInputs"][0]["credential"]["profile"].is_null());
+}
+
+#[tokio::test]
+async fn test_get_proof_with_transaction_data() {
+    // GIVEN
+    let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
+    let claim_schemas: Vec<_> = vec![
+        (
+            Uuid::from_str("48db4654-01c4-4a43-9df4-300f1f425c40").unwrap(),
+            "namespace",
+            true,
+            "OBJECT",
+            false,
+        ),
+        (
+            Uuid::from_str("48db4654-01c4-4a43-9df4-300f1f425c41").unwrap(),
+            "namespace/name",
+            true,
+            "STRING",
+            false,
+        ),
+    ];
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create_with_claims(
+            &Uuid::new_v4(),
+            "test",
+            &organisation,
+            &claim_schemas,
+            "MDOC",
+            "org.iso.18013.5.1.mDL",
+        )
+        .await;
+    let proof_schema = context
+        .db
+        .proof_schemas
+        .create(
+            "test",
+            &organisation,
+            vec![CreateProofInputSchema::from((
+                &claim_schemas[..],
+                &credential_schema,
+            ))],
+        )
+        .await;
+
+    let resp = context
+        .api
+        .proofs
+        .create(CreateProofTestParams {
+            proof_schema_id: proof_schema.id.to_string().into(),
+            protocol: "OPENID4VP_FINAL1".into(),
+            verifier_did: did.id.to_string().into(),
+            transaction_data: Some(json!([{
+                "type": "QES_APPROVAL",
+                "credentialSchemaIds": [credential_schema.id.to_string()],
+                "data": { "foo": "bar" }
+            }])),
+            ..Default::default()
+        })
+        .await;
+    assert_eq!(resp.status(), 201);
+    let proof_id = resp.json_value().await["id"].as_str().unwrap().to_string();
+
+    // WHEN
+    let resp = context.api.proofs.get(&proof_id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    let transaction_data = resp["transactionData"].as_array().unwrap();
+    assert_eq!(transaction_data.len(), 1);
+    assert_eq!(transaction_data[0]["type"], json!("QES_APPROVAL"));
+    transaction_data[0]["credentialSchemaIds"][0].assert_eq(&credential_schema.id);
+    assert_eq!(transaction_data[0]["data"], json!({ "foo": "bar" }));
 }

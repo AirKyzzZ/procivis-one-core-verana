@@ -38,12 +38,14 @@ use one_core::service::organisation::dto::{
 };
 use one_core::service::proof::dto::{
     CreateProofRequestDTO, CreateProofRequestTransactionDataDTO, ProofClaimValueDTO,
-    ProofDetailResponseDTO, ProofFilterParamsDTO,
+    ProofDetailResponseDTO, ProofFilterParamsDTO, TransactionDataResponseDTO,
 };
 use one_core::service::proof_schema::dto::{
     ImportProofSchemaClaimSchemaDTO, ProofSchemaFilterParamsDTO,
 };
-use one_core::service::ssi_holder::dto::{HandleInvitationResultDTO, InitiateIssuanceRequestDTO};
+use one_core::service::ssi_holder::dto::{
+    HandleInvitationResultDTO, InitiateIssuanceRequestDTO, PresentationSubmitV2CredentialRequestDTO,
+};
 use one_core::service::verifier_instance::dto::EditVerifierInstanceRequestDTO;
 use one_core::service::wallet_instance::dto::{
     EditHolderWalletInstanceRequestDTO, TrustCollectionInfoDTO,
@@ -80,9 +82,10 @@ use super::organisation::{
 use super::proof::{
     ApplicableCredentialOrFailureHintBindingEnum, CreateProofRequestBindingDTO,
     PresentationDefinitionV2ClaimBindingDTO, PresentationDefinitionV2ClaimValueBindingDTO,
-    PresentationDefinitionV2CredentialDetailBindingDTO, ProofListQueryBindingDTO,
+    PresentationDefinitionV2CredentialDetailBindingDTO,
+    PresentationSubmitV2CredentialRequestBindingDTO, ProofListQueryBindingDTO,
     ProofRequestClaimValueBindingDTO, ProofRequestTransactionDataBindingDTO,
-    ProofResponseBindingDTO,
+    ProofResponseBindingDTO, TransactionDataResponseBindingDTO,
 };
 use super::proof_schema::{
     ImportProofSchemaClaimSchemaBindingDTO, ListProofSchemasFiltersBindingDTO,
@@ -185,6 +188,25 @@ impl From<ProofDetailResponseDTO> for ProofResponseBindingDTO {
             role: value.role.into(),
             profile: value.profile,
             trust_information: convert_inner(value.trust_information),
+            transaction_data: if value.transaction_data.is_empty() {
+                None
+            } else {
+                Some(convert_inner(value.transaction_data))
+            },
+        }
+    }
+}
+
+impl From<TransactionDataResponseDTO> for TransactionDataResponseBindingDTO {
+    fn from(value: TransactionDataResponseDTO) -> Self {
+        Self {
+            r#type: value.r#type.to_string(),
+            credential_schema_ids: value
+                .credential_schema_ids
+                .iter()
+                .map(ToString::to_string)
+                .collect(),
+            data: value.data.map(|data| data.to_string()),
         }
     }
 }
@@ -1067,4 +1089,25 @@ pub(crate) fn to_i18n_string_opt(value: Option<HashMap<String, String>>) -> Opti
 }
 pub(crate) fn from_i18n_string_opt(value: Option<I18nString>) -> Option<HashMap<String, String>> {
     value.map(from_i18n_string)
+}
+
+impl TryFrom<PresentationSubmitV2CredentialRequestBindingDTO>
+    for PresentationSubmitV2CredentialRequestDTO
+{
+    type Error = ServiceError;
+    fn try_from(
+        value: PresentationSubmitV2CredentialRequestBindingDTO,
+    ) -> Result<Self, Self::Error> {
+        let PresentationSubmitV2CredentialRequestBindingDTO {
+            credential_id,
+            user_selections,
+            transaction_data_ids,
+            ..
+        } = value;
+        Ok(Self {
+            credential_id: into_id(&credential_id)?,
+            user_selections: user_selections.unwrap_or_default(),
+            transaction_data_ids: into_id_vec(&transaction_data_ids.unwrap_or_default())?,
+        })
+    }
 }

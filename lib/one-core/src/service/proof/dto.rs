@@ -96,6 +96,17 @@ pub struct ProofDetailResponseDTO {
     pub webhook_destination_url: Option<String>,
     pub trust_information: Option<TrustInformation>,
     pub subscriber_information: Option<String>,
+    /// Transaction data attached to this proof request (verifier proofs only).
+    pub transaction_data: Vec<TransactionDataResponseDTO>,
+}
+
+/// Transaction data as attached to a proof request at creation time. Mirrors
+/// [`CreateProofRequestTransactionDataDTO`] for the response side.
+#[derive(Clone, Debug)]
+pub struct TransactionDataResponseDTO {
+    pub r#type: TransactionDataType,
+    pub credential_schema_ids: Vec<CredentialSchemaId>,
+    pub data: Option<serde_json::Value>,
 }
 
 #[derive(Clone, Debug)]

@@ -12,7 +12,7 @@ use uuid::Uuid;
 use super::dto::{
     CreateProofRequestDTO, CreateProofRequestTransactionDataDTO, ProofClaimDTO, ProofClaimValueDTO,
     ProofDetailResponseDTO, ProofFilterParamsDTO, ProofFilterValue, ProofInputDTO,
-    ProofListItemResponseDTO,
+    ProofListItemResponseDTO, TransactionDataResponseDTO,
 };
 use super::error::ProofServiceError;
 use crate::config::core_config::{CoreConfig, DatatypeType};
@@ -33,7 +33,9 @@ use crate::model::proof::{Proof, ProofClaim, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
 use crate::proto::trust_information::dto::TrustInformation;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-use crate::provider::verification_protocol::openid4vp::model::TransactionDataRequest;
+use crate::provider::verification_protocol::openid4vp::model::{
+    CommonVerifierInteractionContent, TransactionDataRequest,
+};
 use crate::repository::credential_repository::CredentialRepository;
 use crate::service::certificate::mapper::certificate_to_response_dto;
 use crate::service::credential::dto::{
@@ -438,6 +440,12 @@ pub(super) async fn get_verifier_proof_detail(
         ),
     };
 
+    let transaction_data = if proof.role == ProofRole::Verifier {
+        verifier_transaction_data(&proof)?
+    } else {
+        vec![]
+    };
+
     let list_item_response: ProofListItemResponseDTO = proof.try_into()?;
 
     Ok(ProofDetailResponseDTO {
@@ -463,6 +471,7 @@ pub(super) async fn get_verifier_proof_detail(
         webhook_destination_url: list_item_response.webhook_destination_url,
         trust_information: None,
         subscriber_information,
+        transaction_data,
     })
 }
 
@@ -716,6 +725,7 @@ pub(super) async fn get_holder_proof_detail(
         webhook_destination_url: list_item_response.webhook_destination_url,
         trust_information: trust_information.into_iter().next(),
         subscriber_information,
+        transaction_data: vec![],
     })
 }
 
@@ -768,6 +778,49 @@ fn from_path_to_key(path: &str, original_key: &str) -> String {
             }
         })
         .join(NESTED_CLAIM_MARKER_STR)
+}
+
+fn verifier_transaction_data(
+    proof: &Proof,
+) -> Result<Vec<TransactionDataResponseDTO>, ProofServiceError> {
+    let Some(data) = proof
+        .interaction
+        .as_ref()
+        .and_then(|interaction| interaction.data.as_ref())
+    else {
+        return Ok(vec![]);
+    };
+
+    let content =
+        serde_json::from_slice::<CommonVerifierInteractionContent>(data).map_err(|e| {
+            ProofServiceError::MappingError(format!("Failed to parse interaction data: {e}",))
+        })?;
+
+    content
+        .transaction_data
+        .into_iter()
+        .map(transaction_data_response_from_request)
+        .collect()
+}
+
+fn transaction_data_response_from_request(
+    request: TransactionDataRequest,
+) -> Result<TransactionDataResponseDTO, ProofServiceError> {
+    let credential_schema_ids = request
+        .credential_ids
+        .iter()
+        .map(|id| {
+            id.to_string().parse().map_err(|e| {
+                ProofServiceError::MappingError(format!("invalid transaction data id `{id}`: {e}"))
+            })
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    Ok(TransactionDataResponseDTO {
+        r#type: request.r#type,
+        credential_schema_ids,
+        data: request.data,
+    })
 }
 
 pub(super) fn interaction_data_from_proof(proof: &Proof) -> Result<Value, ProofServiceError> {
