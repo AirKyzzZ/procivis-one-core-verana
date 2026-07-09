@@ -956,6 +956,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Invalid or unsupported transaction data")]
     BR_0458,
+
+    #[strum(message = "Invalid transaction data assignment")]
+    BR_0459,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

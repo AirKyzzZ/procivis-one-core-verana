@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use dcql::CredentialQueryId;
 use serde::Serialize;
-use shared_types::InteractionId;
 use shared_types::i18n::I18nString;
+use shared_types::{InteractionId, TransactionDataId};
 use strum::{AsRefStr, Display, EnumString};
 use time::OffsetDateTime;
 
@@ -56,6 +56,7 @@ pub(crate) struct FormattedCredentialPresentation {
     pub holder_did: Option<Did>,
     pub key: Key,
     pub jwk_key_id: Option<String>,
+    pub transaction_data_ids: Vec<TransactionDataId>,
 }
 
 #[derive(Clone, Debug)]

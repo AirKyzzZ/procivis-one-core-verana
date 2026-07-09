@@ -76,7 +76,7 @@ pub use revocation_method_id::RevocationMethodId;
 pub use serialized_credential::SerializedCredential;
 pub use signer_id::SignerId;
 pub use task_id::TaskId;
-pub use transaction_data::TransactionDataType;
+pub use transaction_data::{TransactionDataId, TransactionDataType};
 pub use trust_collection_id::TrustCollectionId;
 pub use trust_entry_id::TrustEntryId;
 pub use trust_list_publication_id::TrustListPublicationId;

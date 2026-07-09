@@ -2,8 +2,17 @@ use std::convert::Infallible;
 use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
-use crate::macros::{impl_display, impl_from};
+use crate::macros::{impl_display, impl_from, impls_for_uuid_newtype};
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
+#[serde(transparent)]
+#[repr(transparent)]
+pub struct TransactionDataId(Uuid);
+
+impls_for_uuid_newtype!(TransactionDataId);
 
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
@@ -38,3 +47,5 @@ impl_from!(TransactionDataType; String);
 use crate::macros::impls_for_seaorm_newtype;
 #[cfg(feature = "sea-orm")]
 impls_for_seaorm_newtype!(TransactionDataType);
+#[cfg(feature = "sea-orm")]
+impls_for_seaorm_newtype!(TransactionDataId);

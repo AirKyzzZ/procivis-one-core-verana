@@ -4,12 +4,14 @@ use std::sync::Arc;
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use dcql::create_dcql_query;
 use futures::future::BoxFuture;
+use indexmap::IndexMap;
 use mappers::{create_openid4vp_final1_0_authorization_request, encode_client_id_with_scheme};
 use model::Params;
 use one_crypto::utilities;
 use one_dto_mapper::convert_inner;
 use proc_macros::Provider;
 use serde_json::Value;
+use shared_types::TransactionDataId;
 use standardized_types::iana::EncryptionAlgorithm;
 use standardized_types::jwk::PublicJwk;
 use standardized_types::openid4vp::ResponseMode;
@@ -243,18 +245,15 @@ impl OpenID4VPFinal1_0 {
                     ))?,
             ),
         };
-        let mut transaction_data = match &interaction_data.transaction_data {
-            HolderTxData::Validated(transaction_data) => transaction_data.clone(),
-            HolderTxData::Unvalidated(data) if data.is_empty() => vec![],
-            _ => {
-                return Err(VerificationProtocolError::Failed(
-                    "unvalidated transaction data".to_string(),
-                ));
-            }
-        };
+
+        // Ordering of assigned transaction data matches credential_presentations
+        let assigned_tx_data =
+            assign_transaction_data(&credential_presentations, interaction_data)?;
 
         // For DCQL each credential gets a presentation individually
-        for credential_presentation in credential_presentations {
+        for (credential_presentation, assigned_tx_data) in
+            credential_presentations.into_iter().zip(assigned_tx_data)
+        {
             let credential_query_id = credential_presentation.credential_query_id.clone();
 
             // Look up the credential query to check require_cryptographic_holder_binding
@@ -295,19 +294,13 @@ impl OpenID4VPFinal1_0 {
                     credential_presentation.jwk_key_id,
                     self.key_algorithm_provider.clone(),
                 )?;
-                // TODO ONE-10479: Adjust proof submit to allow the client to specify the credential to use for transaction data.
-                let applicable_tx_data = transaction_data.extract_if(.., |tx| {
-                    tx.credential_query_ids
-                        .contains(&credential_presentation.credential_query_id)
-                });
-
                 let mut aggregated_tx_data = None;
-                for tx_data in applicable_tx_data {
+                for tx_data in assigned_tx_data {
                     let data = self
                         .transaction_data_provider
-                        .get_transaction_data(&tx_data.raw)?;
+                        .get_transaction_data(&tx_data)?;
                     let processed = data
-                        .process_transaction_data(&tx_data.raw, credential_format)
+                        .process_transaction_data(&tx_data, credential_format)
                         .await
                         .error_while("processing transaction data")?;
                     let Some(existing) = aggregated_tx_data.as_mut() else {
@@ -425,7 +418,7 @@ impl OpenID4VPFinal1_0 {
         if let HolderTxData::Unvalidated(transaction_data) =
             &holder_interaction_data.transaction_data
         {
-            let mut validated_tx_data = Vec::with_capacity(transaction_data.len());
+            let mut validated_tx_data = IndexMap::with_capacity(transaction_data.len());
             let dcql_query = holder_interaction_data.dcql_query.as_ref().ok_or(
                 VerificationProtocolError::InvalidRequest("missing DCQL query".to_string()),
             )?;
@@ -456,10 +449,13 @@ impl OpenID4VPFinal1_0 {
                     }
                 }
 
-                validated_tx_data.push(ValidatedHolderTxData {
-                    raw: tx_data.clone(),
-                    credential_query_ids: convert_inner(validated.credential_ids),
-                });
+                validated_tx_data.insert(
+                    TransactionDataId::from(Uuid::new_v4()),
+                    ValidatedHolderTxData {
+                        raw: tx_data.clone(),
+                        credential_query_ids: convert_inner(validated.credential_ids),
+                    },
+                );
             }
             holder_interaction_data.transaction_data = HolderTxData::Validated(validated_tx_data);
         }
@@ -935,4 +931,82 @@ async fn create_and_store_interaction(
         .error_while("creating interaction")?;
 
     Ok(interaction)
+}
+
+fn assign_transaction_data(
+    credential_presentations: &[FormattedCredentialPresentation],
+    interaction_data: &OpenID4VPHolderInteractionData,
+) -> Result<Vec<Vec<String>>, VerificationProtocolError> {
+    let mut transaction_data = match &interaction_data.transaction_data {
+        HolderTxData::Validated(transaction_data) => transaction_data.clone(),
+        HolderTxData::Unvalidated(data) if data.is_empty() => IndexMap::new(),
+        _ => {
+            return Err(VerificationProtocolError::Failed(
+                "unvalidated transaction data".to_string(),
+            ));
+        }
+    };
+
+    // Assign transaction data entries to credential presentations. Explicit
+    // client selections (across all credentials) are honored first, then any
+    // remaining entries are auto-assigned to the first applicable credential.
+    let mut assignments: Vec<Vec<String>> = vec![Vec::new(); credential_presentations.len()];
+
+    // explicit transaction data selections
+    for (credential_presentation, assignment) in
+        credential_presentations.iter().zip(assignments.iter_mut())
+    {
+        for tx_id in &credential_presentation.transaction_data_ids {
+            let Some(tx_data) = transaction_data.shift_remove(tx_id) else {
+                return Err(VerificationProtocolError::InvalidTransactionDataAssignment(
+                    format!("unknown or already-selected transaction data id {tx_id}"),
+                ));
+            };
+            if !tx_data
+                .credential_query_ids
+                .contains(&credential_presentation.credential_query_id)
+            {
+                return Err(VerificationProtocolError::InvalidTransactionDataAssignment(
+                    format!(
+                        "transaction data {tx_id} is not applicable to the selected credential"
+                    ),
+                ));
+            }
+            assignment.push(tx_data.raw);
+        }
+    }
+
+    // auto-assign remaining transaction data entries
+    for (credential_presentation, assignment) in
+        credential_presentations.iter().zip(assignments.iter_mut())
+    {
+        let applicable_keys: Vec<TransactionDataId> = transaction_data
+            .iter()
+            .filter(|(_, tx)| {
+                tx.credential_query_ids
+                    .contains(&credential_presentation.credential_query_id)
+            })
+            .map(|(id, _)| *id)
+            .collect();
+        for key in applicable_keys {
+            if let Some(tx_data) = transaction_data.shift_remove(&key) {
+                assignment.push(tx_data.raw);
+            }
+        }
+    }
+
+    if !transaction_data.is_empty() {
+        return Err(VerificationProtocolError::InvalidTransactionDataAssignment(
+            format!(
+                "Not all transaction data entries were assigned to a credential query id. Transaction data entries remaining: [{}]",
+                &transaction_data
+                    .keys()
+                    .map(|k| k.to_string())
+                    .collect::<Vec<String>>()
+                    .join(",")
+            ),
+        ));
+    }
+
+    Ok(assignments)
 }

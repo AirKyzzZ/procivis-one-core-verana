@@ -104,6 +104,7 @@ impl InteractionsApi {
         interaction_id: impl Into<Uuid>,
         credential_id: impl Into<Uuid>,
         user_selections: &[&str],
+        transaction_data_ids: &[Uuid],
     ) -> Response {
         let mut body = json!({
           "interactionId": interaction_id.into(),
@@ -115,6 +116,9 @@ impl InteractionsApi {
         });
         if !user_selections.is_empty() {
             body["submission"]["input_0"]["userSelections"] = json!(user_selections);
+        }
+        if !transaction_data_ids.is_empty() {
+            body["submission"]["input_0"]["transactionDataIds"] = json!(transaction_data_ids);
         }
         self.client
             .post("/api/interaction/v2/presentation-submit", body)

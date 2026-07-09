@@ -2,9 +2,10 @@ use std::collections::HashMap;
 
 use anyhow::Context;
 use dcql::{CredentialQueryId, DcqlQuery};
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-use shared_types::{ClaimSchemaId, InteractionId, KeyId};
+use shared_types::{ClaimSchemaId, InteractionId, KeyId, TransactionDataId};
 use standardized_types::jwk::PublicJwk;
 use standardized_types::openid4vp::{ClientMetadata, PresentationFormat, ResponseMode};
 use strum::{Display, EnumString};
@@ -206,7 +207,7 @@ pub(crate) struct OpenID4VPHolderInteractionData {
 #[derive(Clone, Deserialize, Serialize, Debug)]
 pub enum HolderTxData {
     Unvalidated(Vec<String>),
-    Validated(Vec<ValidatedHolderTxData>),
+    Validated(IndexMap<TransactionDataId, ValidatedHolderTxData>),
 }
 
 impl Default for HolderTxData {

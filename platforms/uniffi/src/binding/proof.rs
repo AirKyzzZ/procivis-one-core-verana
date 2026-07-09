@@ -37,7 +37,7 @@ use crate::binding::credential_schema::{
 };
 use crate::binding::trust_information::TrustInformationDetailResponseBindingDTO;
 use crate::error::BindingError;
-use crate::utils::{TimestampFormat, into_id};
+use crate::utils::{TimestampFormat, into_id, into_id_vec};
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCore {
@@ -436,6 +436,12 @@ pub struct PresentationSubmitV2CredentialRequestBindingDTO {
     /// optional claims.
     #[try_into(infallible)]
     pub user_selections: Vec<String>,
+    /// Optional ids of transaction-data entries to bind to this credential.
+    /// Entries not listed here are auto-assigned. Ids must reference transaction
+    /// data applicable to this credential. Omit entirely or use an empty array
+    /// to auto-assign all transaction data.
+    #[try_into(with_fn_ref = into_id_vec)]
+    pub transaction_data_ids: Vec<String>,
 }
 
 #[derive(Clone, Debug, TryInto, uniffi::Record)]

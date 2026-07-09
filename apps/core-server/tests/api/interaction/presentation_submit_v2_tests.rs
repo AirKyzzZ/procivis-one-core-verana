@@ -46,7 +46,7 @@ async fn test_presentation_submit_endpoint_for_openid4vp_dcql() {
     let resp = context
         .api
         .interactions
-        .presentation_submit_v2(interaction.id, credential.id, &[])
+        .presentation_submit_v2(interaction.id, credential.id, &[], &[])
         .await;
 
     // THEN
@@ -104,7 +104,7 @@ async fn test_presentation_submit_endpoint_user_selection_unknown_claim() {
     let resp = context
         .api
         .interactions
-        .presentation_submit_v2(interaction.id, credential.id, &["unknown_claim"])
+        .presentation_submit_v2(interaction.id, credential.id, &["unknown_claim"], &[])
         .await;
 
     // THEN
@@ -123,7 +123,12 @@ async fn test_presentation_submit_endpoint_user_selection_duplicate_claim() {
     let resp = context
         .api
         .interactions
-        .presentation_submit_v2(interaction.id, credential.id, &["duplicate", "duplicate"])
+        .presentation_submit_v2(
+            interaction.id,
+            credential.id,
+            &["duplicate", "duplicate"],
+            &[],
+        )
         .await;
 
     // THEN
@@ -155,7 +160,7 @@ async fn test_presentation_submit_endpoint_for_openid4vp_dcql_batch_credential()
     let resp = context
         .api
         .interactions
-        .presentation_submit_v2(interaction.id, credential.id, &[])
+        .presentation_submit_v2(interaction.id, credential.id, &[], &[])
         .await;
 
     // THEN
@@ -227,7 +232,7 @@ async fn test_presentation_submit_endpoint_for_openid4vp_dcql_batch_item() {
     let resp = context
         .api
         .interactions
-        .presentation_submit_v2(interaction.id, items[0].id, &[])
+        .presentation_submit_v2(interaction.id, items[0].id, &[], &[])
         .await;
 
     // THEN
@@ -263,7 +268,7 @@ async fn test_presentation_submit_endpoint_for_openid4vp_dcql_batch_consumed() {
     let resp = context
         .api
         .interactions
-        .presentation_submit_v2(interaction.id, credential.id, &[])
+        .presentation_submit_v2(interaction.id, credential.id, &[], &[])
         .await;
 
     // THEN
@@ -439,10 +444,10 @@ async fn setup_submittable_presentation_dcql(
                 "state": "53c44733-4f9d-4db2-aa83-afb8e17b500f",
                 "nonce":"QnoICmZxqAUZdOlPJRVtbJrrHJRTDwCM",
                 "client_id_scheme":"redirect_uri",
-                "client_id": format!("{verifier_url}/ssi/openid4vp/draft-20/response"),
+                "client_id": format!("{verifier_url}/mock/response"),
                 "client_metadata": client_metadata,
                 "response_mode":"direct_post",
-                "response_uri": format!("{verifier_url}/ssi/openid4vp/draft-20/response"),
+                "response_uri": format!("{verifier_url}/mock/response"),
                 "dcql_query":
                 {
                     "credentials" : [
@@ -719,7 +724,7 @@ async fn test_presentation_submit_endpoint_for_openid4vp_dcql_array_claim() {
             "state": "53c44733-4f9d-4db2-aa83-afb8e17b500f",
             "nonce": "QnoICmZxqAUZdOlPJRVtbJrrHJRTDwCM",
             "client_id_scheme": "redirect_uri",
-            "client_id": format!("{verifier_url}/ssi/openid4vp/draft-20/response"),
+            "client_id": format!("{verifier_url}/mock/response"),
             "client_metadata": {
                 "jwks": {
                     "keys": [{
@@ -743,7 +748,7 @@ async fn test_presentation_submit_endpoint_for_openid4vp_dcql_array_claim() {
                 }
             },
             "response_mode": "direct_post",
-            "response_uri": format!("{verifier_url}/ssi/openid4vp/draft-20/response"),
+            "response_uri": format!("{verifier_url}/mock/response"),
             "dcql_query": {
                 "credentials": [
                     {

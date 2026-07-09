@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
-use shared_types::{CredentialId, InteractionId, OrganisationId, ProofId};
+use shared_types::{CredentialId, InteractionId, OrganisationId, ProofId, TransactionDataId};
 
 use crate::model::credential_schema::KeyStorageSecurity;
 use crate::model::interaction::InteractionType;
@@ -19,6 +19,10 @@ pub struct PresentationSubmitV2CredentialRequestDTO {
     pub credential_id: CredentialId,
     /// Path of claims that were optionally selected by the user.
     pub user_selections: Vec<String>,
+    /// Optional ids of transaction-data entries to be included in the presentation of this credential.
+    /// Entries not listed here are auto-assigned. Ids must reference transaction
+    /// data applicable to this credential.
+    pub transaction_data_ids: Vec<TransactionDataId>,
 }
 
 #[derive(Clone, Debug)]

@@ -4,7 +4,7 @@ use std::sync::Arc;
 use dcql::CredentialQueryId;
 use futures_util::FutureExt;
 use itertools::Itertools;
-use shared_types::{CredentialId, InteractionId, ProofId, SerializedCredential};
+use shared_types::{CredentialId, InteractionId, ProofId, SerializedCredential, TransactionDataId};
 use url::Url;
 
 use super::SSIHolderService;
@@ -289,6 +289,7 @@ impl SSIHolderService {
             for CredentialPathsToPresent {
                 credential_id,
                 presented_paths,
+                transaction_data_ids,
             } in credential_selection
             {
                 let SubmissionItem {
@@ -300,6 +301,7 @@ impl SSIHolderService {
                         query_id.to_owned().into(),
                         credential_id,
                         &presented_paths,
+                        transaction_data_ids,
                     )
                     .await?;
 
@@ -460,6 +462,7 @@ impl SSIHolderService {
         credential_query_id: CredentialQueryId,
         credential_id: CredentialId,
         presented_paths: &[String],
+        transaction_data_ids: Vec<TransactionDataId>,
     ) -> Result<SubmissionItem, HolderServiceError> {
         let blob_storage = self
             .blob_storage_provider
@@ -594,6 +597,7 @@ impl SSIHolderService {
             holder_did,
             key,
             jwk_key_id,
+            transaction_data_ids,
         };
 
         let claims = credential
@@ -623,6 +627,8 @@ struct CredentialPathsToPresent {
     credential_id: CredentialId,
     // all paths of the presented subtree
     presented_paths: Vec<String>,
+    // transaction-data ids the client explicitly pinned to this credential
+    transaction_data_ids: Vec<TransactionDataId>,
 }
 
 fn get_credential_paths_to_present(
@@ -657,6 +663,7 @@ fn get_credential_paths_to_present(
     for PresentationSubmitV2CredentialRequestDTO {
         credential_id,
         user_selections,
+        transaction_data_ids,
     } in credential_selection
     {
         let deduplicated: HashSet<&String> = HashSet::from_iter(&user_selections);
@@ -684,6 +691,7 @@ fn get_credential_paths_to_present(
                 &selected_credential.credential,
                 user_selections,
             )?,
+            transaction_data_ids,
         });
     }
 

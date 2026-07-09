@@ -168,8 +168,8 @@ impl MockServer {
         &self,
         matcher: Option<impl Fn(MockBuilder) -> MockBuilder>,
     ) {
-        let mut mock_builder = Mock::given(method(Method::POST))
-            .and(path("/ssi/openid4vp/draft-20/response".to_owned()));
+        let mut mock_builder =
+            Mock::given(method(Method::POST)).and(path("/mock/response".to_owned()));
         if let Some(matcher) = matcher {
             mock_builder = matcher(mock_builder);
         }

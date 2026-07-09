@@ -14,7 +14,7 @@ use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
 use shared_types::{
     CredentialId, DidId, HolderWalletInstanceId, IdentifierId, InteractionId, KeyId,
-    OrganisationId, ProofId,
+    OrganisationId, ProofId, TransactionDataId,
 };
 use strum::Display;
 use url::Url;
@@ -206,6 +206,11 @@ pub(crate) struct PresentationSubmitV2CredentialRequestRestDTO {
     /// Path of claims that were optionally selected by the user.
     #[serde(default)]
     pub user_selections: Vec<String>,
+    /// Optional ids of transaction-data entries to be included in the presentation of this credential.
+    /// Entries not listed here are auto-assigned. Ids must reference transaction
+    /// data applicable to this credential.
+    #[serde(default)]
+    pub transaction_data_ids: Vec<TransactionDataId>,
 }
 
 #[options_not_nullable]

@@ -2,10 +2,11 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use dcql::DcqlQuery;
+use dcql::{CredentialQueryId, DcqlQuery};
+use indexmap::IndexMap;
 use mockall::predicate::{always, eq};
 use serde_json::json;
-use shared_types::CredentialFormat;
+use shared_types::{CredentialFormat, TransactionDataId};
 use similar_asserts::assert_eq;
 use standardized_types::iana::EncryptionAlgorithm;
 use standardized_types::jwk::{JwkUse, PublicJwk, PublicJwkEc};
@@ -46,10 +47,10 @@ use crate::provider::key_storage::model::KeyStorageCapabilities;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::presentation_formatter::provider::MockPresentationFormatterProvider;
 use crate::provider::transaction_data::provider::MockTransactionDataProvider;
-use crate::provider::verification_protocol::dto::ShareResponse;
+use crate::provider::verification_protocol::dto::{FormattedCredentialPresentation, ShareResponse};
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::model::{
-    ClientIdScheme, OpenID4VPHolderInteractionData,
+    ClientIdScheme, HolderTxData, OpenID4VPHolderInteractionData, ValidatedHolderTxData,
 };
 use crate::provider::verification_protocol::{
     FormatMapper, VerificationProtocol, serialize_interaction_data,
@@ -696,4 +697,111 @@ async fn test_holder_submit_mdoc_direct_post() {
     // Verifies: response_mode validation passes, no MDOC-requires-encryption error, HTTP POST succeeds
     let result = protocol.holder_submit_proof(&proof, vec![]).await;
     assert!(result.is_ok(), "Expected Ok but got: {:?}", result);
+}
+
+fn interaction_with_validated_tx_data(
+    entries: Vec<(TransactionDataId, &str, Vec<&str>)>,
+) -> OpenID4VPHolderInteractionData {
+    let mut data = test_holder_interaction_data(Some(ResponseMode::DirectPost));
+    let mut map = IndexMap::new();
+    for (id, raw, credential_query_ids) in entries {
+        map.insert(
+            id,
+            ValidatedHolderTxData {
+                raw: raw.to_string(),
+                credential_query_ids: credential_query_ids
+                    .into_iter()
+                    .map(CredentialQueryId::from)
+                    .collect(),
+            },
+        );
+    }
+    data.transaction_data = HolderTxData::Validated(map);
+    data
+}
+
+fn test_credential_presentation(
+    credential_query_id: &str,
+    transaction_data_ids: Vec<TransactionDataId>,
+) -> FormattedCredentialPresentation {
+    FormattedCredentialPresentation {
+        presentation: "presentation-token".to_string(),
+        credential_schema: test_credential_schema("MDOC".into()),
+        credential_query_id: CredentialQueryId::from(credential_query_id),
+        holder_did: None,
+        key: test_key("ECDSA"),
+        jwk_key_id: None,
+        transaction_data_ids,
+    }
+}
+
+#[tokio::test]
+async fn test_holder_submit_transaction_data_unknown_selection_fails() {
+    let protocol = setup_protocol(TestInputs::default());
+
+    let tx_id = TransactionDataId::from(Uuid::new_v4());
+    let interaction = interaction_with_validated_tx_data(vec![(tx_id, "raw-tx", vec!["cred1"])]);
+    let proof = test_holder_proof(interaction, "MDOC".into());
+
+    // Select a transaction data id that does not exist in the interaction data.
+    let presentation =
+        test_credential_presentation("cred1", vec![TransactionDataId::from(Uuid::new_v4())]);
+
+    let result = protocol
+        .holder_submit_proof(&proof, vec![presentation])
+        .await;
+
+    assert!(matches!(
+        &result,
+        Err(VerificationProtocolError::InvalidTransactionDataAssignment(
+            _
+        ))
+    ));
+}
+
+#[tokio::test]
+async fn test_holder_submit_transaction_data_non_applicable_selection_fails() {
+    let protocol = setup_protocol(TestInputs::default());
+
+    // Transaction data applies only to `cred2`.
+    let tx_id = TransactionDataId::from(Uuid::new_v4());
+    let interaction = interaction_with_validated_tx_data(vec![(tx_id, "raw-tx", vec!["cred2"])]);
+    let proof = test_holder_proof(interaction, "MDOC".into());
+
+    // `cred1` selects it even though it is not applicable to `cred1`.
+    let presentation = test_credential_presentation("cred1", vec![tx_id]);
+
+    let result = protocol
+        .holder_submit_proof(&proof, vec![presentation])
+        .await;
+
+    assert!(matches!(
+        &result,
+        Err(VerificationProtocolError::InvalidTransactionDataAssignment(
+            _
+        ))
+    ));
+}
+
+#[tokio::test]
+async fn test_holder_submit_transaction_data_duplicate_selection_fails() {
+    let protocol = setup_protocol(TestInputs::default());
+
+    let tx_id = TransactionDataId::from(Uuid::new_v4());
+    let interaction = interaction_with_validated_tx_data(vec![(tx_id, "raw-tx", vec!["cred1"])]);
+    let proof = test_holder_proof(interaction, "MDOC".into());
+
+    // The same transaction data id is selected twice.
+    let presentation = test_credential_presentation("cred1", vec![tx_id, tx_id]);
+
+    let result = protocol
+        .holder_submit_proof(&proof, vec![presentation])
+        .await;
+
+    assert!(matches!(
+        &result,
+        Err(VerificationProtocolError::InvalidTransactionDataAssignment(
+            _
+        ))
+    ));
 }

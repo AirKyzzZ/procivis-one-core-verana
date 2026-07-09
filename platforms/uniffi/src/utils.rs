@@ -48,6 +48,10 @@ pub(crate) fn into_id_opt_vec<T: From<Uuid>>(
     Ok(Some(ids))
 }
 
+pub(crate) fn into_id_vec<T: From<Uuid>>(input: &[String]) -> Result<Vec<T>, ServiceError> {
+    input.iter().map(into_id).collect()
+}
+
 pub(crate) fn into_timestamp(input: &str) -> Result<OffsetDateTime, ServiceError> {
     OffsetDateTime::parse(input, &Rfc3339).map_err(|e| ServiceError::MappingError(e.to_string()))
 }

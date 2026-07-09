@@ -21,6 +21,8 @@ pub enum VerificationProtocolError {
     Untrusted,
     #[error(transparent)]
     Other(anyhow::Error),
+    #[error("Invalid transaction data assignment: `{0}`")]
+    InvalidTransactionDataAssignment(String),
 
     #[error("DCQL error: `{0}`")]
     DcqlError(#[from] DcqlError),
@@ -50,6 +52,7 @@ impl ErrorCodeMixin for VerificationProtocolError {
             | Self::CBORSerialization(_)
             | Self::CBORParsing(_)
             | Self::Encoding(_) => ErrorCode::BR_0062,
+            Self::InvalidTransactionDataAssignment(_) => ErrorCode::BR_0459,
             Self::Untrusted => ErrorCode::BR_0433,
             Self::InvalidDcqlQueryOrPresentationDefinition(_) => ErrorCode::BR_0083,
             Self::DisallowedQuery(_) => ErrorCode::BR_0411,
