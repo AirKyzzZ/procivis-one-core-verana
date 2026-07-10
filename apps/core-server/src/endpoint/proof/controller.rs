@@ -15,7 +15,9 @@ use super::dto::{
 use crate::dto::common::trust_detail::TrustInformationDetailResponseRestDTO;
 use crate::dto::common::{EntityResponseRestDTO, GetProofsResponseRestDTO};
 use crate::dto::error::ErrorResponseRestDTO;
-use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
+use crate::dto::response::{
+    CreatedOrErrorResponse, EmptyOrErrorResponse, ErrorResponse, OkOrErrorResponse,
+};
 use crate::extractor::Qs;
 use crate::router::AppState;
 
@@ -88,7 +90,10 @@ pub(crate) async fn get_proof_details(
     permissions = [Permission::ProofDetail],
     get,
     path = "/api/proof-request/v1/{proofId}/transaction-data/{transactionDataId}",
-    responses(OkOrErrorResponse<ProofTransactionDataResponseRestDTO>),
+    responses(
+        (status = 200, description = "OK", body = ProofTransactionDataResponseRestDTO),
+        ErrorResponse,
+    ),
     params(
         ("proofId" = ProofId, Path, description = "Proof id"),
         ("transactionDataId" = TransactionDataId, Path, description = "Transaction data id")
