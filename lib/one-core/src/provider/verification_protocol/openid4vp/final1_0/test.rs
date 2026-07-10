@@ -26,13 +26,12 @@ use crate::model::key::Key;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
 use crate::proto::certificate_validator::MockCertificateValidator;
+use crate::proto::holder_trust_resolver::MockHolderTrustResolver;
 use crate::proto::http_client::{
     Method, MockHttpClient, Request, RequestBuilder, Response, StatusCode,
 };
-use crate::proto::session_provider::NoSessionProvider;
 use crate::proto::trust_information::MockTrustInformationProvider;
 use crate::proto::wrp_validator::MockWRPValidator;
-use crate::provider::blob_storage::provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
@@ -57,7 +56,6 @@ use crate::provider::verification_protocol::{
 };
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
-use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 use crate::service::test_utilities::{
@@ -74,12 +72,11 @@ struct TestInputs {
     pub did_method_provider: MockDidMethodProvider,
     pub certificate_validator: MockCertificateValidator,
     pub http_client: MockHttpClient,
-    pub history_repository: MockHistoryRepository,
     pub interaction_repository: MockInteractionRepository,
     pub wrp_validator: MockWRPValidator,
-    pub blob_storage_provider: MockBlobStorageProvider,
     pub trust_information_provider: MockTrustInformationProvider,
     pub transaction_data_provider: MockTransactionDataProvider,
+    pub holder_trust_resolver: MockHolderTrustResolver,
     pub params: Option<serde_json::Value>,
 }
 
@@ -95,13 +92,11 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VPFinal1_0 {
         Arc::new(inputs.certificate_validator),
         Arc::new(MockCredentialRepository::default()),
         Arc::new(MockCredentialSchemaRepository::default()),
-        Arc::new(inputs.history_repository),
         Arc::new(inputs.interaction_repository),
-        Arc::new(NoSessionProvider),
         Arc::new(inputs.wrp_validator),
-        Arc::new(inputs.blob_storage_provider),
         Arc::new(inputs.trust_information_provider),
         Arc::new(inputs.transaction_data_provider),
+        Arc::new(inputs.holder_trust_resolver),
         Arc::new(inputs.http_client),
         inputs.params.unwrap_or(generic_params()),
         Arc::new(generic_config().core),

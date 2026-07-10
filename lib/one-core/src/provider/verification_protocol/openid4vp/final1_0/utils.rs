@@ -404,13 +404,17 @@ impl OpenID4VPFinal1_0 {
             ));
         }
 
-        self.handle_trust(
-            verifier_details.as_ref(),
-            proof_id,
-            organisation_id,
-            &referenced_params,
-        )
-        .await?;
+        self.holder_trust_resolver
+            .resolve_verification_trust(
+                verifier_details.as_ref(),
+                proof_id,
+                organisation_id,
+                &referenced_params.dcql_query,
+                &referenced_params.verifier_info,
+                self.params.holder.trust_ecosystems_leeway,
+            )
+            .await
+            .error_while("resolving trust")?;
 
         Ok((referenced_params, verifier_details))
     }

@@ -20,6 +20,7 @@ use crate::proto::credential_validity_manager::CredentialValidityManagerImpl;
 use crate::proto::csc::CscClientImpl;
 use crate::proto::csr_creator::CsrCreatorImpl;
 use crate::proto::history_decorator::decorator::decorate_data_provider as decorate_history;
+use crate::proto::holder_trust_resolver::resolver::HolderTrustResolverProto;
 use crate::proto::http_client::reqwest_client::ReqwestClient;
 use crate::proto::identifier_creator::creator::IdentifierCreatorProto;
 use crate::proto::mqtt_client::rumqttc_client::RumqttcClient;
@@ -432,6 +433,13 @@ impl OneCore {
         let blob_storage_provider =
             blob_storage_provider_from_config(&mut config, data_provider.get_blob_repository())?;
 
+        let holder_trust_resolver = Arc::new(HolderTrustResolverProto::new(
+            data_provider.get_history_repository(),
+            wrp_validator.clone(),
+            blob_storage_provider.clone(),
+            session_provider.clone(),
+        ));
+
         let trust_information_provider = Arc::new(TrustInformationProviderImpl::new(
             data_provider.get_history_repository(),
             blob_storage_provider.clone(),
@@ -489,12 +497,10 @@ impl OneCore {
             client.clone(),
             Some(mqtt_client),
             nfc_hce.clone(),
-            data_provider.get_history_repository(),
-            session_provider.clone(),
             wrp_validator.clone(),
-            blob_storage_provider.clone(),
             trust_information_provider.clone(),
             transaction_data_provider.clone(),
+            holder_trust_resolver,
         )?;
 
         let config = Arc::new(config);

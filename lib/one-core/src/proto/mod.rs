@@ -8,6 +8,7 @@ pub(crate) mod csc;
 pub(crate) mod csr_creator;
 pub(crate) mod ephemeral_key;
 pub(crate) mod history_decorator;
+pub(crate) mod holder_trust_resolver;
 pub mod http_client;
 pub(crate) mod identifier_creator;
 pub mod jwt;

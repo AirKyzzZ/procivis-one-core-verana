@@ -1,15 +1,15 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use dcql::DcqlQuery;
 use one_dto_mapper::convert_inner;
 use shared_types::{OrganisationId, ProofId};
 use standardized_types::etsi_119_602::MultiLangString;
+use time::Duration;
 use url::Url;
 use uuid::Uuid;
 
-use super::OpenID4VPFinal1_0;
-use super::mappers::credential_query_matches_reg_cert_credential;
-use super::model::{AuthorizationRequest, VerifierInfoAttestation};
+use super::{HolderTrustResolver, HolderTrustResolverError};
 use crate::config::core_config::BlobStorageType;
 use crate::error::ContextWithErrorCode;
 use crate::model::blob::{Blob, BlobType};
@@ -17,27 +17,59 @@ use crate::model::history::{
     History, HistoryAction, HistoryEntityType, HistoryMetadata, HistorySource,
     TrustResolutionMetadata, TrustResolutionResult, WalletRelyingPartyMetadata,
 };
-use crate::proto::session_provider::SessionExt;
+use crate::proto::holder_trust_resolver::mapper::credential_query_matches_reg_cert_credential;
+use crate::proto::session_provider::{SessionExt, SessionProvider};
+use crate::proto::wrp_validator::WRPValidator;
 use crate::proto::wrp_validator::model::{AccessCertificateResult, IntendedUse, TrustMode};
+use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
 use crate::provider::signer::registration_certificate;
-use crate::provider::verification_protocol::openid4vp::VerificationProtocolError;
+use crate::provider::verification_protocol::openid4vp::final1_0::model::VerifierInfoAttestation;
+use crate::repository::history_repository::HistoryRepository;
 
-impl OpenID4VPFinal1_0 {
+pub(crate) struct HolderTrustResolverProto {
+    history_repository: Arc<dyn HistoryRepository>,
+    wrp_validator: Arc<dyn WRPValidator>,
+    blob_storage_provider: Arc<dyn BlobStorageProvider>,
+    session_provider: Arc<dyn SessionProvider>,
+}
+
+impl HolderTrustResolverProto {
+    pub(crate) fn new(
+        history_repository: Arc<dyn HistoryRepository>,
+        wrp_validator: Arc<dyn WRPValidator>,
+        blob_storage_provider: Arc<dyn BlobStorageProvider>,
+        session_provider: Arc<dyn SessionProvider>,
+    ) -> Self {
+        Self {
+            history_repository,
+            wrp_validator,
+            blob_storage_provider,
+            session_provider,
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl HolderTrustResolver for HolderTrustResolverProto {
     #[tracing::instrument(level = "debug", skip_all, err(Debug))]
-    pub(super) async fn handle_trust(
+    async fn resolve_verification_trust<'a>(
         &self,
-        verifier_details: Option<&IdentifierDetails>,
+        verifier_details: Option<&'a IdentifierDetails>,
         proof_id: ProofId,
         organisation_id: OrganisationId,
-        authorization_request: &AuthorizationRequest,
-    ) -> Result<(), VerificationProtocolError> {
+        dcql_query: &DcqlQuery,
+        verifier_info: &[VerifierInfoAttestation],
+        leeway: Duration,
+    ) -> Result<(), HolderTrustResolverError> {
         let trust_result = self
             .perform_trust_resolution(
                 verifier_details,
                 proof_id,
                 organisation_id,
-                authorization_request,
+                dcql_query,
+                verifier_info,
+                leeway,
             )
             .await?;
 
@@ -54,14 +86,18 @@ impl OpenID4VPFinal1_0 {
 
         Ok(())
     }
+}
 
+impl HolderTrustResolverProto {
     async fn perform_trust_resolution(
         &self,
         verifier_details: Option<&IdentifierDetails>,
         proof_id: ProofId,
         organisation_id: OrganisationId,
-        authorization_request: &AuthorizationRequest,
-    ) -> Result<TrustResolutionResult, VerificationProtocolError> {
+        dcql_query: &DcqlQuery,
+        verifier_info: &[VerifierInfoAttestation],
+        leeway: Duration,
+    ) -> Result<TrustResolutionResult, HolderTrustResolverError> {
         let trust_mode = self
             .wrp_validator
             .wallet_trust_mode(organisation_id)
@@ -80,7 +116,7 @@ impl OpenID4VPFinal1_0 {
                 verifier_details.map(|detail| detail.identifier_type())
             );
             if trust_mode == TrustMode::TrustMandatory {
-                return Err(VerificationProtocolError::Untrusted);
+                return Err(HolderTrustResolverError::Untrusted);
             }
             return Ok(TrustResolutionResult::Untrusted);
         };
@@ -100,27 +136,29 @@ impl OpenID4VPFinal1_0 {
             }
         };
 
-        let reg_cert_result = if authorization_request.verifier_info.is_empty() {
+        let reg_cert_result = if verifier_info.is_empty() {
             let registry_url = access_certificate_trust.registry_url.as_ref().ok_or(
-                VerificationProtocolError::InvalidRequest("missing registry URL".to_string()),
+                HolderTrustResolverError::InvalidRequest("missing registry URL".to_string()),
             )?;
 
             self.validate_against_registry_info(
                 &access_certificate_trust.relying_party_id,
                 registry_url,
-                &authorization_request.dcql_query,
+                dcql_query,
                 proof_id,
                 organisation_id,
+                leeway,
             )
             .await
         } else {
             // check query against registration certificates
             self.validate_registration_certificates(
-                &authorization_request.verifier_info,
-                &authorization_request.dcql_query,
+                verifier_info,
+                dcql_query,
                 &access_certificate_trust.relying_party_id,
                 proof_id,
                 organisation_id,
+                leeway,
             )
             .await
         };
@@ -143,7 +181,7 @@ impl OpenID4VPFinal1_0 {
         certificate: &CertificateDetails,
         proof_id: ProofId,
         organisation_id: OrganisationId,
-    ) -> Result<AccessCertificateResult, VerificationProtocolError> {
+    ) -> Result<AccessCertificateResult, HolderTrustResolverError> {
         let result = self
             .wrp_validator
             .validate_access_certificate(&certificate.chain, Some(organisation_id))
@@ -169,7 +207,8 @@ impl OpenID4VPFinal1_0 {
         expected_rp_id: &str,
         proof_id: ProofId,
         organisation_id: OrganisationId,
-    ) -> Result<(), VerificationProtocolError> {
+        leeway: Duration,
+    ) -> Result<(), HolderTrustResolverError> {
         #[derive(Clone)]
         struct RefCertCredentialInfo<'a> {
             credential_def: registration_certificate::model::Credential,
@@ -190,7 +229,7 @@ impl OpenID4VPFinal1_0 {
                     &reg_cert.data,
                     expected_rp_id,
                     Some(organisation_id),
-                    self.params.holder.trust_ecosystems_leeway,
+                    leeway,
                 )
                 .await
             {
@@ -274,7 +313,7 @@ impl OpenID4VPFinal1_0 {
                 },
             )
             else {
-                return Err(VerificationProtocolError::DisallowedQuery(
+                return Err(HolderTrustResolverError::DisallowedQuery(
                     credential_query.id.to_owned(),
                 ));
             };
@@ -325,14 +364,15 @@ impl OpenID4VPFinal1_0 {
         dcql_query: &DcqlQuery,
         proof_id: ProofId,
         organisation_id: OrganisationId,
-    ) -> Result<(), VerificationProtocolError> {
+        leeway: Duration,
+    ) -> Result<(), HolderTrustResolverError> {
         let info = self
             .wrp_validator
             .fetch_from_registry(
                 relying_party_id,
                 registry_url,
                 Some(organisation_id),
-                self.params.holder.trust_ecosystems_leeway,
+                leeway,
             )
             .await
             .error_while("fetching from WRP registry")?;
@@ -344,7 +384,7 @@ impl OpenID4VPFinal1_0 {
                 credential_query,
                 &info.payload.custom.data.intended_use,
             ) else {
-                return Err(VerificationProtocolError::DisallowedQuery(
+                return Err(HolderTrustResolverError::DisallowedQuery(
                     credential_query.id.to_owned(),
                 ));
             };
@@ -376,7 +416,7 @@ impl OpenID4VPFinal1_0 {
         organisation_id: OrganisationId,
         blob_content: Option<String>,
         metadata: Option<HistoryMetadata>,
-    ) -> Result<(), VerificationProtocolError> {
+    ) -> Result<(), HolderTrustResolverError> {
         let metadata_blob_id = if let Some(blob_content) = blob_content {
             let blob_storage = self
                 .blob_storage_provider

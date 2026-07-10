@@ -33,11 +33,10 @@ use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::model::relation::Related;
 use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::holder_trust_resolver::HolderTrustResolver;
 use crate::proto::http_client::HttpClient;
-use crate::proto::session_provider::SessionProvider;
 use crate::proto::trust_information::TrustInformationProvider;
 use crate::proto::wrp_validator::WRPValidator;
-use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -74,7 +73,6 @@ use crate::provider::verification_protocol::{
 };
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
-use crate::repository::history_repository::HistoryRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::service::oid4vp_final1_0::proof_request::{
     generate_authorization_request_params_final1_0, select_key_agreement_key_from_proof,
@@ -86,7 +84,6 @@ pub mod mappers;
 pub mod model;
 #[cfg(test)]
 mod test;
-mod trust;
 mod utils;
 
 const DCQL_QUERY_VALUE_QUERY_PARAM_KEY: &str = "dcql_query";
@@ -107,13 +104,11 @@ pub(crate) struct OpenID4VPFinal1_0 {
     certificate_validator: Arc<dyn CertificateValidator>,
     credential_repository: Arc<dyn CredentialRepository>,
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
-    history_repository: Arc<dyn HistoryRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
-    session_provider: Arc<dyn SessionProvider>,
     wrp_validator: Arc<dyn WRPValidator>,
-    blob_storage_provider: Arc<dyn BlobStorageProvider>,
     trust_information_provider: Arc<dyn TrustInformationProvider>,
     transaction_data_provider: Arc<dyn TransactionDataProvider>,
+    holder_trust_resolver: Arc<dyn HolderTrustResolver>,
     base_url: Option<String>,
     params: Params,
     config: Arc<CoreConfig>,
@@ -137,13 +132,11 @@ impl OpenID4VPFinal1_0 {
         certificate_validator: Arc<dyn CertificateValidator>,
         credential_repository: Arc<dyn CredentialRepository>,
         credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
-        history_repository: Arc<dyn HistoryRepository>,
         interaction_repository: Arc<dyn InteractionRepository>,
-        session_provider: Arc<dyn SessionProvider>,
         wrp_validator: Arc<dyn WRPValidator>,
-        blob_storage_provider: Arc<dyn BlobStorageProvider>,
         trust_information_provider: Arc<dyn TrustInformationProvider>,
         transaction_data_provider: Arc<dyn TransactionDataProvider>,
+        holder_trust_resolver: Arc<dyn HolderTrustResolver>,
         client: Arc<dyn HttpClient>,
         params: serde_json::Value,
         config: Arc<CoreConfig>,
@@ -165,16 +158,14 @@ impl OpenID4VPFinal1_0 {
             certificate_validator,
             credential_repository,
             credential_schema_repository,
-            history_repository,
             interaction_repository,
-            session_provider,
             wrp_validator,
             client,
             params,
             config,
-            blob_storage_provider,
             trust_information_provider,
             transaction_data_provider,
+            holder_trust_resolver,
         })
     }
 

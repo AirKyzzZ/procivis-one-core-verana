@@ -14,15 +14,14 @@ use crate::config::core_config::{CoreConfig, Fields, VerificationProtocolType};
 use crate::error::{ContextWithErrorCode, NestedError};
 use crate::proto::bluetooth_low_energy::ble_resource::BleWaiter;
 use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::holder_trust_resolver::HolderTrustResolver;
 use crate::proto::http_client::HttpClient;
 use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::mqtt_client::MqttClient;
 use crate::proto::nfc::hce::NfcHce;
-use crate::proto::session_provider::SessionProvider;
 use crate::proto::swiyu_http_client;
 use crate::proto::trust_information::TrustInformationProvider;
 use crate::proto::wrp_validator::WRPValidator;
-use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -32,7 +31,6 @@ use crate::provider::provider_directory::{InitializationError, ProviderDirectory
 use crate::provider::transaction_data::provider::TransactionDataProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
-use crate::repository::history_repository::HistoryRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
 
@@ -94,12 +92,10 @@ fn initialize_provider(
     client: &Arc<dyn HttpClient>,
     mqtt_client: &Option<Arc<dyn MqttClient>>,
     nfc_hce: &Option<Arc<dyn NfcHce>>,
-    history_repository: &Arc<dyn HistoryRepository>,
-    session_provider: &Arc<dyn SessionProvider>,
     wrp_validator: &Arc<dyn WRPValidator>,
-    blob_storage_provider: &Arc<dyn BlobStorageProvider>,
     trust_information_provider: &Arc<dyn TrustInformationProvider>,
     transaction_data_provider: &Arc<dyn TransactionDataProvider>,
+    holder_trust_resolver: &Arc<dyn HolderTrustResolver>,
 ) -> Result<Arc<dyn VerificationProtocol>, InitializationError> {
     let protocol: Arc<dyn VerificationProtocol> = match fields.r#type {
         VerificationProtocolType::OpenId4VpFinal1_0 => Arc::new(OpenID4VPFinal1_0::new(
@@ -113,13 +109,11 @@ fn initialize_provider(
             certificate_validator.clone(),
             credential_repository.clone(),
             credential_schema_repository.clone(),
-            history_repository.clone(),
             interaction_repository.clone(),
-            session_provider.clone(),
             wrp_validator.clone(),
-            blob_storage_provider.clone(),
             trust_information_provider.clone(),
             transaction_data_provider.clone(),
+            holder_trust_resolver.clone(),
             client.clone(),
             fields.merge_fields(),
             core_config.clone(),
@@ -145,13 +139,11 @@ fn initialize_provider(
                 certificate_validator.clone(),
                 credential_repository.clone(),
                 credential_schema_repository.clone(),
-                history_repository.clone(),
                 interaction_repository.clone(),
-                session_provider.clone(),
                 wrp_validator.clone(),
-                blob_storage_provider.clone(),
                 trust_information_provider.clone(),
                 transaction_data_provider.clone(),
+                holder_trust_resolver.clone(),
                 client.clone(),
                 final1_params,
                 core_config.clone(),
@@ -221,12 +213,10 @@ pub(crate) fn verification_protocol_provider_from_config(
     client: Arc<dyn HttpClient>,
     mqtt_client: Option<Arc<dyn MqttClient>>,
     nfc_hce: Option<Arc<dyn NfcHce>>,
-    history_repository: Arc<dyn HistoryRepository>,
-    session_provider: Arc<dyn SessionProvider>,
     wrp_validator: Arc<dyn WRPValidator>,
-    blob_storage_provider: Arc<dyn BlobStorageProvider>,
     trust_information_provider: Arc<dyn TrustInformationProvider>,
     transaction_data_provider: Arc<dyn TransactionDataProvider>,
+    holder_trust_resolver: Arc<dyn HolderTrustResolver>,
 ) -> Result<Arc<dyn VerificationProtocolProvider>, ConfigValidationError> {
     let core_config = Arc::new(config.to_owned());
 
@@ -253,12 +243,10 @@ pub(crate) fn verification_protocol_provider_from_config(
                 &client,
                 &mqtt_client,
                 &nfc_hce,
-                &history_repository,
-                &session_provider,
                 &wrp_validator,
-                &blob_storage_provider,
                 &trust_information_provider,
                 &transaction_data_provider,
+                &holder_trust_resolver,
             )?;
 
             let provider: Arc<dyn VerificationProtocol> = Arc::new(CapabilityChecked {
