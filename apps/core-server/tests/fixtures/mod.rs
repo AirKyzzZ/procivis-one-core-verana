@@ -32,7 +32,7 @@ use one_core::model::history::HistoryAction;
 use one_core::model::identifier::{
     Identifier, IdentifierRelations, IdentifierState, IdentifierType,
 };
-use one_core::model::interaction::{Interaction, InteractionRelations, InteractionType};
+use one_core::model::interaction::{Interaction, InteractionType};
 use one_core::model::key::{Key, KeyRelations};
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::model::proof::{
@@ -844,7 +844,7 @@ pub async fn create_interaction_with_id(
         created_date: one_core::clock::now_utc(),
         last_modified: one_core::clock::now_utc(),
         data: Some(data.into()),
-        organisation: Some(organisation.to_owned()),
+        organisation: organisation.to_owned().into(),
         nonce_id: None,
         interaction_type,
         expires_at: None,
@@ -1064,7 +1064,7 @@ pub async fn get_proof(db_conn: &DbConn, proof_id: &ProofId) -> Proof {
                 }),
                 verifier_key: Some(KeyRelations::default()),
                 verifier_certificate: Some(Default::default()),
-                interaction: Some(InteractionRelations { organisation: None }),
+                interaction: Some(Default::default()),
             },
             None,
         )

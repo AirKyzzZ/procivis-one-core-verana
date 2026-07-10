@@ -31,7 +31,6 @@ use crate::model::credential::{
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::identifier::IdentifierRelations;
-use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::{ListPagination, ListSorting};
@@ -63,7 +62,7 @@ impl SSIHolderService {
             .get_proof_by_interaction_id(
                 interaction_id,
                 &ProofRelations {
-                    interaction: Some(InteractionRelations::default()),
+                    interaction: Some(Default::default()),
                     verifier_identifier: Some(IdentifierRelations {
                         ..Default::default()
                     }),
@@ -207,9 +206,7 @@ impl SSIHolderService {
             .get_proof_by_interaction_id(
                 &request.interaction_id,
                 &ProofRelations {
-                    interaction: Some(InteractionRelations {
-                        organisation: Some(Default::default()),
-                    }),
+                    interaction: Some(Default::default()),
                     ..Default::default()
                 },
             )
@@ -414,17 +411,11 @@ impl SSIHolderService {
             if let Ok(data) = deserialized
                 && let Some(details) = data.verifier_details
             {
-                let organisation =
-                    interaction
-                        .organisation
-                        .as_ref()
-                        .ok_or(HolderServiceError::MappingError(
-                            "missing organisation".into(),
-                        ))?;
+                let organisation = interaction.organisation.as_ref().await?;
                 let (identifier, verifier_identifier_relation) = self
                     .identifier_creator
                     .get_or_create_remote_identifier(
-                        organisation,
+                        &organisation,
                         &details,
                         IdentifierName::PrefixForId(IdentifierRole::Verifier.to_string()),
                     )

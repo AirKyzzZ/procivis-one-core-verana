@@ -87,7 +87,7 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
                     created_date: crate::clock::now_utc(),
                     last_modified: crate::clock::now_utc(),
                     data: None,
-                    organisation: None,
+                    organisation: dummy_organisation(None).into(),
                     nonce_id: None,
                     interaction_type: InteractionType::Verification,
                     expires_at: None,
@@ -155,7 +155,7 @@ async fn test_reject_proof_request_fails_when_latest_state_is_not_requested() {
                         created_date: crate::clock::now_utc(),
                         last_modified: crate::clock::now_utc(),
                         data: None,
-                        organisation: None,
+                        organisation: dummy_organisation(None).into(),
                         nonce_id: None,
                         interaction_type: InteractionType::Verification,
                         expires_at: None,
@@ -205,7 +205,7 @@ async fn test_reject_proof_request_suceeds_when_holder_reject_proof_errors_state
                     created_date: crate::clock::now_utc(),
                     last_modified: crate::clock::now_utc(),
                     data: None,
-                    organisation: None,
+                    organisation: dummy_organisation(None).into(),
                     nonce_id: None,
                     interaction_type: InteractionType::Verification,
                     expires_at: None,
@@ -355,13 +355,13 @@ async fn test_accept_credential() {
     let mut interaction_repository = MockInteractionRepository::new();
     interaction_repository
         .expect_get_interaction()
-        .return_once(move |_, _, _| {
+        .return_once(move |_, _| {
             Ok(Some(Interaction {
                 id: Uuid::new_v4().into(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 data: Some(serde_json::to_vec(&dummy_interaction()).unwrap()),
-                organisation: Some(organisation),
+                organisation: organisation.into(),
                 nonce_id: None,
                 interaction_type: InteractionType::Issuance,
                 expires_at: None,
@@ -491,13 +491,13 @@ async fn test_accept_credential_with_did() {
     let mut interaction_repository = MockInteractionRepository::new();
     interaction_repository
         .expect_get_interaction()
-        .return_once(move |_, _, _| {
+        .return_once(move |_, _| {
             Ok(Some(Interaction {
                 id: Uuid::new_v4().into(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 data: Some(serde_json::to_vec(&dummy_interaction()).unwrap()),
-                organisation: Some(organisation),
+                organisation: organisation.into(),
                 nonce_id: None,
                 interaction_type: InteractionType::Issuance,
                 expires_at: None,
@@ -588,7 +588,7 @@ async fn test_accept_credential_batch() {
     interaction_repository
         .expect_get_interaction()
         .once()
-        .return_once(move |_, _, _| {
+        .return_once(move |_, _| {
             Ok(Some(Interaction {
                 id: interaction_id,
                 created_date: get_dummy_date(),
@@ -600,7 +600,7 @@ async fn test_accept_credential_batch() {
                     })
                     .unwrap(),
                 ),
-                organisation: Some(dummy_organisation(None)),
+                organisation: dummy_organisation(None).into(),
                 nonce_id: None,
                 interaction_type: InteractionType::Issuance,
                 expires_at: None,
@@ -695,13 +695,13 @@ async fn test_accept_credential_wrong_tx_code() {
     let mut interaction_repository = MockInteractionRepository::new();
     interaction_repository
         .expect_get_interaction()
-        .return_once(move |_, _, _| {
+        .return_once(move |_, _| {
             Ok(Some(Interaction {
                 id: Uuid::new_v4().into(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 data: Some(serde_json::to_vec(&dummy_interaction()).unwrap()),
-                organisation: Some(organisation),
+                organisation: organisation.into(),
                 nonce_id: None,
                 interaction_type: InteractionType::Issuance,
                 expires_at: None,
@@ -873,13 +873,13 @@ async fn test_continue_issuance() {
     let mut interaction_repository = MockInteractionRepository::new();
     interaction_repository
         .expect_get_interaction()
-        .return_once(move |_, _, _| {
+        .return_once(move |_, _| {
             Ok(Some(Interaction {
                 id: Uuid::new_v4().into(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 data: Some(serde_json::to_vec(&interaction_data).unwrap()),
-                organisation: Some(organisation.clone()),
+                organisation: organisation.into(),
                 nonce_id: None,
                 interaction_type: InteractionType::Verification,
                 expires_at: None,
@@ -1140,7 +1140,7 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
             data: Some(b"interaction data".to_vec()),
-            organisation: Some(dummy_organisation(organisation_id)),
+            organisation: dummy_organisation(organisation_id).into(),
             nonce_id: None,
             interaction_type: InteractionType::Verification,
             expires_at: None,
@@ -1256,13 +1256,13 @@ async fn test_accept_interaction_credential_org_mismatch() {
     let mut interaction_repository = MockInteractionRepository::new();
     interaction_repository
         .expect_get_interaction()
-        .return_once(move |_, _, _| {
+        .return_once(move |_, _| {
             Ok(Some(Interaction {
                 id: Uuid::new_v4().into(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 data: Some(serde_json::to_vec(&dummy_interaction()).unwrap()),
-                organisation: Some(organisation),
+                organisation: organisation.into(),
                 nonce_id: None,
                 interaction_type: InteractionType::Issuance,
                 expires_at: None,

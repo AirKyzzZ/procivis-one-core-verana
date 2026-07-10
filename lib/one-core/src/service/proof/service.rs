@@ -41,7 +41,7 @@ use crate::model::credential::{CredentialFilterValue, CredentialListQuery, Crede
 use crate::model::did::KeyRole;
 use crate::model::history::{HistoryAction, HistoryFilterValue, HistoryListQuery};
 use crate::model::identifier::{IdentifierRelations, IdentifierType};
-use crate::model::interaction::{InteractionRelations, InteractionType};
+use crate::model::interaction::InteractionType;
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
 use crate::model::proof::{
@@ -121,9 +121,7 @@ impl ProofService {
                         ..Default::default()
                     }),
                     verifier_certificate: Some(Default::default()),
-                    interaction: Some(InteractionRelations {
-                        organisation: Some(Default::default()),
-                    }),
+                    interaction: Some(Default::default()),
                     ..Default::default()
                 },
                 None,
@@ -212,9 +210,7 @@ impl ProofService {
             .get_proof(
                 id,
                 &ProofRelations {
-                    interaction: Some(InteractionRelations {
-                        organisation: Some(Default::default()),
-                    }),
+                    interaction: Some(Default::default()),
                     verifier_certificate: Some(Default::default()),
                     ..Default::default()
                 },
@@ -550,7 +546,13 @@ impl ProofService {
                     Uuid::new_v4().into(),
                     &*self.interaction_repository,
                     serde_json::to_vec(&data).ok(),
-                    proof_schema.organisation.clone(),
+                    proof_schema
+                        .organisation
+                        .as_ref()
+                        .ok_or(ProofServiceError::MappingError(
+                            "Missing organisation".to_string(),
+                        ))?
+                        .to_owned(),
                     InteractionType::Verification,
                     None,
                 )
@@ -651,7 +653,7 @@ impl ProofService {
             interaction_id,
             &*self.interaction_repository,
             interaction_data,
-            Some(organisation.to_owned()),
+            organisation.to_owned(),
             InteractionType::Verification,
             expires_at,
         )
@@ -693,9 +695,7 @@ impl ProofService {
                         organisation: Some(Default::default()),
                         proof_inputs: None,
                     }),
-                    interaction: Some(InteractionRelations {
-                        organisation: Some(Default::default()),
-                    }),
+                    interaction: Some(Default::default()),
                     ..Default::default()
                 },
                 None,
@@ -804,7 +804,10 @@ impl ProofService {
             .organisation_repository
             .get_organisation(&request.organisation_id)
             .await
-            .error_while("getting organisation")?;
+            .error_while("getting organisation")?
+            .ok_or(ProofServiceError::MappingError(
+                "Missing organisation".to_string(),
+            ))?;
 
         let transport = self
             .config
@@ -973,9 +976,7 @@ impl ProofService {
             .get_proof(
                 &proof_id,
                 &ProofRelations {
-                    interaction: Some(InteractionRelations {
-                        organisation: Some(Default::default()),
-                    }),
+                    interaction: Some(Default::default()),
                     schema: Some(ProofSchemaRelations {
                         organisation: Some(Default::default()),
                         proof_inputs: None,
@@ -1039,9 +1040,7 @@ impl ProofService {
                         organisation: Some(Default::default()),
                         ..Default::default()
                     }),
-                    interaction: Some(InteractionRelations {
-                        organisation: Some(Default::default()),
-                    }),
+                    interaction: Some(Default::default()),
                     ..Default::default()
                 },
                 None,

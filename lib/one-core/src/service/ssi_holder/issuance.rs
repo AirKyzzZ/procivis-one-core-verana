@@ -23,8 +23,8 @@ use crate::model::credential::{
     Credential, CredentialRelations, CredentialStateEnum, UpdateCredentialRequest,
 };
 use crate::model::identifier::IdentifierRelations;
-use crate::model::interaction::{Interaction, InteractionRelations, InteractionType};
-use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::model::interaction::{Interaction, InteractionType};
+use crate::model::organisation::Organisation;
 use crate::proto::oauth_client::{OAuthAuthorizationRequest, OAuthClientProvider};
 use crate::proto::transaction_manager::IsolationLevel;
 use crate::provider::blob_storage::BlobStorage;
@@ -38,10 +38,7 @@ use crate::provider::issuance_protocol::{
 };
 use crate::service::error::MissingProviderError;
 use crate::validator::key_security::match_key_security_level;
-use crate::validator::{
-    throw_if_credential_state_not_eq, throw_if_org_id_not_matching_session,
-    throw_if_org_not_matching_session,
-};
+use crate::validator::{throw_if_credential_state_not_eq, throw_if_org_id_not_matching_session};
 
 const STATE: &str = "state";
 const AUTHORIZATION_CODE: &str = "code";
@@ -120,20 +117,14 @@ impl SSIHolderService {
     ) -> Result<CredentialId, HolderServiceError> {
         let interaction = self
             .interaction_repository
-            .get_interaction(
-                &interaction_id,
-                &InteractionRelations {
-                    organisation: Some(Default::default()),
-                },
-                None,
-            )
+            .get_interaction(&interaction_id, None)
             .await
             .error_while("getting interaction")?
             .ok_or(HolderServiceError::MissingCredentialsForInteraction(
                 interaction_id,
             ))?;
-        throw_if_org_not_matching_session(
-            interaction.organisation.as_ref(),
+        throw_if_org_id_not_matching_session(
+            interaction.organisation.id_ref(),
             &*self.session_provider,
         )
         .error_while("checking interaction organisation")?;
@@ -281,20 +272,14 @@ impl SSIHolderService {
     ) -> Result<Vec<CredentialId>, HolderServiceError> {
         let interaction = self
             .interaction_repository
-            .get_interaction(
-                &interaction_id,
-                &InteractionRelations {
-                    organisation: Some(Default::default()),
-                },
-                None,
-            )
+            .get_interaction(&interaction_id, None)
             .await
             .error_while("getting interaction")?
             .ok_or(HolderServiceError::MissingCredentialsForInteraction(
                 interaction_id,
             ))?;
-        throw_if_org_not_matching_session(
-            interaction.organisation.as_ref(),
+        throw_if_org_id_not_matching_session(
+            interaction.organisation.id_ref(),
             &*self.session_provider,
         )
         .error_while("checking interaction organisation")?;
@@ -344,9 +329,7 @@ impl SSIHolderService {
             .get_credentials_by_interaction_id(
                 interaction_id,
                 &CredentialRelations {
-                    interaction: Some(InteractionRelations {
-                        organisation: Some(OrganisationRelations::default()),
-                    }),
+                    interaction: Some(Default::default()),
                     key: Some(Default::default()),
                     schema: Some(Default::default()),
                     ..Default::default()
@@ -551,7 +534,7 @@ impl SSIHolderService {
                 created_date: now,
                 last_modified: now,
                 data: Some(data),
-                organisation: Some(organisation),
+                organisation: organisation.into(),
                 nonce_id: None,
                 interaction_type: InteractionType::Issuance,
                 expires_at: None,
@@ -601,19 +584,13 @@ impl SSIHolderService {
 
         let interaction = self
             .interaction_repository
-            .get_interaction(
-                &interaction_id,
-                &InteractionRelations {
-                    organisation: Some(Default::default()),
-                },
-                None,
-            )
+            .get_interaction(&interaction_id, None)
             .await
             .error_while("getting interaction")?
             .ok_or(HolderServiceError::MissingInteraction(interaction_id))?;
 
-        throw_if_org_not_matching_session(
-            interaction.organisation.as_ref(),
+        throw_if_org_id_not_matching_session(
+            interaction.organisation.id_ref(),
             &*self.session_provider,
         )
         .error_while("checking session")?;
@@ -621,11 +598,7 @@ impl SSIHolderService {
             deserialize_interaction_data(interaction.data.as_ref())
                 .error_while("parsing holder interaction data")?;
 
-        let organisation = interaction
-            .organisation
-            .ok_or(HolderServiceError::MappingError(
-                "organisation missing".to_string(),
-            ))?;
+        let organisation = interaction.organisation.as_ref().await?.to_owned();
 
         if let (None, None) = (
             issuance.request.scope.as_ref(),

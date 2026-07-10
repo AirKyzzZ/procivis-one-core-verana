@@ -32,7 +32,7 @@ use crate::model::credential::{
 };
 use crate::model::did::KeyRole;
 use crate::model::identifier::{IdentifierRelations, IdentifierState, IdentifierType};
-use crate::model::interaction::{InteractionRelations, InteractionType};
+use crate::model::interaction::InteractionType;
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListQuery;
 use crate::provider::issuance_protocol::model::ShareResponse;
@@ -566,8 +566,6 @@ impl CredentialService {
             ));
         }
 
-        let organisation = credential_schema.organisation.as_ref().await?.to_owned();
-
         let credential_exchange = &credential.protocol;
         let exchange = self.protocol_provider.get_protocol(credential_exchange)?;
 
@@ -586,7 +584,7 @@ impl CredentialService {
             interaction_id,
             &*self.interaction_repository,
             interaction_data,
-            Some(organisation),
+            credential_schema.organisation.to_owned(),
             InteractionType::Issuance,
             expires_at,
         )
@@ -675,7 +673,7 @@ impl CredentialService {
                     holder_identifier: Some(IdentifierRelations {
                         ..Default::default()
                     }),
-                    interaction: Some(InteractionRelations::default()),
+                    interaction: Some(Default::default()),
                     issuer_certificate: Some(Default::default()),
                     ..Default::default()
                 },

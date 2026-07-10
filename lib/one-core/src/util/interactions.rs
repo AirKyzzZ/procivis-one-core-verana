@@ -4,6 +4,7 @@ use time::OffsetDateTime;
 use crate::error::ContextWithErrorCode;
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::organisation::Organisation;
+use crate::model::relation::Related;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::service::error::ServiceError;
 
@@ -11,7 +12,7 @@ pub(crate) async fn add_new_interaction(
     interaction_id: InteractionId,
     interaction_repository: &dyn InteractionRepository,
     data: Option<Vec<u8>>,
-    organisation: Option<Organisation>,
+    organisation: impl Into<Related<Organisation>>,
     interaction_type: InteractionType,
     expires_at: Option<OffsetDateTime>,
 ) -> Result<Interaction, ServiceError> {
@@ -22,7 +23,7 @@ pub(crate) async fn add_new_interaction(
         created_date: now,
         last_modified: now,
         data,
-        organisation,
+        organisation: organisation.into(),
         nonce_id: None,
         interaction_type,
         expires_at,

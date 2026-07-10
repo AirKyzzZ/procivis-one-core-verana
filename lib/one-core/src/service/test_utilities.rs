@@ -368,7 +368,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
             data: Some(b"interaction data".to_vec()),
-            organisation: None,
+            organisation: dummy_organisation(None).into(),
             nonce_id: None,
             interaction_type: InteractionType::Issuance,
             expires_at: None,

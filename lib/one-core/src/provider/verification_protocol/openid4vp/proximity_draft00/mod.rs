@@ -692,7 +692,7 @@ pub(super) async fn create_interaction_and_proof(
         created_date: now,
         last_modified: now,
         data: interaction_data,
-        organisation: Some(organisation),
+        organisation: organisation.into(),
         nonce_id: None,
         interaction_type: InteractionType::Verification,
         expires_at: None,

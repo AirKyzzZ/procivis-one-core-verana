@@ -9,7 +9,6 @@ use crate::error::ContextWithErrorCode;
 use crate::model::credential::{Credential, CredentialRelations, CredentialRole};
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::identifier::IdentifierRelations;
-use crate::model::interaction::InteractionRelations;
 use crate::model::proof::ProofRelations;
 use crate::proto::session_provider::{SessionExt, SessionProvider};
 use crate::repository::credential_repository::CredentialRepository;
@@ -115,9 +114,7 @@ impl Task for InteractionExpirationCheckProvider {
                     proof_id,
                     &ProofRelations {
                         schema: Some(Default::default()),
-                        interaction: Some(InteractionRelations {
-                            organisation: Some(Default::default()),
-                        }),
+                        interaction: Some(Default::default()),
                         ..Default::default()
                     },
                     None,
@@ -146,7 +143,7 @@ impl Task for InteractionExpirationCheckProvider {
                     entity_type: HistoryEntityType::Proof,
                     metadata: None,
                     metadata_blob_id: None,
-                    organisation_id: organisation.map(|o| o.id),
+                    organisation_id: Some(organisation.id()),
                     user: self.session_provider.session().user(),
                 })
                 .await

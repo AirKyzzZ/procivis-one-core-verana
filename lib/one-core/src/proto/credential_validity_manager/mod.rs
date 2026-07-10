@@ -15,11 +15,9 @@ use crate::model::credential::{
 };
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierType};
-use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListQuery;
-use crate::model::organisation::OrganisationRelations;
 use crate::proto::session_provider::SessionProvider;
 use crate::proto::transaction_manager::TransactionManager;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
@@ -609,9 +607,7 @@ impl CredentialValidityManager for CredentialValidityManagerImpl {
                     holder_identifier: Some(IdentifierRelations {
                         ..Default::default()
                     }),
-                    interaction: Some(InteractionRelations {
-                        organisation: Some(OrganisationRelations::default()),
-                    }),
+                    interaction: Some(Default::default()),
                     key: Some(KeyRelations::default()),
                     ..Default::default()
                 },

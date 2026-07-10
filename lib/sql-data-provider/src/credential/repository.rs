@@ -130,12 +130,12 @@ impl CredentialProvider {
             None
         };
 
-        let interaction = if let Some(interaction_relations) = &relations.interaction {
+        let interaction = if let Some(_interaction_relations) = &relations.interaction {
             match &credential.interaction_id {
                 None => None,
                 Some(interaction_id) => Some(
                     self.interaction_repository
-                        .get_interaction(interaction_id, interaction_relations, None)
+                        .get_interaction(interaction_id, None)
                         .await?
                         .ok_or(DataLayerError::MissingRequiredRelation {
                             relation: "credential-interaction",

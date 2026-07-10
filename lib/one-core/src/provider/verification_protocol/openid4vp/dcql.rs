@@ -75,13 +75,14 @@ pub(crate) async fn get_presentation_definition_v2(
     verifier_info: &[VerifierInfoAttestation],
     transaction_data: Option<IndexMap<TransactionDataId, ValidatedHolderTxData>>,
 ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
-    let organisation = proof
+    let organisation_id = proof
         .interaction
         .as_ref()
-        .and_then(|interaction| interaction.organisation.as_ref())
         .ok_or(VerificationProtocolError::Failed(
-            "proof organisation missing".to_string(),
-        ))?;
+            "proof interaction missing".to_string(),
+        ))?
+        .organisation
+        .id();
 
     let query_to_filters = dcql_query.credential_filters()?;
 
@@ -111,7 +112,7 @@ pub(crate) async fn get_presentation_definition_v2(
         // This is very inefficient. We would have the information here to also filter by the claims
         // required, etc. but so far this was not a problem so it is not optimized.
         let credential_candidates = fetch_credentials_for_schema_ids(
-            organisation.id,
+            organisation_id,
             credential_filters,
             credential_repository,
         )
@@ -148,7 +149,7 @@ pub(crate) async fn get_presentation_definition_v2(
                 .collect::<Vec<_>>();
             let credential_schema = find_schema_by_schema_ids(
                 &schema_ids,
-                organisation.id,
+                organisation_id,
                 credential_schema_repository,
             )
             .await

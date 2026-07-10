@@ -2,7 +2,7 @@ use shared_types::{CredentialId, InteractionId, NonceId, ProofId};
 
 use super::error::DataLayerError;
 use crate::model::common::LockType;
-use crate::model::interaction::{Interaction, InteractionRelations, UpdateInteractionRequest};
+use crate::model::interaction::{Interaction, UpdateInteractionRequest};
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
@@ -24,7 +24,6 @@ pub trait InteractionRepository: Send + Sync {
     async fn get_interaction(
         &self,
         id: &InteractionId,
-        relations: &InteractionRelations,
         lock: Option<LockType>,
     ) -> Result<Option<Interaction>, DataLayerError>;
 

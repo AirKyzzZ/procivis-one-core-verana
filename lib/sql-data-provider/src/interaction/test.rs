@@ -1,9 +1,7 @@
 use std::sync::Arc;
 use std::vec;
 
-use one_core::model::interaction::{
-    Interaction, InteractionRelations, InteractionType, UpdateInteractionRequest,
-};
+use one_core::model::interaction::{Interaction, InteractionType, UpdateInteractionRequest};
 use one_core::repository::error::DataLayerError;
 use one_core::repository::interaction_repository::InteractionRepository;
 use one_core::repository::organisation_repository::MockOrganisationRepository;
@@ -92,7 +90,7 @@ async fn test_create_interaction() {
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         data: Some(vec![1, 2, 3]),
-        organisation: Some(organisation),
+        organisation: organisation.into(),
         nonce_id: Some(nonce_id),
         interaction_type: InteractionType::Issuance,
         expires_at: None,
@@ -114,11 +112,7 @@ async fn test_get_interaction() {
 
     let result = setup
         .provider
-        .get_interaction(
-            &setup.interaction_id,
-            &InteractionRelations::default(),
-            None,
-        )
+        .get_interaction(&setup.interaction_id, None)
         .await
         .unwrap();
 
@@ -153,7 +147,7 @@ async fn test_mark_nonce_as_used() {
 
     let interaction = setup
         .provider
-        .get_interaction(&interaction_id, &InteractionRelations::default(), None)
+        .get_interaction(&interaction_id, None)
         .await
         .unwrap()
         .unwrap();

@@ -12,7 +12,6 @@ use crate::error::ContextWithErrorCode;
 use crate::error::ErrorCode::BR_0000;
 use crate::model::blob::{Blob, BlobType};
 use crate::model::history::HistoryErrorMetadata;
-use crate::model::interaction::InteractionRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::proof::{Proof, ProofRelations, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::{
@@ -58,7 +57,7 @@ impl ProofService {
                             credential_schema: Some(Default::default()),
                         }),
                     }),
-                    interaction: Some(InteractionRelations::default()),
+                    interaction: Some(Default::default()),
                     ..Default::default()
                 },
                 None,

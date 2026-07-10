@@ -20,7 +20,6 @@ use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::identifier_trust_information::{
     IdentifierTrustInformation, IdentifierTrustInformationRelations,
 };
-use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::proof::{Proof, ProofRelations, ProofStateEnum, UpdateProofRequest};
@@ -290,7 +289,7 @@ impl OID4VPFinal1_0Service {
                             credential_schema: Some(Default::default()),
                         }),
                     }),
-                    interaction: Some(InteractionRelations::default()),
+                    interaction: Some(Default::default()),
                     verifier_key: Some(KeyRelations::default()),
                     ..Default::default()
                 },

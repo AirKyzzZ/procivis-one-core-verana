@@ -26,7 +26,7 @@ use crate::provider::verification_protocol::dto::PresentationDefinitionVersion;
 use crate::provider::verification_protocol::model::CommonParams;
 use crate::util::key_selection::KeyFilter;
 use crate::validator::{
-    throw_if_endpoint_version_incompatible, throw_if_org_not_matching_session,
+    throw_if_endpoint_version_incompatible, throw_if_org_id_not_matching_session,
     throw_if_proof_state_not_eq,
 };
 
@@ -34,19 +34,28 @@ pub(super) fn throw_if_proof_not_in_session_org(
     proof: &Proof,
     session_provider: &dyn SessionProvider,
 ) -> Result<(), ProofServiceError> {
-    let organisation = if let Some(schema) = proof.schema.as_ref() {
-        // verifier case
-        schema.organisation.as_ref()
-    } else if let Some(interaction) = proof.interaction.as_ref() {
-        // holder case
-        interaction.organisation.as_ref()
-    } else {
+    // verifier case
+    let mut organisation_id = proof
+        .schema
+        .as_ref()
+        .and_then(|schema| schema.organisation.as_ref())
+        .map(|o| o.id);
+
+    // holder case
+    if organisation_id.is_none()
+        && let Some(interaction) = proof.interaction.as_ref()
+    {
+        organisation_id = Some(interaction.organisation.id());
+    }
+
+    let Some(organisation_id) = organisation_id else {
         return Err(ProofServiceError::MappingError(
             "proof organisation could not be determined".to_string(),
         ));
     };
+
     Ok(
-        throw_if_org_not_matching_session(organisation, session_provider)
+        throw_if_org_id_not_matching_session(&organisation_id, session_provider)
             .error_while("checking session")?,
     )
 }

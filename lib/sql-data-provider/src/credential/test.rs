@@ -13,7 +13,7 @@ use one_core::model::credential_schema::{CredentialSchema, LayoutType};
 use one_core::model::credential_schema_format::CredentialSchemaFormat;
 use one_core::model::did::Did;
 use one_core::model::identifier::{Identifier, IdentifierState, IdentifierType};
-use one_core::model::interaction::{Interaction, InteractionRelations, InteractionType};
+use one_core::model::interaction::{Interaction, InteractionType};
 use one_core::model::list_filter::{ComparisonType, ListFilterValue, StringMatch, ValueComparison};
 use one_core::model::list_query::ListPagination;
 use one_core::repository::certificate_repository::{
@@ -973,7 +973,7 @@ async fn test_get_credential_success() {
                     schema: Some(ClaimSchemaRelations::default()),
                 }),
                 schema: Some(Default::default()),
-                interaction: Some(InteractionRelations::default()),
+                interaction: Some(Default::default()),
                 ..Default::default()
             },
         )
@@ -1041,13 +1041,13 @@ async fn test_update_credential_success() {
     interaction_repository
         .expect_get_interaction()
         .once()
-        .returning(|id, _, _| {
+        .returning(|id, _| {
             Ok(Some(Interaction {
                 id: id.to_owned(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 data: None,
-                organisation: None,
+                organisation: dummy_organisation(None).into(),
                 nonce_id: None,
                 interaction_type: InteractionType::Issuance,
                 expires_at: None,
@@ -1107,7 +1107,7 @@ async fn test_update_credential_success() {
         .get_credential(
             &credential_id,
             &CredentialRelations {
-                interaction: Some(InteractionRelations::default()),
+                interaction: Some(Default::default()),
                 ..Default::default()
             },
         )
@@ -1158,13 +1158,13 @@ async fn test_update_credential_success_no_claims() {
     interaction_repository
         .expect_get_interaction()
         .once()
-        .returning(|id, _, _| {
+        .returning(|id, _| {
             Ok(Some(Interaction {
                 id: id.to_owned(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 data: None,
-                organisation: None,
+                organisation: dummy_organisation(None).into(),
                 nonce_id: None,
                 interaction_type: InteractionType::Issuance,
                 expires_at: None,
@@ -1226,7 +1226,7 @@ async fn test_update_credential_success_no_claims() {
         .get_credential(
             &credential_id,
             &CredentialRelations {
-                interaction: Some(InteractionRelations::default()),
+                interaction: Some(Default::default()),
                 ..Default::default()
             },
         )

@@ -33,7 +33,7 @@ use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::history::GetHistoryList;
 use crate::model::identifier::{Identifier, IdentifierRelations};
-use crate::model::interaction::{Interaction, InteractionRelations, InteractionType};
+use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::Key;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::proof::{
@@ -446,9 +446,7 @@ async fn test_get_proof_exists() {
                         ..Default::default()
                     }),
                     verifier_certificate: Some(CertificateRelations::default()),
-                    interaction: Some(InteractionRelations {
-                        organisation: Some(Default::default()),
-                    }),
+                    interaction: Some(Default::default()),
                     ..Default::default()
                 }),
                 eq(None),
@@ -648,7 +646,7 @@ async fn test_get_proof_with_array_holder() {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             data: None,
-            organisation: Some(organisation),
+            organisation: organisation.into(),
             nonce_id: None,
             interaction_type: InteractionType::Verification,
             expires_at: None,
@@ -697,9 +695,7 @@ async fn test_get_proof_with_array_holder() {
                         ..Default::default()
                     }),
                     verifier_certificate: Some(CertificateRelations::default()),
-                    interaction: Some(InteractionRelations {
-                        organisation: Some(Default::default()),
-                    }),
+                    interaction: Some(Default::default()),
                     ..Default::default()
                 }),
                 eq(None),
@@ -936,7 +932,7 @@ async fn test_get_proof_with_array_in_object_holder() {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             data: None,
-            organisation: Some(organisation),
+            organisation: organisation.into(),
             nonce_id: None,
             interaction_type: InteractionType::Verification,
             expires_at: None,
@@ -985,9 +981,7 @@ async fn test_get_proof_with_array_in_object_holder() {
                         ..Default::default()
                     }),
                     verifier_certificate: Some(CertificateRelations::default()),
-                    interaction: Some(InteractionRelations {
-                        organisation: Some(Default::default()),
-                    }),
+                    interaction: Some(Default::default()),
                     ..Default::default()
                 }),
                 eq(None),
@@ -1239,7 +1233,7 @@ async fn test_get_proof_with_object_array_holder() {
             created_date: crate::clock::now_utc(),
             last_modified: crate::clock::now_utc(),
             data: None,
-            organisation: Some(dummy_organisation(None)),
+            organisation: dummy_organisation(None).into(),
             nonce_id: None,
             interaction_type: InteractionType::Verification,
             expires_at: None,
@@ -1288,9 +1282,7 @@ async fn test_get_proof_with_object_array_holder() {
                         ..Default::default()
                     }),
                     verifier_certificate: Some(CertificateRelations::default()),
-                    interaction: Some(InteractionRelations {
-                        organisation: Some(Default::default()),
-                    }),
+                    interaction: Some(Default::default()),
                     ..Default::default()
                 }),
                 eq(None),
@@ -1573,9 +1565,7 @@ async fn test_get_proof_with_array() {
                         ..Default::default()
                     }),
                     verifier_certificate: Some(CertificateRelations::default()),
-                    interaction: Some(InteractionRelations {
-                        organisation: Some(Default::default()),
-                    }),
+                    interaction: Some(Default::default()),
                     ..Default::default()
                 }),
                 eq(None),
@@ -1868,9 +1858,7 @@ async fn test_get_proof_with_array_in_object() {
                         ..Default::default()
                     }),
                     verifier_certificate: Some(CertificateRelations::default()),
-                    interaction: Some(InteractionRelations {
-                        organisation: Some(Default::default()),
-                    }),
+                    interaction: Some(Default::default()),
                     ..Default::default()
                 }),
                 eq(None),
@@ -2179,9 +2167,7 @@ async fn test_get_proof_with_object_array() {
                         ..Default::default()
                     }),
                     verifier_certificate: Some(CertificateRelations::default()),
-                    interaction: Some(InteractionRelations {
-                        organisation: Some(Default::default()),
-                    }),
+                    interaction: Some(Default::default()),
                     ..Default::default()
                 }),
                 eq(None),
@@ -4103,7 +4089,7 @@ async fn test_delete_proof_ok_for_allowed_state(
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         data: Some(vec![]),
-        organisation: None,
+        organisation: dummy_organisation(None).into(),
         nonce_id: None,
         interaction_type: InteractionType::Verification,
         expires_at: None,
@@ -4128,9 +4114,7 @@ async fn test_delete_proof_ok_for_allowed_state(
             id == &proof_id
                 && relations
                     == &ProofRelations {
-                        interaction: Some(InteractionRelations {
-                            organisation: Some(OrganisationRelations::default()),
-                        }),
+                        interaction: Some(Default::default()),
                         schema: Some(ProofSchemaRelations {
                             organisation: Some(OrganisationRelations::default()),
                             proof_inputs: None,
@@ -4182,7 +4166,7 @@ async fn test_delete_proof_ok_for_requested_state() {
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         data: Some(vec![]),
-        organisation: None,
+        organisation: dummy_organisation(None).into(),
         nonce_id: None,
         interaction_type: InteractionType::Verification,
         expires_at: None,
@@ -4207,9 +4191,7 @@ async fn test_delete_proof_ok_for_requested_state() {
             id == &proof_id
                 && relations
                     == &ProofRelations {
-                        interaction: Some(InteractionRelations {
-                            organisation: Some(OrganisationRelations::default()),
-                        }),
+                        interaction: Some(Default::default()),
                         schema: Some(ProofSchemaRelations {
                             organisation: Some(OrganisationRelations::default()),
                             proof_inputs: None,
@@ -4264,7 +4246,7 @@ async fn test_delete_proof_fails_for_invalid_state(
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         data: None,
-        organisation: None,
+        organisation: dummy_organisation(None).into(),
         nonce_id: None,
         interaction_type: InteractionType::Verification,
         expires_at: None,
@@ -4279,9 +4261,7 @@ async fn test_delete_proof_fails_for_invalid_state(
             id == &proof_id
                 && relations
                     == &ProofRelations {
-                        interaction: Some(InteractionRelations {
-                            organisation: Some(OrganisationRelations::default()),
-                        }),
+                        interaction: Some(Default::default()),
                         schema: Some(ProofSchemaRelations {
                             organisation: Some(OrganisationRelations::default()),
                             proof_inputs: None,
@@ -4322,7 +4302,7 @@ async fn test_retract_proof_with_bluetooth_ok() {
         id: interaction_id,
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
-        organisation: Some(dummy_organisation(None)),
+        organisation: dummy_organisation(None).into(),
         data: Some({
             let data = BLEOpenID4VPInteractionDataVerifier {
                 client_id: "did:example:123".to_string(),
@@ -4387,9 +4367,7 @@ async fn test_retract_proof_with_bluetooth_ok() {
             id == &proof_id
                 && relations
                     == &ProofRelations {
-                        interaction: Some(InteractionRelations {
-                            organisation: Some(OrganisationRelations::default()),
-                        }),
+                        interaction: Some(Default::default()),
                         schema: Some(ProofSchemaRelations {
                             organisation: Some(OrganisationRelations::default()),
                             proof_inputs: None,
@@ -4454,7 +4432,7 @@ async fn test_retract_proof_success_holder_iso_mdl() {
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         data: None,
-        organisation: Some(dummy_organisation(None)),
+        organisation: dummy_organisation(None).into(),
         nonce_id: None,
         interaction_type: InteractionType::Verification,
         expires_at: None,
@@ -4480,9 +4458,7 @@ async fn test_retract_proof_success_holder_iso_mdl() {
             id == &proof_id
                 && relations
                     == &ProofRelations {
-                        interaction: Some(InteractionRelations {
-                            organisation: Some(OrganisationRelations::default()),
-                        }),
+                        interaction: Some(Default::default()),
                         schema: Some(ProofSchemaRelations {
                             organisation: Some(OrganisationRelations::default()),
                             proof_inputs: None,

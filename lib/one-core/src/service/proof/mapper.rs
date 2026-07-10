@@ -608,8 +608,7 @@ pub(super) async fn get_holder_proof_detail(
         proof
             .interaction
             .as_ref()
-            .and_then(|interaction| interaction.organisation.as_ref())
-            .map(|organisation| organisation.id),
+            .map(|interaction| interaction.organisation.id()),
     ]
     .into_iter()
     .flatten()

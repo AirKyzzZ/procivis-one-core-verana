@@ -223,7 +223,7 @@ pub(crate) async fn schedule_ble_verifier_flow(
             move |_, peripheral| async move {
                 info!("cancelling proof sharing");
                 let Ok(interaction) = interaction_repository
-                    .get_interaction(&interaction_id, &Default::default(), None)
+                    .get_interaction(&interaction_id, None)
                     .await
                 else {
                     return;

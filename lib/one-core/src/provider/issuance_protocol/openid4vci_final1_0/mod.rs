@@ -80,6 +80,7 @@ use crate::model::identifier_trust_information::{IdentifierTrustInformation, Sch
 use crate::model::interaction::{Interaction, UpdateInteractionRequest};
 use crate::model::key::{Key, KeyRelations};
 use crate::model::organisation::Organisation;
+use crate::model::relation::Related;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::credential_schema::importer::CredentialSchemaImporter;
 use crate::proto::http_client::{HttpClient, Response};
@@ -1361,12 +1362,9 @@ impl OpenID4VCIFinal1_0 {
         };
         let data = serialize_interaction_data(&holder_data)?;
 
-        let interaction = create_and_store_interaction(
-            self.interaction_repository.as_ref(),
-            data,
-            Some(organisation),
-        )
-        .await?;
+        let interaction =
+            create_and_store_interaction(self.interaction_repository.as_ref(), data, organisation)
+                .await?;
         let (key_algorithms, key_storage_security) =
             credential_config_to_holder_signing_algs_and_key_storage_security(
                 self.key_algorithm_provider.as_ref(),
@@ -1722,13 +1720,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         holder_binding: Option<HolderBindingInput>,
         tx_code: Option<String>,
     ) -> Result<IssuanceAcceptResponse, IssuanceProtocolError> {
-        let organisation =
-            interaction
-                .organisation
-                .as_ref()
-                .ok_or(IssuanceProtocolError::Failed(
-                    "organisation is None".to_string(),
-                ))?;
+        let organisation = interaction.organisation.as_ref().await?;
 
         let mut interaction_data: HolderInteractionData =
             deserialize_interaction_data(interaction.data.as_ref())?;
@@ -1736,7 +1728,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         let holder_binding = if let Some(holder_binding) = holder_binding {
             vec![holder_binding]
         } else {
-            self.create_holder_binding(&interaction_data, organisation)
+            self.create_holder_binding(&interaction_data, &organisation)
                 .await?
         };
 
@@ -1791,7 +1783,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 credential_response,
                 &interaction_data,
                 holder_binding,
-                organisation,
+                &organisation,
                 &interaction,
             )
             .await;
@@ -1870,13 +1862,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             }
         };
 
-        let organisation_id = interaction
-            .organisation
-            .as_ref()
-            .ok_or(IssuanceProtocolError::Failed(
-                "organisation is None".to_string(),
-            ))?
-            .id;
+        let organisation_id = interaction.organisation.id();
 
         let access_token = self
             .holder_reuse_or_refresh_token(interaction.id, organisation_id, &mut interaction_data)
@@ -2275,13 +2261,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         interaction: &Interaction,
         update_credential: Option<CredentialId>,
     ) -> Result<Vec<CredentialId>, IssuanceProtocolError> {
-        let organisation =
-            interaction
-                .organisation
-                .as_ref()
-                .ok_or(IssuanceProtocolError::Failed(
-                    "Missing organisation".to_string(),
-                ))?;
+        let organisation = interaction.organisation.as_ref().await?;
         let mut interaction_data: HolderInteractionData =
             deserialize_interaction_data(interaction.data.as_ref())
                 .error_while("deserializing interaction data")?;
@@ -2330,7 +2310,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 )
             } else {
                 (
-                    self.create_holder_binding(&interaction_data, organisation)
+                    self.create_holder_binding(&interaction_data, &organisation)
                         .await?,
                     None,
                 )
@@ -2378,7 +2358,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 &interaction_data,
                 holder_binding_inputs,
                 response,
-                organisation,
+                &organisation,
                 updated_credential,
                 interaction,
             )
@@ -2639,7 +2619,7 @@ fn append_well_known(credential_issuer: &Url, path: &str) -> Result<String, Issu
 async fn create_and_store_interaction(
     interaction_repository: &dyn InteractionRepository,
     data: Vec<u8>,
-    organisation: Option<Organisation>,
+    organisation: impl Into<Related<Organisation>>,
 ) -> Result<Interaction, IssuanceProtocolError> {
     let now = crate::clock::now_utc();
 

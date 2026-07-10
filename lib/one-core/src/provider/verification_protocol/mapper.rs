@@ -16,20 +16,21 @@ use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
+use crate::model::relation::Related;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::error::DataLayerError;
 
 pub(crate) fn interaction_from_handle_invitation(
     data: Option<Vec<u8>>,
     now: OffsetDateTime,
-    organisation: Option<Organisation>,
+    organisation: impl Into<Related<Organisation>>,
 ) -> Interaction {
     Interaction {
         id: Uuid::new_v4().into(),
         created_date: now,
         last_modified: now,
         data,
-        organisation,
+        organisation: organisation.into(),
         nonce_id: None,
         interaction_type: InteractionType::Verification,
         expires_at: None,

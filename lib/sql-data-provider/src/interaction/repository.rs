@@ -1,6 +1,6 @@
 use autometrics::autometrics;
 use one_core::model::common::LockType;
-use one_core::model::interaction::{Interaction, InteractionRelations, UpdateInteractionRequest};
+use one_core::model::interaction::{Interaction, UpdateInteractionRequest};
 use one_core::repository::error::DataLayerError;
 use one_core::repository::interaction_repository::InteractionRepository;
 use sea_orm::ActiveValue::Unchanged;
@@ -13,8 +13,8 @@ use shared_types::{CredentialId, InteractionId, NonceId, ProofId};
 use time::OffsetDateTime;
 
 use super::InteractionProvider;
+use super::mapper::interaction_from_model;
 use crate::entity::{credential, interaction, proof};
-use crate::interaction::mapper::interaction_from_models;
 use crate::mapper::{map_lock_type, to_data_layer_error, to_update_data_layer_error};
 
 #[autometrics]
@@ -24,7 +24,7 @@ impl InteractionRepository for InteractionProvider {
         &self,
         request: Interaction,
     ) -> Result<InteractionId, DataLayerError> {
-        let interaction = interaction::ActiveModel::try_from(request)?
+        let interaction = interaction::ActiveModel::from(request)
             .insert(&self.db)
             .await
             .map_err(to_data_layer_error)?;
@@ -48,7 +48,6 @@ impl InteractionRepository for InteractionProvider {
     async fn get_interaction(
         &self,
         id: &InteractionId,
-        relations: &InteractionRelations,
         lock: Option<LockType>,
     ) -> Result<Option<Interaction>, DataLayerError> {
         let select = interaction::Entity::find_by_id(id);
@@ -65,23 +64,10 @@ impl InteractionRepository for InteractionProvider {
             return Ok(None);
         };
 
-        let organisation_id = interaction.organisation_id.to_owned();
-
-        let organisation = if let Some(_interaction_relations) = &relations.organisation {
-            Some(
-                self.organisation_repository
-                    .get_organisation(&organisation_id)
-                    .await?
-                    .ok_or(DataLayerError::MissingRequiredRelation {
-                        relation: "interaction-organisation",
-                        id: organisation_id.to_string(),
-                    })?,
-            )
-        } else {
-            None
-        };
-
-        Ok(Some(interaction_from_models(interaction, organisation)))
+        Ok(Some(interaction_from_model(
+            interaction,
+            &self.organisation_repository,
+        )))
     }
 
     async fn mark_nonce_as_used(

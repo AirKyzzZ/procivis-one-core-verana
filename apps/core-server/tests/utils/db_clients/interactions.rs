@@ -29,7 +29,7 @@ impl InteractionsDB {
             created_date: one_core::clock::now_utc(),
             last_modified: one_core::clock::now_utc(),
             data: Some(data.into()),
-            organisation: Some(organisation.to_owned()),
+            organisation: organisation.to_owned().into(),
             nonce_id: None,
             interaction_type,
             expires_at,
@@ -45,7 +45,7 @@ impl InteractionsDB {
 
     pub async fn get(&self, id: impl Into<InteractionId>) -> Option<Interaction> {
         self.repository
-            .get_interaction(&id.into(), &Default::default(), None)
+            .get_interaction(&id.into(), None)
             .await
             .unwrap()
     }

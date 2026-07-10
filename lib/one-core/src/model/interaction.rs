@@ -3,7 +3,8 @@ use shared_types::{InteractionId, NonceId};
 use strum::{AsRefStr, EnumString};
 use time::OffsetDateTime;
 
-use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::model::organisation::Organisation;
+use crate::model::relation::Related;
 
 #[derive(Clone, Debug)]
 #[cfg_attr(any(test, feature = "mock"), derive(PartialEq))]
@@ -12,7 +13,7 @@ pub struct Interaction {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub data: Option<Vec<u8>>,
-    pub organisation: Option<Organisation>,
+    pub organisation: Related<Organisation>,
     pub nonce_id: Option<NonceId>,
     pub interaction_type: InteractionType,
     pub expires_at: Option<OffsetDateTime>,
@@ -24,9 +25,7 @@ pub struct UpdateInteractionRequest {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
-pub struct InteractionRelations {
-    pub organisation: Option<OrganisationRelations>,
-}
+pub struct InteractionRelations {}
 
 #[derive(Clone, Debug, Eq, PartialEq, EnumString, AsRefStr, Serialize, Deserialize)]
 #[strum(serialize_all = "UPPERCASE")]

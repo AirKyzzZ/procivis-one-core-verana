@@ -13,6 +13,7 @@ use crate::model::credential_schema::{TransactionCode, TransactionCodeType};
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
+use crate::model::relation::Related;
 use crate::proto::identifier_creator::{CreateLocalIdentifierRequest, IdentifierCreator};
 use crate::provider::did_method::DidKeys;
 use crate::provider::did_method::model::Operation;
@@ -45,14 +46,14 @@ pub(super) fn get_issued_credential_update(
 pub(crate) fn interaction_from_handle_invitation(
     data: Option<Vec<u8>>,
     now: OffsetDateTime,
-    organisation: Option<Organisation>,
+    organisation: impl Into<Related<Organisation>>,
 ) -> Interaction {
     Interaction {
         id: Uuid::new_v4().into(),
         created_date: now,
         last_modified: now,
         data,
-        organisation,
+        organisation: organisation.into(),
         nonce_id: None,
         interaction_type: InteractionType::Issuance,
         expires_at: None,

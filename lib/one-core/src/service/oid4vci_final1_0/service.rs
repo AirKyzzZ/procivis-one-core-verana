@@ -46,7 +46,7 @@ use crate::model::credential_schema::CredentialSchema;
 use crate::model::credential_schema_format::CredentialSchemaFormat;
 use crate::model::did::KeyRole;
 use crate::model::identifier::{Identifier, IdentifierRelations};
-use crate::model::interaction::{InteractionRelations, UpdateInteractionRequest};
+use crate::model::interaction::UpdateInteractionRequest;
 use crate::model::relation::Related;
 use crate::proto::identifier_creator::{IdentifierName, IdentifierRole, RemoteIdentifierRelation};
 use crate::proto::jwt::Jwt;
@@ -339,13 +339,7 @@ impl OID4VCIFinal1_0Service {
         let interaction_id = parse_access_token(access_token)?;
         let Some(interaction) = self
             .interaction_repository
-            .get_interaction(
-                &interaction_id,
-                &InteractionRelations {
-                    organisation: Some(Default::default()),
-                },
-                None,
-            )
+            .get_interaction(&interaction_id, None)
             .await
             .error_while("getting interaction")?
         else {
@@ -684,7 +678,7 @@ impl OID4VCIFinal1_0Service {
         // Lock interaction, so that the issuance process is done only by one thread
         let Some(interaction) = self
             .interaction_repository
-            .get_interaction(&interaction_id, &Default::default(), Some(LockType::Update))
+            .get_interaction(&interaction_id, Some(LockType::Update))
             .await
             .error_while("getting interaction")?
         else {
@@ -893,7 +887,7 @@ impl OID4VCIFinal1_0Service {
         let interaction_id = parse_access_token(access_token)?;
         let Some(interaction) = self
             .interaction_repository
-            .get_interaction(&interaction_id, &InteractionRelations::default(), None)
+            .get_interaction(&interaction_id, None)
             .await
             .error_while("getting interaction")?
         else {
@@ -1055,11 +1049,7 @@ impl OID4VCIFinal1_0Service {
             // Lock the interaction to ensure exclusive access
             let mut interaction = self
                 .interaction_repository
-                .get_interaction(
-                    &interaction_id,
-                    &InteractionRelations::default(),
-                    Some(LockType::Update),
-                )
+                .get_interaction(&interaction_id, Some(LockType::Update))
                 .await
                 .error_while("getting interaction")?
                 .ok_or(OID4VCIFinal1_0ServiceError::MappingError(format!(

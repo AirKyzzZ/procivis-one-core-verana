@@ -31,6 +31,7 @@ use crate::model::did::Did;
 use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
+use crate::model::relation::Related;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::http_client::HttpClient;
 use crate::proto::session_provider::SessionProvider;
@@ -384,12 +385,9 @@ impl OpenID4VPFinal1_0 {
         };
 
         let now = crate::clock::now_utc();
-        let interaction = create_and_store_interaction(
-            self.interaction_repository.as_ref(),
-            data,
-            Some(organisation),
-        )
-        .await?;
+        let interaction =
+            create_and_store_interaction(self.interaction_repository.as_ref(), data, organisation)
+                .await?;
         let interaction_id = interaction.id;
 
         let proof = proof_from_handle_invitation(
@@ -914,7 +912,7 @@ async fn encrypted_params(
 async fn create_and_store_interaction(
     interaction_repository: &dyn InteractionRepository,
     data: Vec<u8>,
-    organisation: Option<Organisation>,
+    organisation: impl Into<Related<Organisation>>,
 ) -> Result<Interaction, VerificationProtocolError> {
     let now = crate::clock::now_utc();
 

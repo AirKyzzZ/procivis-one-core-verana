@@ -354,12 +354,12 @@ impl ProofProvider {
             proof.verifier_identifier = Some(verifier_identifier);
         }
 
-        if let (Some(interaction_relations), Some(interaction_id)) =
+        if let (Some(_interaction_relations), Some(interaction_id)) =
             (&relations.interaction, proof_model.interaction_id)
         {
             let interaction = self
                 .interaction_repository
-                .get_interaction(&interaction_id, interaction_relations, None)
+                .get_interaction(&interaction_id, None)
                 .await?
                 .ok_or(DataLayerError::MissingRequiredRelation {
                     relation: "proof-interaction",

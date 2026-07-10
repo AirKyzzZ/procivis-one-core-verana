@@ -9,14 +9,14 @@ use one_core::model::did::{Did, DidType};
 use one_core::model::identifier::{
     Identifier, IdentifierRelations, IdentifierState, IdentifierType,
 };
-use one_core::model::interaction::{Interaction, InteractionRelations, InteractionType};
-use one_core::model::key::{Key, KeyRelations};
+use one_core::model::interaction::{Interaction, InteractionType};
+use one_core::model::key::Key;
 use one_core::model::list_filter::ListFilterValue;
 use one_core::model::list_query::ListPagination;
 use one_core::model::proof::{
     Proof, ProofClaimRelations, ProofListQuery, ProofRelations, ProofRole, ProofStateEnum,
 };
-use one_core::model::proof_schema::{ProofSchema, ProofSchemaRelations};
+use one_core::model::proof_schema::ProofSchema;
 use one_core::repository::certificate_repository::{
     CertificateRepository, MockCertificateRepository,
 };
@@ -508,13 +508,13 @@ async fn test_get_proof_with_relations() {
     interaction_repository
         .expect_get_interaction()
         .times(1)
-        .returning(|id, _, _| {
+        .returning(|id, _| {
             Ok(Some(Interaction {
                 id: id.to_owned(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 data: Some(vec![1, 2, 3]),
-                organisation: None,
+                organisation: dummy_organisation(None).into(),
                 nonce_id: None,
                 interaction_type: InteractionType::Verification,
                 expires_at: None,
@@ -726,15 +726,15 @@ async fn test_get_proof_with_relations() {
             &proof_id,
             &ProofRelations {
                 claims: Some(ProofClaimRelations {
-                    claim: ClaimRelations::default(),
-                    credential: Some(CredentialRelations::default()),
+                    claim: Default::default(),
+                    credential: Some(Default::default()),
                 }),
-                schema: Some(ProofSchemaRelations::default()),
+                schema: Some(Default::default()),
                 verifier_identifier: Some(IdentifierRelations {
                     ..Default::default()
                 }),
-                verifier_key: Some(KeyRelations::default()),
-                interaction: Some(InteractionRelations::default()),
+                verifier_key: Some(Default::default()),
+                interaction: Some(Default::default()),
                 ..Default::default()
             },
             None,
@@ -797,13 +797,13 @@ async fn test_get_proof_by_interaction_id_success() {
     interaction_repository
         .expect_get_interaction()
         .times(1)
-        .returning(|id, _, _| {
+        .returning(|id, _| {
             Ok(Some(Interaction {
                 id: id.to_owned(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 data: Some(vec![1, 2, 3]),
-                organisation: None,
+                organisation: dummy_organisation(None).into(),
                 nonce_id: None,
                 interaction_type: InteractionType::Verification,
                 expires_at: None,
@@ -845,10 +845,10 @@ async fn test_get_proof_by_interaction_id_success() {
         .get_proof_by_interaction_id(
             &interaction_id,
             &ProofRelations {
-                claims: Some(ProofClaimRelations::default()),
-                schema: Some(ProofSchemaRelations::default()),
-                verifier_key: Some(KeyRelations::default()),
-                interaction: Some(InteractionRelations::default()),
+                claims: Some(Default::default()),
+                schema: Some(Default::default()),
+                verifier_key: Some(Default::default()),
+                interaction: Some(Default::default()),
                 ..Default::default()
             },
         )

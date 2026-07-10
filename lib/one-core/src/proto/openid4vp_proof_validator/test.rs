@@ -318,7 +318,7 @@ fn test_data(dcql_query: DcqlQuery) -> TestData {
         created_date: crate::clock::now_utc(),
         last_modified: crate::clock::now_utc(),
         data: Some(interaction_data_serialized),
-        organisation: None,
+        organisation: dummy_organisation(None).into(),
         nonce_id: None,
         interaction_type: InteractionType::Verification,
         expires_at: None,

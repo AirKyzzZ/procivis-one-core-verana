@@ -9,7 +9,6 @@ use crate::model::common::LockType;
 use crate::model::history::{
     History, HistoryAction, HistoryEntityType, HistoryErrorMetadata, HistoryMetadata, HistorySource,
 };
-use crate::model::interaction::InteractionRelations;
 use crate::model::proof::{
     GetProofList, Proof, ProofListQuery, ProofRelations, ProofRole, ProofStateEnum,
     UpdateProofRequest,
@@ -37,9 +36,7 @@ impl ProofHistoryDecorator {
                         organisation: Some(Default::default()),
                         ..Default::default()
                     }),
-                    interaction: Some(InteractionRelations {
-                        organisation: Some(Default::default()),
-                    }),
+                    interaction: Some(Default::default()),
                     verifier_identifier: Some(Default::default()),
                     ..Default::default()
                 },
@@ -226,12 +223,12 @@ fn organisation_id_from_proof(proof: &Proof) -> Option<OrganisationId> {
         return Some(organisation.id);
     }
 
-    if let Some(organisation) = proof
+    if let Some(organisation_id) = proof
         .interaction
         .as_ref()
-        .and_then(|interaction| interaction.organisation.as_ref())
+        .map(|interaction| interaction.organisation.id())
     {
-        return Some(organisation.id);
+        return Some(organisation_id);
     }
 
     None
