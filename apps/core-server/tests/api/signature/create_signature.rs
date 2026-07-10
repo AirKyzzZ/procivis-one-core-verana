@@ -168,7 +168,7 @@ async fn test_sign_wrprc_validity_start_end_in_past() {
     assert_eq!(resp.error_code().await, "BR_0324")
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test]
 async fn test_create_signature_x509_success() {
     let (context, _org, identifier, ..) = TestContext::new_with_ca_identifier(None).await;
 
@@ -224,7 +224,7 @@ async fn test_create_signature_x509_success() {
     );
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test]
 async fn test_create_signature_x509_intermediary_ca_success() {
     let (context, _org, identifier, ..) = TestContext::new_with_ca_identifier(None).await;
 
@@ -288,7 +288,7 @@ async fn test_create_signature_x509_intermediary_ca_success() {
     assert_eq!(leaf_cert.validity.not_after.to_datetime(), end);
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test]
 async fn test_create_signature_x509_intermediary_ca_disabled() {
     let signer_config = indoc! {"
         signer:
@@ -330,7 +330,7 @@ async fn test_create_signature_x509_intermediary_ca_disabled() {
     assert_eq!(resp.error_code().await, "BR_0332")
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test]
 async fn test_create_signature_x509_success_no_crl() {
     let signer_config = indoc! {"
         signer:
@@ -387,7 +387,7 @@ async fn test_create_signature_x509_success_no_crl() {
     assert!(crl_ext.is_none());
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test]
 async fn test_create_signature_x509_san_dns() {
     let (context, _org, identifier, ..) = TestContext::new_with_ca_identifier(None).await;
 
@@ -462,7 +462,7 @@ async fn test_fail_on_missing_signer_specific_permission() {
     assert_eq!(resp.status(), 403);
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test]
 async fn test_create_signature_access_certificate_natural_person_success() {
     let (context, _org, identifier, ..) = TestContext::new_with_ca_identifier(None).await;
 
@@ -527,7 +527,7 @@ async fn test_create_signature_access_certificate_natural_person_success() {
     assert!(key_usage_ext.is_some());
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test]
 async fn test_create_signature_access_certificate_legal_person_success() {
     let (context, _org, identifier, ..) = TestContext::new_with_ca_identifier(None).await;
 
@@ -592,7 +592,7 @@ async fn test_create_signature_access_certificate_legal_person_success() {
     assert!(key_usage_ext.is_some());
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test]
 async fn test_create_signature_access_certificate_invalid_policy_attribute_combination() {
     let (context, _org, identifier, ..) = TestContext::new_with_ca_identifier(None).await;
 

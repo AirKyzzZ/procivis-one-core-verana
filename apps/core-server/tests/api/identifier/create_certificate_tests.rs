@@ -93,7 +93,7 @@ async fn test_create_certificate_authority_identifier_no_crl() {
     resp["organisationId"].assert_eq(&organisation.id);
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test]
 async fn test_create_certificate_authority_self_signed() {
     // given
     let (context, organisation) = TestContext::new_with_organisation(None).await;
@@ -170,7 +170,7 @@ async fn test_create_certificate_authority_self_signed() {
     resp["organisationId"].assert_eq(&organisation.id);
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test]
 async fn test_create_certificate_authority_self_signed_with_issuer_alternative_name() {
     // given
     let (context, organisation) = TestContext::new_with_organisation(None).await;
@@ -251,7 +251,7 @@ async fn test_create_certificate_authority_self_signed_with_issuer_alternative_n
     resp["organisationId"].assert_eq(&organisation.id);
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test]
 async fn test_create_certificate_authority_self_signed_invalid_signer() {
     // given
     let (context, organisation) = TestContext::new_with_organisation(None).await;
@@ -799,7 +799,7 @@ async fn test_create_certificate_identifier_ca_incorrect_key_usage() {
     assert_eq!(result.error_code().await, "BR_0249");
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test]
 async fn test_create_certificate_authority_self_signed_and_certificate_mdl_profile() {
     let (context, organisation) = TestContext::new_with_organisation(None).await;
 
@@ -904,7 +904,7 @@ async fn test_create_certificate_authority_self_signed_and_certificate_mdl_profi
     resp["organisationId"].assert_eq(&organisation.id);
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test]
 async fn test_create_certificate_authority_self_signed_and_certificate_generic_profile() {
     let (context, organisation) = TestContext::new_with_organisation(None).await;
 

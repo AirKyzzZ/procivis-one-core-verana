@@ -6,7 +6,7 @@ use crate::utils::api_clients::keys::CsrParams;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::keys::{ecdsa_testing_params, eddsa_testing_params};
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test]
 async fn test_generate_mdl_csr_for_eddsa_success() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;
@@ -41,7 +41,7 @@ jgiPcBHruzMhrcpjFDH7vLtvaDmsfww=
     assert_eq!(expected, value["content"].as_str().unwrap())
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test]
 async fn test_generate_mdl_csr_for_ecdsa_success() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;
@@ -77,7 +77,7 @@ AiEAlj3K3cDaSKXqvMZf11p9fZK7mLUSf0bzlbPKWdIuQDk=
     assert_eq!(expected, value["content"].as_str().unwrap())
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test]
 async fn test_generate_generic_csr_for_eddsa_success() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;
@@ -116,7 +116,7 @@ ugPFYjvqaNMtbPZ+py3CBzuttWme+MaQFshTyJ6A5WH2PW2gSMK+A2kiRM8sh1IL
     assert_eq!(expected, value["content"].as_str().unwrap())
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test]
 async fn test_generate_ca_csr_for_eddsa_success() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;

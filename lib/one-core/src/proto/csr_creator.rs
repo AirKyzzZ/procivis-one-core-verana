@@ -129,8 +129,7 @@ impl CsrCreator for CsrCreatorImpl {
 
         let key_storage = self.key_provider.get_key_storage(&key.storage_type)?;
         let signing_key =
-            SigningKeyAdapter::new(key, key_storage, tokio::runtime::Handle::current())
-                .error_while("creating signing key adapter")?;
+            SigningKeyAdapter::new(key, key_storage).error_while("creating signing key adapter")?;
 
         request_to_certificate_params(request)?
             .serialize_request(&signing_key)?

@@ -27,7 +27,7 @@ use crate::provider::revocation::RevocationMethod;
 use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::service::test_utilities::{dummy_identifier, dummy_key, dummy_organisation};
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test]
 async fn test_add_signature_new_list() {
     let issuer = dummy_identifier();
     let certificate = dummy_ca_certificate(&issuer);
@@ -139,7 +139,7 @@ async fn test_add_signature_new_list() {
     assert_eq!(crl.crl_number(), Some(&0u32.into()));
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test]
 async fn test_revoke_signature() {
     let certificate = dummy_ca_certificate(&dummy_identifier());
 
@@ -265,7 +265,7 @@ async fn test_revoke_signature() {
     assert_eq!(crl.crl_number(), Some(&1u32.into()));
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test]
 async fn test_get_updated_list_no_update() {
     let certificate = dummy_ca_certificate(&dummy_identifier());
 
@@ -309,7 +309,7 @@ async fn test_get_updated_list_no_update() {
     assert_eq!(list, formatted_list);
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test]
 async fn test_get_updated_list_with_update() {
     let certificate = dummy_ca_certificate(&dummy_identifier());
 

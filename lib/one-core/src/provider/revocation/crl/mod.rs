@@ -420,9 +420,8 @@ impl CRLRevocation {
 
         let key_storage = self.key_provider.get_key_storage(&key.storage_type)?;
 
-        let signing_key =
-            SigningKeyAdapter::new(key, key_storage, tokio::runtime::Handle::current())
-                .map_err(|e| RevocationError::ValidationError(e.to_string()))?;
+        let signing_key = SigningKeyAdapter::new(key, key_storage)
+            .map_err(|e| RevocationError::ValidationError(e.to_string()))?;
 
         let pem = extract_leaf_pem_from_chain(ca_certificate.chain.as_bytes())
             .map_err(|e| RevocationError::ValidationError(e.to_string()))?;
