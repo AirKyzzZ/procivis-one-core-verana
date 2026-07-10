@@ -71,6 +71,7 @@ stages:
   - export DEPLOY_IMAGE_TAG=$APP_VERSION
 
 .setup_network: &setup_network
+  - docker login $CI_REGISTRY -u $CI_REGISTRY_USER -p $CI_JOB_TOKEN
   - docker network inspect $NETWORK_NAME >/dev/null 2>&1 || docker network create -d bridge $NETWORK_NAME
 
 .delete_network: &delete_network
@@ -147,6 +148,7 @@ before_script:
   image: docker:28.2.2-dind
   tags:
     - rust
+  dependencies: []
   script:
     - |
       if [ -z "$ONE_app__databaseUrl" ]; then
