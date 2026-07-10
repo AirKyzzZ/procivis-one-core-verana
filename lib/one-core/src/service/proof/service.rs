@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use one_dto_mapper::convert_inner;
+use dcql::CredentialQueryId;
 use shared_types::{CredentialFormat, CredentialId, ProofId, TransactionDataId};
 use uuid::Uuid;
 
@@ -65,7 +65,7 @@ use crate::provider::verification_protocol::iso_mdl::device_engagement::{
 };
 use crate::provider::verification_protocol::iso_mdl::nfc::create_nfc_handover_select_message;
 use crate::provider::verification_protocol::openid4vp::model::{
-    CommonVerifierInteractionContent, OpenID4VPHolderInteractionData,
+    CommonVerifierInteractionContent, OpenID4VPHolderInteractionData, TransactionDataRequest,
 };
 use crate::provider::verification_protocol::{FormatMapper, deserialize_interaction_data};
 use crate::service::common_dto::{ListQueryDTO, TrustInformationDetailResponseDTO};
@@ -522,7 +522,6 @@ impl ProofService {
             &request.transaction_data,
             &proof_schema,
             &*self.credential_formatter_provider,
-            &*self.transaction_data_provider,
         )
         .await?;
 
@@ -534,11 +533,30 @@ impl ProofService {
         };
 
         if multiple_transports || !request.transaction_data.is_empty() {
+            let mut transaction_data = Vec::with_capacity(request.transaction_data.len());
+            for tx_data in &request.transaction_data {
+                let provider = self
+                    .transaction_data_provider
+                    .get_transaction_data_by_name(&tx_data.r#type)?;
+                let credential_ids: Vec<_> = tx_data
+                    .credential_schema_ids
+                    .iter()
+                    .map(|cs| CredentialQueryId::from(cs.to_string()))
+                    .collect();
+                let encoded = provider
+                    .prepare_transaction_data(credential_ids.clone(), tx_data.data.clone())
+                    .error_while("preparing transaction data")?;
+                transaction_data.push(TransactionDataRequest {
+                    r#type: tx_data.r#type.clone(),
+                    credential_ids,
+                    data: tx_data.data.clone(),
+                    encoded,
+                })
+            }
+
             let data = CreateProofInteractionData {
                 transport: interaction_transports,
-                common: CommonVerifierInteractionContent {
-                    transaction_data: convert_inner(request.transaction_data.clone()),
-                },
+                common: CommonVerifierInteractionContent { transaction_data },
             };
 
             maybe_interaction = Some(

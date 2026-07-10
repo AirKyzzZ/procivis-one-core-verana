@@ -122,7 +122,10 @@ pub(crate) struct TransactionDataRequest {
     pub r#type: TransactionDataType,
     // Corresponds to the ids of the underlying credential schemas
     pub credential_ids: Vec<CredentialQueryId>,
+    /// Transaction data as supplied when creating the proof request
     pub data: Option<serde_json::Value>,
+    /// Base64-encoded transaction data to be included with the proof request
+    pub encoded: String,
 }
 
 #[derive(Debug, Clone)]

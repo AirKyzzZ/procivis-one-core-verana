@@ -323,35 +323,77 @@ async fn test_get_client_request_final1_includes_transaction_data() {
     let interaction = fixtures::create_interaction(
         &context.db.db_conn,
         json!({
-            "nonce": "QnoICmZxqAUZdOlPJRVtbJrrHJRTDwCM",
-            "client_id": "redirect_uri:https://verifier.example/response",
-            "client_id_scheme": "redirect_uri",
-            "response_uri": "https://verifier.example/response",
-            "dcql_query": {
-                "credentials": [{
-                    "id": "input_0",
-                    "format": "mso_mdoc",
-                    "meta": { "doctype_value": "org.iso.18013.5.1.mDL" },
-                    "claims": [{ "path": ["namespace", "given_name"] }]
-                }]
-            },
-            "transaction_data": [{
-                "type": "QES_APPROVAL",
-                "credential_ids": ["input_0"],
-                "data": {
-                    "signatureQualifier": "eu_eidas_qes",
-                    "numSignatures": 1,
-                    "documentInfos": [{
-                        "label": "Example Contract",
-                        "hash": "sTOgwOm+474gFj0q0x1iSNspKqbcse4IeiqlDg/HWuI=",
-                        "hashType": "sodr",
-                        "access": { "type": "public" },
-                        "href": "https://public.rp-cdn.example/contract.pdf",
-                        "checksum": "sha256-sTOgwOm+474gFj0q0x1iSNspKqbcse4IeiqlDg/HWuI="
-                    }],
-                    "hashAlgorithmOID": "2.16.840.1.101.3.4.2.1"
-                }
-            }]
+          "nonce": "QnoICmZxqAUZdOlPJRVtbJrrHJRTDwCM",
+          "client_id": "redirect_uri:https://verifier.example/response",
+          "client_id_scheme": "redirect_uri",
+          "response_uri": "https://verifier.example/response",
+          "dcql_query": {
+            "credentials": [
+              {
+                "id": "input_0",
+                "format": "mso_mdoc",
+                "meta": {
+                  "doctype_value": "org.iso.18013.5.1.mDL"
+                },
+                "claims": [
+                  {
+                    "path": [
+                      "namespace",
+                      "given_name"
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "transaction_data": [
+            {
+              "type": "QES_APPROVAL",
+              "credential_ids": [
+                "input_0"
+              ],
+              "data": {
+                "documentInfos": [
+                  {
+                    "access": {
+                      "oneTimePassword": "51623",
+                      "type": "OTP"
+                    },
+                    "checksum": "sha256-sTOgwOm+474gFj0q0x1iSNspKqbcse4IeiqlDg/HWuI=",
+                    "hash": "sTOgwOm+474gFj0q0x1iSNspKqbcse4IeiqlDg/HWuI=",
+                    "hashType": "sodr",
+                    "href": "https://protected.rp.example/contract-01.pdf?token=HS9naJKWwp901hBcK348IUHiuH8374",
+                    "label": "Example Contract"
+                  },
+                  {
+                    "access": {
+                      "type": "public"
+                    },
+                    "checksum": "sha256-HZQzZmMAIWekfGH0/ZKW1nsdt0xg3H6bZYztgsMTLw0=",
+                    "hash": "HZQzZmMAIWekfGH0/ZKW1nsdt0xg3H6bZYztgsMTLw0=",
+                    "hashType": "sodr",
+                    "href": "https://public.rp-cdn.example/terms-and-conditions.pdf",
+                    "label": "Example Terms of Service"
+                  },
+                  {
+                    "access": {
+                      "oneTimePassword": "83920",
+                      "type": "OTP"
+                    },
+                    "checksum": "sha256-nL7zQmAKfQ2jADrOxkEZh2UqV4Lx4WsmelSivP6LjoQ=",
+                    "hash": "nL7zQmAKfQ2jADrOxkEZh2UqV4Lx4WsmelSivP6LjoQ=",
+                    "hashType": "sodr",
+                    "href": "https://protected.rp.example/invoice-2025-07.pdf?token=jk47ns88sna9a",
+                    "label": "Example Invoice"
+                  }
+                ],
+                "hashAlgorithmOID": "2.16.840.1.101.3.4.2.1",
+                "numSignatures": 2,
+                "signatureQualifier": "eu_eidas_qes"
+              },
+              "encoded": "eyJjcmVkZW50aWFsX2lkcyI6WyJpbnB1dF8wIl0sImRvY3VtZW50SW5mb3MiOlt7ImFjY2VzcyI6eyJvbmVUaW1lUGFzc3dvcmQiOiI1MTYyMyIsInR5cGUiOiJPVFAifSwiY2hlY2tzdW0iOiJzaGEyNTYtc1RPZ3dPbSs0NzRnRmowcTB4MWlTTnNwS3FiY3NlNEllaXFsRGcvSFd1ST0iLCJoYXNoIjoic1RPZ3dPbSs0NzRnRmowcTB4MWlTTnNwS3FiY3NlNEllaXFsRGcvSFd1ST0iLCJoYXNoVHlwZSI6InNvZHIiLCJocmVmIjoiaHR0cHM6Ly9wcm90ZWN0ZWQucnAuZXhhbXBsZS9jb250cmFjdC0wMS5wZGY_dG9rZW49SFM5bmFKS1d3cDkwMWhCY0szNDhJVUhpdUg4Mzc0IiwibGFiZWwiOiJFeGFtcGxlIENvbnRyYWN0In0seyJhY2Nlc3MiOnsidHlwZSI6InB1YmxpYyJ9LCJjaGVja3N1bSI6InNoYTI1Ni1IWlF6Wm1NQUlXZWtmR0gwL1pLVzFuc2R0MHhnM0g2YlpZenRnc01UTHcwPSIsImhhc2giOiJIWlF6Wm1NQUlXZWtmR0gwL1pLVzFuc2R0MHhnM0g2YlpZenRnc01UTHcwPSIsImhhc2hUeXBlIjoic29kciIsImhyZWYiOiJodHRwczovL3B1YmxpYy5ycC1jZG4uZXhhbXBsZS90ZXJtcy1hbmQtY29uZGl0aW9ucy5wZGYiLCJsYWJlbCI6IkV4YW1wbGUgVGVybXMgb2YgU2VydmljZSJ9LHsiYWNjZXNzIjp7Im9uZVRpbWVQYXNzd29yZCI6IjgzOTIwIiwidHlwZSI6Ik9UUCJ9LCJjaGVja3N1bSI6InNoYTI1Ni1uTDd6UW1BS2ZRMmpBRHJPeGtFWmgyVXFWNEx4NFdzbWVsU2l2UDZMam9RPSIsImhhc2giOiJuTDd6UW1BS2ZRMmpBRHJPeGtFWmgyVXFWNEx4NFdzbWVsU2l2UDZMam9RPSIsImhhc2hUeXBlIjoic29kciIsImhyZWYiOiJodHRwczovL3Byb3RlY3RlZC5ycC5leGFtcGxlL2ludm9pY2UtMjAyNS0wNy5wZGY_dG9rZW49ams0N25zODhzbmE5YSIsImxhYmVsIjoiRXhhbXBsZSBJbnZvaWNlIn1dLCJoYXNoQWxnb3JpdGhtT0lEIjoiMi4xNi44NDAuMS4xMDEuMy40LjIuMSIsIm51bVNpZ25hdHVyZXMiOjIsInNpZ25hdHVyZVF1YWxpZmllciI6ImV1X2VpZGFzX3FlcyIsInR5cGUiOiJodHRwczovL2Nsb3Vkc2lnbmF0dXJlY29uc29ydGl1bS5vcmcvMjAyNS9xZXMtYXBwcm92YWwifQ"
+            }
+          ]
         })
         .to_string()
         .as_bytes(),

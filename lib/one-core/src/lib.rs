@@ -669,7 +669,6 @@ impl OneCore {
                 wrp_validator.clone(),
                 data_provider.get_history_repository(),
                 session_provider.clone(),
-                transaction_data_provider.clone(),
             ),
             oid4vp_final1_0_swiyu_service: OID4VPFinal1_0SwiyuService::new(
                 data_provider.get_credential_repository(),
@@ -685,7 +684,6 @@ impl OneCore {
                 wrp_validator.clone(),
                 data_provider.get_history_repository(),
                 session_provider.clone(),
-                transaction_data_provider.clone(),
             ),
             credential_schema_service: CredentialSchemaService::new(
                 core_base_url.clone(),

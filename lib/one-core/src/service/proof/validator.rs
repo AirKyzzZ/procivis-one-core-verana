@@ -17,10 +17,8 @@ use crate::model::proof::{Proof, ProofRole};
 use crate::model::proof_schema::ProofSchema;
 use crate::proto::notification_scheduler::NotificationScheduler;
 use crate::proto::session_provider::SessionProvider;
-use crate::provider::ProviderExt;
 use crate::provider::credential_formatter::model::Features;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-use crate::provider::transaction_data::provider::TransactionDataProvider;
 use crate::provider::verification_protocol::VerificationProtocol;
 use crate::provider::verification_protocol::dto::PresentationDefinitionVersion;
 use crate::provider::verification_protocol::model::CommonParams;
@@ -114,7 +112,6 @@ pub(super) async fn validate_transaction_data(
     transaction_data: &[CreateProofRequestTransactionDataDTO],
     proof_schema: &ProofSchema,
     formatter_provider: &dyn CredentialFormatterProvider,
-    transaction_data_provider: &dyn TransactionDataProvider,
 ) -> Result<(), ProofServiceError> {
     if transaction_data.is_empty() {
         return Ok(());
@@ -141,9 +138,6 @@ pub(super) async fn validate_transaction_data(
     }
 
     for entry in transaction_data {
-        transaction_data_provider
-            .get_transaction_data_by_name(&entry.r#type)?
-            .ensure_enabled()?;
         for credential_schema_id in &entry.credential_schema_ids {
             let credential_schema = credential_schemas_by_id.get(credential_schema_id).ok_or(
                 ProofServiceError::TransactionDataUnknownCredentialSchema(*credential_schema_id),

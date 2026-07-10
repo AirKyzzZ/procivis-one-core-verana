@@ -28,38 +28,34 @@ impl WithDisabledDecorator for dyn TransactionData {
 impl<T: Provider + TransactionData + Display + ?Sized> TransactionData for DisabledProvider<T> {
     fn prepare_transaction_data(
         &self,
-        credential_ids: Vec<CredentialQueryId>,
-        data: Option<serde_json::Value>,
+        _credential_ids: Vec<CredentialQueryId>,
+        _data: Option<serde_json::Value>,
     ) -> Result<String, TransactionDataError> {
-        self.inner().prepare_transaction_data(credential_ids, data)
+        self.disabled_error()
     }
 
     fn validate_transaction_data(
         &self,
-        transaction_data: &str,
+        _transaction_data: &str,
     ) -> Result<TransactionDataMetadata, TransactionDataError> {
-        self.inner().validate_transaction_data(transaction_data)
+        self.disabled_error()
     }
 
     async fn process_transaction_data(
         &self,
-        transaction_data: &str,
-        format: FormatType,
+        _transaction_data: &str,
+        _format: FormatType,
     ) -> Result<ProcessedTransactionData, TransactionDataError> {
-        self.inner()
-            .process_transaction_data(transaction_data, format)
-            .await
+        self.disabled_error()
     }
 
     async fn verify_transaction_data(
         &self,
-        transaction_data: &str,
-        format: FormatType,
-        presented: &PresentedTransactionData,
+        _transaction_data: &str,
+        _format: FormatType,
+        _presented: &PresentedTransactionData,
     ) -> Result<TransactionDataAuthorization, TransactionDataError> {
-        self.inner()
-            .verify_transaction_data(transaction_data, format, presented)
-            .await
+        self.disabled_error()
     }
 
     fn get_capabilities(&self) -> TransactionDataCapabilities {

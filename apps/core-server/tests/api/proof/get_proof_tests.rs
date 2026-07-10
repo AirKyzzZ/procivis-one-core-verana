@@ -1695,6 +1695,12 @@ async fn test_get_proof_with_transaction_data() {
         )
         .await;
 
+    let tx_data = json!({
+      "numSignatures": 2,
+      "signatureQualifier": "eu_eidas_qes",
+      "documentInfos": [],
+      "hashAlgorithmOID": "2.16.840.1.101.3.4.2.1"
+    });
     let resp = context
         .api
         .proofs
@@ -1705,8 +1711,7 @@ async fn test_get_proof_with_transaction_data() {
             transaction_data: Some(json!([{
                 "type": "QES_APPROVAL",
                 "credentialSchemaIds": [credential_schema.id.to_string()],
-                "data": { "foo": "bar" }
-            }])),
+                "data": tx_data}])),
             ..Default::default()
         })
         .await;
@@ -1723,5 +1728,5 @@ async fn test_get_proof_with_transaction_data() {
     assert_eq!(transaction_data.len(), 1);
     assert_eq!(transaction_data[0]["type"], json!("QES_APPROVAL"));
     transaction_data[0]["credentialSchemaIds"][0].assert_eq(&credential_schema.id);
-    assert_eq!(transaction_data[0]["data"], json!({ "foo": "bar" }));
+    assert_eq!(transaction_data[0]["data"], tx_data);
 }

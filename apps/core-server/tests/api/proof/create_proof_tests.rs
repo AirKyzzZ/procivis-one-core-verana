@@ -967,7 +967,9 @@ async fn test_create_proof_fails_with_iso_mdl_engagement_and_invalid_engagement(
     );
 }
 
-async fn jwt_proof_schema_setup() -> (
+async fn tx_data_proof_schema_setup(
+    format: &str,
+) -> (
     TestContext,
     Organisation,
     Did,
@@ -978,7 +980,14 @@ async fn jwt_proof_schema_setup() -> (
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, Default::default())
+        .create(
+            "test",
+            &organisation,
+            TestingCreateSchemaParams {
+                format: Some(format.to_string().into()),
+                ..Default::default()
+            },
+        )
         .await;
     let claim_schema = credential_schema
         .claim_schemas
@@ -1055,6 +1064,45 @@ async fn test_create_proof_with_transaction_data_success() {
         .await;
 
     // WHEN
+    let tx_data = json!({
+      "numSignatures": 2,
+      "signatureQualifier": "eu_eidas_qes",
+      "documentInfos": [
+        {
+          "label": "Example Contract",
+          "hash": "sTOgwOm+474gFj0q0x1iSNspKqbcse4IeiqlDg/HWuI=",
+          "hashType": "sodr",
+          "access": {
+            "type": "OTP",
+            "oneTimePassword": "51623"
+          },
+          "href": "https://protected.rp.example/contract-01.pdf?token=HS9naJKWwp901hBcK348IUHiuH8374",
+          "checksum": "sha256-sTOgwOm+474gFj0q0x1iSNspKqbcse4IeiqlDg/HWuI="
+        },
+        {
+          "label": "Example Terms of Service",
+          "hash": "HZQzZmMAIWekfGH0/ZKW1nsdt0xg3H6bZYztgsMTLw0=",
+          "hashType": "sodr",
+          "access": {
+            "type": "public"
+          },
+          "href": "https://public.rp-cdn.example/terms-and-conditions.pdf",
+          "checksum": "sha256-HZQzZmMAIWekfGH0/ZKW1nsdt0xg3H6bZYztgsMTLw0="
+        },
+        {
+          "label": "Example Invoice",
+          "hash": "nL7zQmAKfQ2jADrOxkEZh2UqV4Lx4WsmelSivP6LjoQ=",
+          "hashType": "sodr",
+          "access": {
+            "type": "OTP",
+            "oneTimePassword": "83920"
+          },
+          "href": "https://protected.rp.example/invoice-2025-07.pdf?token=jk47ns88sna9a",
+          "checksum": "sha256-nL7zQmAKfQ2jADrOxkEZh2UqV4Lx4WsmelSivP6LjoQ="
+        }
+      ],
+      "hashAlgorithmOID": "2.16.840.1.101.3.4.2.1"
+    });
     let resp = context
         .api
         .proofs
@@ -1065,7 +1113,7 @@ async fn test_create_proof_with_transaction_data_success() {
             transaction_data: Some(json!([{
                 "type": "QES_APPROVAL",
                 "credentialSchemaIds": [credential_schema.id.to_string()],
-                "data": { "foo": "bar" }
+                "data": tx_data
             }])),
             ..Default::default()
         })
@@ -1084,7 +1132,7 @@ async fn test_create_proof_with_transaction_data_success() {
         data["transaction_data"][0]["credential_ids"],
         json!([credential_schema.id.to_string()])
     );
-    assert_eq!(data["transaction_data"][0]["data"], json!({ "foo": "bar" }));
+    assert_eq!(data["transaction_data"][0]["data"], tx_data);
 
     // and it lands in the verifier interaction content when the proof is shared
     assert_eq!(201, context.api.proofs.share(proof_id, None).await.status());
@@ -1095,14 +1143,42 @@ async fn test_create_proof_with_transaction_data_success() {
         data["transaction_data"][0]["credential_ids"],
         json!([credential_schema.id.to_string()])
     );
-    assert_eq!(data["transaction_data"][0]["data"], json!({ "foo": "bar" }));
+    assert_eq!(data["transaction_data"][0]["data"], tx_data);
+}
+
+#[tokio::test]
+async fn test_create_proof_with_invalid_transaction_data() {
+    // GIVEN
+    let (context, _organisation, did, credential_schema, proof_schema) =
+        tx_data_proof_schema_setup("SD_JWT_VC").await;
+
+    // WHEN
+    let resp = context
+        .api
+        .proofs
+        .create(CreateProofTestParams {
+            proof_schema_id: proof_schema.id.to_string().into(),
+            protocol: "OPENID4VP_FINAL1".into(),
+            verifier_did: did.id.to_string().into(),
+            transaction_data: Some(json!([{
+                "type": "QES_APPROVAL",
+                "credentialSchemaIds": [credential_schema.id.to_string()],
+                "data": { "foo": "bar" }
+            }])),
+            ..Default::default()
+        })
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!("BR_0458", resp.error_code().await);
 }
 
 #[tokio::test]
 async fn test_create_proof_with_transaction_data_provider_not_found() {
     // GIVEN
     let (context, _organisation, did, credential_schema, proof_schema) =
-        jwt_proof_schema_setup().await;
+        tx_data_proof_schema_setup("SD_JWT_VC").await;
 
     // WHEN
     let resp = context
@@ -1129,7 +1205,7 @@ async fn test_create_proof_with_transaction_data_provider_not_found() {
 async fn test_create_proof_with_transaction_data_unknown_credential_schema() {
     // GIVEN
     let (context, _organisation, did, _credential_schema, proof_schema) =
-        jwt_proof_schema_setup().await;
+        tx_data_proof_schema_setup("SD_JWT_VC").await;
 
     // WHEN — referenced credential schema is not part of the proof schema
     let resp = context
@@ -1156,7 +1232,7 @@ async fn test_create_proof_with_transaction_data_unknown_credential_schema() {
 async fn test_create_proof_with_transaction_data_format_unsupported() {
     // GIVEN — JWT credential schema does not support transaction data
     let (context, _organisation, did, credential_schema, proof_schema) =
-        jwt_proof_schema_setup().await;
+        tx_data_proof_schema_setup("JWT").await;
 
     // WHEN
     let resp = context

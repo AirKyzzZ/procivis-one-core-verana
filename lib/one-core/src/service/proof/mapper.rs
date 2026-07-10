@@ -10,9 +10,9 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::dto::{
-    CreateProofRequestDTO, CreateProofRequestTransactionDataDTO, ProofClaimDTO, ProofClaimValueDTO,
-    ProofDetailResponseDTO, ProofFilterParamsDTO, ProofFilterValue, ProofInputDTO,
-    ProofListItemResponseDTO, TransactionDataResponseDTO,
+    CreateProofRequestDTO, ProofClaimDTO, ProofClaimValueDTO, ProofDetailResponseDTO,
+    ProofFilterParamsDTO, ProofFilterValue, ProofInputDTO, ProofListItemResponseDTO,
+    TransactionDataResponseDTO,
 };
 use super::error::ProofServiceError;
 use crate::config::core_config::{CoreConfig, DatatypeType};
@@ -927,19 +927,5 @@ impl From<ProofFilterParamsDTO> for ListFilterCondition<ProofFilterValue> {
             & requested_date_before
             & completed_date_after
             & completed_date_before
-    }
-}
-
-impl From<CreateProofRequestTransactionDataDTO> for TransactionDataRequest {
-    fn from(value: CreateProofRequestTransactionDataDTO) -> Self {
-        Self {
-            r#type: value.r#type,
-            credential_ids: value
-                .credential_schema_ids
-                .into_iter()
-                .map(|id| id.to_string().into())
-                .collect(),
-            data: value.data,
-        }
     }
 }

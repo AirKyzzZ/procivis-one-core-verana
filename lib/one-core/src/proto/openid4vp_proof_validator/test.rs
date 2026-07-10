@@ -513,6 +513,7 @@ fn transaction_data_request() -> TransactionDataRequest {
         r#type: "QES_APPROVAL".into(),
         credential_ids: vec!["a83dabc3-1601-4642-84ec-7a5ad8a70d36".into()],
         data: None,
+        encoded: "encoded-transaction-data".to_string(),
     }
 }
 

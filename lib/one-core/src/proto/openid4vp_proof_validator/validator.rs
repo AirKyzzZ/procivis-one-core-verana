@@ -230,14 +230,9 @@ impl OpenId4VpProofValidatorProto {
                 .get_transaction_data_by_name(&request.r#type)
                 .map_err(|e| OpenID4VCError::Other(e.to_string()))?;
 
-            // reconstruct the exact encoded entry sent in the authorization request
-            let entry = provider
-                .prepare_transaction_data(request.credential_ids.clone(), request.data.clone())
-                .map_err(|e| OpenID4VCError::Other(e.to_string()))?;
-
             // identical entries produce identical evidence, making their authorizations
             // indistinguishable
-            if !seen_entries.insert(entry.clone()) {
+            if !seen_entries.insert(request.encoded.clone()) {
                 return Err(OpenID4VCError::ValidationError(
                     "Duplicate transaction data entry in authorization request".to_string(),
                 ));
@@ -250,7 +245,7 @@ impl OpenId4VpProofValidatorProto {
                 };
 
                 match provider
-                    .verify_transaction_data(&entry, *format, presented)
+                    .verify_transaction_data(&request.encoded, *format, presented)
                     .await
                     .map_err(|e| OpenID4VCError::Other(e.to_string()))?
                 {
