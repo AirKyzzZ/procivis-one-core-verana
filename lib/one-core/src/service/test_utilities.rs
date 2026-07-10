@@ -176,6 +176,17 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                 type: 'OBJECT'
                 order: 300
                 params: null
+            EAA_CATEGORY:
+                display: 'display'
+                type: 'ENUM'
+                order: 500
+                params:
+                    public:
+                        values:
+                            - value: urn:etsi:esi:eaa:eu:pub
+                              display: 'datatype.category.public'
+                            - value: urn:etsi:esi:eaa:eu:qualified
+                              display: 'datatype.category.qualified'
             SWIYU_PICTURE:
                 display: 'display'
                 type: 'SWIYU_PICTURE'

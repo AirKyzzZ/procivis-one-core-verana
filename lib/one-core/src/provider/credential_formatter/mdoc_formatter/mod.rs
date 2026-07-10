@@ -881,7 +881,7 @@ fn map_to_ciborium_value(
 
     let value_as_string = claim.value.to_string();
     Ok(match fields.r#type {
-        DatatypeType::String => ciborium::Value::Text(value_as_string),
+        DatatypeType::String | DatatypeType::Enum => ciborium::Value::Text(value_as_string),
         DatatypeType::Number => {
             let value = value_as_string
                 .parse::<i128>()
@@ -938,9 +938,15 @@ fn map_to_ciborium_value(
                 ciborium::Value::Bytes(content.as_bytes().to_vec()),
             ])
         }
-        _ => {
+        DatatypeType::SwiyuPicture => {
             return Err(FormatterError::CouldNotFormat(format!(
-                "Invalid datatype: {}",
+                "Unsupported datatype: {}",
+                fields.r#type
+            )));
+        }
+        DatatypeType::Object | DatatypeType::Array => {
+            return Err(FormatterError::CouldNotFormat(format!(
+                "Unexpected container datatype: {}",
                 fields.r#type
             )));
         }

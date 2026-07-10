@@ -1242,3 +1242,23 @@ async fn test_parse_credential() {
         hashset! { "arr" }
     );
 }
+
+#[test]
+fn test_map_enum_datatype_to_ciborium_value() {
+    // ENUM datatypes are encoded as their (string) value, like a STRING.
+    let datatype_config = generic_config().core.datatype;
+
+    let claim = PublishedClaim {
+        key: "org.iso.example/category".to_string(),
+        value: PublishedClaimValue::String("urn:etsi:esi:eaa:eu:qualified".to_string()),
+        datatype: Some("EAA_CATEGORY".to_string()),
+        array_item: false,
+    };
+
+    let value = map_to_ciborium_value(&claim, &datatype_config).unwrap();
+
+    assert_eq!(
+        ciborium::Value::Text("urn:etsi:esi:eaa:eu:qualified".to_string()),
+        value
+    );
+}
