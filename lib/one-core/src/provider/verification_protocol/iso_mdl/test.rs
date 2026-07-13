@@ -123,6 +123,7 @@ async fn test_presentation_reject_ok() {
                         "info".to_string() => true,
                     }
                 },
+                request_info: None,
             })
             .unwrap(),
             reader_auth: None,
@@ -242,6 +243,7 @@ async fn test_get_presentation_definition_v2() {
                         "info".to_string() => true,
                     }
                 },
+                request_info: None,
             })
             .unwrap(),
             reader_auth: None,
@@ -683,6 +685,7 @@ async fn test_prepare_reader_auth() {
                 "family_name".to_string() => true
             }
         },
+        request_info: None,
     })
     .unwrap();
 

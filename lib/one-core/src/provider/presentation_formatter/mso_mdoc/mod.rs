@@ -201,7 +201,9 @@ impl PresentationFormatter for MsoMdocPresentationFormatter {
             .await?;
 
             let x5c = pem_chain_into_x5c(&cert_details.chain).error_while("parsing PEM chain")?;
-            try_verify_issuer_auth(&issuer_signed.issuer_auth, &x5c, &verification_fn).await?;
+            try_verify_cose_sign1(&issuer_signed.issuer_auth, &x5c, &verification_fn)
+                .await
+                .error_while("verifying issuerAuth")?;
 
             let holder_jwk = try_extract_holder_public_key(&issuer_signed.issuer_auth)?;
 
@@ -372,7 +374,7 @@ impl MsoMdocPresentationFormatter {
     }
 }
 
-async fn try_verify_issuer_auth(
+async fn try_verify_cose_sign1(
     CoseSign1(cose_sign1): &CoseSign1,
     chain: &[String],
     verifier: &dyn TokenVerifier,
@@ -386,14 +388,14 @@ async fn try_verify_issuer_auth(
     );
 
     let algorithm = extract_algorithm_from_header(cose_sign1).ok_or_else(|| {
-        FormatterError::CouldNotVerify("IssuerAuth is missing algorithm information".to_owned())
+        FormatterError::CouldNotVerify("CoseSign1 is missing algorithm information".to_owned())
     })?;
 
     let params = PublicKeySource::X5c { x5c: chain };
     Ok(verifier
         .verify(params, algorithm, &token, &cose_sign1.signature)
         .await
-        .error_while("verifying")?)
+        .error_while("verifying CoseSign1")?)
 }
 
 async fn try_verify_device_signed(

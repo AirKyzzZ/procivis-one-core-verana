@@ -8,8 +8,8 @@ use async_trait::async_trait;
 use ble::ISO_MDL_FLOW;
 use ble_holder::{MdocBleHolderInteractionData, send_mdl_response};
 use common::{DeviceRequest, to_cbor};
-use dcql::MsoMdocMeta;
 use futures::future::BoxFuture;
+use mapper::device_request_to_dcql_query;
 use proc_macros::Provider;
 use serde_json::Value;
 use url::Url;
@@ -18,7 +18,11 @@ use super::dto::{
     FormattedCredentialPresentation, InvitationResponseDTO, PresentationDefinitionV2ResponseDTO,
     PresentationDefinitionVersion, ShareResponse, UpdateResponse, VerificationProtocolCapabilities,
 };
-use super::{FormatMapper, VerificationProtocol, VerificationProtocolError};
+use super::openid4vp::dcql::get_presentation_definition_v2;
+use super::openid4vp::mapper::format_to_type;
+use super::{
+    FormatMapper, VerificationProtocol, VerificationProtocolError, deserialize_interaction_data,
+};
 use crate::config::core_config::{
     CoreConfig, DidType, IdentifierType, TransportType, VerificationEngagement,
 };
@@ -43,9 +47,6 @@ use crate::provider::presentation_formatter::mso_mdoc::model::{
 };
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::SessionTranscript;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
-use crate::provider::verification_protocol::deserialize_interaction_data;
-use crate::provider::verification_protocol::openid4vp::dcql::get_presentation_definition_v2;
-use crate::provider::verification_protocol::openid4vp::mapper::format_to_type;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
@@ -55,9 +56,10 @@ pub(crate) mod ble_holder;
 pub(crate) mod ble_verifier;
 pub(crate) mod common;
 pub(crate) mod device_engagement;
+mod holder_trust;
+mod mapper;
 pub(crate) mod nfc;
 mod session;
-
 #[cfg(test)]
 mod test;
 mod verify_proof;
@@ -303,52 +305,11 @@ impl VerificationProtocol for IsoMdl {
             .ok_or_else(|| VerificationProtocolError::Failed("Missing device_request".to_string()))?
             .device_request_bytes;
 
-        let device_request: DeviceRequest = ciborium::from_reader(device_request_bytes.as_slice())
+        let device_request = ciborium::from_reader(device_request_bytes.as_slice())
             .context("device request deserialization error")
             .map_err(VerificationProtocolError::Other)?;
 
-        use dcql::{
-            ClaimPath, ClaimQuery, CredentialFormat, CredentialQuery, DcqlQuery, PathSegment,
-        };
-
-        let mut credentials = Vec::with_capacity(device_request.doc_requests.len());
-        for doc_request in device_request.doc_requests {
-            let request = doc_request.items_request.into_inner();
-            let mut claims = vec![];
-            for (namespace, elements) in request.name_spaces {
-                for (element, intent_to_retain) in elements {
-                    claims.push(ClaimQuery {
-                        id: None,
-                        path: ClaimPath {
-                            segments: vec![
-                                PathSegment::PropertyName(namespace.to_owned()),
-                                PathSegment::PropertyName(element),
-                            ],
-                        },
-                        values: None,
-                        required: Some(false),
-                        intent_to_retain: Some(intent_to_retain),
-                    });
-                }
-            }
-
-            credentials.push(CredentialQuery {
-                id: request.doc_type.to_owned().into(),
-                format: CredentialFormat::MsoMdoc(MsoMdocMeta {
-                    doctype_value: request.doc_type,
-                }),
-                claims: Some(claims),
-                claim_sets: None,
-                trusted_authorities: None,
-                multiple: false,
-                require_cryptographic_holder_binding: true,
-            });
-        }
-
-        let dcql_query = DcqlQuery {
-            credentials,
-            credential_sets: None,
-        };
+        let dcql_query = device_request_to_dcql_query(&device_request);
 
         get_presentation_definition_v2(
             dcql_query,

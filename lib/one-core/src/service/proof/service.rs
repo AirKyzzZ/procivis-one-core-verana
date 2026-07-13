@@ -49,8 +49,10 @@ use crate::model::proof::{
     UpdateProofRequest,
 };
 use crate::model::proof_schema::{ProofInputSchemaRelations, ProofSchemaRelations};
+use crate::proto::key_verification::KeyVerification;
 use crate::proto::nfc::static_handover_handler::NfcStaticHandoverHandler;
 use crate::provider::credential_formatter::mdoc_formatter::util::EmbeddedCbor;
+use crate::provider::credential_formatter::model::VerificationFn;
 use crate::provider::transaction_data::decode_transaction_data;
 use crate::provider::verification_protocol::dto::{
     PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion, ShareResponse,
@@ -977,6 +979,10 @@ impl ProofService {
             proof_id,
             qr_engagement,
             nfc_engagement,
+            self.holder_trust_resolver.clone(),
+            self.certificate_validator.clone(),
+            self.identifier_creator.clone(),
+            self.verification_fn(),
         )
         .await
         .error_while("receiving mDL request")?;
@@ -1149,5 +1155,14 @@ impl ProofService {
             .ok_or(ProofServiceError::NotFound(*id))?;
 
         Ok(proof)
+    }
+
+    fn verification_fn(&self) -> VerificationFn {
+        Box::new(KeyVerification {
+            key_algorithm_provider: self.key_algorithm_provider.clone(),
+            did_method_provider: self.did_method_provider.clone(),
+            key_role: KeyRole::AssertionMethod,
+            certificate_validator: self.certificate_validator.clone(),
+        })
     }
 }

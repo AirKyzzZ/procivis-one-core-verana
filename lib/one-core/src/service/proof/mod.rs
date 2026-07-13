@@ -3,6 +3,7 @@ use std::sync::Arc;
 use crate::config::core_config;
 use crate::proto::bluetooth_low_energy::ble_resource::BleWaiter;
 use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::holder_trust_resolver::HolderTrustResolver;
 use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::nfc::hce::NfcHce;
 use crate::proto::notification_scheduler::NotificationScheduler;
@@ -62,6 +63,7 @@ pub struct ProofService {
     notification_scheduler: Arc<dyn NotificationScheduler>,
     trust_information_provider: Arc<dyn TrustInformationProvider>,
     transaction_data_provider: Arc<dyn TransactionDataProvider>,
+    holder_trust_resolver: Arc<dyn HolderTrustResolver>,
 }
 
 impl ProofService {
@@ -93,6 +95,7 @@ impl ProofService {
         notification_scheduler: Arc<dyn NotificationScheduler>,
         trust_information_provider: Arc<dyn TrustInformationProvider>,
         transaction_data_provider: Arc<dyn TransactionDataProvider>,
+        holder_trust_resolver: Arc<dyn HolderTrustResolver>,
     ) -> Self {
         Self {
             proof_repository,
@@ -121,6 +124,7 @@ impl ProofService {
             notification_scheduler,
             trust_information_provider,
             transaction_data_provider,
+            holder_trust_resolver,
         }
     }
 }

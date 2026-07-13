@@ -12,6 +12,7 @@ use hkdf::Hkdf;
 use one_crypto::utilities::get_rng;
 use secrecy::{ExposeSecret, ExposeSecretMut, SecretSlice};
 use serde::{Deserialize, Serialize, Serializer};
+use serde_with::skip_serializing_none;
 use sha2::{Digest, Sha256};
 use x25519_dalek::{EphemeralSecret, PublicKey};
 
@@ -37,6 +38,7 @@ pub(crate) struct DeviceRequest {
     pub doc_requests: Vec<DocRequest>,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct DocRequest {
@@ -44,11 +46,13 @@ pub(crate) struct DocRequest {
     pub reader_auth: Option<CoseSign1>,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ItemsRequest {
     pub doc_type: String,
     pub name_spaces: HashMap<NameSpace, DataElements>,
+    pub request_info: Option<HashMap<String, ciborium::Value>>,
 }
 
 pub(crate) type NameSpace = String;

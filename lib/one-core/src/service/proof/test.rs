@@ -48,6 +48,7 @@ use crate::proto::bluetooth_low_energy::low_level::ble_central::MockBleCentral;
 use crate::proto::bluetooth_low_energy::low_level::ble_peripheral::MockBlePeripheral;
 use crate::proto::bluetooth_low_energy::low_level::dto::DeviceInfo;
 use crate::proto::certificate_validator::MockCertificateValidator;
+use crate::proto::holder_trust_resolver::MockHolderTrustResolver;
 use crate::proto::identifier_creator::MockIdentifierCreator;
 use crate::proto::nfc::hce::{MockNfcHce, NfcHce};
 use crate::proto::notification_scheduler::MockNotificationScheduler;
@@ -122,6 +123,7 @@ struct Repositories {
     pub notification_scheduler: MockNotificationScheduler,
     pub trust_information_provider: MockTrustInformationProvider,
     pub transaction_data_provider: MockTransactionDataProvider,
+    pub holder_trust_resolver: MockHolderTrustResolver,
 }
 
 fn setup_service(repositories: Repositories) -> ProofService {
@@ -159,6 +161,7 @@ fn setup_service(repositories: Repositories) -> ProofService {
         Arc::new(repositories.notification_scheduler),
         Arc::new(repositories.trust_information_provider),
         Arc::new(repositories.transaction_data_provider),
+        Arc::new(repositories.holder_trust_resolver),
     )
 }
 

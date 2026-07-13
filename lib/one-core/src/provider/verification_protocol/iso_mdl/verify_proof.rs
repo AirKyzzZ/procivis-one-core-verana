@@ -34,6 +34,7 @@ pub(super) struct ValidatedProofCredential {
 }
 
 #[expect(clippy::too_many_arguments)]
+/// validation on verifier's side
 pub(crate) async fn validate_proof(
     proof_schema: &ProofSchema,
     presentation: &str,
@@ -283,6 +284,7 @@ fn extract_matching_requested_claim(
     }))
 }
 
+/// proof processing on verifier's side
 pub(crate) async fn accept_proof(
     proof: Proof,
     proved_credentials: Vec<ValidatedProofCredential>,

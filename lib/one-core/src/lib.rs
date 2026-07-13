@@ -500,7 +500,7 @@ impl OneCore {
             wrp_validator.clone(),
             trust_information_provider.clone(),
             transaction_data_provider.clone(),
-            holder_trust_resolver,
+            holder_trust_resolver.clone(),
         )?;
 
         let config = Arc::new(config);
@@ -754,6 +754,7 @@ impl OneCore {
                 notification_scheduler,
                 trust_information_provider,
                 transaction_data_provider,
+                holder_trust_resolver,
             ),
             ssi_issuer_service: SSIIssuerService::new(
                 data_provider.get_credential_schema_repository(),

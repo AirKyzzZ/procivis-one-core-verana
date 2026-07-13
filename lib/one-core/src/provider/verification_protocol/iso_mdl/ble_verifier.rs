@@ -664,6 +664,7 @@ async fn proof_input_schema_to_doc_request(
     let items_request = EmbeddedCbor::new(ItemsRequest {
         doc_type: credential_schema.schema_id().await?,
         name_spaces,
+        request_info: None,
     })?;
 
     let reader_auth = match verifier {

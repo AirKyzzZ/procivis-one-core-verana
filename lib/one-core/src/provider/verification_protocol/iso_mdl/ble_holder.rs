@@ -14,12 +14,13 @@ use super::common::{
     create_session_transcript_bytes, split_into_chunks, to_cbor,
 };
 use super::device_engagement::DeviceEngagement;
+use super::holder_trust::resolve_verifier_and_trust;
 use super::session::{Command, SessionData, SessionEstablishment, StatusCode};
 use crate::config::core_config::VerificationEngagement;
 use crate::error::ErrorCode::BR_0000;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
 use crate::model::history::HistoryErrorMetadata;
-use crate::model::interaction::Interaction;
+use crate::model::interaction::{Interaction, UpdateInteractionRequest};
 use crate::model::proof::{ProofStateEnum, UpdateProofRequest};
 use crate::proto::bluetooth_low_energy::ble_resource::{BleWaiter, OnConflict, ScheduleResult};
 use crate::proto::bluetooth_low_energy::low_level::ble_peripheral::TrackingBlePeripheral;
@@ -27,9 +28,13 @@ use crate::proto::bluetooth_low_energy::low_level::dto::{
     CharacteristicPermissions, CharacteristicProperties, ConnectionEvent,
     CreateCharacteristicOptions, DeviceAddress, DeviceInfo, ServiceDescription,
 };
+use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::holder_trust_resolver::HolderTrustResolver;
+use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::nfc::hce::NfcHce;
 use crate::proto::nfc::static_handover_handler::NfcStaticHandoverHandler;
 use crate::provider::credential_formatter::mdoc_formatter::util::{Bstr, EmbeddedCbor};
+use crate::provider::credential_formatter::model::VerificationFn;
 use crate::provider::presentation_formatter::mso_mdoc::model::DeviceResponse;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::Handover;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::nfc::NFCHandover;
@@ -124,11 +129,15 @@ pub(crate) async fn receive_mdl_request(
     ble: &BleWaiter,
     key_pair: KeyAgreement<EDeviceKey>,
     interaction_repository: Arc<dyn InteractionRepository>,
-    mut interaction: Interaction,
+    interaction: Interaction,
     proof_repository: Arc<dyn ProofRepository>,
     proof_id: ProofId,
     qr_engagement: Option<EmbeddedCbor<DeviceEngagement>>,
     nfc_engagement: Option<NfcHceSession>,
+    holder_trust_resolver: Arc<dyn HolderTrustResolver>,
+    certificate_validator: Arc<dyn CertificateValidator>,
+    identifier_creator: Arc<dyn IdentifierCreator>,
+    verify_fn: VerificationFn,
 ) -> Result<(), VerificationProtocolError> {
     let (tx, rx) = oneshot::channel();
     let proof_repository_clone = proof_repository.clone();
@@ -236,7 +245,20 @@ pub(crate) async fn receive_mdl_request(
                         ));
                     }
 
-                    interaction.data = Some(serde_json::to_vec(&MdocBleHolderInteractionData {
+                    let organisation = interaction.organisation.as_ref().await?;
+                    let verifier_identifier = resolve_verifier_and_trust(
+                        &device_request,
+                        session_transcript_bytes.inner(),
+                        proof_id,
+                        &organisation,
+                        holder_trust_resolver.as_ref(),
+                        certificate_validator.as_ref(),
+                        identifier_creator.as_ref(),
+                        &verify_fn,
+                    )
+                    .await?;
+
+                    let interaction_data = serde_json::to_vec(&MdocBleHolderInteractionData {
                         continuation_task_id: task_id,
                         session: Some(MdocBleHolderInteractionSessionData {
                             sk_device,
@@ -247,10 +269,15 @@ pub(crate) async fn receive_mdl_request(
                             session_transcript_bytes: session_transcript_bytes.into_bytes(),
                         }),
                         ..interaction_data
-                    })?);
+                    })?;
 
                     interaction_repository
-                        .update_interaction(interaction.id, interaction.into())
+                        .update_interaction(
+                            interaction.id,
+                            UpdateInteractionRequest {
+                                data: Some(Some(interaction_data)),
+                            },
+                        )
                         .await
                         .error_while("updating interaction")?;
 
@@ -260,6 +287,7 @@ pub(crate) async fn receive_mdl_request(
                             UpdateProofRequest {
                                 state: Some(ProofStateEnum::Requested),
                                 engagement: Some(Some(engagement_type.to_string())),
+                                verifier_identifier_id: verifier_identifier.map(|i| i.id),
                                 ..Default::default()
                             },
                             None,

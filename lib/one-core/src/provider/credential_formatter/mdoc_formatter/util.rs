@@ -365,7 +365,10 @@ pub(crate) async fn extract_certificate_from_x5chain_header(
     })
 }
 
-fn cose_header(cose_sign1: &coset::CoseSign1, param: iana::HeaderParameter) -> Option<&Value> {
+pub(crate) fn cose_header(
+    cose_sign1: &coset::CoseSign1,
+    param: iana::HeaderParameter,
+) -> Option<&Value> {
     let label = Label::Int(param.to_i64());
     cose_sign1
         .protected
