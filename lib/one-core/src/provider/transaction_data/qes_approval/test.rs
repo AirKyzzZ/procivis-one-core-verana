@@ -144,7 +144,7 @@ fn test_get_display_data_groups_by_document() {
                 "groupPath": "$.documentInfos[*]",
                 "titlePath": "$.label",
                 "attributes": [
-                    { "path": "$.access", "display": "transactionData.qesApproval.documentInfo.access" },
+                    { "path": "$.access.oneTimePassword", "display": "transactionData.qesApproval.documentInfo.access.oneTimePassword" },
                     { "path": "$.href", "display": "transactionData.qesApproval.documentInfo.href" },
                     { "path": "$.checksum", "display": "transactionData.qesApproval.documentInfo.checksum" },
                     { "path": "$.signed_props", "display": "transactionData.qesApproval.documentInfo.signedProps" }
@@ -164,8 +164,8 @@ fn test_get_display_data_groups_by_document() {
                 "title": "Example Contract",
                 "attributes": [
                     {
-                        "key": "transactionData.qesApproval.documentInfo.access",
-                        "value": { "type": "OTP", "oneTimePassword": "51623" }
+                        "key": "transactionData.qesApproval.documentInfo.access.oneTimePassword",
+                        "value": "51623"
                     },
                     {
                         "key": "transactionData.qesApproval.documentInfo.href",
@@ -181,10 +181,6 @@ fn test_get_display_data_groups_by_document() {
                 "title": "Example Terms of Service",
                 "attributes": [
                     {
-                        "key": "transactionData.qesApproval.documentInfo.access",
-                        "value": { "type": "public" }
-                    },
-                    {
                         "key": "transactionData.qesApproval.documentInfo.href",
                         "value": "https://public.rp-cdn.example/terms-and-conditions.pdf"
                     },
@@ -198,8 +194,8 @@ fn test_get_display_data_groups_by_document() {
                 "title": "Example Invoice",
                 "attributes": [
                     {
-                        "key": "transactionData.qesApproval.documentInfo.access",
-                        "value": { "type": "OTP", "oneTimePassword": "83920" }
+                        "key": "transactionData.qesApproval.documentInfo.access.oneTimePassword",
+                        "value": "83920"
                     },
                     {
                         "key": "transactionData.qesApproval.documentInfo.href",
@@ -268,7 +264,7 @@ fn test_get_display_data_group_path_matching_a_single_object() {
             {
                 "title": "Merchant X",
                 "attributes": [
-                    { "key": "amount", "value": 12.99 },
+                    { "key": "amount", "value": "12.99" },
                     { "key": "currency", "value": "EUR" }
                 ]
             }
@@ -297,7 +293,7 @@ fn test_get_display_data_group_path_matching_the_root() {
             {
                 "title": "flat-example",
                 "attributes": [
-                    { "key": "amount", "value": 5 }
+                    { "key": "amount", "value": "5" }
                 ]
             }
         ])

@@ -742,8 +742,8 @@ transactionDataProvider:
           groupPath: "$.documentInfos[*]"
           titlePath: "$.label"
           attributes:
-            - path: "$.access"
-              display: "transactionData.qesApproval.documentInfo.access"
+            - path: "$.access.oneTimePassword"
+              display: "transactionData.qesApproval.documentInfo.access.oneTimePassword"
             - path: "$.href"
               display: "transactionData.qesApproval.documentInfo.href"
             - path: "$.checksum"

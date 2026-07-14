@@ -81,7 +81,7 @@ pub struct TransactionDataDisplayValue {
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct TransactionDataDisplayAttribute {
     pub key: String,
-    pub value: serde_json::Value,
+    pub value: String,
 }
 
 /// The `transaction_data` arguments are base64url-encoded OpenID4VP `transaction_data` entries.
@@ -147,16 +147,34 @@ pub trait TransactionData: Provider + Send + Sync {
                     .attributes
                     .iter()
                     .flat_map(|param| {
-                        param.path.query(group).all().into_iter().map(|value| {
-                            TransactionDataDisplayAttribute {
-                                key: param.display.clone(),
-                                value: value.clone(),
-                            }
+                        let values = param
+                            .path
+                            .query(group)
+                            .all()
+                            .into_iter()
+                            .filter_map(transaction_data_value_display);
+
+                        values.map(|value| TransactionDataDisplayAttribute {
+                            key: param.display.clone(),
+                            value,
                         })
                     })
                     .collect(),
             })
             .collect())
+    }
+}
+
+fn transaction_data_value_display(value: &serde_json::Value) -> Option<String> {
+    match value {
+        serde_json::Value::String(value) => Some(value.to_owned()),
+        serde_json::Value::Null => Some("null".to_string()),
+        serde_json::Value::Bool(value) => Some(format!("{value}")),
+        serde_json::Value::Number(value) => Some(format!("{value}")),
+        other => {
+            tracing::warn!("Non-primitive display value: `{other}`");
+            None
+        }
     }
 }
 

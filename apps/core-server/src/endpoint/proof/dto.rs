@@ -549,7 +549,7 @@ pub(crate) struct TransactionDataDisplayRestDTO {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct TransactionDataDisplayAttributeRestDTO {
     pub key: String,
-    pub value: serde_json::Value,
+    pub value: String,
 }
 
 #[derive(Debug, Serialize, ToSchema, TryFrom)]

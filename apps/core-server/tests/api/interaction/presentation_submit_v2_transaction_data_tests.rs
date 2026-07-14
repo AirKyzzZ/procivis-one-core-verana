@@ -491,7 +491,7 @@ async fn test_get_proof_transaction_data() {
     assert_eq!(display.len(), 1);
     assert_eq!(display[0]["title"], "Example Contract");
     let attributes = display[0]["attributes"].as_array().unwrap();
-    assert_eq!(attributes.len(), 3);
+    assert_eq!(attributes.len(), 2);
 
     // raw transaction data is the fully decoded verifier payload
     assert_eq!(body["rawTransactionData"]["type"], QES_APPROVAL_TYPE);

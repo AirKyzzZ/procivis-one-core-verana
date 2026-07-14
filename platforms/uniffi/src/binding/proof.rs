@@ -612,8 +612,6 @@ pub(crate) struct TransactionDataDisplayBindingDTO {
 #[uniffi(name = "TransactionDataDisplayAttribute")]
 pub(crate) struct TransactionDataDisplayAttributeBindingDTO {
     pub key: String,
-    /// The attribute value, encoded as a JSON string.
-    #[from(with_fn_ref = "ToString::to_string")]
     pub value: String,
 }
 
