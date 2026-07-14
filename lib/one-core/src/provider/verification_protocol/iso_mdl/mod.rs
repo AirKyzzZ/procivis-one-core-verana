@@ -42,9 +42,7 @@ use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::presentation_formatter::model::{
     CredentialToPresent, FormatPresentationCtx, FormattedPresentation,
 };
-use crate::provider::presentation_formatter::mso_mdoc::model::{
-    DeviceResponse, DeviceResponseVersion, DocumentError,
-};
+use crate::provider::presentation_formatter::mso_mdoc::model::{DeviceResponse, DocumentError};
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::SessionTranscript;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::repository::credential_repository::CredentialRepository;
@@ -158,7 +156,7 @@ impl VerificationProtocol for IsoMdl {
             document_error.insert(doc_type, 0);
         }
         let device_response = DeviceResponse {
-            version: DeviceResponseVersion::V1_0,
+            version: Default::default(),
             documents: None,
             document_errors: Some(vec![document_error]),
             status: 0,

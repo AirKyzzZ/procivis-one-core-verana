@@ -28,9 +28,8 @@ use uuid::Uuid;
 
 use self::util::{
     Bstr, DataElementValue, DateTime, DeviceKey, DeviceKeyInfo, DigestAlgorithm, DigestIDs,
-    EmbeddedCbor, IssuerSigned, IssuerSignedItem, MobileSecurityObject,
-    MobileSecurityObjectVersion, Namespace, Namespaces, ValidityInfo, ValueDigests,
-    build_algorithm_header_value, extract_algorithm_from_header,
+    EmbeddedCbor, IssuerSigned, IssuerSignedItem, MobileSecurityObject, Namespace, Namespaces,
+    ValidityInfo, ValueDigests, build_algorithm_header_value, extract_algorithm_from_header,
     extract_certificate_from_x5chain_header, try_extract_holder_public_key,
     try_extract_mobile_security_object,
 };
@@ -244,7 +243,7 @@ impl CredentialFormatter for MdocFormatter {
 
         let digest_algorithm = DigestAlgorithm::Sha256;
         let mso = MobileSecurityObject {
-            version: MobileSecurityObjectVersion::V1_0,
+            version: Default::default(),
             digest_algorithm,
             value_digests: try_build_value_digests(&namespaces, digest_algorithm)?,
             device_key_info,

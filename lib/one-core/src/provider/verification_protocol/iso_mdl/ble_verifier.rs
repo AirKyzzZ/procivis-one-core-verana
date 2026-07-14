@@ -115,7 +115,7 @@ pub(crate) async fn setup_verifier_session(
     }
 
     let device_request = DeviceRequest {
-        version: "1.0".into(),
+        version: Default::default(),
         doc_requests,
     };
 

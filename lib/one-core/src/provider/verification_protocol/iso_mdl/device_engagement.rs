@@ -8,19 +8,17 @@ use uuid::Uuid;
 
 use super::common::EDeviceKey;
 use super::nfc::{BLE_RECORD_TYPE, BLECarrierConfigurationRecord, DEVICE_ENGAGMENT_RECORD_TYPE};
-use crate::provider::credential_formatter::mdoc_formatter::util::{Bstr, EmbeddedCbor};
+use crate::provider::credential_formatter::mdoc_formatter::util::{Bstr, EmbeddedCbor, MDLVersion};
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::nfc::NFCHandover;
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct DeviceEngagement {
-    // pub version: DeviceEngagementVersion,
+    pub version: MDLVersion<1, 0>,
     pub security: Security,
     // empty vector means missing entry in CBOR
     pub device_retrieval_methods: Vec<DeviceRetrievalMethod>,
     // ServerRetrievalMethods and ProtocolInfo ignored/not implemented
 }
-
-const DEVICE_ENGAGEMENT_VERSION: &str = "1.0";
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Security {
@@ -144,7 +142,7 @@ impl Serialize for DeviceEngagement {
         S: Serializer,
     {
         let mut entries = vec![
-            (0.into(), DEVICE_ENGAGEMENT_VERSION.into()),
+            (0.into(), cbor!(self.version).map_err(ser::Error::custom)?),
             (1.into(), cbor!(self.security).map_err(ser::Error::custom)?),
         ];
         if !self.device_retrieval_methods.is_empty() {
@@ -169,13 +167,9 @@ impl<'de> Deserialize<'de> for DeviceEngagement {
 
         let version = get_cbor_map_value(&map, 0)
             .ok_or(de::Error::custom("Missing DeviceEngagement version"))?;
-
-        if version
-            .as_text()
-            .is_none_or(|s| s != DEVICE_ENGAGEMENT_VERSION)
-        {
-            return Err(de::Error::custom("Invalid DeviceEngagement version"));
-        }
+        let version = version
+            .deserialized()
+            .map_err(|err| de::Error::custom(format!("Invalid DeviceEngagement version: {err}")))?;
 
         let security = get_cbor_map_value(&map, 1)
             .ok_or(de::Error::custom("Missing DeviceEngagement security"))?;
@@ -188,6 +182,7 @@ impl<'de> Deserialize<'de> for DeviceEngagement {
         };
 
         Ok(DeviceEngagement {
+            version,
             security: deserialize_security::<D>(security.to_owned())?,
             device_retrieval_methods: device_retrieval_methods
                 .into_iter()
@@ -506,6 +501,7 @@ mod test {
             x25519_dalek::PublicKey::from(&x25519_dalek::EphemeralSecret::random_from_rng(wrapper));
 
         DeviceEngagement {
+            version: Default::default(),
             security: Security {
                 key_bytes: EmbeddedCbor::new(EDeviceKey::new(pk)).unwrap(),
             },

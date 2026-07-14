@@ -239,12 +239,6 @@ pub(crate) async fn receive_mdl_request(
                     let device_request: DeviceRequest =
                         ciborium::from_reader(device_request_bytes.as_slice())?;
 
-                    if device_request.version != "1.0" {
-                        return Err(VerificationProtocolError::Failed(
-                            "unsupported request version".to_string(),
-                        ));
-                    }
-
                     let organisation = interaction.organisation.as_ref().await?;
                     let verifier_identifier = resolve_verifier_and_trust(
                         &device_request,

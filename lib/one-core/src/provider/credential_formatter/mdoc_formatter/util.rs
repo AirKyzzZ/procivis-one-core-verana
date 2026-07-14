@@ -52,12 +52,6 @@ pub struct IssuerSignedItem {
     pub element_value: DataElementValue,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub enum MobileSecurityObjectVersion {
-    #[serde(rename = "1.0")]
-    V1_0,
-}
-
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub enum DigestAlgorithm {
     #[serde(rename = "SHA-256")]
@@ -105,7 +99,7 @@ pub struct DeviceKeyInfo {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct MobileSecurityObject {
-    pub version: MobileSecurityObjectVersion,
+    pub version: MDLVersion<1, 0>,
     pub digest_algorithm: DigestAlgorithm,
     pub value_digests: ValueDigests,
     pub device_key_info: DeviceKeyInfo,
@@ -541,6 +535,69 @@ pub(crate) fn try_extract_holder_public_key(
             )));
         }
     })
+}
+
+/// Automatic parser of ISO mDL versions
+///
+/// Also checks for supported major version during deserialization
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct MDLVersion<const MAJOR_SUPPORTED: usize, const MINOR_IMPLEMENTED: usize> {
+    pub major: usize,
+    pub minor: usize,
+}
+
+impl<const MAJOR_SUPPORTED: usize, const MINOR_IMPLEMENTED: usize> Default
+    for MDLVersion<MAJOR_SUPPORTED, MINOR_IMPLEMENTED>
+{
+    fn default() -> Self {
+        Self {
+            major: MAJOR_SUPPORTED,
+            minor: MINOR_IMPLEMENTED,
+        }
+    }
+}
+
+impl<const MAJOR_SUPPORTED: usize, const MINOR_IMPLEMENTED: usize> Serialize
+    for MDLVersion<MAJOR_SUPPORTED, MINOR_IMPLEMENTED>
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let version_str = format!("{}.{}", self.major, self.minor);
+        version_str.serialize(serializer)
+    }
+}
+
+impl<'de, const MAJOR_SUPPORTED: usize, const MINOR_IMPLEMENTED: usize> Deserialize<'de>
+    for MDLVersion<MAJOR_SUPPORTED, MINOR_IMPLEMENTED>
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let version = String::deserialize(deserializer)?;
+        let (major, minor) = version
+            .split_once('.')
+            .ok_or(serde::de::Error::custom(format!(
+                "expected version string, got: `{version}`"
+            )))?;
+
+        let major = major.parse().map_err(|_| {
+            serde::de::Error::custom(format!("expected major version, got: `{major}`"))
+        })?;
+        let minor = minor.parse().map_err(|_| {
+            serde::de::Error::custom(format!("expected minor version, got: `{minor}`"))
+        })?;
+
+        if major > MAJOR_SUPPORTED {
+            return Err(serde::de::Error::custom(format!(
+                "Unsupported MDL version: {version}"
+            )));
+        }
+
+        Ok(Self { major, minor })
+    }
 }
 
 #[cfg(test)]

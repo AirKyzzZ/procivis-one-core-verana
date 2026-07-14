@@ -6,7 +6,7 @@ use serde_with::skip_serializing_none;
 use super::session_transcript::SessionTranscript;
 use crate::proto::cose::CoseSign1;
 use crate::provider::credential_formatter::mdoc_formatter::util::{
-    DataElementIdentifier, DataElementValue, EmbeddedCbor, IssuerSigned, Namespace,
+    DataElementIdentifier, DataElementValue, EmbeddedCbor, IssuerSigned, MDLVersion, Namespace,
 };
 use crate::provider::verification_protocol::iso_mdl::common::ItemsRequest;
 
@@ -19,17 +19,11 @@ pub type DocumentError = IndexMap<DocType, ErrorCode>;
 pub type Errors = IndexMap<Namespace, ErrorItems>;
 pub type ErrorItems = IndexMap<DataElementIdentifier, ErrorCode>;
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub enum DeviceResponseVersion {
-    #[serde(rename = "1.0")]
-    V1_0,
-}
-
 #[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct DeviceResponse {
-    pub version: DeviceResponseVersion,
+    pub version: MDLVersion<1, 0>,
     pub documents: Option<Vec<Document>>,
     pub document_errors: Option<Vec<DocumentError>>,
     pub status: u64,

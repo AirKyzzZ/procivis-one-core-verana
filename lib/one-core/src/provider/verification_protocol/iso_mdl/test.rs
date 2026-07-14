@@ -111,7 +111,7 @@ async fn test_presentation_reject_ok() {
     let schema_id = "org.iso.18013.5.1".to_string();
     let organisation_id = Uuid::new_v4().into();
     let device_request_bytes = to_cbor(&DeviceRequest {
-        version: "1.0".to_string(),
+        version: Default::default(),
         doc_requests: vec![DocRequest {
             items_request: EmbeddedCbor::new(ItemsRequest {
                 doc_type: schema_id.clone(),
@@ -231,7 +231,7 @@ async fn test_get_presentation_definition_v2() {
     let organisation_id = Uuid::new_v4().into();
     let schema_id = "org.iso.18013.5.1".to_string();
     let device_request_bytes = to_cbor(&DeviceRequest {
-        version: "1.0".to_string(),
+        version: Default::default(),
         doc_requests: vec![DocRequest {
             items_request: EmbeddedCbor::new(ItemsRequest {
                 doc_type: schema_id.clone(),

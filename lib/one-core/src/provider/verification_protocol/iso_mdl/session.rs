@@ -95,6 +95,7 @@ mod test {
 
         let session_transcript = SessionTranscript {
             device_engagement_bytes: EmbeddedCbor::new(DeviceEngagement {
+                version: Default::default(),
                 security: Security {
                     key_bytes: EmbeddedCbor::new(device_key.device_key().clone()).unwrap(),
                 },

@@ -11,8 +11,7 @@ use url::Url;
 use uuid::Uuid;
 
 use self::model::{
-    DeviceAuth, DeviceAuthentication, DeviceNamespaces, DeviceResponse, DeviceResponseVersion,
-    DeviceSigned, Document,
+    DeviceAuth, DeviceAuthentication, DeviceNamespaces, DeviceResponse, DeviceSigned, Document,
 };
 use self::session_transcript::{Handover, SessionTranscript};
 use crate::config::core_config::{FormatType, KeyAlgorithmType, VerificationProtocolType};
@@ -154,7 +153,7 @@ impl PresentationFormatter for MsoMdocPresentationFormatter {
         }
 
         let device_response = DeviceResponse {
-            version: DeviceResponseVersion::V1_0,
+            version: Default::default(),
             documents: Some(documents),
             document_errors: None,
             // this will be != 0 if document errors is not None

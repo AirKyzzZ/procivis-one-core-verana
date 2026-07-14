@@ -846,6 +846,7 @@ impl ProofService {
             .error_while("starting mDL server")?;
         let key_pair = KeyAgreement::<EDeviceKey>::new();
         let device_engagement = DeviceEngagement {
+            version: Default::default(),
             security: Security {
                 key_bytes: EmbeddedCbor::new(EDeviceKey::new(key_pair.device_key().0))
                     .map_err(|e| ProofServiceError::MappingError(e.to_string()))?,
