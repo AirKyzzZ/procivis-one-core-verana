@@ -287,6 +287,70 @@ async fn test_list_trust_collection_with_parent_organisation_filter() {
 }
 
 #[tokio::test]
+async fn test_list_trust_collection_with_organisation_filter_no_duplicates_with_multiple_children()
+{
+    let TestSetup {
+        db,
+        provider,
+        organisation_repository,
+        org_id,
+    } = setup().await;
+
+    // org_id has two children - the join used to fetch inherited collections
+    // must not cause org_id's own collection to be duplicated once per child
+    let child1 = insert_organisation_to_database(&db, None).await.unwrap();
+    organisation_repository
+        .update_organisation(UpdateOrganisationRequest {
+            id: child1,
+            parent_organisation: Some(Some(org_id)),
+            deactivate: None,
+            wallet_provider: None,
+            wallet_provider_issuer: None,
+        })
+        .await
+        .unwrap();
+
+    let child2 = insert_organisation_to_database(&db, None).await.unwrap();
+    organisation_repository
+        .update_organisation(UpdateOrganisationRequest {
+            id: child2,
+            parent_organisation: Some(Some(org_id)),
+            deactivate: None,
+            wallet_provider: None,
+            wallet_provider_issuer: None,
+        })
+        .await
+        .unwrap();
+
+    let collection = dummy_trust_collection(org_id);
+    let collection_id = collection.id;
+    provider.create(collection).await.unwrap();
+
+    let result = provider
+        .list(TrustCollectionListQuery {
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 10,
+            }),
+            filtering: Some(
+                TrustCollectionFilterValue::OrganisationId {
+                    id: org_id,
+                    include_inherited_collections: true,
+                }
+                .condition(),
+            ),
+            ..Default::default()
+        })
+        .await;
+
+    assert!(result.is_ok());
+    let list = result.unwrap();
+    assert_eq!(list.total_items, 1);
+    assert_eq!(list.values.len(), 1);
+    assert_eq!(list.values[0].id, collection_id);
+}
+
+#[tokio::test]
 async fn test_list_trust_collection_filter_by_created_date() {
     let TestSetup {
         provider, org_id, ..

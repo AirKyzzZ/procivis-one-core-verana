@@ -14,7 +14,7 @@ use shared_types::TrustCollectionId;
 use super::TrustCollectionProvider;
 use crate::common::list_query_with_base_model;
 use crate::entity::{trust_collection, trust_list_subscription};
-use crate::list_query_generic::{SelectWithFilterJoin, SelectWithListQuery};
+use crate::list_query_generic::SelectWithListQuery;
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 
 #[autometrics]
@@ -64,7 +64,6 @@ impl TrustCollectionRepository for TrustCollectionProvider {
     ) -> Result<GetTrustCollectionList, DataLayerError> {
         let db_query = trust_collection::Entity::find()
             .filter(trust_collection::Column::DeactivatedAt.is_null())
-            .with_filter_join(&query)
             .with_list_query(&query)
             .order_by_desc(trust_collection::Column::CreatedDate)
             .order_by_desc(trust_collection::Column::Id);

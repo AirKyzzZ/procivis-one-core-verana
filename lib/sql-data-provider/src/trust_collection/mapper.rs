@@ -4,14 +4,14 @@ use one_core::model::trust_collection::{
 };
 use one_core::repository::error::DataLayerError;
 use sea_orm::ActiveValue::Set;
-use sea_orm::sea_query::{Alias, ColumnRef, ExprTrait, IntoCondition, IntoIden, Query, SimpleExpr};
-use sea_orm::{ColumnTrait, IntoSimpleExpr, JoinType, RelationTrait};
+use sea_orm::sea_query::{IntoCondition, Query, SimpleExpr};
+use sea_orm::{ColumnTrait, IntoSimpleExpr};
 use url::Url;
 
 use crate::entity::{organisation, trust_collection, trust_list_subscription};
 use crate::list_query_generic::{
-    IntoFilterCondition, IntoJoinRelations, IntoSortingColumn, JoinRelation,
-    get_comparison_condition, get_equals_condition, get_string_match_condition,
+    IntoFilterCondition, IntoSortingColumn, get_comparison_condition, get_equals_condition,
+    get_string_match_condition,
 };
 
 impl TryFrom<trust_collection::Model> for TrustCollection {
@@ -75,13 +75,16 @@ impl IntoFilterCondition for TrustCollectionFilterValue {
                 include_inherited_collections,
             } => {
                 if include_inherited_collections {
+                    // an organisation "inherits" collections owned by itself or its parent
                     trust_collection::Column::OrganisationId
                         .eq(id)
-                        .or(ColumnRef::TableColumn(
-                            Alias::new("child_organisation").into_iden(),
-                            organisation::Column::Id.into_iden(),
-                        )
-                        .eq(id))
+                        .or(trust_collection::Column::OrganisationId.in_subquery(
+                            Query::select()
+                                .column(organisation::Column::ParentOrganisation)
+                                .from(organisation::Entity)
+                                .cond_where(organisation::Column::Id.eq(id))
+                                .to_owned(),
+                        ))
                         .into_condition()
                 } else {
                     get_equals_condition(trust_collection::Column::OrganisationId, id)
@@ -116,31 +119,6 @@ impl IntoFilterCondition for TrustCollectionFilterValue {
                         .to_owned(),
                 )
                 .into_condition(),
-        }
-    }
-}
-
-impl IntoJoinRelations for TrustCollectionFilterValue {
-    fn get_join(&self) -> Vec<JoinRelation> {
-        match self {
-            Self::OrganisationId {
-                include_inherited_collections,
-                ..
-            } if *include_inherited_collections => {
-                vec![
-                    JoinRelation {
-                        join_type: JoinType::InnerJoin,
-                        relation_def: trust_collection::Relation::Organisation.def(),
-                        alias: None,
-                    },
-                    JoinRelation {
-                        join_type: JoinType::LeftJoin,
-                        relation_def: organisation::Relation::ChildOrganisation.def(),
-                        alias: Some(Alias::new("child_organisation").into_iden()),
-                    },
-                ]
-            }
-            _ => vec![],
         }
     }
 }
