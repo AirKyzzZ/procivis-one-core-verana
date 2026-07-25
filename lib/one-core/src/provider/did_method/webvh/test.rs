@@ -7,6 +7,20 @@ use crate::proto::http_client::MockHttpClient;
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 
+#[test]
+fn test_get_capabilities_supports_tdw_and_webvh() {
+    let method = DidWebVh {
+        config_id: "WEBVH".into(),
+        params: Params::default(),
+        core_base_url: None,
+        client: Arc::new(MockHttpClient::new()),
+        did_method_provider: Arc::new(MockDidMethodProvider::new()),
+        key_provider: Arc::new(MockKeyProvider::new()),
+    };
+
+    assert_eq!(method.get_capabilities().method_names, vec!["tdw", "webvh"],);
+}
+
 #[rstest]
 #[case("https://example.com/", "example.com")]
 #[case("https://example.com/a/b/c", "example.com:a:b:c")]

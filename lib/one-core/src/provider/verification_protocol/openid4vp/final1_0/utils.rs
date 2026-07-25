@@ -12,6 +12,7 @@ use super::{OpenID4VPFinal1_0, encode_client_id_with_scheme};
 use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::x5c_into_pem_chain;
 use crate::model::did::KeyRole;
+use crate::model::verana_trust::VerifierTrustProvenance;
 use crate::proto::certificate_validator::{CertificateValidationOptions, ParsedCertificate};
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::DecomposedJwt;
@@ -366,34 +367,55 @@ impl OpenID4VPFinal1_0 {
             )));
         }
 
-        let (referenced_params, verifier_details): (
+        let (referenced_params, verifier_details, provenance): (
             AuthorizationRequest,
             Option<IdentifierDetails>,
+            VerifierTrustProvenance,
         ) = match client_id_scheme {
             ClientIdScheme::VerifierAttestation => {
                 let (request, did) = self
                     .parse_referenced_data_from_verifier_attestation_token(request_token)
                     .await?;
-                (request, did.map(IdentifierDetails::Did))
+                (
+                    request,
+                    did.map(IdentifierDetails::Did),
+                    VerifierTrustProvenance::VerifierAttestation,
+                )
             }
-            ClientIdScheme::RedirectUri => (request_token.payload.custom, None),
+            ClientIdScheme::RedirectUri => (
+                request_token.payload.custom,
+                None,
+                VerifierTrustProvenance::RedirectUri,
+            ),
             ClientIdScheme::X509SanDns => {
                 let (params, certificate) = self
                     .parse_referenced_data_from_x509_san_dns_token(request_token)
                     .await?;
-                (params, Some(IdentifierDetails::Certificate(certificate)))
+                (
+                    params,
+                    Some(IdentifierDetails::Certificate(certificate)),
+                    VerifierTrustProvenance::X509,
+                )
             }
             ClientIdScheme::X509Hash => {
                 let (params, certificate) = self
                     .parse_referenced_data_from_x509_hash_token(request_token)
                     .await?;
-                (params, Some(IdentifierDetails::Certificate(certificate)))
+                (
+                    params,
+                    Some(IdentifierDetails::Certificate(certificate)),
+                    VerifierTrustProvenance::X509,
+                )
             }
             ClientIdScheme::Did => {
                 let (request, did) = self
                     .parse_referenced_data_from_did_signed_token(request_token)
                     .await?;
-                (request, Some(IdentifierDetails::Did(did)))
+                (
+                    request,
+                    Some(IdentifierDetails::Did(did)),
+                    VerifierTrustProvenance::DidSignedRequest,
+                )
             }
         };
 
@@ -412,6 +434,7 @@ impl OpenID4VPFinal1_0 {
                 &referenced_params.dcql_query,
                 &referenced_params.verifier_info,
                 self.params.holder.trust_ecosystems_leeway,
+                provenance,
             )
             .await
             .error_while("resolving trust")?;

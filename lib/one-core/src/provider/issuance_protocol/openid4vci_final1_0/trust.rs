@@ -20,6 +20,7 @@ use crate::model::history::{
 };
 use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
+use crate::model::verana_trust::VeranaTrustVerdict;
 use crate::proto::session_provider::SessionExt;
 use crate::proto::wrp_validator::model::TrustMode;
 use crate::proto::wrp_validator::{QUALIFIED_EAA_CATEGORY, credential_category};
@@ -329,16 +330,39 @@ impl OpenID4VCIFinal1_0 {
             .and_then(|claims| credential_category(claims, namespaced))
             == Some(QUALIFIED_EAA_CATEGORY)
         {
-            let trust_resolution = self
+            let mut trust_resolution = self
                 .resolve_qeaa_issuer_trust(serialized, schema, formatter, organisation.id)
                 .await;
+            let verana = self.resolve_verana_issuer_trust(credential, schema).await?;
+            if let Some(verana) = &verana {
+                trust_resolution = if verana.verdict.is_positive() {
+                    TrustResolutionResult::Trusted
+                } else {
+                    TrustResolutionResult::Untrusted
+                };
+            }
             return self
-                .store_trust_resolved_event(batch_parent_id, organisation.id, trust_resolution)
+                .store_trust_resolved_event(
+                    batch_parent_id,
+                    organisation.id,
+                    trust_resolution,
+                    verana,
+                )
                 .await;
         }
 
-        if interaction_data.trust_resolution != TrustResolutionResult::Trusted {
-            return Ok(());
+        let verana = self.resolve_verana_issuer_trust(credential, schema).await?;
+        match batch_refresh_path(
+            interaction_data.trust_resolution,
+            verana.as_ref().map(|summary| summary.verdict),
+        ) {
+            BatchRefreshPath::Store(result) => {
+                return self
+                    .store_trust_resolved_event(batch_parent_id, organisation.id, result, verana)
+                    .await;
+            }
+            BatchRefreshPath::Skip => return Ok(()),
+            BatchRefreshPath::ValidateNative => {}
         }
 
         let issuer_certificate_chain = credential
@@ -421,7 +445,7 @@ impl OpenID4VCIFinal1_0 {
             trust_resolution = TrustResolutionResult::Untrusted;
         }
 
-        self.store_trust_resolved_event(batch_parent_id, organisation.id, trust_resolution)
+        self.store_trust_resolved_event(batch_parent_id, organisation.id, trust_resolution, None)
             .await
     }
 
@@ -430,6 +454,7 @@ impl OpenID4VCIFinal1_0 {
         target: CredentialId,
         organisation_id: OrganisationId,
         trust_resolution: TrustResolutionResult,
+        verana: Option<crate::model::verana_trust::VeranaTrustSummary>,
     ) -> Result<(), IssuanceProtocolError> {
         self.store_trust_history_event(
             HistoryAction::TrustResolved,
@@ -438,9 +463,73 @@ impl OpenID4VCIFinal1_0 {
             None,
             Some(HistoryMetadata::TrustResolution(TrustResolutionMetadata {
                 result: trust_resolution,
+                verana,
             })),
         )
         .await
+    }
+}
+
+#[derive(Debug, Eq, PartialEq)]
+enum BatchRefreshPath {
+    Store(TrustResolutionResult),
+    ValidateNative,
+    Skip,
+}
+
+fn batch_refresh_path(
+    native_resolution: TrustResolutionResult,
+    verana_verdict: Option<VeranaTrustVerdict>,
+) -> BatchRefreshPath {
+    match verana_verdict {
+        Some(VeranaTrustVerdict::TrustedAuthorized) => {
+            BatchRefreshPath::Store(TrustResolutionResult::Trusted)
+        }
+        Some(_) => BatchRefreshPath::Store(TrustResolutionResult::Untrusted),
+        None if native_resolution == TrustResolutionResult::Trusted => {
+            BatchRefreshPath::ValidateNative
+        }
+        None => BatchRefreshPath::Skip,
+    }
+}
+
+#[cfg(test)]
+mod refresh_test {
+    use super::{BatchRefreshPath, batch_refresh_path};
+    use crate::model::history::TrustResolutionResult;
+    use crate::model::verana_trust::VeranaTrustVerdict;
+
+    #[test]
+    fn verana_refresh_is_stored_even_when_native_trust_was_not_positive() {
+        for verdict in [
+            VeranaTrustVerdict::Unauthorized,
+            VeranaTrustVerdict::Unavailable,
+        ] {
+            assert_eq!(
+                batch_refresh_path(TrustResolutionResult::Untrusted, Some(verdict)),
+                BatchRefreshPath::Store(TrustResolutionResult::Untrusted)
+            );
+        }
+
+        assert_eq!(
+            batch_refresh_path(
+                TrustResolutionResult::Untrusted,
+                Some(VeranaTrustVerdict::TrustedAuthorized),
+            ),
+            BatchRefreshPath::Store(TrustResolutionResult::Trusted)
+        );
+    }
+
+    #[test]
+    fn native_refresh_behavior_is_preserved_without_verana() {
+        assert_eq!(
+            batch_refresh_path(TrustResolutionResult::Trusted, None),
+            BatchRefreshPath::ValidateNative
+        );
+        assert_eq!(
+            batch_refresh_path(TrustResolutionResult::Untrusted, None),
+            BatchRefreshPath::Skip
+        );
     }
 }
 

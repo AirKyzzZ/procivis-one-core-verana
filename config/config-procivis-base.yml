@@ -347,7 +347,7 @@ did:
             max: 1
         leeway: 60
       private:
-        maxDidLogEntryCheck: 10
+        maxDidLogEntryCheck: 100
 datatype:
   STRING:
     display: "datatype.string"

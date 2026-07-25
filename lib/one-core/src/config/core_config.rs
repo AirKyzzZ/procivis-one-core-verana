@@ -92,6 +92,17 @@ pub struct GlobalSettings {
     /// re-hosting the schema locally.
     #[serde(default)]
     pub rehost_imported_schemas: bool,
+    #[serde(default)]
+    pub verana_trust: Option<VeranaTrustConfig>,
+}
+
+#[serde_as]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VeranaTrustConfig {
+    pub resolver_url: String,
+    #[serde_as(as = "DurationSeconds<i64>")]
+    pub timeout: Duration,
 }
 
 fn default_en() -> String {

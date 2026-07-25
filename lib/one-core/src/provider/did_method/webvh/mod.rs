@@ -33,6 +33,7 @@ mod create;
 mod resolver;
 mod serialize;
 mod verification;
+mod webvh_v1;
 
 mod deserialize;
 mod mapper;
@@ -235,7 +236,7 @@ impl DidMethod for DidWebVh {
         DidCapabilities {
             operations: vec![Operation::CREATE, Operation::RESOLVE, Operation::DEACTIVATE],
             key_algorithms: vec![KeyAlgorithmType::Ecdsa],
-            method_names: vec!["tdw".to_string()],
+            method_names: vec!["tdw".to_string(), "webvh".to_string()],
             features: vec![Feature::SupportsExternalHosting],
             supported_update_key_types: vec![KeyAlgorithmType::Eddsa],
         }

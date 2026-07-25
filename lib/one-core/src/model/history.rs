@@ -13,6 +13,7 @@ use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::common::GetListResponse;
 use crate::model::list_filter::{ListFilterValue, ValueComparison};
 use crate::model::list_query::ListQuery;
+use crate::model::verana_trust::VeranaTrustSummary;
 use crate::service::backup::dto::UnexportableEntitiesResponseDTO;
 
 #[derive(Debug, Clone, Serialize, Deserialize, IntoStaticStr)]
@@ -41,6 +42,21 @@ pub struct WalletRelyingPartyMetadata {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TrustResolutionMetadata {
     pub result: TrustResolutionResult,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub verana: Option<VeranaTrustSummary>,
+}
+
+#[cfg(test)]
+mod verana_metadata_test {
+    use super::{TrustResolutionMetadata, TrustResolutionResult};
+
+    #[test]
+    fn legacy_trust_history_without_verana_metadata_remains_readable() {
+        let metadata: TrustResolutionMetadata =
+            serde_json::from_str(r#"{"result":"TRUSTED"}"#).unwrap();
+        assert_eq!(metadata.result, TrustResolutionResult::Trusted);
+        assert!(metadata.verana.is_none());
+    }
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]

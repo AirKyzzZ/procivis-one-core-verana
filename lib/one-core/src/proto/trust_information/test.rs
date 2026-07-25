@@ -43,7 +43,10 @@ fn wrp_metadata(
 }
 
 fn trust_resolved_metadata(result: TrustResolutionResult) -> HistoryMetadata {
-    HistoryMetadata::TrustResolution(TrustResolutionMetadata { result })
+    HistoryMetadata::TrustResolution(TrustResolutionMetadata {
+        result,
+        verana: None,
+    })
 }
 
 fn provider(history_repository: MockHistoryRepository) -> TrustInformationProviderImpl {

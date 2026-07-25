@@ -4,6 +4,7 @@ use shared_types::i18n::I18nString;
 use time::OffsetDateTime;
 
 use crate::model::history::TrustResolutionResult;
+use crate::model::verana_trust::{VeranaTrustFullDetails, VeranaTrustSummary};
 use crate::proto::jwt::model::JWTPayload;
 use crate::proto::wrp_validator::model::WRPPayload;
 use crate::provider::signer::registration_certificate::model::Payload;
@@ -15,6 +16,7 @@ pub struct TrustInformation {
     pub received_at: OffsetDateTime,
     pub name: Option<String>,
     pub result: TrustResolutionResult,
+    pub verana: Option<VeranaTrustSummary>,
     #[serde(skip)]
     pub credential_id: Option<CredentialId>,
 }
@@ -30,6 +32,7 @@ pub(crate) enum TrustDetails {
         wrp: WalletRelyingPartyDetails,
         access_certificate: EtsiParsedAccessCert,
     },
+    Verana(VeranaTrustFullDetails),
 }
 
 pub(crate) enum WalletRelyingPartyDetails {

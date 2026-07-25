@@ -87,6 +87,14 @@ fn key_to_url(key: &str) -> Option<(Url, String)> {
     Some((url.parse().ok()?, mime.to_string()))
 }
 
+fn content_type_matches(content_type: &str, expected: &str) -> bool {
+    content_type
+        .split_once(';')
+        .map_or(content_type, |(media_type, _)| media_type)
+        .trim()
+        .eq_ignore_ascii_case(expected)
+}
+
 struct OpenIDMetadataResolver {
     client: Arc<dyn HttpClient>,
 }
@@ -123,10 +131,10 @@ impl Resolver for OpenIDMetadataResolver {
         let content = response.body;
 
         if let Some(mime) = &media_type
-            && mime != &accept_mime
+            && !content_type_matches(mime, &accept_mime)
         {
             return Err(ResolverError::InvalidResponse(format!(
-                "Unexpected Content-Type: {mime}"
+                "Unexpected Content-Type: {mime}; expected {accept_mime}"
             )));
         }
 
@@ -166,4 +174,30 @@ pub(crate) fn openid_metadata_cache_from_config(
         config.cache_refresh_timeout,
         config.refresh_after,
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::content_type_matches;
+
+    #[test]
+    fn content_type_accepts_parameters_and_case_insensitive_media_types() {
+        assert!(content_type_matches(
+            "application/json; charset=utf-8",
+            "application/json"
+        ));
+        assert!(content_type_matches(
+            "Application/JSON ; Charset=UTF-8",
+            "application/json"
+        ));
+    }
+
+    #[test]
+    fn content_type_rejects_different_or_malformed_media_types() {
+        assert!(!content_type_matches(
+            "application/problem+json",
+            "application/json"
+        ));
+        assert!(!content_type_matches("; charset=utf-8", "application/json"));
+    }
 }

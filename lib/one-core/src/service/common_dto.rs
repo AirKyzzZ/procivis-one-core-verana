@@ -5,6 +5,7 @@ use url::Url;
 
 use crate::model::common::SortDirection;
 use crate::model::list_query::NoInclude;
+use crate::model::verana_trust::VeranaTrustFullDetails;
 use crate::provider::signer::registration_certificate::model::SupervisoryAuthority;
 
 pub const KB: usize = 1 << 10;
@@ -28,6 +29,7 @@ pub struct ListQueryDTO<SortColumn, Filter, Include = NoInclude> {
 #[derive(Clone, Debug)]
 pub struct TrustInformationDetailResponseDTO {
     pub eudi_ecosystem: Option<EudiTrustInformationResponseDTO>,
+    pub verana: Option<VeranaTrustFullDetails>,
 }
 
 #[derive(Clone, Debug)]

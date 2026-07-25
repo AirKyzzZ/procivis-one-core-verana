@@ -16,11 +16,13 @@ use crate::model::history::{
 };
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListSorting;
+use crate::model::verana_trust::VeranaTrustSummary;
 use crate::proto::jwt::Jwt;
 use crate::proto::trust_information::dto::{
     TrustInformation, TrustPurpose, WalletRelyingPartyDetails,
 };
 use crate::proto::trust_information::{Error, TrustDetails, TrustInformationProvider};
+use crate::proto::verana_trust::VeranaTrustResolver;
 use crate::provider::blob_storage::BlobStorage;
 use crate::provider::blob_storage::provider::BlobStorageProvider;
 use crate::repository::history_repository::HistoryRepository;
@@ -29,9 +31,11 @@ use crate::util::access_cert_parser::{EtsiParsedAccessCert, etsi_access_cert_fro
 pub(crate) struct TrustInformationProviderImpl {
     history_repository: Arc<dyn HistoryRepository>,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
+    verana_trust_resolver: Option<Arc<VeranaTrustResolver>>,
 }
 
 impl TrustInformationProviderImpl {
+    #[cfg(any(test, feature = "mock"))]
     pub(crate) fn new(
         history_repository: Arc<dyn HistoryRepository>,
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
@@ -39,6 +43,19 @@ impl TrustInformationProviderImpl {
         Self {
             history_repository,
             blob_storage_provider,
+            verana_trust_resolver: None,
+        }
+    }
+
+    pub(crate) fn new_with_verana(
+        history_repository: Arc<dyn HistoryRepository>,
+        blob_storage_provider: Arc<dyn BlobStorageProvider>,
+        verana_trust_resolver: Option<Arc<VeranaTrustResolver>>,
+    ) -> Self {
+        Self {
+            history_repository,
+            blob_storage_provider,
+            verana_trust_resolver,
         }
     }
 
@@ -179,11 +196,24 @@ impl TrustInformationProvider for TrustInformationProviderImpl {
 
     async fn get_trust_detail(&self, id: &EntityId) -> Result<Option<TrustDetails>, Error> {
         let history = self
-            .get_wrp_history_entries(*id, vec![WrpRcReceived, WrpNrReceived, WrpAcReceived])
+            .get_wrp_history_entries(
+                *id,
+                vec![WrpRcReceived, WrpNrReceived, WrpAcReceived, TrustResolved],
+            )
             .await?;
         if history.values.is_empty() {
             // No trust info
             return Ok(None);
+        }
+        if let Some(summary) = latest_verana_summary(&history.values) {
+            let resolver = self.verana_trust_resolver.as_ref().ok_or_else(|| {
+                Error::MappingError("Verana resolver is not configured".to_string())
+            })?;
+            let full = resolver
+                .resolve_full(&summary)
+                .await
+                .map_err(|error| Error::MappingError(error.to_string()))?;
+            return Ok(Some(TrustDetails::Verana(full)));
         }
         let blob_storage = self
             .blob_storage_provider
@@ -209,7 +239,7 @@ fn trust_information_from_history(history: &[History]) -> Result<Vec<TrustInform
         .transpose()?;
     let mut entries = vec![];
     for h in history.iter().filter(|h| h.action == TrustResolved) {
-        let result = trust_resolution_result_from_history_metadata(h)?;
+        let (result, verana) = trust_resolution_from_history_metadata(h)?;
         let credential_id = if let Some(target) = &h.target {
             Some(CredentialId::from_str(target).map_err(|err| {
                 Error::MappingError(format!(
@@ -223,6 +253,7 @@ fn trust_information_from_history(history: &[History]) -> Result<Vec<TrustInform
             received_at: h.created_date,
             name: name.clone(),
             result,
+            verana,
             credential_id,
         });
     }
@@ -247,9 +278,9 @@ fn wrp_name_from_history(history: &History) -> Result<String, Error> {
     }
 }
 
-fn trust_resolution_result_from_history_metadata(
+fn trust_resolution_from_history_metadata(
     history: &History,
-) -> Result<TrustResolutionResult, Error> {
+) -> Result<(TrustResolutionResult, Option<VeranaTrustSummary>), Error> {
     let metadata = history.metadata.as_ref().ok_or_else(|| {
         Error::MissingHistoryMetadata(
             history.id,
@@ -259,12 +290,21 @@ fn trust_resolution_result_from_history_metadata(
         )
     })?;
     match metadata {
-        HistoryMetadata::TrustResolution(metadata) => Ok(metadata.result),
+        HistoryMetadata::TrustResolution(metadata) => {
+            Ok((metadata.result, metadata.verana.clone()))
+        }
         _ => Err(Error::InvalidMetadataType(
             metadata.into(),
             "WalletRelyingParty",
         )),
     }
+}
+
+fn latest_verana_summary(history: &[History]) -> Option<VeranaTrustSummary> {
+    history.iter().find_map(|history| match &history.metadata {
+        Some(HistoryMetadata::TrustResolution(metadata)) => metadata.verana.clone(),
+        _ => None,
+    })
 }
 
 fn trust_purpose_from_history(

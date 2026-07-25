@@ -9,6 +9,7 @@ use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::der_chain_into_pem_chain;
 use crate::model::identifier::Identifier;
 use crate::model::organisation::Organisation;
+use crate::model::verana_trust::VerifierTrustProvenance;
 use crate::proto::certificate_validator::{
     CertificateValidationOptions, CertificateValidator, EnforceKeyUsage, ParsedCertificate,
 };
@@ -56,6 +57,7 @@ pub(super) async fn resolve_verifier_and_trust(
             &dcql_query,
             &reg_certs,
             Duration::default(),
+            VerifierTrustProvenance::Proximity,
         )
         .await
         .error_while("resolving trust")?;

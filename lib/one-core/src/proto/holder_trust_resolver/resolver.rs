@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use dcql::DcqlQuery;
+use dcql::{ClaimValue, DcqlQuery, PathSegment};
 use one_dto_mapper::convert_inner;
 use shared_types::{OrganisationId, ProofId};
 use standardized_types::etsi_119_602::MultiLangString;
@@ -17,8 +17,10 @@ use crate::model::history::{
     History, HistoryAction, HistoryEntityType, HistoryMetadata, HistorySource,
     TrustResolutionMetadata, TrustResolutionResult, WalletRelyingPartyMetadata,
 };
+use crate::model::verana_trust::{VeranaTrustRole, VeranaTrustSummary, VerifierTrustProvenance};
 use crate::proto::holder_trust_resolver::mapper::credential_query_matches_reg_cert_credential;
 use crate::proto::session_provider::{SessionExt, SessionProvider};
+use crate::proto::verana_trust::VeranaTrustResolver;
 use crate::proto::wrp_validator::WRPValidator;
 use crate::proto::wrp_validator::model::{AccessCertificateResult, IntendedUse, TrustMode};
 use crate::provider::blob_storage::provider::BlobStorageProvider;
@@ -32,6 +34,7 @@ pub(crate) struct HolderTrustResolverProto {
     wrp_validator: Arc<dyn WRPValidator>,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
     session_provider: Arc<dyn SessionProvider>,
+    verana_trust_resolver: Option<Arc<VeranaTrustResolver>>,
 }
 
 impl HolderTrustResolverProto {
@@ -40,12 +43,14 @@ impl HolderTrustResolverProto {
         wrp_validator: Arc<dyn WRPValidator>,
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
         session_provider: Arc<dyn SessionProvider>,
+        verana_trust_resolver: Option<Arc<VeranaTrustResolver>>,
     ) -> Self {
         Self {
             history_repository,
             wrp_validator,
             blob_storage_provider,
             session_provider,
+            verana_trust_resolver,
         }
     }
 }
@@ -61,8 +66,9 @@ impl HolderTrustResolver for HolderTrustResolverProto {
         dcql_query: &DcqlQuery,
         verifier_info: &[VerifierInfoAttestation],
         leeway: Duration,
+        provenance: VerifierTrustProvenance,
     ) -> Result<(), HolderTrustResolverError> {
-        let trust_result = self
+        let (trust_result, verana) = self
             .perform_trust_resolution(
                 verifier_details,
                 proof_id,
@@ -70,6 +76,7 @@ impl HolderTrustResolver for HolderTrustResolverProto {
                 dcql_query,
                 verifier_info,
                 leeway,
+                provenance,
             )
             .await?;
 
@@ -80,6 +87,7 @@ impl HolderTrustResolver for HolderTrustResolverProto {
             None,
             Some(HistoryMetadata::TrustResolution(TrustResolutionMetadata {
                 result: trust_result,
+                verana,
             })),
         )
         .await?;
@@ -97,16 +105,65 @@ impl HolderTrustResolverProto {
         dcql_query: &DcqlQuery,
         verifier_info: &[VerifierInfoAttestation],
         leeway: Duration,
-    ) -> Result<TrustResolutionResult, HolderTrustResolverError> {
+        provenance: VerifierTrustProvenance,
+    ) -> Result<(TrustResolutionResult, Option<VeranaTrustSummary>), HolderTrustResolverError> {
         let trust_mode = self
             .wrp_validator
             .wallet_trust_mode(organisation_id)
             .await
             .error_while("checking trust mode")?;
 
-        if trust_mode == TrustMode::Disabled {
+        if !verana_resolution_enabled(trust_mode) {
             tracing::debug!("Trust ecosystem disabled");
-            return Ok(TrustResolutionResult::Unknown);
+            return Ok((TrustResolutionResult::Unknown, None));
+        }
+
+        let schemas = verana_presentation_schema_ids(dcql_query)
+            .map_err(|error| HolderTrustResolverError::InvalidRequest(error.to_string()))?;
+        let verana = if let Some(resolver) = &self.verana_trust_resolver {
+            match (provenance, verifier_details) {
+                (VerifierTrustProvenance::DidSignedRequest, Some(IdentifierDetails::Did(did))) => {
+                    let did = did.to_string();
+                    Some(
+                        resolver
+                            .resolve_summary(VeranaTrustRole::Verifier, &did, schemas.clone())
+                            .await,
+                    )
+                }
+                _ => Some(
+                    resolver.unsupported_summary(
+                        VeranaTrustRole::Verifier,
+                        verifier_details
+                            .and_then(IdentifierDetails::did_value)
+                            .map(|did| did.to_string())
+                            .as_deref(),
+                        schemas,
+                        match provenance {
+                            VerifierTrustProvenance::DidSignedRequest => "DID_MISSING",
+                            VerifierTrustProvenance::VerifierAttestation => {
+                                "VERIFIER_ATTESTATION_PROVENANCE"
+                            }
+                            VerifierTrustProvenance::RedirectUri => "REDIRECT_URI_PROVENANCE",
+                            VerifierTrustProvenance::X509 => "X509_PROVENANCE",
+                            VerifierTrustProvenance::Proximity => "PROXIMITY_PROVENANCE",
+                        },
+                    ),
+                ),
+            }
+        } else {
+            None
+        };
+
+        if provenance.allows_verana_positive()
+            && let Some(verana) = &verana
+        {
+            if verana.verdict.is_positive() {
+                return Ok((TrustResolutionResult::Trusted, Some(verana.clone())));
+            }
+            if trust_mode == TrustMode::TrustMandatory {
+                return Err(HolderTrustResolverError::Untrusted);
+            }
+            return Ok((TrustResolutionResult::Untrusted, Some(verana.clone())));
         }
 
         // trust ecosystem does not support other identifiers than certificates
@@ -118,7 +175,7 @@ impl HolderTrustResolverProto {
             if trust_mode == TrustMode::TrustMandatory {
                 return Err(HolderTrustResolverError::Untrusted);
             }
-            return Ok(TrustResolutionResult::Untrusted);
+            return Ok((TrustResolutionResult::Untrusted, verana));
         };
 
         let access_certificate_trust = match self
@@ -132,7 +189,7 @@ impl HolderTrustResolverProto {
                 }
 
                 tracing::info!(%err, "Access certificate validation failed");
-                return Ok(TrustResolutionResult::Untrusted);
+                return Ok((TrustResolutionResult::Untrusted, verana));
             }
         };
 
@@ -169,11 +226,11 @@ impl HolderTrustResolverProto {
             }
 
             tracing::info!(%err, "Registration certificate validation failed");
-            return Ok(TrustResolutionResult::Untrusted);
+            return Ok((TrustResolutionResult::Untrusted, verana));
         }
 
         tracing::debug!("Trust validated");
-        Ok(TrustResolutionResult::Trusted)
+        Ok((TrustResolutionResult::Trusted, verana))
     }
 
     async fn validate_access_certificate(
@@ -454,6 +511,136 @@ impl HolderTrustResolverProto {
             .error_while("storing history")?;
 
         Ok(())
+    }
+}
+
+fn verana_resolution_enabled(trust_mode: TrustMode) -> bool {
+    trust_mode != TrustMode::Disabled
+}
+
+fn verana_presentation_schema_ids(dcql_query: &DcqlQuery) -> Result<Vec<String>, dcql::DcqlError> {
+    let mut schemas = std::collections::BTreeSet::new();
+    for filter in dcql_query.credential_filters()?.into_values().flatten() {
+        let mut signed_schema_binding = Vec::new();
+        for claim in filter.claims.iter().filter(|claim| {
+            claim.required
+                && claim.path.segments
+                    == [
+                        PathSegment::PropertyName("credentialSchema".to_string()),
+                        PathSegment::PropertyName("id".to_string()),
+                    ]
+        }) {
+            if claim.values.is_empty() {
+                signed_schema_binding.push(String::new());
+            } else {
+                signed_schema_binding.extend(claim.values.iter().map(|value| match value {
+                    ClaimValue::String(value) => value.clone(),
+                    _ => String::new(),
+                }));
+            }
+        }
+        if signed_schema_binding.is_empty() {
+            schemas.extend(filter.schema_ids);
+        } else {
+            schemas.extend(signed_schema_binding);
+        }
+    }
+    Ok(schemas.into_iter().collect())
+}
+
+#[cfg(test)]
+mod verana_policy_test {
+    use super::{verana_presentation_schema_ids, verana_resolution_enabled};
+    use crate::proto::wrp_validator::model::TrustMode;
+    use dcql::DcqlQuery;
+    use serde_json::json;
+
+    #[test]
+    fn disabled_trust_mode_never_resolves_verana_presentation() {
+        assert!(!verana_resolution_enabled(TrustMode::Disabled));
+        assert!(verana_resolution_enabled(TrustMode::TrustOptional));
+        assert!(verana_resolution_enabled(TrustMode::TrustMandatory));
+    }
+
+    #[test]
+    fn required_signed_credential_schema_binds_q3_instead_of_the_vct_matcher() {
+        let query: DcqlQuery = serde_json::from_value(json!({
+            "credentials": [{
+                "id": "attestation",
+                "format": "dc+sd-jwt",
+                "meta": {
+                    "vct_values": ["https://issuer.example/vct/attestation"]
+                },
+                "claims": [{
+                    "path": ["credentialSchema", "id"],
+                    "values": ["https://issuer.example/vt/schemas-attestation-jsc.json"]
+                }]
+            }]
+        }))
+        .unwrap();
+
+        assert_eq!(
+            verana_presentation_schema_ids(&query).unwrap(),
+            vec!["https://issuer.example/vt/schemas-attestation-jsc.json"]
+        );
+    }
+
+    #[test]
+    fn missing_or_optional_schema_binding_falls_back_to_the_exact_vct() {
+        let query: DcqlQuery = serde_json::from_value(json!({
+            "credentials": [{
+                "id": "attestation",
+                "format": "dc+sd-jwt",
+                "meta": {
+                    "vct_values": ["https://issuer.example/vct/attestation"]
+                },
+                "claims": [{
+                    "path": ["credentialSchema", "id"],
+                    "values": ["https://issuer.example/vt/schemas-attestation-jsc.json"],
+                    "required": false
+                }]
+            }]
+        }))
+        .unwrap();
+
+        assert_eq!(
+            verana_presentation_schema_ids(&query).unwrap(),
+            vec!["https://issuer.example/vct/attestation"]
+        );
+    }
+
+    #[test]
+    fn every_claim_set_must_bind_the_schema_or_q3_keeps_the_vct_control() {
+        let query: DcqlQuery = serde_json::from_value(json!({
+            "credentials": [{
+                "id": "attestation",
+                "format": "dc+sd-jwt",
+                "meta": {
+                    "vct_values": ["https://issuer.example/vct/attestation"]
+                },
+                "claims": [
+                    {
+                        "id": "schema",
+                        "path": ["credentialSchema", "id"],
+                        "values": ["https://issuer.example/vt/schemas-attestation-jsc.json"]
+                    },
+                    {
+                        "id": "organization",
+                        "path": ["organization"]
+                    }
+                ],
+                "claim_sets": [["schema"], ["organization"]]
+            }]
+        }))
+        .unwrap();
+
+        assert_eq!(
+            verana_presentation_schema_ids(&query).unwrap(),
+            vec![
+                "https://issuer.example/vct/attestation",
+                "https://issuer.example/vt/schemas-attestation-jsc.json",
+            ]
+        );
     }
 }
 

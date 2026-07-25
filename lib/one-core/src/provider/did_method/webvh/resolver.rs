@@ -19,7 +19,7 @@ pub async fn resolve(
     use_http: bool,
     params: &Params,
 ) -> Result<DidDocument, DidMethodError> {
-    let TransformedDid { mut url, .. } = transform_did_to_https(did.as_str())?;
+    let TransformedDid { mut url, scid } = transform_did_to_https(did.as_str())?;
     if use_http {
         #[allow(clippy::expect_used)]
         url.set_scheme("http").expect("http is a valid scheme");
@@ -33,6 +33,11 @@ pub async fn resolve(
         .map_err(|err| {
             DidMethodError::ResolutionError(format!("Failed resolving did:webvh: {err}"))
         })?;
+
+    if did.method() == "webvh" {
+        return super::webvh_v1::resolve_log(did, scid, &resp.body, did_method_provider, params)
+            .await;
+    }
 
     let lines = resp.body.lines().peekable();
     let entries: Vec<_> = lines
@@ -75,11 +80,15 @@ struct TransformedDid<'a> {
 
 // https://identity.foundation/didwebvh/v0.3/#the-did-to-https-transformation
 fn transform_did_to_https(did: &str) -> Result<TransformedDid<'_>, DidMethodError> {
-    const METHOD_PREFIX: &str = "did:tdw:";
+    const TDW_PREFIX: &str = "did:tdw:";
+    const WEBVH_PREFIX: &str = "did:webvh:";
 
-    let Some(did_suffix) = did.strip_prefix(METHOD_PREFIX) else {
+    let Some(did_suffix) = did
+        .strip_prefix(TDW_PREFIX)
+        .or_else(|| did.strip_prefix(WEBVH_PREFIX))
+    else {
         return Err(DidMethodError::ResolutionError(format!(
-            "Invalid did value. Expected `{METHOD_PREFIX}` prefix",
+            "Invalid did value. Expected `{TDW_PREFIX}` or `{WEBVH_PREFIX}` prefix",
         )));
     };
 
@@ -173,6 +182,14 @@ mod test {
             (
                 "did:tdw:{SCID}:example.com%3A3000:dids:issuer",
                 "https://example.com:3000/dids/issuer/did.jsonl",
+            ),
+            (
+                "did:webvh:{SCID}:example.com",
+                "https://example.com/.well-known/did.jsonl",
+            ),
+            (
+                "did:webvh:{SCID}:example.com:dids:issuer",
+                "https://example.com/dids/issuer/did.jsonl",
             ),
         ] {
             let TransformedDid { url, scid } = transform_did_to_https(did).unwrap();
@@ -341,6 +358,170 @@ mod test {
     }
 
     #[tokio::test]
+    async fn test_didwebvh_v1_resolver_verifies_object_log_and_returns_last_document() {
+        let did_method_provider = test_did_method_provider();
+        let did_log = include_str!("test_data/success/did_webvh_v1.jsonl");
+        let did: DidValue = "did:webvh:QmPjKbgpLykjtHGTUfVRNoHra94mjitQsFniXYCTgmNYzG:unfold-org.77.42.86.24.sslip.io"
+            .parse()
+            .unwrap();
+        let url = "https://unfold-org.77.42.86.24.sslip.io/.well-known/did.jsonl";
+        let mut http_client = MockHttpClient::new();
+        mock_http_get_request(
+            &mut http_client,
+            url.to_string(),
+            Response {
+                body: did_log.as_bytes().to_vec(),
+                headers: Default::default(),
+                status: StatusCode(200),
+                request: Request {
+                    body: None,
+                    headers: Default::default(),
+                    method: Method::Get,
+                    url: url.to_string(),
+                    timeout: None,
+                },
+            },
+        );
+
+        let document = resolve(
+            &did,
+            &http_client,
+            did_method_provider.as_ref(),
+            false,
+            &Default::default(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(document.id, did);
+        assert_eq!(document.verification_method.len(), 3);
+        assert_eq!(
+            document.assertion_method,
+            Some(vec![format!(
+                "{did}#z6MkoZqdY3ycQ6ahThHv3DjnYQeTu1MPzCFhDxAp1kWssBUo"
+            )])
+        );
+    }
+
+    #[tokio::test]
+    async fn test_didwebvh_v1_resolver_rejects_tampered_proof() {
+        let did_method_provider = test_did_method_provider();
+        let did_log = include_str!("test_data/success/did_webvh_v1.jsonl").replace(
+            "z4QjZPTbBoPR9Gd3ZFyeRWpVMr7E73221u2jvmvFQ7pUERQhWmaaVT9SsVUee5XGzW8KZk29kWAs6ykEVKnspnzoZ",
+            "z5QjZPTbBoPR9Gd3ZFyeRWpVMr7E73221u2jvmvFQ7pUERQhWmaaVT9SsVUee5XGzW8KZk29kWAs6ykEVKnspnzoZ",
+        );
+        let did: DidValue = "did:webvh:QmPjKbgpLykjtHGTUfVRNoHra94mjitQsFniXYCTgmNYzG:unfold-org.77.42.86.24.sslip.io"
+            .parse()
+            .unwrap();
+        let url = "https://unfold-org.77.42.86.24.sslip.io/.well-known/did.jsonl";
+        let mut http_client = MockHttpClient::new();
+        mock_http_get_request(
+            &mut http_client,
+            url.to_string(),
+            Response {
+                body: did_log.into_bytes(),
+                headers: Default::default(),
+                status: StatusCode(200),
+                request: Request {
+                    body: None,
+                    headers: Default::default(),
+                    method: Method::Get,
+                    url: url.to_string(),
+                    timeout: None,
+                },
+            },
+        );
+
+        let result = resolve(
+            &did,
+            &http_client,
+            did_method_provider.as_ref(),
+            false,
+            &Default::default(),
+        )
+        .await;
+
+        assert!(matches!(result, Err(ResolutionError(_))));
+    }
+
+    #[tokio::test]
+    async fn test_didwebvh_v1_resolver_rejects_invalid_security_invariants() {
+        let valid_log = include_str!("test_data/success/did_webvh_v1.jsonl");
+        let invalid_logs = [
+            (
+                "broken hash chain",
+                valid_log.replacen(
+                    "2-QmPDcARE5mQTUQ8A95oyrEyxig8xnqS9EPGjctoW6j4tHb",
+                    "2-QmQDcARE5mQTUQ8A95oyrEyxig8xnqS9EPGjctoW6j4tHb",
+                    1,
+                ),
+            ),
+            (
+                "invalid proof purpose",
+                valid_log.replacen(
+                    r#""proofPurpose":"assertionMethod""#,
+                    r#""proofPurpose":"authentication""#,
+                    1,
+                ),
+            ),
+            (
+                "unsupported witness constraint",
+                valid_log.replacen(
+                    r#""witness":{}"#,
+                    r#""witness":{"witnesses":["did:example:witness"],"threshold":1}"#,
+                    1,
+                ),
+            ),
+            (
+                "unsupported portable history",
+                valid_log.replacen(r#""portable":false"#, r#""portable":true"#, 1),
+            ),
+            (
+                "deactivated DID",
+                valid_log.replacen(r#""deactivated":false"#, r#""deactivated":true"#, 1),
+            ),
+        ];
+
+        for (case, did_log) in invalid_logs {
+            let result = resolve_didwebvh_v1_fixture(did_log).await;
+            assert!(result.is_err(), "{case} must fail closed");
+        }
+    }
+
+    async fn resolve_didwebvh_v1_fixture(did_log: String) -> Result<DidDocument, DidMethodError> {
+        let did_method_provider = test_did_method_provider();
+        let did: DidValue = "did:webvh:QmPjKbgpLykjtHGTUfVRNoHra94mjitQsFniXYCTgmNYzG:unfold-org.77.42.86.24.sslip.io"
+            .parse()
+            .unwrap();
+        let url = "https://unfold-org.77.42.86.24.sslip.io/.well-known/did.jsonl";
+        let mut http_client = MockHttpClient::new();
+        mock_http_get_request(
+            &mut http_client,
+            url.to_string(),
+            Response {
+                body: did_log.into_bytes(),
+                headers: Default::default(),
+                status: StatusCode(200),
+                request: Request {
+                    body: None,
+                    headers: Default::default(),
+                    method: Method::Get,
+                    url: url.to_string(),
+                    timeout: None,
+                },
+            },
+        );
+        resolve(
+            &did,
+            &http_client,
+            did_method_provider.as_ref(),
+            false,
+            &Default::default(),
+        )
+        .await
+    }
+
+    #[tokio::test]
     async fn test_didwebvh_resolver_fail_too_many_entries() {
         let did_method_provider = test_did_method_provider();
 
@@ -487,12 +668,18 @@ mod test {
             let mut did_log = String::new();
             file.read_to_string(&mut did_log).unwrap();
 
-            let did = did_matcher
-                .query(&serde_json::from_str(did_log.lines().next().unwrap()).unwrap())
-                .first()
-                .unwrap()
-                .to_string()
-                .replace("\"", "");
+            let first_entry: serde_json::Value =
+                serde_json::from_str(did_log.lines().next().unwrap()).unwrap();
+            let did = if first_entry.is_array() {
+                did_matcher
+                    .query(&first_entry)
+                    .first()
+                    .unwrap()
+                    .to_string()
+                    .replace("\"", "")
+            } else {
+                first_entry["state"]["id"].as_str().unwrap().to_string()
+            };
             let url = format!(
                 "https://{}/.well-known/did.jsonl",
                 did.rsplit_once(":").unwrap().1

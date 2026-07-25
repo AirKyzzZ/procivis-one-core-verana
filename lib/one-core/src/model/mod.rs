@@ -30,6 +30,7 @@ pub mod trust_entry;
 pub mod trust_list_publication;
 pub mod trust_list_role;
 pub mod trust_list_subscription;
+pub mod verana_trust;
 pub mod verifier_instance;
 pub mod wallet_instance;
 pub mod wallet_instance_attestation;

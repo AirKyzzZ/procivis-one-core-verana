@@ -372,7 +372,8 @@ async fn test_submit_proof_failed_on_trust_failure() {
             assert_eq!(history.action, HistoryAction::TrustResolved);
             assert2::assert!(
                 let Some(HistoryMetadata::TrustResolution(TrustResolutionMetadata{
-                   result: TrustResolutionResult::Untrusted
+                   result: TrustResolutionResult::Untrusted,
+                   ..
                 })) = &history.metadata
             );
             true

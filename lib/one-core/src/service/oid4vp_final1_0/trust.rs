@@ -110,6 +110,7 @@ impl OID4VPFinal1_0Service {
                     target: Some(credential.credential.id.to_string()),
                     metadata: Some(HistoryMetadata::TrustResolution(TrustResolutionMetadata {
                         result: trust_resolution,
+                        verana: None,
                     })),
                     ..history_template.to_owned()
                 })

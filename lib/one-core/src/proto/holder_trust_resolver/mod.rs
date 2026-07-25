@@ -4,6 +4,7 @@ use thiserror::Error;
 use time::Duration;
 
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
+use crate::model::verana_trust::VerifierTrustProvenance;
 use crate::provider::credential_formatter::model::IdentifierDetails;
 use crate::provider::verification_protocol::openid4vp::final1_0::model::VerifierInfoAttestation;
 
@@ -22,6 +23,7 @@ pub(crate) trait HolderTrustResolver: Send + Sync {
         dcql_query: &DcqlQuery,
         verifier_info: &[VerifierInfoAttestation],
         leeway: Duration,
+        provenance: VerifierTrustProvenance,
     ) -> Result<(), HolderTrustResolverError>;
 }
 

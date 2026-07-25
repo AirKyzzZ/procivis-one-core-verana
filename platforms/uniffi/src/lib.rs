@@ -233,9 +233,26 @@ fn build_config(config: &str) -> Result<AppConfig<MobileConfig>, SDKError> {
 mod tests {
 
     use crate::build_config;
+    use serde::Deserialize;
+    use shared_types::DidMethodId;
+
+    #[derive(Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct WebVhParams {
+        max_did_log_entry_check: Option<u32>,
+    }
 
     #[test]
     fn test_build_config_parses_static_configs() {
         assert!(build_config("{}").is_ok());
+    }
+
+    #[test]
+    fn test_mobile_webvh_history_limit_supports_production_logs() {
+        let config = build_config("{}").unwrap();
+        let key = DidMethodId::from("WEBVH");
+        let params: WebVhParams = config.core.did.get(&key).unwrap();
+
+        assert_eq!(params.max_did_log_entry_check, Some(100));
     }
 }

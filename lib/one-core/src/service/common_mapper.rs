@@ -97,8 +97,13 @@ impl TryFrom<TrustDetails> for TrustInformationDetailResponseDTO {
                         phone,
                         ..eudi_ecosystem
                     }),
+                    verana: None,
                 }
             }
+            TrustDetails::Verana(verana) => TrustInformationDetailResponseDTO {
+                eudi_ecosystem: None,
+                verana: Some(verana),
+            },
         };
         Ok(trust_detail)
     }

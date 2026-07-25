@@ -51,11 +51,16 @@ impl KeyVerification {
         )))?;
 
         let method_id = if let Some(issuer_key_id) = issuer_key_id {
-            issuer_key_id
+            if issuer_key_id.starts_with('#') {
+                format!("{issuer_did_value}{issuer_key_id}")
+            } else {
+                issuer_key_id.to_owned()
+            }
         } else {
             key_id_list
                 .first()
                 .ok_or(TokenError::ValidationFailed("Missing keyId".to_string()))?
+                .to_owned()
         };
 
         tracing::debug!("Verification method_id: {method_id}");
@@ -232,6 +237,69 @@ mod test {
                 b"signature",
             )
             .await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_verify_expands_did_relative_key_id() {
+        let did_document = get_dummy_did_document();
+        let issuer_did = did_document.id.clone();
+        let absolute_key_id = did_document.verification_method[0].id.clone();
+        let relative_key_id = absolute_key_id
+            .strip_prefix(issuer_did.as_ref())
+            .unwrap()
+            .to_owned();
+
+        let mut did_method_provider = MockDidMethodProvider::default();
+        did_method_provider
+            .expect_resolve()
+            .once()
+            .return_once(move |_| Ok(did_document));
+
+        let mut key_alg = MockKeyAlgorithm::default();
+        key_alg.expect_parse_jwk().return_once(|_| {
+            let mut key_handle = MockSignaturePublicKeyHandle::default();
+            key_handle
+                .expect_as_raw()
+                .return_once(|| b"public_key".to_vec());
+            key_handle
+                .expect_verify()
+                .with(eq("token".as_bytes()), eq(b"signature".as_slice()))
+                .once()
+                .returning(|_, _| Ok(()));
+
+            Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
+                Arc::new(key_handle),
+            )))
+        });
+
+        let key_alg = Arc::new(key_alg);
+        let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
+        key_algorithm_provider
+            .expect_key_algorithm_from_type()
+            .once()
+            .returning(move |_| Ok(key_alg.clone()));
+
+        let verification = KeyVerification {
+            key_algorithm_provider: Arc::new(key_algorithm_provider),
+            did_method_provider: Arc::new(did_method_provider),
+            certificate_validator: Arc::new(MockCertificateValidator::default()),
+            key_role: KeyRole::AssertionMethod,
+        };
+
+        let params = PublicKeySource::Did {
+            did: Cow::Owned(issuer_did),
+            key_id: Some(&relative_key_id),
+        };
+        let result = verification
+            .verify(
+                params,
+                KeyAlgorithmType::Ecdsa,
+                "token".as_bytes(),
+                b"signature",
+            )
+            .await;
+
         assert!(result.is_ok());
     }
 

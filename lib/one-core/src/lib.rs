@@ -37,6 +37,7 @@ use crate::proto::trust_information::provider::TrustInformationProviderImpl;
 use crate::proto::trust_list_subscription_sync::{
     TrustListSubscriptionSync, TrustListSubscriptionSyncImpl,
 };
+use crate::proto::verana_trust::VeranaTrustResolver;
 use crate::proto::verifier_provider_client::http_client::HTTPVerifierProviderClient;
 use crate::proto::wallet_instance::HolderWalletUnitProtoImpl;
 use crate::proto::wallet_provider_client::http_client::HTTPWalletProviderClient;
@@ -433,16 +434,33 @@ impl OneCore {
         let blob_storage_provider =
             blob_storage_provider_from_config(&mut config, data_provider.get_blob_repository())?;
 
+        let verana_trust_resolver = config
+            .global_settings
+            .verana_trust
+            .as_ref()
+            .map(|verana| {
+                VeranaTrustResolver::new(
+                    verana.resolver_url.clone(),
+                    verana.timeout,
+                    client.clone(),
+                )
+                .map(Arc::new)
+            })
+            .transpose()
+            .map_err(|error| OneCoreInitializationError::Other(anyhow::anyhow!(error)))?;
+
         let holder_trust_resolver = Arc::new(HolderTrustResolverProto::new(
             data_provider.get_history_repository(),
             wrp_validator.clone(),
             blob_storage_provider.clone(),
             session_provider.clone(),
+            verana_trust_resolver.clone(),
         ));
 
-        let trust_information_provider = Arc::new(TrustInformationProviderImpl::new(
+        let trust_information_provider = Arc::new(TrustInformationProviderImpl::new_with_verana(
             data_provider.get_history_repository(),
             blob_storage_provider.clone(),
+            verana_trust_resolver.clone(),
         ));
 
         let key_security_level_provider = key_security_level_provider_from_config(&mut config)?;

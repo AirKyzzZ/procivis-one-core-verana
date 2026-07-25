@@ -17,7 +17,9 @@ use crate::binding::credential_schema::{
     CredentialSchemaTranslationsBindingDTO, KeyStorageSecurityBindingEnum, LayoutTypeBindingEnum,
 };
 use crate::binding::history::TrustResolutionResultBindingEnum;
-use crate::binding::trust_information::TrustInformationDetailResponseBindingDTO;
+use crate::binding::trust_information::{
+    TrustInformationDetailResponseBindingDTO, VeranaTrustSummaryBindingDTO,
+};
 use crate::error::BindingError;
 use crate::utils::{TimestampFormat, into_id};
 
@@ -143,6 +145,8 @@ pub struct TrustInformationBindingDTO {
     received_at: String,
     name: Option<String>,
     result: TrustResolutionResultBindingEnum,
+    #[from(with_fn = convert_inner)]
+    verana: Option<VeranaTrustSummaryBindingDTO>,
 }
 
 #[derive(Clone, Debug, PartialEq, Into, uniffi::Enum)]

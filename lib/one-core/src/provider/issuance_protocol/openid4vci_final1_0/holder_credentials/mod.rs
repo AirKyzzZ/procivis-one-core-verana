@@ -30,16 +30,18 @@ use crate::model::credential_schema::{
 use crate::model::credential_schema_format_claim_schema::CredentialSchemaFormatClaimSchema;
 use crate::model::history::{
     History, HistoryAction, HistoryEntityType, HistoryMetadata, HistorySource,
-    TrustResolutionMetadata, WalletRelyingPartyMetadata,
+    TrustResolutionMetadata, TrustResolutionResult, WalletRelyingPartyMetadata,
 };
 use crate::model::identifier::{Identifier, IdentifierType};
 use crate::model::interaction::Interaction;
 use crate::model::localized_text::{LocalizedText, LocalizedTextEntityType, LocalizedTextField};
 use crate::model::organisation::Organisation;
 use crate::model::relation::Related;
+use crate::model::verana_trust::{VeranaTrustRole, VeranaTrustSummary};
 use crate::proto::credential_schema::importer::CredentialSchemaImporter;
 use crate::proto::identifier_creator::{IdentifierName, IdentifierRole, RemoteIdentifierRelation};
 use crate::proto::session_provider::SessionExt;
+use crate::proto::verana_trust::VeranaTrustResolver;
 use crate::proto::wrp_validator::model::TrustMode;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
@@ -148,6 +150,25 @@ impl OpenID4VCIFinal1_0 {
                 &format,
             )
             .await?;
+
+        let verana = if verana_resolution_enabled(interaction_data.trust_mode) {
+            let authenticated_credential =
+                if main_credential.credential.r#type == CredentialType::BatchParent {
+                    credentials
+                        .first()
+                        .map(|credential| &credential.credential)
+                        .ok_or(IssuanceProtocolError::Failed(
+                            "No credentials received".to_string(),
+                        ))?
+                } else {
+                    &main_credential.credential
+                };
+            self.resolve_verana_issuer_trust(authenticated_credential, &schema)
+                .await?
+        } else {
+            None
+        };
+
         if !credentials.is_empty() {
             // update batch items
             credentials.iter_mut().for_each(|c| {
@@ -167,6 +188,14 @@ impl OpenID4VCIFinal1_0 {
                     organisation.id,
                 )
                 .await;
+        }
+
+        if let Some(verana) = &verana {
+            trust_resolution = if verana.verdict.is_positive() {
+                TrustResolutionResult::Trusted
+            } else {
+                TrustResolutionResult::Untrusted
+            };
         }
 
         if let Some(access_certificate) = &interaction_data.access_certificate {
@@ -225,6 +254,7 @@ impl OpenID4VCIFinal1_0 {
             None,
             Some(HistoryMetadata::TrustResolution(TrustResolutionMetadata {
                 result: trust_resolution,
+                verana,
             })),
         )
         .await?;
@@ -234,6 +264,71 @@ impl OpenID4VCIFinal1_0 {
             main_credential,
             batch_items: credentials,
         })
+    }
+
+    pub(super) async fn resolve_verana_issuer_trust(
+        &self,
+        credential: &Credential,
+        schema: &CredentialSchema,
+    ) -> Result<Option<VeranaTrustSummary>, IssuanceProtocolError> {
+        let Some(config) = &self.config.global_settings.verana_trust else {
+            return Ok(None);
+        };
+        let resolver = VeranaTrustResolver::new(
+            config.resolver_url.clone(),
+            config.timeout,
+            self.client.clone(),
+        )
+        .map_err(|error| IssuanceProtocolError::Failed(error.to_string()))?;
+
+        let did = match credential.issuer_identifier.as_ref() {
+            Some(identifier) if identifier.r#type == IdentifierType::Did => identifier
+                .did
+                .as_ref()
+                .ok_or(IssuanceProtocolError::Failed(
+                    "verified issuer DID relation missing".to_string(),
+                ))?
+                .as_ref()
+                .await?
+                .did
+                .to_string(),
+            _ => {
+                return Ok(Some(resolver.unsupported_summary(
+                    VeranaTrustRole::Issuer,
+                    None,
+                    self.verana_issuance_schema_ids(credential, schema).await?,
+                    "AUTHENTICATED_ISSUER_DID_MISSING",
+                )));
+            }
+        };
+        let schemas = self.verana_issuance_schema_ids(credential, schema).await?;
+        Ok(Some(
+            resolver
+                .resolve_summary(VeranaTrustRole::Issuer, &did, schemas)
+                .await,
+        ))
+    }
+
+    async fn verana_issuance_schema_ids(
+        &self,
+        credential: &Credential,
+        schema: &CredentialSchema,
+    ) -> Result<Vec<String>, IssuanceProtocolError> {
+        let claims = credential
+            .claims
+            .as_deref()
+            .unwrap_or_default()
+            .iter()
+            .map(|claim| (claim.path.clone(), claim.value.clone()))
+            .collect::<Vec<_>>();
+        let fallback = schema
+            .formats
+            .as_ref()
+            .await?
+            .iter()
+            .map(|format| format.schema_id.clone())
+            .collect();
+        Ok(select_verana_issuance_schema_ids(&claims, fallback))
     }
 
     fn change_to_batch_item(
@@ -722,6 +817,116 @@ impl OpenID4VCIFinal1_0 {
         .await?;
 
         Ok(result)
+    }
+}
+
+fn select_verana_issuance_schema_ids(
+    claims: &[(String, Option<String>)],
+    fallback: Vec<String>,
+) -> Vec<String> {
+    let signed_schema = claims
+        .iter()
+        .filter(|(path, _)| {
+            path == "credentialSchema/id"
+                || (path.starts_with("credentialSchema/") && path.ends_with("/id"))
+        })
+        .map(|(_, value)| value.clone().unwrap_or_default())
+        .collect::<std::collections::BTreeSet<_>>()
+        .into_iter()
+        .collect::<Vec<_>>();
+    let signed = if signed_schema.is_empty() {
+        claims
+            .iter()
+            .filter(|(path, _)| path == "vct")
+            .map(|(_, value)| value.clone().unwrap_or_default())
+            .collect::<std::collections::BTreeSet<_>>()
+            .into_iter()
+            .collect::<Vec<_>>()
+    } else {
+        signed_schema
+    };
+    if signed.is_empty() {
+        fallback
+            .into_iter()
+            .collect::<std::collections::BTreeSet<_>>()
+            .into_iter()
+            .collect()
+    } else {
+        signed
+    }
+}
+
+fn verana_resolution_enabled(trust_mode: TrustMode) -> bool {
+    trust_mode != TrustMode::Disabled
+}
+
+#[cfg(test)]
+mod verana_schema_test {
+    use super::{select_verana_issuance_schema_ids, verana_resolution_enabled};
+    use crate::proto::wrp_validator::model::TrustMode;
+
+    #[test]
+    fn signed_credential_schema_binds_q2_instead_of_the_vct_type_matcher() {
+        let result = select_verana_issuance_schema_ids(
+            &[
+                (
+                    "credentialSchema/1/id".to_string(),
+                    Some("https://example/schema/b".to_string()),
+                ),
+                (
+                    "credentialSchema/0/id".to_string(),
+                    Some("https://example/schema/a".to_string()),
+                ),
+                ("credentialSchema/2/id".to_string(), Some(String::new())),
+                ("vct".to_string(), Some("https://example/vct".to_string())),
+            ],
+            vec!["https://metadata.example/vct".to_string()],
+        );
+        assert_eq!(
+            result,
+            vec![
+                String::new(),
+                "https://example/schema/a".to_string(),
+                "https://example/schema/b".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn signed_format_identifiers_are_used_when_no_explicit_schema_claim_exists() {
+        let result = select_verana_issuance_schema_ids(
+            &[
+                ("name".to_string(), Some("Alice".to_string())),
+                (
+                    "vct".to_string(),
+                    Some("https://signed.example/vct".to_string()),
+                ),
+            ],
+            vec![
+                "https://metadata.example/vct".to_string(),
+                "https://metadata.example/vct".to_string(),
+            ],
+        );
+        assert_eq!(result, vec!["https://signed.example/vct"]);
+    }
+
+    #[test]
+    fn verified_format_fallback_is_used_when_no_signed_identifier_claim_exists() {
+        let result = select_verana_issuance_schema_ids(
+            &[("name".to_string(), Some("Alice".to_string()))],
+            vec![
+                "org.iso.18013.5.1.mDL".to_string(),
+                "org.iso.18013.5.1.mDL".to_string(),
+            ],
+        );
+        assert_eq!(result, vec!["org.iso.18013.5.1.mDL"]);
+    }
+
+    #[test]
+    fn disabled_trust_mode_never_resolves_verana_issuance() {
+        assert!(!verana_resolution_enabled(TrustMode::Disabled));
+        assert!(verana_resolution_enabled(TrustMode::TrustOptional));
+        assert!(verana_resolution_enabled(TrustMode::TrustMandatory));
     }
 }
 async fn get_or_create_credential_schema(

@@ -643,6 +643,7 @@ impl CredentialService {
         else {
             return Ok(TrustInformationDetailResponseDTO {
                 eudi_ecosystem: None,
+                verana: None,
             });
         };
         trust_details
