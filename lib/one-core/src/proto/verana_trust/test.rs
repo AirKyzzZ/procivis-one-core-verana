@@ -133,6 +133,7 @@ async fn trusted_production_and_every_issuer_schema_authorized_is_positive() {
         .await;
 
     assert_eq!(summary.verdict, VeranaTrustVerdict::TrustedAuthorized);
+    assert_eq!(summary.production, Some(true));
     assert_eq!(summary.schemas, vec![SCHEMA_A, SCHEMA_B]);
     assert_eq!(summary.authorizations.len(), 2);
 }
@@ -142,9 +143,11 @@ async fn trusted_production_verifier_authorization_is_positive() {
     let client = http_client(|url| {
         let body = if url.contains("/v1/trust/resolve") {
             q1(DID, "TRUSTED", true)
-        } else {
+        } else if url.contains("/v1/trust/") {
             assert!(url.contains("/v1/trust/verifier-authorization"));
             authorization(DID, SCHEMA_A, true)
+        } else {
+            json!({})
         };
         Ok((200, body, Default::default()))
     });
@@ -193,6 +196,9 @@ async fn every_distinct_schema_is_attempted_when_one_authorization_is_unavailabl
         if url.contains("/v1/trust/resolve") {
             return Ok((200, q1(DID, "TRUSTED", true), Default::default()));
         }
+        if !url.contains("/v1/trust/issuer-authorization") {
+            return Ok((200, json!({}), Default::default()));
+        }
         if url.contains("schema%2Fa") {
             observed_schemas.lock().unwrap().push(SCHEMA_A);
             return Err(Error::Timeout);
@@ -218,10 +224,10 @@ async fn every_distinct_schema_is_attempted_when_one_authorization_is_unavailabl
 }
 
 #[tokio::test]
-async fn untrusted_partial_and_non_production_q1_are_distinct_non_positive_states() {
+async fn untrusted_and_incomplete_q1_are_distinct_non_positive_states() {
     for (body, expected) in [
         (q1(DID, "UNTRUSTED", true), VeranaTrustVerdict::Untrusted),
-        (q1(DID, "TRUSTED", false), VeranaTrustVerdict::NonProduction),
+        (q1(DID, "UNTRUSTED", false), VeranaTrustVerdict::Untrusted),
         (
             json!({ "did": DID, "trustStatus": "TRUSTED" }),
             VeranaTrustVerdict::Partial,
@@ -234,6 +240,228 @@ async fn untrusted_partial_and_non_production_q1_are_distinct_non_positive_state
         assert_eq!(summary.verdict, expected);
         assert_ne!(summary.verdict, VeranaTrustVerdict::TrustedAuthorized);
     }
+}
+
+#[tokio::test]
+async fn trusted_non_production_still_runs_authorization_and_carries_the_flag() {
+    let client = http_client(|url| {
+        let body = if url.contains("/v1/trust/resolve") {
+            q1(DID, "TRUSTED", false)
+        } else {
+            authorization(DID, SCHEMA_A, true)
+        };
+        Ok((200, body, Default::default()))
+    });
+
+    let summary = resolver(client)
+        .resolve_summary(VeranaTrustRole::Issuer, DID, vec![SCHEMA_A.to_string()])
+        .await;
+
+    assert_eq!(summary.verdict, VeranaTrustVerdict::TrustedAuthorized);
+    assert_eq!(summary.production, Some(false));
+    assert_eq!(summary.authorizations.len(), 1);
+}
+
+#[tokio::test]
+async fn trusted_non_production_unauthorized_evidence_is_unauthorized() {
+    let client = http_client(|url| {
+        let body = if url.contains("/v1/trust/resolve") {
+            q1(DID, "TRUSTED", false)
+        } else {
+            authorization(DID, SCHEMA_A, false)
+        };
+        Ok((200, body, Default::default()))
+    });
+
+    let summary = resolver(client)
+        .resolve_summary(VeranaTrustRole::Issuer, DID, vec![SCHEMA_A.to_string()])
+        .await;
+
+    assert_eq!(summary.verdict, VeranaTrustVerdict::Unauthorized);
+    assert_eq!(summary.production, Some(false));
+}
+
+#[tokio::test]
+async fn vpr_schema_reference_is_reduced_to_the_numeric_schema_id() {
+    const VPR_VCT: &str = "vpr:verana:vna-testnet-1/cs/v1/js/12345678";
+    let queries = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let observed = queries.clone();
+    let client = http_client(move |url| {
+        if url.contains("/v1/trust/resolve") {
+            return Ok((200, q1(DID, "TRUSTED", true), Default::default()));
+        }
+        observed.lock().unwrap().push(url.to_string());
+        Ok((200, authorization(DID, "12345678", true), Default::default()))
+    });
+
+    let summary = resolver(client)
+        .resolve_summary(VeranaTrustRole::Issuer, DID, vec![VPR_VCT.to_string()])
+        .await;
+
+    assert_eq!(summary.verdict, VeranaTrustVerdict::TrustedAuthorized);
+    let queries = queries.lock().unwrap();
+    assert_eq!(queries.len(), 1);
+    assert!(queries[0].contains("vtjscId=12345678"));
+    assert_eq!(summary.authorizations[0].schema, VPR_VCT);
+    assert_eq!(
+        summary.authorizations[0].response_schema.as_deref(),
+        Some("12345678")
+    );
+}
+
+#[tokio::test]
+async fn https_vct_resolves_through_the_vtjsc_to_the_vpr_schema_id() {
+    const VCT: &str = "https://issuer.example/vct/service";
+    const VTJSC: &str = "https://issuer.example/vt/schema-jsc.json";
+    let client = http_client(move |url| {
+        if url.contains("/v1/trust/resolve") {
+            return Ok((200, q1(DID, "TRUSTED", true), Default::default()));
+        }
+        if url == VCT {
+            return Ok((
+                200,
+                json!({ "relatedJsonSchemaCredentialId": VTJSC }),
+                Default::default(),
+            ));
+        }
+        if url == VTJSC {
+            return Ok((
+                200,
+                json!({
+                    "credentialSubject": {
+                        "jsonSchema": { "$id": "vpr:verana:vna-testnet-1/cs/v1/js/42" }
+                    }
+                }),
+                Default::default(),
+            ));
+        }
+        assert!(url.contains("/v1/trust/issuer-authorization"));
+        assert!(url.contains("vtjscId=42"));
+        Ok((200, authorization(DID, "42", true), Default::default()))
+    });
+
+    let summary = resolver(client)
+        .resolve_summary(VeranaTrustRole::Issuer, DID, vec![VCT.to_string()])
+        .await;
+
+    assert_eq!(summary.verdict, VeranaTrustVerdict::TrustedAuthorized);
+    assert_eq!(summary.authorizations[0].schema, VCT);
+    assert_eq!(
+        summary.authorizations[0].response_schema.as_deref(),
+        Some("42")
+    );
+}
+
+#[tokio::test]
+async fn vtjsc_ref_and_subject_id_pointers_also_yield_the_schema_id() {
+    const VCT: &str = "https://issuer.example/vct/service";
+    const VTJSC: &str = "https://issuer.example/vt/schema-jsc.json";
+    for subject in [
+        json!({ "jsonSchema": { "$ref": "vpr:verana:devnet/cs/v1/js/7" } }),
+        json!({ "jsonSchema": {}, "id": "vpr:verana:devnet/cs/v1/js/7" }),
+    ] {
+        let client = http_client(move |url| {
+            if url.contains("/v1/trust/resolve") {
+                return Ok((200, q1(DID, "TRUSTED", true), Default::default()));
+            }
+            if url == VCT {
+                return Ok((
+                    200,
+                    json!({ "relatedJsonSchemaCredentialId": VTJSC }),
+                    Default::default(),
+                ));
+            }
+            if url == VTJSC {
+                return Ok((
+                    200,
+                    json!({ "credentialSubject": subject.clone() }),
+                    Default::default(),
+                ));
+            }
+            assert!(url.contains("vtjscId=7"));
+            Ok((200, authorization(DID, "7", true), Default::default()))
+        });
+
+        let summary = resolver(client)
+            .resolve_summary(VeranaTrustRole::Issuer, DID, vec![VCT.to_string()])
+            .await;
+
+        assert_eq!(summary.verdict, VeranaTrustVerdict::TrustedAuthorized);
+    }
+}
+
+#[tokio::test]
+async fn vtjsc_chain_failure_fails_closed_to_the_raw_schema_value() {
+    const VCT: &str = "https://issuer.example/vct/service";
+    let client = http_client(move |url| {
+        if url.contains("/v1/trust/resolve") {
+            return Ok((200, q1(DID, "TRUSTED", true), Default::default()));
+        }
+        if url == VCT {
+            return Ok((500, json!({}), Default::default()));
+        }
+        assert!(url.contains("/v1/trust/issuer-authorization"));
+        assert!(url.contains("vtjscId=https%3A%2F%2Fissuer.example%2Fvct%2Fservice"));
+        Ok((200, authorization(DID, VCT, true), Default::default()))
+    });
+
+    let summary = resolver(client)
+        .resolve_summary(VeranaTrustRole::Issuer, DID, vec![VCT.to_string()])
+        .await;
+
+    assert_eq!(summary.verdict, VeranaTrustVerdict::TrustedAuthorized);
+    assert_eq!(
+        summary.authorizations[0].response_schema.as_deref(),
+        Some(VCT)
+    );
+}
+
+#[tokio::test]
+async fn pending_terminated_revoked_or_slashed_permission_is_not_a_grant() {
+    for permission in [
+        json!({ "type": "ISSUER", "vp_state": "PENDING" }),
+        json!({ "type": "ISSUER", "vp_state": "TERMINATED" }),
+        json!({ "type": "ISSUER", "revoked": "2026-07-01T00:00:00Z" }),
+        json!({ "type": "ISSUER", "slashed": "2026-07-01T00:00:00Z" }),
+    ] {
+        let client = http_client(move |url| {
+            let body = if url.contains("/v1/trust/resolve") {
+                q1(DID, "TRUSTED", true)
+            } else {
+                let mut body = authorization(DID, SCHEMA_A, true);
+                body["permission"] = permission.clone();
+                body
+            };
+            Ok((200, body, Default::default()))
+        });
+
+        let summary = resolver(client)
+            .resolve_summary(VeranaTrustRole::Issuer, DID, vec![SCHEMA_A.to_string()])
+            .await;
+
+        assert_eq!(summary.verdict, VeranaTrustVerdict::Unauthorized);
+        assert_eq!(summary.authorizations[0].authorized, Some(true));
+    }
+}
+
+#[tokio::test]
+async fn validated_permission_state_keeps_the_grant() {
+    let client = http_client(|url| {
+        let body = if url.contains("/v1/trust/resolve") {
+            q1(DID, "TRUSTED", true)
+        } else {
+            let mut body = authorization(DID, SCHEMA_A, true);
+            body["permission"] = json!({ "type": "ISSUER", "vp_state": "VALIDATED" });
+            body
+        };
+        Ok((200, body, Default::default()))
+    });
+
+    let summary = resolver(client)
+        .resolve_summary(VeranaTrustRole::Issuer, DID, vec![SCHEMA_A.to_string()])
+        .await;
+
+    assert_eq!(summary.verdict, VeranaTrustVerdict::TrustedAuthorized);
 }
 
 #[tokio::test]

@@ -92,6 +92,7 @@ pub struct VeranaTrustSummary {
     pub role: VeranaTrustRole,
     pub verdict: VeranaTrustVerdict,
     pub did: String,
+    pub production: Option<bool>,
     pub schemas: Vec<String>,
     pub q1: Option<VeranaQ1Evidence>,
     pub authorizations: Vec<VeranaAuthorizationEvidence>,

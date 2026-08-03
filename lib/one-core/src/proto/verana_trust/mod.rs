@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
+use regex::Regex;
 use serde::Deserialize;
 use serde_json::Value;
 use thiserror::Error;
@@ -147,6 +148,7 @@ impl VeranaTrustResolver {
             role,
             verdict: VeranaTrustVerdict::Unavailable,
             did: did.to_string(),
+            production: None,
             schemas,
             q1: None,
             authorizations: vec![],
@@ -167,12 +169,10 @@ impl VeranaTrustResolver {
             summary.verdict = VeranaTrustVerdict::Mismatch;
             return summary;
         }
+        summary.production = q1.production;
+        // production=false is a demo-network marking, not a verdict; Q2/Q3 still run
         match (q1.trust_status.as_deref(), q1.production) {
-            (Some("TRUSTED"), Some(true)) => {}
-            (Some("TRUSTED"), Some(false)) => {
-                summary.verdict = VeranaTrustVerdict::NonProduction;
-                return summary;
-            }
+            (Some("TRUSTED"), Some(_)) => {}
             (Some("UNTRUSTED"), Some(_)) => {
                 summary.verdict = VeranaTrustVerdict::Untrusted;
                 return summary;
@@ -193,7 +193,8 @@ impl VeranaTrustResolver {
         let mut authorization_partial = false;
         let mut unauthorized = false;
         for schema in &summary.schemas {
-            let response = match self.get_authorization(role, did, schema).await {
+            let query_schema = self.resolve_authorization_schema_id(schema).await;
+            let response = match self.get_authorization(role, did, &query_schema).await {
                 Ok(response) => response,
                 Err(failure) => {
                     summary.failure.get_or_insert(failure);
@@ -224,9 +225,10 @@ impl VeranaTrustResolver {
                 permission_chain: response.0.permission_chain,
             };
             let exact_match = evidence.response_did.as_deref() == Some(did)
-                && evidence.response_schema.as_deref() == Some(schema.as_str());
+                && evidence.response_schema.as_deref() == Some(query_schema.as_str());
             let complete = evidence.authorized.is_some();
-            unauthorized |= evidence.authorized == Some(false);
+            unauthorized |= evidence.authorized == Some(false)
+                || permission_denies_grant(evidence.permission.as_ref());
             summary.authorizations.push(evidence);
             if !exact_match {
                 authorization_mismatch = true;
@@ -271,6 +273,7 @@ impl VeranaTrustResolver {
                 VeranaTrustVerdict::Unavailable
             },
             did: did.unwrap_or_default().to_string(),
+            production: None,
             schemas,
             q1: None,
             authorizations: vec![],
@@ -348,6 +351,47 @@ impl VeranaTrustResolver {
             .map_err(|_| "Q1_MALFORMED".to_string())
     }
 
+    // vct -> type metadata -> VTJSC -> numeric VPR schema id (vs-agent#533); fails closed to the raw value
+    async fn resolve_authorization_schema_id(&self, raw: &str) -> String {
+        if let Some(id) = vpr_schema_id(raw) {
+            return id;
+        }
+        if !raw.starts_with("https://") {
+            return raw.to_string();
+        }
+        self.schema_id_via_vtjsc(raw)
+            .await
+            .unwrap_or_else(|| raw.to_string())
+    }
+
+    async fn schema_id_via_vtjsc(&self, vct: &str) -> Option<String> {
+        let type_metadata = self.get_json(vct).await?;
+        let vtjsc_url = non_empty_str(type_metadata.get("relatedJsonSchemaCredentialId"))?;
+        if !vtjsc_url.starts_with("https://") {
+            return None;
+        }
+        let vtjsc = self.get_json(vtjsc_url).await?;
+        let subject = vtjsc.get("credentialSubject")?;
+        let json_schema = subject.get("jsonSchema");
+        let id = non_empty_str(json_schema.and_then(|schema| schema.get("$id")))
+            .or_else(|| non_empty_str(json_schema.and_then(|schema| schema.get("$ref"))))
+            .or_else(|| non_empty_str(subject.get("id")))?;
+        vpr_schema_id(id)
+    }
+
+    async fn get_json(&self, url: &str) -> Option<Value> {
+        self.http_client
+            .get(url)
+            .timeout(self.timeout)
+            .send()
+            .await
+            .ok()?
+            .error_for_status()
+            .ok()?
+            .json::<Value>()
+            .ok()
+    }
+
     async fn get_authorization(
         &self,
         role: VeranaTrustRole,
@@ -389,6 +433,41 @@ impl VeranaTrustResolver {
             .append_pair("detail", detail);
         url
     }
+}
+
+static VPR_SCHEMA_ID: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"/cs/v\d+/js/(\d+)\b").expect("static pattern is valid"));
+
+fn vpr_schema_id(value: &str) -> Option<String> {
+    VPR_SCHEMA_ID
+        .captures(value)
+        .map(|captures| captures[1].to_string())
+}
+
+fn non_empty_str(value: Option<&Value>) -> Option<&str> {
+    value
+        .and_then(Value::as_str)
+        .filter(|value| !value.is_empty())
+}
+
+// a PENDING, TERMINATED, revoked, or slashed permission is not a grant even when authorized:true
+fn permission_denies_grant(permission: Option<&Value>) -> bool {
+    let Some(permission) = permission.and_then(Value::as_object) else {
+        return false;
+    };
+    let non_empty = |key: &str| {
+        permission
+            .get(key)
+            .and_then(Value::as_str)
+            .is_some_and(|value| !value.is_empty())
+    };
+    if non_empty("revoked") || non_empty("slashed") {
+        return true;
+    }
+    ["vp_state", "vpState", "validationState"]
+        .iter()
+        .find_map(|key| permission.get(*key).and_then(Value::as_str))
+        .is_some_and(|state| state == "PENDING" || state == "TERMINATED")
 }
 
 fn map_full_credential(value: FullCredentialResponse) -> VeranaTrustCredential {
