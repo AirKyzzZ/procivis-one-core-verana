@@ -151,6 +151,11 @@ impl OpenID4VCIFinal1_0 {
             )
             .await?;
 
+        tracing::info!(
+            trust_mode = ?interaction_data.trust_mode,
+            resolving = verana_resolution_enabled(interaction_data.trust_mode),
+            "Verana issuer trust resolution"
+        );
         let verana = if verana_resolution_enabled(interaction_data.trust_mode) {
             let authenticated_credential =
                 if main_credential.credential.r#type == CredentialType::BatchParent {
@@ -272,6 +277,7 @@ impl OpenID4VCIFinal1_0 {
         schema: &CredentialSchema,
     ) -> Result<Option<VeranaTrustSummary>, IssuanceProtocolError> {
         let Some(config) = &self.config.global_settings.verana_trust else {
+            tracing::warn!("Verana trust resolution skipped: no veranaTrust in globalSettings");
             return Ok(None);
         };
         let resolver = VeranaTrustResolver::new(
@@ -292,6 +298,14 @@ impl OpenID4VCIFinal1_0 {
                 .await?
                 .did
                 .to_string(),
+            // An x5c-signed credential has no DID identifier; the issuer's DID is carried as a
+            // URI SAN on the signing certificate.
+            Some(identifier)
+                if identifier.r#type == IdentifierType::Certificate
+                    && did_uri_san_from_chain(identifier).is_some() =>
+            {
+                did_uri_san_from_chain(identifier).unwrap_or_default()
+            }
             _ => {
                 return Ok(Some(resolver.unsupported_summary(
                     VeranaTrustRole::Issuer,
@@ -854,6 +868,25 @@ fn select_verana_issuance_schema_ids(
     } else {
         signed
     }
+}
+
+fn did_uri_san_from_chain(identifier: &Identifier) -> Option<String> {
+    use x509_parser::extensions::{GeneralName, ParsedExtension};
+    use x509_parser::pem::Pem;
+
+    let chain = &identifier.certificates.as_ref()?.first()?.chain;
+    let pem = Pem::iter_from_buffer(chain.as_bytes()).next()?.ok()?;
+    let (_, certificate) = x509_parser::parse_x509_certificate(&pem.contents).ok()?;
+
+    certificate.extensions().iter().find_map(|extension| {
+        let ParsedExtension::SubjectAlternativeName(san) = extension.parsed_extension() else {
+            return None;
+        };
+        san.general_names.iter().find_map(|name| match name {
+            GeneralName::URI(uri) if uri.starts_with("did:") => Some((*uri).to_string()),
+            _ => None,
+        })
+    })
 }
 
 fn verana_resolution_enabled(trust_mode: TrustMode) -> bool {

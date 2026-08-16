@@ -1091,6 +1091,14 @@ impl OpenID4VCIFinal1_0 {
             ))
         })?;
 
+        // Trust mode is wallet policy, not a property of the issuer's metadata. Returning
+        // `Disabled` here switched Verana resolution off for every unsigned issuer.
+        let trust_mode = self
+            .wrp_validator
+            .wallet_trust_mode(organisation_id)
+            .await
+            .error_while("checking wallet trust mode")?;
+
         if !self.params.request_signed_metadata {
             return Ok((
                 IssuerMetadataRepresentation::Unsigned(
@@ -1101,7 +1109,7 @@ impl OpenID4VCIFinal1_0 {
                     )
                     .await?,
                 ),
-                TrustMode::Disabled,
+                trust_mode,
             ));
         }
 
@@ -1115,12 +1123,6 @@ impl OpenID4VCIFinal1_0 {
         self.validate_jwt(&jwt)
             .await
             .error_while("validating issuer metadata JWT")?;
-
-        let trust_mode = self
-            .wrp_validator
-            .wallet_trust_mode(organisation_id)
-            .await
-            .error_while("checking wallet trust mode")?;
 
         let Some(x5c) = jwt.header.x5c.as_ref() else {
             tracing::debug!("Issuer metadata signed via DID or JWK");
